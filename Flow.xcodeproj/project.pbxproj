@@ -24,6 +24,7 @@
 		28D287C3D902EC3546165641 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A93336F88B7099468CD68A /* AccountSettingsView.swift */; };
 		2BCF310A6A624CFC44F87920 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708B75EA3C803473D05AB1F1 /* AppModel.swift */; };
 		2C04048EAB2BC3D22333E6DB /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7785133DEC097B45A1126DA /* OnboardingView.swift */; };
+		2C9B4983E05D12FAF0F40463 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBA393B9CEE6890CBADEE423 /* NowPlaying.swift */; };
 		2D620B4F7C5228E568A34524 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5289F6C0111AC96F58A5B8A9 /* Cards.swift */; };
 		3262EE2F12A002AF70306098 /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 084557F2FC6CAB9830615AEA /* DetailView.swift */; };
 		3690037E6800EAE5CA48DFEC /* AppModel+Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AA22997771CD0720AEAF1B6 /* AppModel+Library.swift */; };
@@ -45,6 +46,7 @@
 		4E6677EAC4571D2C37BED145 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03878E23BB21C51D27637323 /* RootView.swift */; };
 		4EB11207A3EEECE1D5C439CE /* PersonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2530CF7AECC3DEE2DDC5DEE7 /* PersonView.swift */; };
 		4EC1E8052F23AA548C2BF133 /* PlayerSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC0099DE944D4031131AE4D /* PlayerSurface.swift */; };
+		5016DE3126CF7D0D2F649106 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBA393B9CEE6890CBADEE423 /* NowPlaying.swift */; };
 		50F24433290BB5AAE493AF37 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6C97AD56B95F80525C774907 /* Assets.xcassets */; };
 		510271A6C7046E82671FE374 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428B38EA5FEC2E7977F8EA76 /* HomeView.swift */; };
 		51148CDD6942B37C290EB36A /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D03A2B99C78348BE0EB427 /* SearchView.swift */; };
@@ -130,6 +132,7 @@
 		D8E388090E8B4DD49BA3514B /* AppModel+Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDFD9452BB4553C5D6D0B9D5 /* AppModel+Playback.swift */; };
 		D93304BDD0CCA22914527E3F /* AppModel+Snapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B1E42308B468C5EABF03CD /* AppModel+Snapshot.swift */; };
 		D9974BD1EC592ACF61DEECC0 /* SourcePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A84A9F87CCE0A8F9E094FF1 /* SourcePickerView.swift */; };
+		DA4C91593007356DC88903C5 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBA393B9CEE6890CBADEE423 /* NowPlaying.swift */; };
 		DAF96B8B5651091388BBAF82 /* Shelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E4B0A67CC21E053989BB58A /* Shelves.swift */; };
 		DEC14EA578DC92CC1530DCE3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6C97AD56B95F80525C774907 /* Assets.xcassets */; };
 		E197E9DC8878B85BF83BFA21 /* FlowKit in Frameworks */ = {isa = PBXBuildFile; productRef = 260CFC46D33868BB12C131B0 /* FlowKit */; };
@@ -256,6 +259,7 @@
 		D9ED31EC7E6444B795906246 /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadManager.swift; sourceTree = "<group>"; };
 		DAA44AEFB6B607BA1E78A020 /* Images.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Images.swift; sourceTree = "<group>"; };
 		E7785133DEC097B45A1126DA /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		EBA393B9CEE6890CBADEE423 /* NowPlaying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlaying.swift; sourceTree = "<group>"; };
 		EBC2B539AB9BA72E74E143DF /* ExploreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreView.swift; sourceTree = "<group>"; };
 		ED3F6045FC0AD7F92F090118 /* ProvidersSettingsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProvidersSettingsViews.swift; sourceTree = "<group>"; };
 		EDC8FFF7F3CED5F10C0F96E2 /* SportsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SportsView.swift; sourceTree = "<group>"; };
@@ -339,6 +343,7 @@
 			isa = PBXGroup;
 			children = (
 				8CC0B31C1F62EA8C4E81F3DE /* LocalHLSServer.swift */,
+				EBA393B9CEE6890CBADEE423 /* NowPlaying.swift */,
 				CFEA12FE336D1E66E95B7F93 /* PlaybackSession.swift */,
 				4EC0099DE944D4031131AE4D /* PlayerSurface.swift */,
 				F0989E9FE254B064FABEA61E /* PlayerView.swift */,
@@ -795,6 +800,7 @@
 				D1B3B09A8A8919C402C37C7E /* LiveTVView.swift in Sources */,
 				EE4EC6F783308D999AD19456 /* LocalHLSServer.swift in Sources */,
 				6BE668F74488DFE23EB76DE4 /* MediaServersSettingsView.swift in Sources */,
+				2C9B4983E05D12FAF0F40463 /* NowPlaying.swift in Sources */,
 				E2EA2874A3BF28CCF02E353C /* OnboardingView.swift in Sources */,
 				4EB11207A3EEECE1D5C439CE /* PersonView.swift in Sources */,
 				93FB6214934E715C1BCD5A67 /* Platform.swift in Sources */,
@@ -848,6 +854,7 @@
 				A76B0550ACC271E00C8FE83E /* LiveTVView.swift in Sources */,
 				5F73EE90AEBC11CE4BE0CB77 /* LocalHLSServer.swift in Sources */,
 				C66FCC84DA7C09161DE65B20 /* MediaServersSettingsView.swift in Sources */,
+				5016DE3126CF7D0D2F649106 /* NowPlaying.swift in Sources */,
 				2C04048EAB2BC3D22333E6DB /* OnboardingView.swift in Sources */,
 				606EBDF08B80ECA673799CF3 /* PersonView.swift in Sources */,
 				26373EF208DA8C7E889F1EE2 /* Platform.swift in Sources */,
@@ -901,6 +908,7 @@
 				147917F99D7CEA08D5C53108 /* LiveTVView.swift in Sources */,
 				42EE82AA63397ACBA998F8A7 /* LocalHLSServer.swift in Sources */,
 				C5082B08EE06CC776AD82D0E /* MediaServersSettingsView.swift in Sources */,
+				DA4C91593007356DC88903C5 /* NowPlaying.swift in Sources */,
 				197E35749543578A771BCF95 /* OnboardingView.swift in Sources */,
 				D7238BBEC40F070902A57934 /* PersonView.swift in Sources */,
 				090E0F3ED9D5D8C4371D79FE /* Platform.swift in Sources */,

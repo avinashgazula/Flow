@@ -17,6 +17,15 @@ struct PlayerView: View {
                 .allowsHitTesting(false)
             #if !os(tvOS)
             SkipAndUpNextOverlay(session: session)
+            if session.isBuffering && session.phase == .playing {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.white)
+                    .padding(22)
+                    .flowGlass(Circle())
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
             #endif
             switch session.phase {
             case .connecting(let progress):
@@ -57,6 +66,12 @@ struct PlayerView: View {
         .onKeyPress(.leftArrow) { session.seek(by: -Double(model.settings.playback.seekBackwardSeconds)); return .handled }
         .onKeyPress(.rightArrow) { session.seek(by: Double(model.settings.playback.seekForwardSeconds)); return .handled }
         .onKeyPress(.escape) { session.stop(); return .handled }
+        #if os(macOS)
+        .onKeyPress(characters: CharacterSet(charactersIn: "fF")) { _ in
+            NSApp.keyWindow?.toggleFullScreen(nil)
+            return .handled
+        }
+        #endif
         .onKeyPress(characters: CharacterSet(charactersIn: "sS")) { _ in
             if let segment = session.activeSegment { session.skip(segment); return .handled }
             return .ignored
@@ -119,6 +134,7 @@ struct PlayerView: View {
 struct ConnectingView: View {
     let session: PlaybackSession
     let progress: Double
+    @State private var slow = false
 
     var body: some View {
         ZStack {
@@ -131,7 +147,34 @@ struct ConnectingView: View {
                     Text(line).font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.textSecondary)
                 }
                 Spacer()
+                if let position = session.resumePrompt {
+                    VStack(spacing: Theme.Space.s) {
+                        Button { session.answerResume(true) } label: {
+                            Label("Resume from \(TimeFormat.clock(position))", systemImage: "play.fill")
+                        }
+                        .buttonStyle(PrimaryButtonStyle())
+                        Button { session.answerResume(false) } label: {
+                            Label("Start from the Beginning", systemImage: "arrow.counterclockwise")
+                        }
+                        .buttonStyle(GlassButtonStyle())
+                    }
+                    .padding(.bottom, Theme.Space.xxl)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                } else {
                 VStack(spacing: Theme.Space.s) {
+                    if slow {
+                        VStack(spacing: Theme.Space.xs) {
+                            Text("This is taking longer than usual.")
+                                .font(Theme.Typeface.caption)
+                                .foregroundStyle(Theme.Palette.textSecondary)
+                            if session.canTryAnotherSource {
+                                Button("Try Another Source") { session.tryNextSource() }
+                                    .buttonStyle(GlassButtonStyle())
+                            }
+                        }
+                        .padding(.bottom, Theme.Space.m)
+                        .transition(.opacity)
+                    }
                     ProgressCapsule(value: progress, height: 3)
                         .animation(Theme.Motion.gentle, value: progress)
                     HStack {
@@ -148,8 +191,11 @@ struct ConnectingView: View {
                 }
                 .frame(maxWidth: Platform.isTV ? 1000 : 480)
                 .padding(.bottom, Theme.Space.xxl)
+                }
             }
             .padding(.horizontal, Theme.Space.xl)
+            .animation(Theme.Motion.gentle, value: session.resumePrompt)
+            .animation(Theme.Motion.gentle, value: slow)
             #if !os(tvOS)
             VStack {
                 HStack {
@@ -167,6 +213,10 @@ struct ConnectingView: View {
             #endif
         }
         .transition(.opacity)
+        .task {
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            slow = true
+        }
         #if os(tvOS)
         .onExitCommand { session.stop() }
         #endif
@@ -557,6 +607,18 @@ struct IOSPlayerControls: View {
                                             }
                                         }
                                     }
+                                }
+                                Menu {
+                                    ForEach(SleepTimer.choices) { choice in
+                                        Button { session.sleepTimer = choice } label: {
+                                            if session.sleepTimer == choice { Label(choice.title, systemImage: "checkmark") } else { Text(choice.title) }
+                                        }
+                                    }
+                                    if session.sleepTimer != nil {
+                                        Button("Turn Off", role: .destructive) { session.sleepTimer = nil }
+                                    }
+                                } label: {
+                                    Label("Sleep Timer", systemImage: session.sleepTimer == nil ? "moon.zzz" : "moon.zzz.fill")
                                 }
                                 Section("Speed") {
                                     ForEach([0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { rate in

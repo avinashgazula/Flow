@@ -1,5 +1,8 @@
 import SwiftUI
 import AVFoundation
+#if os(tvOS)
+import AVKit
+#endif
 import Observation
 import FlowKit
 
@@ -38,6 +41,11 @@ final class PlaybackSession: Identifiable {
     private(set) var usesRemux = false
     /// Other sources for the same title, best first, for when this one won't start.
     private(set) var alternatives: [StreamSource]
+    /// A saved position waiting for the viewer to choose Resume or Start Over.
+    var resumePrompt: Double?
+    /// Playing, but stalled waiting for data.
+    var isBuffering = false
+    var sleepTimer: SleepTimer? { didSet { scheduleSleep() } }
 
     @ObservationIgnored private weak var model: AppModel?
     @ObservationIgnored private var resumeAt: Double?
@@ -52,6 +60,9 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var hlsToken: String?
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
+    @ObservationIgnored private var sleepTask: Task<Void, Never>?
+    @ObservationIgnored private let nowPlaying = NowPlaying()
+    @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
 
     init(model: AppModel, request: PlaybackRequest, source: StreamSource, resumeAt: Double?, alternatives: [StreamSource] = []) {
         self.model = model
@@ -62,8 +73,37 @@ final class PlaybackSession: Identifiable {
         self.subtitleOffset = model.settings.subtitles.defaultOffsetSeconds
         self.logoPath = request.item.logoPath
         configureAudioSession()
+        observeInterruptions()
         load(source)
         Task { await loadExtras() }
+    }
+
+    /// After a call or Siri, pick up again if the system says to.
+    private func observeInterruptions() {
+        #if os(iOS) || os(tvOS)
+        interruptionObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
+            guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  AVAudioSession.InterruptionType(rawValue: raw) == .ended,
+                  let options = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt,
+                  AVAudioSession.InterruptionOptions(rawValue: options).contains(.shouldResume) else { return }
+            MainActor.assumeIsolated { self?.player.play() }
+        }
+        #endif
+    }
+
+    private func beginNowPlaying() {
+        guard let model else { return }
+        let handlers = NowPlaying.Handlers(
+            play: { [weak self] in self?.player.play() },
+            pause: { [weak self] in self?.player.pause() },
+            toggle: { [weak self] in self?.togglePlay() },
+            skip: { [weak self] seconds in self?.seek(by: seconds) },
+            seek: { [weak self] position in self?.player.seek(to: CMTime(seconds: position, preferredTimescale: 600)) })
+        nowPlaying.begin(title: request.episode?.title ?? request.item.title,
+                         subtitle: request.episode != nil ? "\(request.item.title) · \(request.episode!.code)" : request.item.year.map(String.init),
+                         artwork: request.item.smallBackdropURL ?? request.item.posterURL,
+                         skipForward: model.settings.playback.seekForwardSeconds, skipBackward: model.settings.playback.seekBackwardSeconds,
+                         handlers: handlers)
     }
 
     var title: String { request.item.title }
@@ -182,7 +222,9 @@ final class PlaybackSession: Identifiable {
         endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
             Task { @MainActor in await self?.didFinish() }
         }
-        player.play()
+        beginNowPlaying()
+        // With a saved position and "Ask Before Resuming", wait for the viewer's choice.
+        if !(resumeAt != nil && model?.settings.playback.askToResume == true) { player.play() }
     }
 
     private func applyChapters(to item: AVPlayerItem) {
@@ -200,6 +242,30 @@ final class PlaybackSession: Identifiable {
         }
         item.navigationMarkerGroups = [AVNavigationMarkersGroup(title: nil, timedNavigationMarkers: groups)]
         #endif
+    }
+
+    // MARK: Resume and sleep
+
+    /// The viewer chose where to begin.
+    func answerResume(_ resume: Bool) {
+        if resume, let position = resumePrompt {
+            player.seek(to: CMTime(seconds: position, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
+        }
+        resumePrompt = nil
+        player.play()
+    }
+
+    private func scheduleSleep() {
+        sleepTask?.cancel()
+        guard case .minutes(let minutes) = sleepTimer else { return }
+        show(notice: "Flow will pause in \(minutes) minutes.")
+        sleepTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(minutes) * 60 * 1_000_000_000)
+            guard !Task.isCancelled, let self else { return }
+            self.player.pause()
+            self.sleepTimer = nil
+            self.show(notice: "Paused by the sleep timer.")
+        }
     }
 
     // MARK: Failure and fallback
@@ -299,7 +365,13 @@ final class PlaybackSession: Identifiable {
                 // A resume point from another cut or source can lie beyond this stream's end;
                 // seeking there would "finish" instantly. Only resume when it's comfortably inside.
                 if Self.shouldResume(at: resumeAt, duration: seconds) {
-                    player.seek(to: CMTime(seconds: resumeAt, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
+                    if model?.settings.playback.askToResume == true {
+                        resumePrompt = resumeAt
+                    } else {
+                        player.seek(to: CMTime(seconds: resumeAt, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
+                    }
+                } else {
+                    player.play()
                 }
             }
         case .failed:
@@ -316,6 +388,8 @@ final class PlaybackSession: Identifiable {
 
     private func timeControlChanged(_ status: AVPlayer.TimeControlStatus) {
         guard let model else { return }
+        isBuffering = status == .waitingToPlayAtSpecifiedRate && didStart
+        nowPlaying.update(elapsed: currentTime, duration: duration, rate: player.rate)
         switch status {
         case .playing:
             if case .connecting = phase { phase = .playing }
@@ -348,6 +422,7 @@ final class PlaybackSession: Identifiable {
         if Date().timeIntervalSince(lastReport) > 10 {
             lastReport = Date()
             Task { await report(.progress) }
+            nowPlaying.update(elapsed: seconds, duration: duration, rate: player.rate)
         }
         maybeStartUpNextCountdown()
     }
@@ -469,6 +544,11 @@ final class PlaybackSession: Identifiable {
             return
         }
         phase = .finished
+        if sleepTimer == .endOfItem {
+            await finishCurrent(completed: true)
+            close()
+            return
+        }
         if upNext != nil, model?.settings.playback.autoPlayNextEpisode == true {
             await playUpNext()
         } else {
@@ -502,6 +582,10 @@ final class PlaybackSession: Identifiable {
         countdownTask?.cancel()
         loadTask?.cancel()
         noticeTask?.cancel()
+        sleepTask?.cancel()
+        nowPlaying.end()
+        if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
+        interruptionObserver = nil
         player.pause()
         player.replaceCurrentItem(with: nil)
         teardownObservers()
