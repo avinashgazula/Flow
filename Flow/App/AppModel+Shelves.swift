@@ -67,6 +67,11 @@ extension AppModel {
                 }
             case .mediaServerRecent:
                 result = single(await serverRecentlyAdded())
+            case .becauseYouWatched:
+                guard let seed = becauseYouWatchedSeed else { result = single([]); break }
+                let detail = try await catalog.details(seed.type, id: seed.tmdbID)
+                let recommendations = detail.recommendations.isEmpty ? detail.similar : detail.recommendations
+                result = single(recommendations.filter { !isWatched($0) })
             }
         case .discover(let query):
             exempt = query.targetsFuture
@@ -86,6 +91,9 @@ extension AppModel {
         result.items = await catalog.apply(catalogFilters, to: result.items, exemptFromRelease: exempt)
         return result
     }
+
+    /// The most recent title in your history, which seeds "Because You Watched".
+    var becauseYouWatchedSeed: MediaKey? { history.first?.key }
 
     /// Hydrates keys, preferring the locally cached copy (instant, offline) and filling the rest from TMDb.
     func hydrate(_ keys: [MediaKey], limit: Int = 80) async -> [MediaItem] {

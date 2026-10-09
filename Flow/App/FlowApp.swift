@@ -18,7 +18,11 @@ struct FlowApp: App {
                 .tint(model.settings.general.accent.color)
                 .preferredColorScheme(.dark)
                 .onOpenURL { url in model.handle(url: url) }
-                .task(id: ObjectIdentifier(model)) { await model.start() }
+                .task(id: ObjectIdentifier(model)) {
+                    await model.start()
+                    IntentInbox.drain(into: model)
+                }
+                .onReceive(NotificationCenter.default.publisher(for: IntentInbox.arrived)) { _ in IntentInbox.drain(into: model) }
                 .task(id: ObjectIdentifier(model)) {
                     if ScreenshotTour.isRequested { await ScreenshotTour.run(model) }
                 }
@@ -62,8 +66,28 @@ extension AppModel {
         guard url.scheme == SetupShare.urlScheme else { return }
         if let key = SystemIntegration.key(from: url) {
             open(key)
-        } else {
+            return
+        }
+        switch url.host {
+        case "continue": Task { await resumeLatest() }
+        case "upcoming":
+            activePlayback?.stop()
+            selectedTab = .library
+            paths[.library] = [.calendar]
+        case "search":
+            selectedTab = .search
+            searchText = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "q" }?.value ?? ""
+        default:
             pendingImport = url.absoluteString
         }
+    }
+
+    /// Picks up the most recent thing in Continue Watching, exactly where it was left.
+    func resumeLatest() async {
+        guard let entry = continueWatching.first, let item = await hydrate([entry.key]).first else {
+            showToast("Nothing to continue")
+            return
+        }
+        await play(item)
     }
 }

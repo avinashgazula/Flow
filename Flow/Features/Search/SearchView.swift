@@ -15,6 +15,15 @@ struct SearchView: View {
 
     private var text: String { model.searchText }
 
+    /// The first title when it's a confident match: its name starts with what was typed.
+    private var topResult: MediaItem? {
+        let query = text.trimmingCharacters(in: .whitespaces).lowercased()
+        let first = results.lazy.compactMap { if case .media(let m) = $0 { return m }; return nil }.first
+        guard let first, query.count >= 3, first.backdropPath != nil,
+              first.title.lowercased().hasPrefix(query) || first.title.lowercased().contains(" \(query)") else { return nil }
+        return first
+    }
+
     var body: some View {
         @Bindable var model = model
         ScrollView {
@@ -28,6 +37,9 @@ struct SearchView: View {
                 } else if results.isEmpty && serverResults.isEmpty {
                     ContentUnavailableView.search(text: text)
                 } else {
+                    if let top = topResult {
+                        TopResultCard(item: top).padding(.horizontal, Theme.Space.gutter)
+                    }
                     if !serverResults.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
                             SectionHeader<Route>("Media Servers")
@@ -74,11 +86,12 @@ struct SearchView: View {
     private var idleContent: some View {
         if !recents.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Recent").font(.title3.weight(.bold))
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Recent").font(Theme.Typeface.sectionTitle).displayTracking()
                     Spacer()
-                    Button("Clear") { model.recentSearches = []; recents = [] }
-                        .font(.subheadline).foregroundStyle(.secondary)
+                    Button("Clear") { withAnimation(Theme.Motion.fade) { model.recentSearches = []; recents = [] } }
+                        .font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary)
+                        .buttonStyle(.plain)
                 }
                 .padding(.horizontal, Platform.horizontalPadding)
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -86,10 +99,12 @@ struct SearchView: View {
                         ForEach(recents, id: \.self) { term in
                             Button { model.searchText = term } label: {
                                 Label(term, systemImage: "clock.arrow.circlepath")
+                                    .font(.system(.subheadline, weight: .medium))
                                     .padding(.horizontal, 14).padding(.vertical, 9)
-                                    .background(.white.opacity(0.1), in: Capsule())
+                                    .background(Theme.Palette.surface, in: Capsule())
+                                    .overlay(Capsule().strokeBorder(Theme.Palette.hairline))
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(CardButtonStyle())
                         }
                     }
                     .padding(.horizontal, Platform.horizontalPadding)
@@ -191,5 +206,37 @@ struct BrowseGrid: View {
         .frame(height: 84 * Theme.scale)
         .clipShape(shape)
         .hairline(shape)
+    }
+}
+
+/// The best match, given room: backdrop, title and the essentials, like the Apple TV app's top hit.
+struct TopResultCard: View {
+    let item: MediaItem
+    @Environment(AppModel.self) private var model
+
+    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous) }
+
+    var body: some View {
+        NavigationLink(value: Route.detail(item, zoom: "top-\(item.id)")) {
+            ZStack(alignment: .bottomLeading) {
+                Color.clear
+                    .aspectRatio(16 / 9, contentMode: .fit)
+                    .overlay(RemoteImage(url: item.backdropURL, maxPixel: 1400, fallbackTitle: item.title))
+                LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .center, endPoint: .bottom)
+                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                    Text("TOP RESULT").font(Theme.Typeface.micro).kerning(1.2).foregroundStyle(Theme.Palette.textSecondary)
+                    Text(item.title).font(Theme.Typeface.title).displayTracking().lineLimit(2).multilineTextAlignment(.leading)
+                    MetadataLine(item: item, showType: true)
+                }
+                .padding(Theme.Space.m)
+            }
+            .frame(maxWidth: Platform.isTV ? 1000 : 640)
+            .clipShape(shape)
+            .hairline(shape)
+            .artworkShadow(0.5)
+        }
+        .buttonStyle(CardButtonStyle())
+        .zoomSource("top-\(item.id)")
+        .contextMenu { MediaContextMenu(item: item) }
     }
 }

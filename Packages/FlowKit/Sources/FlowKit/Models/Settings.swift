@@ -187,6 +187,8 @@ public enum BuiltInShelf: String, Codable, Hashable, Sendable, CaseIterable {
     case anticipatedShows
     case recommendedForYou
     case mediaServerRecent
+    /// Recommendations seeded by the last title you watched; the row is titled after it.
+    case becauseYouWatched
 
     public var title: String {
         switch self {
@@ -208,6 +210,7 @@ public enum BuiltInShelf: String, Codable, Hashable, Sendable, CaseIterable {
         case .anticipatedShows: return "Anticipated Shows"
         case .recommendedForYou: return "Recommended For You"
         case .mediaServerRecent: return "Recently Added to Your Server"
+        case .becauseYouWatched: return "Because You Watched"
         }
     }
 
@@ -314,6 +317,7 @@ public struct ShelfConfig: Codable, Hashable, Sendable, Identifiable {
         .builtIn(.watchlist),
         .builtIn(.trendingMovies),
         .builtIn(.trendingShows),
+        .builtIn(.becauseYouWatched),
         .builtIn(.popularMovies),
         .builtIn(.nextUp, enabled: false, style: .landscape),
         .builtIn(.popularShows, enabled: false),

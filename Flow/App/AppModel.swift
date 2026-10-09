@@ -168,6 +168,7 @@ final class AppModel {
             .builtIn(.watchlist),
             .builtIn(.trendingMovies),
             .builtIn(.trendingShows),
+            .builtIn(.becauseYouWatched),
             ShelfConfig(id: "demo-scifi", title: "Science Fiction Essentials", source: .discover({ var q = DiscoverQuery(type: .movie); q.genres = [878]; q.sort = .rating; return q }())),
             .builtIn(.topRatedShows),
             .builtIn(.popularMovies),

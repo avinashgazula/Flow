@@ -126,6 +126,8 @@ struct ShelfView: View {
     @Environment(AppModel.self) private var model
     @State private var items: [MediaItem] = []
     @State private var loaded = false
+    /// Replaces the configured title when the row names its seed ("Because You Watched Dune").
+    @State private var title: String?
 
     var body: some View {
         Group {
@@ -133,7 +135,7 @@ struct ShelfView: View {
                 ContinueWatchingShelf(title: shelf.title, nextUpOnly: b == .nextUp)
             } else if !items.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    SectionHeader(shelf.title, route: .shelf(shelf))
+                    SectionHeader(title ?? shelf.title, route: .shelf(shelf))
                     PosterRow(items: items, context: shelf.id)
                 }
                 .transition(.opacity)
@@ -146,6 +148,10 @@ struct ShelfView: View {
     }
 
     private func load() async {
+        if case .builtIn(.becauseYouWatched) = shelf.source, let seed = model.becauseYouWatchedSeed,
+           let source = await model.hydrate([seed]).first {
+            title = "Because You Watched \(source.title)"
+        }
         if let page = try? await model.page(for: shelf) { items = page.items }
         loaded = true
     }

@@ -268,7 +268,7 @@ struct UpNextCard: View {
                 Text("UP NEXT · \(countdown)s")
                     .font(Theme.Typeface.micro).kerning(1)
                     .foregroundStyle(Theme.Palette.textTertiary)
-                    .contentTransition(.numericText(countdown: true))
+                    .contentTransition(.numericText(countsDown: true))
                 Text(next.episode?.title ?? next.item.title)
                     .font(.system(.subheadline, weight: .semibold))
                     .lineLimit(2)
