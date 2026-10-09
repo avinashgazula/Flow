@@ -150,6 +150,14 @@ final class RemuxSampleTests: XCTestCase {
         print("video:", remuxer.video?.codecString ?? "-", "audio:", remuxer.audio.map(\.label), "subs:", remuxer.subtitles.map(\.label),
               "skipped:", remuxer.skipped.map(\.reason), "segments:", remuxer.segments.count, "delay:", remuxer.presentationDelay)
         try await RemuxTests.dump(remuxer, to: RemuxTests.outputRoot.appendingPathComponent("sample"))
+        if let pgs = remuxer.bitmapSubtitles.first {
+            await remuxer.selectBitmapSubtitle(pgs.id)
+            for s in remuxer.segments { _ = try await remuxer.mediaSegment(track: remuxer.video!.id, index: s.index) }
+            for t in [1.0, 3.0, 7.0, 11.9] {
+                let cue = await remuxer.bitmapSubtitle(at: t)
+                print("pgs at", t, ":", cue.map { "start \($0.start) end \($0.end ?? -1) forced \($0.isForced) objects \($0.objects.map { "\($0.width)x\($0.height)@\($0.x),\($0.y)" })" } ?? "none")
+            }
+        }
     }
 }
 

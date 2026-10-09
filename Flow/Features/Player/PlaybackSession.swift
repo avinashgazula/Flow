@@ -742,3 +742,9 @@ struct BitmapOverlay: Equatable {
 
     static func == (a: BitmapOverlay, b: BitmapOverlay) -> Bool { a.start == b.start && a.pieces == b.pieces }
 }
+
+/// A selectable track in Flow's own menus.
+struct PlayerTrack: Hashable, Identifiable {
+    let id: Int
+    let title: String
+}

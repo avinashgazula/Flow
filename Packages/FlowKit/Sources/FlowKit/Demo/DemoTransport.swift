@@ -357,6 +357,6 @@ public struct DemoSourceProvider: SourceProvider {
 
     public static let matroskaSampleID = "demo#mkv"
 
-    /// A short MKV bundled with the app (H.264, DTS + AAC + AC-3, ASS subtitles, chapters) to show the remuxer at work.
+    /// A short MKV bundled with the app (H.264, DTS + AAC + AC-3, ASS and forced PGS subtitles, chapters) to show the remuxer at work.
     public static var matroskaSample: URL? { Bundle.main.url(forResource: "FlowSample", withExtension: "mkv") }
 }
