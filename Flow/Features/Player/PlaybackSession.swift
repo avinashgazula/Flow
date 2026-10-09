@@ -196,6 +196,10 @@ final class PlaybackSession: Identifiable {
             let remuxer = try await MatroskaRemuxer.open(reader ?? Self.byteSource(url, headers: headers),
                                                          preferredAudioLanguage: model?.settings.playback.preferredAudioLanguage, headerCache: .shared)
             guard !Task.isCancelled else { return }
+            if remuxer.video?.source.codecID == "V_AV1", !Platform.decodesAV1 {
+                fail("This video is AV1, which this \(Platform.deviceKind) can't decode. Try another source.")
+                return
+            }
             let skippedAudio = remuxer.skipped.filter { $0.track.kind == .audio }
             if !remuxer.hasPlayableSoundtrack, let first = skippedAudio.first {
                 fail("This file's audio is \(first.reason), which Apple devices can't decode. Try another source, or open it in VLC or Infuse.")

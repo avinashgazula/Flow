@@ -17,7 +17,7 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
 - **Source picker**: gathers results from every provider in parallel. Categories and providers are ordered, there are optional sort rules, filters and a result cap, and the add-on text and badges are parsed.
 - **Player**: resume, skip intro, recap and credits (from Jellyfin media segments, Plex markers, IntroDB, PublicMetaDB or MKV chapter names), a Playback Info panel, an Up Next card with a countdown ring, double-tap to skip on iPhone, scrobbling, subtitle search (OpenSubtitles, SubDL, Wyzie, SubSource), AirPlay, Picture in Picture and external players.
 - **MKV playback**: Matroska files play in Apple's own player. Flow remuxes them on the device, without re-encoding, into HLS served from a loopback address.
-  - Codecs: H.264, HEVC (including HDR10 and Dolby Vision), AV1, AAC, Dolby Digital (Plus), FLAC and MP3.
+  - Codecs: H.264, HEVC (including HDR10 and Dolby Vision), AV1 (on devices with an AV1 decoder), AAC, Dolby Digital (Plus), FLAC and MP3.
   - Every audio track, text subtitles and chapters come through, plus Blu-ray and DVD picture subtitles (PGS and VobSub), which Flow draws itself.
   - Scrubbing previews on Apple TV, iPhone and iPad.
   - Each file's index is cached, so reopening it is quick.

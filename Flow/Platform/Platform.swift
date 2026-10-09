@@ -2,6 +2,7 @@ import SwiftUI
 import CoreImage
 import CoreImage.CIFilterBuiltins
 import FlowKit
+import VideoToolbox
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -41,6 +42,20 @@ enum Platform {
     }
 
     static var supportsDownloads: Bool { !isTV }
+
+    /// AV1 needs a hardware decoder (iPhone 15 Pro, M3 Macs and later); elsewhere AVPlayer can't play it.
+    static let decodesAV1: Bool = VTIsHardwareDecodeSupported(CMVideoCodecType(0x6176_3031)) // 'av01'
+
+    /// What this device is called in messages: "iPhone", "iPad", "Mac" or "Apple TV".
+    static var deviceKind: String {
+        #if os(tvOS)
+        "Apple TV"
+        #elseif os(macOS)
+        "Mac"
+        #else
+        UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        #endif
+    }
 
     static var deviceName: String {
         #if os(macOS)

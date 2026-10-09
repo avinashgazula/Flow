@@ -419,6 +419,17 @@ final class PlayableAudioRankingTests: XCTestCase {
         settings.preferPlayableAudio = false
         XCTAssertEqual(SourceRanker.rank(sources, settings: settings, resolutionCap: .uhd4k).map(\.id), ["remux", "truehd", "web", "aac"])
     }
+
+    func testAV1LastWhereItCantBeDecoded() {
+        func source(_ id: String, _ text: String) -> StreamSource {
+            StreamSource(id: id, category: .addons, providerID: "a", providerName: "A", title: text, location: .url(URL(string: "https://x.test/\(id)")!, headers: [:]),
+                         traits: StreamParser.parse(text, nil))
+        }
+        let sources = [source("av1", "2160p WEB-DL AV1\nOpus"), source("hevc", "2160p WEB-DL HEVC\nDD+"), source("h264", "1080p WEB-DL x264\nAAC")]
+        let settings = SourceSettings()
+        XCTAssertEqual(SourceRanker.rank(sources, settings: settings, resolutionCap: .uhd4k).map(\.id), ["av1", "hevc", "h264"])
+        XCTAssertEqual(SourceRanker.rank(sources, settings: settings, resolutionCap: .uhd4k, decodesAV1: false).map(\.id), ["hevc", "h264", "av1"])
+    }
 }
 
 final class ChapterSkipTests: XCTestCase {

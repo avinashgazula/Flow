@@ -15,7 +15,7 @@ struct SourcePickerView: View {
     @State private var autoPlayed = false
 
     private var ranked: [StreamSource] {
-        SourceRanker.rank(raw, settings: model.settings.sources, resolutionCap: model.settings.playback.preferredResolutionCap)
+        SourceRanker.rank(raw, settings: model.settings.sources, resolutionCap: model.settings.playback.preferredResolutionCap, decodesAV1: Platform.decodesAV1)
     }
 
     private var grouped: [(SourceCategory, [StreamSource])] {

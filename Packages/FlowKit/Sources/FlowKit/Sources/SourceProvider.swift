@@ -161,7 +161,8 @@ public struct AddonClient: SourceProvider {
 public enum SourceRanker {
     /// Orders sources: category order → provider order → (custom sort rules) → original order.
     /// The preferred resolution cap always applies; filters and the result cap only when custom ordering is on.
-    public static func rank(_ sources: [StreamSource], settings: SourceSettings, resolutionCap: VideoResolution) -> [StreamSource] {
+    /// `decodesAV1` false (devices without an AV1 decoder) moves AV1 encodes to the end.
+    public static func rank(_ sources: [StreamSource], settings: SourceSettings, resolutionCap: VideoResolution, decodesAV1: Bool = true) -> [StreamSource] {
         var list = sources.filter { $0.traits.resolution == .unknown || $0.traits.resolution <= resolutionCap }
         if settings.useCustomOrdering { list = list.filter { passes($0, settings.filters) } }
 
@@ -188,8 +189,15 @@ public enum SourceRanker {
             let playable = list.filter { !needsAudioDecoder($0) }
             list = playable + list.filter(needsAudioDecoder)
         }
+        if !decodesAV1 {
+            list = list.filter { !isAV1($0) } + list.filter(isAV1)
+        }
         if settings.useCustomOrdering, let cap = settings.resultCap, cap > 0 { list = Array(list.prefix(cap)) }
         return list
+    }
+
+    public static func isAV1(_ s: StreamSource) -> Bool {
+        s.traits.videoCodec?.uppercased() == "AV1"
     }
 
     /// True when the source's main audio is a codec Apple devices can't decode.
