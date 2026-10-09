@@ -148,8 +148,12 @@ final class PlaybackSession: Identifiable {
             let seconds = item.duration.seconds
             if seconds.isFinite { duration = seconds }
             if let resumeAt, !didStart {
-                player.seek(to: CMTime(seconds: resumeAt, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
                 self.resumeAt = nil
+                // A resume point from another cut or source can lie beyond this stream's end;
+                // seeking there would "finish" instantly. Only resume when it's comfortably inside.
+                if Self.shouldResume(at: resumeAt, duration: seconds) {
+                    player.seek(to: CMTime(seconds: resumeAt, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
+                }
             }
         case .failed:
             phase = .failed(item.error?.localizedDescription ?? "Playback failed.")
@@ -301,7 +305,21 @@ final class PlaybackSession: Identifiable {
         await server.report(PlaybackReport(state: state, source: source, positionSeconds: currentTime, durationSeconds: duration > 0 ? duration : nil, sessionID: sessionID))
     }
 
+    /// Resume only when the position is known to be well before the end of this stream.
+    nonisolated static func shouldResume(at position: Double, duration: Double) -> Bool {
+        guard position > 0 else { return false }
+        guard duration.isFinite, duration > 0 else { return true }
+        return position < duration - 30
+    }
+
     private func didFinish() async {
+        // An item that ends without ever really playing (bad seek, broken stream) is an error,
+        // not a finished viewing — never mark it watched.
+        guard didStart, currentTime > 5 else {
+            ScreenshotTour.log("didFinish ignored: started=\(didStart) time=\(currentTime)")
+            phase = .failed("This stream ended unexpectedly. Try another source.")
+            return
+        }
         phase = .finished
         if upNext != nil, model?.settings.playback.autoPlayNextEpisode == true {
             await playUpNext()
@@ -350,4 +368,17 @@ final class PlaybackSession: Identifiable {
     }
 
     func retry() { load(source) }
+
+    // MARK: Transport (shared by on-screen controls and the keyboard)
+
+    var isPlaying: Bool { player.rate > 0 }
+
+    func togglePlay() {
+        if isPlaying { player.pause() } else { player.play() }
+    }
+
+    func seek(by seconds: Double) {
+        let target = max(0, min(duration > 0 ? duration : .greatestFiniteMagnitude, currentTime + seconds))
+        player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
+    }
 }

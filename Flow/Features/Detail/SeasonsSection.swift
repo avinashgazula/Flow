@@ -77,7 +77,7 @@ struct SeasonsSection: View {
                         withAnimation(Theme.Motion.snappy) { selectedSeason = season.number }
                     } label: {
                         Text(season.isSpecials ? "Specials" : (orderedSeasons.count > 6 ? "S\(season.number)" : season.name))
-                            .font(.system(size: 14 * Theme.scale, weight: .semibold))
+                            .font(.system(.subheadline, weight: .semibold))
                             .padding(.horizontal, Theme.Space.m)
                             .padding(.vertical, Theme.Space.xs + 1)
                             .foregroundStyle(selected ? Color.black : Color.white)
@@ -115,7 +115,7 @@ struct EpisodeRow: View {
                 EpisodeStill(show: show, episode: episode, width: 140)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("\(episode.number). \(episode.title)")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(.subheadline, weight: .semibold))
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     HStack(spacing: 5) {
@@ -124,11 +124,11 @@ struct EpisodeRow: View {
                         }
                         if let runtime = episode.runtimeMinutes, runtime > 0 { Text("· \(runtime)m") }
                     }
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(.caption, weight: .medium))
                     .foregroundStyle(Theme.Palette.textTertiary)
                     if let overview = episode.overview, !overview.isEmpty {
                         Text(overview)
-                            .font(.system(size: 13))
+                            .font(.system(.footnote))
                             .foregroundStyle(Theme.Palette.textSecondary)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)

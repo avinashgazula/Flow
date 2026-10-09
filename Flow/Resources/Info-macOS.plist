@@ -54,5 +54,9 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Flow connects to media servers, WebDAV shares and IPTV providers on your local network.</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>app.flow.title</string>
+	</array>
 </dict>
 </plist>

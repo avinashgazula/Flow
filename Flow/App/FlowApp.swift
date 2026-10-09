@@ -23,6 +23,14 @@ struct FlowApp: App {
                     if ScreenshotTour.isRequested { await ScreenshotTour.run(model) }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .flowModeChanged)) { _ in model = AppModel() }
+                .onContinueUserActivity(SystemIntegration.titleActivity) { activity in
+                    if let key = SystemIntegration.key(from: activity) { model.open(key) }
+                }
+                #if !os(tvOS)
+                .onContinueUserActivity("com.apple.corespotlightitem") { activity in
+                    if let key = SystemIntegration.key(from: activity) { model.open(key) }
+                }
+                #endif
         }
         #if os(macOS)
         .defaultSize(width: 1280, height: 820)
@@ -49,9 +57,13 @@ struct FlowApp: App {
 }
 
 extension AppModel {
-    /// flow://setup?d=… imports a shared setup.
+    /// flow://setup?d=… imports a shared setup; flow://title/movie/603 opens a title.
     func handle(url: URL) {
         guard url.scheme == SetupShare.urlScheme else { return }
-        pendingImport = url.absoluteString
+        if let key = SystemIntegration.key(from: url) {
+            open(key)
+        } else {
+            pendingImport = url.absoluteString
+        }
     }
 }

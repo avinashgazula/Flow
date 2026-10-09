@@ -71,6 +71,7 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: flow
             CFBundleURLSchemes: [flow]
+        NSUserActivityTypes: [app.flow.title]
         UILaunchScreen: {}
         UIBackgroundModes: [audio]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
@@ -113,6 +114,7 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: flow
             CFBundleURLSchemes: [flow]
+        NSUserActivityTypes: [app.flow.title]
         LSApplicationCategoryType: public.app-category.entertainment
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
     entitlements:
@@ -150,6 +152,7 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: flow
             CFBundleURLSchemes: [flow]
+        NSUserActivityTypes: [app.flow.title]
         UILaunchScreen: {}
         UIUserInterfaceStyle: Dark
         UIRequiredDeviceCapabilities: [arm64]

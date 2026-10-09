@@ -104,7 +104,7 @@ struct GuideView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(programme.title).font(.system(size: 13 * Theme.scale, weight: .semibold)).lineLimit(1)
                         Text("\(programme.start.formatted(date: .omitted, time: .shortened)) – \(programme.end.formatted(date: .omitted, time: .shortened))")
-                            .font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.Palette.textTertiary).lineLimit(1)
+                            .font(.system(.caption2)).foregroundStyle(Theme.Palette.textTertiary).lineLimit(1)
                     }
                     .padding(.horizontal, 10)
                     .frame(width: width, height: rowHeight - 6, alignment: .leading)

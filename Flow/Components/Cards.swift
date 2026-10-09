@@ -40,7 +40,7 @@ struct PosterCardContent: View {
                 .frame(width: width, height: width.map { $0 * 1.5 })
             if model.settings.general.showPosterTitles {
                 Text(item.title)
-                    .font(.system(size: 13 * Theme.scale, weight: .medium))
+                    .font(.system(.footnote, weight: .medium))
                     .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(1)
                     .frame(width: width, alignment: .leading)
@@ -168,7 +168,7 @@ struct ContinueWatchingCard: View {
                             Spacer()
                             if let badge = badgeText {
                                 Text(badge)
-                                    .font(.system(size: 11 * Theme.scale, weight: .semibold))
+                                    .font(.system(.caption2, weight: .semibold))
                                     .padding(.horizontal, 8).padding(.vertical, 3)
                                     .background(.black.opacity(0.5), in: Capsule())
                             }
@@ -188,8 +188,8 @@ struct ContinueWatchingCard: View {
                 .hairline(shape)
                 .artworkShadow(0.5)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title).font(.system(size: 14 * Theme.scale, weight: .semibold)).lineLimit(1)
-                    Text(subtitle).font(.system(size: 12 * Theme.scale)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+                    Text(item.title).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
+                    Text(subtitle).font(.system(.caption)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
                 }
                 .frame(width: width, alignment: .leading)
             }
@@ -289,8 +289,8 @@ struct PersonCard: View {
                     .clipShape(Circle())
                     .overlay(Circle().strokeBorder(Theme.Palette.hairline))
                 VStack(spacing: 1) {
-                    Text(name).font(.system(size: 12 * Theme.scale, weight: .semibold)).lineLimit(1)
-                    Text(role).font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.Palette.textTertiary).lineLimit(1)
+                    Text(name).font(.system(.caption, weight: .semibold)).lineLimit(1)
+                    Text(role).font(.system(.caption2)).foregroundStyle(Theme.Palette.textTertiary).lineLimit(1)
                 }
             }
             .frame(width: size + 18)

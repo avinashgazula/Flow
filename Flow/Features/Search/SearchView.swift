@@ -185,7 +185,7 @@ struct BrowseGrid: View {
                 .offset(x: 18, y: 10)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             Text(category.title)
-                .font(.system(size: 16 * Theme.scale, weight: .bold))
+                .font(.system(.headline, weight: .bold))
                 .padding(Theme.Space.s)
         }
         .frame(height: 84 * Theme.scale)

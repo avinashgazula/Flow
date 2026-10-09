@@ -62,6 +62,7 @@ extension AppModel {
         await rebuildContinueWatching()
         if errors.isEmpty { settings.sync.lastTrackerSync = Date() } else { lastSyncError = errors.first }
         contentVersion += 1
+        if !isDemo { await refreshSpotlight() }
     }
 
     /// Continue Watching = resume points + Next Up for recently watched shows.

@@ -195,7 +195,7 @@ struct SourceRow: View {
                     Spacer()
                     if appearance.showSize, let size = source.traits.sizeBytes {
                         Text(StreamParser.formatBytes(size))
-                            .font(.system(size: 13 * Theme.scale, weight: .medium).monospacedDigit())
+                            .font(.system(.footnote, weight: .medium).monospacedDigit())
                             .foregroundStyle(Theme.Palette.textSecondary)
                     }
                 }
@@ -203,7 +203,7 @@ struct SourceRow: View {
                     let lines = bodyLines
                     if !lines.isEmpty {
                         Text(lines.joined(separator: "\n"))
-                            .font(.system(size: 13 * Theme.scale))
+                            .font(.system(.footnote))
                             .foregroundStyle(Theme.Palette.textSecondary)
                             .lineLimit(appearance.compact ? 3 : 8)
                             .multilineTextAlignment(.leading)
@@ -259,10 +259,10 @@ struct SourceRow: View {
         let parts = [t.quality == .unknown ? nil : t.quality.rawValue, t.languages.isEmpty ? nil : t.languages.joined(separator: " · "), t.releaseGroup?.uppercased()].compactMap { $0 }
         return VStack(alignment: .leading, spacing: 2) {
             if !parts.isEmpty {
-                Text(parts.joined(separator: " · ")).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.Palette.textSecondary)
+                Text(parts.joined(separator: " · ")).font(.system(.footnote)).foregroundStyle(Theme.Palette.textSecondary)
             }
             if let filename = source.filename, appearance.titleDisplay != .filename {
-                Text(filename).font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.Palette.textTertiary).lineLimit(1).truncationMode(.middle)
+                Text(filename).font(.system(.caption2)).foregroundStyle(Theme.Palette.textTertiary).lineLimit(1).truncationMode(.middle)
             }
         }
     }

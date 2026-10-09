@@ -251,7 +251,7 @@ struct SettingsIcon: View {
 
     var body: some View {
         Image(systemName: systemImage)
-            .font(.system(size: 14 * Theme.scale, weight: .semibold))
+            .font(.system(.subheadline, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: 29 * Theme.scale, height: 29 * Theme.scale)
             .background(

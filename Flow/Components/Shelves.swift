@@ -344,12 +344,12 @@ struct MetadataLine: View {
             }
             if showType {
                 Text(item.type == .movie ? "Movie" : "Series")
-                    .font(.system(size: 11 * Theme.scale, weight: .semibold))
+                    .font(.system(.caption2, weight: .semibold))
                     .padding(.horizontal, 7).padding(.vertical, 2)
                     .background(.white.opacity(0.14), in: Capsule())
             }
         }
-        .font(.system(size: 13 * Theme.scale, weight: .medium))
+        .font(.system(.footnote, weight: .medium))
         .foregroundStyle(.white.opacity(0.85))
         .lineLimit(1)
     }
@@ -413,7 +413,7 @@ struct ToastView: View {
     let message: String
     var body: some View {
         Text(message)
-            .font(.system(size: 14 * Theme.scale, weight: .semibold))
+            .font(.system(.subheadline, weight: .semibold))
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .flowGlass(Capsule())

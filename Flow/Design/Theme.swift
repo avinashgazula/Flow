@@ -44,14 +44,15 @@ enum Theme {
         static let fade = Animation.easeOut(duration: 0.28)
     }
 
+    /// Built on system text styles so everything follows Dynamic Type (and tvOS's own sizes).
     enum Typeface {
-        static var display: Font { .system(size: 34 * Theme.scale, weight: .bold) }
-        static var title: Font { .system(size: 22 * Theme.scale, weight: .bold) }
-        static var sectionTitle: Font { .system(size: (Platform.isTV ? 15 : 21) * Theme.scale, weight: .bold) }
-        static var headline: Font { .system(size: 16 * Theme.scale, weight: .semibold) }
-        static var body: Font { .system(size: 15 * Theme.scale) }
-        static var caption: Font { .system(size: 12 * Theme.scale, weight: .medium) }
-        static var micro: Font { .system(size: 10 * Theme.scale, weight: .bold) }
+        static var display: Font { .system(.largeTitle, weight: .bold) }
+        static var title: Font { .system(.title2, weight: .bold) }
+        static var sectionTitle: Font { Platform.isTV ? .system(.headline, weight: .bold) : .system(.title3, weight: .bold) }
+        static var headline: Font { .system(.headline, weight: .semibold) }
+        static var body: Font { .system(.subheadline) }
+        static var caption: Font { .system(.caption, weight: .medium) }
+        static var micro: Font { .system(.caption2, weight: .bold) }
         /// Title treatment when a film has no logo art: heavy, condensed, tight.
         static func artworkTitle(_ size: CGFloat) -> Font { .system(size: size, weight: .heavy).width(.condensed) }
     }

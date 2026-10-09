@@ -42,6 +42,7 @@ struct DetailView: View {
         .transparentNavigationBar()
         .inlineNavigationTitle()
         .task(id: item.id) { await load() }
+        .advertisesTitle(current)
         .sheet(item: $downloadRequest) { request in
             SourcePickerView(request: request, forDownload: true).environment(model)
         }
@@ -389,7 +390,7 @@ struct RatingsRow: View {
             if let lb = ratings.letterboxd { badge("LB", String(format: "%.1f", lb), fill: .white.opacity(0.18), dark: false) }
             if let trakt = ratings.trakt { badge("Trakt", "\(trakt)%", fill: .white.opacity(0.18), dark: false) }
         }
-        .font(.system(size: 14 * Theme.scale, weight: .semibold).monospacedDigit())
+        .font(.system(.subheadline, weight: .semibold).monospacedDigit())
         .fixedSize()
     }
 

@@ -176,7 +176,7 @@ struct LiveTVView: View {
     private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 14 * Theme.scale, weight: .semibold))
+                .font(.system(.subheadline, weight: .semibold))
                 .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs + 1)
                 .background(selected ? Color.white : Theme.Palette.surface, in: Capsule())
                 .overlay(Capsule().strokeBorder(Theme.Palette.hairline, lineWidth: selected ? 0 : 1))

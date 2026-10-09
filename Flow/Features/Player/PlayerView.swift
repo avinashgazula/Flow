@@ -7,6 +7,7 @@ struct PlayerView: View {
     @Bindable var session: PlaybackSession
     @Environment(AppModel.self) private var model
     @State private var showSubtitles = false
+    @FocusState private var keyboardFocus: Bool
 
     var body: some View {
         ZStack {
@@ -32,6 +33,20 @@ struct PlayerView: View {
         #if os(macOS)
         .frame(minWidth: 640, minHeight: 360)
         .onExitCommand { session.stop() }
+        #endif
+        #if !os(tvOS)
+        .focusable()
+        .focusEffectDisabled()
+        .focused($keyboardFocus)
+        .onAppear { keyboardFocus = true }
+        .onKeyPress(.space) { session.togglePlay(); return .handled }
+        .onKeyPress(.leftArrow) { session.seek(by: -Double(model.settings.playback.seekBackwardSeconds)); return .handled }
+        .onKeyPress(.rightArrow) { session.seek(by: Double(model.settings.playback.seekForwardSeconds)); return .handled }
+        .onKeyPress(.escape) { session.stop(); return .handled }
+        .onKeyPress(characters: CharacterSet(charactersIn: "sS")) { _ in
+            if let segment = session.activeSegment { session.skip(segment); return .handled }
+            return .ignored
+        }
         #endif
         #if os(iOS)
         .statusBarHidden()
@@ -343,7 +358,7 @@ struct IOSPlayerControls: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(session.title).font(.system(size: 16, weight: .semibold)).lineLimit(1)
                         if let line = session.subtitleLine {
-                            Text(line).font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+                            Text(line).font(.system(.caption, weight: .medium)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
                         }
                     }
                     Spacer()
