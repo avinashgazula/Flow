@@ -1,29 +1,6 @@
 import SwiftUI
 import FlowKit
 
-/// AsyncImage with a neutral placeholder; images are cached by the shared URLCache.
-struct RemoteImage: View {
-    let url: URL?
-    var contentMode: ContentMode = .fill
-
-    var body: some View {
-        AsyncImage(url: url, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().aspectRatio(contentMode: contentMode)
-            case .failure:
-                placeholder.overlay(Image(systemName: "photo").foregroundStyle(.tertiary))
-            default:
-                placeholder
-            }
-        }
-    }
-
-    private var placeholder: some View {
-        Rectangle().fill(Color.white.opacity(0.06))
-    }
-}
-
 /// The title's logo art when TMDb has one, otherwise the title in a bold display face.
 struct LogoOrTitle: View {
     let logoPath: String?
@@ -49,7 +26,8 @@ struct LogoOrTitle: View {
 
     private var titleText: some View {
         Text(title)
-            .font(.system(size: maxHeight * 0.42, weight: .heavy, design: .default))
+            .font(Theme.Typeface.artworkTitle(maxHeight * 0.46))
+            .tracking(-0.5)
             .multilineTextAlignment(alignment == .leading ? .leading : .center)
             .lineLimit(3)
             .minimumScaleFactor(0.5)

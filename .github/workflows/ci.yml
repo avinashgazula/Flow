@@ -94,7 +94,7 @@ jobs:
 
   publish-screenshots:
     name: Publish screenshots
-    if: always() && github.event_name == 'push'
+    if: always() && github.event_name == 'push' && needs.screenshots.result != 'skipped'
     needs: screenshots
     runs-on: ubuntu-latest
     permissions:

@@ -106,7 +106,7 @@ final class AppModel {
     var settingsPath: [Route] = []
     var searchText = ""
 
-    static var demoRequested: Bool {
+    nonisolated static var demoRequested: Bool {
         UserDefaults.standard.bool(forKey: "FlowDemo") || UserDefaults.standard.bool(forKey: "flow.demoMode")
     }
 
