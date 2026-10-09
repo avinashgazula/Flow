@@ -207,7 +207,7 @@ final class PlaybackSession: Identifiable {
             configureBitmapSubtitles(remuxer)
             chapters = remuxer.header.chapters.map { PlayerChapter(title: $0.title, start: Double($0.start) / 1e9) }
             if let first = skippedAudio.first(where: { !$0.track.isCommentary }), let playing = remuxer.audio.first {
-                show(notice: "\(first.reason) isn't supported on Apple devices, so Flow is playing \(playing.label).")
+                show(notice: "\(first.reason) can't play on Apple devices. Playing \(playing.label) instead.")
             }
             phase = .connecting(0.35)
             attach(AVURLAsset(url: hls))
