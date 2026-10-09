@@ -15,6 +15,9 @@ final class LocalHLSServer: @unchecked Sendable {
     private let lock = NSLock()
     private var listenFD: Int32 = -1
     private var port: UInt16?
+    /// The last port used: after iOS reclaims the socket of a suspended app, listening resumes
+    /// there, so a paused player's playlist URLs keep working.
+    private var lastPort: UInt16 = 0
     private var routes: [String: MatroskaRemuxer] = [:]
     private let acceptQueue = DispatchQueue(label: "app.flow.hls.accept")
     private let workQueue = DispatchQueue(label: "app.flow.hls.work", attributes: .concurrent)
@@ -51,15 +54,18 @@ final class LocalHLSServer: @unchecked Sendable {
             setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, socklen_t(MemoryLayout<Int32>.size))
             setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
 
-            var address = sockaddr_in()
-            address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
-            address.sin_family = sa_family_t(AF_INET)
-            address.sin_port = 0
-            address.sin_addr.s_addr = inet_addr("127.0.0.1")
-            let bound = withUnsafePointer(to: &address) {
-                $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
+            func bind(_ port: UInt16) -> Bool {
+                var address = sockaddr_in()
+                address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+                address.sin_family = sa_family_t(AF_INET)
+                address.sin_port = port.bigEndian
+                address.sin_addr.s_addr = inet_addr("127.0.0.1")
+                return withUnsafePointer(to: &address) {
+                    $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
+                } == 0
             }
-            guard bound == 0, listen(fd, 32) == 0 else {
+            let bound = (lastPort != 0 && bind(lastPort)) || bind(0)
+            guard bound, listen(fd, 32) == 0 else {
                 let error = errno
                 close(fd)
                 throw ServerError.couldNotStart("bind \(error)")
@@ -72,6 +78,7 @@ final class LocalHLSServer: @unchecked Sendable {
             let chosen = UInt16(bigEndian: actual.sin_port)
             listenFD = fd
             port = chosen
+            lastPort = chosen
             acceptQueue.async { [weak self] in self?.acceptLoop(fd) }
             return chosen
         }
@@ -81,9 +88,17 @@ final class LocalHLSServer: @unchecked Sendable {
         while true {
             let client = accept(fd, nil, nil)
             if client < 0 {
-                if errno == EINTR { continue }
-                lock.withLock { if listenFD == fd { listenFD = -1; port = nil } }
+                let error = errno
+                if error == EINTR || error == ECONNABORTED { continue }
+                if error == EMFILE || error == ENFILE || error == EAGAIN { usleep(50_000); continue }
+                // The socket is gone (iOS reclaims them from suspended apps). Listen again on the
+                // same port while anything is still registered.
+                let active = lock.withLock { () -> Bool in
+                    if listenFD == fd { listenFD = -1; port = nil }
+                    return !routes.isEmpty
+                }
                 close(fd)
+                if active { _ = try? start() }
                 return
             }
             var on: Int32 = 1

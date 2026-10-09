@@ -26,6 +26,10 @@ final class RemuxTests: XCTestCase {
             try write("\(track)/init.mp4", try await remuxer.respond(to: "\(track)/init.mp4"))
             for s in remuxer.segments { try write("\(track)/\(s.index).m4s", try await remuxer.respond(to: "\(track)/\(s.index).m4s")) }
         }
+        if let video = remuxer.video, !remuxer.trickPlayFrames.isEmpty {
+            try write("iframes.m3u8", try await remuxer.respond(to: "iframes.m3u8"))
+            for i in remuxer.trickPlayFrames.indices { try write("\(video.id)/i\(i).m4s", try await remuxer.respond(to: "\(video.id)/i\(i).m4s")) }
+        }
         for sub in remuxer.subtitles {
             try write("\(sub.id).m3u8", try await remuxer.respond(to: "\(sub.id).m3u8"))
             for s in remuxer.segments { try write("\(sub.id)/\(s.index).vtt", try await remuxer.respond(to: "\(sub.id)/\(s.index).vtt")) }
@@ -104,6 +108,8 @@ final class RemuxTests: XCTestCase {
 struct RangeServingTransport: HTTPTransport {
     let bytes: [UInt8]
     var honoursRange = true
+    /// Largest response the server sends, like hosts that cap each range reply.
+    var cap = Int.max
 
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let url = request.url!
@@ -112,7 +118,7 @@ struct RangeServingTransport: HTTPTransport {
         }
         let parts = header.dropFirst("bytes=".count).split(separator: "-").compactMap { Int($0) }
         let lower = min(parts[0], bytes.count)
-        let upper = min(parts[1] + 1, bytes.count)
+        let upper = min(parts[1] + 1, bytes.count, lower + cap)
         let fields = ["Content-Range": "bytes \(lower)-\(upper - 1)/\(bytes.count)"]
         return (Data(bytes[lower..<upper]), HTTPURLResponse(url: url, statusCode: 206, httpVersion: nil, headerFields: fields)!)
     }
@@ -128,6 +134,16 @@ final class HTTPByteSourceTests: XCTestCase {
         let fragment = try await remuxer.mediaSegment(track: 1, index: 1)
         XCTAssertGreaterThan(RemuxTests.sampleCount(fragment ?? []), 0)
         XCTAssertEqual(HTTPByteSource.total(from: "bytes 0-1/146515"), 146515)
+    }
+
+    func testServerThatCapsRangeResponses() async throws {
+        let bytes = [UInt8](try Data(contentsOf: MatroskaTests.fixture("avc-aac-srt")))
+        let source = HTTPByteSource(url: URL(string: "https://example.invalid/movie.mkv")!, transport: RangeServingTransport(bytes: bytes, cap: 10_000), headSize: 1024)
+        let remuxer = try await MatroskaRemuxer.open(source, targetSegment: 2)
+        let read = try await source.read(20_000..<70_000)
+        XCTAssertEqual(read, Array(bytes[20_000..<70_000]))
+        let fragment = try await remuxer.mediaSegment(track: 1, index: 1)
+        XCTAssertGreaterThan(RemuxTests.sampleCount(fragment ?? []), 0)
     }
 
     func testServerWithoutRangesCantSeek() async throws {
@@ -276,5 +292,76 @@ final class PrefetchTests: XCTestCase {
         _ = try await remuxer.mediaSegment(track: 1, index: 1)
         let fetches = await source.ranges.filter { $0 == next.byteStart..<next.byteEnd }.count
         XCTAssertEqual(fetches, 1, "segment 1 is served from the prefetch, not fetched again")
+    }
+}
+
+final class SegmentLengthTests: XCTestCase {
+    func header(megabitsPerSecond: Double) -> MatroskaHeader {
+        var h = MatroskaHeader(docType: "matroska", segmentDataStart: 100)
+        let seconds = 7200.0
+        h.duration = Int64(seconds * 1e9)
+        h.segmentEnd = 100 + Int64(megabitsPerSecond * 1_000_000 / 8 * seconds)
+        return h
+    }
+
+    func testHighBitrateFilesGetShorterSegments() {
+        XCTAssertEqual(MatroskaRemuxer.segmentLength(header: header(megabitsPerSecond: 8)), 6)
+        XCTAssertEqual(MatroskaRemuxer.segmentLength(header: header(megabitsPerSecond: 20)), 4)
+        XCTAssertEqual(MatroskaRemuxer.segmentLength(header: header(megabitsPerSecond: 80)), 2)
+        XCTAssertEqual(MatroskaRemuxer.segmentLength(header: MatroskaHeader(docType: "matroska", segmentDataStart: 0)), 6)
+    }
+}
+
+final class AudioOrderTests: XCTestCase {
+    func testPreferredLanguageLeads() async throws {
+        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("hevc-eac3-ac3")), targetSegment: 2)
+        let languages = remuxer.audio.map(\.language)
+        XCTAssertEqual(languages.count, 2)
+        let spanish = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("hevc-eac3-ac3")), targetSegment: 2, preferredAudioLanguage: "es")
+        XCTAssertEqual(LanguageName.bcp47(spanish.audio[0].language), "es")
+        let master = await spanish.masterPlaylist()
+        let defaultLine = master.split(separator: "\n").first { $0.contains("TYPE=AUDIO") && $0.contains("DEFAULT=YES") } ?? ""
+        XCTAssertTrue(defaultLine.contains("LANGUAGE=\"es\""), String(defaultLine))
+    }
+}
+
+final class TrickPlayTests: XCTestCase {
+    func testDumpFixtures() async throws {
+        guard ProcessInfo.processInfo.environment["FLOW_REMUX_OUT"] != nil else { throw XCTSkip("set FLOW_REMUX_OUT to inspect output") }
+        for name in ["hevc-eac3-ac3", "avc-aac-srt"] {
+            let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture(name)), targetSegment: 2)
+            try await RemuxTests.dump(remuxer, to: RemuxTests.outputRoot.appendingPathComponent(name))
+        }
+    }
+
+    func testIFramePlaylistServesSingleKeyframes() async throws {
+        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("hevc-eac3-ac3")), targetSegment: 2)
+        let frames = remuxer.trickPlayFrames
+        XCTAssertGreaterThanOrEqual(frames.count, 2)
+        let master = await remuxer.masterPlaylist()
+        XCTAssertTrue(master.contains("#EXT-X-I-FRAME-STREAM-INF:"), master)
+        let maybePlaylist = await remuxer.iframePlaylist()
+        let playlist = try XCTUnwrap(maybePlaylist)
+        XCTAssertTrue(playlist.contains("#EXT-X-I-FRAMES-ONLY"))
+        XCTAssertEqual(playlist.components(separatedBy: "#EXTINF").count - 1, frames.count)
+        for i in frames.indices {
+            let maybeFragment = try await remuxer.iframeSegment(index: i)
+            let fragment = try XCTUnwrap(maybeFragment)
+            XCTAssertEqual(RemuxTests.sampleCount(fragment), 1)
+        }
+        let nothing = try await remuxer.iframeSegment(index: frames.count)
+        XCTAssertNil(nothing)
+    }
+
+    func testCutOffKeyframeIsReadAgainInFull() {
+        // A cluster (unknown children) whose second child, a 300-byte SimpleBlock, is cut off at 100 bytes.
+        let child1: [UInt8] = [0xE7, 0x81, 0x00]
+        let child2: [UInt8] = [0xA3, 0x41, 0x2C] + [UInt8](repeating: 0, count: 300)
+        let body = child1 + child2
+        let cluster: [UInt8] = [0x1F, 0x43, 0xB6, 0x75, 0x40 | UInt8(body.count >> 8), UInt8(body.count & 0xFF)]
+        let full = cluster + body
+        let cut = Array(full.prefix(100))
+        XCTAssertEqual(MatroskaRemuxer.firstIncompleteChildEnd(cut), full.count)
+        XCTAssertNil(MatroskaRemuxer.firstIncompleteChildEnd(full))
     }
 }

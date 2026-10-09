@@ -7,7 +7,7 @@ out=$2
 mkdir -p "$out"
 bundle_id=$(grep -E '^FLOW_BUNDLE_ID' Config/Flow.xcconfig | awk '{print $3}')
 tour_file="$PWD/tour-step-$platform"
-rm -f "$tour_file"
+rm -f "$tour_file" "$tour_file.ack"
 
 pick_device() { # $1 = name prefix, $2 = runtime prefix (e.g. iOS-26)
   xcrun simctl list devices available -j | python3 -c '
@@ -24,7 +24,7 @@ print(best or "")' "$1" "$2"
 }
 
 capture_loop() { # $1 = capture command template (uses $file)
-  local last="" deadline=$((SECONDS + 240))
+  local last="" deadline=$((SECONDS + 420))
   while [ $SECONDS -lt $deadline ]; do
     local step
     step=$(cat "$tour_file" 2>/dev/null || true)
@@ -36,6 +36,7 @@ capture_loop() { # $1 = capture command template (uses $file)
       local file
       file=$(printf "%s/%02d-%s.png" "$out" "$idx" "$name")
       eval "$1" || true
+      echo "$idx" > "$tour_file.ack"
       echo "captured $file"
     fi
     sleep 0.5
@@ -45,7 +46,7 @@ capture_loop() { # $1 = capture command template (uses $file)
 if [ "$platform" = "macos" ]; then
   xcodebuild build -project Flow.xcodeproj -scheme Flow-macOS -destination 'platform=macOS' -derivedDataPath dd \
     CODE_SIGNING_ALLOWED=NO > build-shots.log 2>&1 || { grep -E "error:" build-shots.log | head -40; exit 1; }
-  FLOW_TOUR_FILE="$tour_file" FLOW_TOUR_DWELL=7 dd/Build/Products/Debug/Flow.app/Contents/MacOS/Flow -FlowDemo YES -FlowTour YES -ApplePersistenceIgnoreState YES &
+  FLOW_TOUR_FILE="$tour_file" FLOW_TOUR_DWELL=5 dd/Build/Products/Debug/Flow.app/Contents/MacOS/Flow -FlowDemo YES -FlowTour YES -ApplePersistenceIgnoreState YES &
   app_pid=$!
   sleep 6
   osascript -e 'tell application "System Events" to set frontmost of (first process whose unix id is '"$app_pid"') to true' || true
@@ -75,7 +76,7 @@ if [ "$platform" != "tvos" ]; then
   xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
 fi
 xcrun simctl install "$udid" "dd/Build/Products/$products/Flow.app"
-SIMCTL_CHILD_FLOW_TOUR_FILE="$tour_file" SIMCTL_CHILD_FLOW_TOUR_DWELL=7 \
+SIMCTL_CHILD_FLOW_TOUR_FILE="$tour_file" SIMCTL_CHILD_FLOW_TOUR_DWELL=5 \
   xcrun simctl launch "$udid" "$bundle_id" -FlowDemo YES -FlowTour YES
 capture_loop 'xcrun simctl io "$udid" screenshot "$file"'
 cp "$tour_file.log" "$out/tour.log" 2>/dev/null || true

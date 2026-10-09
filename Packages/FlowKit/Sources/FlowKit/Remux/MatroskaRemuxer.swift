@@ -21,7 +21,7 @@ public actor MatroskaRemuxer {
         public var language: String { source.language }
     }
 
-    enum Codec: Sendable { case h264, hevc, av1, aac, mp3, ac3, eac3, flac, text, ass, pgs }
+    enum Codec: Sendable { case h264, hevc, av1, aac, mp3, ac3, eac3, flac, text, ass, pgs, vobsub }
 
     public struct Skipped: Sendable, Hashable {
         public let track: MatroskaTrack
@@ -50,6 +50,9 @@ public actor MatroskaRemuxer {
     /// Added to every track's timestamps so B-frame reordering never needs a negative
     /// composition offset (nanoseconds). Zero when the video has no B-frames.
     public nonisolated let presentationDelay: Int64
+    /// Keyframes, a few seconds apart, for the I-frame playlist that gives Apple TV's scrubber its
+    /// thumbnails. Each is fetched on its own, so scrubbing never downloads whole segments.
+    public nonisolated let trickPlayFrames: [MatroskaCue]
 
     /// False when the only playable audio is commentary: the soundtrack itself can't be played.
     public nonisolated var hasPlayableSoundtrack: Bool { audio.contains { !$0.source.isCommentary } }
@@ -59,12 +62,15 @@ public actor MatroskaRemuxer {
     private var cacheOrder: [Int] = []
     private var inflight: [Int: Task<[MatroskaBlock], Error>] = [:]
     private var bitmapTrack: Int?
-    private var bitmapDecoder = PGSDecoder()
+    private var bitmapDecoder = BitmapDecoder.pgs(PGSDecoder())
     private var bitmapCues: [BitmapSubtitle] = []
     private var decodedSegments = Set<Int>()
 
     /// Reads the header and enough of the first clusters to configure Dolby audio, then plans segments.
-    public static func open(_ source: ByteSource, targetSegment: Double = 6, headerCache: MatroskaHeaderCache? = nil) async throws -> MatroskaRemuxer {
+    /// `targetSegment` nil picks a length from the file's bitrate (see `segmentLength`).
+    /// `preferredAudioLanguage` (ISO 639 or BCP 47) makes that language's soundtrack the default.
+    public static func open(_ source: ByteSource, targetSegment: Double? = nil, preferredAudioLanguage: String? = nil,
+                            headerCache: MatroskaHeaderCache? = nil) async throws -> MatroskaRemuxer {
         let header = try await MatroskaReader.readHeader(source, cache: headerCache)
         guard let firstCluster = header.firstClusterPosition else { throw MatroskaError.malformed("no clusters") }
 
@@ -101,16 +107,29 @@ public actor MatroskaRemuxer {
         if video == nil && audio.isEmpty {
             throw MatroskaError.unsupported(skipped.first?.reason ?? "no playable tracks")
         }
-        // The soundtrack first (default, then any other non-commentary track), commentaries last,
-        // so what plays when nothing else is chosen is the film's own audio.
-        func rank(_ t: OutputTrack) -> (Int, Int, Int) { (t.source.isCommentary ? 1 : 0, t.source.isDefault ? 0 : 1, t.source.number) }
-        audio.sort { rank($0) < rank($1) }
+        audio = Self.ordered(audio, preferredLanguage: preferredAudioLanguage)
 
         let duration = Double(header.duration ?? 0) / 1e9
-        let segments = try Self.plan(header: header, anchorTrack: video?.source.number ?? audio.first!.source.number, target: targetSegment)
+        let target = targetSegment ?? Self.segmentLength(header: header)
+        let segments = try Self.plan(header: header, anchorTrack: video?.source.number ?? audio.first!.source.number, target: target)
         let delay = video.map { Self.reorderDelay(probeBlocks.filter { $0.track == video!.id }, frame: $0.source.defaultDuration) } ?? 0
         return MatroskaRemuxer(source: source, header: header, video: video, audio: audio, subtitles: subtitles, bitmapSubtitles: bitmaps,
                                skipped: skipped, segments: segments, duration: duration, presentationDelay: delay)
+    }
+
+    /// The soundtrack first (the viewer's language if there is one, then the file's default, then any
+    /// other non-commentary track), commentaries last, so what plays unprompted is the film's own audio.
+    static func ordered(_ audio: [OutputTrack], preferredLanguage: String?) -> [OutputTrack] {
+        func matches(_ t: OutputTrack) -> Bool {
+            guard let preferred = preferredLanguage?.lowercased(), !preferred.isEmpty else { return false }
+            let tag = LanguageName.bcp47(t.language).lowercased()
+            return tag == preferred || tag.hasPrefix(preferred + "-") || t.language.lowercased() == preferred
+                || LanguageName.bcp47(preferred).lowercased() == tag
+        }
+        func rank(_ t: OutputTrack) -> (Int, Int, Int, Int) {
+            (t.source.isCommentary ? 1 : 0, matches(t) ? 0 : 1, t.source.isDefault ? 0 : 1, t.source.number)
+        }
+        return audio.sorted { rank($0) < rank($1) }
     }
 
     /// How far presentation runs ahead of decode order in the opening frames, with headroom.
@@ -135,9 +154,28 @@ public actor MatroskaRemuxer {
         self.skipped = skipped
         self.segments = segments
         self.duration = duration
+        self.trickPlayFrames = video.map { Self.trickPlayFrames(header: header, track: $0.id) } ?? []
+    }
+
+    static func trickPlayFrames(header: MatroskaHeader, track: Int, spacing: Double = 3) -> [MatroskaCue] {
+        var out: [MatroskaCue] = []
+        for cue in header.cues where cue.track == track {
+            if let last = out.last, Double(cue.time - last.time) / 1e9 < spacing { continue }
+            out.append(cue)
+        }
+        return out.count >= 2 ? out : []
     }
 
     // MARK: Planning
+
+    /// Six seconds for ordinary files; shorter for high-bitrate ones (4K remuxes run 60–100 Mb/s),
+    /// so each segment stays near 10 MB and playback after a seek starts without a long download.
+    static func segmentLength(header: MatroskaHeader) -> Double {
+        guard let end = header.segmentEnd, let ns = header.duration, ns > 0 else { return 6 }
+        let bytesPerSecond = Double(end - header.segmentDataStart) / (Double(ns) / 1e9)
+        guard bytesPerSecond > 0 else { return 6 }
+        return min(6, max(2, (10_000_000 / bytesPerSecond).rounded()))
+    }
 
     static func plan(header: MatroskaHeader, anchorTrack: Int, target: Double) throws -> [Segment] {
         var cues = header.cues.filter { $0.track == anchorTrack }
@@ -197,7 +235,8 @@ public actor MatroskaRemuxer {
                 return .success(OutputTrack(role: .subtitle, source: t, codecString: "wvtt", timescale: 1000, label: label, sampleEntry: [], frameSamples: 0, codec: .ass))
             case "S_HDMV/PGS":
                 return .success(OutputTrack(role: .bitmap, source: t, codecString: "pgs", timescale: 1000, label: label, sampleEntry: [], frameSamples: 0, codec: .pgs))
-            case "S_VOBSUB": return .failure(Unsupported(message: "Picture-based subtitles (VobSub)"))
+            case "S_VOBSUB":
+                return .success(OutputTrack(role: .bitmap, source: t, codecString: "vobsub", timescale: 1000, label: label, sampleEntry: [], frameSamples: 0, codec: .vobsub))
             default: return .failure(Unsupported(message: "Subtitle format \(t.codecID)"))
             }
         default:
@@ -367,6 +406,12 @@ public actor MatroskaRemuxer {
         if !subtitles.isEmpty { inf.append("SUBTITLES=\"subs\"") }
         lines.append("#EXT-X-STREAM-INF:" + inf.joined(separator: ","))
         lines.append(video.map { "\($0.id).m3u8" } ?? "\(audio[0].id).m3u8")
+        if let v = video, !trickPlayFrames.isEmpty {
+            // One keyframe every few seconds: a small fraction of the full stream.
+            let bandwidth = max(64_000, averageBandwidth / 30)
+            lines.append("#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=\(bandwidth),CODECS=\"\(v.codecString)\",RESOLUTION=\(v.source.width)x\(v.source.height),"
+                         + "VIDEO-RANGE=\(videoRange),URI=\"iframes.m3u8\"")
+        }
         return lines.joined(separator: "\n") + "\n"
     }
 
@@ -382,6 +427,64 @@ public actor MatroskaRemuxer {
         }
         lines.append("#EXT-X-ENDLIST")
         return lines.joined(separator: "\n") + "\n"
+    }
+
+    public func iframePlaylist() -> String? {
+        guard let v = video, !trickPlayFrames.isEmpty else { return nil }
+        let total = header.duration ?? (trickPlayFrames.last!.time + 3_000_000_000)
+        func length(_ i: Int) -> Double {
+            let end = i + 1 < trickPlayFrames.count ? trickPlayFrames[i + 1].time : max(total, trickPlayFrames[i].time + 1_000_000_000)
+            return Double(end - trickPlayFrames[i].time) / 1e9
+        }
+        let target = Int((trickPlayFrames.indices.map(length).max() ?? 3).rounded(.up))
+        var lines = ["#EXTM3U", "#EXT-X-VERSION:7", "#EXT-X-TARGETDURATION:\(max(1, target))", "#EXT-X-PLAYLIST-TYPE:VOD",
+                     "#EXT-X-MEDIA-SEQUENCE:0", "#EXT-X-I-FRAMES-ONLY", "#EXT-X-INDEPENDENT-SEGMENTS", "#EXT-X-MAP:URI=\"\(v.id)/init.mp4\""]
+        if trickPlayFrames[0].time > 0 {
+            // I-frame playlists cover the whole timeline; the first keyframe stands in for the opening.
+            lines.append(String(format: "#EXTINF:%.5f,", Double(trickPlayFrames[0].time) / 1e9 + length(0)))
+            lines.append("\(v.id)/i0.m4s")
+        }
+        for i in trickPlayFrames.indices where !(i == 0 && trickPlayFrames[0].time > 0) {
+            lines.append(String(format: "#EXTINF:%.5f,", length(i)))
+            lines.append("\(v.id)/i\(i).m4s")
+        }
+        lines.append("#EXT-X-ENDLIST")
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// One keyframe as a fragment: reads its cluster's opening bytes, growing the read only when the
+    /// keyframe runs past them.
+    public func iframeSegment(index: Int) async throws -> [UInt8]? {
+        guard let v = video, trickPlayFrames.indices.contains(index) else { return nil }
+        let cue = trickPlayFrames[index]
+        let start = header.segmentDataStart + cue.clusterPosition
+        let fileEnd = header.segmentEnd ?? Int64.max
+        var length: Int64 = max(256 * 1024, (cue.relativePosition ?? 0) + 128 * 1024)
+        var keyframe: MatroskaBlock?
+        for _ in 0..<4 {
+            let bytes = try await source.read(start..<min(fileEnd, start + length))
+            let blocks = try MatroskaClusterParser.blocks(bytes, timecodeScale: header.timecodeScale, tracks: header.tracks)
+            if let found = blocks.first(where: { $0.track == v.id && $0.isKeyframe && $0.time >= cue.time - 2_000_000 }) { keyframe = found; break }
+            guard let needed = Self.firstIncompleteChildEnd(bytes), Int64(needed) > length, needed < 32 * 1024 * 1024 else { break }
+            length = Int64(needed)
+        }
+        guard let keyframe else { return nil }
+        let data = keyframe.frames.count == 1 ? keyframe.frames[0] : keyframe.frames.flatMap { $0 }
+        let frameLength = UInt64(v.source.defaultDuration.map { $0 * 9 / 100_000 } ?? 3750)
+        let sample = MP4.Sample(data: data, duration: UInt32(clamping: frameLength), compositionOffset: Int32(clamping: presentationDelay * 9 / 100_000), isSync: true)
+        return MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: UInt64(max(0, keyframe.time) * 9 / 100_000), samples: [sample], isVideo: true)
+    }
+
+    /// Where the first cluster child that `bytes` cuts off would end, so a re-read can include it.
+    static func firstIncompleteChildEnd(_ b: [UInt8]) -> Int? {
+        guard let cluster = try? EBML.readElement(b, at: 0), cluster.id == MKV.cluster else { return nil }
+        var j = cluster.dataStart
+        while j < b.count {
+            guard let child = try? EBML.readElement(b, at: j), let end = child.end else { return nil }
+            if end > b.count { return end }
+            j = end
+        }
+        return nil
     }
 
     private var videoRange: String {
@@ -553,11 +656,32 @@ public actor MatroskaRemuxer {
 
     // MARK: Picture subtitles
 
-    /// Chooses the PGS track to decode as segments arrive (nil turns them off).
+    /// Picture subtitles come as Blu-ray PGS or DVD VobSub.
+    enum BitmapDecoder {
+        case pgs(PGSDecoder)
+        case vobsub(VobSubDecoder)
+
+        mutating func decode(_ data: [UInt8], at seconds: Double) -> BitmapSubtitle? {
+            switch self {
+            case .pgs(var decoder):
+                let cue = decoder.decode(data, at: seconds)
+                self = .pgs(decoder)
+                return cue
+            case .vobsub(let decoder):
+                return decoder.decode(data, at: seconds)
+            }
+        }
+    }
+
+    /// Chooses the picture subtitle track to decode as segments arrive (nil turns them off).
     public func selectBitmapSubtitle(_ track: Int?) {
         guard track != bitmapTrack else { return }
         bitmapTrack = track
-        bitmapDecoder = PGSDecoder()
+        if let t = bitmapSubtitles.first(where: { $0.id == track }), t.codec == .vobsub {
+            bitmapDecoder = .vobsub(VobSubDecoder(codecPrivate: t.source.codecPrivate, videoWidth: video?.source.width ?? 720, videoHeight: video?.source.height ?? 480))
+        } else {
+            bitmapDecoder = .pgs(PGSDecoder())
+        }
         bitmapCues = []
         decodedSegments = []
         for (index, blocks) in cache { decodeBitmaps(blocks, segment: index) }
@@ -580,10 +704,11 @@ public actor MatroskaRemuxer {
             let start = Double(block.time) / 1e9
             guard let frame = block.frames.first, !bitmapCues.contains(where: { $0.start == start }),
                   var cue = bitmapDecoder.decode(block.frames.count == 1 ? frame : block.frames.flatMap { $0 }, at: start) else { continue }
-            if let duration = block.duration, duration > 0 { cue.end = start + Double(duration) / 1e9 }
+            if cue.end == nil, let duration = block.duration, duration > 0 { cue.end = start + Double(duration) / 1e9 }
             let position = bitmapCues.firstIndex { $0.start > start } ?? bitmapCues.count
-            if position > 0, bitmapCues[position - 1].end == nil { bitmapCues[position - 1].end = start }
-            if position < bitmapCues.count, cue.end == nil { cue.end = bitmapCues[position].start }
+            // One picture at a time: each ends, at the latest, where the next begins.
+            if position > 0, (bitmapCues[position - 1].end ?? .infinity) > start { bitmapCues[position - 1].end = start }
+            if position < bitmapCues.count, (cue.end ?? .infinity) > bitmapCues[position].start { cue.end = bitmapCues[position].start }
             bitmapCues.insert(cue, at: position)
         }
     }
@@ -602,11 +727,15 @@ public actor MatroskaRemuxer {
         guard let last = parts.last else { return nil }
         if parts.count == 1 {
             if last == "master.m3u8" { return .playlist(masterPlaylist()) }
+            if last == "iframes.m3u8" { return iframePlaylist().map(Response.playlist) }
             guard last.hasSuffix(".m3u8"), let track = Int(last.dropLast(5)) else { return nil }
             return mediaPlaylist(track: track).map(Response.playlist)
         }
         guard parts.count == 2, let track = Int(parts[0]) else { return nil }
         if last == "init.mp4" { return initSegment(track: track).map(Response.media) }
+        if last.hasPrefix("i"), last.hasSuffix(".m4s"), let index = Int(last.dropFirst().dropLast(4)) {
+            return try await iframeSegment(index: index).map(Response.media)
+        }
         if last.hasSuffix(".m4s"), let index = Int(last.dropLast(4)) {
             return try await mediaSegment(track: track, index: index).map(Response.media)
         }

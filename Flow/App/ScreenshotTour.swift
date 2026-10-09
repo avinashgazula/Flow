@@ -87,6 +87,12 @@ enum ScreenshotTour {
             log("step \(step.name) active=\(model.activePlayback != nil) picker=\(model.sourcePickerRequest != nil) tab=\(model.selectedTab)")
             try? "\(index):\(step.name)".write(to: file, atomically: true, encoding: .utf8)
             try? await Task.sleep(nanoseconds: UInt64(dwell * 1_000_000_000))
+            // Simulator screenshots can be slow; hold the screen until the capture script confirms it.
+            let ack = file.appendingPathExtension("ack")
+            for _ in 0..<60 {
+                if (try? String(contentsOf: ack, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) == "\(index)" { break }
+                try? await Task.sleep(nanoseconds: 250_000_000)
+            }
         }
         try? "done".write(to: file, atomically: true, encoding: .utf8)
     }

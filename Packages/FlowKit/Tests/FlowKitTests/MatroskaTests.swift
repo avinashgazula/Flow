@@ -212,3 +212,69 @@ final class HeaderCacheTests: XCTestCase {
         XCTAssertGreaterThan(firstReads, secondReads)
     }
 }
+
+final class VobSubTests: XCTestCase {
+    /// A 4×2 subpicture at (10, 20): a white top line, a red bottom line, shown for two seconds.
+    static func packet() -> [UInt8] {
+        let pixels: [UInt8] = [0x11, 0x12] // one run of four per line: colour 1, then colour 2
+        let (x1, x2, y1, y2) = (10, 13, 20, 21)
+        let first = 4 + pixels.count
+        var seq1: [UInt8] = [0x00, 0x00, 0, 0, 0x01, 0x03, 0x32, 0x10, 0x04, 0xFF, 0xF0,
+                             0x05, UInt8(x1 >> 4), UInt8((x1 & 0xF) << 4 | x2 >> 8), UInt8(x2 & 0xFF),
+                             UInt8(y1 >> 4), UInt8((y1 & 0xF) << 4 | y2 >> 8), UInt8(y2 & 0xFF),
+                             0x06, 0x00, 0x04, 0x00, 0x05, 0xFF]
+        let second = first + seq1.count
+        seq1[2] = UInt8(second >> 8); seq1[3] = UInt8(second & 0xFF)
+        let seq2: [UInt8] = [0x00, 176, UInt8(second >> 8), UInt8(second & 0xFF), 0x02, 0xFF]
+        let total = second + seq2.count
+        return [UInt8(total >> 8), UInt8(total & 0xFF), UInt8(first >> 8), UInt8(first & 0xFF)] + pixels + seq1 + seq2
+    }
+
+    func testDecodesASubpicture() throws {
+        let idx = "# VobSub index file\nsize: 720x576\npalette: 000000, ffffff, ff0000, 00ff00, 0000ff, 111111, 222222, 333333, 444444, 555555, 666666, 777777, 888888, 999999, aaaaaa, bbbbbb\n"
+        let decoder = VobSubDecoder(codecPrivate: Array(idx.utf8), videoWidth: 1920, videoHeight: 1080)
+        XCTAssertEqual(decoder.canvasWidth, 720)
+        XCTAssertEqual(decoder.canvasHeight, 576)
+        let cue = try XCTUnwrap(decoder.decode(Self.packet(), at: 5))
+        XCTAssertEqual(cue.start, 5)
+        XCTAssertEqual(cue.end ?? 0, 5 + 176 * 1024 / 90_000, accuracy: 0.001)
+        XCTAssertFalse(cue.isForced)
+        let object = try XCTUnwrap(cue.objects.first)
+        XCTAssertEqual([object.x, object.y, object.width, object.height], [10, 20, 4, 2])
+        XCTAssertEqual(object.indices, [1, 1, 1, 1, 2, 2, 2, 2])
+        let rgba = cue.rgba(for: object)
+        XCTAssertEqual(Array(rgba[0..<4]), [255, 255, 255, 255])
+        XCTAssertEqual(Array(rgba[16..<20]), [255, 0, 0, 255])
+    }
+
+    func testRemuxerOffersVobSubAsAPictureTrack() {
+        var track = MatroskaTrack(number: 3, kind: .subtitle, codecID: "S_VOBSUB")
+        track.language = "eng"
+        guard case .success(let out) = MatroskaRemuxer.output(for: track, firstFrame: nil) else { return XCTFail("VobSub rejected") }
+        XCTAssertEqual(out.role, .bitmap)
+    }
+}
+
+/// Decodes the picture subtitles of a local MKV and writes each cue's pixels for inspection
+/// (FLOW_BITMAP_SAMPLE=path, output in FLOW_REMUX_OUT).
+final class BitmapSampleTests: XCTestCase {
+    func testDumpPictureSubtitles() async throws {
+        guard let path = ProcessInfo.processInfo.environment["FLOW_BITMAP_SAMPLE"] else { throw XCTSkip("no sample") }
+        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: URL(fileURLWithPath: path)))
+        let track = try XCTUnwrap(remuxer.bitmapSubtitles.first)
+        await remuxer.selectBitmapSubtitle(track.id)
+        let video = try XCTUnwrap(remuxer.video)
+        for s in remuxer.segments { _ = try await remuxer.mediaSegment(track: video.id, index: s.index) }
+        let out = RemuxTests.outputRoot.appendingPathComponent("bitmaps")
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        var seen = Set<Double>()
+        for t in stride(from: 0.0, to: remuxer.duration, by: 0.25) {
+            guard let cue = await remuxer.bitmapSubtitle(at: t), seen.insert(cue.start).inserted else { continue }
+            print("cue", cue.start, cue.end ?? -1, "canvas", cue.canvasWidth, cue.canvasHeight, "objects", cue.objects.map { [$0.x, $0.y, $0.width, $0.height] })
+            for (i, o) in cue.objects.enumerated() {
+                try Data(cue.rgba(for: o)).write(to: out.appendingPathComponent("\(cue.start)-\(i)-\(o.width)x\(o.height).rgba"))
+            }
+        }
+        XCTAssertFalse(seen.isEmpty)
+    }
+}

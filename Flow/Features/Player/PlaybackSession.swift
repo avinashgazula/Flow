@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import CoreMedia
 #if os(tvOS)
 import AVKit
 #endif
@@ -178,7 +179,8 @@ final class PlaybackSession: Identifiable {
     private func startRemux(url: URL, headers: [String: String], reader: ByteSource? = nil) async {
         phase = .connecting(0.2)
         do {
-            let remuxer = try await MatroskaRemuxer.open(reader ?? Self.byteSource(url, headers: headers), headerCache: .shared)
+            let remuxer = try await MatroskaRemuxer.open(reader ?? Self.byteSource(url, headers: headers),
+                                                         preferredAudioLanguage: model?.settings.playback.preferredAudioLanguage, headerCache: .shared)
             guard !Task.isCancelled else { return }
             let skippedAudio = remuxer.skipped.filter { $0.track.kind == .audio }
             if !remuxer.hasPlayableSoundtrack, let first = skippedAudio.first {
@@ -214,6 +216,8 @@ final class PlaybackSession: Identifiable {
         item.preferredForwardBufferDuration = usesRemux ? 20 : 10
         applyMetadata(to: item)
         applyChapters(to: item)
+        applyLanguagePreferences()
+        if let settings = model?.settings.subtitles { item.textStyleRules = Self.textStyleRules(settings) }
         player.replaceCurrentItem(with: item)
         // The remuxed stream lives on this device's loopback address, which an AirPlay receiver can't reach.
         player.allowsExternalPlayback = !usesRemux
@@ -239,6 +243,61 @@ final class PlaybackSession: Identifiable {
         beginNowPlaying()
         // With a saved position and "Ask Before Resuming", wait for the viewer's choice.
         if !(resumeAt != nil && model?.settings.playback.askToResume == true) { player.play() }
+    }
+
+    /// The viewer's audio language, and with automatic subtitles their subtitle languages, for
+    /// streams that carry several (HLS renditions, multi-track MP4s and remuxed MKVs).
+    private func applyLanguagePreferences() {
+        guard let settings = model?.settings else { return }
+        if let audio = settings.playback.preferredAudioLanguage {
+            player.setMediaSelectionCriteria(AVPlayerMediaSelectionCriteria(preferredLanguages: [audio], preferredMediaCharacteristics: nil),
+                                             forMediaCharacteristic: .audible)
+        }
+        if settings.subtitles.autoEnable, !settings.subtitles.preferredLanguages.isEmpty {
+            var characteristics: [AVMediaCharacteristic] = []
+            if settings.subtitles.hearingImpaired { characteristics.append(.transcribesSpokenDialogForAccessibility) }
+            player.setMediaSelectionCriteria(AVPlayerMediaSelectionCriteria(preferredLanguages: settings.subtitles.preferredLanguages,
+                                                                            preferredMediaCharacteristics: characteristics),
+                                             forMediaCharacteristic: .legible)
+        }
+    }
+
+    /// The viewer's subtitle size, colour and background for subtitles inside the stream (WebVTT and
+    /// MKV text tracks), matching the ones Flow draws. Untouched defaults leave the system caption style alone.
+    static func textStyleRules(_ s: SubtitleSettings) -> [AVTextStyleRule]? {
+        var attributes: [String: Any] = [:]
+        if s.fontScale != 1 { attributes[kCMTextMarkupAttribute_RelativeFontSize as String] = s.fontScale * 100 }
+        let rgb: [Double]? = switch s.color {
+        case .white: nil
+        case .yellow: [1, 0.84, 0.04]
+        case .cyan: [0.35, 0.78, 0.98]
+        case .green: [0.2, 0.78, 0.35]
+        }
+        if let rgb { attributes[kCMTextMarkupAttribute_ForegroundColorARGB as String] = [1] + rgb }
+        switch s.background {
+        case .shadow: break
+        case .none:
+            attributes[kCMTextMarkupAttribute_CharacterEdgeStyle as String] = kCMTextMarkupCharacterEdgeStyle_None as String
+        case .translucent:
+            attributes[kCMTextMarkupAttribute_CharacterBackgroundColorARGB as String] = [0.55, 0, 0, 0]
+        case .solid:
+            attributes[kCMTextMarkupAttribute_CharacterBackgroundColorARGB as String] = [1, 0, 0, 0]
+        }
+        guard !attributes.isEmpty, let rule = AVTextStyleRule(textMarkupAttributes: attributes) else { return nil }
+        return [rule]
+    }
+
+    /// A full (not forced-only) subtitle track inside the stream in one of the viewer's languages.
+    private func embeddedSubtitle(in item: AVPlayerItem, languages: [String]) async -> AVMediaSelectionOption? {
+        guard let group = try? await item.asset.loadMediaSelectionGroup(for: .legible) else { return nil }
+        let full = group.options.filter { !$0.hasMediaCharacteristic(.containsOnlyForcedSubtitles) }
+        for language in languages {
+            if let match = full.first(where: { option in
+                let tag = option.extendedLanguageTag?.lowercased() ?? ""
+                return tag == language.lowercased() || tag.hasPrefix(language.lowercased() + "-")
+            }) { return match }
+        }
+        return nil
     }
 
     private func applyChapters(to item: AVPlayerItem) {
@@ -416,6 +475,21 @@ final class PlaybackSession: Identifiable {
 
     private func autoLoadSubtitle() async {
         guard let model else { return }
+        // Subtitles that come with the stream beat a search: they're timed to this exact cut.
+        // Opening an MKV takes a few seconds, so wait until the stream's tracks are known.
+        var waited = 0
+        while player.currentItem?.status != .readyToPlay, waited < 120 {
+            switch phase { case .failed, .finished: return; default: break }
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            if Task.isCancelled { return }
+            waited += 1
+        }
+        if let item = player.currentItem, let embedded = await embeddedSubtitle(in: item, languages: model.settings.subtitles.preferredLanguages) {
+            if let group = try? await item.asset.loadMediaSelectionGroup(for: .legible) { item.select(embedded, in: group) }
+            return
+        }
+        // So does a disc subtitle Flow draws itself.
+        if let selected = selectedBitmapTrack, remuxer?.bitmapSubtitles.first(where: { $0.id == selected })?.source.isForced == false { return }
         let tracks = await SubtitleSearch.search(model.subtitleProviders(), request: request, languages: model.settings.subtitles.preferredLanguages, hearingImpaired: model.settings.subtitles.hearingImpaired)
         if let first = tracks.first { await selectSubtitle(first) }
     }
