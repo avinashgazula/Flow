@@ -394,7 +394,7 @@ struct TMDBDetailDTO: Decodable {
             return (ratings.first { $0.iso31661 == region } ?? ratings.first { $0.iso31661 == "US" })?.rating
         }()
         let homeRelease = releases.filter { $0.type.isHome }.map(\.date).min()
-        let item = MediaItem(
+        var item = MediaItem(
             type: type,
             ids: ExternalIDs(tmdb: id, imdb: imdbId ?? externalIds?.imdbId, tvdb: externalIds?.tvdbId),
             title: title ?? name ?? "",
@@ -414,6 +414,7 @@ struct TMDBDetailDTO: Decodable {
             status: status,
             homeReleaseDate: homeRelease
         )
+        item.textlessPosterPath = TMDBImagesDTO.bestTextless(images?.posters ?? [])
         let creditSource = aggregateCredits ?? credits
         let cast = (creditSource?.cast ?? []).prefix(40).map {
             CastMember(id: $0.id, name: $0.name, role: $0.character ?? $0.roles?.first?.character ?? "", profilePath: $0.profilePath, order: $0.order ?? 999)
@@ -471,6 +472,11 @@ struct TMDBImagesDTO: Decodable {
     var logos: [Image]?
     var backdrops: [Image]?
     var posters: [Image]?
+
+    /// Highest-rated poster with no language, i.e. without a printed title.
+    static func bestTextless(_ posters: [Image]) -> String? {
+        posters.filter { $0.iso6391 == nil }.max { ($0.voteAverage ?? 0) < ($1.voteAverage ?? 0) }?.filePath
+    }
 
     static func bestLogo(_ logos: [Image], language: String) -> String? {
         func score(_ image: Image) -> Double {

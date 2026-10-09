@@ -4,7 +4,8 @@ import FlowKit
 
 /// Navigation targets shared by every NavigationStack in the app.
 enum Route: Hashable {
-    case detail(MediaItem)
+    /// `zoom` identifies the card the detail page zooms out of (iOS 18+).
+    case detail(MediaItem, zoom: String? = nil)
     case person(id: Int, name: String)
     case shelf(ShelfConfig)
     case library(LibraryList)
@@ -98,6 +99,7 @@ final class AppModel {
     var selectedTab: AppTab
     var sourcePickerRequest: PlaybackRequest?
     var activePlayback: PlaybackSession?
+    @ObservationIgnored var pendingPlayback: PlaybackSession?
     var showSettings = false
     /// A flow://setup link waiting for the user to confirm the import.
     var pendingImport: String?
@@ -177,6 +179,11 @@ final class AppModel {
     func setDemoMode(_ on: Bool) {
         UserDefaults.standard.set(on, forKey: "flow.demoMode")
         NotificationCenter.default.post(name: .flowModeChanged, object: nil)
+    }
+
+    /// Pushes onto the visible tab's navigation stack.
+    func navigate(to route: Route) {
+        paths[selectedTab, default: []].append(route)
     }
 
     func path(for tab: AppTab) -> Binding<[Route]> {

@@ -191,10 +191,18 @@ struct ChannelRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            RemoteImage(url: channel.logoURL, contentMode: .fit)
-                .frame(width: Platform.isTV ? 120 : 64, height: Platform.isTV ? 72 : 40)
-                .padding(6)
-                .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+            Group {
+                if channel.logoURL != nil {
+                    RemoteImage(url: channel.logoURL, contentMode: .fit, maxPixel: 300)
+                } else {
+                    Text(channel.name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined())
+                        .font(.system(size: 18 * Theme.scale, weight: .heavy).width(.condensed))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+            }
+            .frame(width: Platform.isTV ? 120 : 64, height: Platform.isTV ? 72 : 40)
+            .padding(6)
+            .background(Theme.Palette.surfaceStrong, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     if let number = channel.number { Text("\(number)").font(.caption.monospacedDigit()).foregroundStyle(.secondary) }

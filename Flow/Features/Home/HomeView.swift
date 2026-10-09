@@ -3,6 +3,7 @@ import FlowKit
 
 struct HomeView: View {
     @Environment(AppModel.self) private var model
+    @State private var heroItem: MediaItem?
 
     var body: some View {
         Group {
@@ -10,8 +11,8 @@ struct HomeView: View {
                 MissingKeyView()
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: Platform.isTV ? 50 : 30) {
-                        HeroCarousel()
+                    LazyVStack(alignment: .leading, spacing: Theme.Space.section) {
+                        HeroCarousel(current: $heroItem)
                         ForEach(model.settings.shelves.filter(\.enabled)) { shelf in
                             ShelfView(shelf: shelf)
                         }
@@ -19,14 +20,26 @@ struct HomeView: View {
                             ContentUnavailableView("No Shelves", systemImage: "square.grid.2x2", description: Text("Turn shelves on in Settings → Shelves."))
                         }
                     }
-                    .padding(.bottom, 40)
+                    .padding(.bottom, Theme.Space.xxl)
                 }
+                .scrollIndicators(.hidden)
+                #if os(iOS)
+                .ignoresSafeArea(edges: .top)
+                #endif
                 .refreshable { await model.refreshLibrary(force: true) }
+                .background(alignment: .top) {
+                    // The page takes on the colour of whichever title the hero is showing.
+                    AmbientBackground(url: heroItem?.smallBackdropURL ?? heroItem?.posterURL, intensity: 0.9)
+                        .mask(LinearGradient(colors: [.black, .black, .clear], startPoint: .top, endPoint: .bottom))
+                        .frame(height: 1400)
+                        .animation(Theme.Motion.gentle, value: heroItem?.id)
+                }
+                .background(Theme.Palette.canvas)
             }
         }
         .overlay(alignment: .topTrailing) {
             #if !os(tvOS)
-            settingsButton.padding(.trailing, Platform.isPhone ? 24 : Platform.horizontalPadding + 12).padding(.top, 8)
+            settingsButton.padding(.trailing, Theme.Space.gutter).padding(.top, Theme.Space.xs)
             #endif
         }
         #if os(iOS)
@@ -47,13 +60,20 @@ struct HomeView: View {
         #if os(macOS)
         SettingsLink {
             Image(systemName: "gearshape.fill")
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 16, weight: .semibold))
                 .frame(width: 40, height: 40)
-                .background(.ultraThinMaterial, in: Circle())
+                .flowGlass(Circle(), interactive: true)
         }
         .buttonStyle(.plain)
         #else
-        CircleButton(systemImage: "gearshape.fill", size: 42) { model.showSettings = true }
+        Button { model.showSettings = true } label: {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .frame(width: 42, height: 42)
+                .flowGlass(Circle(), interactive: true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Settings")
         #endif
     }
 }

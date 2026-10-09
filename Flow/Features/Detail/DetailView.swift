@@ -15,82 +15,28 @@ struct DetailView: View {
     @State private var showFullOverview = false
 
     private var current: MediaItem { detail?.item ?? item }
+    private var wide: Bool { !Platform.isPhone }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Platform.isTV ? 40 : 26) {
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 header
-                VStack(alignment: .leading, spacing: 18) {
-                    RatingsRow(ratings: ratings)
-                    if let overview = current.overview, !overview.isEmpty {
-                        Text(overview)
-                            .font(Platform.isTV ? .title3 : .body)
-                            .lineLimit(showFullOverview ? nil : 4)
-                            .onTapGesture { withAnimation { showFullOverview.toggle() } }
-                    }
-                    actionButtons
-                    if current.type == .show { showExtras }
-                }
-                .padding(.horizontal, Platform.horizontalPadding)
-
                 if current.type == .show, let detail, !detail.seasons.isEmpty {
                     SeasonsSection(show: current, seasons: detail.seasons, episodesBySeason: episodesBySeason, selectedSeason: $selectedSeason)
                 }
                 if let detail {
-                    if !detail.castRow.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            SectionHeader<Route>("Cast")
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                LazyHStack(alignment: .top, spacing: 14) {
-                                    ForEach(detail.castRow.prefix(30)) { member in
-                                        PersonCard(id: member.id, name: member.name, role: member.role, profilePath: member.profilePath)
-                                    }
-                                }
-                                .padding(.horizontal, Platform.horizontalPadding)
-                                .padding(.vertical, Platform.isTV ? 20 : 0)
-                            }
-                        }
-                    }
-                    if !detail.trailers.isEmpty { trailerSection(detail.trailers) }
-                    if let collection = detail.collection {
-                        NavigationLink(value: Route.collection(id: collection.id, name: collection.name)) {
-                            HStack {
-                                RemoteImage(url: TMDBImage.url(collection.backdropPath, size: .backdrop))
-                                    .frame(width: 120, height: 68).clipShape(RoundedRectangle(cornerRadius: 8))
-                                VStack(alignment: .leading) {
-                                    Text("Part of").font(.caption).foregroundStyle(.secondary)
-                                    Text(collection.name).font(.headline)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right").foregroundStyle(.secondary)
-                            }
-                            .padding(12)
-                            .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14))
-                        }
-                        .buttonStyle(CardButtonStyle())
-                        .padding(.horizontal, Platform.horizontalPadding)
-                    }
-                    if !detail.recommendations.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            SectionHeader<Route>("More Like This")
-                            PosterRow(items: detail.recommendations)
-                        }
-                    }
-                    if !detail.similar.isEmpty && detail.recommendations.count < 6 {
-                        VStack(alignment: .leading, spacing: 12) {
-                            SectionHeader<Route>("Similar")
-                            PosterRow(items: detail.similar)
-                        }
-                    }
-                    infoSection(detail)
+                    sections(detail)
                 } else if let error {
                     ContentUnavailableView("Couldn't Load Details", systemImage: "exclamationmark.triangle", description: Text(error))
                 }
             }
-            .padding(.bottom, 50)
+            .padding(.bottom, Theme.Space.xxl)
         }
-        .background(backgroundGlow)
+        .scrollIndicators(.hidden)
+        .background(AmbientBackground(url: current.smallBackdropURL ?? current.posterURL))
+        #if os(iOS)
         .ignoresSafeArea(edges: .top)
+        #endif
         .transparentNavigationBar()
         .inlineNavigationTitle()
         .task(id: item.id) { await load() }
@@ -102,42 +48,70 @@ struct DetailView: View {
     // MARK: Header
 
     private var header: some View {
-        ZStack(alignment: .bottom) {
-            RemoteImage(url: Platform.isPhone ? TMDBImage.url(current.posterPath, size: .original) : current.backdropURL)
+        ZStack(alignment: wide ? .bottomLeading : .bottom) {
+            RemoteImage(url: wide ? TMDBImage.url(current.backdropPath, size: .original) : TMDBImage.url(current.heroPosterPath, size: .original),
+                        maxPixel: wide ? 2000 : 1100, fallbackTitle: current.title)
                 .frame(height: headerHeight)
                 .frame(maxWidth: .infinity)
                 .clipped()
-            LinearGradient(colors: [.clear, .clear, .black.opacity(0.6), .black], startPoint: .top, endPoint: .bottom)
-            VStack(spacing: 12) {
-                LogoOrTitle(logoPath: current.logoPath, title: current.title, maxHeight: Platform.isTV ? 180 : 110)
-                    .frame(maxWidth: Platform.isPhone ? 320 : 520)
-                MetadataLine(item: current, certification: current.certification, showRating: false)
-                if let tagline = detail?.tagline {
-                    Text(tagline).font(.subheadline.italic()).foregroundStyle(.secondary)
+                .mask(LinearGradient(stops: [.init(color: .black, location: 0.55), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                .visualEffect { content, proxy in
+                    let y = proxy.frame(in: .scrollView(axis: .vertical)).minY
+                    return content
+                        .scaleEffect(y > 0 ? 1 + y / max(proxy.size.height, 1) : 1, anchor: .bottom)
+                        .offset(y: y < 0 ? -y * 0.4 : 0)
                 }
+            if wide {
+                LinearGradient(colors: [.black.opacity(0.7), .clear], startPoint: .leading, endPoint: .center)
+                    .allowsHitTesting(false)
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 8)
+            headerContent
+                .padding(.horizontal, Theme.Space.gutter)
+                .frame(maxWidth: wide ? 720 * Theme.scale : .infinity, alignment: wide ? .leading : .center)
         }
-        .frame(height: headerHeight)
+        .frame(minHeight: headerHeight)
+    }
+
+    private var headerContent: some View {
+        VStack(alignment: wide ? .leading : .center, spacing: Theme.Space.m) {
+            LogoOrTitle(logoPath: current.logoPath, title: current.title, maxHeight: Platform.isTV ? 200 : (wide ? 130 : 110),
+                        alignment: wide ? .leading : .center)
+                .frame(maxWidth: wide ? 520 : 330, alignment: wide ? .leading : .center)
+            MetadataLine(item: current, certification: current.certification, showRating: false)
+            if !ratings.isEmpty || current.voteAverage != nil {
+                RatingsRow(ratings: ratings.isEmpty ? Ratings(tmdb: current.voteAverage) : ratings, centered: !wide)
+            }
+            actions
+            if let overview = current.overview, !overview.isEmpty {
+                VStack(alignment: wide ? .leading : .center, spacing: 4) {
+                    if let tagline = detail?.tagline {
+                        Text(tagline).font(Theme.Typeface.headline).foregroundStyle(.white.opacity(0.9))
+                    }
+                    Text(overview)
+                        .font(Theme.Typeface.body)
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                        .multilineTextAlignment(wide ? .leading : .center)
+                        .lineLimit(showFullOverview ? nil : 3)
+                        .lineSpacing(2)
+                    if !showFullOverview && overview.count > 160 {
+                        Text("MORE").font(Theme.Typeface.micro).kerning(1).foregroundStyle(.white.opacity(0.85))
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { withAnimation(Theme.Motion.gentle) { showFullOverview.toggle() } }
+                .frame(maxWidth: 640 * Theme.scale, alignment: wide ? .leading : .center)
+            }
+        }
     }
 
     private var headerHeight: CGFloat {
         #if os(tvOS)
-        720
+        900
         #elseif os(macOS)
-        460
+        560
         #else
-        Platform.isPhone ? 620 : 540
+        Platform.isPhone ? 720 : 640
         #endif
-    }
-
-    private var backgroundGlow: some View {
-        RemoteImage(url: current.smallBackdropURL)
-            .blur(radius: 80)
-            .opacity(0.35)
-            .ignoresSafeArea()
-            .overlay(Color.black.opacity(0.55).ignoresSafeArea())
     }
 
     // MARK: Actions
@@ -150,73 +124,130 @@ struct DetailView: View {
         if current.type == .show, let key = current.key, let entry = model.continueWatching.first(where: { $0.key == key }), let ep = entry.episode {
             return entry.progress != nil ? "Resume \(ep.code)" : "Play \(ep.code)"
         }
-        return "Play"
+        return current.type == .show ? "Play S01E01" : "Play"
     }
 
-    private var actionButtons: some View {
-        HStack(spacing: 12) {
-            Button {
-                Task { await model.play(current) }
-            } label: {
+    private var actions: some View {
+        VStack(spacing: Theme.Space.s) {
+            Button { Task { await model.play(current) } } label: {
                 Label(playLabel, systemImage: "play.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                    .frame(maxWidth: wide ? nil : .infinity)
+                    .frame(minWidth: wide ? 240 * Theme.scale : nil)
             }
-            .buttonStyle(ActionButtonStyle(prominent: true))
+            .buttonStyle(PrimaryButtonStyle())
+            .frame(maxWidth: wide ? nil : 420)
 
-            ActionIcon(systemImage: model.isWatched(current) ? "eye.fill" : "eye", active: model.isWatched(current)) {
-                Task { await model.setWatched(current, episodes: nil, watched: !model.isWatched(current)) }
-            }
-            ActionIcon(systemImage: model.isFavourite(current) ? "heart.fill" : "heart", active: model.isFavourite(current)) {
-                Task { await model.toggleFavourite(current) }
-            }
-            ActionIcon(systemImage: model.isWatchlisted(current) ? "bookmark.fill" : "bookmark", active: model.isWatchlisted(current)) {
-                Task { await model.toggleWatchlist(current) }
-            }
-            if Platform.supportsDownloads {
-                ActionIcon(systemImage: "arrow.down.circle", active: false) {
-                    Task {
-                        if current.type == .movie {
-                            downloadRequest = PlaybackRequest(item: current)
-                        } else if let ep = await model.nextEpisodeToPlay(for: current) {
-                            downloadRequest = PlaybackRequest(item: current, episode: ep)
+            GlassGroup(spacing: 12) {
+                HStack(spacing: 12) {
+                    action(model.isWatched(current) ? "eye.fill" : "eye", label: model.isWatched(current) ? "Watched" : "Mark Watched", active: model.isWatched(current)) {
+                        Task { await model.setWatched(current, episodes: nil, watched: !model.isWatched(current)) }
+                    }
+                    action(model.isWatchlisted(current) ? "bookmark.fill" : "bookmark", label: "Watchlist", active: model.isWatchlisted(current)) {
+                        Task { await model.toggleWatchlist(current) }
+                    }
+                    action(model.isFavourite(current) ? "heart.fill" : "heart", label: "Favourite", active: model.isFavourite(current)) {
+                        Task { await model.toggleFavourite(current) }
+                    }
+                    if current.type == .show {
+                        action("shuffle", label: "Shuffle", active: false) { Task { await model.shufflePlay(current) } }
+                        action("arrow.counterclockwise", label: rewatching ? "End Rewatch" : "Rewatch", active: rewatching) {
+                            Task {
+                                if rewatching { await model.endRewatch(current) } else { await model.startRewatch(current) }
+                                rewatching.toggle()
+                            }
+                        }
+                    }
+                    if Platform.supportsDownloads {
+                        action("arrow.down.circle", label: "Download", active: false) {
+                            Task {
+                                if current.type == .movie {
+                                    downloadRequest = PlaybackRequest(item: current)
+                                } else if let ep = await model.nextEpisodeToPlay(for: current) {
+                                    downloadRequest = PlaybackRequest(item: current, episode: ep)
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
-    }
-
-    private var showExtras: some View {
-        HStack(spacing: 12) {
-            Button {
-                Task { await model.shufflePlay(current) }
-            } label: {
-                Label("Shuffle", systemImage: "shuffle").font(.subheadline.weight(.semibold)).padding(.horizontal, 14).padding(.vertical, 9)
-            }
-            .buttonStyle(ActionButtonStyle(prominent: false))
-            Button {
-                Task {
-                    if rewatching { await model.endRewatch(current) } else { await model.startRewatch(current) }
-                    rewatching.toggle()
-                }
-            } label: {
-                Label(rewatching ? "End Rewatch" : "Rewatch", systemImage: "arrow.counterclockwise")
-                    .font(.subheadline.weight(.semibold)).padding(.horizontal, 14).padding(.vertical, 9)
-            }
-            .buttonStyle(ActionButtonStyle(prominent: false))
             if let next = detail?.nextEpisode, let date = next.airDate {
-                Text("Next: \(next.code) · \(AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))")
-                    .font(.caption).foregroundStyle(.secondary)
+                Label("\(next.code) airs \(AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))", systemImage: "calendar")
+                    .font(Theme.Typeface.caption)
+                    .foregroundStyle(Theme.Palette.textSecondary)
             }
         }
     }
 
-    // MARK: Trailers & info
+    private func action(_ symbol: String, label: String, active: Bool, perform: @escaping () -> Void) -> some View {
+        Button(action: perform) {
+            Image(systemName: symbol)
+                .foregroundStyle(active ? Color.accentColor : .white)
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .buttonStyle(GlassButtonStyle(circle: true))
+        .accessibilityLabel(label)
+        .sensoryFeedbackIfAvailable(active)
+    }
+
+    // MARK: Sections
+
+    @ViewBuilder
+    private func sections(_ detail: MediaDetail) -> some View {
+        if !detail.castRow.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                SectionHeader<Route>("Cast & Crew")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: Theme.Space.m) {
+                        ForEach(detail.castRow.prefix(30)) { member in
+                            PersonCard(id: member.id, name: member.name, role: member.role, profilePath: member.profilePath)
+                        }
+                    }
+                    .padding(.horizontal, Theme.Space.gutter)
+                    .padding(.vertical, Platform.isTV ? 24 : 2)
+                }
+                .scrollClipDisabled()
+            }
+        }
+        if !detail.trailers.isEmpty { trailerSection(detail.trailers) }
+        if let collection = detail.collection { collectionCard(collection) }
+        if !detail.recommendations.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                SectionHeader<Route>("More Like This")
+                PosterRow(items: detail.recommendations, context: "recs-\(current.id)")
+            }
+        }
+        if !detail.similar.isEmpty && detail.recommendations.count < 6 {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                SectionHeader<Route>("Similar")
+                PosterRow(items: detail.similar, context: "similar-\(current.id)")
+            }
+        }
+        infoSection(detail)
+    }
+
+    private func collectionCard(_ collection: MediaCollection) -> some View {
+        NavigationLink(value: Route.collection(id: collection.id, name: collection.name)) {
+            ZStack(alignment: .bottomLeading) {
+                RemoteImage(url: TMDBImage.url(collection.backdropPath, size: .backdropLarge), maxPixel: 1400, fallbackTitle: collection.name)
+                    .frame(height: 150 * Theme.scale)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+                LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .top, endPoint: .bottom)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("PART OF THE").font(Theme.Typeface.micro).kerning(1.2).foregroundStyle(Theme.Palette.textSecondary)
+                    Text(collection.name).font(Theme.Typeface.title).displayTracking()
+                }
+                .padding(Theme.Space.m)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .hairline(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        }
+        .buttonStyle(CardButtonStyle())
+        .padding(.horizontal, Theme.Space.gutter)
+    }
 
     private func trailerSection(_ trailers: [Video]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack {
                 if trailers.count > 1 {
                     Menu {
@@ -225,64 +256,71 @@ struct DetailView: View {
                         }
                     } label: {
                         HStack(spacing: 6) {
-                            Text("Trailer").font(.title2.weight(.bold))
-                            Image(systemName: "chevron.up.chevron.down").font(.subheadline.weight(.semibold))
+                            Text("Trailers")
+                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 12 * Theme.scale, weight: .bold)).foregroundStyle(Theme.Palette.textTertiary)
                         }
                     }
                     .buttonStyle(.plain)
                 } else {
-                    Text("Trailer").font(.title2.weight(.bold))
+                    Text("Trailer")
                 }
                 Spacer()
             }
-            .padding(.horizontal, Platform.horizontalPadding)
+            .font(Theme.Typeface.sectionTitle)
+            .displayTracking()
+            .padding(.horizontal, Theme.Space.gutter)
             let video = trailers[min(selectedTrailer, trailers.count - 1)]
             Button {
                 if let url = video.youtubeURL { model.openExternally(url) }
             } label: {
                 ZStack {
-                    RemoteImage(url: video.thumbnailURL)
+                    RemoteImage(url: video.thumbnailURL, maxPixel: 900, fallbackTitle: video.name)
+                    Color.black.opacity(0.15)
                     Image(systemName: "play.fill")
-                        .font(.system(size: 26))
-                        .foregroundStyle(.black)
-                        .frame(width: 64, height: 64)
-                        .background(.white, in: Circle())
+                        .font(.system(size: 22 * Theme.scale, weight: .bold))
+                        .frame(width: 60 * Theme.scale, height: 60 * Theme.scale)
+                        .flowGlass(Circle())
                 }
-                .frame(width: Platform.landscapeWidth * 1.6, height: Platform.landscapeWidth * 0.9)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .frame(width: Platform.landscapeWidth * 1.5, height: Platform.landscapeWidth * 1.5 * 9 / 16)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                .hairline(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
                 .overlay(alignment: .bottomLeading) {
-                    Text(video.name).font(.caption.weight(.semibold)).padding(10).shadow(radius: 4)
+                    Text(video.name).font(Theme.Typeface.caption).padding(Theme.Space.s).shadow(radius: 4)
                 }
+                .artworkShadow(0.5)
             }
             .buttonStyle(CardButtonStyle())
-            .padding(.horizontal, Platform.horizontalPadding)
+            .padding(.horizontal, Theme.Space.gutter)
         }
     }
 
     private func infoSection(_ detail: MediaDetail) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Information").font(.title3.weight(.bold))
-            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("Information").font(Theme.Typeface.sectionTitle).displayTracking()
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150 * Theme.scale), spacing: Theme.Space.l, alignment: .topLeading)], alignment: .leading, spacing: Theme.Space.m) {
                 if let date = detail.item.releaseDate {
                     info(detail.item.type == .movie ? "Released" : "First Aired", AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))
                 }
-                if let status = detail.item.status { info("Status", status) }
                 if let runtime = detail.item.runtimeMinutes, runtime > 0 { info("Runtime", TimeFormat.runtime(runtime)) }
-                if !detail.networks.isEmpty { info("Network", detail.networks.joined(separator: ", ")) }
+                if let status = detail.item.status { info("Status", status) }
                 if let seasons = detail.numberOfSeasons { info("Seasons", String(seasons)) }
+                if !detail.networks.isEmpty { info("Network", detail.networks.joined(separator: ", ")) }
                 let directors = detail.crew.filter { $0.role == "Director" || $0.role == "Creator" }.map(\.name)
                 if !directors.isEmpty { info(detail.item.type == .movie ? "Director" : "Created By", directors.joined(separator: ", ")) }
                 if let lang = detail.item.originalLanguage { info("Language", Locale.current.localizedString(forLanguageCode: lang) ?? lang) }
+                if let certification = detail.item.certification { info("Rated", certification) }
             }
-            .font(.subheadline)
         }
-        .padding(.horizontal, Platform.horizontalPadding)
+        .padding(Theme.Space.l)
+        .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
+        .hairline(RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
+        .padding(.horizontal, Theme.Space.gutter)
     }
 
     private func info(_ label: String, _ value: String) -> some View {
-        GridRow {
-            Text(label).foregroundStyle(.secondary)
-            Text(value)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label.uppercased()).font(Theme.Typeface.micro).kerning(0.8).foregroundStyle(Theme.Palette.textTertiary)
+            Text(value).font(Theme.Typeface.body).foregroundStyle(.white.opacity(0.9))
         }
     }
 
@@ -292,7 +330,7 @@ struct DetailView: View {
         guard let catalog = model.catalog, let id = item.ids.tmdb else { return }
         do {
             let loaded = try await catalog.details(item.type, id: id)
-            detail = loaded
+            withAnimation(Theme.Motion.fade) { detail = loaded }
             if let key = loaded.item.key, loaded.item.type == .show {
                 model.completedShowThresholds[key] = AppModel.airedEpisodes(loaded).count
                 rewatching = await model.isRewatching(loaded.item)
@@ -307,80 +345,74 @@ struct DetailView: View {
             if loaded.item.type == .show, let provider = model.episodeProvider {
                 episodesBySeason = (try? await provider.episodes(for: loaded.item, seasons: loaded.seasons)) ?? [:]
             }
-            ratings = await ratingsTask
+            let fetched = await ratingsTask
+            withAnimation(Theme.Motion.fade) { ratings = fetched }
         } catch {
             self.error = error.localizedDescription
         }
     }
 }
 
-struct ActionButtonStyle: ButtonStyle {
-    var prominent: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(prominent ? Color.black : Color.white)
-            .background(prominent ? Color.white.opacity(configuration.isPressed ? 0.8 : 1) : Color.white.opacity(configuration.isPressed ? 0.2 : 0.12),
-                        in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .modifier(FocusLift())
-    }
-}
-
-struct ActionIcon: View {
-    let systemImage: String
-    let active: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 20, weight: .medium))
-                .foregroundStyle(active ? Color.accentColor : .white)
-                .frame(width: Platform.isTV ? 90 : 56, height: Platform.isTV ? 70 : 50)
-                .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(CardButtonStyle())
-    }
-}
-
-/// IMDb · RT · Popcornmeter · Metacritic · TMDB · Letterboxd · Trakt
+/// IMDb · Rotten Tomatoes · Popcornmeter · Metacritic · TMDb · Letterboxd · Trakt
 struct RatingsRow: View {
     let ratings: Ratings
+    var centered = false
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 16) {
-                if let imdb = ratings.imdb {
-                    HStack(spacing: 4) {
-                        Image(systemName: "star.fill").foregroundStyle(.yellow)
-                        Text(String(format: "%.1f", imdb)).fontWeight(.semibold)
-                    }
-                }
-                if let rt = ratings.rottenTomatoes { badge("RT", "\(rt)%", color: rt >= 60 ? .red : .green) }
-                if let popcorn = ratings.popcorn {
-                    HStack(spacing: 4) {
-                        Image(systemName: "popcorn.fill").foregroundStyle(.orange)
-                        Text("\(popcorn)%").fontWeight(.semibold)
-                    }
-                }
-                if let mc = ratings.metacritic { badge("MC", "\(mc)", color: mc >= 61 ? .green : mc >= 40 ? .yellow : .red, filled: true) }
-                if let tmdb = ratings.tmdb, tmdb > 0 { badge("TMDB", String(format: "%.1f", tmdb), color: .teal) }
-                if let lb = ratings.letterboxd { badge("LB", String(format: "%.1f", lb), color: .gray) }
-                if let trakt = ratings.trakt { badge("Trakt", "\(trakt)%", color: .gray) }
-            }
-            .font(Platform.isTV ? .callout : .subheadline)
+        ViewThatFits(in: .horizontal) {
+            row
+            ScrollView(.horizontal, showsIndicators: false) { row }
         }
+        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
     }
 
-    private func badge(_ label: String, _ value: String, color: Color, filled: Bool = false) -> some View {
+    private var row: some View {
+        HStack(spacing: 14 * Theme.scale) {
+            if let imdb = ratings.imdb { badge("IMDb", String(format: "%.1f", imdb), fill: Color(red: 0.96, green: 0.77, blue: 0.09), dark: true) }
+            if let rt = ratings.rottenTomatoes {
+                score(symbol: rt >= 60 ? "circle.fill" : "drop.fill", color: rt >= 60 ? Color(red: 0.98, green: 0.2, blue: 0.1) : Color(red: 0.4, green: 0.75, blue: 0.2), "\(rt)%")
+            }
+            if let popcorn = ratings.popcorn { score(symbol: "popcorn.fill", color: Color(red: 0.98, green: 0.65, blue: 0.2), "\(popcorn)%") }
+            if let mc = ratings.metacritic {
+                badge("MC", "\(mc)", fill: mc >= 61 ? Color(red: 0.4, green: 0.8, blue: 0.2) : mc >= 40 ? Color(red: 1, green: 0.8, blue: 0.2) : Color(red: 1, green: 0.25, blue: 0.25), dark: true)
+            }
+            if let tmdb = ratings.tmdb, tmdb > 0 { badge("TMDB", String(format: "%.1f", tmdb), fill: Color(red: 0.05, green: 0.75, blue: 0.75), dark: true) }
+            if let lb = ratings.letterboxd { badge("LB", String(format: "%.1f", lb), fill: .white.opacity(0.18), dark: false) }
+            if let trakt = ratings.trakt { badge("Trakt", "\(trakt)%", fill: .white.opacity(0.18), dark: false) }
+        }
+        .font(.system(size: 14 * Theme.scale, weight: .semibold).monospacedDigit())
+        .fixedSize()
+    }
+
+    private func badge(_ label: String, _ value: String, fill: Color, dark: Bool) -> some View {
         HStack(spacing: 5) {
             Text(label)
-                .font(.caption2.weight(.heavy))
-                .padding(.horizontal, 5).padding(.vertical, 2)
-                .background(filled ? color : Color.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 4))
-                .foregroundStyle(filled ? .black : .white)
-            Text(value).fontWeight(.semibold)
+                .font(.system(size: 10 * Theme.scale, weight: .heavy))
+                .padding(.horizontal, 4).padding(.vertical, 2)
+                .background(fill, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .foregroundStyle(dark ? .black : .white)
+            Text(value)
         }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func score(symbol: String, color: Color, _ value: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: symbol).foregroundStyle(color).imageScale(.small)
+            Text(value)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+extension View {
+    /// A light tap when a toggle flips (iOS 17+).
+    @ViewBuilder
+    func sensoryFeedbackIfAvailable<T: Equatable>(_ trigger: T) -> some View {
+        #if os(iOS)
+        sensoryFeedback(.selection, trigger: trigger)
+        #else
+        self
+        #endif
     }
 }

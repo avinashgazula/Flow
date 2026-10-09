@@ -96,6 +96,8 @@ public struct MediaItem: Codable, Hashable, Sendable, Identifiable {
     public var status: String?
     /// Earliest date the title can be played at home (digital/physical/TV), if known.
     public var homeReleaseDate: Date?
+    /// Key art without baked-in text, for heroes that overlay their own logo.
+    public var textlessPosterPath: String?
 
     public init(
         type: MediaType,
@@ -136,6 +138,9 @@ public struct MediaItem: Codable, Hashable, Sendable, Identifiable {
         self.status = status
         self.homeReleaseDate = homeReleaseDate
     }
+
+    /// The best artwork to put a logo over: textless key art when TMDb has it.
+    public var heroPosterPath: String? { textlessPosterPath ?? posterPath }
 
     public var id: String { key?.description ?? "\(type.rawValue):\(ids.imdb ?? title)" }
 

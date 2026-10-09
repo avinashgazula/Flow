@@ -23,7 +23,6 @@ enum ScreenshotTour {
             Step(name: "detail-show") { m in m.paths[.home] = [.detail(bbItem)] },
             Step(name: "sources") { m in await m.play(duneItem) },
             Step(name: "player") { m in
-                m.sourcePickerRequest = nil
                 if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first {
                     m.startPlayback(source, request: PlaybackRequest(item: duneItem))
                 }
