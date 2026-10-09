@@ -100,7 +100,10 @@ struct LiveTVView: View {
             }
         }
         .navigationTitle("Live TV")
+        #if !os(tvOS)
+        // On TV a search field is a full on-screen keyboard parked above the content.
         .searchable(text: $search, prompt: "Channels")
+        #endif
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { withAnimation(Theme.Motion.fade) { showGuide.toggle() } } label: {

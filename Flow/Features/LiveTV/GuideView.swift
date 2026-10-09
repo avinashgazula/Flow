@@ -48,7 +48,8 @@ struct GuideView: View {
 
     private var channelsColumn: some View {
         VStack(spacing: 0) {
-            Color.clear.frame(height: 34)
+            // Fixed width: a bare Color.clear is greedy and would take half the row from the timeline.
+            Color.clear.frame(width: channelColumn, height: 34)
             ForEach(channels) { channel in
                 Button { onPlay(channel) } label: {
                     VStack(spacing: 4) {
