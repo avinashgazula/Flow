@@ -61,7 +61,7 @@ public actor MatroskaRemuxer {
 
         // AC-3 and E-AC-3 configuration comes from a real frame, so look at the start of the file.
         // The opening clusters give Dolby audio its configuration and show how far B-frames reorder.
-        let probe = try await source.read(firstCluster..<(firstCluster + 4 * 1024 * 1024))
+        let probe = try await source.read(firstCluster..<(firstCluster + 2 * 1024 * 1024))
         let probeBlocks = (try? MatroskaClusterParser.blocks(probe, timecodeScale: header.timecodeScale, tracks: header.tracks)) ?? []
         var firstFrames: [Int: [UInt8]] = [:]
         for block in probeBlocks where firstFrames[block.track] == nil { firstFrames[block.track] = block.frames.first }
@@ -134,10 +134,12 @@ public actor MatroskaRemuxer {
         let total = header.duration ?? (cues.last!.time + Int64(target * 1e9))
         let clusterStarts = Array(Set(header.cues.map(\.clusterPosition))).sorted()
 
-        // Boundaries every `target` seconds or so, always on a cue (keyframe).
+        // Boundaries every `target` seconds or so, always on a cue (keyframe). The opening
+        // segments are shorter, so the first picture arrives after a small download.
         var boundaries: [MatroskaCue] = [cues[0]]
-        for cue in cues.dropFirst() where Double(cue.time - boundaries.last!.time) / 1e9 >= target * 0.9 {
-            boundaries.append(cue)
+        for cue in cues.dropFirst() {
+            let length = boundaries.count < 3 ? min(target, 2) : target
+            if Double(cue.time - boundaries.last!.time) / 1e9 >= length * 0.9 { boundaries.append(cue) }
         }
 
         func rangeEnd(after boundary: MatroskaCue) -> Int64 {

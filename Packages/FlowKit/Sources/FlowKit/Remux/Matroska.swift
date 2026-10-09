@@ -187,42 +187,50 @@ public enum MatroskaReader {
         var sawChapters = false
         var offset = segment.dataStart
 
-        // Walk top-level children until the first cluster, widening the buffer when one runs past it.
+        // Walk top-level children until the first cluster. The window slides forward and jumps
+        // straight over anything Flow doesn't need (attachments such as fonts can be many megabytes).
+        var window = buffer
+        var windowStart = 0
+        let wanted: Set<UInt32> = [MKV.seekHead, MKV.info, MKV.tracks, MKV.cues, MKV.chapters]
         while true {
-            if offset + 12 > buffer.count {
-                if let length, Int64(buffer.count) >= length { break }
-                buffer += try await source.read(Int64(buffer.count)..<Int64(buffer.count + probeSize))
-                if offset + 12 > buffer.count { break }
+            if let segmentEnd = header.segmentEnd, Int64(offset) >= segmentEnd { break }
+            if let length, Int64(offset) >= length { break }
+            if offset - windowStart + 12 > window.count {
+                window = try await source.read(Int64(offset)..<Int64(offset + probeSize))
+                windowStart = offset
+                if window.count < 2 { break }
             }
-            let element = try EBML.readElement(buffer, at: offset)
+            var element = try EBML.readElement(window, at: offset - windowStart)
             if element.id == MKV.cluster {
                 header.firstClusterPosition = Int64(offset)
                 break
             }
-            guard let end = element.end else { throw MatroskaError.malformed("unknown-size top-level element") }
-            let wanted: Set<UInt32> = [MKV.seekHead, MKV.info, MKV.tracks, MKV.cues, MKV.chapters]
-            if wanted.contains(element.id) && end > buffer.count {
-                buffer += try await source.read(Int64(buffer.count)..<Int64(end))
-                guard end <= buffer.count else { throw MatroskaError.malformed("truncated header") }
+            guard let relativeEnd = element.end else { throw MatroskaError.malformed("unknown-size top-level element") }
+            let end = windowStart + relativeEnd
+            if wanted.contains(element.id) && relativeEnd > window.count {
+                guard end - offset < 64 * 1024 * 1024 else { offset = end; continue }
+                window = try await source.read(Int64(offset)..<Int64(end))
+                windowStart = offset
+                element = try EBML.readElement(window, at: 0)
+                guard let refreshedEnd = element.end, refreshedEnd <= window.count else { throw MatroskaError.malformed("truncated header") }
             }
             switch element.id {
             case MKV.seekHead:
-                for (id, position) in try parseSeekHead(buffer, element) { seekPositions[id] = position }
+                for (id, position) in try parseSeekHead(window, element) { seekPositions[id] = position }
             case MKV.info:
-                try parseInfo(buffer, element, into: &header)
+                try parseInfo(window, element, into: &header)
             case MKV.tracks:
-                header.tracks = try parseTracks(buffer, element)
+                header.tracks = try parseTracks(window, element)
             case MKV.cues:
-                header.cues = try parseCues(buffer, element)
+                header.cues = try parseCues(window, element)
                 sawCues = true
             case MKV.chapters:
-                header.chapters = try parseChapters(buffer, element)
+                header.chapters = try parseChapters(window, element)
                 sawChapters = true
             default:
                 break
             }
             offset = end
-            if let segmentEnd = header.segmentEnd, Int64(offset) >= segmentEnd { break }
         }
 
         // Cues and chapters usually sit after the clusters; the SeekHead says where.

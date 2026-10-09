@@ -108,3 +108,45 @@ final class ContainerDetectorTests: XCTestCase {
         XCTAssertEqual(ContainerDetector.sniff([0, 0, 0, 0x20] + Array("ftypisom".utf8)), .native)
     }
 }
+
+final class MatroskaAttachmentTests: XCTestCase {
+    /// A big attachment before the clusters is jumped over, not read.
+    func testSkipsLargeAttachments() async throws {
+        let url = Bundle.module.url(forResource: "avc-aac-srt", withExtension: "mkv", subdirectory: "Resources")!
+        var bytes = [UInt8](try Data(contentsOf: url))
+        let header = try await MatroskaReader.readHeader(MemoryByteSource(bytes))
+        let insertAt = Int(header.firstClusterPosition!)
+        // Attachments element (0x1941A469) with an 8-byte size and 3 MB of payload.
+        let payload = 3 * 1024 * 1024
+        var element: [UInt8] = [0x19, 0x41, 0xA4, 0x69, 0x01]
+        for shift in stride(from: 48, through: 0, by: -8) { element.append(UInt8((payload >> shift) & 0xFF)) }
+        element += [UInt8](repeating: 0x55, count: payload)
+        bytes.insert(contentsOf: element, at: insertAt)
+        // Grow the Segment's 8-byte size field to match (ffmpeg writes it right after the Segment ID).
+        let segmentID: [UInt8] = [0x18, 0x53, 0x80, 0x67]
+        let segmentAt = (0..<64).first { Array(bytes[$0..<$0 + 4]) == segmentID }!
+        var size = 0
+        for k in 0..<7 { size = size << 8 | Int(bytes[segmentAt + 5 + k]) }
+        size += element.count
+        for k in 0..<7 { bytes[segmentAt + 5 + k] = UInt8((size >> (8 * (6 - k))) & 0xFF) }
+
+        let counting = CountingSource(inner: MemoryByteSource(bytes))
+        let shifted = try await MatroskaReader.readHeader(counting)
+        XCTAssertEqual(shifted.firstClusterPosition, header.firstClusterPosition! + Int64(element.count))
+        XCTAssertEqual(shifted.tracks.count, header.tracks.count)
+        let read = await counting.total
+        XCTAssertLessThan(read, 2 * 1024 * 1024, "the attachment's payload isn't downloaded")
+    }
+}
+
+actor CountingSource: ByteSource {
+    let inner: MemoryByteSource
+    var total = 0
+    init(inner: MemoryByteSource) { self.inner = inner }
+    func length() async throws -> Int64? { try await inner.length() }
+    func read(_ range: Range<Int64>) async throws -> [UInt8] {
+        let bytes = try await inner.read(range)
+        total += bytes.count
+        return bytes
+    }
+}

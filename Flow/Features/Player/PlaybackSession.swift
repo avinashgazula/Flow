@@ -173,7 +173,7 @@ final class PlaybackSession: Identifiable {
                 fail("This file's audio is \(first.reason), which Apple devices can't decode. Try another source, or open it in VLC or Infuse.")
                 return
             }
-            let (hls, token) = try await LocalHLSServer.shared.register(remuxer)
+            let (hls, token) = try LocalHLSServer.shared.register(remuxer)
             guard !Task.isCancelled else { LocalHLSServer.shared.unregister(token); return }
             hlsToken = token
             usesRemux = true
