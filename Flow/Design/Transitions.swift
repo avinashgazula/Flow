@@ -23,12 +23,12 @@ struct ZoomNamespaceProvider<Content: View>: View {
 }
 
 private struct ZoomSourceModifier: ViewModifier {
-    let id: String
+    let id: String?
     @Environment(\.zoomNamespace) private var namespace
 
     func body(content: Content) -> some View {
         #if os(iOS)
-        if #available(iOS 18.0, *), let namespace {
+        if #available(iOS 18.0, *), let namespace, let id {
             content.matchedTransitionSource(id: id, in: namespace) { source in
                 source.clipShape(RoundedRectangle(cornerRadius: Theme.Radius.poster, style: .continuous))
             }
@@ -59,7 +59,7 @@ private struct ZoomDestinationModifier: ViewModifier {
 }
 
 extension View {
-    func zoomSource(_ id: String) -> some View { modifier(ZoomSourceModifier(id: id)) }
+    func zoomSource(_ id: String?) -> some View { modifier(ZoomSourceModifier(id: id)) }
     func zoomDestination(_ id: String?) -> some View { modifier(ZoomDestinationModifier(id: id)) }
 }
 

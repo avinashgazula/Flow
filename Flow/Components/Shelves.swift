@@ -473,10 +473,9 @@ struct PosterCardFlexible: View {
 
     var body: some View {
         NavigationLink(value: Route.detail(item, zoom: "\(context)-\(item.id)")) {
-            PosterCardContent(item: item, width: nil)
+            PosterCardContent(item: item, width: nil, zoomID: "\(context)-\(item.id)")
         }
         .buttonStyle(CardButtonStyle())
-        .zoomSource("\(context)-\(item.id)")
         .contextMenu { MediaContextMenu(item: item) } preview: { PosterPreview(item: item) }
     }
 }

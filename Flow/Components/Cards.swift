@@ -13,10 +13,9 @@ struct PosterCard: View {
 
     var body: some View {
         NavigationLink(value: Route.detail(item, zoom: zoomID)) {
-            PosterCardContent(item: item, width: width)
+            PosterCardContent(item: item, width: width, zoomID: zoomID)
         }
         .buttonStyle(CardButtonStyle())
-        .zoomSource(zoomID)
         .contextMenu { MediaContextMenu(item: item) } preview: { PosterPreview(item: item) }
         .accessibilityLabel(accessibilityText)
     }
@@ -32,12 +31,15 @@ struct PosterCard: View {
 struct PosterCardContent: View {
     let item: MediaItem
     var width: CGFloat?
+    /// The zoom transition grows from the artwork alone; including the title would clip it to the poster's corners.
+    var zoomID: String?
     @Environment(AppModel.self) private var model
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             PosterArtwork(item: item)
                 .frame(width: width, height: width.map { $0 * 1.5 })
+                .zoomSource(zoomID)
             if model.settings.general.showPosterTitles {
                 Text(item.title)
                     .font(.system(.footnote, weight: .medium))

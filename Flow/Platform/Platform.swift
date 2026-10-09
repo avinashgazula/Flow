@@ -158,6 +158,32 @@ extension AccentColorChoice {
     }
 }
 
+extension AccentColorChoice {
+    /// Switches can't use a white accent: their knob is white. They turn green instead, as in Settings.
+    var switchColor: Color { self == .white ? .green : color }
+}
+
+#if os(iOS)
+/// Draws switches with a colour of their own, so the app's accent can be white.
+struct FlowSwitchStyle: ToggleStyle {
+    let tint: Color
+    func makeBody(configuration: Configuration) -> some View {
+        Toggle(configuration).toggleStyle(.switch).tint(tint)
+    }
+}
+#endif
+
+extension View {
+    @ViewBuilder
+    func switchTint(_ accent: AccentColorChoice) -> some View {
+        #if os(iOS)
+        self.toggleStyle(FlowSwitchStyle(tint: accent.switchColor))
+        #else
+        self
+        #endif
+    }
+}
+
 extension SubtitleColor {
     var color: Color {
         switch self {
