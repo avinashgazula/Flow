@@ -20,23 +20,30 @@ jobs:
         working-directory: Packages/FlowKit
         run: swift test
 
+  flowkit-apple:
+    name: FlowKit tests (macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo xcode-select -s /Applications/Xcode_26.3.app
+      - name: Test
+        working-directory: Packages/FlowKit
+        run: swift test
+
   apple:
-    name: Build ${{ matrix.scheme }}
+    name: Build ${{ matrix.scheme }} (Xcode ${{ matrix.xcode }})
     runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
         include:
-          - scheme: Flow-iOS
-            destination: generic/platform=iOS Simulator
-          - scheme: Flow-macOS
-            destination: generic/platform=macOS
-          - scheme: Flow-tvOS
-            destination: generic/platform=tvOS Simulator
+          - { scheme: Flow-iOS, destination: "generic/platform=iOS Simulator", xcode: "26.3" }
+          - { scheme: Flow-macOS, destination: "generic/platform=macOS", xcode: "26.3" }
+          - { scheme: Flow-tvOS, destination: "generic/platform=tvOS Simulator", xcode: "26.3" }
+          - { scheme: Flow-iOS, destination: "generic/platform=iOS Simulator", xcode: "16.4" }
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.4.app || sudo xcode-select -s /Applications/Xcode.app
+      - run: sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app
       - name: Generate project
         run: |
           brew install xcodegen
@@ -57,22 +64,54 @@ jobs:
               grep -E "^/.*: error: " build.log | sed 's#^.*/Flow/Flow/##' | sort -u | head -120 >> "$GITHUB_STEP_SUMMARY"
               exit 1
             }
-          grep -c "warning:" build.log || true
-          tail -5 build.log
+          echo "warnings: $(grep -c 'warning:' build.log || true)"
 
-  environment-probe:
-    name: Toolchains
+  screenshots:
+    name: Screenshots (${{ matrix.platform }})
+    if: github.event_name == 'push'
+    needs: apple
     runs-on: macos-15
-    steps:
-      - run: |
-          ls /Applications | grep -i xcode
-          xcrun simctl list runtimes
-
-  flowkit-apple:
-    name: FlowKit tests (macOS)
-    runs-on: macos-15
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ios, tvos, macos]
     steps:
       - uses: actions/checkout@v4
-      - name: Test
-        working-directory: Packages/FlowKit
-        run: swift test
+      - run: sudo xcode-select -s /Applications/Xcode_26.3.app
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Run tour
+        run: scripts/screenshot-tour.sh ${{ matrix.platform }} shots/${{ matrix.platform }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shots-${{ matrix.platform }}
+          path: shots
+          if-no-files-found: ignore
+
+  publish-screenshots:
+    name: Publish screenshots
+    if: always() && github.event_name == 'push'
+    needs: screenshots
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: shots-*
+          path: shots
+          merge-multiple: true
+      - name: Push to ci-screenshots branch
+        run: |
+          cd shots
+          ls -R | head -80
+          echo "${GITHUB_SHA}" > COMMIT
+          git init -q
+          git checkout -q -b ci-screenshots
+          git add -A
+          git -c user.name="flow-ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Screenshots for ${GITHUB_SHA}"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" ci-screenshots

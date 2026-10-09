@@ -3,7 +3,6 @@ import FlowKit
 
 struct SearchView: View {
     @Environment(AppModel.self) private var model
-    @State private var text = ""
     @State private var results: [SearchResult] = []
     @State private var serverResults: [MediaItem] = []
     @State private var searching = false
@@ -14,7 +13,10 @@ struct SearchView: View {
     private var shows: [MediaItem] { results.compactMap { if case .media(let m) = $0, m.type == .show { return m }; return nil } }
     private var people: [Person] { results.compactMap { if case .person(let p) = $0 { return p }; return nil } }
 
+    private var text: String { model.searchText }
+
     var body: some View {
+        @Bindable var model = model
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
                 if text.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -62,7 +64,7 @@ struct SearchView: View {
             .padding(.vertical)
         }
         .navigationTitle("Search")
-        .searchable(text: $text, prompt: "Movies, shows, and people")
+        .searchable(text: $model.searchText, prompt: "Movies, shows, and people")
         .onSubmit(of: .search) { model.rememberSearch(text); recents = model.recentSearches }
         .task(id: text) { await runSearch() }
         .onAppear { recents = model.recentSearches }
@@ -82,7 +84,7 @@ struct SearchView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(recents, id: \.self) { term in
-                            Button { text = term } label: {
+                            Button { model.searchText = term } label: {
                                 Label(term, systemImage: "clock.arrow.circlepath")
                                     .padding(.horizontal, 14).padding(.vertical, 9)
                                     .background(.white.opacity(0.1), in: Capsule())

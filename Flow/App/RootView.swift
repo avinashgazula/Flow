@@ -36,7 +36,7 @@ struct RootView: View {
         #endif
         #if !os(macOS)
         .sheet(isPresented: $model.showSettings) {
-            NavigationStack {
+            NavigationStack(path: $model.settingsPath) {
                 SettingsRootView()
                     .flowDestinations()
                     .toolbar {
@@ -68,7 +68,7 @@ struct TabShell: View {
         @Bindable var model = model
         TabView(selection: $model.selectedTab) {
             ForEach(AppTab.allCases) { tab in
-                NavigationStack {
+                NavigationStack(path: model.path(for: tab)) {
                     screen(for: tab)
                         .flowDestinations()
                 }
@@ -112,7 +112,7 @@ struct MacShell: View {
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 210)
         } detail: {
-            NavigationStack {
+            NavigationStack(path: model.path(for: model.selectedTab)) {
                 TabShell().screen(for: model.selectedTab)
                     .flowDestinations()
             }

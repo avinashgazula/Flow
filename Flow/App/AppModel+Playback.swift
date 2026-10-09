@@ -23,6 +23,7 @@ extension AppModel {
             }
         }
         providers += settings.sources.addons.filter(\.enabled).map { AddonClient(config: $0, http: http, timeout: settings.sources.timeoutSeconds) as SourceProvider }
+        if isDemo { providers.append(DemoSourceProvider()) }
         return providers
     }
 

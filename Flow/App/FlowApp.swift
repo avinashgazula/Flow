@@ -1,5 +1,11 @@
 import SwiftUI
+import Combine
 import FlowKit
+
+extension Notification.Name {
+    /// Posted when demo mode is entered or left; the app rebuilds its model.
+    static let flowModeChanged = Notification.Name("flow.modeChanged")
+}
 
 @main
 struct FlowApp: App {
@@ -12,7 +18,11 @@ struct FlowApp: App {
                 .tint(model.settings.general.accent.color)
                 .preferredColorScheme(.dark)
                 .onOpenURL { url in model.handle(url: url) }
-                .task { await model.start() }
+                .task(id: ObjectIdentifier(model)) { await model.start() }
+                .task(id: ObjectIdentifier(model)) {
+                    if ScreenshotTour.isRequested { await ScreenshotTour.run(model) }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .flowModeChanged)) { _ in model = AppModel() }
         }
         #if os(macOS)
         .defaultSize(width: 1280, height: 820)

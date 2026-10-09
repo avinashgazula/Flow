@@ -21,14 +21,13 @@ final class LiveTVStore {
         return channels.map(\.group).filter { seen.insert($0).inserted }
     }
 
-    func load(providers: [IPTVProviderConfig], refreshHours: Int, force: Bool = false) async {
+    func load(providers: [IPTVProviderConfig], refreshHours: Int, http: HTTPClient, force: Bool = false) async {
         let enabled = providers.filter(\.enabled)
         guard force || enabled != loadedFor || channels.isEmpty else { return }
         loading = true
         defer { loading = false }
         error = nil
         loadedFor = enabled
-        let http = HTTPClient(userAgent: "Flow/1.0")
         let clients: [IPTVProvider] = enabled.map { config -> IPTVProvider in
             config.kind == .xtream ? XtreamClient(config: config, http: http) : M3UProvider(config: config, http: http)
         }
@@ -104,12 +103,12 @@ struct LiveTVView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    Task { await store.load(providers: model.settings.liveTV.providers, refreshHours: model.settings.liveTV.epgRefreshHours, force: true) }
+                    Task { await store.load(providers: model.settings.liveTV.providers, refreshHours: model.settings.liveTV.epgRefreshHours, http: model.http, force: true) }
                 } label: { Image(systemName: "arrow.clockwise") }
             }
         }
         .task(id: model.settings.liveTV.providers) {
-            await store.load(providers: model.settings.liveTV.providers, refreshHours: model.settings.liveTV.epgRefreshHours)
+            await store.load(providers: model.settings.liveTV.providers, refreshHours: model.settings.liveTV.epgRefreshHours, http: model.http)
         }
         #if os(macOS)
         .sheet(item: $playing) { channel in LivePlayerView(channel: channel, epg: store.epg).frame(minWidth: 800, minHeight: 450) }

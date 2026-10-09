@@ -152,8 +152,9 @@ public enum M3UParser {
         if path.contains("/movie/") || path.contains("/series/") { return true }
         let ext = url.pathExtension.lowercased()
         if ["mkv", "mp4", "avi", "m4v"].contains(ext) { return true }
+        // Group names alone are unreliable ("Movies" is often a live channel group); only an explicit VOD tag counts.
         let g = group.lowercased()
-        return g.contains("vod") || g.hasPrefix("movies") || g.hasPrefix("series")
+        return g.contains("vod")
     }
 
     /// Parses key="value" pairs; tolerates single quotes and unquoted values.

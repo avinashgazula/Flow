@@ -42,7 +42,12 @@ struct OnboardingView: View {
                         .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty || checking)
                     }
                     .frame(maxWidth: 520)
-                    Button("I have a setup from another device") { importing = true }
+                    VStack(spacing: 14) {
+                        Button("Explore with Sample Data") { model.setDemoMode(true) }
+                            .font(.headline)
+                        Button("I have a setup from another device") { importing = true }
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .padding(.horizontal, 28)
                 .frame(maxWidth: .infinity)

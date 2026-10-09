@@ -34,11 +34,13 @@ enum LibraryList: String, Hashable, CaseIterable, Identifiable {
 final class AppModel {
     // MARK: Persistence
 
-    @ObservationIgnored let store = JSONFileStore.applicationSupport()
+    @ObservationIgnored let store: JSONFileStore
     @ObservationIgnored let secretStore: SecretStore
-    @ObservationIgnored let cache = ResponseCache(store: .caches("FlowResponses"))
+    @ObservationIgnored let cache: ResponseCache
     @ObservationIgnored let cloud: CloudSync
-    @ObservationIgnored let http = HTTPClient(userAgent: "Flow/1.0")
+    @ObservationIgnored let http: HTTPClient
+    /// Demo mode runs on bundled sample data in a separate sandbox; nothing touches the real setup.
+    @ObservationIgnored let isDemo: Bool
     @ObservationIgnored let deviceID = Platform.deviceID
     @ObservationIgnored let serverIndex = MediaServerIndex()
     @ObservationIgnored private var cloudObserver: NSObjectProtocol?
@@ -99,32 +101,86 @@ final class AppModel {
     var showSettings = false
     /// A flow://setup link waiting for the user to confirm the import.
     var pendingImport: String?
+    /// Navigation stacks per tab, so the app (and the screenshot tour) can drive navigation.
+    var paths: [AppTab: [Route]] = [:]
+    var settingsPath: [Route] = []
+    var searchText = ""
 
-    init() {
-        #if canImport(Security)
-        secretStore = KeychainSecretStore()
-        #else
-        secretStore = FileSecretStore(store: .applicationSupport())
-        #endif
-        #if os(iOS) || os(macOS) || os(tvOS)
-        cloud = CloudSync(store: UbiquitousKeyValueStore())
-        #else
-        cloud = CloudSync(store: InMemoryKeyValueStore())
-        #endif
+    static var demoRequested: Bool {
+        UserDefaults.standard.bool(forKey: "FlowDemo") || UserDefaults.standard.bool(forKey: "flow.demoMode")
+    }
 
-        let fileStore = JSONFileStore.applicationSupport()
-        let loaded: AppSettings
-        if let data = fileStore.loadData("settings"), let decoded = try? SettingsCodec.decode(AppSettings.self, from: data, defaults: AppSettings()) {
-            loaded = decoded
+    init(demo: Bool = AppModel.demoRequested) {
+        isDemo = demo
+        if demo {
+            let sandbox = JSONFileStore.applicationSupport("FlowDemo")
+            store = sandbox
+            secretStore = FileSecretStore(store: sandbox)
+            cache = ResponseCache(store: .caches("FlowDemoResponses"))
+            cloud = CloudSync(store: InMemoryKeyValueStore())
+            http = HTTPClient(transport: DemoTransport(), userAgent: "Flow/1.0")
+            settings = Self.demoSettings()
+            selectedTab = .home
+            var creds = Credentials()
+            creds.tmdbAPIKey = "demo"
+            creds.mdblistAPIKey = "demo"
+            credentials = creds
+            localLibrary = DemoCatalog.seededLibrary()
         } else {
-            loaded = AppSettings()
+            store = JSONFileStore.applicationSupport()
+            #if canImport(Security)
+            secretStore = KeychainSecretStore()
+            #else
+            secretStore = FileSecretStore(store: .applicationSupport())
+            #endif
+            #if os(iOS) || os(macOS) || os(tvOS)
+            cloud = CloudSync(store: UbiquitousKeyValueStore())
+            #else
+            cloud = CloudSync(store: InMemoryKeyValueStore())
+            #endif
+            cache = ResponseCache(store: .caches("FlowResponses"))
+            http = HTTPClient(userAgent: "Flow/1.0")
+            let loaded: AppSettings
+            if let data = store.loadData("settings"), let decoded = try? SettingsCodec.decode(AppSettings.self, from: data, defaults: AppSettings()) {
+                loaded = decoded
+            } else {
+                loaded = AppSettings()
+            }
+            settings = loaded
+            selectedTab = loaded.general.startTab
+            credentials = secretStore.load()
+            localLibrary = store.load(LocalLibrary.self, "library") ?? LocalLibrary()
         }
-        settings = loaded
-        selectedTab = loaded.general.startTab
-        credentials = secretStore.load()
-        localLibrary = fileStore.load(LocalLibrary.self, "library") ?? LocalLibrary()
         rebuildServices()
         configureImageCache()
+    }
+
+    static func demoSettings() -> AppSettings {
+        var s = AppSettings()
+        s.sync.iCloudEnabled = false
+        s.metadata.episodeSource = .tmdb
+        s.shelves = [
+            .builtIn(.continueWatching, style: .landscape),
+            .builtIn(.watchlist),
+            .builtIn(.trendingMovies),
+            .builtIn(.trendingShows),
+            ShelfConfig(id: "demo-scifi", title: "Science Fiction Essentials", source: .discover({ var q = DiscoverQuery(type: .movie); q.genres = [878]; q.sort = .rating; return q }())),
+            .builtIn(.topRatedShows),
+            .builtIn(.popularMovies),
+        ]
+        s.liveTV.providers = [IPTVProviderConfig(id: "demo-iptv", name: "Flow Live", kind: .m3u, url: DemoTransport.iptvPlaylistURL, epgURL: DemoTransport.iptvGuideURL, useForVOD: false)]
+        s.liveTV.favouriteChannelIDs = []
+        return s
+    }
+
+    /// Enters or leaves demo mode; the app swaps in a fresh model.
+    func setDemoMode(_ on: Bool) {
+        UserDefaults.standard.set(on, forKey: "flow.demoMode")
+        NotificationCenter.default.post(name: .flowModeChanged, object: nil)
+    }
+
+    func path(for tab: AppTab) -> Binding<[Route]> {
+        Binding(get: { self.paths[tab] ?? [] }, set: { self.paths[tab] = $0 })
     }
 
     // MARK: Lifecycle
@@ -141,6 +197,7 @@ final class AppModel {
     }
 
     private func saveSettings() {
+        guard !isDemo else { return }
         if let data = try? SettingsCodec.encode(settings) {
             try? data.write(to: store.directory.appendingPathComponent("settings.json"), options: .atomic)
         }

@@ -86,6 +86,16 @@ struct SettingsRootView: View {
     var body: some View {
         List {
             if query.isEmpty {
+                if model.isDemo {
+                    Section {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("You're exploring sample data", systemImage: "sparkles").font(.headline)
+                            Text("Nothing here touches your accounts. Leave the demo to set Flow up with your own sources.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Button("Leave Demo") { model.showSettings = false; model.setDemoMode(false) }
+                    }
+                }
                 if let profile = model.profile, model.settings.account.tracker != .local {
                     Section {
                         NavigationLink(value: Route.settings(.account)) {
