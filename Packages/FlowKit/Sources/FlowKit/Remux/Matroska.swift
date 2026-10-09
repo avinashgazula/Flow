@@ -69,6 +69,7 @@ public struct MatroskaTrack: Hashable, Sendable, Identifiable {
     public var isDefault = true
     public var isForced = false
     public var isHearingImpaired = false
+    public var isCommentaryFlag = false
     /// Nanoseconds per frame, when the muxer recorded it.
     public var defaultDuration: Int64?
     public var codecDelay: Int64 = 0
@@ -94,6 +95,11 @@ public struct MatroskaTrack: Hashable, Sendable, Identifiable {
     public var bitDepth: Int?
 
     public var id: Int { number }
+
+    /// A commentary track, by flag or by name: never a stand-in for the soundtrack.
+    public var isCommentary: Bool {
+        isCommentaryFlag || (name?.range(of: "comment", options: .caseInsensitive) != nil)
+    }
 }
 
 public struct MatroskaCue: Hashable, Sendable {
@@ -311,6 +317,7 @@ public enum MatroskaReader {
                 case MKV.flagDefault: t.isDefault = EBML.uint(b, child) != 0
                 case MKV.flagForced: t.isForced = EBML.uint(b, child) != 0
                 case MKV.flagHearingImpaired: t.isHearingImpaired = EBML.uint(b, child) != 0
+                case MKV.flagCommentary: t.isCommentaryFlag = EBML.uint(b, child) != 0
                 case MKV.defaultDuration: t.defaultDuration = Int64(EBML.uint(b, child))
                 case MKV.name: t.name = EBML.string(b, child)
                 case MKV.language: t.language = EBML.string(b, child)

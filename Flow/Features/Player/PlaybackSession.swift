@@ -140,16 +140,20 @@ final class PlaybackSession: Identifiable {
     private func prepare(_ source: StreamSource, url: URL) async {
         let headers = source.location.headers
         var container = ContainerDetector.container(url: url, filename: source.filename)
+        // Debrid links carry no extension: look at the first bytes, and keep what was read for the remuxer.
+        var probed: ByteSource?
         if container == .unknown {
-            let probe = try? await Self.byteSource(url, headers: headers).read(0..<16)
+            let reader = Self.byteSource(url, headers: headers)
+            let probe = try? await reader.read(0..<16)
             container = probe.map(ContainerDetector.sniff) ?? .native
+            probed = reader
         }
         guard !Task.isCancelled else { return }
         ScreenshotTour.log("prepare \(container) for \(url.lastPathComponent)")
         switch container {
         case .matroska:
             if model?.settings.playback.matroskaPlayback == .external, handOffToExternalPlayer(url) { return }
-            await startRemux(url: url, headers: headers)
+            await startRemux(url: url, headers: headers, reader: probed)
         case .unsupported(let name):
             fail("\(name) files can't play on Apple devices. Try another source, or open it in an app like VLC or Infuse.")
         case .native, .unknown:
@@ -163,13 +167,13 @@ final class PlaybackSession: Identifiable {
         url.isFileURL ? FileByteSource(url: url) : HTTPByteSource(url: url, headers: headers)
     }
 
-    private func startRemux(url: URL, headers: [String: String]) async {
+    private func startRemux(url: URL, headers: [String: String], reader: ByteSource? = nil) async {
         phase = .connecting(0.2)
         do {
-            let remuxer = try await MatroskaRemuxer.open(Self.byteSource(url, headers: headers))
+            let remuxer = try await MatroskaRemuxer.open(reader ?? Self.byteSource(url, headers: headers))
             guard !Task.isCancelled else { return }
             let skippedAudio = remuxer.skipped.filter { $0.track.kind == .audio }
-            if remuxer.audio.isEmpty, let first = skippedAudio.first {
+            if !remuxer.hasPlayableSoundtrack, let first = skippedAudio.first {
                 fail("This file's audio is \(first.reason), which Apple devices can't decode. Try another source, or open it in VLC or Infuse.")
                 return
             }
@@ -178,7 +182,7 @@ final class PlaybackSession: Identifiable {
             hlsToken = token
             usesRemux = true
             chapters = remuxer.header.chapters.map { PlayerChapter(title: $0.title, start: Double($0.start) / 1e9) }
-            if let first = skippedAudio.first, let playing = remuxer.audio.first {
+            if let first = skippedAudio.first(where: { !$0.track.isCommentary }), let playing = remuxer.audio.first {
                 show(notice: "\(first.reason) isn't supported on Apple devices, so Flow is playing \(playing.label).")
             }
             phase = .connecting(0.35)

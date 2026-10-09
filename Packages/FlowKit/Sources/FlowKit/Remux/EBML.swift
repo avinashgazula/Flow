@@ -139,6 +139,7 @@ enum MKV {
     static let flagDefault: UInt32 = 0x88
     static let flagForced: UInt32 = 0x55AA
     static let flagHearingImpaired: UInt32 = 0x55AB
+    static let flagCommentary: UInt32 = 0x55AF
     static let defaultDuration: UInt32 = 0x23E383
     static let name: UInt32 = 0x536E
     static let language: UInt32 = 0x22B59C

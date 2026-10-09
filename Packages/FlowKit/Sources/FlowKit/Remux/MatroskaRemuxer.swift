@@ -49,6 +49,9 @@ public actor MatroskaRemuxer {
     /// composition offset (nanoseconds). Zero when the video has no B-frames.
     public nonisolated let presentationDelay: Int64
 
+    /// False when the only playable audio is commentary: the soundtrack itself can't be played.
+    public nonisolated var hasPlayableSoundtrack: Bool { audio.contains { !$0.source.isCommentary } }
+
     private let source: ByteSource
     private var cache: [Int: [MatroskaBlock]] = [:]
     private var cacheOrder: [Int] = []
@@ -90,8 +93,10 @@ public actor MatroskaRemuxer {
         if video == nil && audio.isEmpty {
             throw MatroskaError.unsupported(skipped.first?.reason ?? "no playable tracks")
         }
-        // The default audio first, so it's what plays when nothing else is chosen.
-        audio.sort { ($0.source.isDefault ? 0 : 1, $0.source.number) < ($1.source.isDefault ? 0 : 1, $1.source.number) }
+        // The soundtrack first (default, then any other non-commentary track), commentaries last,
+        // so what plays when nothing else is chosen is the film's own audio.
+        func rank(_ t: OutputTrack) -> (Int, Int, Int) { (t.source.isCommentary ? 1 : 0, t.source.isDefault ? 0 : 1, t.source.number) }
+        audio.sort { rank($0) < rank($1) }
 
         let duration = Double(header.duration ?? 0) / 1e9
         let segments = try Self.plan(header: header, anchorTrack: video?.source.number ?? audio.first!.source.number, target: targetSegment)

@@ -167,7 +167,7 @@ final class RemoteRemuxTests: XCTestCase {
         print("audio:", remuxer.audio.map { "\($0.label) [\($0.codecString)]" })
         print("subtitles:", remuxer.subtitles.map(\.label))
         print("skipped:", remuxer.skipped.map { "\($0.track.codecID): \($0.reason)" })
-        print("chapters:", remuxer.header.chapters.count)
+        print("chapters:", remuxer.header.chapters.count, "soundtrack playable:", remuxer.hasPlayableSoundtrack)
         let master = await remuxer.masterPlaylist()
         print(master)
         let out = RemuxTests.outputRoot.appendingPathComponent("remote")
@@ -200,7 +200,22 @@ actor TimingSource: ByteSource {
     }
     func read(_ range: Range<Int64>) async throws -> [UInt8] {
         let t = Date(); let v = try await inner.read(range)
-        log.append(String(format: "read %d..+%d -> %d bytes %.2fs", range.lowerBound, range.count, v.count, Date().timeIntervalSince(t)))
+        log.append("read \(range.lowerBound)..+\(range.count) -> \(v.count) bytes " + String(format: "%.2fs", Date().timeIntervalSince(t)))
         return v
+    }
+}
+
+final class SoundtrackTests: XCTestCase {
+    /// A commentary track is never a stand-in for a soundtrack Apple devices can't decode.
+    func testCommentaryAloneIsNotASoundtrack() async throws {
+        let url = Bundle.module.url(forResource: "dts-commentary", withExtension: "mkv", subdirectory: "Resources")!
+        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: url))
+        XCTAssertEqual(remuxer.audio.map(\.codecString), ["ac-3"])
+        XCTAssertTrue(remuxer.audio[0].source.isCommentary)
+        XCTAssertEqual(remuxer.skipped.filter { $0.track.kind == .audio }.map(\.reason), ["DTS audio"])
+        XCTAssertFalse(remuxer.hasPlayableSoundtrack)
+
+        let sample = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("hevc-eac3-ac3")))
+        XCTAssertTrue(sample.hasPlayableSoundtrack)
     }
 }

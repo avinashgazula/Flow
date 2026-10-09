@@ -53,6 +53,8 @@ public actor HTTPByteSource: ByteSource {
 
     private func fetch(_ range: Range<Int64>) async throws -> [UInt8] {
         var request = URLRequest(url: resolvedURL ?? url, timeoutInterval: 30)
+        // CDNs in front of debrid resolvers reject requests without a real client name (Cloudflare 1010).
+        request.setValue("Flow/1.0 (AppleCoreMedia compatible)", forHTTPHeaderField: "User-Agent")
         for (key, value) in headers { request.setValue(value, forHTTPHeaderField: key) }
         request.setValue("bytes=\(range.lowerBound)-\(range.upperBound - 1)", forHTTPHeaderField: "Range")
         var attempt = 0
