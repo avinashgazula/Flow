@@ -83,6 +83,7 @@ struct PlaybackSettingsView: View {
             }
             Section {
                 Toggle("Try the Next Source Automatically", isOn: $model.settings.playback.tryNextSourceOnFailure)
+                Toggle("Prefer Sources With Playable Audio", isOn: $model.settings.sources.preferPlayableAudio)
                 #if os(iOS)
                 Picker("MKV Files", selection: $model.settings.playback.matroskaPlayback) {
                     ForEach(MatroskaPlayback.allCases) { Text($0.title).tag($0) }

@@ -401,3 +401,22 @@ final class JellyfinNamingTests: XCTestCase {
         XCTAssertNil(client.serverItem(JellyfinClient.ItemDTO(Id: "2", Name: "Primetime 2026.1080p.HQ Pre.Multi.AAC 2.0.x264.exe", kind: "Movie")))
     }
 }
+
+final class PlayableAudioRankingTests: XCTestCase {
+    func testSourcesLedByDTSComeLast() {
+        func source(_ id: String, _ text: String) -> StreamSource {
+            StreamSource(id: id, category: .addons, providerID: "a", providerName: "A", title: text, location: .url(URL(string: "https://x.test/\(id)")!, headers: [:]),
+                         traits: StreamParser.parse(text, nil))
+        }
+        let sources = [
+            source("remux", "1080p BLURAY REMUX\nDTS-HD MA • DD\n12.6 GB"),
+            source("truehd", "2160p REMUX\nTrueHD Atmos 7.1\n60 GB"),
+            source("web", "1080p WEB-DL\nDD+\n6.5 GB"),
+            source("aac", "720p WEBRip\nAAC 2.0\n1.2 GB"),
+        ]
+        var settings = SourceSettings()
+        XCTAssertEqual(SourceRanker.rank(sources, settings: settings, resolutionCap: .uhd4k).map(\.id), ["web", "aac", "remux", "truehd"])
+        settings.preferPlayableAudio = false
+        XCTAssertEqual(SourceRanker.rank(sources, settings: settings, resolutionCap: .uhd4k).map(\.id), ["remux", "truehd", "web", "aac"])
+    }
+}

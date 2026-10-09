@@ -182,8 +182,20 @@ public enum SourceRanker {
             return (original[a.id] ?? 0) < (original[b.id] ?? 0)
         }
 
+        if settings.preferPlayableAudio {
+            // Blu-ray remuxes often pair DTS-HD or TrueHD with a Dolby Digital *commentary*, so the
+            // "DD" in their label doesn't make them playable. Try sources led by playable audio first.
+            let playable = list.filter { !needsAudioDecoder($0) }
+            list = playable + list.filter(needsAudioDecoder)
+        }
         if settings.useCustomOrdering, let cap = settings.resultCap, cap > 0 { list = Array(list.prefix(cap)) }
         return list
+    }
+
+    /// True when the source's main audio is a codec Apple devices can't decode.
+    public static func needsAudioDecoder(_ s: StreamSource) -> Bool {
+        guard let codec = s.traits.audioCodec?.uppercased() else { return false }
+        return codec.hasPrefix("DTS") || codec.hasPrefix("TRUEHD")
     }
 
     public static func passes(_ s: StreamSource, _ f: SourceFilters) -> Bool {

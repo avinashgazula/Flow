@@ -552,6 +552,8 @@ public struct SourceSettings: Codable, Hashable, Sendable {
     public var appearance = SourceAppearance()
     public var autoPlayFirstSource = false
     public var timeoutSeconds: Double = 15
+    /// Rank sources whose main audio Apple devices can't decode (DTS, TrueHD) after the rest.
+    public var preferPlayableAudio = true
     public init() {}
 }
 
