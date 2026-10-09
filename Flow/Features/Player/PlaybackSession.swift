@@ -420,7 +420,17 @@ final class PlaybackSession: Identifiable {
         guard let remuxer else { return }
         Task { await remuxer.selectBitmapSubtitle(id) }
         guard id != nil else { return }
-        let videoSize = remuxer.video.map { CGSize(width: $0.source.width, height: $0.source.height) } ?? .zero
+        // Display shape, not coded size: DVD video is anamorphic (720×480 shown at 16:9).
+        var videoSize = CGSize.zero
+        var pixelAspect: CGFloat = 1
+        if let v = remuxer.video?.source, v.width > 0, v.height > 0 {
+            videoSize = CGSize(width: v.width, height: v.height)
+            if let dw = v.displayWidth, let dh = v.displayHeight, dw > 0, dh > 0 {
+                videoSize.width = CGFloat(v.height) * CGFloat(dw) / CGFloat(dh)
+                pixelAspect = videoSize.width / CGFloat(v.width)
+            }
+        }
+        let displaySize = videoSize, displayAspect = pixelAspect
         bitmapTask = Task { [weak self] in
             var shown: Double?
             while !Task.isCancelled {
@@ -429,7 +439,7 @@ final class PlaybackSession: Identifiable {
                 let cue = time.isFinite ? await remuxer.bitmapSubtitle(at: time) : nil
                 if cue?.start != shown {
                     shown = cue?.start
-                    self.bitmapSubtitle = cue.map { BitmapOverlay(cue: $0, videoSize: videoSize) }
+                    self.bitmapSubtitle = cue.map { BitmapOverlay(cue: $0, videoSize: displaySize, pixelAspect: displayAspect) }
                 }
                 try? await Task.sleep(nanoseconds: 150_000_000)
             }
@@ -797,13 +807,18 @@ struct BitmapOverlay: Equatable {
 
     let start: Double
     let canvas: CGSize
+    /// The video's display size.
     let videoSize: CGSize
+    /// Display width over coded width: above 1 for anamorphic video, whose subtitle canvas is
+    /// stretched sideways along with the picture.
+    let pixelAspect: CGFloat
     let pieces: [Piece]
 
-    init(cue: BitmapSubtitle, videoSize: CGSize) {
+    init(cue: BitmapSubtitle, videoSize: CGSize, pixelAspect: CGFloat = 1) {
         start = cue.start
         canvas = CGSize(width: cue.canvasWidth, height: cue.canvasHeight)
         self.videoSize = videoSize
+        self.pixelAspect = pixelAspect
         pieces = cue.objects.compactMap { object in
             let bytes = cue.rgba(for: object)
             guard let provider = CGDataProvider(data: Data(bytes) as CFData),

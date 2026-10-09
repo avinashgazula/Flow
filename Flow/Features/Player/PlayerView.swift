@@ -850,14 +850,17 @@ struct BitmapSubtitleView: View {
     var body: some View {
         GeometryReader { proxy in
             let video = Self.fit(overlay.videoSize == .zero ? overlay.canvas : overlay.videoSize, in: proxy.size)
-            let scale = overlay.canvas.width > 0 ? video.width / overlay.canvas.width : 1
-            let originY = video.midY - overlay.canvas.height * scale / 2
+            // The canvas spans the picture's width; a cropped picture (2.40:1 inside a 16:9 canvas)
+            // keeps the canvas centred on it.
+            let scaleX = overlay.canvas.width > 0 ? video.width / overlay.canvas.width : 1
+            let scaleY = scaleX / max(overlay.pixelAspect, 0.1)
+            let originY = video.midY - overlay.canvas.height * scaleY / 2
             ForEach(Array(overlay.pieces.enumerated()), id: \.offset) { _, piece in
                 Image(decorative: piece.image, scale: 1)
                     .resizable()
                     .interpolation(.high)
-                    .frame(width: piece.rect.width * scale, height: piece.rect.height * scale)
-                    .position(x: video.minX + piece.rect.midX * scale, y: originY + piece.rect.midY * scale)
+                    .frame(width: piece.rect.width * scaleX, height: piece.rect.height * scaleY)
+                    .position(x: video.minX + piece.rect.midX * scaleX, y: originY + piece.rect.midY * scaleY)
             }
         }
         .ignoresSafeArea()
