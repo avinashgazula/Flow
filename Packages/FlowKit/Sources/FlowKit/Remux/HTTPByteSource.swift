@@ -41,7 +41,15 @@ public actor HTTPByteSource: ByteSource {
         let isHead = head == nil && range.lowerBound < headSize
         let lower = isHead ? 0 : range.lowerBound
         let fetchUpper = isHead ? max(upper, headSize) : upper
-        let bytes = try await fetch(lower..<fetchUpper)
+        var bytes = try await fetch(lower..<fetchUpper)
+        // Some servers cap how much one range response carries; ask again for the rest.
+        while Int64(bytes.count) < fetchUpper - lower, !bytes.isEmpty {
+            let next = lower + Int64(bytes.count)
+            if let length = knownLength, next >= length { break }
+            let more = try await fetch(next..<fetchUpper)
+            if more.isEmpty { break }
+            bytes += more
+        }
         if isHead {
             head = (0..<Int64(bytes.count), bytes)
             let from = Int(range.lowerBound)
