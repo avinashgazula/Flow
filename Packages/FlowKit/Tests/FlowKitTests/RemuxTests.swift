@@ -398,3 +398,22 @@ final class SubtitleTextTests: XCTestCase {
         XCTAssertEqual(SubtitleText.cleanSRT("<B>Loud</B>"), "<b>Loud</b>")
     }
 }
+
+final class SummaryTests: XCTestCase {
+    func testVideoSummary() async throws {
+        let hevc = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("hevc-eac3-ac3")), targetSegment: 2)
+        let summary = try XCTUnwrap(hevc.videoSummary)
+        XCTAssertTrue(summary.hasPrefix("HEVC · 160×90"), summary)
+        XCTAssertTrue(summary.hasSuffix("HDR10") || summary.hasSuffix("PQ"), summary)
+        let dts = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("dts-commentary")), targetSegment: 2)
+        XCTAssertTrue(dts.skippedSummary.contains { $0.hasPrefix("DTS audio") }, "\(dts.skippedSummary)")
+    }
+
+    func testDolbyVisionNaming() {
+        var t = MatroskaTrack(number: 1, kind: .video, codecID: "V_MPEGH/ISO/HEVC")
+        t.dolbyVision = [1, 0, 8 << 1, 0, 1 << 4]
+        XCTAssertEqual(MatroskaRemuxer.dynamicRange(t), "Dolby Vision 8.1")
+        t.dolbyVision = [1, 0, 5 << 1, 0, 0]
+        XCTAssertEqual(MatroskaRemuxer.dynamicRange(t), "Dolby Vision 5")
+    }
+}

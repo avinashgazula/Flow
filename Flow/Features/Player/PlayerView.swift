@@ -16,6 +16,15 @@ struct PlayerView: View {
             #if !os(tvOS)
             // On tvOS subtitles live in the player's content overlay, beneath its transport bar.
             SubtitleLayer(session: session, settings: model.settings.subtitles)
+            if session.showsInfo, session.phase == .playing {
+                PlaybackInfoPanel(session: session)
+                    .onTapGesture { session.showsInfo = false }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.top, Platform.isPhone ? 64 : 76)
+                    .padding(.leading, 20)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .topLeading)))
+                    .zIndex(4)
+            }
             SkipAndUpNextOverlay(session: session)
             if session.isBuffering && session.phase == .playing {
                 ProgressView()
@@ -50,6 +59,7 @@ struct PlayerView: View {
             }
         }
         .animation(Theme.Motion.gentle, value: session.notice)
+        .animation(Theme.Motion.snappy, value: session.showsInfo)
         .sheet(isPresented: $showSubtitles) {
             SubtitlePickerView(session: session).environment(model)
         }
@@ -138,6 +148,7 @@ struct PlayerView: View {
                         .menuIndicator(.hidden)
                         .fixedSize()
                     }
+                    CircleButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle") { session.showsInfo.toggle() }
                     CircleButton(systemImage: "magnifyingglass") { showSubtitles = true }
                     CircleButton(systemImage: "xmark") { session.stop() }
                 }
@@ -565,6 +576,8 @@ struct IOSPlayerControls: View {
     @State private var isPlaying = true
     @State private var audioOptions: [AVMediaSelectionOption] = []
     @State private var legibleOptions: [AVMediaSelectionOption] = []
+    @State private var audioGroup: AVMediaSelectionGroup?
+    @State private var legibleGroup: AVMediaSelectionGroup?
     @State private var speed = 1.0
     @State private var seekFlash: SeekFlash?
     @State private var preview: CGImage?
@@ -664,15 +677,21 @@ struct IOSPlayerControls: View {
                                 if !audioOptions.isEmpty {
                                     Section("Audio") {
                                         ForEach(audioOptions, id: \.self) { option in
-                                            Button(option.displayName) { select(option, characteristic: .audible) }
+                                            Button { select(option, characteristic: .audible) } label: {
+                                                checked(option.displayName, selected(in: audioGroup) == option)
+                                            }
                                         }
                                     }
                                 }
                                 if !legibleOptions.isEmpty {
                                     Section("Embedded Subtitles") {
-                                        Button("Off") { select(nil, characteristic: .legible) }
+                                        Button { select(nil, characteristic: .legible) } label: {
+                                            checked("Off", selected(in: legibleGroup) == nil)
+                                        }
                                         ForEach(legibleOptions, id: \.self) { option in
-                                            Button(option.displayName) { select(option, characteristic: .legible) }
+                                            Button { select(option, characteristic: .legible) } label: {
+                                                checked(option.displayName, selected(in: legibleGroup) == option)
+                                            }
                                         }
                                     }
                                 }
@@ -706,6 +725,7 @@ struct IOSPlayerControls: View {
                                     }
                                 }
                                 Button("Search Subtitles…", systemImage: "magnifyingglass") { showSubtitles = true }
+                                Button(session.showsInfo ? "Hide Playback Info" : "Playback Info", systemImage: "info.circle") { session.showsInfo.toggle() }
                                 Button(fill ? "Fit to Screen" : "Fill Screen", systemImage: fill ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right") { fill.toggle() }
                             } label: {
                                 Image(systemName: "ellipsis")
@@ -821,12 +841,22 @@ struct IOSPlayerControls: View {
 
     private func loadMediaOptions() async {
         guard let asset = session.player.currentItem?.asset else { return }
-        if let group = try? await asset.loadMediaSelectionGroup(for: .audible) { audioOptions = group.options }
-        if let group = try? await asset.loadMediaSelectionGroup(for: .legible) { legibleOptions = group.options }
+        if let group = try? await asset.loadMediaSelectionGroup(for: .audible) { audioGroup = group; audioOptions = group.options }
+        if let group = try? await asset.loadMediaSelectionGroup(for: .legible) { legibleGroup = group; legibleOptions = group.options }
         if let preferred = model.settings.playback.preferredAudioLanguage,
            let match = audioOptions.first(where: { $0.extendedLanguageTag?.hasPrefix(preferred) == true || $0.locale?.language.languageCode?.identifier == preferred }) {
             select(match, characteristic: .audible)
         }
+    }
+
+    private func selected(in group: AVMediaSelectionGroup?) -> AVMediaSelectionOption? {
+        guard let group, let item = session.player.currentItem else { return nil }
+        return item.currentMediaSelection.selectedMediaOption(in: group)
+    }
+
+    @ViewBuilder
+    private func checked(_ title: String, _ isOn: Bool) -> some View {
+        if isOn { Label(title, systemImage: "checkmark") } else { Text(title) }
     }
 
     private func select(_ option: AVMediaSelectionOption?, characteristic: AVMediaCharacteristic) {
@@ -908,6 +938,48 @@ enum OrientationLock {
 /// Draws a Blu-ray picture subtitle where the disc placed it. The subtitle canvas is mapped onto
 /// the aspect-fit video rectangle, width-aligned and centred, so captions authored in the
 /// letterbox of a cropped encode still land there.
+/// Technical details, refreshed every second.
+struct PlaybackInfoPanel: View {
+    let session: PlaybackSession
+    /// The glass card for iPhone, iPad and Mac; plain rows inside Apple TV's info panel.
+    var card = true
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { _ in
+            Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: Platform.isTV ? 12 : 6) {
+                ForEach(session.infoRows()) { row in
+                    GridRow {
+                        Text(row.label)
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                            .gridColumnAlignment(.trailing)
+                        Text(row.value)
+                            .foregroundStyle(.white)
+                            .lineLimit(2)
+                            .truncationMode(.middle)
+                    }
+                }
+            }
+            .font(.system(size: Platform.isTV ? 24 : 12, weight: .medium).monospacedDigit())
+            .padding(card ? 16 : 40)
+            .frame(maxWidth: card ? 380 : .infinity, alignment: .leading)
+            .modifier(InfoCard(enabled: card))
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Playback Info")
+    }
+
+    private struct InfoCard: ViewModifier {
+        let enabled: Bool
+        func body(content: Content) -> some View {
+            if enabled {
+                content.flowGlass(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            } else {
+                content
+            }
+        }
+    }
+}
+
 /// Downloaded text subtitles and picture subtitles from the file, above the video and below the controls.
 struct SubtitleLayer: View {
     let session: PlaybackSession

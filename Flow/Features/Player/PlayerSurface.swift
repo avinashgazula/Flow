@@ -67,6 +67,12 @@ struct TVPlayerController: UIViewControllerRepresentable {
             host.didMove(toParent: controller)
         }
         context.coordinator.subtitleHost = host
+        // A "Details" tab in the info panel, beside Apple's own.
+        let details = UIHostingController(rootView: PlaybackInfoPanel(session: session, card: false))
+        details.title = "Details"
+        details.view.backgroundColor = .clear
+        details.preferredContentSize = CGSize(width: 0, height: 360)
+        controller.customInfoViewControllers = [details]
         return controller
     }
 

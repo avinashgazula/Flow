@@ -38,6 +38,9 @@ final class PlaybackSession: Identifiable {
     /// A short message over the video ("Playing English 5.1; DTS isn't supported").
     var notice: String?
     var chapters: [PlayerChapter] = []
+    /// The technical details panel (iPhone, iPad and Mac; Apple TV shows them in its info panel).
+    var showsInfo = false
+    @ObservationIgnored private var audibleGroup: AVMediaSelectionGroup?
     /// True when an MKV is being repackaged on the device for AVPlayer.
     private(set) var usesRemux = false
     /// Other sources for the same title, best first, for when this one won't start.
@@ -525,6 +528,7 @@ final class PlaybackSession: Identifiable {
         ScreenshotTour.log("item status \(item.status.rawValue) error=\(item.error?.localizedDescription ?? "-")")
         switch item.status {
         case .readyToPlay:
+            Task { [weak self] in self?.audibleGroup = try? await item.asset.loadMediaSelectionGroup(for: .audible) }
             if case .connecting = phase { phase = .connecting(0.7) }
             let seconds = item.duration.seconds
             if seconds.isFinite { duration = seconds }
@@ -689,6 +693,60 @@ final class PlaybackSession: Identifiable {
             close()
             model.sourcePickerRequest = next
         }
+    }
+
+    // MARK: Details
+
+    struct InfoRow: Identifiable, Hashable {
+        let label: String
+        let value: String
+        var id: String { label }
+    }
+
+    /// What's playing and how: for the curious, and for working out why a file misbehaves.
+    func infoRows() -> [InfoRow] {
+        var rows = [InfoRow(label: "Source", value: source.providerName)]
+        if let file = source.filename ?? source.location.playableURL?.lastPathComponent, !file.isEmpty {
+            rows.append(InfoRow(label: "File", value: file))
+        }
+        let item = player.currentItem
+        if usesRemux, let remuxer {
+            rows.append(InfoRow(label: "Playback", value: "MKV, remuxed on this device"))
+            if let video = remuxer.videoSummary { rows.append(InfoRow(label: "Video", value: video)) }
+        } else {
+            let isHLS = source.location.playableURL?.pathExtension.lowercased() == "m3u8"
+            rows.append(InfoRow(label: "Playback", value: isHLS ? "HLS stream" : "Direct"))
+            if let size = item?.presentationSize, size.width > 0 {
+                rows.append(InfoRow(label: "Video", value: "\(Int(size.width))×\(Int(size.height))"))
+            }
+        }
+        if let item, let group = audibleGroup, let option = item.currentMediaSelection.selectedMediaOption(in: group) {
+            rows.append(InfoRow(label: "Audio", value: option.displayName))
+        }
+        if let remuxer, !remuxer.skippedSummary.isEmpty {
+            rows.append(InfoRow(label: "Not Playable", value: remuxer.skippedSummary.joined(separator: ", ")))
+        }
+        if let event = item?.accessLog()?.events.last {
+            if event.indicatedBitrate > 0 {
+                rows.append(InfoRow(label: "Bitrate", value: Self.megabits(event.indicatedBitrate)))
+            }
+            // A remuxed stream arrives over loopback, where throughput means nothing.
+            if !usesRemux, event.observedBitrate > 0 {
+                rows.append(InfoRow(label: "Throughput", value: Self.megabits(event.observedBitrate)))
+            }
+            if event.numberOfDroppedVideoFrames > 0 {
+                rows.append(InfoRow(label: "Dropped Frames", value: "\(event.numberOfDroppedVideoFrames)"))
+            }
+        }
+        if let range = item?.loadedTimeRanges.map(\.timeRangeValue).first(where: { $0.containsTime(player.currentTime()) }) {
+            let ahead = max(0, range.end.seconds - player.currentTime().seconds)
+            rows.append(InfoRow(label: "Buffered", value: String(format: "%.0f s ahead", ahead)))
+        }
+        return rows
+    }
+
+    private static func megabits(_ bitsPerSecond: Double) -> String {
+        String(format: bitsPerSecond >= 10_000_000 ? "%.0f Mb/s" : "%.1f Mb/s", bitsPerSecond / 1_000_000)
     }
 
     // MARK: Subtitles

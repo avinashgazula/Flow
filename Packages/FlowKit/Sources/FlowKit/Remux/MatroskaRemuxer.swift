@@ -375,6 +375,46 @@ public actor MatroskaRemuxer {
         return "\(language) (\(codec) \(layout))"
     }
 
+    // MARK: Description
+
+    /// "HEVC · 3840×2160 · 23.976 fps · Dolby Vision 8.1", for the player's info panel.
+    public nonisolated var videoSummary: String? {
+        guard let v = video?.source else { return nil }
+        var parts: [String] = []
+        switch v.codecID {
+        case "V_MPEG4/ISO/AVC": parts.append("H.264")
+        case "V_MPEGH/ISO/HEVC": parts.append("HEVC")
+        case "V_AV1": parts.append("AV1")
+        default: parts.append(v.codecID)
+        }
+        parts.append("\(v.width)×\(v.height)")
+        if let frame = v.defaultDuration, frame > 0 {
+            let fps = 1e9 / Double(frame)
+            parts.append((abs(fps - fps.rounded()) < 0.01 ? String(Int(fps.rounded())) : String(format: "%.3f", fps)) + " fps")
+        }
+        parts.append(Self.dynamicRange(v))
+        return parts.joined(separator: " · ")
+    }
+
+    static func dynamicRange(_ v: MatroskaTrack) -> String {
+        if let dv = v.dolbyVision, dv.count >= 5 {
+            let profile = Int(dv[2] >> 1)
+            let compatibility = Int(dv[4] >> 4)
+            return compatibility > 0 ? "Dolby Vision \(profile).\(compatibility)" : "Dolby Vision \(profile)"
+        }
+        if v.colour?.isPQ == true { return v.colour?.maxCLL != nil || v.colour?.mastering != nil ? "HDR10" : "PQ" }
+        if v.colour?.isHLG == true { return "HLG" }
+        return "SDR"
+    }
+
+    /// What was left out and why, e.g. "DTS audio (English)".
+    public nonisolated var skippedSummary: [String] {
+        skipped.map { item in
+            let language = LanguageName.display(item.track.language)
+            return item.track.kind == .video ? item.reason : "\(item.reason) (\(language))"
+        }
+    }
+
     // MARK: Playlists
 
     public func masterPlaylist() -> String {

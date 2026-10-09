@@ -26,6 +26,10 @@ enum ScreenshotTour {
             Step(name: "player") { m in
                 if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first {
                     m.startPlayback(source, request: PlaybackRequest(item: duneItem))
+                    Task {
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        m.activePlayback?.showsInfo = true
+                    }
                 }
             },
             Step(name: "player-mkv") { m in
