@@ -43,6 +43,19 @@ struct FlowApp: App {
                 Button("Sync Now") { Task { await model.refreshLibrary(force: true) } }
                     .keyboardShortcut("r", modifiers: [.command, .shift])
             }
+            CommandMenu("Go") {
+                ForEach(Array(AppTab.allCases.enumerated()), id: \.element) { index, tab in
+                    Button(tab.title) { model.go(to: tab) }
+                        .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
+                }
+                Divider()
+                Button("Search") { model.go(to: .search) }
+                    .keyboardShortcut("f", modifiers: .command)
+                Button("Upcoming") { model.handle(url: IntentInbox.link("upcoming")) }
+                    .keyboardShortcut("u", modifiers: .command)
+                Button("Continue Watching") { Task { await model.resumeLatest() } }
+                    .keyboardShortcut("p", modifiers: [.command, .option])
+            }
         }
         #endif
 
@@ -80,6 +93,12 @@ extension AppModel {
         default:
             pendingImport = url.absoluteString
         }
+    }
+
+    /// Switches section, closing the player first so the choice is visible.
+    func go(to tab: AppTab) {
+        activePlayback?.stop()
+        selectedTab = tab
     }
 
     /// From a widget or the Top Shelf: open the title, then play it (resuming if there's progress).

@@ -190,7 +190,6 @@ struct MacShell: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 8)
-                .keyboardShortcut(KeyEquivalent(Character(String((AppTab.allCases.firstIndex(of: tab) ?? 0) + 1))), modifiers: .command)
             }
             Spacer()
             if let profile = model.profile {

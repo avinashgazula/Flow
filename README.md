@@ -17,7 +17,7 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
 - **Source picker**: gathers results from every provider in parallel. Categories and providers are ordered, there are optional sort rules, filters and a result cap, and the add-on text and badges are parsed.
 - **Player**: resume, skip intro, recap and credits (from Jellyfin media segments, Plex markers, IntroDB or PublicMetaDB), an Up Next card with a countdown ring, double-tap to skip on iPhone, scrobbling, subtitle search (OpenSubtitles, SubDL, Wyzie, SubSource), AirPlay, Picture in Picture and external players.
 - **Sync**: Trakt or Simkl device sign-in, iCloud key-value sync, and Share/Import Setup by file, link or QR code.
-- **System**: Spotlight indexing of your library, Handoff between devices, `flow://` deep links, and Shortcuts/Siri actions for Continue Watching, Upcoming and Search.
+- **System**: a Continue Watching widget on iPhone and iPad, an Apple TV Top Shelf (Continue Watching with progress, and your Watchlist), Spotlight indexing, Handoff, `flow://` deep links, and Shortcuts/Siri actions for Continue Watching, Upcoming and Search. The widget and Top Shelf read a snapshot shared through the `group.<bundle id>` App Group, so enable App Groups for your team when you sign the app.
 - **Demo mode**: "Explore with Sample Data" fills every screen with real TMDb artwork and Apple's sample streams, no keys required.
 
 ## Project layout
@@ -25,6 +25,10 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
 ```
 Packages/FlowKit   Platform-independent core: models, API clients, parsers, ranking, sync (unit-tested, builds on Linux too)
 Flow/              SwiftUI app shared by the iOS, macOS and tvOS targets
+Widgets/           WidgetKit extension (iOS): Continue Watching
+TopShelf/          Top Shelf extension (tvOS)
+Shared/            The snapshot the app writes for its extensions
+scripts/           Screenshot tour used by CI (demo data, every platform)
 project.yml        XcodeGen spec for Flow.xcodeproj
 Config/            Build settings and optional baked-in API keys
 ```
