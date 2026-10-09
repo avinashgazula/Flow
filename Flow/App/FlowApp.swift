@@ -65,7 +65,7 @@ extension AppModel {
     func handle(url: URL) {
         guard url.scheme == SetupShare.urlScheme else { return }
         if let key = SystemIntegration.key(from: url) {
-            open(key)
+            if url.host == "play" { Task { await playTitle(key) } } else { open(key) }
             return
         }
         switch url.host {
@@ -80,6 +80,13 @@ extension AppModel {
         default:
             pendingImport = url.absoluteString
         }
+    }
+
+    /// From a widget or the Top Shelf: open the title, then play it (resuming if there's progress).
+    func playTitle(_ key: MediaKey) async {
+        guard let catalog, let item = try? await catalog.item(key) else { return }
+        open(key)
+        await play(item)
     }
 
     /// Picks up the most recent thing in Continue Watching, exactly where it was left.

@@ -4,5 +4,9 @@
 <dict>
 	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
 	<string>$(TeamIdentifierPrefix)$(FLOW_BUNDLE_ID)</string>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.$(FLOW_BUNDLE_ID)</string>
+	</array>
 </dict>
 </plist>

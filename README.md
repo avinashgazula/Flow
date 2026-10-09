@@ -8,15 +8,17 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
 
 ## Highlights
 
-- **Home**: a paged hero with logo art, Continue Watching with Up Next, and shelves you can configure (trending, popular, TMDb Discover queries, Trakt and MDBList lists, media-server libraries).
+- **Home**: a paged hero with logo art, Continue Watching with Up Next, "Because You Watched…" recommendations, and shelves you can configure (trending, popular, TMDb Discover queries, Trakt and MDBList lists, media-server libraries).
 - **Explore**: Movies and TV grids with filters for genre, year, release window, rating, language and streaming service.
-- **Library**: Watchlist, Watch History, Favourites, Downloads and followed Sports teams.
-- **Live TV**: channel groups, favourites and an EPG with now and next from XMLTV or Xtream.
-- **Search**: movies, shows and people, plus results from your media servers and recent searches.
-- **Detail pages**: ratings from IMDb, Rotten Tomatoes, Popcornmeter, Metacritic, TMDb, Letterboxd and Trakt. Cast, trailers, seasons and episodes (TVDB numbering by default), Shuffle, Rewatch, and buttons for watched, favourite, watchlist and download.
+- **Library**: Watchlist, Watch History, Favourites, Downloads, followed Sports teams, and **Upcoming**, a day-by-day calendar of new episodes and releases from the shows and films you follow.
+- **Live TV**: channel groups, favourites, and a timeline guide with a live "now" line, fed by XMLTV or Xtream.
+- **Search**: movies, shows and people, with a top-result card, genre browsing, results from your media servers and recent searches.
+- **Detail pages**: ratings from IMDb, Rotten Tomatoes, Popcornmeter, Metacritic, TMDb, Letterboxd and Trakt. Cast, trailers, seasons and episodes (TVDB numbering by default), Shuffle, Rewatch, buttons for watched, favourite, watchlist and download, and Where to Watch (streaming, rental and purchase options from JustWatch via TMDb).
 - **Source picker**: gathers results from every provider in parallel. Categories and providers are ordered, there are optional sort rules, filters and a result cap, and the add-on text and badges are parsed.
-- **Player**: resume, skip intro, recap and credits (from Jellyfin media segments, Plex markers, IntroDB or PublicMetaDB), next-episode countdown, scrobbling, subtitle search (OpenSubtitles, SubDL, Wyzie, SubSource), AirPlay, Picture in Picture and external players.
+- **Player**: resume, skip intro, recap and credits (from Jellyfin media segments, Plex markers, IntroDB or PublicMetaDB), an Up Next card with a countdown ring, double-tap to skip on iPhone, scrobbling, subtitle search (OpenSubtitles, SubDL, Wyzie, SubSource), AirPlay, Picture in Picture and external players.
 - **Sync**: Trakt or Simkl device sign-in, iCloud key-value sync, and Share/Import Setup by file, link or QR code.
+- **System**: Spotlight indexing of your library, Handoff between devices, `flow://` deep links, and Shortcuts/Siri actions for Continue Watching, Upcoming and Search.
+- **Demo mode**: "Explore with Sample Data" fills every screen with real TMDb artwork and Apple's sample streams, no keys required.
 
 ## Project layout
 

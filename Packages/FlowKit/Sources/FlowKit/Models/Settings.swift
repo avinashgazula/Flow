@@ -532,7 +532,7 @@ public enum BadgePack: String, Codable, Hashable, Sendable, CaseIterable, Identi
 
 public struct SourceAppearance: Codable, Hashable, Sendable {
     /// Show the add-on's own multi-line text (emoji formatting and all).
-    public var showRawText = true
+    public var showRawText = false
     public var titleDisplay: SourceTitleDisplay = .provider
     public var badgePack: BadgePack = .colored
     public var showSize = true

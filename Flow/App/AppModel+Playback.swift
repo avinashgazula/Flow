@@ -176,5 +176,6 @@ extension AppModel {
         }
         await rebuildContinueWatching()
         contentVersion += 1
+        await publishSnapshot()
     }
 }

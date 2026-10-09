@@ -223,7 +223,13 @@ struct AboutView: View {
         List {
             Section {
                 VStack(spacing: 8) {
-                    Image(systemName: "play.rectangle.on.rectangle.fill").font(.system(size: 54)).foregroundStyle(.tint)
+                    Image("FlowMark")
+                        .resizable()
+                        .frame(width: 96 * Theme.scale, height: 96 * Theme.scale)
+                        .clipShape(RoundedRectangle(cornerRadius: 22 * Theme.scale, style: .continuous))
+                        .hairline(RoundedRectangle(cornerRadius: 22 * Theme.scale, style: .continuous))
+                        .artworkShadow()
+                        .padding(.bottom, 4)
                     Text("Flow").font(.title.weight(.bold))
                     Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
                         .foregroundStyle(.secondary)

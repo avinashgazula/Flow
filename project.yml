@@ -37,6 +37,7 @@ targetTemplates:
         excludes:
           - "Resources/Info-*.plist"
           - "Resources/*.entitlements"
+      - path: Shared
     dependencies:
       - package: FlowKit
     settings:
@@ -47,6 +48,8 @@ targets:
   Flow-iOS:
     templates: [FlowApp]
     platform: iOS
+    dependencies:
+      - target: FlowWidgets
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -72,6 +75,7 @@ targets:
           - CFBundleURLName: flow
             CFBundleURLSchemes: [flow]
         NSUserActivityTypes: [app.flow.title]
+        FlowAppGroup: group.$(FLOW_BUNDLE_ID)
         UILaunchScreen: {}
         UIBackgroundModes: [audio]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
@@ -86,6 +90,7 @@ targets:
       path: Flow/Resources/Flow-iOS.entitlements
       properties:
         com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(FLOW_BUNDLE_ID)
+        com.apple.security.application-groups: [group.$(FLOW_BUNDLE_ID)]
 
   Flow-macOS:
     templates: [FlowApp]
@@ -129,6 +134,8 @@ targets:
   Flow-tvOS:
     templates: [FlowApp]
     platform: tvOS
+    dependencies:
+      - target: FlowTopShelf
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "3"
@@ -153,6 +160,7 @@ targets:
           - CFBundleURLName: flow
             CFBundleURLSchemes: [flow]
         NSUserActivityTypes: [app.flow.title]
+        FlowAppGroup: group.$(FLOW_BUNDLE_ID)
         UILaunchScreen: {}
         UIUserInterfaceStyle: Dark
         UIRequiredDeviceCapabilities: [arm64]
@@ -160,6 +168,66 @@ targets:
       path: Flow/Resources/Flow-tvOS.entitlements
       properties:
         com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(FLOW_BUNDLE_ID)
+        com.apple.security.application-groups: [group.$(FLOW_BUNDLE_ID)]
+
+  FlowWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+        excludes: ["*.plist", "*.entitlements"]
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_NAME: FlowWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: $(FLOW_BUNDLE_ID).widgets
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_ENTITLEMENTS: Widgets/FlowWidgets.entitlements
+        SKIP_INSTALL: YES
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: Flow
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        FlowAppGroup: group.$(FLOW_BUNDLE_ID)
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widgets/FlowWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.$(FLOW_BUNDLE_ID)]
+
+  FlowTopShelf:
+    type: app-extension
+    platform: tvOS
+    sources:
+      - path: TopShelf
+        excludes: ["*.plist", "*.entitlements"]
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_NAME: FlowTopShelf
+        PRODUCT_BUNDLE_IDENTIFIER: $(FLOW_BUNDLE_ID).topshelf
+        TARGETED_DEVICE_FAMILY: "3"
+        CODE_SIGN_ENTITLEMENTS: TopShelf/FlowTopShelf.entitlements
+        SKIP_INSTALL: YES
+    info:
+      path: TopShelf/Info.plist
+      properties:
+        CFBundleDisplayName: Flow
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        FlowAppGroup: group.$(FLOW_BUNDLE_ID)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.tv-top-shelf
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentProvider
+    entitlements:
+      path: TopShelf/FlowTopShelf.entitlements
+      properties:
+        com.apple.security.application-groups: [group.$(FLOW_BUNDLE_ID)]
 
 schemes:
   Flow-iOS:

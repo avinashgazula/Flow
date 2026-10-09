@@ -31,6 +31,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>FlowAppGroup</key>
+	<string>group.$(FLOW_BUNDLE_ID)</string>
 	<key>FlowSimklClientID</key>
 	<string>$(FLOW_SIMKL_CLIENT_ID)</string>
 	<key>FlowTMDBAPIKey</key>

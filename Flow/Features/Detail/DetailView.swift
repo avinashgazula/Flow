@@ -57,7 +57,7 @@ struct DetailView: View {
                 .frame(height: headerHeight)
                 .frame(maxWidth: .infinity)
                 .clipped()
-                .mask(LinearGradient(stops: [.init(color: .black, location: 0.55), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                .mask(LinearGradient(stops: headerFade, startPoint: .top, endPoint: .bottom))
                 .visualEffect { content, proxy in
                     let y = proxy.frame(in: .scrollView(axis: .vertical)).minY
                     return content
@@ -105,6 +105,13 @@ struct DetailView: View {
                 .frame(maxWidth: 640 * Theme.scale, alignment: wide ? .leading : .center)
             }
         }
+    }
+
+    /// On iPhone the poster's lower third carries its own title art; fade it out before the logo and buttons sit on it.
+    private var headerFade: [Gradient.Stop] {
+        wide
+            ? [.init(color: .black, location: 0.55), .init(color: .clear, location: 1)]
+            : [.init(color: .black, location: 0.4), .init(color: .black.opacity(0.4), location: 0.66), .init(color: .clear, location: 0.86)]
     }
 
     private var headerHeight: CGFloat {
@@ -445,7 +452,7 @@ struct WhereToWatch: View {
             .padding(.horizontal, Theme.Space.gutter)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Theme.Space.s) {
-                    ForEach(availability.offers, id: \.provider.id) { offer in
+                    ForEach(availability.offers) { offer in
                         tile(offer.provider, kind: offer.kind)
                     }
                 }

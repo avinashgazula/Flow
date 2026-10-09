@@ -16,9 +16,11 @@
 		147917F99D7CEA08D5C53108 /* LiveTVView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11A5725FE1CA04C7ABACBFB /* LiveTVView.swift */; };
 		168AA239910FADFD0A5DAC06 /* DataSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F2212A970B6865DC66B1898 /* DataSettingsViews.swift */; };
 		197E35749543578A771BCF95 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7785133DEC097B45A1126DA /* OnboardingView.swift */; };
+		1B1CF897CAB179C4ACDDC146 /* FlowWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F68AC53DAC814019C2653549 /* FlowWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1B6C6571C6885AF8EC43EFD3 /* AppModel+Shelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9180D9C82DCFC46BFA6D629E /* AppModel+Shelves.swift */; };
 		26373EF208DA8C7E889F1EE2 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434D840AB6866F096CBB9D82 /* Platform.swift */; };
 		277143F94A77001D001C2AD4 /* AppModel+Calendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEADFF907FBFB0BA1E4CB7BE /* AppModel+Calendar.swift */; };
+		27C0E92B9404C9989AD1F99A /* FlowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */; };
 		28D287C3D902EC3546165641 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A93336F88B7099468CD68A /* AccountSettingsView.swift */; };
 		2BCF310A6A624CFC44F87920 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708B75EA3C803473D05AB1F1 /* AppModel.swift */; };
 		2C04048EAB2BC3D22333E6DB /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7785133DEC097B45A1126DA /* OnboardingView.swift */; };
@@ -30,6 +32,7 @@
 		3B888582C9530FD7091DF714 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0989E9FE254B064FABEA61E /* PlayerView.swift */; };
 		3C42A5DEC180CACD0FB17DE6 /* SportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDC8FFF7F3CED5F10C0F96E2 /* SportsView.swift */; };
 		40F86A12EA0AB70C906F2189 /* AppModel+Shelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9180D9C82DCFC46BFA6D629E /* AppModel+Shelves.swift */; };
+		42DF98BD23C1824917EF0AC3 /* FlowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */; };
 		43754C79ACDEBFDCF591556F /* AppModel+Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AA22997771CD0720AEAF1B6 /* AppModel+Library.swift */; };
 		438FD3781E5CF9BE4559CC5F /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D304FE1F649816E97D48C1D7 /* LibraryView.swift */; };
 		43ECBE012F7DA2B8965CCFB0 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A93336F88B7099468CD68A /* AccountSettingsView.swift */; };
@@ -65,6 +68,7 @@
 		77F28F8E1047586031FB383F /* ProvidersSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED3F6045FC0AD7F92F090118 /* ProvidersSettingsViews.swift */; };
 		7A20EE49185DFEE8F269BABC /* ShelvesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E5BC060EB6D6E2ABFE2898 /* ShelvesSettingsView.swift */; };
 		7B4EB7185B6AAC53D044D8D7 /* SimpleSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4354067308CA316BA4A7A22 /* SimpleSettingsViews.swift */; };
+		7BBEDFED27F66D4F425AFE8F /* FlowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */; };
 		7BBF9A7203D071B85464E05A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03878E23BB21C51D27637323 /* RootView.swift */; };
 		7D09E0529BC9D44BC608E9C9 /* DataSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F2212A970B6865DC66B1898 /* DataSettingsViews.swift */; };
 		7D1432446276E67320FE3549 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F088D0F4A55BC78D157C430 /* Theme.swift */; };
@@ -90,6 +94,7 @@
 		A3ABE4EC6F563604C1098B05 /* FlowKit in Frameworks */ = {isa = PBXBuildFile; productRef = FDE4C0153DD0F6B1072FB8BF /* FlowKit */; };
 		A3E849D839BA8E1B6B562F7E /* SubtitlePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C5362BFE5BED6E0EB6365B /* SubtitlePickerView.swift */; };
 		A44682002C622E0EF4AA7642 /* SystemIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B3B66222812A0C035066700 /* SystemIntegration.swift */; };
+		A569B7E2A24F289614CBE5BB /* AppModel+Snapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B1E42308B468C5EABF03CD /* AppModel+Snapshot.swift */; };
 		A76B0550ACC271E00C8FE83E /* LiveTVView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11A5725FE1CA04C7ABACBFB /* LiveTVView.swift */; };
 		AA477BE2EE59661B6A743F94 /* ImagePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98C8F5D695E36798C8EC974D /* ImagePipeline.swift */; };
 		AD050743EC5FB6645D57A171 /* ProvidersSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED3F6045FC0AD7F92F090118 /* ProvidersSettingsViews.swift */; };
@@ -98,9 +103,11 @@
 		B34EC0D8CD87F37C02191238 /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F94293E928197317DF1F8C /* SettingsRootView.swift */; };
 		B9B075118F9531D9971AE3EF /* Intents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27A6255A7C16EB8875FE0467 /* Intents.swift */; };
 		BB88C27FF82C73C0EA2F0FE6 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A93336F88B7099468CD68A /* AccountSettingsView.swift */; };
+		C050E6EF49B1CF01E2FFAFD5 /* FlowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */; };
 		C06EF165EB47B0CA4D01C031 /* SubtitlePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C5362BFE5BED6E0EB6365B /* SubtitlePickerView.swift */; };
 		C3225463ED00C0483FA2E718 /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 084557F2FC6CAB9830615AEA /* DetailView.swift */; };
 		C5082B08EE06CC776AD82D0E /* MediaServersSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451D5176A69CC78183D18794 /* MediaServersSettingsView.swift */; };
+		C52F86F84E4AB131D0F80157 /* FlowTopShelf.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CB23EA382EDEF9D5FC492A82 /* FlowTopShelf.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C5EA3611E6DB57A41649D971 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D03A2B99C78348BE0EB427 /* SearchView.swift */; };
 		C5F54F42F990185AECAF5C39 /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9ED31EC7E6444B795906246 /* DownloadManager.swift */; };
 		C66FCC84DA7C09161DE65B20 /* MediaServersSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451D5176A69CC78183D18794 /* MediaServersSettingsView.swift */; };
@@ -108,19 +115,23 @@
 		CB4AAD9E1EEC59A8B3DD2914 /* Intents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27A6255A7C16EB8875FE0467 /* Intents.swift */; };
 		CC9E60022EA9AD97A053BC0F /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428B38EA5FEC2E7977F8EA76 /* HomeView.swift */; };
 		CE1FCAD1F0959FCB9154AC8B /* SystemIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B3B66222812A0C035066700 /* SystemIntegration.swift */; };
+		CFB03CFA700FC736C6699A40 /* AppModel+Snapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B1E42308B468C5EABF03CD /* AppModel+Snapshot.swift */; };
 		D14A5CC3A0D0362CC9135221 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428B38EA5FEC2E7977F8EA76 /* HomeView.swift */; };
 		D1B3B09A8A8919C402C37C7E /* LiveTVView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11A5725FE1CA04C7ABACBFB /* LiveTVView.swift */; };
 		D252265633902B30F575402C /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5289F6C0111AC96F58A5B8A9 /* Cards.swift */; };
+		D2D2008AC8ACC92B230EBD42 /* FlowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */; };
 		D2E6E062AE9FD4CF3ADF16D0 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0989E9FE254B064FABEA61E /* PlayerView.swift */; };
 		D7238BBEC40F070902A57934 /* PersonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2530CF7AECC3DEE2DDC5DEE7 /* PersonView.swift */; };
 		D8A6B22B413C870859DA4BD6 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F088D0F4A55BC78D157C430 /* Theme.swift */; };
 		D8E388090E8B4DD49BA3514B /* AppModel+Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDFD9452BB4553C5D6D0B9D5 /* AppModel+Playback.swift */; };
+		D93304BDD0CCA22914527E3F /* AppModel+Snapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B1E42308B468C5EABF03CD /* AppModel+Snapshot.swift */; };
 		D9974BD1EC592ACF61DEECC0 /* SourcePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A84A9F87CCE0A8F9E094FF1 /* SourcePickerView.swift */; };
 		DAF96B8B5651091388BBAF82 /* Shelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E4B0A67CC21E053989BB58A /* Shelves.swift */; };
 		DEC14EA578DC92CC1530DCE3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6C97AD56B95F80525C774907 /* Assets.xcassets */; };
 		E197E9DC8878B85BF83BFA21 /* FlowKit in Frameworks */ = {isa = PBXBuildFile; productRef = 260CFC46D33868BB12C131B0 /* FlowKit */; };
 		E246BFF4BD7FE5509952989B /* FlowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64C5B84B31FA9BA7D117A2E0 /* FlowApp.swift */; };
 		E2EA2874A3BF28CCF02E353C /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7785133DEC097B45A1126DA /* OnboardingView.swift */; };
+		E4D28F96D12C6739141C5806 /* FlowWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16383A223031E05D459007D7 /* FlowWidgets.swift */; };
 		E5D35F448C3528FEE4DFC7A7 /* SportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDC8FFF7F3CED5F10C0F96E2 /* SportsView.swift */; };
 		E67106240EB445E88C08ACC1 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708B75EA3C803473D05AB1F1 /* AppModel.swift */; };
 		E689F48FE4173C59470CED51 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6C97AD56B95F80525C774907 /* Assets.xcassets */; };
@@ -137,6 +148,7 @@
 		F1A284A29674617EE7B33536 /* AppModel+Shelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9180D9C82DCFC46BFA6D629E /* AppModel+Shelves.swift */; };
 		F23D6984C99C9A161ABAFA41 /* ExploreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBC2B539AB9BA72E74E143DF /* ExploreView.swift */; };
 		F2957CE64C8C18E39C5615DF /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9ED31EC7E6444B795906246 /* DownloadManager.swift */; };
+		F2BC4444CB62002CEA8D8794 /* ContentProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E557CBF6F49DE14D1CAD45C /* ContentProvider.swift */; };
 		F2DD76CCE7567AA2F0A601F4 /* SeasonsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A899EF832EB2F6309B4822B /* SeasonsSection.swift */; };
 		F457482A3CB66FB336B0619C /* AppModel+Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDFD9452BB4553C5D6D0B9D5 /* AppModel+Playback.swift */; };
 		FA08D5F3311C1E38BD232FDE /* SourcePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A84A9F87CCE0A8F9E094FF1 /* SourcePickerView.swift */; };
@@ -144,19 +156,64 @@
 		FC37EB2496B90795176D240C /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 084557F2FC6CAB9830615AEA /* DetailView.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		E2AA6D126DA3D8BB6824A21A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2AA6D7BA5D8BD56A395381D5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EE036E142E236904C3B09EFB;
+			remoteInfo = FlowTopShelf;
+		};
+		F362C32813373D74F6058B62 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2AA6D7BA5D8BD56A395381D5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1D074444F3451BD526F4BCEF;
+			remoteInfo = FlowWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		85C7E247C9377B2313CD672D /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				C52F86F84E4AB131D0F80157 /* FlowTopShelf.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B14E3EE48FE238FA6EF3E11A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				1B1CF897CAB179C4ACDDC146 /* FlowWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		01495BA2052DEEA5E6EB55E7 /* Flow-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Flow-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		03878E23BB21C51D27637323 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		07E5BC060EB6D6E2ABFE2898 /* ShelvesSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelvesSettingsView.swift; sourceTree = "<group>"; };
 		084557F2FC6CAB9830615AEA /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
 		0A84A9F87CCE0A8F9E094FF1 /* SourcePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcePickerView.swift; sourceTree = "<group>"; };
+		16383A223031E05D459007D7 /* FlowWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowWidgets.swift; sourceTree = "<group>"; };
 		1AA22997771CD0720AEAF1B6 /* AppModel+Library.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Library.swift"; sourceTree = "<group>"; };
 		1E4B0A67CC21E053989BB58A /* Shelves.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shelves.swift; sourceTree = "<group>"; };
+		22B1E42308B468C5EABF03CD /* AppModel+Snapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Snapshot.swift"; sourceTree = "<group>"; };
 		2530CF7AECC3DEE2DDC5DEE7 /* PersonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonView.swift; sourceTree = "<group>"; };
 		27A6255A7C16EB8875FE0467 /* Intents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intents.swift; sourceTree = "<group>"; };
 		2D51B71E64A3FAEEAB5B463B /* SourcesSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcesSettingsView.swift; sourceTree = "<group>"; };
 		3242A5E3E4210663266FDC7F /* FlowKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = FlowKit; path = Packages/FlowKit; sourceTree = SOURCE_ROOT; };
 		3B3B66222812A0C035066700 /* SystemIntegration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemIntegration.swift; sourceTree = "<group>"; };
+		3E557CBF6F49DE14D1CAD45C /* ContentProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentProvider.swift; sourceTree = "<group>"; };
 		428B38EA5FEC2E7977F8EA76 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		434D840AB6866F096CBB9D82 /* Platform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Platform.swift; sourceTree = "<group>"; };
 		451D5176A69CC78183D18794 /* MediaServersSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaServersSettingsView.swift; sourceTree = "<group>"; };
@@ -164,6 +221,7 @@
 		4AB914167C0E60D7E61706B6 /* Flow-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Flow-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4EC0099DE944D4031131AE4D /* PlayerSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSurface.swift; sourceTree = "<group>"; };
 		5289F6C0111AC96F58A5B8A9 /* Cards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cards.swift; sourceTree = "<group>"; };
+		57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowSnapshot.swift; sourceTree = "<group>"; };
 		5F088D0F4A55BC78D157C430 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		64C5B84B31FA9BA7D117A2E0 /* FlowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowApp.swift; sourceTree = "<group>"; };
 		6C97AD56B95F80525C774907 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -181,6 +239,7 @@
 		B0AF73C27E4D142EE2CA80A1 /* GuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuideView.swift; sourceTree = "<group>"; };
 		B57EAE07618FE51177989487 /* Flow-tvOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Flow-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BDFD9452BB4553C5D6D0B9D5 /* AppModel+Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Playback.swift"; sourceTree = "<group>"; };
+		CB23EA382EDEF9D5FC492A82 /* FlowTopShelf.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = FlowTopShelf.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CEADFF907FBFB0BA1E4CB7BE /* AppModel+Calendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Calendar.swift"; sourceTree = "<group>"; };
 		CFDC10E881E9DB671424D280 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		CFEA12FE336D1E66E95B7F93 /* PlaybackSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackSession.swift; sourceTree = "<group>"; };
@@ -194,6 +253,7 @@
 		EDC8FFF7F3CED5F10C0F96E2 /* SportsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SportsView.swift; sourceTree = "<group>"; };
 		EE2CE055DCDAD495019235C4 /* ScreenshotTour.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTour.swift; sourceTree = "<group>"; };
 		F0989E9FE254B064FABEA61E /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
+		F68AC53DAC814019C2653549 /* FlowWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = FlowWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -261,6 +321,8 @@
 				01495BA2052DEEA5E6EB55E7 /* Flow-iOS.app */,
 				4AB914167C0E60D7E61706B6 /* Flow-macOS.app */,
 				B57EAE07618FE51177989487 /* Flow-tvOS.app */,
+				CB23EA382EDEF9D5FC492A82 /* FlowTopShelf.appex */,
+				F68AC53DAC814019C2653549 /* FlowWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -290,6 +352,14 @@
 				3242A5E3E4210663266FDC7F /* FlowKit */,
 			);
 			path = Packages;
+			sourceTree = "<group>";
+		};
+		6CC5B6577D7F123E3DF2C552 /* TopShelf */ = {
+			isa = PBXGroup;
+			children = (
+				3E557CBF6F49DE14D1CAD45C /* ContentProvider.swift */,
+			);
+			path = TopShelf;
 			sourceTree = "<group>";
 		};
 		743D40B1D2047AEDC61FB03B /* Features */ = {
@@ -331,6 +401,14 @@
 			path = Design;
 			sourceTree = "<group>";
 		};
+		91D942EF3596485555887E08 /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				16383A223031E05D459007D7 /* FlowWidgets.swift */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
 		9899170895F3157BF223C802 /* Config */ = {
 			isa = PBXGroup;
 			children = (
@@ -355,6 +433,7 @@
 				1AA22997771CD0720AEAF1B6 /* AppModel+Library.swift */,
 				BDFD9452BB4553C5D6D0B9D5 /* AppModel+Playback.swift */,
 				9180D9C82DCFC46BFA6D629E /* AppModel+Shelves.swift */,
+				22B1E42308B468C5EABF03CD /* AppModel+Snapshot.swift */,
 				64C5B84B31FA9BA7D117A2E0 /* FlowApp.swift */,
 				27A6255A7C16EB8875FE0467 /* Intents.swift */,
 				03878E23BB21C51D27637323 /* RootView.swift */,
@@ -380,12 +459,23 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		BB78AE836B046745D7A428C6 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		C3DBD8A85E3100385348A5C6 = {
 			isa = PBXGroup;
 			children = (
 				9899170895F3157BF223C802 /* Config */,
 				D2A25FD532C52852165881F6 /* Flow */,
 				4CE58DBC5DB1B54CF9DCFDC1 /* Packages */,
+				BB78AE836B046745D7A428C6 /* Shared */,
+				6CC5B6577D7F123E3DF2C552 /* TopShelf */,
+				91D942EF3596485555887E08 /* Widgets */,
 				12E09804F282BABC47EBF4CF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -474,6 +564,21 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		1D074444F3451BD526F4BCEF /* FlowWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 48F327470750D7BE51C26BA6 /* Build configuration list for PBXNativeTarget "FlowWidgets" */;
+			buildPhases = (
+				7BA59DA8168591C8436E5645 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FlowWidgets;
+			productName = FlowWidgets;
+			productReference = F68AC53DAC814019C2653549 /* FlowWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		399A766FC013519012EF0B72 /* Flow-iOS */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 39EC197F2449E73EBB60E3C3 /* Build configuration list for PBXNativeTarget "Flow-iOS" */;
@@ -481,10 +586,12 @@
 				B5C001D6059973510CA675CD /* Sources */,
 				BBF28EDC572819B45AC1AA0D /* Resources */,
 				A8723EAA7DA81A2CCACE639F /* Frameworks */,
+				B14E3EE48FE238FA6EF3E11A /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C33D38F05C5D250BE6FACF24 /* PBXTargetDependency */,
 			);
 			name = "Flow-iOS";
 			packageProductDependencies = (
@@ -501,10 +608,12 @@
 				B64448522741FD7786394858 /* Sources */,
 				AE13EA7FFA818F4DD8C23F28 /* Resources */,
 				A8FF3EBAC3AA229CD6A31AF5 /* Frameworks */,
+				85C7E247C9377B2313CD672D /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				8144CA0F40215EB7A9D28142 /* PBXTargetDependency */,
 			);
 			name = "Flow-tvOS";
 			packageProductDependencies = (
@@ -534,6 +643,21 @@
 			productReference = 4AB914167C0E60D7E61706B6 /* Flow-macOS.app */;
 			productType = "com.apple.product-type.application";
 		};
+		EE036E142E236904C3B09EFB /* FlowTopShelf */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DBFE7BA954756AFC598988FF /* Build configuration list for PBXNativeTarget "FlowTopShelf" */;
+			buildPhases = (
+				44C199D4504004704080116D /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FlowTopShelf;
+			productName = FlowTopShelf;
+			productReference = CB23EA382EDEF9D5FC492A82 /* FlowTopShelf.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -543,6 +667,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					1D074444F3451BD526F4BCEF = {
+						ProvisioningStyle = Automatic;
+					};
 					399A766FC013519012EF0B72 = {
 						ProvisioningStyle = Automatic;
 					};
@@ -550,6 +677,9 @@
 						ProvisioningStyle = Automatic;
 					};
 					9532D5E52AF2407B3C133861 = {
+						ProvisioningStyle = Automatic;
+					};
+					EE036E142E236904C3B09EFB = {
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -572,6 +702,8 @@
 				399A766FC013519012EF0B72 /* Flow-iOS */,
 				9532D5E52AF2407B3C133861 /* Flow-macOS */,
 				468D9042480FCFCBE5F9F42E /* Flow-tvOS */,
+				EE036E142E236904C3B09EFB /* FlowTopShelf */,
+				1D074444F3451BD526F4BCEF /* FlowWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -604,6 +736,24 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		44C199D4504004704080116D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F2BC4444CB62002CEA8D8794 /* ContentProvider.swift in Sources */,
+				42DF98BD23C1824917EF0AC3 /* FlowSnapshot.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7BA59DA8168591C8436E5645 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C050E6EF49B1CF01E2FFAFD5 /* FlowSnapshot.swift in Sources */,
+				E4D28F96D12C6739141C5806 /* FlowWidgets.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B5C001D6059973510CA675CD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -613,6 +763,7 @@
 				43754C79ACDEBFDCF591556F /* AppModel+Library.swift in Sources */,
 				D8E388090E8B4DD49BA3514B /* AppModel+Playback.swift in Sources */,
 				40F86A12EA0AB70C906F2189 /* AppModel+Shelves.swift in Sources */,
+				D93304BDD0CCA22914527E3F /* AppModel+Snapshot.swift in Sources */,
 				9F75774BA0C3F0B9FA280DBD /* AppModel.swift in Sources */,
 				0E03528DFC36D51C2BA37450 /* CalendarView.swift in Sources */,
 				2D620B4F7C5228E568A34524 /* Cards.swift in Sources */,
@@ -621,6 +772,7 @@
 				C5F54F42F990185AECAF5C39 /* DownloadManager.swift in Sources */,
 				F23D6984C99C9A161ABAFA41 /* ExploreView.swift in Sources */,
 				FA377569BA4AEFA2781D9549 /* FlowApp.swift in Sources */,
+				7BBEDFED27F66D4F425AFE8F /* FlowSnapshot.swift in Sources */,
 				776023F73CD60A0CCDE0D029 /* GuideView.swift in Sources */,
 				510271A6C7046E82671FE374 /* HomeView.swift in Sources */,
 				0BC7F58ABE20D3241F77CD28 /* ImagePipeline.swift in Sources */,
@@ -663,6 +815,7 @@
 				098D56D6643965A14E3E0C90 /* AppModel+Library.swift in Sources */,
 				F457482A3CB66FB336B0619C /* AppModel+Playback.swift in Sources */,
 				F1A284A29674617EE7B33536 /* AppModel+Shelves.swift in Sources */,
+				A569B7E2A24F289614CBE5BB /* AppModel+Snapshot.swift in Sources */,
 				2BCF310A6A624CFC44F87920 /* AppModel.swift in Sources */,
 				4459C66240FCFA0D6D84B09F /* CalendarView.swift in Sources */,
 				D252265633902B30F575402C /* Cards.swift in Sources */,
@@ -671,6 +824,7 @@
 				F2957CE64C8C18E39C5615DF /* DownloadManager.swift in Sources */,
 				EB65E4648D060FC7CC48DC09 /* ExploreView.swift in Sources */,
 				E246BFF4BD7FE5509952989B /* FlowApp.swift in Sources */,
+				D2D2008AC8ACC92B230EBD42 /* FlowSnapshot.swift in Sources */,
 				96CB1CBC664603888D6E75C3 /* GuideView.swift in Sources */,
 				D14A5CC3A0D0362CC9135221 /* HomeView.swift in Sources */,
 				AA477BE2EE59661B6A743F94 /* ImagePipeline.swift in Sources */,
@@ -713,6 +867,7 @@
 				3690037E6800EAE5CA48DFEC /* AppModel+Library.swift in Sources */,
 				A2423A3F19DDFD9188DA921F /* AppModel+Playback.swift in Sources */,
 				1B6C6571C6885AF8EC43EFD3 /* AppModel+Shelves.swift in Sources */,
+				CFB03CFA700FC736C6699A40 /* AppModel+Snapshot.swift in Sources */,
 				E67106240EB445E88C08ACC1 /* AppModel.swift in Sources */,
 				A2AFD438E3C2389C85EF7DC0 /* CalendarView.swift in Sources */,
 				45700EED9B26788DA522D061 /* Cards.swift in Sources */,
@@ -721,6 +876,7 @@
 				57F136C4AA06B525A33DF7ED /* DownloadManager.swift in Sources */,
 				ED54398CF83C0B32A2997B48 /* ExploreView.swift in Sources */,
 				4A898422FE42EF909E126D20 /* FlowApp.swift in Sources */,
+				27C0E92B9404C9989AD1F99A /* FlowSnapshot.swift in Sources */,
 				A0EE84DBCC08CCE262822E93 /* GuideView.swift in Sources */,
 				CC9E60022EA9AD97A053BC0F /* HomeView.swift in Sources */,
 				C9604A974E21CA90E17B14CC /* ImagePipeline.swift in Sources */,
@@ -755,6 +911,19 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		8144CA0F40215EB7A9D28142 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EE036E142E236904C3B09EFB /* FlowTopShelf */;
+			targetProxy = E2AA6D126DA3D8BB6824A21A /* PBXContainerItemProxy */;
+		};
+		C33D38F05C5D250BE6FACF24 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1D074444F3451BD526F4BCEF /* FlowWidgets */;
+			targetProxy = F362C32813373D74F6058B62 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		0149FC17B79E23BFA5D1828A /* Debug */ = {
@@ -828,6 +997,24 @@
 				TVOS_DEPLOYMENT_TARGET = 17.0;
 			};
 			name = Debug;
+		};
+		04F148174F11D2112BDED4F4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widgets/FlowWidgets.entitlements;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(FLOW_BUNDLE_ID).widgets";
+				PRODUCT_NAME = FlowWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
 		};
 		1A15FF64225402BF101B996D /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -981,6 +1168,24 @@
 			};
 			name = Release;
 		};
+		BEC95A5F89200180F734DDDB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TopShelf/FlowTopShelf.entitlements;
+				INFOPLIST_FILE = TopShelf/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(FLOW_BUNDLE_ID).topshelf";
+				PRODUCT_NAME = FlowTopShelf;
+				SDKROOT = appletvos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 3;
+			};
+			name = Release;
+		};
 		CFE0B660E4E294EBF62F0972 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -998,6 +1203,42 @@
 			};
 			name = Debug;
 		};
+		DD212427E0F29735A7F06C76 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TopShelf/FlowTopShelf.entitlements;
+				INFOPLIST_FILE = TopShelf/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(FLOW_BUNDLE_ID).topshelf";
+				PRODUCT_NAME = FlowTopShelf;
+				SDKROOT = appletvos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 3;
+			};
+			name = Debug;
+		};
+		E00EEFD7DB960236208FE5FC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widgets/FlowWidgets.entitlements;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(FLOW_BUNDLE_ID).widgets";
+				PRODUCT_NAME = FlowWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1006,6 +1247,15 @@
 			buildConfigurations = (
 				7188D2A38014FBAC28378713 /* Debug */,
 				8B3B982A61115DB503F586B2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		48F327470750D7BE51C26BA6 /* Build configuration list for PBXNativeTarget "FlowWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E00EEFD7DB960236208FE5FC /* Debug */,
+				04F148174F11D2112BDED4F4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -1033,6 +1283,15 @@
 			buildConfigurations = (
 				0149FC17B79E23BFA5D1828A /* Debug */,
 				4C098131ED41AEEBA383E1D6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DBFE7BA954756AFC598988FF /* Build configuration list for PBXNativeTarget "FlowTopShelf" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DD212427E0F29735A7F06C76 /* Debug */,
+				BEC95A5F89200180F734DDDB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

@@ -15,8 +15,13 @@ enum SystemIntegration {
         URL(string: "\(SetupShare.urlScheme)://title/\(key.type.rawValue)/\(key.tmdbID)")!
     }
 
+    /// flow://play/movie/603 opens the title and starts it.
+    static func playURL(for key: MediaKey) -> URL {
+        URL(string: "\(SetupShare.urlScheme)://play/\(key.type.rawValue)/\(key.tmdbID)")!
+    }
+
     static func key(from url: URL) -> MediaKey? {
-        guard url.scheme == SetupShare.urlScheme, url.host == "title" else { return nil }
+        guard url.scheme == SetupShare.urlScheme, url.host == "title" || url.host == "play" else { return nil }
         let parts = url.pathComponents.filter { $0 != "/" }
         guard parts.count == 2, let type = MediaType(rawValue: parts[0]), let id = Int(parts[1]) else { return nil }
         return MediaKey(type: type, tmdbID: id)

@@ -249,10 +249,17 @@ public struct Availability: Codable, Hashable, Sendable {
     public var isEmpty: Bool { stream.isEmpty && free.isEmpty && rent.isEmpty && buy.isEmpty }
 
     /// One entry per service, best offer first: included with a subscription, then free, then rent, then buy.
-    public var offers: [(provider: WatchProvider, kind: Kind)] {
+    public var offers: [Offer] {
         var seen = Set<Int>()
-        let all = stream.map { ($0, Kind.stream) } + free.map { ($0, Kind.free) } + rent.map { ($0, Kind.rent) } + buy.map { ($0, Kind.buy) }
-        return all.filter { seen.insert($0.0.providerId).inserted }.map { (provider: $0.0, kind: $0.1) }
+        let all = stream.map { Offer(provider: $0, kind: .stream) } + free.map { Offer(provider: $0, kind: .free) }
+            + rent.map { Offer(provider: $0, kind: .rent) } + buy.map { Offer(provider: $0, kind: .buy) }
+        return all.filter { seen.insert($0.provider.providerId).inserted }
+    }
+
+    public struct Offer: Hashable, Sendable, Identifiable {
+        public let provider: WatchProvider
+        public let kind: Kind
+        public var id: Int { provider.providerId }
     }
 
     public enum Kind: String, Codable, Sendable {
