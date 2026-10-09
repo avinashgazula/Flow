@@ -364,11 +364,15 @@ struct RatingsRow: View {
         // Centred when it fits, scrollable when it doesn't — never wider than the screen.
         GeometryReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                row.frame(minWidth: proxy.size.width, alignment: centered ? .center : .leading)
+                row
+                    .padding(.horizontal, Theme.Space.gutter)
+                    .frame(minWidth: proxy.size.width, alignment: centered ? .center : .leading)
             }
             .scrollBounceBehavior(.basedOnSize)
         }
         .frame(height: 24 * Theme.scale)
+        // Bleed to the screen edges so long rows scroll under the margins instead of clipping at them.
+        .padding(.horizontal, -Theme.Space.gutter)
     }
 
     private var row: some View {

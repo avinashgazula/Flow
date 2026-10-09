@@ -134,24 +134,28 @@ struct RemoteImage: View {
     @State private var failed = false
 
     var body: some View {
-        ZStack {
-            if let image {
-                Image(decorative: image, scale: 1)
-                    .resizable()
-                    .aspectRatio(contentMode: contentMode)
-                    .transition(.opacity)
-            } else if failed || url == nil, let fallbackTitle {
-                GeneratedArtwork(title: fallbackTitle)
-            } else {
-                Rectangle().fill(Theme.Palette.surface)
-                    .overlay {
-                        if failed && fallbackTitle == nil {
-                            Image(systemName: "photo").foregroundStyle(Theme.Palette.textTertiary)
+        // Always take exactly the offered size: a `.fill` image's natural size must never
+        // leak into layout (it would widen whole columns).
+        Color.clear
+            .overlay {
+                if let image {
+                    Image(decorative: image, scale: 1)
+                        .resizable()
+                        .aspectRatio(contentMode: contentMode)
+                        .transition(.opacity)
+                } else if failed || url == nil, let fallbackTitle {
+                    GeneratedArtwork(title: fallbackTitle)
+                } else {
+                    Rectangle().fill(Theme.Palette.surface)
+                        .overlay {
+                            if failed && fallbackTitle == nil {
+                                Image(systemName: "photo").foregroundStyle(Theme.Palette.textTertiary)
+                            }
                         }
-                    }
+                }
             }
-        }
-        .task(id: url) { await load() }
+            .clipped(antialiased: true)
+            .task(id: url) { await load() }
     }
 
     private func load() async {

@@ -69,6 +69,7 @@ struct LiveTVView: View {
     @State private var group: String?
     @State private var search = ""
     @State private var playing: Channel?
+    @State private var showGuide = !Platform.isPhone
 
     private var favourites: [Channel] {
         let ids = model.settings.liveTV.favouriteChannelIDs
@@ -118,48 +119,67 @@ struct LiveTVView: View {
     }
 
     private var content: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            HStack(spacing: Theme.Space.s) {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
+                    HStack(spacing: Theme.Space.xs) {
                         chip("All", selected: group == nil) { group = nil }
                         if !favourites.isEmpty { chip("★ Favourites", selected: group == "★ Favourites") { group = "★ Favourites" } }
                         ForEach(store.groups, id: \.self) { g in chip(g, selected: group == g) { group = g } }
                     }
-                    .padding(.horizontal, Platform.horizontalPadding)
+                    .padding(.horizontal, Theme.Space.gutter)
                 }
-                if let error = store.error {
-                    Label(error, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
-                        .padding(.horizontal, Platform.horizontalPadding)
+                .scrollClipDisabled()
+                Picker("View", selection: $showGuide) {
+                    Image(systemName: "list.bullet").tag(false).accessibilityLabel("List")
+                    Image(systemName: "calendar.day.timeline.left").tag(true).accessibilityLabel("Guide")
                 }
-                LazyVStack(spacing: Platform.isTV ? 16 : 8) {
-                    ForEach(visible) { channel in
-                        Button { play(channel) } label: {
-                            ChannelRow(channel: channel, epg: store.epg, isFavourite: model.settings.liveTV.favouriteChannelIDs.contains(channel.id))
-                        }
-                        .buttonStyle(CardButtonStyle())
-                        .contextMenu {
-                            Button {
-                                toggleFavourite(channel)
-                            } label: {
-                                let fav = model.settings.liveTV.favouriteChannelIDs.contains(channel.id)
-                                Label(fav ? "Remove Favourite" : "Favourite", systemImage: fav ? "star.slash" : "star")
+                .pickerStyle(.segmented)
+                .frame(width: Platform.isTV ? 220 : 96)
+                .padding(.trailing, Theme.Space.gutter)
+            }
+            if let error = store.error {
+                Label(error, systemImage: "exclamationmark.triangle").font(Theme.Typeface.caption).foregroundStyle(.orange)
+                    .padding(.horizontal, Theme.Space.gutter)
+            }
+            if showGuide {
+                GuideView(channels: visible, epg: store.epg) { play($0) }
+                    .transition(.opacity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: Platform.isTV ? 16 : 8) {
+                        ForEach(visible) { channel in
+                            Button { play(channel) } label: {
+                                ChannelRow(channel: channel, epg: store.epg, isFavourite: model.settings.liveTV.favouriteChannelIDs.contains(channel.id))
+                            }
+                            .buttonStyle(CardButtonStyle())
+                            .contextMenu {
+                                Button {
+                                    toggleFavourite(channel)
+                                } label: {
+                                    let fav = model.settings.liveTV.favouriteChannelIDs.contains(channel.id)
+                                    Label(fav ? "Remove Favourite" : "Favourite", systemImage: fav ? "star.slash" : "star")
+                                }
                             }
                         }
                     }
+                    .padding(.horizontal, Theme.Space.gutter)
+                    .padding(.bottom, Theme.Space.xl)
                 }
-                .padding(.horizontal, Platform.horizontalPadding)
+                .transition(.opacity)
             }
-            .padding(.vertical)
         }
+        .padding(.top, Theme.Space.xs)
+        .animation(Theme.Motion.fade, value: showGuide)
     }
 
     private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.subheadline.weight(.medium))
-                .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(selected ? Color.white : Color.white.opacity(0.1), in: Capsule())
+                .font(.system(size: 14 * Theme.scale, weight: .semibold))
+                .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs + 1)
+                .background(selected ? Color.white : Theme.Palette.surface, in: Capsule())
+                .overlay(Capsule().strokeBorder(Theme.Palette.hairline, lineWidth: selected ? 0 : 1))
                 .foregroundStyle(selected ? Color.black : Color.white)
         }
         .buttonStyle(CardButtonStyle())

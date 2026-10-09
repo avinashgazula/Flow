@@ -48,6 +48,24 @@ enum ScreenshotTour {
                   releaseDate: FlowDate.parse("\(t.year)-06-15"), runtimeMinutes: t.runtime, voteAverage: t.rating)
     }
 
+    static var logURL: URL {
+        (ProcessInfo.processInfo.environment["FLOW_TOUR_FILE"].map { URL(fileURLWithPath: $0) }
+            ?? FileManager.default.temporaryDirectory.appendingPathComponent("flow-tour-step")).appendingPathExtension("log")
+    }
+
+    /// Appends a diagnostic line while a tour is running; no-op otherwise.
+    static func log(_ message: String) {
+        guard isRequested else { return }
+        let line = "\(Date().formatted(.iso8601)) \(message)\n"
+        if let handle = try? FileHandle(forWritingTo: logURL) {
+            handle.seekToEndOfFile()
+            handle.write(Data(line.utf8))
+            try? handle.close()
+        } else {
+            try? line.write(to: logURL, atomically: true, encoding: .utf8)
+        }
+    }
+
     static func run(_ model: AppModel) async {
         let file = ProcessInfo.processInfo.environment["FLOW_TOUR_FILE"].map { URL(fileURLWithPath: $0) }
             ?? FileManager.default.temporaryDirectory.appendingPathComponent("flow-tour-step")
@@ -55,6 +73,7 @@ enum ScreenshotTour {
         try? await Task.sleep(nanoseconds: 4_000_000_000)
         for (index, step) in steps().enumerated() {
             await step.action(model)
+            log("step \(step.name) active=\(model.activePlayback != nil) picker=\(model.sourcePickerRequest != nil) tab=\(model.selectedTab)")
             try? "\(index):\(step.name)".write(to: file, atomically: true, encoding: .utf8)
             try? await Task.sleep(nanoseconds: UInt64(dwell * 1_000_000_000))
         }

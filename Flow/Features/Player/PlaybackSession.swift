@@ -141,6 +141,7 @@ final class PlaybackSession: Identifiable {
     // MARK: Observers
 
     private func itemStatusChanged(_ item: AVPlayerItem) {
+        ScreenshotTour.log("item status \(item.status.rawValue) error=\(item.error?.localizedDescription ?? "-")")
         switch item.status {
         case .readyToPlay:
             if case .connecting = phase { phase = .connecting(0.7) }
@@ -330,7 +331,8 @@ final class PlaybackSession: Identifiable {
         }
     }
 
-    private func close() {
+    private func close(_ caller: String = #function) {
+        ScreenshotTour.log("PlaybackSession.close from \(caller) phase=\(phase)")
         countdownTask?.cancel()
         player.pause()
         player.replaceCurrentItem(with: nil)

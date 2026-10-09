@@ -11,10 +11,10 @@ struct LibraryView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 14) {
                         if Platform.supportsDownloads {
-                            LibraryTile(title: "Downloads", subtitle: downloadCount > 0 ? "\(downloadCount) saved" : nil, systemImage: "arrow.down.circle.fill", route: .downloads)
+                            LibraryTile(title: "Downloads", subtitle: downloadCount > 0 ? "\(downloadCount) saved" : "Watch offline", systemImage: "arrow.down.circle.fill", route: .downloads, tint: .blue)
                         }
-                        LibraryTile(title: "Sports", subtitle: "\(model.settings.sports.followedTeams.count) teams followed", systemImage: "sportscourt.fill", route: .sports)
-                        LibraryTile(title: "History", subtitle: nil, systemImage: "clock.fill", route: .library(.history))
+                        LibraryTile(title: "Sports", subtitle: model.settings.sports.followedTeams.isEmpty ? "Follow your teams" : "\(model.settings.sports.followedTeams.count) teams followed", systemImage: "sportscourt.fill", route: .sports, tint: .green)
+                        LibraryTile(title: "History", subtitle: "\(model.history.count) plays", systemImage: "clock.fill", route: .library(.history), tint: .orange)
                     }
                     .padding(.horizontal, Platform.horizontalPadding)
                 }
@@ -63,24 +63,30 @@ struct LibraryTile: View {
     let subtitle: String?
     let systemImage: String
     let route: Route
+    var tint: Color = .white
 
     var body: some View {
         NavigationLink(value: route) {
-            HStack(spacing: 14) {
+            HStack(spacing: Theme.Space.s) {
                 Image(systemName: systemImage)
-                    .font(.title3)
-                    .frame(width: 46, height: 46)
-                    .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                    .font(.system(size: 17 * Theme.scale, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 42 * Theme.scale, height: 42 * Theme.scale)
+                    .background(tint.opacity(0.16), in: Circle())
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.headline)
-                    if let subtitle { Text(subtitle).font(.caption).foregroundStyle(.secondary) }
+                    Text(title).font(Theme.Typeface.headline)
+                    if let subtitle {
+                        Text(subtitle).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+                    }
                 }
                 Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12 * Theme.scale, weight: .bold))
+                    .foregroundStyle(Theme.Palette.textTertiary)
             }
-            .padding(14)
-            .frame(width: Platform.isTV ? 420 : 240, alignment: .leading)
-            .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(.white.opacity(0.08)))
+            .padding(Theme.Space.m)
+            .frame(width: Platform.isTV ? 460 : 230, alignment: .leading)
+            .flowGlass(RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
         }
         .buttonStyle(CardButtonStyle())
     }

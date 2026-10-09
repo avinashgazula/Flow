@@ -46,6 +46,9 @@ struct RootView: View {
                         #endif
                     }
             }
+            #if os(tvOS)
+            .background(Theme.Palette.canvas.ignoresSafeArea())
+            #endif
             .environment(model)
         }
         #endif

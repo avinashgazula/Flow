@@ -50,6 +50,7 @@ if [ "$platform" = "macos" ]; then
   sleep 6
   osascript -e 'tell application "System Events" to set frontmost of (first process whose unix id is '"$app_pid"') to true' || true
   capture_loop 'screencapture -x "$file"'
+  cp "$tour_file.log" "$out/tour.log" 2>/dev/null || true
   kill $app_pid || true
   exit 0
 fi
@@ -74,4 +75,5 @@ xcrun simctl install "$udid" "dd/Build/Products/$products/Flow.app"
 SIMCTL_CHILD_FLOW_TOUR_FILE="$tour_file" SIMCTL_CHILD_FLOW_TOUR_DWELL=7 \
   xcrun simctl launch "$udid" "$bundle_id" -FlowDemo YES -FlowTour YES
 capture_loop 'xcrun simctl io "$udid" screenshot "$file"'
+cp "$tour_file.log" "$out/tour.log" 2>/dev/null || true
 xcrun simctl terminate "$udid" "$bundle_id" || true
