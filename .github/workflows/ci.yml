@@ -49,7 +49,14 @@ jobs:
             -destination "${{ matrix.destination }}" \
             -configuration Debug \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-            > build.log 2>&1 || { grep -E "error:" -A3 build.log | head -150; tail -20 build.log; exit 1; }
+            -IDEBuildingContinueBuildingAfterErrors=YES \
+            > build.log 2>&1 || {
+              echo "::group::Errors"
+              grep -E "^/.*: error: " build.log | sed 's#^.*/Flow/Flow/##' | sort -u | head -120
+              echo "::endgroup::"
+              grep -E "^/.*: error: " build.log | sed 's#^.*/Flow/Flow/##' | sort -u | head -120 >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            }
           grep -c "warning:" build.log || true
           tail -5 build.log
 

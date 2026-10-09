@@ -29,7 +29,9 @@ final class LiveTVStore {
         error = nil
         loadedFor = enabled
         let http = HTTPClient(userAgent: "Flow/1.0")
-        let clients: [IPTVProvider] = enabled.map { $0.kind == .xtream ? XtreamClient(config: $0, http: http) : M3UProvider(config: $0, http: http) }
+        let clients: [IPTVProvider] = enabled.map { config -> IPTVProvider in
+            config.kind == .xtream ? XtreamClient(config: config, http: http) : M3UProvider(config: config, http: http)
+        }
 
         var all: [Channel] = []
         var errors: [String] = []
