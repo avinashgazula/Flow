@@ -25,6 +25,8 @@ struct HomeView: View {
                 .scrollIndicators(.hidden)
                 #if os(iOS)
                 .ignoresSafeArea(edges: .top)
+                #elseif os(tvOS)
+                .ignoresSafeArea(edges: [.top, .horizontal])
                 #endif
                 .refreshable { await model.refreshLibrary(force: true) }
                 .background(alignment: .top) {

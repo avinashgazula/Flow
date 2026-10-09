@@ -66,7 +66,7 @@ enum Platform {
         #elseif os(macOS)
         160
         #else
-        UIDevice.current.userInterfaceIdiom == .pad ? 160 : 118
+        UIDevice.current.userInterfaceIdiom == .pad ? 160 : 106
         #endif
     }
 
@@ -76,7 +76,7 @@ enum Platform {
         #elseif os(macOS)
         300
         #else
-        UIDevice.current.userInterfaceIdiom == .pad ? 300 : 210
+        UIDevice.current.userInterfaceIdiom == .pad ? 300 : 236
         #endif
     }
 

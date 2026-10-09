@@ -11,29 +11,30 @@ struct RootView: View {
                 OnboardingView()
             } else {
                 shell
+                    .disabled(model.activePlayback != nil)
+                    .accessibilityHidden(model.activePlayback != nil)
+            }
+            if let session = model.activePlayback {
+                // The player is a layer, not a modal, so it never races sheet dismissals.
+                PlayerView(session: session)
+                    .ignoresSafeArea()
+                    .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                    .zIndex(20)
             }
             if let toast = model.toast {
-                ToastView(message: toast).padding(.top, 8).zIndex(10)
+                ToastView(message: toast).padding(.top, 8).zIndex(30)
             }
         }
         .animation(.spring(duration: 0.35), value: model.toast)
+        .animation(Theme.Motion.gentle, value: model.activePlayback?.id)
         .flowModal(isPresented: Binding(get: { model.pendingImport != nil }, set: { if !$0 { model.pendingImport = nil } })) {
             NavigationStack { ImportSetupView() }
                 .environment(model)
         }
-        .flowModal(item: $model.sourcePickerRequest, onDismiss: { model.promotePendingPlayback() }) { request in
+        .flowModal(item: $model.sourcePickerRequest) { request in
             SourcePickerView(request: request)
                 .environment(model)
         }
-        #if os(macOS)
-        .sheet(item: $model.activePlayback) { session in
-            PlayerView(session: session).environment(model)
-        }
-        #else
-        .fullScreenCover(item: $model.activePlayback) { session in
-            PlayerView(session: session).environment(model)
-        }
-        #endif
         #if !os(macOS)
         .flowModal(isPresented: $model.showSettings) {
             NavigationStack(path: $model.settingsPath) {
@@ -140,27 +141,17 @@ private struct ModernTabChrome: ViewModifier {
 }
 
 #if os(macOS)
-/// macOS sidebar layout.
+/// macOS: a fixed sidebar beside the content. (A floating split-view sidebar lets content
+/// slide underneath it, which breaks full-bleed heroes and grids.)
 struct MacShell: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        @Bindable var model = model
-        NavigationSplitView {
-            List(selection: Binding<AppTab?>(get: { model.selectedTab }, set: { if let t = $0 { model.selectedTab = t } })) {
-                Section("Flow") {
-                    ForEach(AppTab.allCases) { tab in
-                        Label(tab.title, systemImage: tab.systemImage).tag(tab)
-                    }
-                }
-                if let profile = model.profile {
-                    Section("Account") {
-                        Label(profile.displayName ?? profile.username, systemImage: "person.crop.circle")
-                    }
-                }
-            }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 210)
-        } detail: {
+        HStack(spacing: 0) {
+            sidebar
+                .frame(width: 210)
+                .background(.regularMaterial)
+            Divider().opacity(0.4)
             NavigationStack(path: model.path(for: model.selectedTab)) {
                 ZoomNamespaceProvider {
                     TabShell().screen(for: model.selectedTab)
@@ -168,6 +159,38 @@ struct MacShell: View {
                 }
             }
             .id(model.selectedTab)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Flow")
+                .font(.system(size: 22, weight: .bold))
+                .padding(.horizontal, 14)
+                .padding(.top, 34)
+                .padding(.bottom, 14)
+            ForEach(AppTab.allCases) { tab in
+                Button { model.selectedTab = tab } label: {
+                    Label(tab.title, systemImage: tab.systemImage)
+                        .font(.system(size: 13, weight: .medium))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(model.selectedTab == tab ? Color.white.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 8)
+                .keyboardShortcut(KeyEquivalent(Character(String((AppTab.allCases.firstIndex(of: tab) ?? 0) + 1))), modifiers: .command)
+            }
+            Spacer()
+            if let profile = model.profile {
+                Label(profile.displayName ?? profile.username, systemImage: "person.crop.circle")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .padding(14)
+            }
         }
     }
 }

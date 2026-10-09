@@ -106,7 +106,6 @@ extension AppModel {
 
     /// Starts the player with a chosen source (or hands it to an external player).
     func startPlayback(_ source: StreamSource, request: PlaybackRequest) {
-        let pickerWasOpen = sourcePickerRequest != nil
         sourcePickerRequest = nil
         if case .external(let url) = source.location {
             openExternally(url)
@@ -125,20 +124,7 @@ extension AppModel {
         let runtime = Double((request.episode?.runtimeMinutes ?? request.item.runtimeMinutes) ?? 0) * 60
         var resume = source.serverResumeSeconds ?? saved?.resumePosition(runtimeSeconds: runtime > 0 ? runtime : nil)
         if let r = resume, r < 30 { resume = nil }
-        let session = PlaybackSession(model: self, request: request, source: source, resumeAt: resume)
-        if pickerWasOpen {
-            // Presented once the source sheet has finished dismissing (see `promotePendingPlayback`).
-            pendingPlayback = session
-        } else {
-            activePlayback = session
-        }
-    }
-
-    /// Shows the player queued while the source picker was dismissing.
-    func promotePendingPlayback() {
-        guard let session = pendingPlayback else { return }
-        pendingPlayback = nil
-        activePlayback = session
+        activePlayback = PlaybackSession(model: self, request: request, source: source, resumeAt: resume)
     }
 
     func openExternally(_ url: URL) {

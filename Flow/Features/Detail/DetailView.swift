@@ -36,6 +36,8 @@ struct DetailView: View {
         .background(AmbientBackground(url: current.smallBackdropURL ?? current.posterURL))
         #if os(iOS)
         .ignoresSafeArea(edges: .top)
+        #elseif os(tvOS)
+        .ignoresSafeArea(edges: [.top, .horizontal])
         #endif
         .transparentNavigationBar()
         .inlineNavigationTitle()
@@ -359,11 +361,14 @@ struct RatingsRow: View {
     var centered = false
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            row
-            ScrollView(.horizontal, showsIndicators: false) { row }
+        // Centred when it fits, scrollable when it doesn't — never wider than the screen.
+        GeometryReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                row.frame(minWidth: proxy.size.width, alignment: centered ? .center : .leading)
+            }
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+        .frame(height: 24 * Theme.scale)
     }
 
     private var row: some View {

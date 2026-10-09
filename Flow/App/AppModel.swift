@@ -99,7 +99,6 @@ final class AppModel {
     var selectedTab: AppTab
     var sourcePickerRequest: PlaybackRequest?
     var activePlayback: PlaybackSession?
-    @ObservationIgnored var pendingPlayback: PlaybackSession?
     var showSettings = false
     /// A flow://setup link waiting for the user to confirm the import.
     var pendingImport: String?

@@ -18,62 +18,114 @@ struct SourcePickerView: View {
         SourceRanker.rank(raw, settings: model.settings.sources, resolutionCap: model.settings.playback.preferredResolutionCap)
     }
 
+    private var grouped: [(SourceCategory, [StreamSource])] {
+        let order = model.settings.sources.categoryOrder
+        let groups = Dictionary(grouping: ranked, by: \.category)
+        return order.compactMap { cat in groups[cat].map { (cat, $0) } }
+    }
+
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    if ranked.isEmpty && finished {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    header
+                    providerStatus
+                    if ranked.isEmpty && !finished {
+                        VStack(spacing: Theme.Space.s) {
+                            ForEach(0..<3, id: \.self) { _ in
+                                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                                    .fill(Theme.Palette.surface).frame(height: 96 * Theme.scale)
+                            }
+                        }
+                        .shimmering()
+                    } else if ranked.isEmpty {
                         ContentUnavailableView {
-                            Label("No Sources", systemImage: "tray")
+                            Label("No Sources", systemImage: "play.slash")
                         } description: {
                             Text(model.sourceProviders().isEmpty
                                  ? "Add a media server, WebDAV share, IPTV provider or stream add-on in Settings."
-                                 : "None of your sources have this title.")
+                                 : "None of your sources have this title yet.")
                         }
+                        .padding(.top, Theme.Space.xl)
                     }
-                    ForEach(ranked) { source in
-                        Button { choose(source) } label: {
-                            SourceRow(source: source, appearance: model.settings.sources.appearance)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!source.isPlayable && !isExternal(source))
-                    }
-                } header: {
-                    HStack {
-                        Text("\(ranked.count) sources").font(.title3.weight(.semibold)).textCase(nil)
-                        Spacer()
-                        if !finished { ProgressView() }
-                    }
-                }
-
-                if !pending.isEmpty || !failures.isEmpty {
-                    Section("Providers") {
-                        ForEach(pending.sorted { $0.value < $1.value }, id: \.key) { _, name in
-                            HStack { Text(name); Spacer(); ProgressView() }
-                        }
-                        ForEach(failures.sorted { $0.key < $1.key }, id: \.key) { id, error in
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(providerName(id)).font(.subheadline)
-                                Text(error).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                    ForEach(grouped, id: \.0) { category, sources in
+                        VStack(alignment: .leading, spacing: Theme.Space.s) {
+                            if grouped.count > 1 {
+                                Text(category.displayName.uppercased())
+                                    .font(Theme.Typeface.micro).kerning(1.2)
+                                    .foregroundStyle(Theme.Palette.textTertiary)
+                            }
+                            ForEach(sources) { source in
+                                Button { choose(source) } label: {
+                                    SourceRow(source: source, appearance: model.settings.sources.appearance)
+                                }
+                                .buttonStyle(CardButtonStyle())
+                                .disabled(!source.isPlayable && !isExternal(source))
                             }
                         }
                     }
                 }
+                .padding(.horizontal, Theme.Space.gutter)
+                .padding(.bottom, Theme.Space.xxl)
+                .animation(Theme.Motion.gentle, value: ranked.map(\.id))
             }
-            .navigationTitle(request.episode.map { "\(request.item.title) · \($0.code)" } ?? request.item.title)
+            .background(AmbientBackground(url: request.item.smallBackdropURL ?? request.item.posterURL, intensity: 0.7))
             .inlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
                 ToolbarItem(placement: .primaryAction) {
                     Button { reloadToken += 1 } label: { Image(systemName: "arrow.clockwise") }
                         .disabled(!finished)
+                        .accessibilityLabel("Search Again")
                 }
             }
             .task(id: reloadToken) { await gather() }
         }
         #if os(macOS)
-        .frame(minWidth: 520, minHeight: 600)
+        .frame(minWidth: 560, minHeight: 640)
         #endif
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            RemoteImage(url: request.item.posterURL, maxPixel: 300, fallbackTitle: request.item.title)
+                .frame(width: 64 * Theme.scale, height: 96 * Theme.scale)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .hairline(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(request.item.title).font(Theme.Typeface.title).displayTracking().lineLimit(2)
+                if let ep = request.episode {
+                    Text("\(ep.code) · \(ep.title)").font(Theme.Typeface.body).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+                }
+                Text(finished ? "\(ranked.count) source\(ranked.count == 1 ? "" : "s")" : "Finding sources…")
+                    .font(Theme.Typeface.caption)
+                    .foregroundStyle(Theme.Palette.textTertiary)
+                    .contentTransition(.numericText())
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.top, Theme.Space.s)
+    }
+
+    @ViewBuilder
+    private var providerStatus: some View {
+        if !pending.isEmpty || !failures.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Space.xs) {
+                    ForEach(pending.sorted { $0.value < $1.value }, id: \.key) { _, name in
+                        HStack(spacing: 6) { ProgressView().scaleEffect(0.6); Text(name) }
+                            .statusChip()
+                    }
+                    ForEach(failures.sorted { $0.key < $1.key }, id: \.key) { id, error in
+                        Label(providerName(id), systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                            .statusChip()
+                            .help(error)
+                    }
+                }
+            }
+            .scrollClipDisabled()
+        }
     }
 
     private func isExternal(_ source: StreamSource) -> Bool {
@@ -133,43 +185,58 @@ struct SourceRow: View {
     let source: StreamSource
     let appearance: SourceAppearance
 
+    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous) }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: appearance.compact ? 4 : 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(headline).font(.headline).lineLimit(1)
-                Spacer()
-                if appearance.showSize, let size = source.traits.sizeBytes {
-                    Text(StreamParser.formatBytes(size)).font(.subheadline).foregroundStyle(.secondary)
-                }
-            }
-            if appearance.showRawText {
-                let lines = bodyLines
-                if !lines.isEmpty {
-                    Text(lines.joined(separator: "\n"))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(appearance.compact ? 3 : 8)
-                }
-            } else {
-                parsedSummary
-            }
-            if appearance.badgePack != .none && !badges.isEmpty {
-                FlowLayout(spacing: 6) {
-                    ForEach(badges, id: \.self) { badge in
-                        Text(badge)
-                            .font(.caption.weight(.bold))
-                            .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(color(for: badge), in: RoundedRectangle(cornerRadius: 6))
-                            .foregroundStyle(appearance.badgePack == .colored && isHighlight(badge) ? Color.white : Color.primary)
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: appearance.compact ? 4 : 8) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(headline).font(Theme.Typeface.headline).lineLimit(1)
+                    Spacer()
+                    if appearance.showSize, let size = source.traits.sizeBytes {
+                        Text(StreamParser.formatBytes(size))
+                            .font(.system(size: 13 * Theme.scale, weight: .medium).monospacedDigit())
+                            .foregroundStyle(Theme.Palette.textSecondary)
                     }
                 }
+                if appearance.showRawText {
+                    let lines = bodyLines
+                    if !lines.isEmpty {
+                        Text(lines.joined(separator: "\n"))
+                            .font(.system(size: 13 * Theme.scale))
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                            .lineLimit(appearance.compact ? 3 : 8)
+                            .multilineTextAlignment(.leading)
+                    }
+                } else {
+                    parsedSummary
+                }
+                if appearance.badgePack != .none && !badges.isEmpty {
+                    FlowLayout(spacing: 6) {
+                        ForEach(badges, id: \.self) { badge in
+                            Text(badge)
+                                .font(.system(size: 11 * Theme.scale, weight: .bold))
+                                .padding(.horizontal, 7).padding(.vertical, 3)
+                                .background(color(for: badge), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                                .foregroundStyle(textColor(for: badge))
+                        }
+                    }
+                }
+                if !source.isPlayable, case .torrent = source.location {
+                    Label("Needs a debrid-enabled add-on", systemImage: "exclamationmark.circle").font(Theme.Typeface.caption).foregroundStyle(.orange)
+                }
             }
-            if !source.isPlayable, case .torrent = source.location {
-                Label("Torrent — needs a debrid add-on", systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(.orange)
-            }
+            Image(systemName: "play.fill")
+                .font(.system(size: 13 * Theme.scale, weight: .bold))
+                .foregroundStyle(.black)
+                .frame(width: 34 * Theme.scale, height: 34 * Theme.scale)
+                .background(.white, in: Circle())
+                .opacity(source.isPlayable ? 1 : 0.3)
         }
-        .padding(.vertical, 6)
-        .contentShape(Rectangle())
+        .padding(Theme.Space.m)
+        .background(Theme.Palette.surface, in: shape)
+        .hairline(shape)
+        .contentShape(shape)
     }
 
     private var headline: String {
@@ -189,31 +256,49 @@ struct SourceRow: View {
 
     private var parsedSummary: some View {
         let t = source.traits
-        let parts = [t.quality == .unknown ? nil : t.quality.rawValue, t.languages.isEmpty ? nil : t.languages.joined(separator: " · "), t.releaseGroup].compactMap { $0 }
-        return Text(parts.joined(separator: " • ")).font(.subheadline).foregroundStyle(.secondary)
+        let parts = [t.quality == .unknown ? nil : t.quality.rawValue, t.languages.isEmpty ? nil : t.languages.joined(separator: " · "), t.releaseGroup?.uppercased()].compactMap { $0 }
+        return VStack(alignment: .leading, spacing: 2) {
+            if !parts.isEmpty {
+                Text(parts.joined(separator: " · ")).font(.system(size: 13 * Theme.scale)).foregroundStyle(Theme.Palette.textSecondary)
+            }
+            if let filename = source.filename, appearance.titleDisplay != .filename {
+                Text(filename).font(.system(size: 11 * Theme.scale)).foregroundStyle(Theme.Palette.textTertiary).lineLimit(1).truncationMode(.middle)
+            }
+        }
     }
 
     private var badges: [String] {
         var out = source.traits.badges
         if appearance.badgePack == .minimal { out = Array(out.prefix(2)) }
-        if source.traits.isCached == true && source.category == .addons { out.append("⚡︎") }
+        if source.traits.isCached == true && source.category == .addons { out.append("Cached") }
         return out
-    }
-
-    private func isHighlight(_ badge: String) -> Bool {
-        ["4K", "1080p", "720p", "1440p", "DV", "HDR", "HDR10+", "DD+", "DD", "Atmos", "TrueHD Atmos"].contains(badge)
     }
 
     private func color(for badge: String) -> Color {
         guard appearance.badgePack == .colored else { return Color.white.opacity(0.12) }
         switch badge {
-        case "4K", "1440p": return .orange.opacity(0.85)
-        case "1080p": return .green.opacity(0.8)
-        case "720p": return .blue.opacity(0.7)
-        case "DV", "HDR", "HDR10+", "HLG": return .purple.opacity(0.75)
-        case "DD", "DD+", "Atmos", "TrueHD Atmos", "TrueHD": return .teal.opacity(0.7)
+        case "4K", "1440p": return Theme.Palette.gold.opacity(0.9)
+        case "1080p": return Color(red: 0.2, green: 0.78, blue: 0.45).opacity(0.85)
+        case "720p": return Color(red: 0.25, green: 0.55, blue: 0.95).opacity(0.75)
+        case "DV", "HDR", "HDR10+", "HLG": return Color(red: 0.62, green: 0.4, blue: 0.95).opacity(0.85)
+        case "DD", "DD+", "Atmos", "TrueHD Atmos", "TrueHD", "DTS-HD MA", "DTS:X": return Color(red: 0.15, green: 0.65, blue: 0.7).opacity(0.8)
+        case "Cached": return Color.white.opacity(0.2)
         default: return Color.white.opacity(0.12)
         }
+    }
+
+    private func textColor(for badge: String) -> Color {
+        appearance.badgePack == .colored && ["4K", "1440p"].contains(badge) ? .black : .white
+    }
+}
+
+private extension View {
+    func statusChip() -> some View {
+        font(Theme.Typeface.caption)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Theme.Palette.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(Theme.Palette.hairline))
     }
 }
 
