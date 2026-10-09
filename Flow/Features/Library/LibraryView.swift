@@ -101,15 +101,17 @@ struct LibraryKeysShelf: View {
     @State private var items: [MediaItem] = []
 
     var body: some View {
-        Group {
+        // Not a bare Group: a Group with no children never appears, so its task would never run.
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             if !items.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    SectionHeader(title, route: route)
-                    PosterRow(items: items)
-                }
+                SectionHeader(title, route: route)
+                PosterRow(items: items, context: "library-\(title)")
             }
         }
-        .task(id: keys) { items = await model.hydrate(Array(keys.prefix(20))) }
+        .task(id: keys) {
+            let loaded = await model.hydrate(Array(keys.prefix(20)))
+            withAnimation(Theme.Motion.fade) { items = loaded }
+        }
     }
 }
 

@@ -103,6 +103,12 @@ struct LiveTVView: View {
         .searchable(text: $search, prompt: "Channels")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
+                Button { withAnimation(Theme.Motion.fade) { showGuide.toggle() } } label: {
+                    Image(systemName: showGuide ? "list.bullet" : "calendar.day.timeline.left")
+                }
+                .accessibilityLabel(showGuide ? "Show List" : "Show Guide")
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button {
                     Task { await store.load(providers: model.settings.liveTV.providers, refreshHours: model.settings.liveTV.epgRefreshHours, http: model.http, force: true) }
                 } label: { Image(systemName: "arrow.clockwise") }
@@ -120,7 +126,7 @@ struct LiveTVView: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            HStack(spacing: Theme.Space.s) {
+            Group {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Theme.Space.xs) {
                         chip("All", selected: group == nil) { group = nil }
@@ -130,13 +136,6 @@ struct LiveTVView: View {
                     .padding(.horizontal, Theme.Space.gutter)
                 }
                 .scrollClipDisabled()
-                Picker("View", selection: $showGuide) {
-                    Image(systemName: "list.bullet").tag(false).accessibilityLabel("List")
-                    Image(systemName: "calendar.day.timeline.left").tag(true).accessibilityLabel("Guide")
-                }
-                .pickerStyle(.segmented)
-                .frame(width: Platform.isTV ? 220 : 96)
-                .padding(.trailing, Theme.Space.gutter)
             }
             if let error = store.error {
                 Label(error, systemImage: "exclamationmark.triangle").font(Theme.Typeface.caption).foregroundStyle(.orange)

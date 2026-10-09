@@ -28,7 +28,8 @@ enum ScreenshotTour {
                     m.startPlayback(source, request: PlaybackRequest(item: duneItem))
                 }
             },
-            Step(name: "explore") { m in m.activePlayback?.stop(); m.paths[.home] = []; m.selectedTab = .explore },
+            Step(name: "person") { m in m.activePlayback?.stop(); m.paths[.home] = [.detail(duneItem), .person(id: 1190668, name: "Timothée Chalamet")] },
+            Step(name: "explore") { m in m.paths[.home] = []; m.selectedTab = .explore },
             Step(name: "library") { m in m.selectedTab = .library },
             Step(name: "search") { m in m.selectedTab = .search; m.searchText = "the" },
             Step(name: "livetv") { m in m.searchText = ""; m.selectedTab = .liveTV },
