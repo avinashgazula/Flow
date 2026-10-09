@@ -249,3 +249,32 @@ final class SoundtrackTests: XCTestCase {
         XCTAssertTrue(sample.hasPlayableSoundtrack)
     }
 }
+
+final class PrefetchTests: XCTestCase {
+    actor RecordingSource: ByteSource {
+        let inner: FileByteSource
+        var ranges: [Range<Int64>] = []
+        init(_ inner: FileByteSource) { self.inner = inner }
+        func length() async throws -> Int64? { try await inner.length() }
+        func read(_ range: Range<Int64>) async throws -> [UInt8] {
+            ranges.append(range)
+            return try await inner.read(range)
+        }
+    }
+
+    func testServingASegmentFetchesTheNext() async throws {
+        let source = RecordingSource(FileByteSource(url: MatroskaTests.fixture("avc-aac-srt")))
+        let remuxer = try await MatroskaRemuxer.open(source, targetSegment: 2)
+        let next = remuxer.segments[1]
+        _ = try await remuxer.mediaSegment(track: 1, index: 0)
+        for _ in 0..<100 {
+            if await source.ranges.contains(next.byteStart..<next.byteEnd) { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        let fetched = await source.ranges.contains(next.byteStart..<next.byteEnd)
+        XCTAssertTrue(fetched)
+        _ = try await remuxer.mediaSegment(track: 1, index: 1)
+        let fetches = await source.ranges.filter { $0 == next.byteStart..<next.byteEnd }.count
+        XCTAssertEqual(fetches, 1, "segment 1 is served from the prefetch, not fetched again")
+    }
+}

@@ -510,8 +510,20 @@ public actor MatroskaRemuxer {
         return (samples, UInt64((max(0, first.time) + presentationDelay) * rate / 1_000_000_000))
     }
 
-    /// Demuxed blocks for a segment, shared by every rendition that asks for it.
+    /// Demuxed blocks for a segment, shared by every rendition that asks for it. Serving one
+    /// segment starts fetching the next, so the server's response time overlaps playback.
     private func blocks(for index: Int) async throws -> [MatroskaBlock] {
+        let blocks = try await load(index)
+        if segments.indices.contains(index + 1) { prefetch(index + 1) }
+        return blocks
+    }
+
+    private func prefetch(_ index: Int) {
+        guard cache[index] == nil, inflight[index] == nil else { return }
+        Task { _ = try? await self.load(index) }
+    }
+
+    private func load(_ index: Int) async throws -> [MatroskaBlock] {
         if let cached = cache[index] {
             cacheOrder.removeAll { $0 == index }
             cacheOrder.append(index)
@@ -529,10 +541,13 @@ public actor MatroskaRemuxer {
         inflight[index] = task
         defer { inflight[index] = nil }
         let blocks = try await task.value
-        cache[index] = blocks
-        cacheOrder.append(index)
-        while cacheOrder.count > 3 { cache[cacheOrder.removeFirst()] = nil }
-        decodeBitmaps(blocks, segment: index)
+        if cache[index] == nil {
+            cache[index] = blocks
+            cacheOrder.append(index)
+            // Room for the segment playing, the one prefetched, and renditions that lag behind.
+            while cacheOrder.count > 5 { cache[cacheOrder.removeFirst()] = nil }
+            decodeBitmaps(blocks, segment: index)
+        }
         return blocks
     }
 
