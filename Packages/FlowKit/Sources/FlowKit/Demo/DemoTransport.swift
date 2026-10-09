@@ -338,7 +338,7 @@ public struct DemoSourceProvider: SourceProvider {
             ("🧿 1080p 🎫\nBluRay\n🔊 DTS-HD MA 7.1\n📦 12.4 GB\n🌎 English • Spanish", "\(name).1080p.BluRay.DTS-HD.MA.7.1.x264.mkv"),
             ("🧿 720p\nWEBRip\n🔊 AAC 2.0\n📦 1.18 GB\n🌎 English • Hindi • Tamil", "\(name).720p.WEBRip.AAC.2.0.x264.mkv"),
         ]
-        return rows.enumerated().map { index, row in
+        var sources = rows.enumerated().map { index, row in
             var traits = StreamParser.parse(row.0, row.1)
             traits.isCached = true
             return StreamSource(id: "demo#\(index)", category: .addons, providerID: providerID, providerName: providerName,
@@ -346,5 +346,17 @@ public struct DemoSourceProvider: SourceProvider {
                                 location: .url(URL(string: DemoTransport.sampleStreams[index % DemoTransport.sampleStreams.count])!, headers: [:]),
                                 traits: traits, segments: [SkipSegment(kind: .intro, start: 5, end: 25)], bingeGroup: "demo-\(index)")
         }
+        if let sample = Self.matroskaSample {
+            let text = "🧿 720p\nMKV · remuxed on device\n🔊 DTS • AAC • AC-3\n🌎 English • Spanish"
+            sources.append(StreamSource(id: Self.matroskaSampleID, category: .addons, providerID: providerID, providerName: providerName,
+                                        title: "AIOStreams\n" + text, detail: text, filename: "Flow.Sample.720p.DTS.AAC.AC3.mkv",
+                                        location: .url(sample, headers: [:]), traits: StreamParser.parse(text, "Flow.Sample.720p.mkv")))
+        }
+        return sources
     }
+
+    public static let matroskaSampleID = "demo#mkv"
+
+    /// A short MKV bundled with the app (H.264, DTS + AAC + AC-3, ASS subtitles, chapters) to show the remuxer at work.
+    public static var matroskaSample: URL? { Bundle.main.url(forResource: "FlowSample", withExtension: "mkv") }
 }

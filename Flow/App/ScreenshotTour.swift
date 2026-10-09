@@ -28,6 +28,15 @@ enum ScreenshotTour {
                     m.startPlayback(source, request: PlaybackRequest(item: duneItem))
                 }
             },
+            Step(name: "player-mkv") { m in
+                m.activePlayback?.stop()
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first(where: { $0.id == DemoSourceProvider.matroskaSampleID }) {
+                    m.startPlayback(source, request: PlaybackRequest(item: duneItem))
+                } else {
+                    log("no bundled MKV sample")
+                }
+            },
             Step(name: "person") { m in m.activePlayback?.stop(); m.paths[.home] = [.detail(duneItem), .person(id: 1190668, name: "Timothée Chalamet")] },
             Step(name: "explore") { m in m.paths[.home] = []; m.selectedTab = .explore },
             Step(name: "library") { m in m.selectedTab = .library },

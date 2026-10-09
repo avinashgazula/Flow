@@ -176,7 +176,9 @@ struct SourcePickerView: View {
                 dismiss()
             }
         } else {
-            model.startPlayback(source, request: request)
+            // The rest of the list, in order, is where the player turns if this one won't start.
+            let fallbacks = ranked.filter { $0.isPlayable && $0.id != source.id }
+            model.startPlayback(source, request: request, alternatives: fallbacks)
         }
     }
 }

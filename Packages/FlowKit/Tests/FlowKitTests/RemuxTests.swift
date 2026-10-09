@@ -1,5 +1,8 @@
 import XCTest
 @testable import FlowKit
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 final class RemuxTests: XCTestCase {
     /// Writes every playlist and segment a player would fetch, so tools can check the output.
@@ -94,5 +97,58 @@ final class RemuxTests: XCTestCase {
         guard let range = b.indices.dropLast(12).first(where: { b[$0] == 0x74 && b[$0 + 1] == 0x72 && b[$0 + 2] == 0x75 && b[$0 + 3] == 0x6E }) else { return 0 }
         let i = range + 8
         return Int(b[i]) << 24 | Int(b[i + 1]) << 16 | Int(b[i + 2]) << 8 | Int(b[i + 3])
+    }
+}
+
+/// Serves a file's bytes with Range support, like a real streaming server.
+struct RangeServingTransport: HTTPTransport {
+    let bytes: [UInt8]
+    var honoursRange = true
+
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let url = request.url!
+        guard honoursRange, let header = request.value(forHTTPHeaderField: "Range") else {
+            return (Data(bytes), HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        }
+        let parts = header.dropFirst("bytes=".count).split(separator: "-").compactMap { Int($0) }
+        let lower = min(parts[0], bytes.count)
+        let upper = min(parts[1] + 1, bytes.count)
+        let fields = ["Content-Range": "bytes \(lower)-\(upper - 1)/\(bytes.count)"]
+        return (Data(bytes[lower..<upper]), HTTPURLResponse(url: url, statusCode: 206, httpVersion: nil, headerFields: fields)!)
+    }
+}
+
+final class HTTPByteSourceTests: XCTestCase {
+    func testRemuxesOverRangeRequests() async throws {
+        let bytes = [UInt8](try Data(contentsOf: MatroskaTests.fixture("avc-aac-srt")))
+        let source = HTTPByteSource(url: URL(string: "https://example.invalid/movie.mkv")!, transport: RangeServingTransport(bytes: bytes))
+        let length = try await source.length()
+        XCTAssertEqual(length, Int64(bytes.count))
+        let remuxer = try await MatroskaRemuxer.open(source, targetSegment: 2)
+        let fragment = try await remuxer.mediaSegment(track: 1, index: 1)
+        XCTAssertGreaterThan(RemuxTests.sampleCount(fragment ?? []), 0)
+        XCTAssertEqual(HTTPByteSource.total(from: "bytes 0-1/146515"), 146515)
+    }
+
+    func testServerWithoutRangesCantSeek() async throws {
+        let bytes = [UInt8](try Data(contentsOf: MatroskaTests.fixture("avc-aac-srt")))
+        let source = HTTPByteSource(url: URL(string: "https://example.invalid/movie.mkv")!, transport: RangeServingTransport(bytes: bytes, honoursRange: false))
+        do {
+            _ = try await source.read(1000..<2000)
+            XCTFail("expected an error")
+        } catch {
+            XCTAssertEqual(error as? MatroskaError, .unsupported("this server doesn't support seeking (no range requests)"))
+        }
+    }
+}
+
+/// Runs only when FLOW_REMUX_SAMPLE points at a file: remuxes it into FLOW_REMUX_OUT for inspection.
+final class RemuxSampleTests: XCTestCase {
+    func testRemuxSampleFile() async throws {
+        guard let path = ProcessInfo.processInfo.environment["FLOW_REMUX_SAMPLE"] else { throw XCTSkip("no sample") }
+        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: URL(fileURLWithPath: path)))
+        print("video:", remuxer.video?.codecString ?? "-", "audio:", remuxer.audio.map(\.label), "subs:", remuxer.subtitles.map(\.label),
+              "skipped:", remuxer.skipped.map(\.reason), "segments:", remuxer.segments.count, "delay:", remuxer.presentationDelay)
+        try await RemuxTests.dump(remuxer, to: RemuxTests.outputRoot.appendingPathComponent("sample"))
     }
 }

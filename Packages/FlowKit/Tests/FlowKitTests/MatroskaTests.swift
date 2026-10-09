@@ -95,3 +95,16 @@ final class MatroskaTests: XCTestCase {
         }
     }
 }
+
+final class ContainerDetectorTests: XCTestCase {
+    func testNamesAndBytes() {
+        let url = { (s: String) in URL(string: s)! }
+        XCTAssertEqual(ContainerDetector.container(url: url("https://x.test/Movie.2024.2160p.mkv"), filename: nil), .matroska)
+        XCTAssertEqual(ContainerDetector.container(url: url("https://debrid.test/d/ABC123"), filename: "Show.S01E01.1080p.WEB.mkv"), .matroska)
+        XCTAssertEqual(ContainerDetector.container(url: url("https://x.test/master.m3u8?token=1"), filename: nil), .native)
+        XCTAssertEqual(ContainerDetector.container(url: url("https://x.test/old.avi"), filename: nil), .unsupported("AVI"))
+        XCTAssertEqual(ContainerDetector.container(url: url("https://x.test/stream?id=9"), filename: nil), .unknown)
+        XCTAssertEqual(ContainerDetector.sniff([0x1A, 0x45, 0xDF, 0xA3, 0x01]), .matroska)
+        XCTAssertEqual(ContainerDetector.sniff([0, 0, 0, 0x20] + Array("ftypisom".utf8)), .native)
+    }
+}

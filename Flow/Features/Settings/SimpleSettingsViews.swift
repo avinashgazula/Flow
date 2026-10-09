@@ -81,6 +81,18 @@ struct PlaybackSettingsView: View {
                     ForEach(DiscoverFilterView.languages, id: \.0) { Text($0.1).tag($0.0) }
                 }
             }
+            Section {
+                Toggle("Try the Next Source Automatically", isOn: $model.settings.playback.tryNextSourceOnFailure)
+                #if os(iOS)
+                Picker("MKV Files", selection: $model.settings.playback.matroskaPlayback) {
+                    ForEach(MatroskaPlayback.allCases) { Text($0.title).tag($0) }
+                }
+                #endif
+            } header: {
+                Text("Formats")
+            } footer: {
+                Text("Flow plays MKV files itself by repackaging them on the fly for Apple's player, without re-encoding: HDR, Dolby Vision, Dolby audio, embedded subtitles and chapters all come through. DTS and TrueHD audio and picture-based subtitles can't play on Apple devices; when a file has nothing else, Flow moves to the next source or offers your external player.")
+            }
             #if os(iOS)
             Section {
                 Picker("Player", selection: $model.settings.playback.externalPlayer) {

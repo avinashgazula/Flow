@@ -31,6 +31,13 @@ final class PlaybackSession: Identifiable {
     var upNext: PlaybackRequest?
     var upNextCountdown: Int?
     var logoPath: String?
+    /// A short message over the video ("Playing English 5.1; DTS isn't supported").
+    var notice: String?
+    var chapters: [PlayerChapter] = []
+    /// True when an MKV is being repackaged on the device for AVPlayer.
+    private(set) var usesRemux = false
+    /// Other sources for the same title, best first, for when this one won't start.
+    private(set) var alternatives: [StreamSource]
 
     @ObservationIgnored private weak var model: AppModel?
     @ObservationIgnored private var resumeAt: Double?
@@ -42,9 +49,13 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private var countdownTask: Task<Void, Never>?
     @ObservationIgnored private var didStart = false
     @ObservationIgnored private let sessionID = UUID().uuidString
+    @ObservationIgnored private var loadTask: Task<Void, Never>?
+    @ObservationIgnored private var hlsToken: String?
+    @ObservationIgnored private var noticeTask: Task<Void, Never>?
 
-    init(model: AppModel, request: PlaybackRequest, source: StreamSource, resumeAt: Double?) {
+    init(model: AppModel, request: PlaybackRequest, source: StreamSource, resumeAt: Double?, alternatives: [StreamSource] = []) {
         self.model = model
+        self.alternatives = alternatives
         self.request = request
         self.source = source
         self.resumeAt = resumeAt
@@ -72,22 +83,88 @@ final class PlaybackSession: Identifiable {
 
     private func load(_ source: StreamSource) {
         guard let url = source.location.playableURL else {
-            phase = .failed("This source can't be played directly.")
+            fail("This source can't be played directly.")
             return
         }
+        loadTask?.cancel()
         teardownObservers()
-        phase = .connecting(0.15)
-        var options: [String: Any] = [:]
+        releaseRemux()
+        player.replaceCurrentItem(with: nil)
+        usesRemux = false
+        chapters = []
+        phase = .connecting(0.1)
+        loadTask = Task { [weak self] in await self?.prepare(source, url: url) }
+    }
+
+    /// Picks the path for this stream: straight to AVPlayer, through the remuxer, or out to another app.
+    private func prepare(_ source: StreamSource, url: URL) async {
         let headers = source.location.headers
-        if !headers.isEmpty { options["AVURLAssetHTTPHeaderFieldsKey"] = headers }
-        let asset = AVURLAsset(url: url, options: options)
+        var container = ContainerDetector.container(url: url, filename: source.filename)
+        if container == .unknown {
+            let probe = try? await Self.byteSource(url, headers: headers).read(0..<16)
+            container = probe.map(ContainerDetector.sniff) ?? .native
+        }
+        guard !Task.isCancelled else { return }
+        ScreenshotTour.log("prepare \(container) for \(url.lastPathComponent)")
+        switch container {
+        case .matroska:
+            if model?.settings.playback.matroskaPlayback == .external, handOffToExternalPlayer(url) { return }
+            await startRemux(url: url, headers: headers)
+        case .unsupported(let name):
+            fail("\(name) files can't play on Apple devices. Try another source, or open it in an app like VLC or Infuse.")
+        case .native, .unknown:
+            var options: [String: Any] = [:]
+            if !headers.isEmpty { options["AVURLAssetHTTPHeaderFieldsKey"] = headers }
+            attach(AVURLAsset(url: url, options: options))
+        }
+    }
+
+    private static func byteSource(_ url: URL, headers: [String: String]) -> ByteSource {
+        url.isFileURL ? FileByteSource(url: url) : HTTPByteSource(url: url, headers: headers)
+    }
+
+    private func startRemux(url: URL, headers: [String: String]) async {
+        phase = .connecting(0.2)
+        do {
+            let remuxer = try await MatroskaRemuxer.open(Self.byteSource(url, headers: headers))
+            guard !Task.isCancelled else { return }
+            let skippedAudio = remuxer.skipped.filter { $0.track.kind == .audio }
+            if remuxer.audio.isEmpty, let first = skippedAudio.first {
+                fail("This file's audio is \(first.reason), which Apple devices can't decode. Try another source, or open it in VLC or Infuse.")
+                return
+            }
+            let (hls, token) = try await LocalHLSServer.shared.register(remuxer)
+            guard !Task.isCancelled else { LocalHLSServer.shared.unregister(token); return }
+            hlsToken = token
+            usesRemux = true
+            chapters = remuxer.header.chapters.map { PlayerChapter(title: $0.title, start: Double($0.start) / 1e9) }
+            if let first = skippedAudio.first, let playing = remuxer.audio.first {
+                show(notice: "\(first.reason) isn't supported on Apple devices, so Flow is playing \(playing.label).")
+            }
+            phase = .connecting(0.35)
+            attach(AVURLAsset(url: hls))
+        } catch let error as MatroskaError {
+            switch error {
+            case .unsupported(let what):
+                fail("This file uses \(what), which Apple devices can't play. Try another source, or open it in VLC or Infuse.")
+            default:
+                fail(error.localizedDescription)
+            }
+        } catch {
+            fail("Couldn't open this file. \(error.localizedDescription)")
+        }
+    }
+
+    private func attach(_ asset: AVURLAsset) {
         let item = AVPlayerItem(asset: asset)
-        item.preferredForwardBufferDuration = 10
+        item.preferredForwardBufferDuration = usesRemux ? 20 : 10
         applyMetadata(to: item)
+        applyChapters(to: item)
         player.replaceCurrentItem(with: item)
-        player.allowsExternalPlayback = true
+        // The remuxed stream lives on this device's loopback address, which an AirPlay receiver can't reach.
+        player.allowsExternalPlayback = !usesRemux
         #if os(iOS) || os(tvOS)
-        player.usesExternalPlaybackWhileExternalScreenIsActive = true
+        player.usesExternalPlaybackWhileExternalScreenIsActive = !usesRemux
         #endif
 
         observations.append(item.observe(\.status, options: [.new]) { [weak self] item, _ in
@@ -106,6 +183,76 @@ final class PlaybackSession: Identifiable {
             Task { @MainActor in await self?.didFinish() }
         }
         player.play()
+    }
+
+    private func applyChapters(to item: AVPlayerItem) {
+        #if os(tvOS)
+        guard !chapters.isEmpty else { return }
+        let groups = chapters.enumerated().map { index, chapter -> AVTimedMetadataGroup in
+            let title = AVMutableMetadataItem()
+            title.identifier = .commonIdentifierTitle
+            title.value = chapter.title as NSString
+            title.extendedLanguageTag = "und"
+            let end = index + 1 < chapters.count ? chapters[index + 1].start : chapter.start + 1
+            let range = CMTimeRange(start: CMTime(seconds: chapter.start, preferredTimescale: 600),
+                                    end: CMTime(seconds: max(end, chapter.start + 1), preferredTimescale: 600))
+            return AVTimedMetadataGroup(items: [title], timeRange: range)
+        }
+        item.navigationMarkerGroups = [AVNavigationMarkersGroup(title: nil, timedNavigationMarkers: groups)]
+        #endif
+    }
+
+    // MARK: Failure and fallback
+
+    /// Reports a problem, or quietly moves to the next source when nothing has played yet.
+    private func fail(_ message: String) {
+        ScreenshotTour.log("fail: \(message)")
+        if !didStart, model?.settings.playback.tryNextSourceOnFailure == true, !alternatives.isEmpty {
+            tryNextSource(reason: message)
+            return
+        }
+        phase = .failed(message)
+    }
+
+    var canTryAnotherSource: Bool { !alternatives.isEmpty }
+
+    /// Moves to the next source in the list (the user asked, or this one wouldn't start).
+    func tryNextSource(reason: String? = nil) {
+        guard !alternatives.isEmpty else { return }
+        let next = alternatives.removeFirst()
+        source = next
+        show(notice: "That source didn't work, so Flow is trying \(next.providerName)\(next.traits.resolution == .unknown ? "" : " " + next.traits.resolution.label).")
+        load(next)
+    }
+
+    /// Hands the current stream to the external player from Settings; false if none is set or installed.
+    @discardableResult
+    func handOffToExternalPlayer(_ url: URL? = nil) -> Bool {
+        guard let model, let stream = url ?? source.location.playableURL else { return false }
+        let player = model.settings.playback.externalPlayer
+        guard player != .none, let launch = player.launchURL(for: stream) else { return false }
+        model.openExternally(launch)
+        close()
+        return true
+    }
+
+    func show(notice text: String) {
+        noticeTask?.cancel()
+        notice = text
+        noticeTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 7_000_000_000)
+            guard !Task.isCancelled else { return }
+            self?.notice = nil
+        }
+    }
+
+    private func releaseRemux() {
+        if let hlsToken { LocalHLSServer.shared.unregister(hlsToken) }
+        hlsToken = nil
+    }
+
+    func seek(toChapter chapter: PlayerChapter) {
+        player.seek(to: CMTime(seconds: chapter.start, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
     private func applyMetadata(to item: AVPlayerItem) {
@@ -156,7 +303,7 @@ final class PlaybackSession: Identifiable {
                 }
             }
         case .failed:
-            phase = .failed(item.error?.localizedDescription ?? "Playback failed.")
+            fail(Self.describe(item.error))
         default: break
         }
     }
@@ -268,6 +415,7 @@ final class PlaybackSession: Identifiable {
         if let source = await model.matchingSource(for: next, like: source) {
             request = next
             self.source = source
+            alternatives = []
             upNext = nil
             didStart = false
             skippedSegments = []
@@ -317,7 +465,7 @@ final class PlaybackSession: Identifiable {
         // not a finished viewing — never mark it watched.
         guard didStart, currentTime > 5 else {
             ScreenshotTour.log("didFinish ignored: started=\(didStart) time=\(currentTime)")
-            phase = .failed("This stream ended unexpectedly. Try another source.")
+            fail("This stream ended unexpectedly.")
             return
         }
         phase = .finished
@@ -352,9 +500,12 @@ final class PlaybackSession: Identifiable {
     private func close(_ caller: String = #function) {
         ScreenshotTour.log("PlaybackSession.close from \(caller) phase=\(phase)")
         countdownTask?.cancel()
+        loadTask?.cancel()
+        noticeTask?.cancel()
         player.pause()
         player.replaceCurrentItem(with: nil)
         teardownObservers()
+        releaseRemux()
         if model?.activePlayback?.id == id { model?.activePlayback = nil }
     }
 
@@ -369,6 +520,24 @@ final class PlaybackSession: Identifiable {
 
     func retry() { load(source) }
 
+    /// AVFoundation's errors are terse; say what probably happened.
+    static func describe(_ error: Error?) -> String {
+        guard let error = error as NSError? else { return "Playback failed." }
+        let underlying = (error.userInfo[NSUnderlyingErrorKey] as? NSError)
+        switch (error.domain, error.code, underlying?.code) {
+        case (NSURLErrorDomain, NSURLErrorNotConnectedToInternet, _), (_, _, NSURLErrorNotConnectedToInternet):
+            return "You're offline. Check your connection and try again."
+        case (NSURLErrorDomain, NSURLErrorTimedOut, _), (_, _, NSURLErrorTimedOut):
+            return "The server took too long to answer."
+        case (AVFoundationErrorDomain, AVError.Code.fileFormatNotRecognized.rawValue, _), (AVFoundationErrorDomain, AVError.Code.decoderNotFound.rawValue, _):
+            return "This video's format isn't supported on Apple devices."
+        case (AVFoundationErrorDomain, AVError.Code.contentIsUnavailable.rawValue, _), (_, _, 404):
+            return "This stream isn't available any more."
+        default:
+            return error.localizedDescription
+        }
+    }
+
     // MARK: Transport (shared by on-screen controls and the keyboard)
 
     var isPlaying: Bool { player.rate > 0 }
@@ -381,4 +550,11 @@ final class PlaybackSession: Identifiable {
         let target = max(0, min(duration > 0 ? duration : .greatestFiniteMagnitude, currentTime + seconds))
         player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
     }
+}
+
+struct PlayerChapter: Hashable, Identifiable {
+    let title: String
+    /// Seconds.
+    let start: Double
+    var id: Double { start }
 }

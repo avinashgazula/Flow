@@ -595,6 +595,16 @@ public enum ExternalPlayer: String, Codable, Hashable, Sendable, CaseIterable, I
     }
 }
 
+/// What to do with Matroska (MKV/WebM) files, which AVPlayer can't open by itself.
+public enum MatroskaPlayback: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    /// Repackage on the fly for Apple's player: HDR, Dolby Vision, AirPlay audio and PiP keep working.
+    case remux
+    /// Send MKV files to the external player chosen below.
+    case external
+    public var id: String { rawValue }
+    public var title: String { self == .remux ? "Play in Flow" : "External Player" }
+}
+
 public struct PlaybackSettings: Codable, Hashable, Sendable {
     public var preferredResolutionCap: VideoResolution = .uhd4k
     public var autoPlayNextEpisode = true
@@ -610,6 +620,9 @@ public struct PlaybackSettings: Codable, Hashable, Sendable {
     public var watchedThresholdPercent: Double = 90
     public var pictureInPicture = true
     public var rememberLastSourcePerShow = true
+    public var matroskaPlayback: MatroskaPlayback = .remux
+    /// When a source fails to start, quietly move on to the next one.
+    public var tryNextSourceOnFailure = true
     public init() {}
 }
 

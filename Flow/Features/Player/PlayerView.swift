@@ -22,11 +22,25 @@ struct PlayerView: View {
             case .connecting(let progress):
                 ConnectingView(session: session, progress: progress)
             case .failed(let message):
-                PlaybackErrorView(message: message, retry: { session.retry() }, close: { session.stop() })
+                PlaybackErrorView(message: message,
+                                  canTryAnother: session.canTryAnotherSource,
+                                  externalPlayer: externalPlayerName,
+                                  retry: { session.retry() },
+                                  tryAnother: { session.tryNextSource() },
+                                  openExternally: { session.handOffToExternalPlayer() },
+                                  close: { session.stop() })
             default:
                 EmptyView()
             }
+            if let notice = session.notice {
+                PlayerNotice(text: notice)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .padding(.top, Platform.isTV ? 60 : 64)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(5)
+            }
         }
+        .animation(Theme.Motion.gentle, value: session.notice)
         .sheet(isPresented: $showSubtitles) {
             SubtitlePickerView(session: session).environment(model)
         }
@@ -56,6 +70,15 @@ struct PlayerView: View {
         #endif
     }
 
+    private var externalPlayerName: String? {
+        #if os(iOS)
+        let player = model.settings.playback.externalPlayer
+        return player == .none ? nil : player.title
+        #else
+        return nil
+        #endif
+    }
+
     @ViewBuilder
     private var surface: some View {
         #if os(iOS)
@@ -68,6 +91,21 @@ struct PlayerView: View {
             .overlay(alignment: .topTrailing) {
                 // Top right, clear of the window's traffic lights.
                 HStack {
+                    if !session.chapters.isEmpty {
+                        Menu {
+                            ForEach(session.chapters) { chapter in
+                                Button(chapter.title.isEmpty ? TimeFormat.clock(chapter.start) : chapter.title) { session.seek(toChapter: chapter) }
+                            }
+                        } label: {
+                            Image(systemName: "list.bullet")
+                                .font(.system(size: 16, weight: .semibold))
+                                .frame(width: 44, height: 44)
+                                .flowGlass(Circle(), interactive: true)
+                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                    }
                     CircleButton(systemImage: "captions.bubble") { showSubtitles = true }
                     CircleButton(systemImage: "xmark") { session.stop() }
                 }
@@ -137,23 +175,59 @@ struct ConnectingView: View {
 
 struct PlaybackErrorView: View {
     let message: String
+    var canTryAnother = false
+    var externalPlayer: String?
     let retry: () -> Void
+    var tryAnother: () -> Void = {}
+    var openExternally: () -> Void = {}
     let close: () -> Void
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.9).ignoresSafeArea()
-            ContentUnavailableView {
-                Label("Couldn't Play", systemImage: "exclamationmark.triangle")
-            } description: {
+            Color.black.opacity(0.92).ignoresSafeArea()
+            VStack(spacing: Theme.Space.m) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 34 * Theme.scale, weight: .semibold))
+                    .foregroundStyle(.yellow)
+                Text("Couldn't Play").font(Theme.Typeface.title)
                 Text(message)
-            } actions: {
-                HStack {
-                    Button("Close", action: close)
-                    Button("Try Again", action: retry).buttonStyle(.borderedProminent)
+                    .font(Theme.Typeface.body)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 460 * Theme.scale)
+                VStack(spacing: Theme.Space.s) {
+                    if canTryAnother {
+                        Button("Try Another Source", action: tryAnother).buttonStyle(PrimaryButtonStyle())
+                    }
+                    if let externalPlayer {
+                        Button("Open in \(externalPlayer)", action: openExternally).buttonStyle(GlassButtonStyle())
+                    }
+                    HStack(spacing: Theme.Space.s) {
+                        Button("Try Again", action: retry).buttonStyle(GlassButtonStyle())
+                        Button("Close", action: close).buttonStyle(GlassButtonStyle())
+                    }
                 }
+                .padding(.top, Theme.Space.s)
             }
+            .padding(Theme.Space.xl)
         }
+    }
+}
+
+/// A brief, quiet message over the picture.
+struct PlayerNotice: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(.footnote, weight: .semibold))
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .frame(maxWidth: 520 * Theme.scale)
+            .flowGlass(Capsule())
+            .padding(.horizontal, 24)
+            .allowsHitTesting(false)
     }
 }
 
@@ -471,6 +545,16 @@ struct IOSPlayerControls: View {
                                         Button("Off") { select(nil, characteristic: .legible) }
                                         ForEach(legibleOptions, id: \.self) { option in
                                             Button(option.displayName) { select(option, characteristic: .legible) }
+                                        }
+                                    }
+                                }
+                                if !session.chapters.isEmpty {
+                                    Section("Chapters") {
+                                        ForEach(session.chapters) { chapter in
+                                            Button { session.seek(toChapter: chapter) } label: {
+                                                Text(chapter.title.isEmpty ? "Chapter" : chapter.title)
+                                                Text(TimeFormat.clock(chapter.start))
+                                            }
                                         }
                                     }
                                 }
