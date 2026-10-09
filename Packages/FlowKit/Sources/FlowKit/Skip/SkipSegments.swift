@@ -85,6 +85,33 @@ public enum SkipSegmentResolver {
         return []
     }
 
+    /// Segments read from chapter names ("Opening", "Ending", "Recap", "Preview"), as anime and many
+    /// TV releases name them. Each runs to the next chapter. Implausibly short or long ones are ignored.
+    public static func fromChapters(_ chapters: [(title: String, start: Double)], duration: Double) -> [SkipSegment] {
+        let sorted = chapters.sorted { $0.start < $1.start }
+        var out: [SkipSegment] = []
+        for (i, chapter) in sorted.enumerated() {
+            guard let kind = kind(ofChapter: chapter.title) else { continue }
+            let end = i + 1 < sorted.count ? sorted[i + 1].start : duration
+            let length = end - chapter.start
+            let longest: Double = kind == .credits ? 900 : 360
+            guard length >= 8, length <= longest else { continue }
+            out.append(SkipSegment(kind: kind, start: chapter.start, end: end))
+        }
+        return out
+    }
+
+    static func kind(ofChapter title: String) -> SkipSegmentKind? {
+        let t = title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let words = Set(t.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init))
+        func has(_ phrase: String) -> Bool { t.contains(phrase) }
+        if words.contains("recap") || has("previously") { return .recap }
+        if words.contains("preview") || has("next episode") || has("next time") { return .preview }
+        if words.contains("op") || words.contains("opening") || words.contains("intro") || has("title sequence") || has("main title") { return .intro }
+        if words.contains("ed") || words.contains("ending") || words.contains("credits") || words.contains("outro") { return .credits }
+        return nil
+    }
+
     /// Which segment (if any) should show its skip button at `time`.
     public static func active(_ segments: [SkipSegment], at time: Double) -> SkipSegment? {
         segments.first { $0.contains(time) }

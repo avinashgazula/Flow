@@ -420,3 +420,25 @@ final class PlayableAudioRankingTests: XCTestCase {
         XCTAssertEqual(SourceRanker.rank(sources, settings: settings, resolutionCap: .uhd4k).map(\.id), ["remux", "truehd", "web", "aac"])
     }
 }
+
+final class ChapterSkipTests: XCTestCase {
+    func testAnimeChapters() {
+        let chapters: [(title: String, start: Double)] = [("Prologue", 0), ("Opening", 95), ("Part A", 185), ("Part B", 800), ("Ending", 1290), ("Preview", 1380)]
+        let segments = SkipSegmentResolver.fromChapters(chapters, duration: 1420)
+        XCTAssertEqual(segments.map(\.kind), [.intro, .credits, .preview])
+        XCTAssertEqual(segments.first?.start, 95)
+        XCTAssertEqual(segments.first?.end, 185)
+        XCTAssertEqual(segments.last?.end, 1420)
+    }
+
+    func testNamesAndLimits() {
+        XCTAssertEqual(SkipSegmentResolver.kind(ofChapter: "Opening Credits"), .intro)
+        XCTAssertEqual(SkipSegmentResolver.kind(ofChapter: "End Credits"), .credits)
+        XCTAssertEqual(SkipSegmentResolver.kind(ofChapter: "Previously on..."), .recap)
+        XCTAssertEqual(SkipSegmentResolver.kind(ofChapter: "OP"), .intro)
+        XCTAssertNil(SkipSegmentResolver.kind(ofChapter: "Introduction"))
+        XCTAssertNil(SkipSegmentResolver.kind(ofChapter: "Chapter 02"))
+        // An "intro" chapter half an hour long is a mislabelled chapter, not an intro.
+        XCTAssertTrue(SkipSegmentResolver.fromChapters([("Intro", 0), ("Main", 1800)], duration: 3600).isEmpty)
+    }
+}

@@ -41,6 +41,7 @@ final class PlaybackSession: Identifiable {
     /// The technical details panel (iPhone, iPad and Mac; Apple TV shows them in its info panel).
     var showsInfo = false
     @ObservationIgnored private var audibleGroup: AVMediaSelectionGroup?
+    @ObservationIgnored private var chapterSegments: [SkipSegment] = []
     /// True when an MKV is being repackaged on the device for AVPlayer.
     private(set) var usesRemux = false
     /// Other sources for the same title, best first, for when this one won't start.
@@ -152,6 +153,7 @@ final class PlaybackSession: Identifiable {
         player.replaceCurrentItem(with: nil)
         usesRemux = false
         chapters = []
+        chapterSegments = []
         stopBitmapSubtitles()
         phase = .connecting(0.1)
         loadTask = Task { [weak self] in await self?.prepare(source, url: url) }
@@ -209,6 +211,9 @@ final class PlaybackSession: Identifiable {
             #endif
             configureBitmapSubtitles(remuxer)
             chapters = remuxer.header.chapters.map { PlayerChapter(title: $0.title, start: Double($0.start) / 1e9) }
+            // Chapters named "Opening" or "Ending" stand in when no skip service knows this episode.
+            chapterSegments = SkipSegmentResolver.fromChapters(chapters.map { ($0.title, $0.start) }, duration: remuxer.duration)
+            if segments.isEmpty { segments = chapterSegments }
             if let first = skippedAudio.first(where: { !$0.track.isCommentary }), let playing = remuxer.audio.first {
                 show(notice: "\(first.reason) can't play on Apple devices. Playing \(playing.label) instead.")
             }
@@ -496,7 +501,8 @@ final class PlaybackSession: Identifiable {
     private func loadExtras() async {
         guard let model else { return }
         if logoPath == nil, let catalog = model.catalog { logoPath = await catalog.logo(for: request.item) }
-        segments = await SkipSegmentResolver.resolve(source: source, providers: model.skipProviders(), request: request)
+        let resolved = await SkipSegmentResolver.resolve(source: source, providers: model.skipProviders(), request: request)
+        segments = resolved.isEmpty ? chapterSegments : resolved
         if model.settings.subtitles.autoEnable { await autoLoadSubtitle() }
         upNext = await model.nextRequest(after: request)
     }
