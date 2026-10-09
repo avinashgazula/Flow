@@ -60,6 +60,14 @@ jobs:
           grep -c "warning:" build.log || true
           tail -5 build.log
 
+  environment-probe:
+    name: Toolchains
+    runs-on: macos-15
+    steps:
+      - run: |
+          ls /Applications | grep -i xcode
+          xcrun simctl list runtimes
+
   flowkit-apple:
     name: FlowKit tests (macOS)
     runs-on: macos-15
