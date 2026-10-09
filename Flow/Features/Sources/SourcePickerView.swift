@@ -160,7 +160,7 @@ struct SourceRow: View {
                             .font(.caption.weight(.bold))
                             .padding(.horizontal, 8).padding(.vertical, 4)
                             .background(color(for: badge), in: RoundedRectangle(cornerRadius: 6))
-                            .foregroundStyle(appearance.badgePack == .colored && isHighlight(badge) ? .white : .primary)
+                            .foregroundStyle(appearance.badgePack == .colored && isHighlight(badge) ? Color.white : Color.primary)
                     }
                 }
             }

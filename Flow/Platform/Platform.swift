@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreImage
 import CoreImage.CIFilterBuiltins
+import FlowKit
 #if canImport(UIKit)
 import UIKit
 #endif

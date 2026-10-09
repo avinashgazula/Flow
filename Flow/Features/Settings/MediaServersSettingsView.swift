@@ -18,8 +18,8 @@ struct MediaServersSettingsView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(spacing: 6) {
                                 Text(server.name).font(.headline)
-                                Tag(text: server.kind.displayName, color: .purple)
-                                Tag(text: server.isRemote ? "Remote" : "Local", color: .green)
+                                PillTag(text: server.kind.displayName, color: .purple)
+                                PillTag(text: server.isRemote ? "Remote" : "Local", color: .green)
                             }
                             Text(server.baseURL.host ?? server.baseURL.absoluteString).font(.caption).foregroundStyle(.secondary)
                         }
@@ -84,7 +84,7 @@ struct MediaServersSettingsView: View {
     }
 }
 
-struct Tag: View {
+struct PillTag: View {
     let text: String
     let color: Color
     var body: some View {

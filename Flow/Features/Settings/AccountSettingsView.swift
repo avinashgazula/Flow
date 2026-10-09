@@ -69,7 +69,7 @@ struct AccountSettingsView: View {
                     Spacer()
                     if model.isSyncing { ProgressView() }
                     else if let last = model.settings.sync.lastTrackerSync {
-                        Text(last, style: .relative).foregroundStyle(.secondary) + Text(" ago").foregroundStyle(.secondary)
+                        (Text(last, style: .relative) + Text(" ago")).foregroundStyle(.secondary)
                     }
                 }
                 if let error = model.lastSyncError {

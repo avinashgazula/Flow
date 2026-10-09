@@ -21,13 +21,13 @@ struct PlayerView: View {
             case .connecting(let progress):
                 ConnectingView(session: session, progress: progress)
             case .failed(let message):
-                PlaybackErrorView(message: message, retry: session.retry, close: session.stop)
+                PlaybackErrorView(message: message, retry: { session.retry() }, close: { session.stop() })
             default:
                 EmptyView()
             }
         }
         .sheet(isPresented: $showSubtitles) {
-            SubtitlePickerView(session: session)
+            SubtitlePickerView(session: session).environment(model)
         }
         #if os(macOS)
         .frame(minWidth: 640, minHeight: 360)

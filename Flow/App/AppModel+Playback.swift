@@ -1,13 +1,18 @@
 import SwiftUI
 import FlowKit
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 extension AppModel {
     // MARK: Providers
 
     /// Every enabled source provider, in no particular order (the ranker orders results).
     func sourceProviders() -> [SourceProvider] {
-        var providers: [SourceProvider] = mediaServers
-        providers += settings.webDAV.filter(\.enabled).map { WebDAVClient(config: $0, http: http) }
+        var providers: [SourceProvider] = mediaServers.map { $0 as SourceProvider }
+        providers += settings.webDAV.filter(\.enabled).map { WebDAVClient(config: $0, http: http) as SourceProvider }
         for config in settings.liveTV.providers where config.enabled && config.useForVOD {
             if let cached = vodProviderCache[config.id] {
                 providers.append(cached)
@@ -17,7 +22,7 @@ extension AppModel {
                 providers.append(provider)
             }
         }
-        providers += settings.sources.addons.filter(\.enabled).map { AddonClient(config: $0, http: http, timeout: settings.sources.timeoutSeconds) }
+        providers += settings.sources.addons.filter(\.enabled).map { AddonClient(config: $0, http: http, timeout: settings.sources.timeoutSeconds) as SourceProvider }
         return providers
     }
 
