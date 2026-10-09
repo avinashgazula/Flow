@@ -3,7 +3,7 @@ import Foundation
 /// High-level catalogue used by the UI: shelves, hydration of tracker keys, details and ratings,
 /// with caching and the "unreleased titles" / "only my server's content" filters applied.
 public actor CatalogService {
-    public let tmdb: TMDBClient
+    public nonisolated let tmdb: TMDBClient
     let cache: ResponseCache
     let releaseFilter: ReleaseFilter
     var mdblist: MDBListClient?

@@ -2,7 +2,5 @@
 .build/
 .swiftpm/
 DerivedData/
-*.xcodeproj/
-!*.xcodeproj/project.xcworkspace/
 xcuserdata/
-Secrets.xcconfig
+Config/Secrets.xcconfig

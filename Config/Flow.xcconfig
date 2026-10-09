@@ -1,0 +1,12 @@
+// Shared build settings for all Flow targets.
+// Copy Secrets.example.xcconfig to Secrets.xcconfig to bake in default API keys (optional —
+// every key can also be entered in Settings inside the app).
+
+FLOW_BUNDLE_ID = com.example.flow
+FLOW_TMDB_API_KEY =
+FLOW_TRAKT_CLIENT_ID =
+FLOW_TRAKT_CLIENT_SECRET =
+FLOW_SIMKL_CLIENT_ID =
+FLOW_TVDB_API_KEY =
+
+#include? "Secrets.xcconfig"

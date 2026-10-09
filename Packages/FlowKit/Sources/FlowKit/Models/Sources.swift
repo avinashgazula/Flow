@@ -160,7 +160,7 @@ public struct StreamSource: Codable, Hashable, Sendable, Identifiable {
 }
 
 /// The thing the user wants to watch: a movie, or an episode of a show.
-public struct PlaybackRequest: Codable, Hashable, Sendable {
+public struct PlaybackRequest: Codable, Hashable, Sendable, Identifiable {
     public var item: MediaItem
     public var episode: Episode?
 
@@ -170,6 +170,8 @@ public struct PlaybackRequest: Codable, Hashable, Sendable {
     }
 
     public var episodeRef: EpisodeRef? { episode?.ref }
+
+    public var id: String { item.id + (episode.map { ":" + $0.code } ?? "") }
 
     /// Stremio-style id: "tt0111161" for movies, "tt0944947:1:1" for episodes.
     public var stremioID: String? {

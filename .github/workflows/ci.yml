@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flowkit-linux:
+    name: FlowKit tests (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.1-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        working-directory: Packages/FlowKit
+        run: swift test
+
+  apple:
+    name: Build ${{ matrix.scheme }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scheme: Flow-iOS
+            destination: generic/platform=iOS Simulator
+          - scheme: Flow-macOS
+            destination: generic/platform=macOS
+          - scheme: Flow-tvOS
+            destination: generic/platform=tvOS Simulator
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app || sudo xcode-select -s /Applications/Xcode.app
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project Flow.xcodeproj \
+            -scheme "${{ matrix.scheme }}" \
+            -destination "${{ matrix.destination }}" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            > build.log 2>&1 || { grep -E "error:" -A3 build.log | head -150; tail -20 build.log; exit 1; }
+          grep -c "warning:" build.log || true
+          tail -5 build.log
+
+  flowkit-apple:
+    name: FlowKit tests (macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        working-directory: Packages/FlowKit
+        run: swift test
