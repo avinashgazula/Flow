@@ -159,11 +159,19 @@ struct SettingsRootView: View {
 
     private func row(_ page: SettingsPage) -> some View {
         NavigationLink(value: Route.settings(page)) {
+            #if os(tvOS)
+            // tvOS sets a Label's icon right against its title.
+            HStack(spacing: 22) {
+                SettingsIcon(systemImage: page.systemImage, tint: page.tint)
+                Text(page.title)
+            }
+            #else
             Label {
                 Text(page.title)
             } icon: {
                 SettingsIcon(systemImage: page.systemImage, tint: page.tint)
             }
+            #endif
         }
     }
 }

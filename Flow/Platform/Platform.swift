@@ -161,6 +161,16 @@ extension AccentColorChoice {
 extension AccentColorChoice {
     /// Switches can't use a white accent: their knob is white. They turn green instead, as in Settings.
     var switchColor: Color { self == .white ? .green : color }
+
+    /// The app-wide tint. On tvOS a white tint would make focused toolbar buttons white on white,
+    /// so the system's own focus colours are used instead.
+    var tint: Color? {
+        #if os(tvOS)
+        return self == .white ? nil : color
+        #else
+        return color
+        #endif
+    }
 }
 
 #if os(iOS)

@@ -15,7 +15,7 @@ struct FlowApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
-                .tint(model.settings.general.accent.color)
+                .tint(model.settings.general.accent.tint)
                 .switchTint(model.settings.general.accent)
                 .preferredColorScheme(.dark)
                 .onOpenURL { url in model.handle(url: url) }
