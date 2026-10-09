@@ -174,6 +174,28 @@ final class RemoteRemuxTests: XCTestCase {
         try? FileManager.default.removeItem(at: out)
         try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
         try Data(master.utf8).write(to: out.appendingPathComponent("master.m3u8"))
+        if ProcessInfo.processInfo.environment["FLOW_REMUX_PGS"] != nil, let pgs = remuxer.bitmapSubtitles.first {
+            print("bitmap tracks:", remuxer.bitmapSubtitles.map(\.label))
+            await remuxer.selectBitmapSubtitle(pgs.id)
+            let first = remuxer.segments.count / 3
+            var seen = Set<Double>()
+            for index in first..<(first + 12) {
+                _ = try await remuxer.mediaSegment(track: remuxer.video!.id, index: index)
+                let segment = remuxer.segments[index]
+                var t = Double(segment.start) / 1e9
+                while t < Double(segment.end) / 1e9 {
+                    if let cue = await remuxer.bitmapSubtitle(at: t), !seen.contains(cue.start), let object = cue.objects.first {
+                        seen.insert(cue.start)
+                        let name = String(format: "cue-%.2f-%dx%d-at-%d-%d-of-%dx%d.rgba", cue.start, object.width, object.height, object.x, object.y, cue.canvasWidth, cue.canvasHeight)
+                        try Data(cue.rgba(for: object)).write(to: out.appendingPathComponent(name))
+                        print("cue", String(format: "%.2f–%.2f", cue.start, cue.end ?? -1), "objects:", cue.objects.count, "forced:", cue.isForced)
+                    }
+                    t += 0.25
+                }
+            }
+            print("picture subtitles decoded:", seen.count)
+            return
+        }
         let tracks = [remuxer.video?.id].compactMap { $0 } + remuxer.audio.prefix(1).map(\.id)
         for index in [0, remuxer.segments.count / 2] {
             for track in tracks {

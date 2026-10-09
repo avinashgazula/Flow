@@ -15,6 +15,9 @@ struct PlayerView: View {
             surface
             SubtitleOverlay(text: session.subtitleText, settings: model.settings.subtitles)
                 .allowsHitTesting(false)
+            if let bitmap = session.bitmapSubtitle {
+                BitmapSubtitleView(overlay: bitmap)
+            }
             #if !os(tvOS)
             SkipAndUpNextOverlay(session: session)
             if session.isBuffering && session.phase == .playing {
@@ -121,7 +124,24 @@ struct PlayerView: View {
                         .menuIndicator(.hidden)
                         .fixedSize()
                     }
-                    CircleButton(systemImage: "captions.bubble") { showSubtitles = true }
+                    if !session.bitmapTracks.isEmpty {
+                        Menu {
+                            Picker("Subtitles", selection: Binding(get: { session.selectedBitmapTrack }, set: { session.selectBitmapSubtitle($0) })) {
+                                Text("Off").tag(Int?.none)
+                                ForEach(session.bitmapTracks) { Text($0.title).tag(Int?.some($0.id)) }
+                            }
+                            .pickerStyle(.inline)
+                        } label: {
+                            Image(systemName: session.selectedBitmapTrack == nil ? "captions.bubble" : "captions.bubble.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .frame(width: 44, height: 44)
+                                .flowGlass(Circle(), interactive: true)
+                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                    }
+                    CircleButton(systemImage: "magnifyingglass") { showSubtitles = true }
                     CircleButton(systemImage: "xmark") { session.stop() }
                 }
                 .padding(16)
@@ -583,6 +603,18 @@ struct IOSPlayerControls: View {
                                 .frame(width: 40, height: 40)
                                 .flowGlass(Circle())
                             Menu {
+                                if !session.bitmapTracks.isEmpty {
+                                    Section("Subtitles") {
+                                        Button { session.selectBitmapSubtitle(nil) } label: {
+                                            if session.selectedBitmapTrack == nil { Label("Off", systemImage: "checkmark") } else { Text("Off") }
+                                        }
+                                        ForEach(session.bitmapTracks) { track in
+                                            Button { session.selectBitmapSubtitle(track.id) } label: {
+                                                if session.selectedBitmapTrack == track.id { Label(track.title, systemImage: "checkmark") } else { Text(track.title) }
+                                            }
+                                        }
+                                    }
+                                }
                                 if !audioOptions.isEmpty {
                                     Section("Audio") {
                                         ForEach(audioOptions, id: \.self) { option in
@@ -808,3 +840,35 @@ enum OrientationLock {
     }
 }
 #endif
+
+/// Draws a Blu-ray picture subtitle where the disc placed it. The subtitle canvas is mapped onto
+/// the aspect-fit video rectangle, width-aligned and centred, so captions authored in the
+/// letterbox of a cropped encode still land there.
+struct BitmapSubtitleView: View {
+    let overlay: BitmapOverlay
+
+    var body: some View {
+        GeometryReader { proxy in
+            let video = Self.fit(overlay.videoSize == .zero ? overlay.canvas : overlay.videoSize, in: proxy.size)
+            let scale = overlay.canvas.width > 0 ? video.width / overlay.canvas.width : 1
+            let originY = video.midY - overlay.canvas.height * scale / 2
+            ForEach(Array(overlay.pieces.enumerated()), id: \.offset) { _, piece in
+                Image(decorative: piece.image, scale: 1)
+                    .resizable()
+                    .interpolation(.high)
+                    .frame(width: piece.rect.width * scale, height: piece.rect.height * scale)
+                    .position(x: video.minX + piece.rect.midX * scale, y: originY + piece.rect.midY * scale)
+            }
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    static func fit(_ video: CGSize, in container: CGSize) -> CGRect {
+        guard video.width > 0, video.height > 0 else { return CGRect(origin: .zero, size: container) }
+        let scale = min(container.width / video.width, container.height / video.height)
+        let size = CGSize(width: video.width * scale, height: video.height * scale)
+        return CGRect(x: (container.width - size.width) / 2, y: (container.height - size.height) / 2, width: size.width, height: size.height)
+    }
+}

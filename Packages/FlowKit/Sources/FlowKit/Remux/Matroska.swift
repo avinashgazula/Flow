@@ -77,6 +77,8 @@ public struct MatroskaTrack: Hashable, Sendable, Identifiable {
     public var strippedHeader: [UInt8] = []
     public var isEncrypted = false
     public var isCompressedUnsupported = false
+    /// Frames are zlib-compressed (common for subtitle tracks muxed by mkvmerge).
+    public var isZlibCompressed = false
 
     // Video
     public var width = 0
@@ -370,7 +372,11 @@ public enum MatroskaReader {
                         if c.id == MKV.contentCompAlgo { algorithm = EBML.uint(b, c) }
                         if c.id == MKV.contentCompSettings { settings = EBML.bytes(b, c) }
                     }
-                    if algorithm == 3 { t.strippedHeader = settings } else { t.isCompressedUnsupported = true }
+                    switch algorithm {
+                    case 0: t.isZlibCompressed = true
+                    case 3: t.strippedHeader = settings
+                    default: t.isCompressedUnsupported = true
+                    }
                 }
             }
         }
@@ -491,6 +497,7 @@ public enum MatroskaClusterParser {
     /// A trailing partial cluster is parsed as far as its complete children go.
     public static func blocks(_ b: [UInt8], timecodeScale: Int64, tracks: [MatroskaTrack]) throws -> [MatroskaBlock] {
         let stripped = Dictionary(uniqueKeysWithValues: tracks.filter { !$0.strippedHeader.isEmpty }.map { ($0.number, $0.strippedHeader) })
+        let zlib = Set(tracks.filter(\.isZlibCompressed).map(\.number))
         var out: [MatroskaBlock] = []
         var i = 0
         while i + 4 < b.count {
@@ -512,7 +519,7 @@ public enum MatroskaClusterParser {
                 case MKV.timecode:
                     clusterTime = Int64(EBML.uint(b, child))
                 case MKV.simpleBlock:
-                    if let block = parseBlock(b, child.dataStart, childEnd, clusterTime: clusterTime, scale: timecodeScale, simple: true, stripped: stripped) {
+                    if let block = parseBlock(b, child.dataStart, childEnd, clusterTime: clusterTime, scale: timecodeScale, simple: true, stripped: stripped, zlib: zlib) {
                         out.append(block)
                     }
                 case MKV.blockGroup:
@@ -522,7 +529,7 @@ public enum MatroskaClusterParser {
                     for g in (try? EBML.children(b, from: child.dataStart, to: childEnd)) ?? [] {
                         switch g.id {
                         case MKV.block:
-                            block = parseBlock(b, g.dataStart, g.end!, clusterTime: clusterTime, scale: timecodeScale, simple: false, stripped: stripped)
+                            block = parseBlock(b, g.dataStart, g.end!, clusterTime: clusterTime, scale: timecodeScale, simple: false, stripped: stripped, zlib: zlib)
                         case MKV.blockDuration: duration = Int64(EBML.uint(b, g)) * timecodeScale
                         case MKV.referenceBlock: hasReference = true
                         default: break
@@ -543,7 +550,7 @@ public enum MatroskaClusterParser {
         return out
     }
 
-    static func parseBlock(_ b: [UInt8], _ start: Int, _ end: Int, clusterTime: Int64, scale: Int64, simple: Bool, stripped: [Int: [UInt8]]) -> MatroskaBlock? {
+    static func parseBlock(_ b: [UInt8], _ start: Int, _ end: Int, clusterTime: Int64, scale: Int64, simple: Bool, stripped: [Int: [UInt8]], zlib: Set<Int> = []) -> MatroskaBlock? {
         var i = start
         guard let (trackNumber, _, _) = try? EBML.readVInt(b, &i), i + 3 <= end else { return nil }
         let relative = Int16(bitPattern: UInt16(b[i]) << 8 | UInt16(b[i + 1]))
@@ -591,6 +598,12 @@ public enum MatroskaClusterParser {
                 sizes.append(sizes.last! + Int(Int64(raw) - bias))
             }
             frames = slice(b, &i, end, sizes: sizes)
+        }
+        if zlib.contains(track) {
+            frames = frames.map { frame in
+                guard frame.count > 2, let inflated = try? Inflate.raw(Data(frame), offset: 2) else { return frame }
+                return [UInt8](inflated)
+            }
         }
         if let prefix = stripped[track] { frames = frames.map { prefix + $0 } }
         return MatroskaBlock(track: track, time: time, duration: nil, isKeyframe: keyframe, frames: frames)

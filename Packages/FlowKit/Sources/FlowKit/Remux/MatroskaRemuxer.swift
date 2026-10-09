@@ -6,7 +6,7 @@ import Foundation
 /// demand from HTTP range reads, so seeking anywhere costs one segment's worth of data.
 public actor MatroskaRemuxer {
     public struct OutputTrack: Sendable, Identifiable {
-        public enum Role: Sendable { case video, audio, subtitle }
+        public enum Role: Sendable { case video, audio, subtitle, bitmap }
         public let role: Role
         public let source: MatroskaTrack
         public let codecString: String
@@ -21,7 +21,7 @@ public actor MatroskaRemuxer {
         public var language: String { source.language }
     }
 
-    enum Codec: Sendable { case h264, hevc, av1, aac, mp3, ac3, eac3, flac, text, ass }
+    enum Codec: Sendable { case h264, hevc, av1, aac, mp3, ac3, eac3, flac, text, ass, pgs }
 
     public struct Skipped: Sendable, Hashable {
         public let track: MatroskaTrack
@@ -42,6 +42,8 @@ public actor MatroskaRemuxer {
     public nonisolated let video: OutputTrack?
     public nonisolated let audio: [OutputTrack]
     public nonisolated let subtitles: [OutputTrack]
+    /// Picture-based subtitles (Blu-ray PGS): not part of the HLS; Flow decodes and draws them itself.
+    public nonisolated let bitmapSubtitles: [OutputTrack]
     public nonisolated let skipped: [Skipped]
     public nonisolated let segments: [Segment]
     public nonisolated let duration: Double
@@ -56,6 +58,10 @@ public actor MatroskaRemuxer {
     private var cache: [Int: [MatroskaBlock]] = [:]
     private var cacheOrder: [Int] = []
     private var inflight: [Int: Task<[MatroskaBlock], Error>] = [:]
+    private var bitmapTrack: Int?
+    private var bitmapDecoder = PGSDecoder()
+    private var bitmapCues: [BitmapSubtitle] = []
+    private var decodedSegments = Set<Int>()
 
     /// Reads the header and enough of the first clusters to configure Dolby audio, then plans segments.
     public static func open(_ source: ByteSource, targetSegment: Double = 6) async throws -> MatroskaRemuxer {
@@ -73,6 +79,7 @@ public actor MatroskaRemuxer {
         var audio: [OutputTrack] = []
         var subtitles: [OutputTrack] = []
         var skipped: [Skipped] = []
+        var bitmaps: [OutputTrack] = []
         for track in header.tracks where track.isEnabled {
             switch Self.output(for: track, firstFrame: firstFrames[track.number]) {
             case .success(let out):
@@ -81,6 +88,7 @@ public actor MatroskaRemuxer {
                 case .video: skipped.append(Skipped(track: track, reason: "Extra video track"))
                 case .audio: audio.append(out)
                 case .subtitle: subtitles.append(out)
+                case .bitmap: bitmaps.append(out)
                 }
             case .failure(let reason):
                 skipped.append(Skipped(track: track, reason: reason.message))
@@ -101,7 +109,7 @@ public actor MatroskaRemuxer {
         let duration = Double(header.duration ?? 0) / 1e9
         let segments = try Self.plan(header: header, anchorTrack: video?.source.number ?? audio.first!.source.number, target: targetSegment)
         let delay = video.map { Self.reorderDelay(probeBlocks.filter { $0.track == video!.id }, frame: $0.source.defaultDuration) } ?? 0
-        return MatroskaRemuxer(source: source, header: header, video: video, audio: audio, subtitles: subtitles,
+        return MatroskaRemuxer(source: source, header: header, video: video, audio: audio, subtitles: subtitles, bitmapSubtitles: bitmaps,
                                skipped: skipped, segments: segments, duration: duration, presentationDelay: delay)
     }
 
@@ -116,7 +124,8 @@ public actor MatroskaRemuxer {
     }
 
     private init(source: ByteSource, header: MatroskaHeader, video: OutputTrack?, audio: [OutputTrack], subtitles: [OutputTrack],
-                 skipped: [Skipped], segments: [Segment], duration: Double, presentationDelay: Int64) {
+                 bitmapSubtitles: [OutputTrack], skipped: [Skipped], segments: [Segment], duration: Double, presentationDelay: Int64) {
+        self.bitmapSubtitles = bitmapSubtitles
         self.presentationDelay = presentationDelay
         self.source = source
         self.header = header
@@ -186,7 +195,8 @@ public actor MatroskaRemuxer {
                 return .success(OutputTrack(role: .subtitle, source: t, codecString: "wvtt", timescale: 1000, label: label, sampleEntry: [], frameSamples: 0, codec: .text))
             case "S_TEXT/ASS", "S_TEXT/SSA", "S_ASS", "S_SSA":
                 return .success(OutputTrack(role: .subtitle, source: t, codecString: "wvtt", timescale: 1000, label: label, sampleEntry: [], frameSamples: 0, codec: .ass))
-            case "S_HDMV/PGS": return .failure(Unsupported(message: "Picture-based subtitles (PGS)"))
+            case "S_HDMV/PGS":
+                return .success(OutputTrack(role: .bitmap, source: t, codecString: "pgs", timescale: 1000, label: label, sampleEntry: [], frameSamples: 0, codec: .pgs))
             case "S_VOBSUB": return .failure(Unsupported(message: "Picture-based subtitles (VobSub)"))
             default: return .failure(Unsupported(message: "Subtitle format \(t.codecID)"))
             }
@@ -522,7 +532,45 @@ public actor MatroskaRemuxer {
         cache[index] = blocks
         cacheOrder.append(index)
         while cacheOrder.count > 3 { cache[cacheOrder.removeFirst()] = nil }
+        decodeBitmaps(blocks, segment: index)
         return blocks
+    }
+
+    // MARK: Picture subtitles
+
+    /// Chooses the PGS track to decode as segments arrive (nil turns them off).
+    public func selectBitmapSubtitle(_ track: Int?) {
+        guard track != bitmapTrack else { return }
+        bitmapTrack = track
+        bitmapDecoder = PGSDecoder()
+        bitmapCues = []
+        decodedSegments = []
+        for (index, blocks) in cache { decodeBitmaps(blocks, segment: index) }
+    }
+
+    /// The picture subtitle on screen at `seconds` (media time), if any. Also prunes cues far behind.
+    public func bitmapSubtitle(at seconds: Double) -> BitmapSubtitle? {
+        if bitmapCues.count > 400 { bitmapCues.removeAll { ($0.end ?? $0.start) < seconds - 120 } }
+        guard let index = bitmapCues.lastIndex(where: { $0.start <= seconds }) else { return nil }
+        let cue = bitmapCues[index]
+        guard !cue.objects.isEmpty, seconds < (cue.end ?? cue.start + 10) else { return nil }
+        return cue
+    }
+
+    private func decodeBitmaps(_ blocks: [MatroskaBlock], segment: Int) {
+        guard let track = bitmapTrack, !decodedSegments.contains(segment) else { return }
+        decodedSegments.insert(segment)
+        // Segments can arrive out of order after a seek; decode in time order and keep the list sorted.
+        for block in blocks where block.track == track {
+            let start = Double(block.time) / 1e9
+            guard let frame = block.frames.first, !bitmapCues.contains(where: { $0.start == start }),
+                  var cue = bitmapDecoder.decode(block.frames.count == 1 ? frame : block.frames.flatMap { $0 }, at: start) else { continue }
+            if let duration = block.duration, duration > 0 { cue.end = start + Double(duration) / 1e9 }
+            let position = bitmapCues.firstIndex { $0.start > start } ?? bitmapCues.count
+            if position > 0, bitmapCues[position - 1].end == nil { bitmapCues[position - 1].end = start }
+            if position < bitmapCues.count, cue.end == nil { cue.end = bitmapCues[position].start }
+            bitmapCues.insert(cue, at: position)
+        }
     }
 
     // MARK: Routing

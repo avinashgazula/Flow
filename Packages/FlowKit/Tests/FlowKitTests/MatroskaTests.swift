@@ -150,3 +150,42 @@ actor CountingSource: ByteSource {
         return bytes
     }
 }
+
+final class PGSTests: XCTestCase {
+    static func segment(_ type: UInt8, _ payload: [UInt8]) -> [UInt8] {
+        [type, UInt8(payload.count >> 8), UInt8(payload.count & 0xFF)] + payload
+    }
+
+    /// One display set: a 4×2 white-and-clear object at (100, 900) on a 1920×1080 canvas.
+    static var showSet: [UInt8] {
+        let pcs: [UInt8] = [0x07, 0x80, 0x04, 0x38, 0x10, 0x00, 0x01, 0x80, 0x00, 0x00, 0x01,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x03, 0x84]
+        let pds: [UInt8] = [0x00, 0x00, 0x01, 235, 128, 128, 255]
+        // Row 0: four pixels of colour 1. Row 1: 1, two transparent, 1.
+        let rle: [UInt8] = [0x00, 0x84, 0x01, 0x00, 0x00, 0x01, 0x00, 0x02, 0x01, 0x00, 0x00]
+        let length = rle.count + 4
+        let ods: [UInt8] = [0x00, 0x00, 0x00, 0xC0, UInt8(length >> 16), UInt8((length >> 8) & 0xFF), UInt8(length & 0xFF), 0x00, 0x04, 0x00, 0x02] + rle
+        return segment(0x16, pcs) + segment(0x14, pds) + segment(0x15, ods) + segment(0x80, [])
+    }
+
+    static var clearSet: [UInt8] {
+        segment(0x16, [0x07, 0x80, 0x04, 0x38, 0x10, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00]) + segment(0x80, [])
+    }
+
+    func testDecodesADisplaySet() throws {
+        var decoder = PGSDecoder()
+        let cue = try XCTUnwrap(decoder.decode(Self.showSet, at: 12.5))
+        XCTAssertEqual(cue.start, 12.5)
+        XCTAssertEqual(cue.canvasWidth, 1920)
+        XCTAssertEqual(cue.canvasHeight, 1080)
+        let object = try XCTUnwrap(cue.objects.first)
+        XCTAssertEqual([object.x, object.y, object.width, object.height], [100, 900, 4, 2])
+        XCTAssertEqual(object.indices, [1, 1, 1, 1, 1, 0, 0, 1])
+        let pixels = cue.rgba(for: object)
+        XCTAssertEqual(Array(pixels[0..<4]), [255, 255, 255, 255], "Y 235 is full white, opaque")
+        XCTAssertEqual(Array(pixels[20..<24]), [0, 0, 0, 0], "palette index 0 is transparent")
+
+        let cleared = try XCTUnwrap(decoder.decode(Self.clearSet, at: 15))
+        XCTAssertTrue(cleared.objects.isEmpty)
+    }
+}

@@ -67,8 +67,18 @@ struct TVPlayerController: UIViewControllerRepresentable {
         } else {
             controller.contextualActions = []
         }
-        let search = UIAction(title: "Search Subtitles", image: UIImage(systemName: "captions.bubble")) { _ in onSubtitleSearch() }
-        controller.transportBarCustomMenuItems = [search]
+        let search = UIAction(title: "Search Subtitles", image: UIImage(systemName: "magnifyingglass")) { _ in onSubtitleSearch() }
+        var items: [UIMenuElement] = []
+        if !session.bitmapTracks.isEmpty {
+            // Picture subtitles from the disc: AVKit can't show them, so Flow draws them and offers its own menu.
+            var choices: [UIMenuElement] = [UIAction(title: "Off", state: session.selectedBitmapTrack == nil ? .on : .off) { _ in session.selectBitmapSubtitle(nil) }]
+            choices += session.bitmapTracks.map { track in
+                UIAction(title: track.title, state: session.selectedBitmapTrack == track.id ? .on : .off) { _ in session.selectBitmapSubtitle(track.id) }
+            }
+            items.append(UIMenu(title: "Disc Subtitles", image: UIImage(systemName: "captions.bubble"), options: .singleSelection, children: choices))
+        }
+        items.append(search)
+        controller.transportBarCustomMenuItems = items
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(session: session) }

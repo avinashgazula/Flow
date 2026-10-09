@@ -46,6 +46,11 @@ final class PlaybackSession: Identifiable {
     /// Playing, but stalled waiting for data.
     var isBuffering = false
     var sleepTimer: SleepTimer? { didSet { scheduleSleep() } }
+    /// Picture-based (Blu-ray PGS) subtitle tracks in a remuxed MKV, which Flow draws itself.
+    var bitmapTracks: [PlayerTrack] = []
+    private(set) var selectedBitmapTrack: Int?
+    /// The picture subtitle on screen now, placed in normalised video coordinates.
+    var bitmapSubtitle: BitmapOverlay?
 
     @ObservationIgnored private weak var model: AppModel?
     @ObservationIgnored private var resumeAt: Double?
@@ -63,6 +68,8 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private var sleepTask: Task<Void, Never>?
     @ObservationIgnored private let nowPlaying = NowPlaying()
     @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
+    @ObservationIgnored private var remuxer: MatroskaRemuxer?
+    @ObservationIgnored private var bitmapTask: Task<Void, Never>?
 
     init(model: AppModel, request: PlaybackRequest, source: StreamSource, resumeAt: Double?, alternatives: [StreamSource] = []) {
         self.model = model
@@ -132,6 +139,7 @@ final class PlaybackSession: Identifiable {
         player.replaceCurrentItem(with: nil)
         usesRemux = false
         chapters = []
+        stopBitmapSubtitles()
         phase = .connecting(0.1)
         loadTask = Task { [weak self] in await self?.prepare(source, url: url) }
     }
@@ -181,6 +189,8 @@ final class PlaybackSession: Identifiable {
             guard !Task.isCancelled else { LocalHLSServer.shared.unregister(token); return }
             hlsToken = token
             usesRemux = true
+            self.remuxer = remuxer
+            configureBitmapSubtitles(remuxer)
             chapters = remuxer.header.chapters.map { PlayerChapter(title: $0.title, start: Double($0.start) / 1e9) }
             if let first = skippedAudio.first(where: { !$0.track.isCommentary }), let playing = remuxer.audio.first {
                 show(notice: "\(first.reason) isn't supported on Apple devices, so Flow is playing \(playing.label).")
@@ -319,6 +329,61 @@ final class PlaybackSession: Identifiable {
     private func releaseRemux() {
         if let hlsToken { LocalHLSServer.shared.unregister(hlsToken) }
         hlsToken = nil
+    }
+
+    // MARK: Picture subtitles
+
+    private func configureBitmapSubtitles(_ remuxer: MatroskaRemuxer) {
+        bitmapTracks = remuxer.bitmapSubtitles.map { track in
+            var title = track.label
+            if track.source.isForced { title += " (Forced)" }
+            if track.source.isHearingImpaired { title += " (SDH)" }
+            return PlayerTrack(id: track.id, title: title)
+        }
+        guard let model, !remuxer.bitmapSubtitles.isEmpty else { return }
+        // Forced captions in the soundtrack's language always show; full subtitles when the viewer
+        // turned on automatic subtitles and there's no text track to use instead.
+        let language = remuxer.audio.first?.language
+        let forced = remuxer.bitmapSubtitles.first { $0.source.isForced && $0.language == language }
+        let preferred = model.settings.subtitles.preferredLanguages
+        let wanted = model.settings.subtitles.autoEnable && remuxer.subtitles.isEmpty
+            ? remuxer.bitmapSubtitles.first { track in
+                !track.source.isCommentary && preferred.contains { LanguageName.bcp47(track.language) == $0 || track.language.hasPrefix($0) }
+            }
+            : nil
+        if let choice = wanted ?? forced { selectBitmapSubtitle(choice.id) }
+    }
+
+    func selectBitmapSubtitle(_ id: Int?) {
+        selectedBitmapTrack = id
+        bitmapSubtitle = nil
+        bitmapTask?.cancel()
+        guard let remuxer else { return }
+        Task { await remuxer.selectBitmapSubtitle(id) }
+        guard id != nil else { return }
+        let videoSize = remuxer.video.map { CGSize(width: $0.source.width, height: $0.source.height) } ?? .zero
+        bitmapTask = Task { [weak self] in
+            var shown: Double?
+            while !Task.isCancelled {
+                guard let self else { return }
+                let time = self.player.currentTime().seconds
+                let cue = time.isFinite ? await remuxer.bitmapSubtitle(at: time) : nil
+                if cue?.start != shown {
+                    shown = cue?.start
+                    self.bitmapSubtitle = cue.map { BitmapOverlay(cue: $0, videoSize: videoSize) }
+                }
+                try? await Task.sleep(nanoseconds: 150_000_000)
+            }
+        }
+    }
+
+    private func stopBitmapSubtitles() {
+        bitmapTask?.cancel()
+        bitmapTask = nil
+        remuxer = nil
+        bitmapTracks = []
+        selectedBitmapTrack = nil
+        bitmapSubtitle = nil
     }
 
     func seek(toChapter chapter: PlayerChapter) {
@@ -594,6 +659,7 @@ final class PlaybackSession: Identifiable {
         player.replaceCurrentItem(with: nil)
         teardownObservers()
         releaseRemux()
+        stopBitmapSubtitles()
         if model?.activePlayback?.id == id { model?.activePlayback = nil }
     }
 
@@ -645,4 +711,34 @@ struct PlayerChapter: Hashable, Identifiable {
     /// Seconds.
     let start: Double
     var id: Double { start }
+}
+
+/// A decoded picture subtitle as images ready to draw, each with its rectangle on the subtitle canvas.
+struct BitmapOverlay: Equatable {
+    struct Piece: Equatable {
+        let image: CGImage
+        let rect: CGRect
+        static func == (a: Piece, b: Piece) -> Bool { a.image === b.image && a.rect == b.rect }
+    }
+
+    let start: Double
+    let canvas: CGSize
+    let videoSize: CGSize
+    let pieces: [Piece]
+
+    init(cue: BitmapSubtitle, videoSize: CGSize) {
+        start = cue.start
+        canvas = CGSize(width: cue.canvasWidth, height: cue.canvasHeight)
+        self.videoSize = videoSize
+        pieces = cue.objects.compactMap { object in
+            let bytes = cue.rgba(for: object)
+            guard let provider = CGDataProvider(data: Data(bytes) as CFData),
+                  let image = CGImage(width: object.width, height: object.height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: object.width * 4,
+                                      space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                                      provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent) else { return nil }
+            return Piece(image: image, rect: CGRect(x: object.x, y: object.y, width: object.width, height: object.height))
+        }
+    }
+
+    static func == (a: BitmapOverlay, b: BitmapOverlay) -> Bool { a.start == b.start && a.pieces == b.pieces }
 }
