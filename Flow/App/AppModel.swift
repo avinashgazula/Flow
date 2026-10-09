@@ -106,6 +106,8 @@ final class AppModel {
     var paths: [AppTab: [Route]] = [:]
     var settingsPath: [Route] = []
     var searchText = ""
+    /// Lets the screenshot tour show the welcome screen inside demo mode.
+    var previewOnboarding = false
 
     nonisolated static var demoRequested: Bool {
         UserDefaults.standard.bool(forKey: "FlowDemo") || UserDefaults.standard.bool(forKey: "flow.demoMode")

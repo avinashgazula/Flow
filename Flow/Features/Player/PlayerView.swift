@@ -230,6 +230,7 @@ struct CircleButton: View {
     }
 }
 
+#if !os(tvOS)
 /// Apple TV–style scrubber: a hairline track that thickens while you drag.
 struct Scrubber: View {
     let current: Double
@@ -286,6 +287,8 @@ struct Scrubber: View {
         }
     }
 }
+
+#endif
 
 #if os(iOS)
 /// Flow's own iOS player chrome: tap to show/hide, scrubber, ±10s, AirPlay, PiP, subtitles, aspect.

@@ -97,6 +97,7 @@ struct SearchView: View {
             }
         }
         if model.catalog != nil {
+            BrowseGrid()
             ShelfView(shelf: .builtIn(.trendingMovies))
             ShelfView(shelf: .builtIn(.trendingShows))
         } else {
@@ -123,5 +124,72 @@ struct SearchView: View {
         } catch {
             if !Task.isCancelled { self.error = error.localizedDescription }
         }
+    }
+}
+
+/// Genre tiles that open a Discover grid — the "browse" half of search.
+struct BrowseGrid: View {
+    struct Category: Identifiable {
+        let title: String
+        let type: MediaType
+        let genre: Int
+        let hue: Double
+        let symbol: String
+        var id: String { "\(type.rawValue)-\(genre)" }
+    }
+
+    static let categories: [Category] = [
+        Category(title: "Action", type: .movie, genre: 28, hue: 0.02, symbol: "flame.fill"),
+        Category(title: "Comedy", type: .movie, genre: 35, hue: 0.13, symbol: "face.smiling.fill"),
+        Category(title: "Science Fiction", type: .movie, genre: 878, hue: 0.58, symbol: "sparkles"),
+        Category(title: "Drama", type: .movie, genre: 18, hue: 0.75, symbol: "theatermasks.fill"),
+        Category(title: "Horror", type: .movie, genre: 27, hue: 0.98, symbol: "moon.fill"),
+        Category(title: "Animation", type: .movie, genre: 16, hue: 0.33, symbol: "paintpalette.fill"),
+        Category(title: "Documentary", type: .movie, genre: 99, hue: 0.45, symbol: "globe.americas.fill"),
+        Category(title: "Crime Series", type: .show, genre: 80, hue: 0.66, symbol: "magnifyingglass"),
+    ]
+
+    private var columns: [GridItem] {
+        [GridItem(.adaptive(minimum: Platform.isTV ? 360 : (Platform.isPhone ? 150 : 200)), spacing: Theme.Space.s)]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            SectionHeader<Route>("Browse")
+            LazyVGrid(columns: columns, spacing: Theme.Space.s) {
+                ForEach(Self.categories) { category in
+                    NavigationLink(value: Route.shelf(shelf(for: category))) { tile(category) }
+                        .buttonStyle(CardButtonStyle())
+                }
+            }
+            .padding(.horizontal, Theme.Space.gutter)
+        }
+    }
+
+    private func shelf(for category: Category) -> ShelfConfig {
+        var query = DiscoverQuery(type: category.type)
+        query.genres = [category.genre]
+        query.minVotes = 300
+        return ShelfConfig(id: "browse-\(category.id)", title: category.title, source: .discover(query))
+    }
+
+    private func tile(_ category: Category) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+        return ZStack(alignment: .bottomLeading) {
+            LinearGradient(colors: [Color(hue: category.hue, saturation: 0.7, brightness: 0.55), Color(hue: (category.hue + 0.04).truncatingRemainder(dividingBy: 1), saturation: 0.85, brightness: 0.22)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+            Image(systemName: category.symbol)
+                .font(.system(size: 54 * Theme.scale, weight: .bold))
+                .foregroundStyle(.white.opacity(0.14))
+                .rotationEffect(.degrees(-12))
+                .offset(x: 18, y: 10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            Text(category.title)
+                .font(.system(size: 16 * Theme.scale, weight: .bold))
+                .padding(Theme.Space.s)
+        }
+        .frame(height: 84 * Theme.scale)
+        .clipShape(shape)
+        .hairline(shape)
     }
 }

@@ -52,6 +52,29 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         }
     }
 
+    /// Icon tile colour, iOS Settings–style.
+    var tint: Color {
+        switch self {
+        case .general: return .gray
+        case .account: return .blue
+        case .shelves: return .indigo
+        case .mediaServers: return .purple
+        case .webDAV: return .teal
+        case .liveTV: return .red
+        case .sources: return .orange
+        case .dataStorage: return .green
+        case .shareSetup: return .cyan
+        case .importSetup: return .mint
+        case .playback: return .pink
+        case .subtitles: return .yellow
+        case .metadata: return .brown
+        case .about: return .gray
+        case .sourceAppearance: return .orange
+        case .apiKeys: return .blue
+        case .addons: return .purple
+        }
+    }
+
     /// Words that make a page show up in Search Settings.
     var keywords: String {
         switch self {
@@ -133,7 +156,11 @@ struct SettingsRootView: View {
 
     private func row(_ page: SettingsPage) -> some View {
         NavigationLink(value: Route.settings(page)) {
-            Label(page.title, systemImage: page.systemImage)
+            Label {
+                Text(page.title)
+            } icon: {
+                SettingsIcon(systemImage: page.systemImage, tint: page.tint)
+            }
         }
     }
 }
@@ -214,5 +241,22 @@ struct AboutView: View {
                     .font(.footnote)
             }
         }
+    }
+}
+
+/// White glyph on a coloured squircle, like iOS Settings.
+struct SettingsIcon: View {
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 14 * Theme.scale, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 29 * Theme.scale, height: 29 * Theme.scale)
+            .background(
+                LinearGradient(colors: [tint.opacity(0.95), tint.opacity(0.75)], startPoint: .top, endPoint: .bottom),
+                in: RoundedRectangle(cornerRadius: 7 * Theme.scale, style: .continuous)
+            )
     }
 }
