@@ -189,3 +189,26 @@ final class PGSTests: XCTestCase {
         XCTAssertTrue(cleared.objects.isEmpty)
     }
 }
+
+final class HeaderCacheTests: XCTestCase {
+    func testSecondOpenSkipsTheIndex() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("flow-header-cache-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let cache = MatroskaHeaderCache(directory: directory)
+        let bytes = [UInt8](try Data(contentsOf: MatroskaTests.fixture("avc-aac-srt")))
+
+        let first = CountingSource(inner: MemoryByteSource(bytes))
+        let parsed = try await MatroskaReader.readHeader(first, probeSize: 4096, cache: cache)
+        let firstReads = await first.total
+
+        // A new cache instance over the same directory: the header comes back from disk.
+        let second = CountingSource(inner: MemoryByteSource(bytes))
+        let cached = try await MatroskaReader.readHeader(second, probeSize: 4096, cache: MatroskaHeaderCache(directory: directory))
+        let secondReads = await second.total
+        XCTAssertEqual(cached.cues, parsed.cues)
+        XCTAssertEqual(cached.tracks, parsed.tracks)
+        XCTAssertEqual(cached.chapters, parsed.chapters)
+        XCTAssertEqual(secondReads, 4096, "only the identifying head is read")
+        XCTAssertGreaterThan(firstReads, secondReads)
+    }
+}

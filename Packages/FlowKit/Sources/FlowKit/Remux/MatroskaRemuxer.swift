@@ -64,8 +64,8 @@ public actor MatroskaRemuxer {
     private var decodedSegments = Set<Int>()
 
     /// Reads the header and enough of the first clusters to configure Dolby audio, then plans segments.
-    public static func open(_ source: ByteSource, targetSegment: Double = 6) async throws -> MatroskaRemuxer {
-        let header = try await MatroskaReader.readHeader(source)
+    public static func open(_ source: ByteSource, targetSegment: Double = 6, headerCache: MatroskaHeaderCache? = nil) async throws -> MatroskaRemuxer {
+        let header = try await MatroskaReader.readHeader(source, cache: headerCache)
         guard let firstCluster = header.firstClusterPosition else { throw MatroskaError.malformed("no clusters") }
 
         // AC-3 and E-AC-3 configuration comes from a real frame, so look at the start of the file.

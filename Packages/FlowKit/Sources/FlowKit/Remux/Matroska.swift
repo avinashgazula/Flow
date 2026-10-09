@@ -40,7 +40,7 @@ public struct MemoryByteSource: ByteSource {
 
 // MARK: - Model
 
-public struct MatroskaColour: Hashable, Sendable {
+public struct MatroskaColour: Hashable, Sendable, Codable {
     public var matrix: Int?
     public var bitsPerChannel: Int?
     public var range: Int?
@@ -56,8 +56,8 @@ public struct MatroskaColour: Hashable, Sendable {
     public var isHLG: Bool { transfer == 18 }
 }
 
-public struct MatroskaTrack: Hashable, Sendable, Identifiable {
-    public enum Kind: Int, Sendable { case video = 1, audio = 2, complex = 3, logo = 0x10, subtitle = 0x11, buttons = 0x12, control = 0x20, metadata = 0x21 }
+public struct MatroskaTrack: Hashable, Sendable, Identifiable, Codable {
+    public enum Kind: Int, Sendable, Codable { case video = 1, audio = 2, complex = 3, logo = 0x10, subtitle = 0x11, buttons = 0x12, control = 0x20, metadata = 0x21 }
 
     public var number: Int
     public var kind: Kind?
@@ -104,7 +104,7 @@ public struct MatroskaTrack: Hashable, Sendable, Identifiable {
     }
 }
 
-public struct MatroskaCue: Hashable, Sendable {
+public struct MatroskaCue: Hashable, Sendable, Codable {
     /// Presentation time in nanoseconds.
     public var time: Int64
     public var track: Int
@@ -114,13 +114,13 @@ public struct MatroskaCue: Hashable, Sendable {
     public var relativePosition: Int64?
 }
 
-public struct MatroskaChapter: Hashable, Sendable {
+public struct MatroskaChapter: Hashable, Sendable, Codable {
     public var start: Int64
     public var end: Int64?
     public var title: String
 }
 
-public struct MatroskaHeader: Sendable {
+public struct MatroskaHeader: Sendable, Codable {
     public var docType: String
     /// Absolute offset of the Segment payload; cluster and seek positions are relative to it.
     public var segmentDataStart: Int64
@@ -168,10 +168,18 @@ public enum MatroskaError: Error, Equatable, LocalizedError {
 
 public enum MatroskaReader {
     /// Reads everything before the first cluster, then the Cues and Chapters wherever they live.
-    public static func readHeader(_ source: ByteSource, probeSize: Int = 512 * 1024) async throws -> MatroskaHeader {
+    public static func readHeader(_ source: ByteSource, probeSize: Int = 512 * 1024, cache: MatroskaHeaderCache? = nil) async throws -> MatroskaHeader {
         let length = try await source.length()
         var buffer = try await source.read(0..<Int64(probeSize))
         guard buffer.count >= 4, Array(buffer[0..<4]) == [0x1A, 0x45, 0xDF, 0xA3] else { throw MatroskaError.notMatroska }
+        let cacheKey = MatroskaHeaderCache.key(head: buffer, length: length)
+        if let cache, let cached = await cache.header(for: cacheKey) { return cached }
+        let header = try await parseHeader(source, buffer: &buffer, length: length, probeSize: probeSize)
+        await cache?.store(header, for: cacheKey)
+        return header
+    }
+
+    private static func parseHeader(_ source: ByteSource, buffer: inout [UInt8], length: Int64?, probeSize: Int) async throws -> MatroskaHeader {
 
         let ebml = try EBML.readElement(buffer, at: 0)
         guard let ebmlEnd = ebml.end, ebmlEnd <= buffer.count else { throw MatroskaError.malformed("EBML header") }

@@ -178,7 +178,7 @@ final class PlaybackSession: Identifiable {
     private func startRemux(url: URL, headers: [String: String], reader: ByteSource? = nil) async {
         phase = .connecting(0.2)
         do {
-            let remuxer = try await MatroskaRemuxer.open(reader ?? Self.byteSource(url, headers: headers))
+            let remuxer = try await MatroskaRemuxer.open(reader ?? Self.byteSource(url, headers: headers), headerCache: .shared)
             guard !Task.isCancelled else { return }
             let skippedAudio = remuxer.skipped.filter { $0.track.kind == .audio }
             if !remuxer.hasPlayableSoundtrack, let first = skippedAudio.first {
