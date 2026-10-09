@@ -53,8 +53,72 @@ struct PosterRow: View {
         }
         .scrollTargetBehavior(.viewAligned)
         .scrollClipDisabled()
+        .pagingArrows(ids: items.map(\.id), itemWidth: Platform.posterWidth + 14)
     }
 }
+
+extension View {
+    /// On the Mac, glass chevrons appear at a row's edges on hover and page it sideways,
+    /// so a mouse without a horizontal wheel can still browse. Elsewhere this does nothing.
+    @ViewBuilder
+    func pagingArrows<ID: Hashable>(ids: [ID], itemWidth: CGFloat) -> some View {
+        #if os(macOS)
+        modifier(PagingArrows(ids: ids, itemWidth: itemWidth))
+        #else
+        self
+        #endif
+    }
+}
+
+#if os(macOS)
+private struct PagingArrows<ID: Hashable>: ViewModifier {
+    let ids: [ID]
+    let itemWidth: CGFloat
+    @State private var position: ID?
+    @State private var hovering = false
+    @State private var width: CGFloat = 0
+
+    private var index: Int { position.flatMap { ids.firstIndex(of: $0) } ?? 0 }
+    private var pageSize: Int { max(1, Int(width / max(itemWidth, 1)) - 1) }
+    private var fitsOnScreen: Bool { CGFloat(ids.count) * itemWidth <= width }
+
+    func body(content: Content) -> some View {
+        content
+            .scrollPosition(id: $position, anchor: .leading)
+            .background(GeometryReader { proxy in
+                Color.clear
+                    .onAppear { width = proxy.size.width }
+                    .onChange(of: proxy.size.width) { _, new in width = new }
+            })
+            .overlay(alignment: .leading) {
+                if hovering && index > 0 { arrow("chevron.left") { page(-1) }.padding(.leading, 10) }
+            }
+            .overlay(alignment: .trailing) {
+                if hovering && !fitsOnScreen && index + pageSize < ids.count { arrow("chevron.right") { page(1) }.padding(.trailing, 10) }
+            }
+            .onHover { inside in withAnimation(Theme.Motion.fade) { hovering = inside } }
+    }
+
+    private func arrow(_ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 36, height: 36)
+                .flowGlass(Circle(), interactive: true)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .transition(.opacity)
+    }
+
+    private func page(_ direction: Int) {
+        guard !ids.isEmpty else { return }
+        let target = min(max(0, index + direction * pageSize), ids.count - 1)
+        withAnimation(Theme.Motion.gentle) { position = ids[target] }
+    }
+}
+#endif
 
 /// A configured home/library shelf that loads its own content.
 struct ShelfView: View {
@@ -138,6 +202,7 @@ struct ContinueWatchingShelf: View {
                 }
                 .scrollTargetBehavior(.viewAligned)
                 .scrollClipDisabled()
+                .pagingArrows(ids: entries.map(\.id), itemWidth: Platform.landscapeWidth + 14)
             }
             .task(id: entries.map(\.id)) {
                 let hydrated = await model.hydrate(entries.map(\.key))
@@ -159,6 +224,7 @@ struct HeroCarousel: View {
     @State private var details: [String: MediaItem] = [:]
     @State private var currentID: String?
     @State private var interacting = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -222,7 +288,7 @@ struct HeroCarousel: View {
     }
 
     private func autoAdvance() async {
-        guard model.settings.general.heroAutoAdvance, items.count > 1 else { return }
+        guard model.settings.general.heroAutoAdvance, !reduceMotion, items.count > 1 else { return }
         while !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 8_000_000_000)
             guard !Task.isCancelled, !interacting else { continue }

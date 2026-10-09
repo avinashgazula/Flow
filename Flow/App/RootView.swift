@@ -27,6 +27,9 @@ struct RootView: View {
         }
         .animation(.spring(duration: 0.35), value: model.toast)
         .animation(Theme.Motion.gentle, value: model.activePlayback?.id)
+        #if os(macOS)
+        .toolbar(model.activePlayback == nil ? .automatic : .hidden, for: .windowToolbar)
+        #endif
         .flowModal(isPresented: Binding(get: { model.pendingImport != nil }, set: { if !$0 { model.pendingImport = nil } })) {
             NavigationStack { ImportSetupView() }
                 .environment(model)
@@ -164,6 +167,8 @@ struct MacShell: View {
             .id(model.selectedTab)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        // Shelves scroll sideways with a trackpad or the Shift-wheel; a legacy scroller under every row is clutter.
+        .scrollIndicators(.never, axes: .horizontal)
     }
 
     private var sidebar: some View {

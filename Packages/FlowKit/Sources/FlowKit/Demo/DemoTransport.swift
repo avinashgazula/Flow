@@ -155,6 +155,7 @@ public struct DemoTransport: HTTPTransport {
             .enumerated().map { index, person in ["id": person.id, "name": person.title, "character": ["Paul", "Chani", "Jessica", "Duncan", "Stilgar", "Irulan"][index % 6], "order": index] }
         o["credits"] = ["cast": castList, "crew": [["id": 137427, "name": "Denis Villeneuve", "job": type == .movie ? "Director" : "Creator"]]]
         o["videos"] = ["results": [["id": "v\(t.id)", "name": "Official Trailer", "key": "Way9Dexny3w", "site": "YouTube", "type": "Trailer", "official": true]]]
+        o["watch/providers"] = watchProviders(t)
         let similar = shuffled(DemoCatalog.titles.filter { $0.type == type && $0.id != t.id }, seed: t.id)
         o["recommendations"] = page(Array(similar.prefix(10)))
         o["similar"] = page(Array(similar.suffix(6)))
@@ -181,6 +182,25 @@ public struct DemoTransport: HTTPTransport {
             }
         }
         return o
+    }
+
+    /// Logo paths from TMDb's provider list; if one ever moves, the tile falls back to the service's name.
+    static let streamingServices: [[String: Any]] = [
+        ["provider_id": 8, "provider_name": "Netflix", "logo_path": "/t2yyOv40HZeVlLjYsCsPHnWLk4W.jpg", "display_priority": 1],
+        ["provider_id": 350, "provider_name": "Apple TV+", "logo_path": "/6uhKBfmtzFqOcLousHwZuzcrScK.jpg", "display_priority": 2],
+        ["provider_id": 337, "provider_name": "Disney Plus", "logo_path": "/7rwgEs15tFwyR9NPQ5vpzxTj19Q.jpg", "display_priority": 3],
+        ["provider_id": 9, "provider_name": "Amazon Prime Video", "logo_path": "/emthp39XA2YScoYL1p0sdbAH2WA.jpg", "display_priority": 4],
+    ]
+    static let stores: [[String: Any]] = [
+        ["provider_id": 2, "provider_name": "Apple TV", "logo_path": "/peURlLlr8jggOwK53fJ5wdQl05y.jpg", "display_priority": 5],
+        ["provider_id": 3, "provider_name": "Google Play Movies", "logo_path": "/tbEdFQDwx5LEVr8WpSeXQSIirVq.jpg", "display_priority": 6],
+    ]
+
+    static func watchProviders(_ t: DemoCatalog.Title) -> [String: Any] {
+        let stream = [streamingServices[t.id % streamingServices.count]]
+        var region: [String: Any] = ["link": "https://www.themoviedb.org/\(t.type == .movie ? "movie" : "tv")/\(t.id)/watch?locale=US", "flatrate": stream]
+        if t.type == .movie { region["rent"] = stores; region["buy"] = stores }
+        return ["results": ["US": region]]
     }
 
     static func demoEpisode(_ t: DemoCatalog.Title, season: Int, number: Int, daysFromNow: Int) -> [String: Any] {

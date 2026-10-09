@@ -22,6 +22,10 @@ final class DemoTests: XCTestCase {
 
         let movie = try await tmdb.details(.movie, id: 693134)
         XCTAssertEqual(movie.item.runtimeMinutes, 167)
+        let availability = try XCTUnwrap(movie.availability)
+        XCTAssertEqual(availability.stream.count, 1)
+        XCTAssertEqual(availability.offers.first?.kind, .stream)
+        XCTAssertEqual(availability.offers.count, 3, "Apple TV and Google Play appear once each, though they both rent and sell")
         XCTAssertNotNil(movie.item.homeReleaseDate)
 
         let results = try await tmdb.search("dune").results

@@ -196,6 +196,9 @@ struct DetailView: View {
 
     @ViewBuilder
     private func sections(_ detail: MediaDetail) -> some View {
+        if let availability = detail.availability, !availability.isEmpty {
+            WhereToWatch(availability: availability)
+        }
         if !detail.castRow.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 SectionHeader<Route>("Cast & Crew")
@@ -424,5 +427,58 @@ extension View {
         #else
         self
         #endif
+    }
+}
+
+/// The streaming services, rentals and stores carrying the title in the viewer's region.
+struct WhereToWatch: View {
+    let availability: Availability
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Where to Watch").font(Theme.Typeface.sectionTitle).displayTracking()
+                Spacer()
+                Text("Data from JustWatch").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary)
+            }
+            .padding(.horizontal, Theme.Space.gutter)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Space.s) {
+                    ForEach(availability.offers, id: \.provider.id) { offer in
+                        tile(offer.provider, kind: offer.kind)
+                    }
+                }
+                .padding(.horizontal, Theme.Space.gutter)
+                .padding(.vertical, Platform.isTV ? 24 : 2)
+            }
+            .scrollClipDisabled()
+        }
+    }
+
+    private func tile(_ provider: WatchProvider, kind: Availability.Kind) -> some View {
+        Button {
+            #if !os(tvOS)
+            if let link = availability.link { model.openExternally(link) }
+            #endif
+        } label: {
+            HStack(spacing: Theme.Space.s) {
+                RemoteImage(url: TMDBImage.url(provider.logoPath, size: .posterSmall), maxPixel: 160, fallbackTitle: provider.providerName)
+                    .frame(width: 40 * Theme.scale, height: 40 * Theme.scale)
+                    .clipShape(RoundedRectangle(cornerRadius: 10 * Theme.scale, style: .continuous))
+                    .hairline(RoundedRectangle(cornerRadius: 10 * Theme.scale, style: .continuous))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(provider.providerName).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
+                    Text(kind.label).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary)
+                }
+            }
+            .padding(.leading, Theme.Space.xs)
+            .padding(.trailing, Theme.Space.m)
+            .padding(.vertical, Theme.Space.xs)
+            .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.Palette.hairline))
+        }
+        .buttonStyle(CardButtonStyle())
+        .accessibilityLabel("\(provider.providerName), \(kind.label)")
     }
 }

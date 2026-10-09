@@ -1,6 +1,6 @@
 #!/bin/bash
 # Builds Flow for a simulator (or macOS), runs the demo screenshot tour and captures each step.
-# Usage: scripts/screenshot-tour.sh ios|tvos|macos <output-dir>
+# Usage: scripts/screenshot-tour.sh ios|ipad|tvos|macos <output-dir>
 set -euo pipefail
 platform=$1
 out=$2
@@ -58,6 +58,9 @@ fi
 if [ "$platform" = "ios" ]; then
   udid=$(pick_device "iPhone 17 Pro" "iOS-26"); [ -z "$udid" ] && udid=$(pick_device "iPhone" "iOS-26")
   scheme=Flow-iOS; products=Debug-iphonesimulator
+elif [ "$platform" = "ipad" ]; then
+  udid=$(pick_device "iPad Pro 13" "iOS-26"); [ -z "$udid" ] && udid=$(pick_device "iPad" "iOS-26")
+  scheme=Flow-iOS; products=Debug-iphonesimulator
 else
   udid=$(pick_device "Apple TV 4K" "tvOS-26"); [ -z "$udid" ] && udid=$(pick_device "Apple TV" "tvOS")
   scheme=Flow-tvOS; products=Debug-appletvsimulator
@@ -68,7 +71,7 @@ xcrun simctl bootstatus "$udid" -b
 xcodebuild build -project Flow.xcodeproj -scheme "$scheme" -destination "id=$udid" -derivedDataPath dd \
   CODE_SIGNING_ALLOWED=NO > build-shots.log 2>&1 || { grep -E "error:" build-shots.log | head -40; exit 1; }
 xcrun simctl ui "$udid" appearance dark || true
-if [ "$platform" = "ios" ]; then
+if [ "$platform" != "tvos" ]; then
   xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
 fi
 xcrun simctl install "$udid" "dd/Build/Products/$products/Flow.app"

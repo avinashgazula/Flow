@@ -114,6 +114,7 @@ struct OnboardingView: View {
 
 /// Three rows of posters drifting in alternating directions.
 struct PosterWall: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let rows: [[String]] = {
         let posters = DemoCatalog.titles.map(\.poster)
         return (0..<3).map { r in Array(posters.dropFirst(r * 7) + posters.prefix(r * 7)) }
@@ -123,7 +124,7 @@ struct PosterWall: View {
         GeometryReader { proxy in
             let width = Platform.isTV ? 220.0 : 120.0
             let spacing = Platform.isTV ? 24.0 : 12.0
-            TimelineView(.animation) { timeline in
+            TimelineView(.animation(minimumInterval: nil, paused: reduceMotion)) { timeline in
                 let t = timeline.date.timeIntervalSinceReferenceDate
                 VStack(spacing: spacing) {
                     ForEach(rows.indices, id: \.self) { r in

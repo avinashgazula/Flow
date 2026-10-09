@@ -58,8 +58,11 @@ struct PersonView: View {
         }
         .scrollIndicators(.hidden)
         .background(AmbientBackground(url: TMDBImage.url(person?.profilePath, size: .profile), intensity: 0.8))
+        #if !os(tvOS)
+        // The header already shows the name; on TV a second, larger copy would sit right above it.
         .navigationTitle(name)
         .inlineNavigationTitle()
+        #endif
         .task { person = try? await model.catalog?.person(personID) }
     }
 

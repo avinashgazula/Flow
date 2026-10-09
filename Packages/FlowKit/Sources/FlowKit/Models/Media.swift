@@ -309,8 +309,10 @@ public struct MediaDetail: Codable, Hashable, Sendable {
     public var numberOfSeasons: Int?
     public var nextEpisode: Episode?
     public var lastEpisode: Episode?
+    /// Streaming, rental and purchase options in the viewer's region.
+    public var availability: Availability?
 
-    public init(item: MediaItem, tagline: String? = nil, cast: [CastMember] = [], crew: [CastMember] = [], videos: [Video] = [], seasons: [Season] = [], recommendations: [MediaItem] = [], similar: [MediaItem] = [], collection: MediaCollection? = nil, networks: [String] = [], numberOfSeasons: Int? = nil, nextEpisode: Episode? = nil, lastEpisode: Episode? = nil) {
+    public init(item: MediaItem, tagline: String? = nil, cast: [CastMember] = [], crew: [CastMember] = [], videos: [Video] = [], seasons: [Season] = [], recommendations: [MediaItem] = [], similar: [MediaItem] = [], collection: MediaCollection? = nil, networks: [String] = [], numberOfSeasons: Int? = nil, nextEpisode: Episode? = nil, lastEpisode: Episode? = nil, availability: Availability? = nil) {
         self.item = item
         self.tagline = tagline
         self.cast = cast
@@ -324,6 +326,7 @@ public struct MediaDetail: Codable, Hashable, Sendable {
         self.numberOfSeasons = numberOfSeasons
         self.nextEpisode = nextEpisode
         self.lastEpisode = lastEpisode
+        self.availability = availability
     }
 
     /// Director(s) first, then top-billed cast — the order shown in the Cast row.

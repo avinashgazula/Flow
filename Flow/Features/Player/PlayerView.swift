@@ -65,10 +65,11 @@ struct PlayerView: View {
             .ignoresSafeArea()
         #else
         MacPlayerView(player: session.player)
-            .overlay(alignment: .topLeading) {
+            .overlay(alignment: .topTrailing) {
+                // Top right, clear of the window's traffic lights.
                 HStack {
-                    CircleButton(systemImage: "xmark") { session.stop() }
                     CircleButton(systemImage: "captions.bubble") { showSubtitles = true }
+                    CircleButton(systemImage: "xmark") { session.stop() }
                 }
                 .padding(16)
             }
@@ -114,8 +115,13 @@ struct ConnectingView: View {
             #if !os(tvOS)
             VStack {
                 HStack {
-                    CircleButton(systemImage: "xmark") { session.stop() }
+                    #if os(macOS)
                     Spacer()
+                    #endif
+                    CircleButton(systemImage: "xmark") { session.stop() }
+                    #if !os(macOS)
+                    Spacer()
+                    #endif
                 }
                 Spacer()
             }
@@ -187,45 +193,101 @@ struct SubtitleOverlay: View {
 /// Skip Intro / Skip Credits button and the Up Next countdown card (iOS and macOS).
 struct SkipAndUpNextOverlay: View {
     let session: PlaybackSession
+    @Environment(AppModel.self) private var model
 
     var body: some View {
         VStack {
             Spacer()
             HStack {
                 Spacer()
-                if let countdown = session.upNextCountdown, let next = session.upNext?.episode {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Up Next").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                        Text("\(next.code) · \(next.title)").font(.subheadline.weight(.semibold)).lineLimit(1)
-                        HStack {
-                            Button("Cancel") { session.cancelUpNext() }
-                                .buttonStyle(.bordered)
-                            Button("Play in \(countdown)") { Task { await session.playUpNext() } }
-                                .buttonStyle(.borderedProminent)
-                        }
-                    }
-                    .padding(14)
-                    .frame(maxWidth: 320, alignment: .leading)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                if let countdown = session.upNextCountdown, let next = session.upNext {
+                    UpNextCard(next: next, countdown: countdown, total: model.settings.playback.nextEpisodeCountdownSeconds,
+                               play: { Task { await session.playUpNext() } },
+                               cancel: { session.cancelUpNext() })
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                 } else if let segment = session.activeSegment {
                     Button {
                         session.skip(segment)
                     } label: {
-                        Label(segment.kind.buttonTitle, systemImage: "forward.end.fill")
-                            .font(.headline)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 10)
+                        HStack(spacing: 8) {
+                            Text(segment.kind.buttonTitle)
+                            Image(systemName: "forward.end.fill").font(.system(size: 12, weight: .bold))
+                        }
+                        .font(.system(.subheadline, weight: .semibold))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .contentShape(Capsule())
+                        .flowGlass(Capsule(), interactive: true)
                     }
                     .buttonStyle(.plain)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .overlay(Capsule().stroke(.white.opacity(0.3)))
+                    .transition(.scale(scale: 0.9).combined(with: .opacity))
                 }
             }
-            .padding(.trailing, 28)
-            .padding(.bottom, 110)
+            .padding(.trailing, Platform.isPhone ? 24 : 36)
+            .padding(.bottom, Platform.isPhone ? 96 : 120)
         }
-        .animation(.easeInOut, value: session.activeSegment)
-        .animation(.easeInOut, value: session.upNextCountdown)
+        .animation(Theme.Motion.gentle, value: session.activeSegment)
+        .animation(Theme.Motion.gentle, value: session.upNextCountdown)
+    }
+}
+
+/// The next episode's still with a ring that drains as the countdown runs; tap it to play now.
+struct UpNextCard: View {
+    let next: PlaybackRequest
+    let countdown: Int
+    let total: Int
+    let play: () -> Void
+    let cancel: () -> Void
+
+    private var fraction: Double { total > 0 ? Double(countdown) / Double(total) : 0 }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Button(action: play) {
+                RemoteImage(url: TMDBImage.url(next.episode?.stillPath, size: .still) ?? next.item.smallBackdropURL, maxPixel: 400, fallbackTitle: next.item.title)
+                    .frame(width: 136, height: 76.5)
+                    .overlay(Color.black.opacity(0.28))
+                    .overlay {
+                        ZStack {
+                            Circle().stroke(.white.opacity(0.25), lineWidth: 2.5)
+                            Circle()
+                                .trim(from: 0, to: fraction)
+                                .stroke(.white, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                                .animation(.linear(duration: 1), value: fraction)
+                            Image(systemName: "play.fill").font(.system(size: 13, weight: .bold))
+                        }
+                        .frame(width: 38, height: 38)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(CardButtonStyle())
+            .accessibilityLabel("Play next episode now")
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("UP NEXT · \(countdown)s")
+                    .font(Theme.Typeface.micro).kerning(1)
+                    .foregroundStyle(Theme.Palette.textTertiary)
+                    .contentTransition(.numericText(countdown: true))
+                Text(next.episode?.title ?? next.item.title)
+                    .font(.system(.subheadline, weight: .semibold))
+                    .lineLimit(2)
+                if let ep = next.episode {
+                    Text("Season \(ep.season), Episode \(ep.number)")
+                        .font(.system(.caption))
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                }
+                Button("Cancel", action: cancel)
+                    .font(.system(.caption, weight: .semibold))
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.top, 4)
+            }
+            .frame(width: 168, alignment: .leading)
+        }
+        .padding(10)
+        .padding(.trailing, 6)
+        .flowGlass(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 }
 
@@ -322,6 +384,7 @@ struct IOSPlayerControls: View {
     @State private var audioOptions: [AVMediaSelectionOption] = []
     @State private var legibleOptions: [AVMediaSelectionOption] = []
     @State private var speed = 1.0
+    @State private var seekFlash: SeekFlash?
 
     var body: some View {
         ZStack {
@@ -333,9 +396,32 @@ struct IOSPlayerControls: View {
                 }
             }
             .ignoresSafeArea()
-            .contentShape(Rectangle())
-            .onTapGesture { toggle() }
+            .overlay {
+                // Double-tap either side to skip, single tap to show or hide the controls.
+                GeometryReader { proxy in
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 2) { location in
+                            let forward = location.x > proxy.size.width / 2
+                            let step = Double(forward ? model.settings.playback.seekForwardSeconds : -model.settings.playback.seekBackwardSeconds)
+                            seek(by: step)
+                            withAnimation(Theme.Motion.snappy) { seekFlash = SeekFlash(forward: forward, seconds: abs(Int(step))) }
+                        }
+                        .onTapGesture { toggle() }
+                }
+                .ignoresSafeArea()
+            }
             .gesture(MagnifyGesture().onEnded { value in fill = value.magnification > 1 })
+
+            if let flash = seekFlash {
+                SeekFlashView(flash: flash)
+                    .id(flash.id)
+                    .transition(.opacity)
+                    .task(id: flash.id) {
+                        try? await Task.sleep(nanoseconds: 650_000_000)
+                        withAnimation(Theme.Motion.fade) { if seekFlash?.id == flash.id { seekFlash = nil } }
+                    }
+            }
 
             if visible {
                 controls.transition(.opacity)
@@ -507,6 +593,38 @@ struct IOSPlayerControls: View {
             guard let group = try? await item.asset.loadMediaSelectionGroup(for: characteristic) else { return }
             item.select(option, in: group)
         }
+    }
+}
+#endif
+
+#if os(iOS)
+struct SeekFlash: Equatable {
+    let id = UUID()
+    let forward: Bool
+    let seconds: Int
+}
+
+/// The soft glow and chevrons that confirm a double-tap skip, on the side that was tapped.
+struct SeekFlashView: View {
+    let flash: SeekFlash
+
+    var body: some View {
+        HStack {
+            if flash.forward { Spacer() }
+            VStack(spacing: 6) {
+                Image(systemName: flash.forward ? "chevron.forward.2" : "chevron.backward.2")
+                    .font(.system(size: 22, weight: .bold))
+                Text("\(flash.seconds) seconds")
+                    .font(.system(.caption, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+            .frame(width: 150, height: 150)
+            .background(Circle().fill(.white.opacity(0.12)).blur(radius: 6))
+            .padding(.horizontal, 48)
+            if !flash.forward { Spacer() }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 #endif

@@ -130,8 +130,8 @@ public struct TMDBClient: Sendable {
 
     public func details(_ type: MediaType, id: Int) async throws -> MediaDetail {
         let append = type == .movie
-            ? "credits,videos,recommendations,similar,release_dates,external_ids,images"
-            : "aggregate_credits,credits,videos,recommendations,similar,content_ratings,external_ids,images"
+            ? "credits,videos,recommendations,similar,release_dates,external_ids,images,watch/providers"
+            : "aggregate_credits,credits,videos,recommendations,similar,content_ratings,external_ids,images,watch/providers"
         let lang = String(language.prefix(2))
         let dto = try await get(TMDBDetailDTO.self, "/\(type.tmdbPath)/\(id)", [
             "append_to_response": append,
@@ -227,6 +227,63 @@ public struct WatchProvider: Codable, Hashable, Sendable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case providerId = "provider_id", providerName = "provider_name", logoPath = "logo_path", displayPriority = "display_priority"
+    }
+}
+
+/// Where a title can be watched in one country (TMDb's JustWatch data).
+public struct Availability: Codable, Hashable, Sendable {
+    public var link: URL?
+    public var stream: [WatchProvider]
+    public var free: [WatchProvider]
+    public var rent: [WatchProvider]
+    public var buy: [WatchProvider]
+
+    public init(link: URL? = nil, stream: [WatchProvider] = [], free: [WatchProvider] = [], rent: [WatchProvider] = [], buy: [WatchProvider] = []) {
+        self.link = link
+        self.stream = stream
+        self.free = free
+        self.rent = rent
+        self.buy = buy
+    }
+
+    public var isEmpty: Bool { stream.isEmpty && free.isEmpty && rent.isEmpty && buy.isEmpty }
+
+    /// One entry per service, best offer first: included with a subscription, then free, then rent, then buy.
+    public var offers: [(provider: WatchProvider, kind: Kind)] {
+        var seen = Set<Int>()
+        let all = stream.map { ($0, Kind.stream) } + free.map { ($0, Kind.free) } + rent.map { ($0, Kind.rent) } + buy.map { ($0, Kind.buy) }
+        return all.filter { seen.insert($0.0.providerId).inserted }.map { (provider: $0.0, kind: $0.1) }
+    }
+
+    public enum Kind: String, Codable, Sendable {
+        case stream, free, rent, buy
+        public var label: String {
+            switch self {
+            case .stream: return "Subscription"
+            case .free: return "Free"
+            case .rent: return "Rent"
+            case .buy: return "Buy"
+            }
+        }
+    }
+}
+
+struct TMDBWatchProvidersDTO: Decodable {
+    struct Region: Decodable {
+        var link: String?
+        var flatrate: [WatchProvider]?
+        var free: [WatchProvider]?
+        var ads: [WatchProvider]?
+        var rent: [WatchProvider]?
+        var buy: [WatchProvider]?
+    }
+    var results: [String: Region]
+
+    func availability(region: String) -> Availability? {
+        guard let r = results[region] else { return nil }
+        let sort: ([WatchProvider]?) -> [WatchProvider] = { ($0 ?? []).sorted { ($0.displayPriority ?? 999) < ($1.displayPriority ?? 999) } }
+        let availability = Availability(link: r.link.flatMap(URL.init(string:)), stream: sort(r.flatrate), free: sort((r.free ?? []) + (r.ads ?? [])), rent: sort(r.rent), buy: sort(r.buy))
+        return availability.isEmpty ? nil : availability
     }
 }
 
@@ -370,6 +427,7 @@ struct TMDBDetailDTO: Decodable {
     var numberOfSeasons: Int?
     var nextEpisodeToAir: TMDBEpisodeDTO?
     var lastEpisodeToAir: TMDBEpisodeDTO?
+    var watchProviders: TMDBWatchProvidersDTO?
 
     enum CodingKeys: String, CodingKey {
         case id, title, name, tagline, overview, runtime, genres, popularity, status, credits, videos, recommendations, similar, images, seasons, networks
@@ -381,6 +439,7 @@ struct TMDBDetailDTO: Decodable {
         case aggregateCredits = "aggregate_credits", releaseDates = "release_dates", contentRatings = "content_ratings"
         case externalIds = "external_ids", belongsToCollection = "belongs_to_collection", numberOfSeasons = "number_of_seasons"
         case nextEpisodeToAir = "next_episode_to_air", lastEpisodeToAir = "last_episode_to_air"
+        case watchProviders = "watch/providers"
     }
 
     func detail(type: MediaType, region: String, language: String) -> MediaDetail {
@@ -436,7 +495,8 @@ struct TMDBDetailDTO: Decodable {
             networks: (networks ?? []).map(\.name),
             numberOfSeasons: numberOfSeasons,
             nextEpisode: nextEpisodeToAir?.episode(showID: id),
-            lastEpisode: lastEpisodeToAir?.episode(showID: id)
+            lastEpisode: lastEpisodeToAir?.episode(showID: id),
+            availability: watchProviders?.availability(region: region)
         )
     }
 }
