@@ -7,15 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01BE0D13B23962BBFF6F7B7D /* AppModel+Calendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEADFF907FBFB0BA1E4CB7BE /* AppModel+Calendar.swift */; };
 		07C10B80EB6597F9845346D9 /* Shelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E4B0A67CC21E053989BB58A /* Shelves.swift */; };
 		090E0F3ED9D5D8C4371D79FE /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434D840AB6866F096CBB9D82 /* Platform.swift */; };
 		098D56D6643965A14E3E0C90 /* AppModel+Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AA22997771CD0720AEAF1B6 /* AppModel+Library.swift */; };
 		0BC7F58ABE20D3241F77CD28 /* ImagePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98C8F5D695E36798C8EC974D /* ImagePipeline.swift */; };
+		0E03528DFC36D51C2BA37450 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFDC10E881E9DB671424D280 /* CalendarView.swift */; };
 		147917F99D7CEA08D5C53108 /* LiveTVView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11A5725FE1CA04C7ABACBFB /* LiveTVView.swift */; };
 		168AA239910FADFD0A5DAC06 /* DataSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F2212A970B6865DC66B1898 /* DataSettingsViews.swift */; };
 		197E35749543578A771BCF95 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7785133DEC097B45A1126DA /* OnboardingView.swift */; };
 		1B6C6571C6885AF8EC43EFD3 /* AppModel+Shelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9180D9C82DCFC46BFA6D629E /* AppModel+Shelves.swift */; };
 		26373EF208DA8C7E889F1EE2 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434D840AB6866F096CBB9D82 /* Platform.swift */; };
+		277143F94A77001D001C2AD4 /* AppModel+Calendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEADFF907FBFB0BA1E4CB7BE /* AppModel+Calendar.swift */; };
 		28D287C3D902EC3546165641 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A93336F88B7099468CD68A /* AccountSettingsView.swift */; };
 		2BCF310A6A624CFC44F87920 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 708B75EA3C803473D05AB1F1 /* AppModel.swift */; };
 		2C04048EAB2BC3D22333E6DB /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7785133DEC097B45A1126DA /* OnboardingView.swift */; };
@@ -30,6 +33,7 @@
 		43754C79ACDEBFDCF591556F /* AppModel+Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AA22997771CD0720AEAF1B6 /* AppModel+Library.swift */; };
 		438FD3781E5CF9BE4559CC5F /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D304FE1F649816E97D48C1D7 /* LibraryView.swift */; };
 		43ECBE012F7DA2B8965CCFB0 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A93336F88B7099468CD68A /* AccountSettingsView.swift */; };
+		4459C66240FCFA0D6D84B09F /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFDC10E881E9DB671424D280 /* CalendarView.swift */; };
 		4535F8EC7A365A5087B7C9AF /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D304FE1F649816E97D48C1D7 /* LibraryView.swift */; };
 		45700EED9B26788DA522D061 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5289F6C0111AC96F58A5B8A9 /* Cards.swift */; };
 		4903144538955A0D95EA0F21 /* PlayerSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EC0099DE944D4031131AE4D /* PlayerSurface.swift */; };
@@ -64,6 +68,7 @@
 		7BBF9A7203D071B85464E05A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03878E23BB21C51D27637323 /* RootView.swift */; };
 		7D09E0529BC9D44BC608E9C9 /* DataSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F2212A970B6865DC66B1898 /* DataSettingsViews.swift */; };
 		7D1432446276E67320FE3549 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F088D0F4A55BC78D157C430 /* Theme.swift */; };
+		7DEA1C0AE905E63E50A5CD14 /* AppModel+Calendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEADFF907FBFB0BA1E4CB7BE /* AppModel+Calendar.swift */; };
 		7E851447E2CD47B76477A814 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D304FE1F649816E97D48C1D7 /* LibraryView.swift */; };
 		82665FEDC0DC4B2227B53EDE /* PlaybackSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFEA12FE336D1E66E95B7F93 /* PlaybackSession.swift */; };
 		8376183CF687AFF134A46F11 /* ScreenshotTour.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE2CE055DCDAD495019235C4 /* ScreenshotTour.swift */; };
@@ -79,6 +84,7 @@
 		A0EE84DBCC08CCE262822E93 /* GuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AF73C27E4D142EE2CA80A1 /* GuideView.swift */; };
 		A1186A0FB9C97EB95E0667FF /* PlaybackSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFEA12FE336D1E66E95B7F93 /* PlaybackSession.swift */; };
 		A2423A3F19DDFD9188DA921F /* AppModel+Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDFD9452BB4553C5D6D0B9D5 /* AppModel+Playback.swift */; };
+		A2AFD438E3C2389C85EF7DC0 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFDC10E881E9DB671424D280 /* CalendarView.swift */; };
 		A38E263FD7230776B06913B5 /* SeasonsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A899EF832EB2F6309B4822B /* SeasonsSection.swift */; };
 		A3ABE4EC6F563604C1098B05 /* FlowKit in Frameworks */ = {isa = PBXBuildFile; productRef = FDE4C0153DD0F6B1072FB8BF /* FlowKit */; };
 		A3E849D839BA8E1B6B562F7E /* SubtitlePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C5362BFE5BED6E0EB6365B /* SubtitlePickerView.swift */; };
@@ -171,6 +177,8 @@
 		B0AF73C27E4D142EE2CA80A1 /* GuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuideView.swift; sourceTree = "<group>"; };
 		B57EAE07618FE51177989487 /* Flow-tvOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Flow-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		BDFD9452BB4553C5D6D0B9D5 /* AppModel+Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Playback.swift"; sourceTree = "<group>"; };
+		CEADFF907FBFB0BA1E4CB7BE /* AppModel+Calendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Calendar.swift"; sourceTree = "<group>"; };
+		CFDC10E881E9DB671424D280 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		CFEA12FE336D1E66E95B7F93 /* PlaybackSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackSession.swift; sourceTree = "<group>"; };
 		D304FE1F649816E97D48C1D7 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		D9D03A2B99C78348BE0EB427 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
@@ -283,6 +291,7 @@
 		743D40B1D2047AEDC61FB03B /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				82D4C4D290D5C83E878ED27D /* Calendar */,
 				ECB7CB3BBFE638390D98E5F3 /* Detail */,
 				F81CD0AD6A94F838C157AE0C /* Downloads */,
 				117326CF9E9F99DF4A92D272 /* Explore */,
@@ -298,6 +307,14 @@
 				0039AF86C56BFDB765805901 /* Sports */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		82D4C4D290D5C83E878ED27D /* Calendar */ = {
+			isa = PBXGroup;
+			children = (
+				CFDC10E881E9DB671424D280 /* CalendarView.swift */,
+			);
+			path = Calendar;
 			sourceTree = "<group>";
 		};
 		85A3DAFBD4AAA156D3B84D14 /* Design */ = {
@@ -330,6 +347,7 @@
 			isa = PBXGroup;
 			children = (
 				708B75EA3C803473D05AB1F1 /* AppModel.swift */,
+				CEADFF907FBFB0BA1E4CB7BE /* AppModel+Calendar.swift */,
 				1AA22997771CD0720AEAF1B6 /* AppModel+Library.swift */,
 				BDFD9452BB4553C5D6D0B9D5 /* AppModel+Playback.swift */,
 				9180D9C82DCFC46BFA6D629E /* AppModel+Shelves.swift */,
@@ -586,10 +604,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB88C27FF82C73C0EA2F0FE6 /* AccountSettingsView.swift in Sources */,
+				7DEA1C0AE905E63E50A5CD14 /* AppModel+Calendar.swift in Sources */,
 				43754C79ACDEBFDCF591556F /* AppModel+Library.swift in Sources */,
 				D8E388090E8B4DD49BA3514B /* AppModel+Playback.swift in Sources */,
 				40F86A12EA0AB70C906F2189 /* AppModel+Shelves.swift in Sources */,
 				9F75774BA0C3F0B9FA280DBD /* AppModel.swift in Sources */,
+				0E03528DFC36D51C2BA37450 /* CalendarView.swift in Sources */,
 				2D620B4F7C5228E568A34524 /* Cards.swift in Sources */,
 				ED44765AE511E8FBBB7EA544 /* DataSettingsViews.swift in Sources */,
 				FC37EB2496B90795176D240C /* DetailView.swift in Sources */,
@@ -633,10 +653,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				28D287C3D902EC3546165641 /* AccountSettingsView.swift in Sources */,
+				01BE0D13B23962BBFF6F7B7D /* AppModel+Calendar.swift in Sources */,
 				098D56D6643965A14E3E0C90 /* AppModel+Library.swift in Sources */,
 				F457482A3CB66FB336B0619C /* AppModel+Playback.swift in Sources */,
 				F1A284A29674617EE7B33536 /* AppModel+Shelves.swift in Sources */,
 				2BCF310A6A624CFC44F87920 /* AppModel.swift in Sources */,
+				4459C66240FCFA0D6D84B09F /* CalendarView.swift in Sources */,
 				D252265633902B30F575402C /* Cards.swift in Sources */,
 				7D09E0529BC9D44BC608E9C9 /* DataSettingsViews.swift in Sources */,
 				C3225463ED00C0483FA2E718 /* DetailView.swift in Sources */,
@@ -680,10 +702,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				43ECBE012F7DA2B8965CCFB0 /* AccountSettingsView.swift in Sources */,
+				277143F94A77001D001C2AD4 /* AppModel+Calendar.swift in Sources */,
 				3690037E6800EAE5CA48DFEC /* AppModel+Library.swift in Sources */,
 				A2423A3F19DDFD9188DA921F /* AppModel+Playback.swift in Sources */,
 				1B6C6571C6885AF8EC43EFD3 /* AppModel+Shelves.swift in Sources */,
 				E67106240EB445E88C08ACC1 /* AppModel.swift in Sources */,
+				A2AFD438E3C2389C85EF7DC0 /* CalendarView.swift in Sources */,
 				45700EED9B26788DA522D061 /* Cards.swift in Sources */,
 				168AA239910FADFD0A5DAC06 /* DataSettingsViews.swift in Sources */,
 				3262EE2F12A002AF70306098 /* DetailView.swift in Sources */,

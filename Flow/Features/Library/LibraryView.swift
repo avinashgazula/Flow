@@ -13,6 +13,7 @@ struct LibraryView: View {
                         if Platform.supportsDownloads {
                             LibraryTile(title: "Downloads", subtitle: downloadCount > 0 ? "\(downloadCount) saved" : "Watch offline", systemImage: "arrow.down.circle.fill", route: .downloads, tint: .blue)
                         }
+                        LibraryTile(title: "Upcoming", subtitle: "New episodes & releases", systemImage: "calendar", route: .calendar, tint: .pink)
                         LibraryTile(title: "Sports", subtitle: model.settings.sports.followedTeams.isEmpty ? "Follow your teams" : "\(model.settings.sports.followedTeams.count) teams followed", systemImage: "sportscourt.fill", route: .sports, tint: .green)
                         LibraryTile(title: "History", subtitle: "\(model.history.count) plays", systemImage: "clock.fill", route: .library(.history), tint: .orange)
                     }

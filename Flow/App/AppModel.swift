@@ -13,6 +13,7 @@ enum Route: Hashable {
     case settings(SettingsPage)
     case sports
     case downloads
+    case calendar
     case channelGroup(String)
 }
 

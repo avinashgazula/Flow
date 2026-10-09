@@ -28,6 +28,22 @@ final class DemoTests: XCTestCase {
         XCTAssertEqual(results.count, 2)
     }
 
+    func testAiringShowsHaveACalendar() async throws {
+        let tmdb = TMDBClient(credential: "demo", http: http)
+        let detail = try await tmdb.details(.show, id: 100088)
+        let next = try XCTUnwrap(detail.nextEpisode)
+        let last = try XCTUnwrap(detail.lastEpisode)
+        XCTAssertGreaterThan(try XCTUnwrap(next.airDate), Date())
+        XCTAssertLessThan(try XCTUnwrap(last.airDate), Date())
+        XCTAssertEqual(last.number + 1, next.number)
+
+        // The airing season agrees with next/last: weekly episodes either side of today.
+        let season = try await tmdb.season(showID: 100088, season: next.season)
+        let upcoming = season.filter { ($0.airDate ?? .distantPast) > Date() }
+        XCTAssertEqual(upcoming.first?.number, next.number)
+        XCTAssertTrue(season.first { $0.number == 3 }.map { ($0.airDate ?? .distantFuture) < Date() } ?? false, "S2E3 is in Continue Watching, so it must have aired")
+    }
+
     func testRatingsAndLiveTV() async throws {
         let ratings = try await MDBListClient(apiKey: "demo", http: http).ratings(.movie, tmdbID: 155)
         XCTAssertNotNil(ratings.rottenTomatoes)

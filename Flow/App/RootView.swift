@@ -212,6 +212,7 @@ extension View {
             case .settings(let page): SettingsPageView(page: page)
             case .sports: SportsView()
             case .downloads: DownloadsView()
+            case .calendar: CalendarView()
             case .channelGroup(let group): ChannelGroupView(group: group)
             }
         }

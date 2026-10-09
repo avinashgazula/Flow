@@ -147,7 +147,8 @@ public struct DemoTransport: HTTPTransport {
         var o = listJSON(t)
         o["genres"] = t.genres.map { ["id": $0, "name": TMDBGenres.name(for: $0, type: type)] }
         o["tagline"] = ""
-        o["status"] = type == .movie ? "Released" : (t.year >= 2022 ? "Returning Series" : "Ended")
+        let returning = type == .show && t.year >= 2016
+        o["status"] = type == .movie ? "Released" : (returning ? "Returning Series" : "Ended")
         o["imdb_id"] = t.imdb
         o["external_ids"] = ["imdb_id": t.imdb, "tvdb_id": t.id + 70000]
         let castList: [[String: Any]] = shuffled(DemoCatalog.cast.map { DemoCatalog.Title($0.0, .movie, $0.1, 2000, [], "", "", 0, 0, "", "", "") }, seed: t.id)
@@ -170,16 +171,52 @@ public struct DemoTransport: HTTPTransport {
                 ["season_number": n, "name": "Season \(n)", "episode_count": 8 + (n + t.id) % 5, "air_date": "\(t.year + n - 1)-03-10", "poster_path": t.poster] as [String: Any]
             }
             let lastSeason = max(1, t.seasons)
-            o["last_episode_to_air"] = ["season_number": lastSeason, "episode_number": 8 + (lastSeason + t.id) % 5, "name": "Finale", "air_date": "\(t.year + lastSeason - 1)-05-01"]
+            if returning {
+                // A season in progress, so the calendar has something to show: one aired days ago, the next due soon.
+                let next = DemoTransport.nextEpisode(t)
+                o["last_episode_to_air"] = demoEpisode(t, season: lastSeason, number: next - 1, daysFromNow: -(1 + t.id % 6))
+                o["next_episode_to_air"] = demoEpisode(t, season: lastSeason, number: next, daysFromNow: 1 + t.id % 12)
+            } else {
+                o["last_episode_to_air"] = ["season_number": lastSeason, "episode_number": 8 + (lastSeason + t.id) % 5, "name": "Finale", "air_date": "\(t.year + lastSeason - 1)-05-01"]
+            }
         }
         return o
     }
 
+    static func demoEpisode(_ t: DemoCatalog.Title, season: Int, number: Int, daysFromNow: Int) -> [String: Any] {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "yyyy-MM-dd"
+        let date = Date().addingTimeInterval(Double(daysFromNow) * 86400)
+        return [
+            "id": t.id * 1000 + season * 100 + number,
+            "season_number": season,
+            "episode_number": number,
+            "name": episodeNames[(number + season) % episodeNames.count],
+            "overview": "The stakes rise as the season builds toward its turning point.",
+            "still_path": t.backdrop,
+            "air_date": formatter.string(from: date),
+            "runtime": t.runtime,
+        ]
+    }
+
     static let episodeNames = ["Pilot", "The Long Night", "Crossing Over", "Echoes", "Signal", "Undertow", "Glass House", "Daybreak", "Fault Lines", "Homecoming", "The Reckoning", "Afterglow"]
+
+    static func nextEpisode(_ t: DemoCatalog.Title) -> Int { 4 + t.id % 4 }
 
     static func season(_ t: DemoCatalog.Title, number: Int) -> [String: Any] {
         let count = 8 + (number + t.id) % 5
         var episodes: [[String: Any]] = []
+        if t.type == .show, t.year >= 2016, number == max(1, t.seasons) {
+            // The season currently airing: weekly, around today.
+            let next = nextEpisode(t)
+            for e in 1...count {
+                let days = e < next ? -(1 + t.id % 6) - (next - 1 - e) * 7 : (1 + t.id % 12) + (e - next) * 7
+                episodes.append(demoEpisode(t, season: number, number: e, daysFromNow: days))
+            }
+            return ["episodes": episodes]
+        }
         for e in 1...count {
             let month = String(format: "%02d", min(12, 2 + e / 2))
             let day = String(format: "%02d", 1 + (e * 7) % 27)
