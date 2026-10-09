@@ -1,0 +1,343 @@
+import XCTest
+@testable import FlowKit
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
+/// Returns canned responses keyed by URL path and records requests.
+final class MockTransport: HTTPTransport, @unchecked Sendable {
+    var routes: [String: (Int, String)] = [:]
+    private(set) var requests: [URLRequest] = []
+    private let lock = NSLock()
+
+    private func record(_ request: URLRequest) -> (Int, String) {
+        lock.lock(); defer { lock.unlock() }
+        requests.append(request)
+        let path = request.url?.path ?? ""
+        return routes.first { path.hasSuffix($0.key) }?.value ?? (404, "{}")
+    }
+
+    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let route = record(request)
+        let response = HTTPURLResponse(url: request.url!, statusCode: route.0, httpVersion: nil, headerFields: nil)!
+        return (Data(route.1.utf8), response)
+    }
+}
+
+final class TMDBTests: XCTestCase {
+    func testTrendingDecodingAndAuthStyle() async throws {
+        let mock = MockTransport()
+        mock.routes["/trending/movie/week"] = (200, """
+        {"page":1,"total_pages":3,"results":[{"id":603,"title":"The Matrix","overview":"Neo","poster_path":"/p.jpg","release_date":"1999-03-31","vote_average":8.2,"genre_ids":[28,878]}]}
+        """)
+        let client = TMDBClient(credential: "0123456789abcdef0123456789abcdef", http: HTTPClient(transport: mock))
+        let page = try await client.trending(.movie)
+        XCTAssertEqual(page.items.first?.title, "The Matrix")
+        XCTAssertEqual(page.items.first?.year, 1999)
+        XCTAssertEqual(page.items.first?.genres.map(\.name), ["Action", "Science Fiction"])
+        XCTAssertTrue(page.hasMore)
+        XCTAssertTrue(mock.requests[0].url!.query!.contains("api_key=0123456789abcdef0123456789abcdef"))
+
+        let bearer = TMDBClient(credential: String(repeating: "x", count: 200), http: HTTPClient(transport: mock))
+        _ = try await bearer.trending(.movie)
+        XCTAssertEqual(mock.requests[1].value(forHTTPHeaderField: "Authorization"), "Bearer " + String(repeating: "x", count: 200))
+    }
+
+    func testMovieDetailsCertificationLogoAndHomeRelease() async throws {
+        let mock = MockTransport()
+        mock.routes["/movie/1"] = (200, """
+        {"id":1,"title":"Resident Evil","runtime":95,"release_date":"2026-09-18","genres":[{"id":27,"name":"Horror"}],"imdb_id":"tt1",
+         "credits":{"cast":[{"id":10,"name":"Austin Abrams","character":"Bryan","order":0}],"crew":[{"id":11,"name":"Zach Cregger","job":"Director"}]},
+         "videos":{"results":[{"id":"v1","name":"Teaser","key":"k1","site":"YouTube","type":"Teaser","official":true},{"id":"v2","name":"Official Trailer","key":"k2","site":"YouTube","type":"Trailer","official":true}]},
+         "release_dates":{"results":[{"iso_3166_1":"CA","release_dates":[{"certification":"18A","release_date":"2026-09-18T00:00:00.000Z","type":3}]},{"iso_3166_1":"US","release_dates":[{"certification":"R","release_date":"2026-10-07T00:00:00.000Z","type":4}]}]},
+         "images":{"logos":[{"file_path":"/fr.png","iso_639_1":"fr","vote_average":9},{"file_path":"/en.png","iso_639_1":"en","vote_average":5}]},
+         "recommendations":{"results":[]},"similar":{"results":[]}}
+        """)
+        let client = TMDBClient(credential: "0123456789abcdef0123456789abcdef", region: "CA", http: HTTPClient(transport: mock))
+        let detail = try await client.details(.movie, id: 1)
+        XCTAssertEqual(detail.item.certification, "18A")
+        XCTAssertEqual(detail.item.logoPath, "/en.png")
+        XCTAssertEqual(detail.item.runtimeMinutes, 95)
+        XCTAssertEqual(detail.item.homeReleaseDate, FlowDate.parse("2026-10-07T00:00:00.000Z"))
+        XCTAssertEqual(detail.castRow.map(\.name), ["Zach Cregger", "Austin Abrams"])
+        XCTAssertEqual(detail.trailers.first?.key, "k2")
+    }
+
+    func testDiscoverParametersForFutureWindow() {
+        let client = TMDBClient(credential: "k")
+        var q = DiscoverQuery(type: .show)
+        q.genres = [16, 35]
+        q.releasedFromDays = 0
+        q.releasedToDays = 30
+        q.sort = .newest
+        let now = FlowDate.parse("2026-10-09")!
+        let p = client.discoverParameters(q, page: 2, now: now)
+        XCTAssertEqual(p["with_genres"] ?? nil, "16,35")
+        XCTAssertEqual(p["first_air_date.gte"] ?? nil, "2026-10-09")
+        XCTAssertEqual(p["first_air_date.lte"] ?? nil, "2026-11-08")
+        XCTAssertEqual(p["sort_by"] ?? nil, "first_air_date.desc")
+        XCTAssertTrue(q.targetsFuture)
+    }
+}
+
+final class TrackingTests: XCTestCase {
+    func testTraktPlaybackAndWatched() async throws {
+        let mock = MockTransport()
+        mock.routes["/sync/playback"] = (200, """
+        [{"id":13,"progress":55.5,"paused_at":"2026-10-08T21:00:00.000Z","type":"episode","episode":{"season":4,"number":1,"title":"x","ids":{"trakt":1}},"show":{"title":"Only Murders","ids":{"trakt":2,"tmdb":107113}}},
+         {"id":14,"progress":40,"paused_at":"2026-10-09T01:00:00.000Z","type":"movie","movie":{"title":"Jurassic World Rebirth","ids":{"tmdb":1234821}}}]
+        """)
+        mock.routes["/sync/watched/shows"] = (200, """
+        [{"last_watched_at":"2026-10-01T00:00:00.000Z","show":{"ids":{"tmdb":107113}},"seasons":[{"number":1,"episodes":[{"number":1},{"number":2}]}]}]
+        """)
+        let trakt = TraktClient(clientID: "id", clientSecret: "secret", token: OAuthToken(accessToken: "tok"), http: HTTPClient(transport: mock))
+        let progress = try await trakt.playbackProgress()
+        XCTAssertEqual(progress.count, 2)
+        XCTAssertEqual(progress[0].key, MediaKey(type: .movie, tmdbID: 1234821))
+        XCTAssertEqual(progress[1].episode, EpisodeRef(season: 4, episode: 1))
+        XCTAssertEqual(progress[1].remoteID, "13")
+        XCTAssertEqual(mock.requests[0].value(forHTTPHeaderField: "Authorization"), "Bearer tok")
+        XCTAssertEqual(mock.requests[0].value(forHTTPHeaderField: "trakt-api-key"), "id")
+
+        let shows = try await trakt.watchedShows()
+        XCTAssertEqual(shows.first?.watched.count, 2)
+    }
+
+    func testTraktSyncBodyGroupsEpisodesBySeason() throws {
+        let show = MediaItem(type: .show, ids: ExternalIDs(tmdb: 1), title: "S")
+        let body = TraktClient.syncBody(show, episodes: [EpisodeRef(season: 2, episode: 1), EpisodeRef(season: 1, episode: 3), EpisodeRef(season: 1, episode: 1)], at: nil)
+        let json = String(decoding: try JSONEncoder.flow.encode(body), as: UTF8.self)
+        XCTAssertEqual(json, #"{"movies":[],"shows":[{"ids":{"tmdb":1},"seasons":[{"episodes":[{"number":1},{"number":3}],"number":1},{"episodes":[{"number":1}],"number":2}]}]}"#)
+    }
+
+    func testNextUpAndContinueWatching() {
+        let key = MediaKey(type: .show, tmdbID: 1)
+        let state = ShowWatchState(key: key, watched: [EpisodeRef(season: 1, episode: 1), EpisodeRef(season: 1, episode: 2)])
+        let aired = [EpisodeRef(season: 0, episode: 1), EpisodeRef(season: 1, episode: 1), EpisodeRef(season: 1, episode: 2), EpisodeRef(season: 1, episode: 3), EpisodeRef(season: 2, episode: 1)]
+        XCTAssertEqual(state.nextUp(aired: aired), EpisodeRef(season: 1, episode: 3))
+        XCTAssertEqual(ShowWatchState(key: key).nextUp(aired: aired), EpisodeRef(season: 1, episode: 1))
+
+        let movie = MediaKey(type: .movie, tmdbID: 2)
+        let entries = ContinueWatchingBuilder.build(
+            progress: [PlaybackProgress(key: movie, percent: 50, updatedAt: Date(timeIntervalSince1970: 100)),
+                       PlaybackProgress(key: MediaKey(type: .movie, tmdbID: 3), percent: 95, updatedAt: Date(timeIntervalSince1970: 300))],
+            nextUp: [(key, EpisodeRef(season: 1, episode: 3), Date(timeIntervalSince1970: 200))]
+        )
+        XCTAssertEqual(entries.map(\.key), [key, movie])
+        XCTAssertTrue(entries[0].isNextUp)
+    }
+
+    func testLocalTrackerFlows() async throws {
+        let saved = SavedBox()
+        let tracker = LocalTracker(library: LocalLibrary()) { saved.value = $0 }
+        let movie = MediaItem(type: .movie, ids: ExternalIDs(tmdb: 5), title: "M")
+        let show = MediaItem(type: .show, ids: ExternalIDs(tmdb: 6), title: "S")
+        try await tracker.scrobble(.pause, request: PlaybackRequest(item: movie), percent: 40)
+        let progressAfterPause = try await tracker.playbackProgress()
+        XCTAssertEqual(progressAfterPause.first?.percent, 40)
+        try await tracker.scrobble(.stop, request: PlaybackRequest(item: movie), percent: 95)
+        let progressAfterStop = try await tracker.playbackProgress()
+        XCTAssertTrue(progressAfterStop.isEmpty)
+        let watchedMovies = try await tracker.watchedMovies()
+        XCTAssertEqual(watchedMovies, [5])
+
+        try await tracker.markWatched(show, episodes: [EpisodeRef(season: 1, episode: 1)], at: Date())
+        let shows = try await tracker.watchedShows()
+        XCTAssertEqual(shows.first?.watched, [EpisodeRef(season: 1, episode: 1)])
+
+        try await tracker.setWatchlisted(show, true)
+        let list = try await tracker.watchlist()
+        XCTAssertEqual(list.map(\.key), [show.key!])
+        XCTAssertEqual(saved.value?.items[show.key!.description]?.title, "S")
+
+        let pool = (1...4).map { EpisodeRef(season: 1, episode: $0) }
+        var picked = Set<EpisodeRef>()
+        for _ in 0..<4 { if let p = await tracker.nextShuffle(for: show.key!, from: pool) { picked.insert(p) } }
+        XCTAssertEqual(picked.count, 4, "shuffle should not repeat within a cycle")
+    }
+
+    func testMDBListRatingsParsing() throws {
+        let json = try JSONDecoder().decode(JSONValue.self, from: Data("""
+        {"ratings":[{"source":"imdb","value":7.6,"votes":1000},{"source":"tomatoes","value":96},{"source":"popcorn","value":91},{"source":"metacritic","value":79},{"source":"tmdb","value":73},{"source":"letterboxd","value":3.8},{"source":"trakt","value":77},{"source":"rogerebert","value":null}]}
+        """.utf8))
+        let r = MDBListClient.parseRatings(json)
+        XCTAssertEqual(r.imdb, 7.6)
+        XCTAssertEqual(r.rottenTomatoes, 96)
+        XCTAssertEqual(r.popcorn, 91)
+        XCTAssertEqual(r.metacritic, 79)
+        XCTAssertEqual(r.tmdb, 7.3)
+        XCTAssertEqual(r.letterboxd, 3.8)
+        XCTAssertEqual(r.trakt, 77)
+    }
+}
+
+final class SavedBox: @unchecked Sendable { var value: LocalLibrary? }
+
+final class SourceProviderTests: XCTestCase {
+    func testAddonStreams() async throws {
+        let mock = MockTransport()
+        mock.routes["/stream/series/tt0944947:1:2.json"] = (200, """
+        {"streams":[
+          {"name":"AIOStreams\\n1080p","description":"🧿 1080p\\nWEB-DL\\n🔊 AAC\\n📦 3.98 GB\\n🌎 English","url":"https://cdn.example/a.mp4","behaviorHints":{"filename":"Show.S01E02.1080p.WEB-DL.mkv","videoSize":4273492541,"bingeGroup":"aio|1080p"}},
+          {"name":"Torrent","title":"4K","infoHash":"abc","fileIdx":1},
+          {"name":"Empty"}
+        ]}
+        """)
+        let config = AddonConfig(manifestURL: URL(string: "https://aio.example/u/abc/manifest.json")!, name: "AIOStreams")
+        XCTAssertEqual(config.baseURL.absoluteString, "https://aio.example/u/abc")
+        let client = AddonClient(config: config, http: HTTPClient(transport: mock))
+        let show = MediaItem(type: .show, ids: ExternalIDs(tmdb: 1399, imdb: "tt0944947"), title: "GoT")
+        let episode = Episode(showTMDB: 1399, season: 1, number: 2, title: "x")
+        let sources = try await client.sources(for: PlaybackRequest(item: show, episode: episode))
+        XCTAssertEqual(sources.count, 2)
+        XCTAssertEqual(sources[0].traits.resolution, .hd1080)
+        XCTAssertEqual(sources[0].traits.sizeBytes, 4273492541)
+        XCTAssertEqual(sources[0].bingeGroup, "aio|1080p")
+        XCTAssertTrue(sources[0].isPlayable)
+        XCTAssertFalse(sources[1].isPlayable)
+    }
+
+    func testManifestResourceMatching() throws {
+        let manifest = try JSONDecoder().decode(AddonManifest.self, from: Data("""
+        {"id":"x","name":"X","types":["movie","series"],"resources":["catalog",{"name":"stream","types":["movie","series"],"idPrefixes":["tt"]}]}
+        """.utf8))
+        XCTAssertTrue(manifest.servesStreams(type: "movie", id: "tt123"))
+        XCTAssertFalse(manifest.servesStreams(type: "movie", id: "kitsu:1"))
+        XCTAssertFalse(manifest.servesStreams(type: "tv", id: "tt123"))
+    }
+
+    func testAggregatorTimesOutSlowProviders() async {
+        struct Fast: SourceProvider {
+            var providerID = "fast", providerName = "Fast", category = SourceCategory.addons
+            func sources(for request: PlaybackRequest) async throws -> [StreamSource] {
+                [StreamSource(id: "f", category: .addons, providerID: "fast", providerName: "Fast", title: "x", location: .url(URL(string: "https://a")!, headers: [:]))]
+            }
+        }
+        struct Slow: SourceProvider {
+            var providerID = "slow", providerName = "Slow", category = SourceCategory.addons
+            func sources(for request: PlaybackRequest) async throws -> [StreamSource] {
+                try await Task.sleep(nanoseconds: 5_000_000_000)
+                return []
+            }
+        }
+        let request = PlaybackRequest(item: MediaItem(type: .movie, ids: ExternalIDs(tmdb: 1, imdb: "tt1"), title: "x"))
+        var failed: [String] = []
+        var loaded: [String] = []
+        for await update in SourceAggregator.stream([Fast(), Slow()], request: request, timeout: 0.3) {
+            switch update {
+            case .loaded(let id, _): loaded.append(id)
+            case .failed(let id, _, _): failed.append(id)
+            default: break
+            }
+        }
+        XCTAssertEqual(loaded, ["fast"])
+        XCTAssertEqual(failed, ["slow"])
+    }
+
+    func testIPTVTitleMatching() {
+        let item = MediaItem(type: .movie, ids: ExternalIDs(tmdb: 603), title: "The Matrix", releaseDate: FlowDate.parse("1999-03-31"))
+        XCTAssertTrue(IPTVVODProvider.matches(name: "EN - The Matrix (1999)", year: nil, tmdb: nil, item: item))
+        XCTAssertTrue(IPTVVODProvider.matches(name: "Anything", year: nil, tmdb: 603, item: item))
+        XCTAssertFalse(IPTVVODProvider.matches(name: "The Matrix (2021)", year: nil, tmdb: nil, item: item))
+    }
+
+    func testSkipSegmentParsing() throws {
+        let json = try JSONDecoder().decode(JSONValue.self, from: Data(#"{"segments":[{"type":"intro","start":30,"end":90},{"segment_type":"credits","start_ms":2500000,"end_ms":2600000},{"type":"unknown","start":1,"end":2}]}"#.utf8))
+        let segments = KeyedSegmentsClient.parse(json)
+        XCTAssertEqual(segments, [SkipSegment(kind: .intro, start: 30, end: 90), SkipSegment(kind: .credits, start: 2500, end: 2600)])
+        XCTAssertEqual(SkipSegmentResolver.active(segments, at: 45)?.kind, .intro)
+        XCTAssertNil(SkipSegmentResolver.active(segments, at: 95))
+    }
+}
+
+final class ReleaseFilterTests: XCTestCase {
+    let now = FlowDate.parse("2026-10-09")!
+
+    func testQuickDecisions() {
+        let future = MediaItem(type: .movie, ids: ExternalIDs(tmdb: 1), title: "F", releaseDate: FlowDate.parse("2026-12-01"))
+        let old = MediaItem(type: .movie, ids: ExternalIDs(tmdb: 2), title: "O", releaseDate: FlowDate.parse("2020-01-01"))
+        let recent = MediaItem(type: .movie, ids: ExternalIDs(tmdb: 3), title: "R", releaseDate: FlowDate.parse("2026-09-20"))
+        let show = MediaItem(type: .show, ids: ExternalIDs(tmdb: 4), title: "S", releaseDate: FlowDate.parse("2026-10-01"))
+        XCTAssertEqual(ReleaseFilter.quickDecision(future, now: now), false)
+        XCTAssertEqual(ReleaseFilter.quickDecision(old, now: now), true)
+        XCTAssertNil(ReleaseFilter.quickDecision(recent, now: now))
+        XCTAssertEqual(ReleaseFilter.quickDecision(show, now: now), true)
+    }
+
+    func testCinemaOnlyMovieIsDropped() async {
+        let cinemaOnly = MediaItem(type: .movie, ids: ExternalIDs(tmdb: 10), title: "Cinema", releaseDate: FlowDate.parse("2026-09-20"))
+        let digital = MediaItem(type: .movie, ids: ExternalIDs(tmdb: 11), title: "Digital", releaseDate: FlowDate.parse("2026-09-01"))
+        let filter = ReleaseFilter { id in
+            if id == 10 { return [MovieRelease(country: "US", type: .theatrical, date: FlowDate.parse("2026-09-20")!)] }
+            return [MovieRelease(country: "US", type: .digital, date: FlowDate.parse("2026-10-01")!)]
+        }
+        let kept = await filter.filter([cinemaOnly, digital], now: now)
+        XCTAssertEqual(kept.map(\.title), ["Digital"])
+    }
+}
+
+final class SyncTests: XCTestCase {
+    func testSettingsDecodeFillsMissingKeys() throws {
+        let json = #"{"general":{"accent":"red"},"metadata":{"episodeSource":"tmdb"},"futureKey":true}"#
+        let settings = try SettingsCodec.decode(AppSettings.self, from: Data(json.utf8), defaults: AppSettings())
+        XCTAssertEqual(settings.general.accent, .red)
+        XCTAssertEqual(settings.general.startTab, .home)
+        XCTAssertEqual(settings.metadata.episodeSource, .tmdb)
+        XCTAssertTrue(settings.metadata.showUnreleasedTitles)
+        XCTAssertEqual(settings.shelves, ShelfConfig.defaults)
+    }
+
+    func testSettingsRoundTrip() throws {
+        var s = AppSettings()
+        s.shelves.append(ShelfConfig(title: "Anime", source: .discover({ var q = DiscoverQuery(type: .show); q.genres = [16]; return q }())))
+        s.sources.addons = [AddonConfig(manifestURL: URL(string: "https://a/manifest.json")!, name: "A")]
+        s.sources.providerOrder["mediaServers"] = ["b", "a"]
+        let data = try SettingsCodec.encode(s)
+        XCTAssertEqual(try SettingsCodec.decode(AppSettings.self, from: data, defaults: AppSettings()), s)
+    }
+
+    func testSetupShareStripsSecretsAndImportsLink() throws {
+        var s = AppSettings()
+        s.mediaServers.servers = [MediaServerConfig(id: "srv", kind: .jellyfin, name: "J", baseURL: URL(string: "https://j")!, userID: "u", accessToken: "secret")]
+        var creds = Credentials()
+        creds.tmdbAPIKey = "tmdb"
+        let data = try SetupShare.export(settings: s, credentials: creds, includeSecrets: false)
+        XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("secret"))
+        XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("tmdbAPIKey"))
+
+        let link = try SetupShare.exportLink(settings: s, credentials: creds, includeSecrets: true)
+        XCTAssertTrue(link.hasPrefix("flow://setup?d="))
+        let bundle = try SetupShare.importBundle(Data(link.utf8))
+        XCTAssertEqual(bundle.credentials?.tmdbAPIKey, "tmdb")
+        XCTAssertEqual(bundle.settings.mediaServers.servers.first?.accessToken, "secret")
+
+        // Importing a secret-less bundle keeps the device's existing tokens and keys.
+        let stripped = try SetupShare.importBundle(data)
+        let (merged, mergedCreds) = SetupShare.apply(stripped, to: s, credentials: creds)
+        XCTAssertEqual(merged.mediaServers.servers.first?.accessToken, "secret")
+        XCTAssertEqual(mergedCreds.tmdbAPIKey, "tmdb")
+    }
+
+    func testCloudPushPullMerge() throws {
+        let store = InMemoryKeyValueStore()
+        let cloud = CloudSync(store: store)
+        var settings = AppSettings()
+        settings.general.accent = .purple
+        var library = LocalLibrary()
+        let key = MediaKey(type: .movie, tmdbID: 1)
+        library.progress = [PlaybackProgress(key: key, percent: 20, updatedAt: Date(timeIntervalSince1970: 10))]
+        library.watchlist = [ListEntry(key: key)]
+        try cloud.push(settings: settings, library: library, includeLibrary: true)
+        XCTAssertGreaterThan(cloud.usedBytes, 0)
+
+        var otherDevice = LocalLibrary()
+        otherDevice.progress = [PlaybackProgress(key: key, percent: 60, updatedAt: Date(timeIntervalSince1970: 20))]
+        let (pulledSettings, merged) = CloudSync.apply(cloud.pull(), settings: AppSettings(), library: otherDevice)
+        XCTAssertEqual(pulledSettings.general.accent, .purple)
+        XCTAssertEqual(merged.progress.first?.percent, 60, "newest progress wins")
+        XCTAssertEqual(merged.watchlist.map(\.key), [key])
+
+        let status = cloud.status(settings: settings, library: library)
+        XCTAssertEqual(status.first { $0.domain == .playbackProgress }?.cloudCount, 1)
+    }
+}
