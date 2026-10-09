@@ -777,16 +777,80 @@ enum SubtitleText {
         var out = s.replacingOccurrences(of: "\r\n", with: "\n")
         out = out.replacingOccurrences(of: #"</?font[^>]*>"#, with: "", options: .regularExpression)
         out = out.replacingOccurrences(of: #"\{\\[^}]*\}"#, with: "", options: .regularExpression)
-        return out.trimmingCharacters(in: .whitespacesAndNewlines)
+        return vttText(out.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     /// Matroska ASS events are "ReadOrder,Layer,Style,Name,MarginL,MarginR,MarginV,Effect,Text".
+    /// Italic and bold survive as WebVTT tags; vector drawings (signs drawn with \p1) are dropped.
     static func fromASSEvent(_ s: String) -> String {
         let fields = s.split(separator: ",", maxSplits: 8, omittingEmptySubsequences: false)
         let text = fields.count == 9 ? String(fields[8]) : s
-        var out = text.replacingOccurrences(of: #"\{[^}]*\}"#, with: "", options: .regularExpression)
+        if text.range(of: #"\\p[1-9]"#, options: .regularExpression) != nil { return "" }
+        var out = ""
+        // Open tags, innermost last, so closing one never leaves them mis-nested.
+        var open: [Character] = []
+        func setOpen(_ tag: Character, _ on: Bool) {
+            if on {
+                guard !open.contains(tag) else { return }
+                open.append(tag)
+                out += "\u{1}\(tag)"
+            } else if let index = open.lastIndex(of: tag) {
+                let above = open[(index + 1)...]
+                for t in above.reversed() { out += "\u{1}/\(t)" }
+                out += "\u{1}/\(tag)"
+                open.remove(at: index)
+                for t in above { out += "\u{1}\(t)" }
+            }
+        }
+        var rest = Substring(text)
+        while let brace = rest.firstIndex(of: "{") {
+            out += rest[..<brace]
+            guard let close = rest[brace...].firstIndex(of: "}") else { rest = rest[brace...]; break }
+            for tag in rest[rest.index(after: brace)..<close].split(separator: "\\") {
+                switch tag {
+                case "i1": setOpen("i", true)
+                case "i0", "i": setOpen("i", false)
+                case "b1": setOpen("b", true)
+                case "b0", "b": setOpen("b", false)
+                case "r": for t in open.reversed() { setOpen(t, false) }
+                default: break
+                }
+            }
+            rest = rest[rest.index(after: close)...]
+        }
+        out += rest
+        for t in open.reversed() { out += "\u{1}/\(t)" }
         out = out.replacingOccurrences(of: "\\N", with: "\n").replacingOccurrences(of: "\\n", with: "\n").replacingOccurrences(of: "\\h", with: " ")
-        return out.trimmingCharacters(in: .whitespacesAndNewlines)
+        out = vttText(out.trimmingCharacters(in: .whitespacesAndNewlines))
+        // Markers become tags only after escaping, so they can't be mistaken for text.
+        for tag in ["i", "/i", "b", "/b"] { out = out.replacingOccurrences(of: "\u{1}" + tag, with: "<\(tag)>") }
+        return out.replacingOccurrences(of: #"<([ib])></\1>"#, with: "", options: .regularExpression)
+    }
+
+    /// Escapes text for a WebVTT cue, keeping the simple formatting tags SRT uses (<i>, <b>, <u>),
+    /// and never letting a line read as a cue timing ("-->").
+    static func vttText(_ s: String) -> String {
+        var out = ""
+        var i = s.startIndex
+        while i < s.endIndex {
+            let c = s[i]
+            if c == "<", let close = s[i...].firstIndex(of: ">") {
+                let tag = s[s.index(after: i)..<close].lowercased()
+                if ["i", "/i", "b", "/b", "u", "/u"].contains(tag) {
+                    out += "<\(tag)>"
+                    i = s.index(after: close)
+                    continue
+                }
+            }
+            switch c {
+            case "&": out += "&amp;"
+            case "<": out += "&lt;"
+            case ">": out += "&gt;"
+            default: out.append(c)
+            }
+            i = s.index(after: i)
+        }
+        return out
     }
 }
 

@@ -93,7 +93,7 @@ final class RemuxTests: XCTestCase {
         XCTAssertEqual(AAC.audioSpecificConfig(codecID: "A_AAC/MPEG4/LC", sampleRate: 48000, channels: 2), [0x11, 0x90])
         XCTAssertEqual(MP4.packedLanguage("eng"), 0x15C7)
         XCTAssertEqual(LanguageName.bcp47("spa"), "es")
-        XCTAssertEqual(SubtitleText.fromASSEvent("0,0,Default,,0,0,0,,{\\i1}Hello{\\i0}\\Nthere, friend"), "Hello\nthere, friend")
+        XCTAssertEqual(SubtitleText.fromASSEvent("0,0,Default,,0,0,0,,{\\i1}Hello{\\i0}\\Nthere, friend"), "<i>Hello</i>\nthere, friend")
     }
 
     /// trun sample_count of a fragment.
@@ -380,5 +380,21 @@ final class PreviewFrameTests: XCTestCase {
         let data = try XCTUnwrap(frame?.data)
         let first = Int(data[0]) << 24 | Int(data[1]) << 16 | Int(data[2]) << 8 | Int(data[3])
         XCTAssertLessThanOrEqual(first + 4, data.count)
+    }
+}
+
+final class SubtitleTextTests: XCTestCase {
+    func testASSFormattingBecomesWebVTT() {
+        XCTAssertEqual(SubtitleText.fromASSEvent(#"1,0,Default,,0,0,0,,{\i1}Whispering{\i0} loudly\Nnext line"#), "<i>Whispering</i> loudly\nnext line")
+        XCTAssertEqual(SubtitleText.fromASSEvent(#"1,0,Default,,0,0,0,,{\b1\i1}Both"#), "<b><i>Both</i></b>")
+        XCTAssertEqual(SubtitleText.fromASSEvent(#"1,0,Default,,0,0,0,,{\b1\i1}Both{\b0} italic"#), "<b><i>Both</i></b><i> italic</i>")
+        XCTAssertEqual(SubtitleText.fromASSEvent(#"1,0,Default,,0,0,0,,{\pos(10,20)\fad(200,200)}Plain"#), "Plain")
+        XCTAssertEqual(SubtitleText.fromASSEvent(#"1,0,Sign,,0,0,0,,{\p1}m 0 0 l 100 0 100 100 0 100{\p0}"#), "")
+        XCTAssertEqual(SubtitleText.fromASSEvent(#"1,0,Default,,0,0,0,,Tom & Jerry <3"#), "Tom &amp; Jerry &lt;3")
+    }
+
+    func testSRTKeepsSimpleTagsAndEscapesTheRest() {
+        XCTAssertEqual(SubtitleText.cleanSRT("<i>Hello</i> <font color=\"red\">there</font> & a --> b"), "<i>Hello</i> there &amp; a --&gt; b")
+        XCTAssertEqual(SubtitleText.cleanSRT("<B>Loud</B>"), "<b>Loud</b>")
     }
 }
