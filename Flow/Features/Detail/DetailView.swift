@@ -372,22 +372,16 @@ struct RatingsRow: View {
     var centered = false
 
     var body: some View {
-        // Centred when it fits, scrollable when it doesn't — never wider than the screen.
-        GeometryReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                row
-                    .padding(.horizontal, Theme.Space.gutter)
-                    .frame(minWidth: proxy.size.width, alignment: centered ? .center : .leading)
-            }
-            .scrollBounceBehavior(.basedOnSize)
+        // One line when it fits; otherwise a second line, never a badge cut off at the screen's edge.
+        WrappingRow(spacing: 14 * Theme.scale, lineSpacing: 10 * Theme.scale, centered: centered) {
+            badges
         }
-        .frame(height: 24 * Theme.scale)
-        // Bleed to the screen edges so long rows scroll under the margins instead of clipping at them.
-        .padding(.horizontal, -Theme.Space.gutter)
+        .font(.system(.subheadline, weight: .semibold).monospacedDigit())
+        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
     }
 
-    private var row: some View {
-        HStack(spacing: 14 * Theme.scale) {
+    @ViewBuilder
+    private var badges: some View {
             if let imdb = ratings.imdb { badge("IMDb", String(format: "%.1f", imdb), fill: Color(red: 0.96, green: 0.77, blue: 0.09), dark: true) }
             if let rt = ratings.rottenTomatoes {
                 score(symbol: rt >= 60 ? "circle.fill" : "drop.fill", color: rt >= 60 ? Color(red: 0.98, green: 0.2, blue: 0.1) : Color(red: 0.4, green: 0.75, blue: 0.2), "\(rt)%")
@@ -399,9 +393,6 @@ struct RatingsRow: View {
             if let tmdb = ratings.tmdb, tmdb > 0 { badge("TMDB", String(format: "%.1f", tmdb), fill: Color(red: 0.05, green: 0.75, blue: 0.75), dark: true) }
             if let lb = ratings.letterboxd { badge("LB", String(format: "%.1f", lb), fill: .white.opacity(0.18), dark: false) }
             if let trakt = ratings.trakt { badge("Trakt", "\(trakt)%", fill: .white.opacity(0.18), dark: false) }
-        }
-        .font(.system(.subheadline, weight: .semibold).monospacedDigit())
-        .fixedSize()
     }
 
     private func badge(_ label: String, _ value: String, fill: Color, dark: Bool) -> some View {

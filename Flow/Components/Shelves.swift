@@ -517,3 +517,51 @@ extension View {
         }
     }
 }
+
+/// Lays children out left to right, starting a new line when the next one doesn't fit.
+/// Lines are centred or leading-aligned.
+struct WrappingRow: Layout {
+    var spacing: CGFloat = 6
+    var lineSpacing: CGFloat = 6
+    var centered = false
+
+    private func lines(_ subviews: Subviews, width: CGFloat) -> [[(index: Int, size: CGSize)]] {
+        var lines: [[(index: Int, size: CGSize)]] = [[]]
+        var x: CGFloat = 0
+        for (i, view) in subviews.enumerated() {
+            let size = view.sizeThatFits(.unspecified)
+            if !lines[lines.count - 1].isEmpty, x + spacing + size.width > width {
+                lines.append([])
+                x = 0
+            }
+            x += (lines[lines.count - 1].isEmpty ? 0 : spacing) + size.width
+            lines[lines.count - 1].append((i, size))
+        }
+        return lines
+    }
+
+    private func width(of line: [(index: Int, size: CGSize)]) -> CGFloat {
+        line.reduce(0) { $0 + $1.size.width } + spacing * CGFloat(max(0, line.count - 1))
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let available = proposal.width ?? .infinity
+        let rows = lines(subviews, width: available)
+        let height = rows.reduce(0) { $0 + ($1.map(\.size.height).max() ?? 0) } + lineSpacing * CGFloat(max(0, rows.count - 1))
+        let widest = rows.map(width(of:)).max() ?? 0
+        return CGSize(width: proposal.width.map { min($0, widest) } ?? widest, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for line in lines(subviews, width: bounds.width) {
+            let lineHeight = line.map(\.size.height).max() ?? 0
+            var x = centered ? bounds.minX + (bounds.width - width(of: line)) / 2 : bounds.minX
+            for item in line {
+                subviews[item.index].place(at: CGPoint(x: x, y: y + (lineHeight - item.size.height) / 2), proposal: ProposedViewSize(item.size))
+                x += item.size.width + spacing
+            }
+            y += lineHeight + lineSpacing
+        }
+    }
+}
