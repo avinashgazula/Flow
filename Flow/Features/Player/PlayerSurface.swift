@@ -47,6 +47,7 @@ struct RoutePicker: UIViewRepresentable {
 /// Flow adds skip buttons as contextual actions and a subtitle-search menu item.
 struct TVPlayerController: UIViewControllerRepresentable {
     let session: PlaybackSession
+    let subtitleSettings: SubtitleSettings
     var onSubtitleSearch: () -> Void
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
@@ -54,10 +55,23 @@ struct TVPlayerController: UIViewControllerRepresentable {
         controller.player = session.player
         controller.delegate = context.coordinator
         controller.appliesPreferredDisplayCriteriaAutomatically = true
+        // Flow's own subtitles go in the content overlay, which sits beneath the transport bar and info panel.
+        let host = UIHostingController(rootView: SubtitleLayer(session: session, settings: subtitleSettings))
+        host.view.backgroundColor = .clear
+        host.view.isUserInteractionEnabled = false
+        if let overlay = controller.contentOverlayView {
+            controller.addChild(host)
+            host.view.frame = overlay.bounds
+            host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            overlay.addSubview(host.view)
+            host.didMove(toParent: controller)
+        }
+        context.coordinator.subtitleHost = host
         return controller
     }
 
     func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
+        context.coordinator.subtitleHost?.rootView = SubtitleLayer(session: session, settings: subtitleSettings)
         if let segment = session.activeSegment {
             controller.contextualActions = [UIAction(title: segment.kind.buttonTitle, image: UIImage(systemName: "forward.end.fill")) { _ in session.skip(segment) }]
         } else if let countdown = session.upNextCountdown {
@@ -85,6 +99,7 @@ struct TVPlayerController: UIViewControllerRepresentable {
 
     final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
         let session: PlaybackSession
+        var subtitleHost: UIHostingController<SubtitleLayer>?
         init(session: PlaybackSession) { self.session = session }
 
         func playerViewControllerShouldDismiss(_ playerViewController: AVPlayerViewController) -> Bool {

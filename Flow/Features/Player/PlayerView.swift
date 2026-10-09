@@ -13,12 +13,9 @@ struct PlayerView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             surface
-            SubtitleOverlay(text: session.subtitleText, settings: model.settings.subtitles)
-                .allowsHitTesting(false)
-            if let bitmap = session.bitmapSubtitle {
-                BitmapSubtitleView(overlay: bitmap)
-            }
             #if !os(tvOS)
+            // On tvOS subtitles live in the player's content overlay, beneath its transport bar.
+            SubtitleLayer(session: session, settings: model.settings.subtitles)
             SkipAndUpNextOverlay(session: session)
             if session.isBuffering && session.phase == .playing {
                 ProgressView()
@@ -102,7 +99,7 @@ struct PlayerView: View {
         #if os(iOS)
         IOSPlayerControls(session: session, showSubtitles: $showSubtitles)
         #elseif os(tvOS)
-        TVPlayerController(session: session) { showSubtitles = true }
+        TVPlayerController(session: session, subtitleSettings: model.settings.subtitles) { showSubtitles = true }
             .ignoresSafeArea()
         #else
         MacPlayerView(player: session.player)
@@ -844,6 +841,22 @@ enum OrientationLock {
 /// Draws a Blu-ray picture subtitle where the disc placed it. The subtitle canvas is mapped onto
 /// the aspect-fit video rectangle, width-aligned and centred, so captions authored in the
 /// letterbox of a cropped encode still land there.
+/// Downloaded text subtitles and picture subtitles from the file, above the video and below the controls.
+struct SubtitleLayer: View {
+    let session: PlaybackSession
+    let settings: SubtitleSettings
+
+    var body: some View {
+        ZStack {
+            SubtitleOverlay(text: session.subtitleText, settings: settings)
+            if let bitmap = session.bitmapSubtitle {
+                BitmapSubtitleView(overlay: bitmap)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 struct BitmapSubtitleView: View {
     let overlay: BitmapOverlay
 
