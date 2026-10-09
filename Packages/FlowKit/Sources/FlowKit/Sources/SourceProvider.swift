@@ -252,7 +252,7 @@ public enum SourceAggregator {
                         group.addTask {
                             do {
                                 let sources = try await withTimeout(timeout) { try await provider.sources(for: request) }
-                                return .loaded(providerID: provider.providerID, sources: sources)
+                                return .loaded(providerID: provider.providerID, sources: sources.filter { !SourceSafety.isUnsafe($0) })
                             } catch {
                                 return .failed(providerID: provider.providerID, name: provider.providerName, error: error.localizedDescription)
                             }

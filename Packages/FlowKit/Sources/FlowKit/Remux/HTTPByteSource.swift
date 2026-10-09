@@ -11,11 +11,17 @@ public actor HTTPByteSource: ByteSource {
     private let transport: HTTPTransport
     private var knownLength: Int64?
     private var head: (range: Range<Int64>, bytes: [UInt8])?
+    /// Where the first request ended up after redirects (debrid links bounce through a resolver);
+    /// later requests go straight there.
+    private var resolvedURL: URL?
+    /// How much the first request reads: enough for the header and the opening clusters, in one round trip.
+    private let headSize: Int64
 
-    public init(url: URL, headers: [String: String] = [:], transport: HTTPTransport = URLSessionTransport()) {
+    public init(url: URL, headers: [String: String] = [:], transport: HTTPTransport = URLSessionTransport(), headSize: Int64 = 3 * 1024 * 1024) {
         self.url = url
         self.headers = headers
         self.transport = transport
+        self.headSize = headSize
     }
 
     public func length() async throws -> Int64? {
@@ -32,14 +38,21 @@ public actor HTTPByteSource: ByteSource {
             let from = Int(range.lowerBound - head.range.lowerBound)
             return Array(head.bytes[from..<(from + Int(upper - range.lowerBound))])
         }
-        let fetchUpper = range.lowerBound == 0 ? max(upper, 256 * 1024) : upper
-        let bytes = try await fetch(range.lowerBound..<fetchUpper)
-        if range.lowerBound == 0 { head = (0..<Int64(bytes.count), bytes) }
+        let isHead = head == nil && range.lowerBound < headSize
+        let lower = isHead ? 0 : range.lowerBound
+        let fetchUpper = isHead ? max(upper, headSize) : upper
+        let bytes = try await fetch(lower..<fetchUpper)
+        if isHead {
+            head = (0..<Int64(bytes.count), bytes)
+            let from = Int(range.lowerBound)
+            guard from < bytes.count else { return [] }
+            return Array(bytes[from..<min(bytes.count, from + Int(upper - range.lowerBound))])
+        }
         return Array(bytes.prefix(Int(upper - range.lowerBound)))
     }
 
     private func fetch(_ range: Range<Int64>) async throws -> [UInt8] {
-        var request = URLRequest(url: url, timeoutInterval: 30)
+        var request = URLRequest(url: resolvedURL ?? url, timeoutInterval: 30)
         for (key, value) in headers { request.setValue(value, forHTTPHeaderField: key) }
         request.setValue("bytes=\(range.lowerBound)-\(range.upperBound - 1)", forHTTPHeaderField: "Range")
         var attempt = 0
@@ -49,11 +62,15 @@ public actor HTTPByteSource: ByteSource {
                 switch response.statusCode {
                 case 206:
                     if let total = Self.total(from: response.value(forHTTPHeaderField: "Content-Range")) { knownLength = total }
+                    if resolvedURL == nil, let final = response.url, final != url { resolvedURL = final }
                     return [UInt8](data)
                 case 200:
-                    // The server ignored Range: fine only for a read from the start.
+                    // The server ignored Range and sent the whole file. That only works for a small file
+                    // read from the start; anything bigger can't be seeked.
+                    guard range.lowerBound == 0, Int64(data.count) <= max(Int64(range.count), headSize) else {
+                        throw MatroskaError.unsupported("this server doesn't support seeking (no range requests)")
+                    }
                     knownLength = Int64(data.count)
-                    guard range.lowerBound == 0 else { throw MatroskaError.unsupported("this server doesn't support seeking (no range requests)") }
                     return [UInt8](data.prefix(Int(range.count)))
                 case 416:
                     return []
@@ -64,6 +81,8 @@ public actor HTTPByteSource: ByteSource {
                 throw error
             } catch {
                 attempt += 1
+                // A resolved link can expire; start again from the original.
+                if resolvedURL != nil { resolvedURL = nil; request.url = url }
                 if attempt >= 3 { throw error }
                 try await Task.sleep(nanoseconds: UInt64(attempt) * 600_000_000)
             }

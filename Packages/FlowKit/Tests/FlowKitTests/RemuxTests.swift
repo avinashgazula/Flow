@@ -132,7 +132,7 @@ final class HTTPByteSourceTests: XCTestCase {
 
     func testServerWithoutRangesCantSeek() async throws {
         let bytes = [UInt8](try Data(contentsOf: MatroskaTests.fixture("avc-aac-srt")))
-        let source = HTTPByteSource(url: URL(string: "https://example.invalid/movie.mkv")!, transport: RangeServingTransport(bytes: bytes, honoursRange: false))
+        let source = HTTPByteSource(url: URL(string: "https://example.invalid/movie.mkv")!, transport: RangeServingTransport(bytes: bytes, honoursRange: false), headSize: 1024)
         do {
             _ = try await source.read(1000..<2000)
             XCTFail("expected an error")
@@ -150,5 +150,57 @@ final class RemuxSampleTests: XCTestCase {
         print("video:", remuxer.video?.codecString ?? "-", "audio:", remuxer.audio.map(\.label), "subs:", remuxer.subtitles.map(\.label),
               "skipped:", remuxer.skipped.map(\.reason), "segments:", remuxer.segments.count, "delay:", remuxer.presentationDelay)
         try await RemuxTests.dump(remuxer, to: RemuxTests.outputRoot.appendingPathComponent("sample"))
+    }
+}
+
+/// Runs only when FLOW_REMUX_URL is set: remuxes a remote MKV over range requests and times it.
+final class RemoteRemuxTests: XCTestCase {
+    func testRemoteFile() async throws {
+        guard let raw = ProcessInfo.processInfo.environment["FLOW_REMUX_URL"], let url = URL(string: raw) else { throw XCTSkip("no remote file") }
+        let started = Date()
+        let source = TimingSource(inner: HTTPByteSource(url: url))
+        let remuxer = try await MatroskaRemuxer.open(source)
+        for line in await source.log { print(line) }
+        print(String(format: "opened in %.1fs", Date().timeIntervalSince(started)))
+        print("duration:", remuxer.duration, "segments:", remuxer.segments.count, "delay(ns):", remuxer.presentationDelay)
+        print("video:", remuxer.video.map { "\($0.codecString) \($0.source.width)x\($0.source.height) dv=\($0.source.dolbyVision != nil) transfer=\($0.source.colour?.transfer ?? -1)" } ?? "none")
+        print("audio:", remuxer.audio.map { "\($0.label) [\($0.codecString)]" })
+        print("subtitles:", remuxer.subtitles.map(\.label))
+        print("skipped:", remuxer.skipped.map { "\($0.track.codecID): \($0.reason)" })
+        print("chapters:", remuxer.header.chapters.count)
+        let master = await remuxer.masterPlaylist()
+        print(master)
+        let out = RemuxTests.outputRoot.appendingPathComponent("remote")
+        try? FileManager.default.removeItem(at: out)
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        try Data(master.utf8).write(to: out.appendingPathComponent("master.m3u8"))
+        let tracks = [remuxer.video?.id].compactMap { $0 } + remuxer.audio.prefix(1).map(\.id)
+        for index in [0, remuxer.segments.count / 2] {
+            for track in tracks {
+                let t0 = Date()
+                let bytes = try await remuxer.mediaSegment(track: track, index: index) ?? []
+                print(String(format: "segment %d track %d: %.1f MB in %.1fs, %d samples", index, track, Double(bytes.count) / 1e6, Date().timeIntervalSince(t0), RemuxTests.sampleCount(bytes)))
+                let dir = out.appendingPathComponent("\(track)")
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                try Data(await remuxer.initSegment(track: track) ?? []).write(to: dir.appendingPathComponent("init.mp4"))
+                try Data(bytes).write(to: dir.appendingPathComponent("\(index).m4s"))
+            }
+        }
+    }
+}
+
+actor TimingSource: ByteSource {
+    let inner: ByteSource
+    var log: [String] = []
+    init(inner: ByteSource) { self.inner = inner }
+    func length() async throws -> Int64? {
+        let t = Date(); let v = try await inner.length()
+        log.append(String(format: "length %.2fs", Date().timeIntervalSince(t)))
+        return v
+    }
+    func read(_ range: Range<Int64>) async throws -> [UInt8] {
+        let t = Date(); let v = try await inner.read(range)
+        log.append(String(format: "read %d..+%d -> %d bytes %.2fs", range.lowerBound, range.count, v.count, Date().timeIntervalSince(t)))
+        return v
     }
 }

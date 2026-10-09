@@ -258,11 +258,16 @@ public enum MatroskaReader {
         return header
     }
 
-    private static func readTopLevel(_ source: ByteSource, at position: Int64, expecting id: UInt32) async throws -> (bytes: [UInt8], element: EBML.Element)? {
-        let head = try await source.read(position..<(position + 16))
-        guard let probe = try? EBML.readElement(head, at: 0), probe.id == id, let size = probe.size else { return nil }
-        let bytes = try await source.read(position..<(position + Int64(probe.dataStart + size)))
-        guard bytes.count == probe.dataStart + size else { return nil }
+    /// Reads one top-level element. A generous first read usually gets all of it in one round trip.
+    static func readTopLevel(_ source: ByteSource, at position: Int64, expecting id: UInt32) async throws -> (bytes: [UInt8], element: EBML.Element)? {
+        var bytes = try await source.read(position..<(position + 1024 * 1024))
+        guard let probe = try? EBML.readElement(bytes, at: 0), probe.id == id, let size = probe.size else { return nil }
+        let total = probe.dataStart + size
+        if bytes.count < total {
+            bytes += try await source.read((position + Int64(bytes.count))..<(position + Int64(total)))
+        }
+        guard bytes.count >= total else { return nil }
+        bytes = Array(bytes.prefix(total))
         return (bytes, try EBML.readElement(bytes, at: 0))
     }
 

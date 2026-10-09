@@ -102,8 +102,19 @@ public struct JellyfinClient: MediaServerClient {
         var Path: String?
         var SupportsDirectPlay: Bool?
         var SupportsDirectStream: Bool?
+        var SupportsTranscoding: Bool?
+        var IsRemote: Bool?
+        var transport: String?
+        var DirectStreamUrl: String?
         var MediaStreams: [MediaStreamDTO]?
+
+        enum CodingKeys: String, CodingKey {
+            case Id, Name, Container, Size, Bitrate, Path, SupportsDirectPlay, SupportsDirectStream, SupportsTranscoding, IsRemote
+            case transport = "Protocol", DirectStreamUrl, MediaStreams
+        }
     }
+
+    struct PlaybackInfoDTO: Decodable { var MediaSources: [MediaSourceDTO]?; var PlaySessionId: String? }
 
     struct MediaStreamDTO: Decodable {
         var kind: String?
@@ -123,6 +134,8 @@ public struct JellyfinClient: MediaServerClient {
     }
 
     func serverItem(_ dto: ItemDTO) -> MediaServerItem? {
+        // Some servers list raw debrid files; never offer anything that isn't a video.
+        if let name = dto.Name, SourceSafety.isUnsafeFileName(name) { return nil }
         let type: MediaType
         switch dto.kind {
         case "Movie": type = .movie
@@ -131,12 +144,21 @@ public struct JellyfinClient: MediaServerClient {
         }
         let p = dto.ProviderIds ?? [:]
         let ids = ExternalIDs(tmdb: (p["Tmdb"] ?? p["tmdb"]).flatMap(Int.init), imdb: p["Imdb"] ?? p["imdb"], tvdb: (p["Tvdb"] ?? p["tvdb"]).flatMap(Int.init))
+        // Items some servers name after their file ("Resident Evil (2026) WEBDL-1080p.mp4") get a clean title.
+        var title = dto.Name ?? ""
+        var year = dto.ProductionYear
+        let ext = (title as NSString).pathExtension.lowercased()
+        if WebDAVEntry.videoExtensions.contains(ext) {
+            let parsed = StreamParser.titleAndYear(from: title)
+            if !parsed.title.isEmpty { title = parsed.title.capitalized }
+            year = year ?? parsed.year
+        }
         return MediaServerItem(
             serverID: config.id,
             itemID: dto.Id,
             type: type,
-            title: dto.Name ?? "",
-            year: dto.ProductionYear,
+            title: title,
+            year: year,
             ids: ids,
             posterURL: dto.ImageTags?["Primary"].map { imageURL(dto.Id, kind: "Primary", tag: $0, width: 500) },
             backdropURL: dto.BackdropImageTags?.first.map { imageURL(dto.Id, kind: "Backdrop", tag: $0, width: 1280) },
@@ -168,18 +190,37 @@ public struct JellyfinClient: MediaServerClient {
         }
     }
 
+    /// Runs an Items query. Some servers answer a library-wide recursive query with nothing and only
+    /// list items per library; then the query is repeated in each library and the results merged.
+    func queryItems(_ query: [String: String?]) async throws -> ItemsResponse {
+        let response = try await http.json(ItemsResponse.self, request(.get, "Users/\(userID)/Items", query: query))
+        guard response.Items.isEmpty, query["ParentId"] == nil, query["Recursive"] == "true" else { return response }
+        let views = try await http.json(ItemsResponse.self, request(.get, "Users/\(userID)/Views"))
+        let limit = query["Limit"].flatMap { $0.flatMap(Int.init) }
+        var merged: [ItemDTO] = []
+        for view in views.Items {
+            var scoped = query
+            scoped["ParentId"] = view.Id
+            if let page = try? await http.json(ItemsResponse.self, request(.get, "Users/\(userID)/Items", query: scoped)) {
+                merged += page.Items
+            }
+        }
+        if let limit { merged = Array(merged.prefix(limit)) }
+        return ItemsResponse(Items: merged, TotalRecordCount: merged.count)
+    }
+
     public func catalogue() async throws -> [MediaServerItem] {
         var all: [MediaServerItem] = []
         var start = 0
         let pageSize = 2000
         while true {
-            let r = try await http.json(ItemsResponse.self, request(.get, "Users/\(userID)/Items", query: [
+            let r = try await queryItems([
                 "Recursive": "true", "IncludeItemTypes": "Movie,Series", "Fields": "ProviderIds,ProductionYear",
                 "StartIndex": String(start), "Limit": String(pageSize), "EnableImages": "false",
-            ]))
+            ])
             all += r.Items.compactMap(serverItem)
             start += r.Items.count
-            if r.Items.isEmpty || start >= (r.TotalRecordCount ?? 0) { break }
+            if r.Items.isEmpty || r.Items.count < pageSize || start >= (r.TotalRecordCount ?? 0) { break }
         }
         return all
     }
@@ -193,24 +234,24 @@ public struct JellyfinClient: MediaServerClient {
     }
 
     public func recentlyAdded(limit: Int) async throws -> [MediaServerItem] {
-        let r = try await http.json(ItemsResponse.self, request(.get, "Users/\(userID)/Items", query: [
+        let r = try await queryItems([
             "Recursive": "true", "IncludeItemTypes": "Movie,Series", "Fields": Self.listFields,
             "SortBy": "DateCreated", "SortOrder": "Descending", "Limit": String(limit),
-        ]))
+        ])
         return r.Items.compactMap(serverItem)
     }
 
     public func search(_ text: String) async throws -> [MediaServerItem] {
-        let r = try await http.json(ItemsResponse.self, request(.get, "Users/\(userID)/Items", query: [
+        let r = try await queryItems([
             "Recursive": "true", "IncludeItemTypes": "Movie,Series", "Fields": Self.listFields, "SearchTerm": text, "Limit": "40",
-        ]))
+        ])
         return r.Items.compactMap(serverItem)
     }
 
     public func favourites() async throws -> [MediaServerItem] {
-        let r = try await http.json(ItemsResponse.self, request(.get, "Users/\(userID)/Items", query: [
+        let r = try await queryItems([
             "Recursive": "true", "IncludeItemTypes": "Movie,Series", "Fields": Self.listFields, "Filters": "IsFavorite",
-        ]))
+        ])
         return r.Items.compactMap(serverItem)
     }
 
@@ -223,14 +264,21 @@ public struct JellyfinClient: MediaServerClient {
         var query: [String: String?] = [
             "Recursive": "true", "IncludeItemTypes": item.type == .movie ? "Movie" : "Series", "Fields": "ProviderIds,ProductionYear", "Limit": "20",
         ]
-        if let tmdb = item.ids.tmdb { query["AnyProviderIdEquals"] = "tmdb.\(tmdb)" }
-        if let byID = try? await http.json(ItemsResponse.self, request(.get, "Users/\(userID)/Items", query: query)),
-           let found = byID.Items.first(where: { serverItem($0).map { ServerMatching.best([$0], for: item) != nil } ?? false }) {
-            return found
+        // By provider ID first (TMDb, then IMDb). A match on the ID is trusted even if the server's
+        // title for it is odd: some servers name an item after its IMDb ID.
+        var lookups: [String] = []
+        if let tmdb = item.ids.tmdb { lookups.append("tmdb.\(tmdb)") }
+        if let imdb = item.ids.imdb { lookups.append("imdb.\(imdb)") }
+        for lookup in lookups {
+            query["AnyProviderIdEquals"] = lookup
+            guard let byID = try? await queryItems(query) else { continue }
+            if let found = byID.Items.first(where: { serverItem($0).map { ServerMatching.best([$0], for: item) != nil } ?? false }) { return found }
+            let wanted = lookup.split(separator: ".", maxSplits: 1).last.map(String.init)
+            if let found = byID.Items.first(where: { dto in (dto.ProviderIds ?? [:]).values.contains { $0 == wanted } }) { return found }
         }
         query["AnyProviderIdEquals"] = nil
         query["SearchTerm"] = item.title
-        let r = try await http.json(ItemsResponse.self, request(.get, "Users/\(userID)/Items", query: query))
+        let r = try await queryItems(query)
         let candidates = r.Items.compactMap(serverItem)
         guard let match = ServerMatching.best(candidates, for: item) else { return nil }
         return r.Items.first { $0.Id == match.itemID }
@@ -249,15 +297,29 @@ public struct JellyfinClient: MediaServerClient {
         let full = try await http.json(ItemDTO.self, self.request(.get, "Users/\(userID)/Items/\(targetID)"))
         let segments = await mediaSegments(targetID)
         let resume = full.UserData?.PlaybackPositionTicks.map { Double($0) / Self.ticksPerSecond }
-        return (full.MediaSources ?? []).enumerated().map { index, ms in
-            streamSource(itemID: targetID, mediaSource: ms, index: index, resume: resume, segments: segments)
+        // PlaybackInfo is where servers resolve what's playable now (and where some list sources at all);
+        // the item's own MediaSources are the fallback.
+        let sources = await playbackInfo(targetID) ?? full.MediaSources ?? []
+        return sources.enumerated().compactMap { index, ms in
+            let source = streamSource(itemID: targetID, mediaSource: ms, index: index, resume: resume, segments: segments)
+            return SourceSafety.isUnsafe(source) ? nil : source
         }
+    }
+
+    func playbackInfo(_ itemID: String) async -> [MediaSourceDTO]? {
+        struct Body: Encodable { var UserId: String; var MaxStreamingBitrate = 140_000_000; var AutoOpenLiveStream = true }
+        var r = request(.post, "Items/\(itemID)/PlaybackInfo", query: ["UserId": userID])
+        try? r.setJSONBody(Body(UserId: userID))
+        guard let info = try? await http.json(PlaybackInfoDTO.self, r), let sources = info.MediaSources, !sources.isEmpty else { return nil }
+        return sources
     }
 
     func streamSource(itemID: String, mediaSource ms: MediaSourceDTO, index: Int, resume: Double?, segments: [SkipSegment]) -> StreamSource {
         let video = ms.MediaStreams?.first { $0.kind == "Video" }
         let audio = ms.MediaStreams?.first { $0.kind == "Audio" && ($0.IsDefault ?? false) } ?? ms.MediaStreams?.first { $0.kind == "Audio" }
-        var traits = StreamParser.parse(ms.Name, ms.Path.map { ($0 as NSString).lastPathComponent })
+        // Add-on style names arrive flattened with " | "; restore their lines.
+        let name = ms.Name?.replacingOccurrences(of: " | ", with: "\n")
+        var traits = StreamParser.parse(name, Self.fileName(ms))
         if let h = video?.Height {
             traits.resolution = h >= 1600 ? .uhd4k : h >= 1300 ? .uhd1440 : h >= 900 ? .hd1080 : h >= 600 ? .hd720 : .sd
         }
@@ -270,10 +332,21 @@ public struct JellyfinClient: MediaServerClient {
         traits.isCached = true
 
         let directOK = config.kind == .emby || (ms.SupportsDirectPlay ?? true)
-        let container = (ms.Container ?? "mp4").components(separatedBy: ",").first ?? "mp4"
+        let container = ((ms.Container ?? "mp4").components(separatedBy: ",").first ?? "mp4").lowercased()
         let nativeContainers: Set<String> = ["mp4", "m4v", "mov", "m3u8", "ts"]
+        let audioCodecs = Set((ms.MediaStreams ?? []).filter { $0.kind == "Audio" }.compactMap { $0.Codec?.lowercased() })
+        let videoCodec = video?.Codec?.lowercased()
+        let playableAudio: Set<String> = ["aac", "ac3", "eac3", "mp3", "flac", "alac"]
+        let playableVideo: Set<String> = ["h264", "hevc", "h265", "av1"]
+        // Flow repackages MKV itself; the server's transcoder is only needed for codecs Apple can't decode.
+        let flowCanRemux = container == "mkv" || container == "webm"
+            ? (videoCodec.map(playableVideo.contains) ?? true) && (audioCodecs.isEmpty || !audioCodecs.isDisjoint(with: playableAudio))
+            : false
         let url: URL
-        if directOK && nativeContainers.contains(container.lowercased()) {
+        if let remote = Self.remoteURL(ms) {
+            // A remote file (debrid, .strm): play the origin directly.
+            url = remote
+        } else if directOK && (nativeContainers.contains(container) || flowCanRemux || ms.SupportsTranscoding == false) {
             url = streamURL(itemID: itemID, path: "Videos/\(itemID)/stream.\(container)", query: ["static": "true", "MediaSourceId": ms.Id])
         } else {
             // Ask the server to remux/transcode to HLS that AVPlayer can always play.
@@ -283,21 +356,30 @@ public struct JellyfinClient: MediaServerClient {
                 "MaxStreamingBitrate": "140000000", "AllowVideoStreamCopy": "true", "AllowAudioStreamCopy": "true",
             ])
         }
-        let label = [ms.Name, video?.DisplayTitle, audio?.DisplayTitle].compactMap { $0 }.joined(separator: "\n")
+        let label = [name, video?.DisplayTitle, audio?.DisplayTitle].compactMap { $0 }.joined(separator: "\n")
         return StreamSource(
             id: "\(config.id)#\(itemID)#\(ms.Id)",
             category: .mediaServers,
             providerID: config.id,
             providerName: config.name,
             title: label.isEmpty ? config.name : label,
-            detail: ms.Path.map { ($0 as NSString).lastPathComponent },
-            filename: ms.Path.map { ($0 as NSString).lastPathComponent },
+            detail: name,
+            filename: Self.fileName(ms),
             location: .url(url, headers: [:]),
             traits: traits,
             serverResumeSeconds: (resume ?? 0) > 0 ? resume : nil,
             segments: segments,
             bingeGroup: "\(config.id)-\(index)"
         )
+    }
+
+    /// The origin URL of a source the server only links to.
+    static func remoteURL(_ ms: MediaSourceDTO) -> URL? {
+        guard ms.IsRemote == true || ms.transport == "Http" else { return nil }
+        for candidate in [ms.DirectStreamUrl, ms.Path].compactMap({ $0 }) {
+            if let url = URL(string: candidate), let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http" { return url }
+        }
+        return nil
     }
 
     func streamURL(itemID: String, path: String, query: [String: String]) -> URL {
@@ -337,6 +419,13 @@ public struct JellyfinClient: MediaServerClient {
         var r = request(.post, path)
         try? r.setJSONBody(Body(ItemId: parts[1], MediaSourceId: parts[2], PositionTicks: Int64(report.positionSeconds * Self.ticksPerSecond), PlaySessionId: report.sessionID, IsPaused: report.state == .paused))
         _ = try? await http.data(r)
+    }
+
+    /// The file name, unless the path is an opaque playback link.
+    static func fileName(_ ms: MediaSourceDTO) -> String? {
+        guard let path = ms.Path else { return nil }
+        let last = (URL(string: path)?.lastPathComponent ?? (path as NSString).lastPathComponent).removingPercentEncoding ?? path
+        return last.contains(".") ? last : nil
     }
 
     static func languageName(_ code: String) -> String {

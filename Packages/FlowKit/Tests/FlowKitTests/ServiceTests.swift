@@ -341,3 +341,63 @@ final class SyncTests: XCTestCase {
         XCTAssertEqual(status.first { $0.domain == .playbackProgress }?.cloudCount, 1)
     }
 }
+
+final class SourceSafetyTests: XCTestCase {
+    func testRejectsExecutablesAndArchives() {
+        XCTAssertTrue(SourceSafety.isUnsafeFileName("Primetime 2026.1080p.HQ Pre.Multi.AAC 2.0.x264.exe"))
+        XCTAssertTrue(SourceSafety.isUnsafeFileName("Movie.2026.2160p.mkv.scr"))
+        XCTAssertTrue(SourceSafety.isUnsafeFileName("Movie.2026.1080p.WEB-DL.rar"))
+        XCTAssertFalse(SourceSafety.isUnsafeFileName("Lanterns.2026.S01E08.1080p.x265-ELiTE.mkv"))
+        XCTAssertFalse(SourceSafety.isUnsafeFileName("The Shawshank Redemption"))
+        XCTAssertFalse(SourceSafety.isUnsafeFileName("Mr. Robot"))
+    }
+}
+
+/// Runs only when FLOW_JF_URL, FLOW_JF_USER and FLOW_JF_PASS are set: exercises the Jellyfin client against a real server.
+final class LiveJellyfinTests: XCTestCase {
+    func testAgainstServer() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let raw = env["FLOW_JF_URL"], let base = URL(string: raw), let user = env["FLOW_JF_USER"], let pass = env["FLOW_JF_PASS"] else {
+            throw XCTSkip("no live server")
+        }
+        let config = try await JellyfinClient.signIn(kind: .jellyfin, baseURL: base, username: user, password: pass, deviceID: "flow-live-test", deviceName: "Flow Tests")
+        let client = JellyfinClient(config: config, deviceID: "flow-live-test")
+        print("server:", config.name, "remote:", config.isRemote)
+        let libraries = try await client.libraries()
+        print("libraries:", libraries.map { "\($0.name) (\($0.type.map { "\($0)" } ?? "mixed"))" })
+        let catalogue = try await client.catalogue()
+        print("catalogue:", catalogue.count, "movies:", catalogue.filter { $0.type == .movie }.count, "shows:", catalogue.filter { $0.type == .show }.count)
+        XCTAssertFalse(catalogue.isEmpty, "library-wide listing falls back to per-library queries")
+        XCTAssertFalse(catalogue.contains { SourceSafety.isUnsafeFileName($0.title) })
+        let recent = try await client.recentlyAdded(limit: 10)
+        print("recently added:", recent.map(\.title))
+        let found = try await client.search("shawshank")
+        print("search:", found.map { "\($0.title) \($0.year.map(String.init) ?? "") \($0.ids.imdb ?? "")" })
+
+        let movie = MediaItem(type: .movie, ids: ExternalIDs(tmdb: 278, imdb: "tt0111161"), title: "The Shawshank Redemption", releaseDate: FlowDate.parse("1994-09-23"))
+        let sources = try await client.sources(for: PlaybackRequest(item: movie))
+        print("movie sources:", sources.count)
+        for s in sources.prefix(9) {
+            let host = s.location.playableURL?.host ?? "-"
+            print("  ", s.traits.resolution.label, s.traits.hdr, s.traits.audioCodec ?? "-", s.traits.sizeBytes.map { String(format: "%.1f GB", Double($0) / 1e9) } ?? "-", "→", host)
+        }
+        XCTAssertFalse(sources.isEmpty)
+
+        let show = MediaItem(type: .show, ids: ExternalIDs(tmdb: 1396, imdb: "tt0903747"), title: "Breaking Bad", releaseDate: FlowDate.parse("2008-01-20"))
+        let episode = Episode(showTMDB: 1396, season: 1, number: 1, title: "Pilot")
+        let episodeSources = try await client.sources(for: PlaybackRequest(item: show, episode: episode))
+        print("episode sources:", episodeSources.count, episodeSources.prefix(3).map { "\($0.traits.resolution.label) → \($0.location.playableURL?.host ?? "-")" })
+    }
+}
+
+final class JellyfinNamingTests: XCTestCase {
+    func testFileNamedItemsGetCleanTitles() {
+        let config = MediaServerConfig(kind: .jellyfin, name: "Test", baseURL: URL(string: "https://jf.example")!, userID: "u", accessToken: "t")
+        let client = JellyfinClient(config: config, deviceID: "d")
+        let named = JellyfinClient.ItemDTO(Id: "1", Name: "Resident Evil (2026) WEBDL-1080p.mp4", kind: "Movie")
+        let item = client.serverItem(named)
+        XCTAssertEqual(item?.title, "Resident Evil")
+        XCTAssertEqual(item?.year, 2026)
+        XCTAssertNil(client.serverItem(JellyfinClient.ItemDTO(Id: "2", Name: "Primetime 2026.1080p.HQ Pre.Multi.AAC 2.0.x264.exe", kind: "Movie")))
+    }
+}
