@@ -62,6 +62,9 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private var skippedSegments = Set<Double>()
     @ObservationIgnored private var countdownTask: Task<Void, Never>?
     @ObservationIgnored private var didStart = false
+    /// Where to pick up after reloading a stream that failed mid-playback.
+    @ObservationIgnored private var recoverAt: Double?
+    @ObservationIgnored private var recoveries = 0
     @ObservationIgnored private let sessionID = UUID().uuidString
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var hlsToken: String?
@@ -513,6 +516,10 @@ final class PlaybackSession: Identifiable {
             if case .connecting = phase { phase = .connecting(0.7) }
             let seconds = item.duration.seconds
             if seconds.isFinite { duration = seconds }
+            if let recoverAt {
+                self.recoverAt = nil
+                player.seek(to: CMTime(seconds: recoverAt, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
+            }
             if let resumeAt, !didStart {
                 self.resumeAt = nil
                 // A resume point from another cut or source can lie beyond this stream's end;
@@ -528,6 +535,16 @@ final class PlaybackSession: Identifiable {
                 }
             }
         case .failed:
+            // A dropped connection mid-film: reconnect where it stopped, a couple of times, before giving up.
+            if didStart, recoveries < 2 {
+                recoveries += 1
+                show(notice: "Connection lost. Reconnecting…")
+                Task { [weak self] in
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    self?.retry()
+                }
+                return
+            }
             fail(Self.describe(item.error))
         default: break
         }
@@ -651,6 +668,8 @@ final class PlaybackSession: Identifiable {
             subtitle = nil
             subtitleText = nil
             currentTime = 0
+            recoverAt = nil
+            recoveries = 0
             duration = 0
             load(source)
             Task { await loadExtras() }
@@ -756,7 +775,11 @@ final class PlaybackSession: Identifiable {
         endObserver = nil
     }
 
-    func retry() { load(source) }
+    /// Reloads the stream, continuing from the current position if playback had started.
+    func retry() {
+        if didStart, currentTime > 1 { recoverAt = currentTime }
+        load(source)
+    }
 
     /// AVFoundation's errors are terse; say what probably happened.
     static func describe(_ error: Error?) -> String {

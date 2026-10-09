@@ -93,8 +93,9 @@ public actor HTTPByteSource: ByteSource {
                 attempt += 1
                 // A resolved link can expire; start again from the original.
                 if resolvedURL != nil { resolvedURL = nil; request.url = url }
-                if attempt >= 3 { throw error }
-                try await Task.sleep(nanoseconds: UInt64(attempt) * 600_000_000)
+                // About four seconds of patience in all: enough to ride out a Wi-Fi handover.
+                if attempt >= 4 { throw error }
+                try await Task.sleep(nanoseconds: 500_000_000 << UInt64(attempt - 1))
             }
         }
     }
