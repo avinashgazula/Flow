@@ -9,6 +9,6 @@ let package = Package(
     ],
     targets: [
         .target(name: "FlowKit"),
-        .testTarget(name: "FlowKitTests", dependencies: ["FlowKit"]),
+        .testTarget(name: "FlowKitTests", dependencies: ["FlowKit"], resources: [.copy("Resources")]),
     ]
 )
