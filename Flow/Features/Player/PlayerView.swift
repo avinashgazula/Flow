@@ -51,6 +51,8 @@ struct PlayerView: View {
         #if os(iOS)
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
+        .onAppear { OrientationLock.landscape() }
+        .onDisappear { OrientationLock.restore() }
         #endif
     }
 
@@ -356,7 +358,7 @@ struct IOSPlayerControls: View {
                 HStack(spacing: 14) {
                     CircleButton(systemImage: "xmark") { session.stop() }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(session.title).font(.system(size: 16, weight: .semibold)).lineLimit(1)
+                        Text(session.title).font(.system(size: 16, weight: .semibold)).lineLimit(2).minimumScaleFactor(0.8)
                         if let line = session.subtitleLine {
                             Text(line).font(.system(.caption, weight: .medium)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
                         }
@@ -527,3 +529,18 @@ enum TimeFormat {
         minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
     }
 }
+
+#if os(iOS)
+/// iPhone plays video in landscape, then hands the device back the way it was.
+enum OrientationLock {
+    static func landscape() {
+        guard Platform.isPhone, let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else { return }
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscape)) { _ in }
+    }
+
+    static func restore() {
+        guard Platform.isPhone, let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else { return }
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait)) { _ in }
+    }
+}
+#endif

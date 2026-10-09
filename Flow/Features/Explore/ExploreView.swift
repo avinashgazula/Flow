@@ -25,6 +25,17 @@ struct ExploreView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal, Platform.horizontalPadding)
 
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Space.xs) {
+                        genreChip(nil, title: "All")
+                        ForEach(Self.quickGenres(type), id: \.self) { id in
+                            genreChip(id, title: TMDBGenres.name(for: id, type: type))
+                        }
+                    }
+                    .padding(.horizontal, Theme.Space.gutter)
+                }
+                .scrollClipDisabled()
+
                 HStack {
                     Text(isFiltered ? "Filtered · \(query.sort.title)" : "Trending Now")
                         .font(.subheadline).foregroundStyle(.secondary)
@@ -61,6 +72,27 @@ struct ExploreView: View {
         }
         .onChange(of: type) { _, newType in query = DiscoverQuery(type: newType) }
         .task(id: "\(query.hashValue)-\(model.contentVersion)") { await reload() }
+    }
+
+    static func quickGenres(_ type: MediaType) -> [Int] {
+        type == .movie ? [28, 35, 18, 878, 27, 53, 16, 10749, 99, 14, 80, 12] : [18, 35, 80, 10765, 10759, 16, 9648, 99, 10764, 10751]
+    }
+
+    private func genreChip(_ id: Int?, title: String) -> some View {
+        let selected = id.map { query.genres == [$0] } ?? query.genres.isEmpty
+        return Button {
+            withAnimation(Theme.Motion.snappy) {
+                if let id { query.genres = [id] } else { query.genres = [] }
+            }
+        } label: {
+            Text(title)
+                .font(.system(.subheadline, weight: .semibold))
+                .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs + 1)
+                .foregroundStyle(selected ? Color.black : Color.white)
+                .background(selected ? Color.white : Theme.Palette.surface, in: Capsule())
+                .overlay(Capsule().strokeBorder(Theme.Palette.hairline, lineWidth: selected ? 0 : 1))
+        }
+        .buttonStyle(CardButtonStyle())
     }
 
     private func reload() async {
