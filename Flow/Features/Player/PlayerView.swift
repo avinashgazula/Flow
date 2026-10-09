@@ -456,6 +456,9 @@ struct Scrubber: View {
     let current: Double
     let duration: Double
     var buffered: Double = 0
+    /// A picture of the frame at `previewTime`, shown above the track while scrubbing.
+    var preview: CGImage? = nil
+    var previewTime: Double? = nil
     let onScrub: (Double?) -> Void
     let onCommit: (Double) -> Void
 
@@ -473,6 +476,18 @@ struct Scrubber: View {
                 }
                 .frame(height: dragging == nil ? 4 : 9)
                 .frame(maxHeight: .infinity)
+                .overlay(alignment: .topLeading) {
+                    if let preview, let time = dragging ?? previewTime, duration > 0 {
+                        ScrubPreviewCard(image: preview, time: time)
+                            .alignmentGuide(.leading) { card in
+                                let x = width * min(1, time / duration)
+                                return card.width / 2 - min(max(x, card.width / 2), width - card.width / 2)
+                            }
+                            .alignmentGuide(.top) { card in card.height + 14 }
+                            .allowsHitTesting(false)
+                            .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .bottom)))
+                    }
+                }
                 .contentShape(Rectangle())
                 .gesture(
                     DragGesture(minimumDistance: 0)
@@ -508,6 +523,28 @@ struct Scrubber: View {
     }
 }
 
+/// The frame under the finger while scrubbing: a small picture with its time.
+struct ScrubPreviewCard: View {
+    let image: CGImage
+    let time: Double
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(decorative: image, scale: 1)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: Platform.isPhone ? 168 : 220)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.white.opacity(0.35), lineWidth: 1))
+                .shadow(color: .black.opacity(0.5), radius: 14, y: 6)
+            Text(TimeFormat.clock(time))
+                .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.6), radius: 3)
+        }
+    }
+}
+
 #endif
 
 #if os(iOS)
@@ -526,6 +563,9 @@ struct IOSPlayerControls: View {
     @State private var legibleOptions: [AVMediaSelectionOption] = []
     @State private var speed = 1.0
     @State private var seekFlash: SeekFlash?
+    @State private var preview: CGImage?
+    @State private var previewTime: Double?
+    @State private var previewTask: Task<Void, Never>?
 
     var body: some View {
         ZStack {
@@ -571,6 +611,11 @@ struct IOSPlayerControls: View {
         .animation(.easeInOut(duration: 0.2), value: visible)
         .onAppear { scheduleHide() }
         .task(id: session.request.episode?.id ?? session.request.item.id) { await loadMediaOptions() }
+        .onChange(of: session.tourScrubPreview) { _, time in
+            hideTask?.cancel()
+            visible = true
+            updatePreview(time)
+        }
         .onReceive(NotificationCenter.default.publisher(for: AVPlayer.rateDidChangeNotification, object: session.player)) { _ in
             isPlaying = session.player.rate > 0
         }
@@ -688,9 +733,11 @@ struct IOSPlayerControls: View {
                 Spacer()
 
                 Scrubber(current: session.currentTime, duration: session.duration, buffered: buffered,
+                         preview: preview, previewTime: previewTime,
                          onScrub: { value in
                              scrubbing = value
                              if value != nil { hideTask?.cancel() } else { scheduleHide() }
+                             updatePreview(value)
                          },
                          onCommit: { target in
                              session.player.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
@@ -698,6 +745,22 @@ struct IOSPlayerControls: View {
                     .padding(.horizontal, 24)
                     .padding(.bottom, 14)
             }
+        }
+    }
+
+    /// Fetches the scrubbing preview for `time`, keeping the last picture until the new one is ready.
+    private func updatePreview(_ time: Double?) {
+        previewTask?.cancel()
+        guard let time, let previewer = session.scrubPreviewer else {
+            withAnimation(Theme.Motion.snappy) { preview = nil }
+            previewTime = nil
+            return
+        }
+        previewTime = time
+        previewTask = Task {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            guard !Task.isCancelled, let image = await previewer.image(at: time), !Task.isCancelled else { return }
+            withAnimation(Theme.Motion.snappy) { preview = image }
         }
     }
 

@@ -365,3 +365,20 @@ final class TrickPlayTests: XCTestCase {
         XCTAssertNil(MatroskaRemuxer.firstIncompleteChildEnd(full))
     }
 }
+
+final class PreviewFrameTests: XCTestCase {
+    func testPreviewFrameIsTheKeyframeBefore() async throws {
+        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("avc-aac-srt")), targetSegment: 2)
+        let frames = remuxer.trickPlayFrames
+        XCTAssertGreaterThanOrEqual(frames.count, 2)
+        let late = Double(frames[1].time) / 1e9 + 0.5
+        XCTAssertEqual(remuxer.trickPlayIndex(at: late), 1)
+        XCTAssertEqual(remuxer.trickPlayIndex(at: 0), 0)
+        let frame = try await remuxer.previewFrame(at: late)
+        XCTAssertEqual(frame?.time ?? -1, Double(frames[1].time) / 1e9, accuracy: 0.05)
+        // Length-prefixed NAL units: the first unit's length fits inside the picture.
+        let data = try XCTUnwrap(frame?.data)
+        let first = Int(data[0]) << 24 | Int(data[1]) << 16 | Int(data[2]) << 8 | Int(data[3])
+        XCTAssertLessThanOrEqual(first + 4, data.count)
+    }
+}

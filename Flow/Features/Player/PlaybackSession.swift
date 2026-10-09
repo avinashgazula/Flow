@@ -52,6 +52,12 @@ final class PlaybackSession: Identifiable {
     private(set) var selectedBitmapTrack: Int?
     /// The picture subtitle on screen now, placed in normalised video coordinates.
     var bitmapSubtitle: BitmapOverlay?
+    #if os(iOS)
+    /// Scrubbing previews for remuxed MKVs.
+    @ObservationIgnored private(set) var scrubPreviewer: ScrubPreviewer?
+    /// Set by the screenshot tour to show a scrubbing preview without a finger on the screen.
+    var tourScrubPreview: Double?
+    #endif
 
     @ObservationIgnored private weak var model: AppModel?
     @ObservationIgnored private var resumeAt: Double?
@@ -195,6 +201,9 @@ final class PlaybackSession: Identifiable {
             hlsToken = token
             usesRemux = true
             self.remuxer = remuxer
+            #if os(iOS)
+            scrubPreviewer = ScrubPreviewer(remuxer: remuxer)
+            #endif
             configureBitmapSubtitles(remuxer)
             chapters = remuxer.header.chapters.map { PlayerChapter(title: $0.title, start: Double($0.start) / 1e9) }
             if let first = skippedAudio.first(where: { !$0.track.isCommentary }), let playing = remuxer.audio.first {
@@ -391,6 +400,9 @@ final class PlaybackSession: Identifiable {
     private func releaseRemux() {
         if let hlsToken { LocalHLSServer.shared.unregister(hlsToken) }
         hlsToken = nil
+        #if os(iOS)
+        scrubPreviewer = nil
+        #endif
     }
 
     // MARK: Picture subtitles

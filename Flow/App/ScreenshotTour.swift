@@ -33,6 +33,13 @@ enum ScreenshotTour {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first(where: { $0.id == DemoSourceProvider.matroskaSampleID }) {
                     m.startPlayback(source, request: PlaybackRequest(item: duneItem))
+                    #if os(iOS)
+                    // Show a scrubbing preview, as if a finger were on the scrubber.
+                    Task {
+                        try? await Task.sleep(nanoseconds: 2_500_000_000)
+                        m.activePlayback?.tourScrubPreview = 7
+                    }
+                    #endif
                 } else {
                     log("no bundled MKV sample")
                 }

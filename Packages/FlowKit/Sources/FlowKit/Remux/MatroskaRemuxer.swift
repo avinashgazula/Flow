@@ -455,6 +455,28 @@ public actor MatroskaRemuxer {
     /// One keyframe as a fragment: reads its cluster's opening bytes, growing the read only when the
     /// keyframe runs past them.
     public func iframeSegment(index: Int) async throws -> [UInt8]? {
+        guard let v = video, let keyframe = try await keyframe(index: index) else { return nil }
+        let data = keyframe.frames.count == 1 ? keyframe.frames[0] : keyframe.frames.flatMap { $0 }
+        let frameLength = UInt64(v.source.defaultDuration.map { $0 * 9 / 100_000 } ?? 3750)
+        let sample = MP4.Sample(data: data, duration: UInt32(clamping: frameLength), compositionOffset: Int32(clamping: presentationDelay * 9 / 100_000), isSync: true)
+        return MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: UInt64(max(0, keyframe.time) * 9 / 100_000), samples: [sample], isVideo: true)
+    }
+
+    /// The keyframe nearest before `seconds`, as one coded picture (length-prefixed NAL units for
+    /// H.264 and HEVC), for scrubbing previews. Its time is in seconds.
+    public func previewFrame(at seconds: Double) async throws -> (data: [UInt8], time: Double)? {
+        guard let index = trickPlayIndex(at: seconds), let block = try await keyframe(index: index) else { return nil }
+        return (block.frames.count == 1 ? block.frames[0] : block.frames.flatMap { $0 }, Double(block.time) / 1e9)
+    }
+
+    /// The index of the trick-play frame shown for `seconds`.
+    public nonisolated func trickPlayIndex(at seconds: Double) -> Int? {
+        guard !trickPlayFrames.isEmpty else { return nil }
+        let target = Int64(seconds * 1e9)
+        return (trickPlayFrames.lastIndex { $0.time <= target }) ?? 0
+    }
+
+    private func keyframe(index: Int) async throws -> MatroskaBlock? {
         guard let v = video, trickPlayFrames.indices.contains(index) else { return nil }
         let cue = trickPlayFrames[index]
         let start = header.segmentDataStart + cue.clusterPosition
@@ -468,11 +490,7 @@ public actor MatroskaRemuxer {
             guard let needed = Self.firstIncompleteChildEnd(bytes), Int64(needed) > length, needed < 32 * 1024 * 1024 else { break }
             length = Int64(needed)
         }
-        guard let keyframe else { return nil }
-        let data = keyframe.frames.count == 1 ? keyframe.frames[0] : keyframe.frames.flatMap { $0 }
-        let frameLength = UInt64(v.source.defaultDuration.map { $0 * 9 / 100_000 } ?? 3750)
-        let sample = MP4.Sample(data: data, duration: UInt32(clamping: frameLength), compositionOffset: Int32(clamping: presentationDelay * 9 / 100_000), isSync: true)
-        return MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: UInt64(max(0, keyframe.time) * 9 / 100_000), samples: [sample], isVideo: true)
+        return keyframe
     }
 
     /// Where the first cluster child that `bytes` cuts off would end, so a re-read can include it.

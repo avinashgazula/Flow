@@ -19,7 +19,7 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
 - **MKV playback**: Matroska files play in Apple's own player. Flow remuxes them on the device, without re-encoding, into HLS served from a loopback address.
   - Codecs: H.264, HEVC (including HDR10 and Dolby Vision), AV1, AAC, Dolby Digital (Plus), FLAC and MP3.
   - Every audio track, text subtitles and chapters come through, plus Blu-ray and DVD picture subtitles (PGS and VobSub), which Flow draws itself.
-  - Scrubbing thumbnails on Apple TV.
+  - Scrubbing previews on Apple TV, iPhone and iPad.
   - Each file's index is cached, so reopening it is quick.
   - A file whose soundtrack is DTS or TrueHD falls back to another audio track, or to the next source.
 - **Sync**: Trakt or Simkl device sign-in, iCloud key-value sync, and Share/Import Setup by file, link or QR code.
