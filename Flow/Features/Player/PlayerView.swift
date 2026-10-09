@@ -528,12 +528,15 @@ struct ScrubPreviewCard: View {
     let image: CGImage
     let time: Double
 
+    private var width: CGFloat { Platform.isPhone ? 168 : 220 }
+
     var body: some View {
         VStack(spacing: 6) {
+            // An explicit size: the card lives in the scrubber track's overlay, which only offers the
+            // track's own height, so a resizable picture would shrink to nothing.
             Image(decorative: image, scale: 1)
                 .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: Platform.isPhone ? 168 : 220)
+                .frame(width: width, height: width * CGFloat(image.height) / CGFloat(max(image.width, 1)))
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.white.opacity(0.35), lineWidth: 1))
                 .shadow(color: .black.opacity(0.5), radius: 14, y: 6)
@@ -542,6 +545,7 @@ struct ScrubPreviewCard: View {
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.6), radius: 3)
         }
+        .fixedSize()
     }
 }
 
