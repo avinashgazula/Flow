@@ -223,7 +223,8 @@ final class PlaybackSession: Identifiable {
         do {
             let remuxer = try await MatroskaRemuxer.open(reader ?? Self.byteSource(url, headers: headers),
                                                          preferredAudioLanguage: preferredAudioLanguage, headerCache: .shared, compatible: remuxCompatible,
-                                                         dolbyVision: model?.settings.playback.neverUseDolbyVision != true)
+                                                         dolbyVision: model?.settings.playback.neverUseDolbyVision != true,
+                                                         convertProfile7: model?.settings.playback.convertDolbyVisionProfile7 ?? true)
             guard !Task.isCancelled else { return }
             if remuxer.video?.source.codecID == "V_AV1", !Platform.decodesAV1 {
                 fail("This video is AV1, which this \(Platform.deviceKind) can't decode. Try another source.")

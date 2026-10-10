@@ -21,6 +21,10 @@ public actor MatroskaRemuxer {
         /// Dolby tracks: how many dB quieter than mastered the decoder plays them (31 minus the declared
         /// dialogue level), which `setLoudnessBoost` can give back.
         public var loudnessHeadroom: Int?
+        /// Dolby Vision profile 7 played as 8.1: each sample's RPUs are rewritten and its enhancement layer dropped.
+        public var convertsToProfile81 = false
+        /// Bytes in each NAL unit's length prefix (from the HEVC configuration).
+        var nalLengthSize = 4
 
         public var id: Int { source.number }
         public var language: String { source.language }
@@ -86,7 +90,8 @@ public actor MatroskaRemuxer {
     /// `compatible` drops the extras some players refuse: the Dolby Vision configuration (the HDR10 base
     /// layer still plays) and Atmos signalling (the 5.1 bed still plays). Flow retries with it when a stream fails.
     public static func open(_ source: ByteSource, targetSegment: Double? = nil, preferredAudioLanguage: String? = nil,
-                            headerCache: MatroskaHeaderCache? = nil, compatible: Bool = false, dolbyVision: Bool = true) async throws -> MatroskaRemuxer {
+                            headerCache: MatroskaHeaderCache? = nil, compatible: Bool = false, dolbyVision: Bool = true,
+                            convertProfile7: Bool = false) async throws -> MatroskaRemuxer {
         let header = try await MatroskaReader.readHeader(source, cache: headerCache)
         guard let firstCluster = header.firstClusterPosition else { throw MatroskaError.malformed("no clusters") }
 
@@ -103,7 +108,8 @@ public actor MatroskaRemuxer {
         var skipped: [Skipped] = []
         var bitmaps: [OutputTrack] = []
         for track in header.tracks where track.isEnabled {
-            switch Self.output(for: track, firstFrame: firstFrames[track.number], compatible: compatible, dolbyVision: dolbyVision) {
+            switch Self.output(for: track, firstFrame: firstFrames[track.number], compatible: compatible, dolbyVision: dolbyVision,
+                               convertProfile7: convertProfile7) {
             case .success(let out):
                 switch out.role {
                 case .video where video == nil: video = out
@@ -237,13 +243,15 @@ public actor MatroskaRemuxer {
     struct Unsupported: Error { let message: String }
 
     /// `dolbyVision` false plays Dolby Vision as its HDR10 base layer (profile 5, which has none, keeps it).
-    static func output(for t: MatroskaTrack, firstFrame: [UInt8]?, compatible: Bool = false, dolbyVision: Bool = true) -> Result<OutputTrack, Unsupported> {
+    /// `convertProfile7` plays UHD Blu-ray Dolby Vision (profile 7) as profile 8.1 (see `DolbyVisionRPU`).
+    static func output(for t: MatroskaTrack, firstFrame: [UInt8]?, compatible: Bool = false, dolbyVision: Bool = true,
+                       convertProfile7: Bool = false) -> Result<OutputTrack, Unsupported> {
         if t.isEncrypted { return .failure(Unsupported(message: "Encrypted track")) }
         if t.isCompressedUnsupported { return .failure(Unsupported(message: "Compressed track (zlib)")) }
         let label = trackLabel(t)
         switch t.kind {
         case .video:
-            return videoOutput(t, label: label, keepDolbyVision: dolbyVision && !compatible)
+            return videoOutput(t, label: label, keepDolbyVision: dolbyVision && !compatible, convertProfile7: convertProfile7)
         case .audio:
             return audioOutput(t, firstFrame: firstFrame, label: label)
         case .subtitle:
@@ -263,7 +271,7 @@ public actor MatroskaRemuxer {
         }
     }
 
-    private static func videoOutput(_ t: MatroskaTrack, label: String, keepDolbyVision: Bool) -> Result<OutputTrack, Unsupported> {
+    private static func videoOutput(_ t: MatroskaTrack, label: String, keepDolbyVision: Bool, convertProfile7: Bool) -> Result<OutputTrack, Unsupported> {
         var children: [UInt8] = []
         var type: String
         var codecString: String
@@ -311,11 +319,26 @@ public actor MatroskaRemuxer {
                 codecString = String(format: "dvh1.%02d.%02d", profile, level)
             }
         }
+        var converts = false
+        if keepDolbyVision, convertProfile7, codec == .hevc, let dv = t.dolbyVision, dv.count >= 5, dv[2] >> 1 == 7 {
+            // Profile 8 at the same level: RPU and base layer present, no enhancement layer, HDR10-compatible base.
+            let level = Int((dv[2] & 1) << 5 | dv[3] >> 3)
+            var record = [UInt8](repeating: 0, count: 24)
+            record[0] = 1
+            record[2] = UInt8(8 << 1 | (level >> 5))
+            record[3] = UInt8((level & 0x1F) << 3 | 1 << 2 | 1)
+            record[4] = 1 << 4
+            children += MP4.box("dvvC", record)
+            converts = true
+        }
         if let dw = t.displayWidth, let dh = t.displayHeight, dw > 0, dh > 0, t.width > 0, t.height > 0, dw * t.height != dh * t.width {
             children += MP4.pasp(h: dw * t.height, v: dh * t.width)
         }
         let entry = MP4.visualSampleEntry(type, width: t.width, height: t.height, children: children)
-        return .success(OutputTrack(role: .video, source: t, codecString: codecString, timescale: 90000, label: label, sampleEntry: entry, frameSamples: 0, codec: codec))
+        var out = OutputTrack(role: .video, source: t, codecString: codecString, timescale: 90000, label: label, sampleEntry: entry, frameSamples: 0, codec: codec)
+        out.convertsToProfile81 = converts
+        if codec == .hevc { out.nalLengthSize = Int(t.codecPrivate[21] & 3) + 1 }
+        return .success(out)
     }
 
     private static func audioOutput(_ t: MatroskaTrack, firstFrame: [UInt8]?, label: String) -> Result<OutputTrack, Unsupported> {
@@ -433,15 +456,16 @@ public actor MatroskaRemuxer {
             let fps = 1e9 / Double(frame)
             parts.append((abs(fps - fps.rounded()) < 0.01 ? String(Int(fps.rounded())) : String(format: "%.3f", fps)) + " fps")
         }
-        parts.append(Self.dynamicRange(v))
+        parts.append(Self.dynamicRange(v, convertedTo81: video?.convertsToProfile81 == true))
         return parts.joined(separator: " · ")
     }
 
-    static func dynamicRange(_ v: MatroskaTrack) -> String {
+    static func dynamicRange(_ v: MatroskaTrack, convertedTo81: Bool = false) -> String {
         if let dv = v.dolbyVision, dv.count >= 5 {
             let profile = Int(dv[2] >> 1)
             let compatibility = Int(dv[4] >> 4)
             let name = compatibility > 0 ? "Dolby Vision \(profile).\(compatibility)" : "Dolby Vision \(profile)"
+            if convertedTo81 { return name + " (plays as 8.1)" }
             return [5, 8].contains(profile) ? name : name + " (plays as HDR10)"
         }
         if v.colour?.isPQ == true { return v.colour?.maxCLL != nil || v.colour?.mastering != nil ? "HDR10" : "PQ" }
@@ -546,7 +570,8 @@ public actor MatroskaRemuxer {
     /// keyframe runs past them.
     public func iframeSegment(index: Int) async throws -> [UInt8]? {
         guard let v = video, let keyframe = try await keyframe(index: index) else { return nil }
-        let data = keyframe.frames.count == 1 ? keyframe.frames[0] : keyframe.frames.flatMap { $0 }
+        var data = keyframe.frames.count == 1 ? keyframe.frames[0] : keyframe.frames.flatMap { $0 }
+        if v.convertsToProfile81 { data = DolbyVisionRPU.profile81Sample(data, lengthSize: v.nalLengthSize) }
         let frameLength = UInt64(v.source.defaultDuration.map { $0 * 9 / 100_000 } ?? 3750)
         let sample = MP4.Sample(data: data, duration: UInt32(clamping: frameLength), compositionOffset: Int32(clamping: presentationDelay * 9 / 100_000), isSync: true)
         return MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: UInt64(max(0, keyframe.time) * 9 / 100_000), samples: [sample], isVideo: true)
@@ -605,11 +630,12 @@ public actor MatroskaRemuxer {
     }
 
     /// What a Dolby Vision stream's base layer is, from its compatibility ID, for files whose Matroska
-    /// header says nothing about colour (common in WEB-DLs): 1 is HDR10, 2 SDR (BT.709), 4 HLG.
+    /// header says nothing about colour (common in WEB-DLs): 1 is HDR10, 2 SDR (BT.709), 4 HLG, 6 UHD Blu-ray HDR10.
     static func colourFromDolbyVision(_ dv: [UInt8]?) -> MatroskaColour? {
         guard let dv, dv.count >= 5 else { return nil }
         switch Int(dv[4] >> 4) {
-        case 1: return MatroskaColour(matrix: 9, transfer: 16, primaries: 9)
+        // 6 is UHD Blu-ray's HDR10 base (profile 7).
+        case 1, 6: return MatroskaColour(matrix: 9, transfer: 16, primaries: 9)
         case 2: return MatroskaColour(matrix: 1, transfer: 1, primaries: 1)
         case 4: return MatroskaColour(matrix: 9, transfer: 18, primaries: 9)
         default: return nil
@@ -707,7 +733,8 @@ public actor MatroskaRemuxer {
         samples.reserveCapacity(chosen.count)
         for (i, block) in chosen.enumerated() {
             let duration = i + 1 < dts.count ? dts[i + 1] - dts[i] : fallback
-            samples.append(MP4.Sample(data: block.frames.count == 1 ? block.frames[0] : block.frames.flatMap { $0 },
+            let data = block.frames.count == 1 ? block.frames[0] : block.frames.flatMap { $0 }
+            samples.append(MP4.Sample(data: track.convertsToProfile81 ? DolbyVisionRPU.profile81Sample(data, lengthSize: track.nalLengthSize) : data,
                                       duration: UInt32(clamping: max(1, duration)),
                                       compositionOffset: Int32(clamping: max(0, pts[i] - dts[i])),
                                       isSync: block.isKeyframe))
