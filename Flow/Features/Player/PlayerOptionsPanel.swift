@@ -25,7 +25,7 @@ struct PlayerMediaOptions {
     let setSpeed: (Double) -> Void
 
     /// "Off", or the picture, embedded or downloaded subtitle on screen.
-    func subtitleSummary(for session: PlaybackSession) -> String {
+    @MainActor func subtitleSummary(for session: PlaybackSession) -> String {
         if let id = session.selectedBitmapTrack, let track = session.bitmapTracks.first(where: { $0.id == id }) { return track.title }
         if let option = legibleSelection { return option.title }
         if let track = session.subtitleTrack { return track.languageName }
