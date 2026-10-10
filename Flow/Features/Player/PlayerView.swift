@@ -21,7 +21,8 @@ struct PlayerView: View {
                     .onTapGesture { session.showsInfo = false }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .padding(.top, Platform.isPhone ? 64 : 76)
-                    .padding(.leading, 20)
+                    // Clear of the Dynamic Island, which sits on a landscape iPhone's leading edge.
+                    .padding(.leading, Platform.isPhone ? 64 : 20)
                     .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .topLeading)))
                     .zIndex(4)
             }
@@ -489,12 +490,10 @@ struct Scrubber: View {
                 .frame(maxHeight: .infinity)
                 .overlay(alignment: .topLeading) {
                     if let preview, let time = dragging ?? previewTime, duration > 0 {
+                        let card = ScrubPreviewCard.size(for: preview)
+                        let x = min(max(width * min(1, time / duration), card.width / 2), width - card.width / 2)
                         ScrubPreviewCard(image: preview, time: time)
-                            .alignmentGuide(.leading) { card in
-                                let x = width * min(1, time / duration)
-                                return card.width / 2 - min(max(x, card.width / 2), width - card.width / 2)
-                            }
-                            .alignmentGuide(.top) { card in card.height + 14 }
+                            .offset(x: x - card.width / 2, y: -(card.height + 14))
                             .allowsHitTesting(false)
                             .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: .bottom)))
                     }
@@ -539,7 +538,13 @@ struct ScrubPreviewCard: View {
     let image: CGImage
     let time: Double
 
-    private var width: CGFloat { Platform.isPhone ? 168 : 220 }
+    private static var width: CGFloat { Platform.isPhone ? 168 : 220 }
+    private var width: CGFloat { Self.width }
+
+    /// The card's size: the picture plus the time beneath it.
+    static func size(for image: CGImage) -> CGSize {
+        CGSize(width: width, height: width * CGFloat(image.height) / CGFloat(max(image.width, 1)) + 6 + 18)
+    }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -555,6 +560,7 @@ struct ScrubPreviewCard: View {
                 .font(.system(size: 13, weight: .semibold).monospacedDigit())
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.6), radius: 3)
+                .frame(height: 18)
         }
         .fixedSize()
     }
