@@ -86,7 +86,7 @@ public actor MatroskaRemuxer {
     /// `compatible` drops the extras some players refuse: the Dolby Vision configuration (the HDR10 base
     /// layer still plays) and Atmos signalling (the 5.1 bed still plays). Flow retries with it when a stream fails.
     public static func open(_ source: ByteSource, targetSegment: Double? = nil, preferredAudioLanguage: String? = nil,
-                            headerCache: MatroskaHeaderCache? = nil, compatible: Bool = false) async throws -> MatroskaRemuxer {
+                            headerCache: MatroskaHeaderCache? = nil, compatible: Bool = false, dolbyVision: Bool = true) async throws -> MatroskaRemuxer {
         let header = try await MatroskaReader.readHeader(source, cache: headerCache)
         guard let firstCluster = header.firstClusterPosition else { throw MatroskaError.malformed("no clusters") }
 
@@ -103,7 +103,7 @@ public actor MatroskaRemuxer {
         var skipped: [Skipped] = []
         var bitmaps: [OutputTrack] = []
         for track in header.tracks where track.isEnabled {
-            switch Self.output(for: track, firstFrame: firstFrames[track.number], compatible: compatible) {
+            switch Self.output(for: track, firstFrame: firstFrames[track.number], compatible: compatible, dolbyVision: dolbyVision) {
             case .success(let out):
                 switch out.role {
                 case .video where video == nil: video = out
@@ -236,13 +236,14 @@ public actor MatroskaRemuxer {
 
     struct Unsupported: Error { let message: String }
 
-    static func output(for t: MatroskaTrack, firstFrame: [UInt8]?, compatible: Bool = false) -> Result<OutputTrack, Unsupported> {
+    /// `dolbyVision` false plays Dolby Vision as its HDR10 base layer (profile 5, which has none, keeps it).
+    static func output(for t: MatroskaTrack, firstFrame: [UInt8]?, compatible: Bool = false, dolbyVision: Bool = true) -> Result<OutputTrack, Unsupported> {
         if t.isEncrypted { return .failure(Unsupported(message: "Encrypted track")) }
         if t.isCompressedUnsupported { return .failure(Unsupported(message: "Compressed track (zlib)")) }
         let label = trackLabel(t)
         switch t.kind {
         case .video:
-            return videoOutput(t, label: label, compatible: compatible)
+            return videoOutput(t, label: label, keepDolbyVision: dolbyVision && !compatible)
         case .audio:
             return audioOutput(t, firstFrame: firstFrame, label: label)
         case .subtitle:
@@ -262,7 +263,7 @@ public actor MatroskaRemuxer {
         }
     }
 
-    private static func videoOutput(_ t: MatroskaTrack, label: String, compatible: Bool) -> Result<OutputTrack, Unsupported> {
+    private static func videoOutput(_ t: MatroskaTrack, label: String, keepDolbyVision: Bool) -> Result<OutputTrack, Unsupported> {
         var children: [UInt8] = []
         var type: String
         var codecString: String
@@ -300,7 +301,7 @@ public actor MatroskaRemuxer {
         // Apple plays Dolby Vision profiles 5 and 8. Others (7, from UHD Blu-rays) play as their HDR10
         // base layer: without the Dolby Vision configuration, the decoder ignores the enhancement layer.
         if let dv = t.dolbyVision, let boxType = t.dolbyVisionBoxType, dv.count >= 4, codec == .hevc, [5, 8].contains(Int(dv[2] >> 1)),
-           !compatible || Int(dv[2] >> 1) == 5 {
+           keepDolbyVision || Int(dv[2] >> 1) == 5 {
             let profile = Int(dv[2] >> 1)
             let level = Int((dv[2] & 1) << 5 | dv[3] >> 3)
             children += MP4.box(boxType, dv)

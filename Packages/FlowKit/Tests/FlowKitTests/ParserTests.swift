@@ -94,6 +94,20 @@ final class SourceRankerTests: XCTestCase {
         XCTAssertEqual(ranked.map(\.id), ["s2", "s1", "i1", "a1"])
     }
 
+    /// "HDR When Available" off: SDR first within a provider and resolution, the rest of the order unchanged.
+    func testSDRFirstKeepsOverallOrder() {
+        let sources = [
+            source("dv4k", .addons, provider: "aio", text: "2160p DV HDR10 WEB-DL"),
+            source("sdr4k", .addons, provider: "aio", text: "2160p WEB-DL"),
+            source("hdr1080", .addons, provider: "aio", text: "1080p HDR WEB-DL"),
+            source("sdr1080", .addons, provider: "aio", text: "1080p WEB-DL"),
+            source("other", .addons, provider: "zzz", text: "2160p WEB-DL"),
+        ]
+        XCTAssertEqual(SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .uhd4k).map(\.id), ["dv4k", "sdr4k", "hdr1080", "sdr1080", "other"])
+        XCTAssertEqual(SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .uhd4k, prefersHDR: false).map(\.id),
+                       ["sdr4k", "dv4k", "sdr1080", "hdr1080", "other"])
+    }
+
     func testResolutionCapAlwaysApplies() {
         let sources = [source("4k", .addons, provider: "aio", text: "2160p"), source("hd", .addons, provider: "aio", text: "1080p"), source("u", .addons, provider: "aio", text: "no info")]
         let ranked = SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .hd1080)

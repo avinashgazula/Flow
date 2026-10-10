@@ -154,7 +154,11 @@ struct ContinueWatchingCard: View {
 
     var body: some View {
         Button {
-            Task { await model.play(item, episode: nil) }
+            if model.settings.playback.skipDetailsOnContinueWatching {
+                Task { await model.play(item, episode: nil) }
+            } else {
+                model.navigate(to: .detail(item))
+            }
         } label: {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 ZStack(alignment: .bottomLeading) {

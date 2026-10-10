@@ -15,7 +15,8 @@ struct SourcePickerView: View {
     @State private var autoPlayed = false
 
     private var ranked: [StreamSource] {
-        SourceRanker.rank(raw, settings: model.settings.sources, resolutionCap: model.settings.playback.preferredResolutionCap, decodesAV1: Platform.decodesAV1, decodesLosslessAudio: MatroskaRemuxer.audioDecoders != nil)
+        SourceRanker.rank(raw, settings: model.settings.sources, resolutionCap: model.resolutionCap, decodesAV1: Platform.decodesAV1,
+                          decodesLosslessAudio: MatroskaRemuxer.audioDecoders != nil, prefersHDR: model.settings.playback.preferHDR)
     }
 
     private var grouped: [(SourceCategory, [StreamSource])] {

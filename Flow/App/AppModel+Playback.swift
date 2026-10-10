@@ -64,6 +64,11 @@ extension AppModel {
         return EpisodeProvider(source: settings.metadata.episodeSource, tmdb: catalog.tmdb, tvdb: tvdbKey.map { TVDBClient(apiKey: $0, http: http) }, trakt: trakt)
     }
 
+    /// The resolution cap in force: Resolution on Cellular on metered connections, Preferred Resolution otherwise.
+    var resolutionCap: VideoResolution {
+        NetworkConditions.isExpensive ? settings.playback.cellularResolutionCap : settings.playback.preferredResolutionCap
+    }
+
     // MARK: Starting playback
 
     /// Opens the source picker for a movie or episode. Shows resolve to their Next Up episode.
@@ -156,7 +161,8 @@ extension AppModel {
     func matchingSource(for request: PlaybackRequest, like previous: StreamSource) async -> StreamSource? {
         let providers = sourceProviders().filter { $0.providerID == previous.providerID }
         let found = await SourceAggregator.collect(providers.isEmpty ? sourceProviders() : providers, request: request, timeout: settings.sources.timeoutSeconds)
-        let ranked = SourceRanker.rank(found, settings: settings.sources, resolutionCap: settings.playback.preferredResolutionCap, decodesAV1: Platform.decodesAV1, decodesLosslessAudio: MatroskaRemuxer.audioDecoders != nil).filter(\.isPlayable)
+        let ranked = SourceRanker.rank(found, settings: settings.sources, resolutionCap: resolutionCap, decodesAV1: Platform.decodesAV1,
+                                       decodesLosslessAudio: MatroskaRemuxer.audioDecoders != nil, prefersHDR: settings.playback.preferHDR).filter(\.isPlayable)
         if let group = previous.bingeGroup, let match = ranked.first(where: { $0.bingeGroup == group }) { return match }
         return ranked.first { $0.providerID == previous.providerID && $0.traits.resolution == previous.traits.resolution } ?? ranked.first
     }

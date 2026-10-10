@@ -163,8 +163,9 @@ public enum SourceRanker {
     /// The preferred resolution cap always applies; filters and the result cap only when custom ordering is on.
     /// `decodesAV1` false (devices without an AV1 decoder) moves AV1 encodes to the end.
     /// `decodesLosslessAudio` true (Flow's own DTS and TrueHD decoding is on) stops demoting those sources.
+    /// `prefersHDR` false puts a provider's SDR versions ahead of its HDR ones at the same resolution.
     public static func rank(_ sources: [StreamSource], settings: SourceSettings, resolutionCap: VideoResolution, decodesAV1: Bool = true,
-                            decodesLosslessAudio: Bool = false) -> [StreamSource] {
+                            decodesLosslessAudio: Bool = false, prefersHDR: Bool = true) -> [StreamSource] {
         var list = sources.filter { $0.traits.resolution == .unknown || $0.traits.resolution <= resolutionCap }
         if settings.useCustomOrdering { list = list.filter { passes($0, settings.filters) } }
 
@@ -194,8 +195,26 @@ public enum SourceRanker {
         if !decodesAV1 {
             list = list.filter { !isAV1($0) } + list.filter(isAV1)
         }
+        if !prefersHDR { list = sdrFirst(list) }
         if settings.useCustomOrdering, let cap = settings.resultCap, cap > 0 { list = Array(list.prefix(cap)) }
         return list
+    }
+
+    /// Within each provider and resolution, SDR before HDR; every group keeps the places it had, so
+    /// the overall order (category, provider, sort rules) doesn't change.
+    static func sdrFirst(_ list: [StreamSource]) -> [StreamSource] {
+        struct Group: Hashable { let provider: String; let resolution: VideoResolution }
+        var slots: [Group: [Int]] = [:]
+        for (index, source) in list.enumerated() {
+            slots[Group(provider: source.providerID, resolution: source.traits.resolution), default: []].append(index)
+        }
+        var out = list
+        for indices in slots.values where indices.count > 1 {
+            let members = indices.map { list[$0] }
+            let reordered = members.filter { $0.traits.hdr.isEmpty } + members.filter { !$0.traits.hdr.isEmpty }
+            for (slot, source) in zip(indices, reordered) { out[slot] = source }
+        }
+        return out
     }
 
     public static func isAV1(_ s: StreamSource) -> Bool {

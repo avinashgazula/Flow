@@ -3,6 +3,7 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import FlowKit
 import VideoToolbox
+import Network
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -15,6 +16,24 @@ typealias PlatformImage = UIImage
 #else
 typealias PlatformImage = NSImage
 #endif
+
+/// Whether the connection is metered (cellular, a personal hotspot, Low Data Mode), for Resolution on Cellular.
+enum NetworkConditions {
+    private static let monitor = NWPathMonitor()
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var expensive = false
+    private static let started: Void = {
+        monitor.pathUpdateHandler = { path in
+            lock.withLock { expensive = path.isExpensive || path.isConstrained }
+        }
+        monitor.start(queue: DispatchQueue(label: "app.flow.network"))
+    }()
+
+    static var isExpensive: Bool {
+        _ = started
+        return lock.withLock { expensive }
+    }
+}
 
 enum Platform {
     static var isPhone: Bool {

@@ -99,7 +99,7 @@ struct PlayerView: View {
         #if os(iOS)
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
-        .onAppear { OrientationLock.landscape() }
+        .onAppear { if model.settings.playback.autoRotate { OrientationLock.landscape() } }
         .onDisappear { OrientationLock.restore() }
         #endif
     }
@@ -208,12 +208,16 @@ struct ConnectingView: View {
                         .padding(.bottom, Theme.Space.m)
                         .transition(.opacity)
                     }
-                    ProgressCapsule(value: progress, height: 3)
-                        .animation(Theme.Motion.gentle, value: progress)
+                    if session.showsLoadingProgress {
+                        ProgressCapsule(value: progress, height: 3)
+                            .animation(Theme.Motion.gentle, value: progress)
+                    }
                     HStack {
                         Text("CONNECTING").kerning(2.4)
-                        Spacer()
-                        Text("\(Int(progress * 100))%").monospacedDigit().contentTransition(.numericText())
+                        if session.showsLoadingProgress {
+                            Spacer()
+                            Text("\(Int(progress * 100))%").monospacedDigit().contentTransition(.numericText())
+                        }
                     }
                     .font(Theme.Typeface.micro)
                     .foregroundStyle(Theme.Palette.textSecondary)

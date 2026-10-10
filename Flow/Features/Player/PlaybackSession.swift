@@ -104,6 +104,8 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private var remuxer: MatroskaRemuxer?
     /// Remux without Dolby Vision and Atmos signalling: set after the player turns the full version down.
     @ObservationIgnored private var remuxCompatible = false
+    /// The loading screen's progress bar (Settings → Playback → Loading Screen).
+    var showsLoadingProgress: Bool { model?.settings.playback.showLoadingProgress ?? true }
     /// The player's own error, for the error screen's details (domain and code say more than its wording).
     var failureDetail: String?
     @ObservationIgnored private var bitmapTask: Task<Void, Never>?
@@ -220,7 +222,8 @@ final class PlaybackSession: Identifiable {
         phase = .connecting(0.2)
         do {
             let remuxer = try await MatroskaRemuxer.open(reader ?? Self.byteSource(url, headers: headers),
-                                                         preferredAudioLanguage: preferredAudioLanguage, headerCache: .shared, compatible: remuxCompatible)
+                                                         preferredAudioLanguage: preferredAudioLanguage, headerCache: .shared, compatible: remuxCompatible,
+                                                         dolbyVision: model?.settings.playback.neverUseDolbyVision != true)
             guard !Task.isCancelled else { return }
             if remuxer.video?.source.codecID == "V_AV1", !Platform.decodesAV1 {
                 fail("This video is AV1, which this \(Platform.deviceKind) can't decode. Try another source.")

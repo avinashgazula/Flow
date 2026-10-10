@@ -68,11 +68,33 @@ struct PlaybackSettingsView: View {
         @Bindable var model = model
         Form {
             Section {
+                #if os(iOS)
+                Toggle("Auto Rotate to Landscape", isOn: $model.settings.playback.autoRotate)
+                #endif
+                Toggle("Skip Details on Continue Watching", isOn: $model.settings.playback.skipDetailsOnContinueWatching)
                 Picker("Preferred Resolution", selection: $model.settings.playback.preferredResolutionCap) {
                     ForEach([VideoResolution.uhd4k, .uhd1440, .hd1080, .hd720, .sd]) { Text($0 == .uhd4k ? "Up to 4K" : "Up to \($0.label)").tag($0) }
                 }
+                #if !os(tvOS)
+                Picker("Resolution on Cellular", selection: $model.settings.playback.cellularResolutionCap) {
+                    ForEach([VideoResolution.uhd4k, .uhd1440, .hd1080, .hd720, .sd]) { Text($0 == .uhd4k ? "Up to 4K" : "Up to \($0.label)").tag($0) }
+                }
+                #endif
+                Toggle("HDR When Available", isOn: $model.settings.playback.preferHDR)
             } footer: {
-                Text("Sources above this resolution are hidden from the picker, whatever your source ordering.")
+                Text("Sources above the resolution are hidden from the picker, whatever your source ordering. Resolution on Cellular applies instead on cellular data, a personal hotspot or Low Data Mode. With HDR When Available off, a source's SDR version comes before its HDR one.")
+            }
+            Section {
+                Toggle("Never Use Dolby Vision", isOn: $model.settings.playback.neverUseDolbyVision)
+                Toggle("Convert Profile 7 to Profile 8.1", isOn: $model.settings.playback.convertDolbyVisionProfile7)
+                    .disabled(model.settings.playback.neverUseDolbyVision)
+            } header: {
+                Text("Dolby Vision")
+            } footer: {
+                Text("Never Use Dolby Vision plays its HDR10 picture instead (profile 5, which has none, still plays as Dolby Vision). Profile 7, from UHD Blu-ray remuxes, can't play as Dolby Vision on Apple devices; converting keeps the HDR10 picture and the Dolby Vision metadata for each shot, as profile 8.1. Off plays it as plain HDR10. Applies to MKV files Flow plays itself.")
+            }
+            Section("Loading Screen") {
+                Toggle("Show Progress Bar", isOn: $model.settings.playback.showLoadingProgress)
             }
             Section {
                 Toggle("Auto-Play Next Episode", isOn: $model.settings.playback.autoPlayNextEpisode)
