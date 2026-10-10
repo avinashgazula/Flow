@@ -1,0 +1,4 @@
+module CFFmpegDecoders {
+    header "FFmpegDecoders.h"
+    export *
+}
