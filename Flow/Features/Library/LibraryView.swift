@@ -16,6 +16,12 @@ struct LibraryView: View {
                         LibraryTile(title: "Upcoming", subtitle: "New episodes", systemImage: "calendar", route: .calendar, tint: .pink)
                         LibraryTile(title: "Sports", subtitle: model.settings.sports.followedTeams.isEmpty ? "Follow your teams" : "\(model.settings.sports.followedTeams.count) teams followed", systemImage: "sportscourt.fill", route: .sports, tint: .green)
                         LibraryTile(title: "History", subtitle: "\(model.history.count) plays", systemImage: "clock.fill", route: .library(.history), tint: .orange)
+                        #if os(tvOS)
+                        ActionChip(title: model.isSyncing ? "Syncing…" : "Sync", systemImage: "arrow.clockwise") {
+                            Task { await model.refreshLibrary(force: true) }
+                        }
+                        .disabled(model.isSyncing)
+                        #endif
                     }
                     .padding(.horizontal, Platform.horizontalPadding)
                 }
@@ -41,7 +47,7 @@ struct LibraryView: View {
             }
             .padding(.vertical)
         }
-        .navigationTitle("Library")
+        .tabRootTitle("Library")
         .refreshable { await model.refreshLibrary(force: true) }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

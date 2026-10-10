@@ -70,6 +70,8 @@ struct LiveTVView: View {
     @State private var search = ""
     @State private var playing: Channel?
     @State private var showGuide = !Platform.isPhone
+    /// The Live TV tab itself, rather than a channel group pushed from it.
+    var isTabRoot = true
 
     private var favourites: [Channel] {
         let ids = model.settings.liveTV.favouriteChannelIDs
@@ -99,11 +101,12 @@ struct LiveTVView: View {
                 content
             }
         }
+        #if os(tvOS)
+        .toolbar(isTabRoot ? .hidden : .automatic, for: .navigationBar)
+        #else
         .navigationTitle("Live TV")
-        #if !os(tvOS)
         // On TV a search field is a full on-screen keyboard parked above the content.
         .searchable(text: $search, prompt: "Channels")
-        #endif
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { withAnimation(Theme.Motion.fade) { showGuide.toggle() } } label: {
@@ -112,11 +115,10 @@ struct LiveTVView: View {
                 .accessibilityLabel(showGuide ? "Show List" : "Show Guide")
             }
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    Task { await store.load(providers: model.settings.liveTV.providers, refreshHours: model.settings.liveTV.epgRefreshHours, http: model.http, force: true) }
-                } label: { Image(systemName: "arrow.clockwise") }
+                Button { refresh() } label: { Image(systemName: "arrow.clockwise") }
             }
         }
+        #endif
         .task(id: model.settings.liveTV.providers) {
             await store.load(providers: model.settings.liveTV.providers, refreshHours: model.settings.liveTV.epgRefreshHours, http: model.http)
         }
@@ -132,6 +134,13 @@ struct LiveTVView: View {
             Group {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Theme.Space.xs) {
+                        #if os(tvOS)
+                        ActionChip(title: showGuide ? "List" : "Guide", systemImage: showGuide ? "list.bullet" : "calendar.day.timeline.left") {
+                            withAnimation(Theme.Motion.fade) { showGuide.toggle() }
+                        }
+                        ActionChip(title: nil, systemImage: "arrow.clockwise") { refresh() }
+                            .accessibilityLabel("Refresh")
+                        #endif
                         chip("All", selected: group == nil) { group = nil }
                         if !favourites.isEmpty { chip("★ Favourites", selected: group == "★ Favourites") { group = "★ Favourites" } }
                         ForEach(store.groups, id: \.self) { g in chip(g, selected: group == g) { group = g } }
@@ -185,6 +194,10 @@ struct LiveTVView: View {
                 .foregroundStyle(selected ? Color.black : Color.white)
         }
         .buttonStyle(CardButtonStyle())
+    }
+
+    private func refresh() {
+        Task { await store.load(providers: model.settings.liveTV.providers, refreshHours: model.settings.liveTV.epgRefreshHours, http: model.http, force: true) }
     }
 
     private func play(_ channel: Channel) {
@@ -252,7 +265,7 @@ struct ChannelRow: View {
 struct ChannelGroupView: View {
     let group: String
     var body: some View {
-        LiveTVView().navigationTitle(group)
+        LiveTVView(isTabRoot: false).navigationTitle(group)
     }
 }
 

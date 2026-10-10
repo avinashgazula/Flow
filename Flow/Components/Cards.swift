@@ -306,3 +306,28 @@ struct PersonCard: View {
 
     private var size: CGFloat { Platform.isTV ? 150 : 78 }
 }
+
+/// A capsule action beside a row of filter chips (Filters, Refresh, Guide): how tvOS reaches what
+/// other platforms keep in the navigation bar.
+struct ActionChip: View {
+    let title: String?
+    let systemImage: String
+    var active = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                if let title { Text(title) }
+            }
+            .font(.system(.subheadline, weight: .semibold))
+            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs + 1)
+            .foregroundStyle(active ? Color.black : Color.white)
+            .background(active ? Color.white : Theme.Palette.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(Theme.Palette.hairline, lineWidth: active ? 0 : 1))
+        }
+        .buttonStyle(CardButtonStyle())
+        .accessibilityLabel(title ?? "")
+    }
+}

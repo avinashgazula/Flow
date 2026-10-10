@@ -145,7 +145,7 @@ struct DetailView: View {
     }
 
     private var actions: some View {
-        VStack(spacing: Theme.Space.s) {
+        VStack(alignment: wide ? .leading : .center, spacing: Theme.Space.s) {
             Button { Task { await model.play(current) } } label: {
                 Label(playLabel, systemImage: "play.fill")
                     .frame(maxWidth: wide ? nil : .infinity)

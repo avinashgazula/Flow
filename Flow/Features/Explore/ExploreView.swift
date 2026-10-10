@@ -27,6 +27,9 @@ struct ExploreView: View {
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Theme.Space.xs) {
+                        #if os(tvOS)
+                        ActionChip(title: "Filters", systemImage: "line.3.horizontal.decrease", active: isFiltered) { showFilters = true }
+                        #endif
                         genreChip(nil, title: "All")
                         ForEach(Self.quickGenres(type), id: \.self) { id in
                             genreChip(id, title: TMDBGenres.name(for: id, type: type))
@@ -58,7 +61,7 @@ struct ExploreView: View {
             }
             .padding(.vertical)
         }
-        .navigationTitle("Explore")
+        .tabRootTitle("Explore")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { showFilters = true } label: {

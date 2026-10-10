@@ -59,6 +59,16 @@ enum Theme {
 }
 
 extension View {
+    /// A tab's root page title. On tvOS the tab bar already names the page, so the navigation bar
+    /// (a grey title above tiny toolbar circles) is hidden and the page keeps its actions inline.
+    @ViewBuilder func tabRootTitle(_ title: String) -> some View {
+        #if os(tvOS)
+        toolbar(.hidden, for: .navigationBar)
+        #else
+        navigationTitle(title)
+        #endif
+    }
+
     /// Section/page title styling with optical tracking.
     func displayTracking() -> some View { tracking(-0.4) }
 
