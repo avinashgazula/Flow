@@ -498,3 +498,21 @@ final class OpusTests: XCTestCase {
         XCTAssertEqual(Opus.samples([0x0B, 0x03]), 2880) // SILK 20 ms, three frames
     }
 }
+
+final class ResyncTests: XCTestCase {
+    func testSegmentStartingMidClusterResynchronises() throws {
+        let bytes = [UInt8](try Data(contentsOf: MatroskaTests.fixture("avc-aac-srt")))
+        // Find the second cluster and start reading a few bytes before it, as a sloppy cue would.
+        let id: [UInt8] = [0x1F, 0x43, 0xB6, 0x75]
+        var clusters: [Int] = []
+        var i = 0
+        while i + 4 <= bytes.count { if Array(bytes[i..<(i + 4)]) == id { clusters.append(i) }; i += 1 }
+        XCTAssertGreaterThanOrEqual(clusters.count, 2)
+        let sloppy = Array(bytes[(clusters[1] - 37)...])
+        let header = MatroskaHeader(docType: "matroska", segmentDataStart: 0)
+        XCTAssertTrue((try? MatroskaClusterParser.blocks(sloppy, timecodeScale: header.timecodeScale, tracks: [])).map(\.isEmpty) ?? true)
+        let fixed = MatroskaRemuxer.fromFirstCluster(sloppy)
+        XCTAssertEqual(Array(fixed.prefix(4)), id)
+        XCTAssertFalse(try MatroskaClusterParser.blocks(fixed, timecodeScale: header.timecodeScale, tracks: []).isEmpty)
+    }
+}

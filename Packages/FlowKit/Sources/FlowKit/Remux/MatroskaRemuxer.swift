@@ -708,7 +708,7 @@ public actor MatroskaRemuxer {
         let tracks = header.tracks
         let task = Task { () throws -> [MatroskaBlock] in
             let bytes = try await source.read(segment.byteStart..<segment.byteEnd)
-            return try MatroskaClusterParser.blocks(bytes, timecodeScale: scale, tracks: tracks)
+            return try MatroskaClusterParser.blocks(Self.fromFirstCluster(bytes), timecodeScale: scale, tracks: tracks)
         }
         inflight[index] = task
         defer { inflight[index] = nil }
@@ -721,6 +721,21 @@ public actor MatroskaRemuxer {
             decodeBitmaps(blocks, segment: index)
         }
         return blocks
+    }
+
+    /// Some muxers write seek positions a little off a cluster's start; resynchronise on the next
+    /// Cluster ID rather than finding nothing.
+    static func fromFirstCluster(_ bytes: [UInt8]) -> [UInt8] {
+        let id: [UInt8] = [0x1F, 0x43, 0xB6, 0x75]
+        guard bytes.count >= 4, Array(bytes[0..<4]) != id else { return bytes }
+        // Other top-level elements (Cues, Tags, Void) may legitimately come first: those parse fine.
+        if let first = try? EBML.readElement(bytes, at: 0), MKV.topLevel.contains(first.id) || first.id == 0xEC { return bytes }
+        var i = 1
+        while i + 4 <= bytes.count {
+            if bytes[i] == 0x1F, bytes[i + 1] == 0x43, bytes[i + 2] == 0xB6, bytes[i + 3] == 0x75 { return Array(bytes[i...]) }
+            i += 1
+        }
+        return bytes
     }
 
     // MARK: Picture subtitles
