@@ -689,7 +689,7 @@ struct IOSPlayerControls: View {
                                     Section("Audio") {
                                         ForEach(audioOptions, id: \.self) { option in
                                             Button { select(option, characteristic: .audible) } label: {
-                                                checked(option.displayName, selected(in: audioGroup) == option)
+                                                checked(option.title, selected(in: audioGroup) == option)
                                             }
                                         }
                                     }
@@ -701,7 +701,7 @@ struct IOSPlayerControls: View {
                                         }
                                         ForEach(legibleOptions, id: \.self) { option in
                                             Button { select(option, characteristic: .legible) } label: {
-                                                checked(option.displayName, selected(in: legibleGroup) == option)
+                                                checked(option.title, selected(in: legibleGroup) == option)
                                             }
                                         }
                                     }

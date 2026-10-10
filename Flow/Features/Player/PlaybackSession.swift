@@ -804,7 +804,7 @@ final class PlaybackSession: Identifiable {
             }
         }
         if let item, let group = audibleGroup, let option = item.currentMediaSelection.selectedMediaOption(in: group) {
-            rows.append(InfoRow(label: "Audio", value: option.displayName))
+            rows.append(InfoRow(label: "Audio", value: option.title))
         }
         if let remuxer, !remuxer.decodedSummary.isEmpty {
             rows.append(InfoRow(label: "Decoded", value: remuxer.decodedSummary.joined(separator: ", ") + " → lossless FLAC, on this device"))
@@ -1022,4 +1022,12 @@ struct BitmapOverlay: Equatable {
 struct PlayerTrack: Hashable, Identifiable {
     let id: Int
     let title: String
+}
+
+extension AVMediaSelectionOption {
+    /// The rendition's own name ("English (DTS 5.1)"). For HLS, `displayName` is only the language,
+    /// so several English tracks would read alike.
+    var title: String {
+        AVMetadataItem.metadataItems(from: commonMetadata, filteredByIdentifier: .commonIdentifierTitle).first?.stringValue ?? displayName
+    }
 }
