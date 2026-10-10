@@ -1,0 +1,32 @@
+2026-10-10T21:39:14Z step welcome active=false picker=false tab=home
+2026-10-10T21:39:19Z step home active=false picker=false tab=home
+2026-10-10T21:39:25Z step detail-movie active=false picker=false tab=home
+2026-10-10T21:39:30Z step detail-show active=false picker=false tab=home
+2026-10-10T21:39:35Z step sources active=false picker=true tab=home
+2026-10-10T21:39:40Z startPlayback demo#0 url=https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8
+2026-10-10T21:39:40Z activePlayback set: true
+2026-10-10T21:39:40Z step player active=true picker=false tab=home
+2026-10-10T21:39:41Z prepare native for master.m3u8
+2026-10-10T21:39:42Z item status 1 error=-
+2026-10-10T21:39:45Z PlaybackSession.close from stop() phase=playing
+2026-10-10T21:39:47Z startPlayback demo#mkv url=file:///Users/runner/Library/Developer/CoreSimulator/Devices/E952A9B0-CC78-435C-BF08-06AD47FE1076/data/Containers/Bundle/Application/DF4C6421-6DD1-4D3B-8CA5-0CFD57C5128A/Flow.app/FlowSample.mkv
+2026-10-10T21:39:47Z activePlayback set: true
+2026-10-10T21:39:47Z step player-mkv active=true picker=false tab=home
+2026-10-10T21:39:47Z prepare matroska for FlowSample.mkv
+2026-10-10T21:39:49Z item status 1 error=-
+2026-10-10T21:39:49Z info: Source=AIOStreams; File=Flow.Sample.720p.DTS.AAC.AC3.mkv; Playback=MKV, remuxed on this device; Video=H.264 · 1280×720 · 24 fps · SDR; Audio=English – DTS 5.1; Decoded=DTS (English) → lossless FLAC, on this device; Bitrate=2.2 Mb/s; Buffered=3 s ahead
+2026-10-10T21:39:52Z step player-options active=true picker=false tab=home
+2026-10-10T21:39:57Z step player-advanced active=true picker=false tab=home
+2026-10-10T21:40:02Z step player-panels-closed active=true picker=false tab=home
+2026-10-10T21:40:07Z suggestions: 8 phase=Optional(Flow.PlaybackSession.Phase.playing)
+2026-10-10T21:40:07Z step player-suggestions active=true picker=false tab=home
+2026-10-10T21:40:12Z step person active=true picker=false tab=home
+2026-10-10T21:40:12Z PlaybackSession.close from stop() phase=finished
+2026-10-10T21:40:17Z step explore active=false picker=false tab=explore
+2026-10-10T21:40:22Z step library active=false picker=false tab=library
+2026-10-10T21:40:27Z step calendar active=false picker=false tab=library
+2026-10-10T21:40:33Z step search active=false picker=false tab=search
+2026-10-10T21:40:39Z step livetv active=false picker=false tab=liveTV
+2026-10-10T21:40:44Z step settings active=false picker=false tab=home
+2026-10-10T21:40:49Z step settings-metadata active=false picker=false tab=home
+2026-10-10T21:40:54Z step settings-sources active=false picker=false tab=home

@@ -1,0 +1,26 @@
+2026-10-10T21:36:37Z step welcome active=false picker=false tab=home
+2026-10-10T21:36:42Z step home active=false picker=false tab=home
+2026-10-10T21:36:47Z step detail-movie active=false picker=false tab=home
+2026-10-10T21:36:53Z step detail-show active=false picker=false tab=home
+2026-10-10T21:36:58Z step sources active=false picker=true tab=home
+2026-10-10T21:37:04Z startPlayback demo#0 url=https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8
+2026-10-10T21:37:04Z activePlayback set: true
+2026-10-10T21:37:04Z step player active=true picker=false tab=home
+2026-10-10T21:37:04Z prepare native for master.m3u8
+2026-10-10T21:37:05Z item status 1 error=-
+2026-10-10T21:37:09Z PlaybackSession.close from stop() phase=playing
+2026-10-10T21:37:10Z startPlayback demo#mkv url=file:///Users/runner/work/Flow/Flow/dd/Build/Products/Debug/Flow.app/Contents/Resources/FlowSample.mkv
+2026-10-10T21:37:10Z activePlayback set: true
+2026-10-10T21:37:10Z step player-mkv active=true picker=false tab=home
+2026-10-10T21:37:10Z prepare matroska for FlowSample.mkv
+2026-10-10T21:37:13Z info: Source=AIOStreams; File=Flow.Sample.720p.DTS.AAC.AC3.mkv; Playback=MKV, remuxed on this device; Video=H.264 · 1280×720 · 24 fps · SDR; Decoded=DTS (English) → lossless FLAC, on this device; Bitrate=2.2 Mb/s; Buffered=4 s ahead
+2026-10-10T21:37:15Z item status 1 error=-
+2026-10-10T21:37:15Z suggestions: 8 phase=Optional(Flow.PlaybackSession.Phase.playing)
+2026-10-10T21:37:15Z step player-suggestions active=true picker=false tab=home
+2026-10-10T21:37:20Z step person active=true picker=false tab=home
+2026-10-10T21:37:20Z PlaybackSession.close from stop() phase=finished
+2026-10-10T21:37:25Z step explore active=false picker=false tab=explore
+2026-10-10T21:37:30Z step library active=false picker=false tab=library
+2026-10-10T21:37:35Z step calendar active=false picker=false tab=library
+2026-10-10T21:37:41Z step search active=false picker=false tab=search
+2026-10-10T21:37:46Z step livetv active=false picker=false tab=liveTV
