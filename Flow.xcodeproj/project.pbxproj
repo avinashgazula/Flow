@@ -19,6 +19,7 @@
 		197E35749543578A771BCF95 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7785133DEC097B45A1126DA /* OnboardingView.swift */; };
 		1B1CF897CAB179C4ACDDC146 /* FlowWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F68AC53DAC814019C2653549 /* FlowWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		1B6C6571C6885AF8EC43EFD3 /* AppModel+Shelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9180D9C82DCFC46BFA6D629E /* AppModel+Shelves.swift */; };
+		1C163AFAA0D839BF0920896B /* FlowAACProbe.mkv in Resources */ = {isa = PBXBuildFile; fileRef = 6A021F62186DED70A4EFBA1A /* FlowAACProbe.mkv */; };
 		26373EF208DA8C7E889F1EE2 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434D840AB6866F096CBB9D82 /* Platform.swift */; };
 		277143F94A77001D001C2AD4 /* AppModel+Calendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEADFF907FBFB0BA1E4CB7BE /* AppModel+Calendar.swift */; };
 		27C0E92B9404C9989AD1F99A /* FlowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */; };
@@ -62,6 +63,7 @@
 		5BE5F0C39DEEB2DA53800C49 /* ShelvesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E5BC060EB6D6E2ABFE2898 /* ShelvesSettingsView.swift */; };
 		5F2FE3B1B52D423B9F4AFBA3 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03878E23BB21C51D27637323 /* RootView.swift */; };
 		5F73EE90AEBC11CE4BE0CB77 /* LocalHLSServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC0B31C1F62EA8C4E81F3DE /* LocalHLSServer.swift */; };
+		5FC3EF6DFFDDCBDA68F927B8 /* FlowAACProbe.mkv in Resources */ = {isa = PBXBuildFile; fileRef = 6A021F62186DED70A4EFBA1A /* FlowAACProbe.mkv */; };
 		606EBDF08B80ECA673799CF3 /* PersonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2530CF7AECC3DEE2DDC5DEE7 /* PersonView.swift */; };
 		630ED38EBD59A035207E13C7 /* FlowOpusProbe.mkv in Resources */ = {isa = PBXBuildFile; fileRef = C901E047F82EA6554858E902 /* FlowOpusProbe.mkv */; };
 		6A182C159C9EFF00A423D3C2 /* FlowSample.mkv in Resources */ = {isa = PBXBuildFile; fileRef = 85D121444256864EF4E443FE /* FlowSample.mkv */; };
@@ -115,6 +117,7 @@
 		BB88C27FF82C73C0EA2F0FE6 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A93336F88B7099468CD68A /* AccountSettingsView.swift */; };
 		C050E6EF49B1CF01E2FFAFD5 /* FlowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */; };
 		C06EF165EB47B0CA4D01C031 /* SubtitlePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C5362BFE5BED6E0EB6365B /* SubtitlePickerView.swift */; };
+		C2C7023C6571363400768D36 /* FlowAACProbe.mkv in Resources */ = {isa = PBXBuildFile; fileRef = 6A021F62186DED70A4EFBA1A /* FlowAACProbe.mkv */; };
 		C3225463ED00C0483FA2E718 /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 084557F2FC6CAB9830615AEA /* DetailView.swift */; };
 		C5082B08EE06CC776AD82D0E /* MediaServersSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451D5176A69CC78183D18794 /* MediaServersSettingsView.swift */; };
 		C52F86F84E4AB131D0F80157 /* FlowTopShelf.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CB23EA382EDEF9D5FC492A82 /* FlowTopShelf.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -239,6 +242,7 @@
 		57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowSnapshot.swift; sourceTree = "<group>"; };
 		5F088D0F4A55BC78D157C430 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		64C5B84B31FA9BA7D117A2E0 /* FlowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowApp.swift; sourceTree = "<group>"; };
+		6A021F62186DED70A4EFBA1A /* FlowAACProbe.mkv */ = {isa = PBXFileReference; path = FlowAACProbe.mkv; sourceTree = "<group>"; };
 		6C97AD56B95F80525C774907 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		708B75EA3C803473D05AB1F1 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		71F94293E928197317DF1F8C /* SettingsRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRootView.swift; sourceTree = "<group>"; };
@@ -444,6 +448,7 @@
 			isa = PBXGroup;
 			children = (
 				6C97AD56B95F80525C774907 /* Assets.xcassets */,
+				6A021F62186DED70A4EFBA1A /* FlowAACProbe.mkv */,
 				C901E047F82EA6554858E902 /* FlowOpusProbe.mkv */,
 				85D121444256864EF4E443FE /* FlowSample.mkv */,
 			);
@@ -739,6 +744,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DEC14EA578DC92CC1530DCE3 /* Assets.xcassets in Resources */,
+				5FC3EF6DFFDDCBDA68F927B8 /* FlowAACProbe.mkv in Resources */,
 				7532FC8386B2FD6B9B811BD0 /* FlowOpusProbe.mkv in Resources */,
 				6A182C159C9EFF00A423D3C2 /* FlowSample.mkv in Resources */,
 			);
@@ -749,6 +755,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E689F48FE4173C59470CED51 /* Assets.xcassets in Resources */,
+				1C163AFAA0D839BF0920896B /* FlowAACProbe.mkv in Resources */,
 				FC42F8990E1695D8DA51803E /* FlowOpusProbe.mkv in Resources */,
 				FF650534A4E667D1CA006160 /* FlowSample.mkv in Resources */,
 			);
@@ -759,6 +766,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				50F24433290BB5AAE493AF37 /* Assets.xcassets in Resources */,
+				C2C7023C6571363400768D36 /* FlowAACProbe.mkv in Resources */,
 				630ED38EBD59A035207E13C7 /* FlowOpusProbe.mkv in Resources */,
 				53767ED8748B3B4213536D1C /* FlowSample.mkv in Resources */,
 			);

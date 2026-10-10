@@ -128,8 +128,9 @@ public actor MatroskaRemuxer {
             return tag == preferred || tag.hasPrefix(preferred + "-") || t.language.lowercased() == preferred
                 || LanguageName.bcp47(preferred).lowercased() == tag
         }
-        func rank(_ t: OutputTrack) -> (Int, Int, Int, Int) {
-            (t.source.isCommentary ? 1 : 0, matches(t) ? 0 : 1, t.source.isDefault ? 0 : 1, t.source.number)
+        // Opus plays only on recent systems, outside Apple's HLS spec: never the default when there's another choice.
+        func rank(_ t: OutputTrack) -> (Int, Int, Int, Int, Int) {
+            (t.source.isCommentary ? 1 : 0, matches(t) ? 0 : 1, t.codec == .opus ? 1 : 0, t.source.isDefault ? 0 : 1, t.source.number)
         }
         return audio.sorted { rank($0) < rank($1) }
     }
@@ -531,7 +532,8 @@ public actor MatroskaRemuxer {
         let cue = trickPlayFrames[index]
         let start = header.segmentDataStart + cue.clusterPosition
         let fileEnd = header.segmentEnd ?? Int64.max
-        var length: Int64 = max(256 * 1024, (cue.relativePosition ?? 0) + 128 * 1024)
+        guard start >= 0, start < fileEnd else { return nil }
+        var length: Int64 = max(256 * 1024, min(cue.relativePosition ?? 0, 16 * 1024 * 1024) + 128 * 1024)
         var keyframe: MatroskaBlock?
         for _ in 0..<4 {
             let bytes = try await source.read(start..<min(fileEnd, start + length))
@@ -629,9 +631,10 @@ public actor MatroskaRemuxer {
     private func videoSamples(_ blocks: [MatroskaBlock], segment: Segment, track: OutputTrack) -> ([MP4.Sample], UInt64) {
         let tolerance: Int64 = 2_000_000
         let isLast = segment.index == segments.count - 1
+        guard !blocks.isEmpty else { return ([], UInt64(max(0, segment.start) * 9 / 100_000)) }
         let startIndex = blocks.firstIndex { $0.isKeyframe && $0.time >= segment.start - tolerance } ?? 0
         var endIndex = blocks.count
-        if !isLast, let next = blocks[(startIndex + 1)...].firstIndex(where: { $0.isKeyframe && $0.time >= segment.end - tolerance }) {
+        if !isLast, startIndex + 1 < blocks.count, let next = blocks[(startIndex + 1)...].firstIndex(where: { $0.isKeyframe && $0.time >= segment.end - tolerance }) {
             endIndex = next
         }
         let chosen = startIndex < endIndex ? Array(blocks[startIndex..<endIndex]) : []

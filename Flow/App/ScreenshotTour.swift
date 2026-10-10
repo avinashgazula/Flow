@@ -57,6 +57,15 @@ enum ScreenshotTour {
                                          title: "Opus probe", filename: "FlowOpusProbe.mkv", location: .url(url, headers: [:]))
                 m.startPlayback(probe, request: PlaybackRequest(item: duneItem))
             },
+            // The same short clip with AAC: tells a codec problem from a short-file one.
+            Step(name: "aac-probe") { m in
+                m.activePlayback?.stop()
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                guard let url = Bundle.main.url(forResource: "FlowAACProbe", withExtension: "mkv") else { return log("no AAC probe") }
+                let probe = StreamSource(id: "probe#aac", category: .addons, providerID: "probe", providerName: "AAC probe",
+                                         title: "AAC probe", filename: "FlowAACProbe.mkv", location: .url(url, headers: [:]))
+                m.startPlayback(probe, request: PlaybackRequest(item: duneItem))
+            },
             Step(name: "person") { m in m.activePlayback?.stop(); m.paths[.home] = [.detail(duneItem), .person(id: 1190668, name: "Timothée Chalamet")] },
             Step(name: "explore") { m in m.paths[.home] = []; m.selectedTab = .explore },
             Step(name: "library") { m in m.selectedTab = .library },
