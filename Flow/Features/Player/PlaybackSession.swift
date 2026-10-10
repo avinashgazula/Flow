@@ -68,6 +68,8 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private var timeObserver: Any?
     @ObservationIgnored private var observations: [NSKeyValueObservation] = []
     @ObservationIgnored private var endObserver: NSObjectProtocol?
+    @ObservationIgnored private var selectionObserver: NSObjectProtocol?
+    @ObservationIgnored private var readyAt: Date?
     @ObservationIgnored private var lastReport = Date.distantPast
     @ObservationIgnored private var skippedSegments = Set<Double>()
     @ObservationIgnored private var countdownTask: Task<Void, Never>?
@@ -154,6 +156,7 @@ final class PlaybackSession: Identifiable {
         usesRemux = false
         chapters = []
         chapterSegments = []
+        readyAt = nil
         stopBitmapSubtitles()
         phase = .connecting(0.1)
         loadTask = Task { [weak self] in await self?.prepare(source, url: url) }
@@ -194,7 +197,7 @@ final class PlaybackSession: Identifiable {
         phase = .connecting(0.2)
         do {
             let remuxer = try await MatroskaRemuxer.open(reader ?? Self.byteSource(url, headers: headers),
-                                                         preferredAudioLanguage: model?.settings.playback.preferredAudioLanguage, headerCache: .shared)
+                                                         preferredAudioLanguage: preferredAudioLanguage, headerCache: .shared)
             guard !Task.isCancelled else { return }
             if remuxer.video?.source.codecID == "V_AV1", !Platform.decodesAV1 {
                 fail("This video is AV1, which this \(Platform.deviceKind) can't decode. Try another source.")
@@ -261,6 +264,9 @@ final class PlaybackSession: Identifiable {
         timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main) { [weak self] time in
             MainActor.assumeIsolated { self?.tick(time.seconds) }
         }
+        selectionObserver = NotificationCenter.default.addObserver(forName: AVPlayerItem.mediaSelectionDidChangeNotification, object: item, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.mediaSelectionChanged(item) }
+        }
         endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
             Task { @MainActor in await self?.didFinish() }
         }
@@ -273,16 +279,71 @@ final class PlaybackSession: Identifiable {
     /// streams that carry several (HLS renditions, multi-track MP4s and remuxed MKVs).
     private func applyLanguagePreferences() {
         guard let settings = model?.settings else { return }
-        if let audio = settings.playback.preferredAudioLanguage {
+        if let audio = preferredAudioLanguage {
             player.setMediaSelectionCriteria(AVPlayerMediaSelectionCriteria(preferredLanguages: [audio], preferredMediaCharacteristics: nil),
                                              forMediaCharacteristic: .audible)
         }
-        if settings.subtitles.autoEnable, !settings.subtitles.preferredLanguages.isEmpty {
+        if showChoice?.subtitlesOff != true, settings.subtitles.autoEnable || showChoice?.subtitleLanguage != nil, !subtitleLanguages.isEmpty {
             var characteristics: [AVMediaCharacteristic] = []
             if settings.subtitles.hearingImpaired { characteristics.append(.transcribesSpokenDialogForAccessibility) }
-            player.setMediaSelectionCriteria(AVPlayerMediaSelectionCriteria(preferredLanguages: settings.subtitles.preferredLanguages,
+            player.setMediaSelectionCriteria(AVPlayerMediaSelectionCriteria(preferredLanguages: subtitleLanguages,
                                                                             preferredMediaCharacteristics: characteristics),
                                              forMediaCharacteristic: .legible)
+        }
+    }
+
+    // MARK: Remembered tracks
+
+    /// Shows remember the languages picked while watching them; films don't.
+    private var showKey: String? {
+        guard request.episode != nil, model?.settings.playback.rememberTracksPerShow == true else { return nil }
+        return request.item.id
+    }
+
+    private var showChoice: ShowTrackChoice? { showKey.flatMap { model?.settings.playback.showTracks[$0] } }
+
+    private var preferredAudioLanguage: String? { showChoice?.audioLanguage ?? model?.settings.playback.preferredAudioLanguage }
+
+    /// The show's subtitle language first, then the viewer's general preferences.
+    private var subtitleLanguages: [String] {
+        let general = model?.settings.subtitles.preferredLanguages ?? []
+        guard let language = showChoice?.subtitleLanguage else { return general }
+        return [language] + general.filter { $0 != language }
+    }
+
+    private func remember(_ update: (inout ShowTrackChoice) -> Void) {
+        guard let model, let key = showKey, didStart else { return }
+        var choice = model.settings.playback.showTracks[key] ?? ShowTrackChoice()
+        update(&choice)
+        guard model.settings.playback.showTracks[key] != choice else { return }
+        model.settings.playback.showTracks[key] = choice
+    }
+
+    /// Track changes from any menu (Flow's, or the system player's on Apple TV and Mac). Ignores
+    /// the automatic choices AVPlayer makes while the stream starts.
+    private func mediaSelectionChanged(_ item: AVPlayerItem) {
+        guard didStart, let readyAt, Date().timeIntervalSince(readyAt) > 3 else { return }
+        Task { [weak self] in
+            let audible = try? await item.asset.loadMediaSelectionGroup(for: .audible)
+            let legible = try? await item.asset.loadMediaSelectionGroup(for: .legible)
+            guard let self else { return }
+            let audio = audible.flatMap { item.currentMediaSelection.selectedMediaOption(in: $0) }?.extendedLanguageTag
+            var subtitle: AVMediaSelectionOption?
+            if let legible { subtitle = item.currentMediaSelection.selectedMediaOption(in: legible) }
+            if subtitle?.hasMediaCharacteristic(.containsOnlyForcedSubtitles) == true { subtitle = nil }
+            let hasBitmap = self.selectedBitmapTrack != nil
+            let hasDownloaded = self.subtitleTrack != nil
+            self.remember { choice in
+                if let audio { choice.audioLanguage = audio }
+                guard legible != nil else { return }
+                if let subtitle {
+                    choice.subtitleLanguage = subtitle.extendedLanguageTag
+                    choice.subtitlesOff = false
+                } else if !hasBitmap, !hasDownloaded {
+                    choice.subtitleLanguage = nil
+                    choice.subtitlesOff = true
+                }
+            }
         }
     }
 
@@ -431,16 +492,26 @@ final class PlaybackSession: Identifiable {
         // turned on automatic subtitles and there's no text track to use instead.
         let language = remuxer.audio.first?.language
         let forced = remuxer.bitmapSubtitles.first { $0.source.isForced && $0.language == language }
-        let preferred = model.settings.subtitles.preferredLanguages
-        let wanted = model.settings.subtitles.autoEnable && remuxer.subtitles.isEmpty
+        let preferred = subtitleLanguages
+        let wanted = (model.settings.subtitles.autoEnable || showChoice?.subtitleLanguage != nil) && showChoice?.subtitlesOff != true && remuxer.subtitles.isEmpty
             ? remuxer.bitmapSubtitles.first { track in
                 !track.source.isCommentary && preferred.contains { LanguageName.bcp47(track.language) == $0 || track.language.hasPrefix($0) }
             }
             : nil
-        if let choice = wanted ?? forced { selectBitmapSubtitle(choice.id) }
+        if let choice = wanted ?? forced { showBitmapSubtitle(choice.id) }
     }
 
+    /// The viewer's choice from a menu: shown, and remembered for the show.
     func selectBitmapSubtitle(_ id: Int?) {
+        showBitmapSubtitle(id)
+        let language = remuxer?.bitmapSubtitles.first { $0.id == id }?.language
+        remember { choice in
+            choice.subtitleLanguage = language.map(LanguageName.bcp47)
+            choice.subtitlesOff = language == nil
+        }
+    }
+
+    private func showBitmapSubtitle(_ id: Int?) {
         selectedBitmapTrack = id
         bitmapSubtitle = nil
         bitmapTask?.cancel()
@@ -507,12 +578,13 @@ final class PlaybackSession: Identifiable {
         if logoPath == nil, let catalog = model.catalog { logoPath = await catalog.logo(for: request.item) }
         let resolved = await SkipSegmentResolver.resolve(source: source, providers: model.skipProviders(), request: request)
         segments = resolved.isEmpty ? chapterSegments : resolved
-        if model.settings.subtitles.autoEnable { await autoLoadSubtitle() }
+        // Automatic subtitles, or the language picked for this show in an earlier episode.
+        if model.settings.subtitles.autoEnable || showChoice?.subtitleLanguage != nil { await autoLoadSubtitle() }
         upNext = await model.nextRequest(after: request)
     }
 
     private func autoLoadSubtitle() async {
-        guard let model else { return }
+        guard let model, showChoice?.subtitlesOff != true else { return }
         // Subtitles that come with the stream beat a search: they're timed to this exact cut.
         // Opening an MKV takes a few seconds, so wait until the stream's tracks are known.
         var waited = 0
@@ -522,13 +594,13 @@ final class PlaybackSession: Identifiable {
             if Task.isCancelled { return }
             waited += 1
         }
-        if let item = player.currentItem, let embedded = await embeddedSubtitle(in: item, languages: model.settings.subtitles.preferredLanguages) {
+        if let item = player.currentItem, let embedded = await embeddedSubtitle(in: item, languages: subtitleLanguages) {
             if let group = try? await item.asset.loadMediaSelectionGroup(for: .legible) { item.select(embedded, in: group) }
             return
         }
         // So does a disc subtitle Flow draws itself.
         if let selected = selectedBitmapTrack, remuxer?.bitmapSubtitles.first(where: { $0.id == selected })?.source.isForced == false { return }
-        let tracks = await SubtitleSearch.search(model.subtitleProviders(), request: request, languages: model.settings.subtitles.preferredLanguages, hearingImpaired: model.settings.subtitles.hearingImpaired)
+        let tracks = await SubtitleSearch.search(model.subtitleProviders(), request: request, languages: subtitleLanguages, hearingImpaired: model.settings.subtitles.hearingImpaired)
         if let first = tracks.first { await selectSubtitle(first) }
     }
 
@@ -539,6 +611,7 @@ final class PlaybackSession: Identifiable {
         switch item.status {
         case .readyToPlay:
             Task { [weak self] in self?.audibleGroup = try? await item.asset.loadMediaSelectionGroup(for: .audible) }
+            if readyAt == nil { readyAt = Date() }
             if case .connecting = phase { phase = .connecting(0.7) }
             let seconds = item.duration.seconds
             if seconds.isFinite { duration = seconds }
@@ -763,7 +836,12 @@ final class PlaybackSession: Identifiable {
 
     func selectSubtitle(_ track: SubtitleTrackInfo?) async {
         guard let model else { return }
-        guard let track else { subtitle = nil; subtitleTrack = nil; subtitleText = nil; return }
+        guard let track else {
+            subtitle = nil; subtitleTrack = nil; subtitleText = nil
+            if selectedBitmapTrack == nil { remember { $0.subtitleLanguage = nil; $0.subtitlesOff = true } }
+            return
+        }
+        remember { $0.subtitleLanguage = LanguageName.bcp47(track.language); $0.subtitlesOff = false }
         let provider = model.subtitleProviders().first { $0.name == track.provider }
         do {
             subtitle = try await provider?.download(track)
@@ -853,6 +931,8 @@ final class PlaybackSession: Identifiable {
         observations = []
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         endObserver = nil
+        if let selectionObserver { NotificationCenter.default.removeObserver(selectionObserver) }
+        selectionObserver = nil
     }
 
     /// Reloads the stream, continuing from the current position if playback had started.

@@ -75,11 +75,19 @@ struct PlaybackSettingsView: View {
                     ForEach([5, 10, 15, 30], id: \.self) { Text("\($0)s").tag($0) }
                 }
             }
-            Section("Audio") {
+            Section {
                 Picker("Preferred Audio", selection: Binding(get: { model.settings.playback.preferredAudioLanguage ?? "" }, set: { model.settings.playback.preferredAudioLanguage = $0.isEmpty ? nil : $0 })) {
                     Text("Default").tag("")
                     ForEach(DiscoverFilterView.languages, id: \.0) { Text($0.1).tag($0.0) }
                 }
+                Toggle("Remember Tracks for Each Show", isOn: $model.settings.playback.rememberTracksPerShow)
+                if !model.settings.playback.showTracks.isEmpty {
+                    Button("Forget Remembered Tracks", role: .destructive) { model.settings.playback.showTracks = [:] }
+                }
+            } header: {
+                Text("Audio")
+            } footer: {
+                Text("Pick Japanese audio and English subtitles once, and the rest of the show starts that way.")
             }
             Section {
                 Toggle("Try the Next Source Automatically", isOn: $model.settings.playback.tryNextSourceOnFailure)

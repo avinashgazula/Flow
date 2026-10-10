@@ -625,7 +625,24 @@ public struct PlaybackSettings: Codable, Hashable, Sendable {
     public var matroskaPlayback: MatroskaPlayback = .remux
     /// When a source fails to start, quietly move on to the next one.
     public var tryNextSourceOnFailure = true
+    /// Remember the audio and subtitle languages chosen for a show, so its next episodes start the same way.
+    public var rememberTracksPerShow = true
+    /// By show ID.
+    public var showTracks: [String: ShowTrackChoice] = [:]
     public init() {}
+}
+
+/// The languages a viewer picked while watching a show (e.g. Japanese audio with English subtitles).
+public struct ShowTrackChoice: Codable, Hashable, Sendable {
+    public var audioLanguage: String?
+    /// Nil with `subtitlesOff` false means "no choice made".
+    public var subtitleLanguage: String?
+    public var subtitlesOff = false
+    public init(audioLanguage: String? = nil, subtitleLanguage: String? = nil, subtitlesOff: Bool = false) {
+        self.audioLanguage = audioLanguage
+        self.subtitleLanguage = subtitleLanguage
+        self.subtitlesOff = subtitlesOff
+    }
 }
 
 // MARK: - Subtitles
