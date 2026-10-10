@@ -105,11 +105,14 @@ enum EBML {
     static func float(_ b: [UInt8], _ e: Element) -> Double {
         guard let end = e.end, end <= b.count else { return 0 }
         let bits = bits(b, e)
+        let value: Double
         switch end - e.dataStart {
-        case 4: return Double(Float(bitPattern: UInt32(truncatingIfNeeded: bits)))
-        case 8: return Double(bitPattern: bits)
-        default: return 0
+        case 4: value = Double(Float(bitPattern: UInt32(truncatingIfNeeded: bits)))
+        case 8: value = Double(bitPattern: bits)
+        default: value = 0
         }
+        // NaN, infinities and absurd magnitudes only come from corrupt files, and would trap when converted.
+        return value.isFinite ? max(-1e12, min(1e12, value)) : 0
     }
 
     static func string(_ b: [UInt8], _ e: Element) -> String {

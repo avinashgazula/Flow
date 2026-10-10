@@ -366,7 +366,8 @@ public enum MatroskaReader {
                 }
             }
             if let bcp47, !bcp47.isEmpty { t.language = bcp47 }
-            if t.sampleRate == 0 { t.sampleRate = 8000 }
+            if !(1...768_000).contains(t.sampleRate) { t.sampleRate = 8000 }
+            if let rate = t.outputSampleRate, !(1...768_000).contains(rate) { t.outputSampleRate = nil }
             if t.channels == 0 { t.channels = 1 }
             tracks.append(t)
         }
