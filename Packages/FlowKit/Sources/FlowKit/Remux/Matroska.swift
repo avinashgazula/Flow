@@ -305,13 +305,17 @@ public enum MatroskaReader {
         var rawDuration: Double?
         for child in try EBML.children(b, from: e.dataStart, to: e.end!) {
             switch child.id {
-            case MKV.timecodeScale: header.timecodeScale = max(1, Int64(EBML.uint(b, child)))
+            case MKV.timecodeScale: header.timecodeScale = min(max(1, Int64(EBML.uint(b, child))), 1_000_000_000)
             case MKV.duration: rawDuration = EBML.float(b, child)
             case MKV.title: header.title = EBML.string(b, child)
             default: break
             }
         }
-        if let rawDuration { header.duration = Int64(rawDuration * Double(header.timecodeScale)) }
+        // A corrupt duration (NaN, infinite, negative or absurd) is ignored rather than trusted.
+        if let rawDuration {
+            let ns = rawDuration * Double(header.timecodeScale)
+            if ns.isFinite, ns > 0, ns < 1e17 { header.duration = Int64(ns) }
+        }
     }
 
     static func parseTracks(_ b: [UInt8], _ e: EBML.Element) throws -> [MatroskaTrack] {
@@ -494,7 +498,8 @@ public enum MatroskaReader {
 extension MatroskaHeader {
     /// Cue times arrive in timecode-scale units; this puts them in nanoseconds.
     mutating func scaleCueTimes() {
-        for i in cues.indices { cues[i].time *= timecodeScale }
+        for i in cues.indices { cues[i].time = cues[i].time &* timecodeScale }
+        cues.removeAll { $0.time < 0 || $0.time >= MatroskaClusterParser.maxTime }
     }
 }
 
@@ -538,7 +543,7 @@ public enum MatroskaClusterParser {
                         switch g.id {
                         case MKV.block:
                             block = parseBlock(b, g.dataStart, g.end!, clusterTime: clusterTime, scale: timecodeScale, simple: false, stripped: stripped, zlib: zlib)
-                        case MKV.blockDuration: duration = Int64(EBML.uint(b, g)) * timecodeScale
+                        case MKV.blockDuration: duration = min(Int64(EBML.uint(b, g)) &* timecodeScale, MatroskaClusterParser.maxTime)
                         case MKV.referenceBlock: hasReference = true
                         default: break
                         }
@@ -558,6 +563,8 @@ public enum MatroskaClusterParser {
         return out
     }
 
+    static let maxTime: Int64 = 100_000_000_000_000_000
+
     static func parseBlock(_ b: [UInt8], _ start: Int, _ end: Int, clusterTime: Int64, scale: Int64, simple: Bool, stripped: [Int: [UInt8]], zlib: Set<Int> = []) -> MatroskaBlock? {
         var i = start
         guard let (trackNumber, _, _) = try? EBML.readVInt(b, &i), i + 3 <= end else { return nil }
@@ -565,7 +572,10 @@ public enum MatroskaClusterParser {
         let flags = b[i + 2]
         i += 3
         let track = Int(trackNumber)
-        let time = (clusterTime + Int64(relative)) * scale
+        // Times beyond about three years only come from corrupt files; dropping those blocks keeps
+        // every later calculation (×90 kHz, + delays) clear of overflow.
+        let (time, overflow) = (clusterTime &+ Int64(relative)).multipliedReportingOverflow(by: scale)
+        guard !overflow, time > -Self.maxTime, time < Self.maxTime else { return nil }
         let keyframe = simple ? (flags & 0x80) != 0 : true
 
         var frames: [[UInt8]] = []

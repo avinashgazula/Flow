@@ -81,11 +81,13 @@ enum EBML {
         return out
     }
 
+    /// Clamped to 2^48 so a corrupt value can't trap when converted to Int or multiplied by a
+    /// timecode scale. Real positions and times stay far below it (2^48 bytes is 281 TB).
     static func uint(_ b: [UInt8], _ e: Element) -> UInt64 {
-        guard let end = e.end, end <= b.count else { return 0 }
+        guard let end = e.end, end <= b.count, end >= e.dataStart else { return 0 }
         var value: UInt64 = 0
         for k in e.dataStart..<end { value = value << 8 | UInt64(b[k]) }
-        return value
+        return min(value, 1 << 48)
     }
 
     static func int(_ b: [UInt8], _ e: Element) -> Int64 {

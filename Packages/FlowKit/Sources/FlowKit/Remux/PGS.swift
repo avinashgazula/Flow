@@ -145,10 +145,14 @@ struct PGSDecoder {
             let width = Int(p[7]) << 8 | Int(p[8])
             let height = Int(p[9]) << 8 | Int(p[10])
             i = 11
+            // Blu-ray graphics fit a 1920×1080 plane (4K discs use the same); anything larger is corrupt
+            // and would otherwise allocate gigabytes.
+            guard width > 0, height > 0, width <= 4096, height <= 2304 else { pendingObjectData[id] = nil; return }
             pendingObjectData[id] = (width, height, [])
         }
-        guard var pending = pendingObjectData[id] else { return }
+        guard var pending = pendingObjectData[id], i <= p.count else { return }
         pending.data += p[i...]
+        guard pending.data.count <= 8 * 1024 * 1024 else { pendingObjectData[id] = nil; return }
         pendingObjectData[id] = pending
         if sequence & 0x40 != 0 { // last fragment
             objects[id] = (pending.width, pending.height, Self.decodeRLE(pending.data, width: pending.width, height: pending.height))

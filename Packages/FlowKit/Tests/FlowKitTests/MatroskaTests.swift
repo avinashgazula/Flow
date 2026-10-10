@@ -278,3 +278,64 @@ final class BitmapSampleTests: XCTestCase {
         XCTAssertFalse(seen.isEmpty)
     }
 }
+
+/// Corrupted files must fail cleanly, never trap. A short run always; FLOW_FUZZ=n for n rounds.
+final class FuzzTests: XCTestCase {
+    func testCorruptFilesNeverCrash() async throws {
+        let rounds = Int(ProcessInfo.processInfo.environment["FLOW_FUZZ"] ?? "") ?? 60
+        var generator = SystemRandomNumberGenerator()
+        for name in ["avc-aac-srt", "hevc-eac3-ac3", "dts-commentary", "opus"] {
+            let original = [UInt8](try Data(contentsOf: MatroskaTests.fixture(name)))
+            for _ in 0..<rounds {
+                var bytes = original
+                switch Int.random(in: 0..<3, using: &generator) {
+                case 0: // flip bytes
+                    for _ in 0..<Int.random(in: 1...40, using: &generator) {
+                        bytes[Int.random(in: 0..<bytes.count, using: &generator)] = UInt8.random(in: 0...255, using: &generator)
+                    }
+                case 1: // truncate
+                    bytes = Array(bytes.prefix(Int.random(in: 0..<bytes.count, using: &generator)))
+                default: // overwrite a run with 0xFF (unknown sizes) or zeros
+                    let start = Int.random(in: 0..<bytes.count, using: &generator)
+                    let fill: UInt8 = Bool.random(using: &generator) ? 0xFF : 0
+                    for k in start..<min(bytes.count, start + Int.random(in: 1...64, using: &generator)) { bytes[k] = fill }
+                }
+                let source = MemoryByteSource(bytes)
+                if let remuxer = try? await MatroskaRemuxer.open(source, targetSegment: 2) {
+                    _ = await remuxer.masterPlaylist()
+                    for s in remuxer.segments.prefix(4) {
+                        if let v = remuxer.video { _ = try? await remuxer.mediaSegment(track: v.id, index: s.index) }
+                        for a in remuxer.audio { _ = try? await remuxer.mediaSegment(track: a.id, index: s.index) }
+                        for t in remuxer.subtitles { _ = try? await remuxer.subtitleSegment(track: t.id, index: s.index) }
+                    }
+                    for i in remuxer.trickPlayFrames.indices.prefix(3) { _ = try? await remuxer.iframeSegment(index: i) }
+                }
+                _ = try? MatroskaClusterParser.blocks(bytes, timecodeScale: 1_000_000, tracks: [])
+            }
+        }
+    }
+
+    func testCorruptSubtitlesNeverCrash() {
+        let rounds = (Int(ProcessInfo.processInfo.environment["FLOW_FUZZ"] ?? "") ?? 60) * 10
+        var generator = SystemRandomNumberGenerator()
+        func mutate(_ packet: [UInt8]) -> [UInt8] {
+            var bytes = packet
+            if Bool.random(using: &generator), !bytes.isEmpty { bytes = Array(bytes.prefix(Int.random(in: 0..<bytes.count, using: &generator))) }
+            for _ in 0..<Int.random(in: 1...8, using: &generator) where !bytes.isEmpty {
+                bytes[Int.random(in: 0..<bytes.count, using: &generator)] = UInt8.random(in: 0...255, using: &generator)
+            }
+            return bytes
+        }
+        let vobsub = VobSubDecoder(codecPrivate: Array("size: 720x480\npalette: 000000, ffffff, ff0000, 00ff00, 0000ff, 111111, 222222, 333333, 444444, 555555, 666666, 777777, 888888, 999999, aaaaaa, bbbbbb".utf8), videoWidth: 720, videoHeight: 480)
+        var pgs = PGSDecoder()
+        for _ in 0..<rounds {
+            if let cue = pgs.decode(mutate(PGSTests.showSet), at: 1) { for o in cue.objects { _ = cue.rgba(for: o) } }
+            if let cue = vobsub.decode(mutate(VobSubTests.packet()), at: 1) { for o in cue.objects { _ = cue.rgba(for: o) } }
+            let text = String(decoding: mutate(Array(#"1,0,Default,,0,0,0,,{\i1}Hi{\b1} & <there>{\p1}m 0 0{\r}\N"#.utf8)), as: UTF8.self)
+            _ = SubtitleText.fromASSEvent(text)
+            _ = SubtitleText.cleanSRT(text)
+            _ = EAC3.dec3(mutate(AtmosTests.atmosFrame(mixingMetadata: true)))
+            _ = Opus.dOps(mutate(Array("OpusHead".utf8) + [1, 6, 0x38, 0x01, 0x80, 0xBB, 0, 0, 0, 0, 1, 4, 2, 0, 4, 1, 2, 3, 5]))
+        }
+    }
+}

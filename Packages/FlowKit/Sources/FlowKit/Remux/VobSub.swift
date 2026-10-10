@@ -91,7 +91,8 @@ struct VobSubDecoder {
 
         guard shows, let area, let fields, area.x2 >= area.x1, area.y2 >= area.y1 else { return nil }
         let width = area.x2 - area.x1 + 1, height = area.y2 - area.y1 + 1
-        guard width <= 4096, height <= 4096 else { return nil }
+        // DVD subpictures fit the 720×576 frame; allow some slack for odd authoring, not corrupt sizes.
+        guard width <= max(canvasWidth, 720) * 2, height <= max(canvasHeight, 576) * 2 else { return nil }
         var indices = [UInt8](repeating: 0, count: width * height)
         // Interlaced: even lines from the top field, odd lines from the bottom.
         for (field, offset) in [fields.top, fields.bottom].enumerated() {
