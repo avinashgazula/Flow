@@ -16,6 +16,9 @@ public actor MatroskaHeaderCache {
         self.limit = limit
     }
 
+    /// Bumped whenever the parser changes what it reads, so headers parsed by older code are re-read.
+    static let format = 2
+
     /// FNV-1a over the first 64 KB, plus the length.
     public static func key(head: [UInt8], length: Int64?) -> String {
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
@@ -23,7 +26,7 @@ public actor MatroskaHeaderCache {
             hash ^= UInt64(byte)
             hash = hash &* 0x0000_0100_0000_01B3
         }
-        return String(hash, radix: 16) + "-" + String(length ?? 0)
+        return "v\(format)-" + String(hash, radix: 16) + "-" + String(length ?? 0)
     }
 
     public func header(for key: String) -> MatroskaHeader? {
