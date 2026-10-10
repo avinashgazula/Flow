@@ -516,3 +516,24 @@ final class ResyncTests: XCTestCase {
         XCTAssertFalse(try MatroskaClusterParser.blocks(fixed, timecodeScale: header.timecodeScale, tracks: []).isEmpty)
     }
 }
+
+final class DolbyVisionProfileTests: XCTestCase {
+    func testProfile7PlaysAsHDR10AndProfile8KeepsDolbyVision() async throws {
+        let header = try await MatroskaReader.readHeader(FileByteSource(url: MatroskaTests.fixture("hevc-eac3-ac3")))
+        var track = try XCTUnwrap(header.tracks.first { $0.kind == .video })
+        func entry(profile: UInt8, compatibility: UInt8) throws -> (OutputTrack: MatroskaRemuxer.OutputTrack, hasDV: Bool) {
+            track.dolbyVision = [1, 0, profile << 1, 0x10, compatibility << 4] + [UInt8](repeating: 0, count: 19)
+            track.dolbyVisionBoxType = "dvcC"
+            guard case .success(let out) = MatroskaRemuxer.output(for: track, firstFrame: nil) else { throw XCTSkip("unsupported") }
+            let bytes = out.sampleEntry
+            let hasDV = (0..<(bytes.count - 3)).contains { Array(bytes[$0..<($0 + 4)]) == Array("dvcC".utf8) }
+            return (out, hasDV)
+        }
+        XCTAssertTrue(try entry(profile: 8, compatibility: 1).hasDV)
+        XCTAssertFalse(try entry(profile: 7, compatibility: 6).hasDV)
+        XCTAssertEqual(MatroskaRemuxer.dynamicRange(track), "Dolby Vision 7.6 (plays as HDR10)")
+        let p5 = try entry(profile: 5, compatibility: 0)
+        XCTAssertTrue(p5.hasDV)
+        XCTAssertTrue(p5.OutputTrack.codecString.hasPrefix("dvh1.05"))
+    }
+}

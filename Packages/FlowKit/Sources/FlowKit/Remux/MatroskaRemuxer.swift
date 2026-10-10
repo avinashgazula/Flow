@@ -282,7 +282,9 @@ public actor MatroskaRemuxer {
             if let mastering = colour.mastering { children += MP4.mdcv(mastering) }
             if colour.maxCLL != nil || colour.maxFALL != nil { children += MP4.clli(maxCLL: colour.maxCLL ?? 0, maxFALL: colour.maxFALL ?? 0) }
         }
-        if let dv = t.dolbyVision, let boxType = t.dolbyVisionBoxType, dv.count >= 4, codec == .hevc {
+        // Apple plays Dolby Vision profiles 5 and 8. Others (7, from UHD Blu-rays) play as their HDR10
+        // base layer: without the Dolby Vision configuration, the decoder ignores the enhancement layer.
+        if let dv = t.dolbyVision, let boxType = t.dolbyVisionBoxType, dv.count >= 4, codec == .hevc, [5, 8].contains(Int(dv[2] >> 1)) {
             let profile = Int(dv[2] >> 1)
             let level = Int((dv[2] & 1) << 5 | dv[3] >> 3)
             children += MP4.box(boxType, dv)
@@ -411,7 +413,8 @@ public actor MatroskaRemuxer {
         if let dv = v.dolbyVision, dv.count >= 5 {
             let profile = Int(dv[2] >> 1)
             let compatibility = Int(dv[4] >> 4)
-            return compatibility > 0 ? "Dolby Vision \(profile).\(compatibility)" : "Dolby Vision \(profile)"
+            let name = compatibility > 0 ? "Dolby Vision \(profile).\(compatibility)" : "Dolby Vision \(profile)"
+            return [5, 8].contains(profile) ? name : name + " (plays as HDR10)"
         }
         if v.colour?.isPQ == true { return v.colour?.maxCLL != nil || v.colour?.mastering != nil ? "HDR10" : "PQ" }
         if v.colour?.isHLG == true { return "HLG" }
