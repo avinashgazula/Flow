@@ -277,6 +277,18 @@ final class ReleaseFilterTests: XCTestCase {
         let kept = await filter.filter([cinemaOnly, digital], now: now)
         XCTAssertEqual(kept.map(\.title), ["Digital"])
     }
+    func testNextPartOfACollection() {
+        func film(_ id: Int, _ date: String?) -> MediaItem {
+            MediaItem(type: .movie, ids: ExternalIDs(tmdb: id), title: "\(id)", releaseDate: date.flatMap(FlowDate.parse))
+        }
+        let one = film(1, "2021-10-22"), two = film(2, "2024-03-01"), three = film(3, "2027-12-18"), undated = film(4, nil)
+        // Parts arrive in any order; the next one is the earliest released after this film.
+        let collection = MediaCollection(id: 9, name: "Dune", parts: [three, undated, two, one])
+        XCTAssertEqual(collection.part(after: one, now: now)?.id, two.id)
+        // Part Three isn't out yet, so nothing follows Part Two.
+        XCTAssertNil(collection.part(after: two, now: now))
+        XCTAssertNil(collection.part(after: undated, now: now))
+    }
 }
 
 final class SyncTests: XCTestCase {

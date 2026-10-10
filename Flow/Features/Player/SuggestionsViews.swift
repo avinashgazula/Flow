@@ -31,7 +31,7 @@ struct SuggestionsCard: View {
             }
             HStack(spacing: 10) {
                 ForEach(session.suggestions.prefix(Platform.isPhone ? 2 : 3)) { item in
-                    SuggestionTile(item: item, width: width) { session.openSuggestion(item) }
+                    SuggestionTile(item: item, width: width, isNext: item.id == session.nextInCollection?.id) { session.openSuggestion(item) }
                 }
             }
         }
@@ -72,7 +72,7 @@ struct SuggestionsEndScreen: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Platform.isTV ? 40 : 14) {
                         ForEach(session.suggestions) { item in
-                            SuggestionTile(item: item, width: width) { session.openSuggestion(item) }
+                            SuggestionTile(item: item, width: width, isNext: item.id == session.nextInCollection?.id) { session.openSuggestion(item) }
                                 .focused($focused, equals: item.id)
                         }
                     }
@@ -105,6 +105,8 @@ struct SuggestionsEndScreen: View {
 private struct SuggestionTile: View {
     let item: MediaItem
     let width: CGFloat
+    /// The next film in the same collection.
+    var isNext = false
     let action: () -> Void
 
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Platform.isTV ? 16 : 12, style: .continuous) }
@@ -114,6 +116,16 @@ private struct SuggestionTile: View {
             VStack(alignment: .leading, spacing: 6) {
                 RemoteImage(url: item.smallBackdropURL ?? item.posterURL, maxPixel: Platform.isTV ? 900 : 560, fallbackTitle: item.title)
                     .frame(width: width, height: width * 9 / 16)
+                    .overlay(alignment: .topLeading) {
+                        if isNext {
+                            Text("NEXT")
+                                .font(Theme.Typeface.micro).kerning(1)
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 7).padding(.vertical, 3)
+                                .background(.white, in: Capsule())
+                                .padding(8)
+                        }
+                    }
                     .clipShape(shape)
                     .hairline(shape)
                 Text(item.title)
@@ -128,6 +140,6 @@ private struct SuggestionTile: View {
             }
         }
         .buttonStyle(CardButtonStyle())
-        .accessibilityLabel(item.title)
+        .accessibilityLabel(isNext ? "Next: \(item.title)" : item.title)
     }
 }

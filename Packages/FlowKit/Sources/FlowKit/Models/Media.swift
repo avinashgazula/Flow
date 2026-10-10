@@ -395,6 +395,14 @@ public struct MediaCollection: Codable, Hashable, Sendable, Identifiable {
         self.backdropPath = backdropPath
         self.parts = parts
     }
+
+    /// The film that follows `item` in release order, once it's out (Dune → Dune: Part Two).
+    public func part(after item: MediaItem, now: Date = Date()) -> MediaItem? {
+        guard let released = item.releaseDate else { return nil }
+        return parts
+            .filter { $0.id != item.id && ($0.releaseDate.map { $0 > released && $0 <= now } ?? false) }
+            .min { $0.releaseDate! < $1.releaseDate! }
+    }
 }
 
 /// A page of results from any paginated catalogue.

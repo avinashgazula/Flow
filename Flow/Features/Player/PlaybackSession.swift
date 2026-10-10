@@ -36,6 +36,8 @@ final class PlaybackSession: Identifiable {
     var upNextCountdown: Int?
     /// Films like this one ("Because You Watched"), offered as its credits roll and when it ends.
     var suggestions: [MediaItem] = []
+    /// The film after this one in its collection, when it's out; leads the suggestions.
+    var nextInCollection: MediaItem?
     var showsSuggestions = false
     var logoPath: String?
     /// A short message over the video ("Playing English 5.1; DTS isn't supported").
@@ -592,7 +594,11 @@ final class PlaybackSession: Identifiable {
             if playback.postCreditsAlert { creditsScenes = detail.creditsScenes }
             if playback.becauseYouWatched {
                 var seen: Set<String> = [request.item.id]
-                suggestions = (detail.recommendations + detail.similar)
+                if let collection = detail.collection, let parts = try? await model.catalog?.collection(collection.id),
+                   let next = parts.part(after: detail.item), !model.isWatched(next) {
+                    nextInCollection = next
+                }
+                suggestions = ([nextInCollection].compactMap { $0 } + detail.recommendations + detail.similar)
                     .filter { $0.backdropPath != nil && !model.isWatched($0) && seen.insert($0.id).inserted }
                     .prefix(8).map { $0 }
             }
