@@ -17,6 +17,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var metadata = MetadataSettings()
     public var sync = SyncSettings()
     public var sports = SportsSettings()
+    public var downloads = DownloadSettings()
 
     public init() {}
 }
@@ -61,6 +62,50 @@ public struct GeneralSettings: Codable, Hashable, Sendable {
     public var heroSource: HeroSource = .trending
     public var haptics = true
     public var showWatchedBadges = true
+
+    // Navigation and app icon
+    /// The tabs in the order they appear (missing tabs are appended, so new ones always show).
+    public var tabOrder: [AppTab] = AppTab.allCases
+    public var appIcon: AppIconChoice = .dark
+
+    // Notifications (local; scheduled on this device)
+    /// When a new episode of a show you're watching airs.
+    public var episodeNotifications = false
+    /// Ten minutes before a followed team plays.
+    public var matchStartNotifications = false
+    /// A followed team's final score, while Flow is running.
+    public var matchResultNotifications = false
+
+    // Detail pages
+    public var showAboutSection = true
+    public var showWhereToWatch = true
+    public var showReviews = true
+    /// Off blurs the stills of aired episodes you haven't watched.
+    public var showEpisodeSpoilers = true
+    /// Season 0 at the top of a show's season list.
+    public var showSpecialsSeason = true
+    public var detailTextSize: DetailTextSize = .standard
+
+    // Home shelves
+    /// How many titles each content shelf loads.
+    public var contentShelfLength = 20
+    public var showContinueWatching = true
+    /// Most recent kept; nil for all.
+    public var continueWatchingLimit: Int?
+    public var showContinueWatchingReleaseDate = true
+    /// Next episodes (with air dates) of shows you're caught up on.
+    public var showUpcoming = false
+    /// Upcoming also lists season premieres and unreleased films from your watchlist.
+    public var includeWatchlistPremieres = false
+    public var filmDates: FilmDateKind = .digital
+    public var upcomingWithinDays = 7
+    public var heroStyle: HeroStyle = .card
+    public var heroSecondarySource: HeroSource?
+
+    // Posters
+    public var showReleaseYear = false
+    /// "3/10" on series posters and "6 Remaining" on Continue Watching cards.
+    public var showEpisodesRemaining = true
     public init() {}
 }
 
@@ -68,6 +113,41 @@ public enum HeroSource: String, Codable, Hashable, Sendable, CaseIterable, Ident
     case trending, popular, watchlist
     public var id: String { rawValue }
     public var title: String { rawValue.capitalized }
+}
+
+public enum HeroStyle: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    /// A rounded carousel with its neighbours peeking in.
+    case card
+    /// The backdrop edge to edge.
+    case fullscreen
+    public var id: String { rawValue }
+    public var title: String { self == .card ? "Card" : "Fullscreen" }
+}
+
+public enum AppIconChoice: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case dark, light
+    public var id: String { rawValue }
+    public var title: String { rawValue.capitalized }
+}
+
+/// Which release a film's date means on Upcoming and Calendar.
+public enum FilmDateKind: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case digital, theatrical
+    public var id: String { rawValue }
+    public var title: String { self == .digital ? "Digital Release" : "Theatrical Release" }
+}
+
+public enum DetailTextSize: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case small, standard, large, extraLarge
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .small: return "Small"
+        case .standard: return "Default"
+        case .large: return "Large"
+        case .extraLarge: return "Extra Large"
+        }
+    }
 }
 
 // MARK: - Account
@@ -372,12 +452,28 @@ public struct MediaServerConfig: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
+public struct SeerrConfig: Codable, Hashable, Sendable {
+    public var baseURL: URL
+    public var apiKey: String
+    public init(baseURL: URL, apiKey: String) {
+        self.baseURL = baseURL
+        self.apiKey = apiKey
+    }
+}
+
 public struct MediaServerSettings: Codable, Hashable, Sendable {
     public var servers: [MediaServerConfig] = []
     public var showBadgeOnPosters = true
     public var onlyShowServerContent = false
     public var searchServers = true
     public var useServerArtwork = false
+    /// Ignore the servers' own watched state, resume points and Continue Watching, and stop reporting
+    /// playback to them: progress comes only from the tracking service.
+    public var trackOnlyWithTracker = false
+    /// Adds a row of each server's own libraries and collections to Home.
+    public var serverHomeRows = false
+    /// A Seerr, Overseerr or Jellyseerr instance for requesting titles you don't have.
+    public var seerr: SeerrConfig?
     public var preferDirectPlay = true
     public init() {}
 }
@@ -682,6 +778,20 @@ public struct PlaybackSettings: Codable, Hashable, Sendable {
     public var rememberTracksPerShow = true
     /// By show ID.
     public var showTracks: [String: ShowTrackChoice] = [:]
+    /// Turn the player to landscape when it opens (iPhone).
+    public var autoRotate = true
+    /// Tapping a Continue Watching card plays straight away instead of opening the title.
+    public var skipDetailsOnContinueWatching = true
+    /// Applied instead of `preferredResolutionCap` on cellular and other metered connections.
+    public var cellularResolutionCap: VideoResolution = .uhd4k
+    /// Prefer HDR sources when the screen shows HDR; off prefers SDR.
+    public var preferHDR = true
+    /// Play Dolby Vision files as their HDR10 base layer.
+    public var neverUseDolbyVision = false
+    /// Play single-layer Dolby Vision profile 7 as profile 8.1 (HDR10 base plus the Dolby Vision metadata).
+    public var convertDolbyVisionProfile7 = true
+    /// A progress bar on the loading screen.
+    public var showLoadingProgress = true
     public init() {}
 }
 
@@ -765,10 +875,37 @@ public struct SyncSettings: Codable, Hashable, Sendable {
     public init() {}
 }
 
+// MARK: - Downloads
+
+public enum DownloadLocation: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    /// Inside the app (not backed up).
+    case appStorage
+    /// The app's folder in the Files app, so downloads can be copied off the device.
+    case files
+    public var id: String { rawValue }
+    public var title: String { self == .appStorage ? "App Storage" : "Files App" }
+}
+
+public struct DownloadSettings: Codable, Hashable, Sendable {
+    public var location: DownloadLocation = .appStorage
+    /// Largest film to pick automatically, in GB; nil for no limit.
+    public var movieLimitGB: Double?
+    public var episodeLimitGB: Double?
+    /// Highest resolution to pick automatically; `.unknown` for the highest available.
+    public var resolution: VideoResolution = .unknown
+    /// Download takes the best source within the limits instead of opening the source list.
+    public var downloadAutomatically = false
+    public init() {}
+}
+
 // MARK: - Sports
 
 public struct SportsSettings: Codable, Hashable, Sendable {
     public var followedTeams: [SportsTeam] = []
     public var apiKey = "123"
+    /// Off blurs live and final scores until tapped.
+    public var showScoreSpoilers = true
+    /// Tapping a game opens its channel list (press and hold plays the best match); off is the reverse.
+    public var chooseChannelOnTap = false
     public init() {}
 }
