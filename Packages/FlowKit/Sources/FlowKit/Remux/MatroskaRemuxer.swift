@@ -18,6 +18,9 @@ public actor MatroskaRemuxer {
         let codec: Codec
         /// Dolby Atmos in Dolby Digital Plus (joint object coding).
         public var isAtmos = false
+        /// Dolby tracks: how many dB quieter than mastered the decoder plays them (31 minus the declared
+        /// dialogue level), which `setLoudnessBoost` can give back.
+        public var loudnessHeadroom: Int?
 
         public var id: Int { source.number }
         public var language: String { source.language }
@@ -70,6 +73,12 @@ public actor MatroskaRemuxer {
     private var bitmapCues: [BitmapSubtitle] = []
     private var decodedSegments = Set<Int>()
     private var transcoders: [Int: AudioTranscoder] = [:]
+    /// dB of Dolby headroom to give back (see `DolbyLoudness`); applies to segments built from now on.
+    private var loudnessBoost = 0
+
+    /// Plays Dolby Digital and Dolby Digital Plus tracks up to `dB` louder. Segments already handed to
+    /// the player keep their level, so reload the item to hear it at once.
+    public func setLoudnessBoost(_ dB: Int) { loudnessBoost = max(0, min(30, dB)) }
 
     /// Reads the header and enough of the first clusters to configure Dolby audio, then plans segments.
     /// `targetSegment` nil picks a length from the file's bitrate (see `segmentLength`).
@@ -322,7 +331,9 @@ public actor MatroskaRemuxer {
         case "A_AC3":
             guard let frame = firstFrame, let h = AC3.parse(frame) else { return .failure(Unsupported(message: "AC-3 stream without a readable frame")) }
             let entry = MP4.audioSampleEntry("ac-3", channels: h.channels, sampleRate: h.sampleRate, children: MP4.box("dac3", AC3.dac3(h)))
-            return .success(OutputTrack(role: .audio, source: t, codecString: "ac-3", timescale: UInt32(h.sampleRate), label: label, sampleEntry: entry, frameSamples: 1536, codec: .ac3))
+            var out = OutputTrack(role: .audio, source: t, codecString: "ac-3", timescale: UInt32(h.sampleRate), label: label, sampleEntry: entry, frameSamples: 1536, codec: .ac3)
+            out.loudnessHeadroom = DolbyLoudness.dialogueLevel(frame).map { $0 == 0 ? 0 : 31 - $0 }
+            return .success(out)
         case "A_EAC3":
             guard let frame = firstFrame, let dec3 = EAC3.dec3(frame), let first = EAC3.parse(frame) else {
                 return .failure(Unsupported(message: "E-AC-3 stream without a readable frame"))
@@ -331,8 +342,10 @@ public actor MatroskaRemuxer {
             let atmos = EAC3.isAtmos(frame)
             // "English (Dolby Digital Plus 5.1)" → "English (Dolby Atmos)"
             let shown = atmos ? label.replacingOccurrences(of: #"Dolby Digital Plus [0-9.]+"#, with: "Dolby Atmos", options: .regularExpression) : label
-            return .success(OutputTrack(role: .audio, source: t, codecString: "ec-3", timescale: UInt32(first.sampleRate), label: shown, sampleEntry: entry,
-                                        frameSamples: EAC3.samples(in: frame), codec: .eac3, isAtmos: atmos))
+            var out = OutputTrack(role: .audio, source: t, codecString: "ec-3", timescale: UInt32(first.sampleRate), label: shown, sampleEntry: entry,
+                                  frameSamples: EAC3.samples(in: frame), codec: .eac3, isAtmos: atmos)
+            out.loudnessHeadroom = DolbyLoudness.dialogueLevel(frame).map { $0 == 0 ? 0 : 31 - $0 }
+            return .success(out)
         case "A_FLAC":
             guard let dfLa = FLAC.dfLa(t.codecPrivate) else { return .failure(Unsupported(message: "FLAC without stream info")) }
             let entry = MP4.audioSampleEntry("fLaC", channels: t.channels, sampleRate: rate, children: MP4.fullBox("dfLa") { w in w.append(dfLa) })
@@ -718,7 +731,8 @@ public actor MatroskaRemuxer {
                 case .mp3: duration = MP3.samplesPerFrame(frame)
                 default: duration = track.frameSamples
                 }
-                samples.append(MP4.Sample(data: frame, duration: UInt32(duration), isSync: true))
+                let data = loudnessBoost > 0 && (track.codec == .ac3 || track.codec == .eac3) ? DolbyLoudness.boost(frame, dB: loudnessBoost) : frame
+                samples.append(MP4.Sample(data: data, duration: UInt32(duration), isSync: true))
             }
         }
         return (samples, UInt64((max(0, first.time) + presentationDelay) * rate / 1_000_000_000))

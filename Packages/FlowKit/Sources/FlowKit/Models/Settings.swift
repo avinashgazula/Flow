@@ -674,6 +674,8 @@ public struct PlaybackSettings: Codable, Hashable, Sendable {
     public var becauseYouWatched = true
     /// Play the next episode only when this one ends, rather than counting down as its credits start.
     public var upNextWaitsForEnd = false
+    /// Extra loudness for quiet Dolby Digital (Plus) soundtracks in MKVs, in dB (see DolbyLoudness).
+    public var volumeBoostDB = 0
     /// Decode DTS and Dolby TrueHD in MKVs (with FFmpeg) instead of skipping them.
     public var decodeLosslessAudio = true
     /// Remember the audio and subtitle languages chosen for a show, so its next episodes start the same way.

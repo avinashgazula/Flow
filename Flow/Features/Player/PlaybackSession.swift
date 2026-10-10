@@ -227,6 +227,7 @@ final class PlaybackSession: Identifiable {
                 fail("This file's audio is \(first.reason), which Apple devices can't decode. Try another source, or open it in VLC or Infuse.")
                 return
             }
+            if let boost = model?.settings.playback.volumeBoostDB, boost > 0 { await remuxer.setLoudnessBoost(boost) }
             let (hls, token) = try LocalHLSServer.shared.register(remuxer)
             guard !Task.isCancelled else { LocalHLSServer.shared.unregister(token); return }
             hlsToken = token
@@ -865,6 +866,49 @@ final class PlaybackSession: Identifiable {
     func play(episode: Episode) async {
         guard episode.id != request.episode?.id else { return }
         await switchEpisode(to: PlaybackRequest(item: request.item, episode: episode), finished: false)
+    }
+
+    /// How many dB louder Dolby soundtracks can play here: the headroom their mix leaves. Zero when
+    /// the stream isn't remuxed by Flow or has no Dolby audio, where boost can't apply.
+    var volumeBoostHeadroom: Int {
+        guard usesRemux, let remuxer else { return 0 }
+        return remuxer.audio.compactMap(\.loudnessHeadroom).max() ?? 0
+    }
+
+    /// Sets the volume boost (remembered for next time) and reloads the stream where it is, so it's heard at once.
+    func setVolumeBoost(_ dB: Int) {
+        guard let model, model.settings.playback.volumeBoostDB != dB else { return }
+        model.settings.playback.volumeBoostDB = dB
+        guard usesRemux, let remuxer, let asset = player.currentItem?.asset as? AVURLAsset else { return }
+        Task {
+            await remuxer.setLoudnessBoost(dB)
+            // Segments already buffered carry the old level; a fresh item at the same moment refetches them.
+            let wasPlaying = isPlaying
+            let chosen = await Self.selectedOptionNames(player.currentItem)
+            recoverAt = currentTime
+            teardownObservers()
+            attach(AVURLAsset(url: asset.url))
+            if !wasPlaying { player.pause() }
+            // Keep the audio and subtitle tracks the viewer picked.
+            guard let item = player.currentItem else { return }
+            for (characteristic, name) in chosen {
+                guard let group = try? await item.asset.loadMediaSelectionGroup(for: characteristic),
+                      let option = group.options.first(where: { $0.displayName == name }) else { continue }
+                item.select(option, in: group)
+            }
+        }
+    }
+
+    private static func selectedOptionNames(_ item: AVPlayerItem?) async -> [(AVMediaCharacteristic, String)] {
+        guard let item else { return [] }
+        var names: [(AVMediaCharacteristic, String)] = []
+        for characteristic in [AVMediaCharacteristic.audible, .legible] {
+            if let group = try? await item.asset.loadMediaSelectionGroup(for: characteristic),
+               let option = item.currentMediaSelection.selectedMediaOption(in: group) {
+                names.append((characteristic, option.displayName))
+            }
+        }
+        return names
     }
 
     /// Switches to another source of the same title, carrying on from the same moment.
