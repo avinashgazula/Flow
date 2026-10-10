@@ -98,7 +98,8 @@ struct DataStorageView: View {
             } header: {
                 Text("On-Device Tracking")
             } footer: {
-                Text("Re-download reads the whole iCloud copy and merges anything missing into this device; nothing is uploaded or deleted. Reset replaces the iCloud copy with this device's. Export saves your watch history, watchlist, favourites, resume positions and rewatches as a JSON file.")
+                Text((model.settings.sync.iCloudEnabled ? "Re-download reads the whole iCloud copy and merges anything missing into this device; nothing is uploaded or deleted. Reset replaces the iCloud copy with this device's. " : "")
+                     + "Export saves your watch history, watchlist, favourites, resume positions and rewatches as a JSON file.")
             }
 
             if Platform.supportsDownloads {
