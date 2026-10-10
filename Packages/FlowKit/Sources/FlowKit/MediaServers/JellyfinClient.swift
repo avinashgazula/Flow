@@ -181,10 +181,12 @@ public struct JellyfinClient: MediaServerClient {
     public func libraries() async throws -> [MediaLibrary] {
         let r = try await http.json(ItemsResponse.self, request(.get, "Users/\(userID)/Views"))
         return r.Items.compactMap { dto in
+            let cover = dto.ImageTags?["Primary"].map { imageURL(dto.Id, kind: "Primary", tag: $0, width: 640) }
+                ?? dto.BackdropImageTags?.first.map { imageURL(dto.Id, kind: "Backdrop", tag: $0, width: 640) }
             switch dto.CollectionType {
-            case "movies": return MediaLibrary(id: dto.Id, name: dto.Name ?? "Movies", type: .movie)
-            case "tvshows": return MediaLibrary(id: dto.Id, name: dto.Name ?? "Shows", type: .show)
-            case nil, "mixed", "homevideos": return MediaLibrary(id: dto.Id, name: dto.Name ?? "Library", type: nil)
+            case "movies": return MediaLibrary(id: dto.Id, name: dto.Name ?? "Movies", type: .movie, imageURL: cover)
+            case "tvshows": return MediaLibrary(id: dto.Id, name: dto.Name ?? "Shows", type: .show, imageURL: cover)
+            case nil, "mixed", "homevideos": return MediaLibrary(id: dto.Id, name: dto.Name ?? "Library", type: nil, imageURL: cover)
             default: return nil
             }
         }

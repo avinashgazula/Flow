@@ -5,6 +5,19 @@ struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var heroItem: MediaItem?
 
+    /// The enabled shelves, minus the ones their General switches turn off.
+    private var shelves: [ShelfConfig] {
+        let general = model.settings.general
+        return model.settings.shelves.filter { shelf in
+            guard shelf.enabled else { return false }
+            switch shelf.source {
+            case .builtIn(.continueWatching): return general.showContinueWatching
+            case .builtIn(.upcomingEpisodes): return general.showUpcoming
+            default: return true
+            }
+        }
+    }
+
     var body: some View {
         Group {
             if model.catalog == nil {
@@ -13,10 +26,13 @@ struct HomeView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: Theme.Space.section) {
                         HeroCarousel(current: $heroItem)
-                        ForEach(model.settings.shelves.filter(\.enabled)) { shelf in
+                        ForEach(shelves) { shelf in
                             ShelfView(shelf: shelf)
                         }
-                        if model.settings.shelves.filter(\.enabled).isEmpty {
+                        if model.settings.mediaServers.serverHomeRows && !model.mediaServers.isEmpty {
+                            ServerLibrariesShelf()
+                        }
+                        if shelves.isEmpty {
                             ContentUnavailableView("No Shelves", systemImage: "square.grid.2x2", description: Text("Turn shelves on in Settings → Shelves."))
                         }
                     }

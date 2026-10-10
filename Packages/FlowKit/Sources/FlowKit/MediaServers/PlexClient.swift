@@ -110,7 +110,7 @@ public struct PlexClient: MediaServerClient {
     }
 
     struct Hub: Decodable { var type: String?; var Metadata: [Metadata]? }
-    struct Directory: Decodable { var key: String; var title: String; var type: String }
+    struct Directory: Decodable { var key: String; var title: String; var type: String; var art: String?; var thumb: String? }
 
     struct Metadata: Decodable {
         var ratingKey: String
@@ -181,8 +181,8 @@ public struct PlexClient: MediaServerClient {
         let c = try await get("library/sections")
         return (c.Directory ?? []).compactMap { d in
             switch d.type {
-            case "movie": return MediaLibrary(id: d.key, name: d.title, type: .movie)
-            case "show": return MediaLibrary(id: d.key, name: d.title, type: .show)
+            case "movie": return MediaLibrary(id: d.key, name: d.title, type: .movie, imageURL: imageURL(d.art ?? d.thumb, width: 640, height: 360))
+            case "show": return MediaLibrary(id: d.key, name: d.title, type: .show, imageURL: imageURL(d.art ?? d.thumb, width: 640, height: 360))
             default: return nil
             }
         }

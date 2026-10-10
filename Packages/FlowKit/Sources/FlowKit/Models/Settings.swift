@@ -262,6 +262,8 @@ public enum BuiltInShelf: String, Codable, Hashable, Sendable, CaseIterable {
     case topRatedShows
     case nowPlaying
     case upcomingMovies
+    /// The next episodes (and, optionally, premieres and films) coming within a few days.
+    case upcomingEpisodes
     case airingToday
     case anticipatedMovies
     case anticipatedShows
@@ -284,7 +286,8 @@ public enum BuiltInShelf: String, Codable, Hashable, Sendable, CaseIterable {
         case .topRatedMovies: return "Top Rated Movies"
         case .topRatedShows: return "Top Rated Shows"
         case .nowPlaying: return "Now Playing"
-        case .upcomingMovies: return "Upcoming"
+        case .upcomingMovies: return "Upcoming Movies"
+        case .upcomingEpisodes: return "Upcoming"
         case .airingToday: return "Airing Today"
         case .anticipatedMovies: return "Anticipated Movies"
         case .anticipatedShows: return "Anticipated Shows"
@@ -296,7 +299,20 @@ public enum BuiltInShelf: String, Codable, Hashable, Sendable, CaseIterable {
 
     /// Rows whose purpose is to show what's coming: never filtered for unreleased titles.
     public var showsUpcomingByDesign: Bool {
-        [.continueWatching, .nextUp, .watchlist, .upcomingMovies, .nowPlaying, .anticipatedMovies, .anticipatedShows].contains(self)
+        [.continueWatching, .nextUp, .watchlist, .upcomingMovies, .upcomingEpisodes, .nowPlaying, .anticipatedMovies, .anticipatedShows].contains(self)
+    }
+}
+
+extension BuiltInShelf {
+    /// Catalogue rows the shelf-length setting caps; your own lists and watch state always show in full.
+    public var isContentShelf: Bool {
+        switch self {
+        case .trendingMovies, .trendingShows, .popularMovies, .popularShows, .topRatedMovies, .topRatedShows,
+             .nowPlaying, .upcomingMovies, .airingToday, .anticipatedMovies, .anticipatedShows, .recommendedForYou, .becauseYouWatched:
+            return true
+        default:
+            return false
+        }
     }
 }
 
@@ -394,6 +410,7 @@ public struct ShelfConfig: Codable, Hashable, Sendable, Identifiable {
 
     public static let defaults: [ShelfConfig] = [
         .builtIn(.continueWatching, style: .landscape),
+        .builtIn(.upcomingEpisodes),
         .builtIn(.watchlist),
         .builtIn(.trendingMovies),
         .builtIn(.trendingShows),

@@ -44,7 +44,6 @@ struct GeneralSettingsView: View {
                         Label(choice.rawValue.capitalized, systemImage: "circle.fill").foregroundStyle(choice.color).tag(choice)
                     }
                 }
-                Toggle("Show Titles Under Posters", isOn: $model.settings.general.showPosterTitles)
                 Toggle("Show Watched Check Marks", isOn: $model.settings.general.showWatchedBadges)
             }
             Section("Home") {
@@ -63,6 +62,49 @@ struct GeneralSettingsView: View {
                 Text("Detail Views")
             } footer: {
                 Text("About shows status, country and production companies. Where to Watch shows streaming, rent and buy availability (JustWatch via TMDB). Reviews shows TMDB and Trakt reviews. Episode Spoilers off blurs the stills of aired episodes you haven't watched. Specials Season adds season 0 to a show's seasons.")
+            }
+            Section {
+                Picker("Content Shelf Length", selection: $model.settings.general.contentShelfLength) {
+                    ForEach([10, 20, 30, 40], id: \.self) { Text("\($0)").tag($0) }
+                }
+                Toggle("Show Continue Watching", isOn: $model.settings.general.showContinueWatching)
+                Picker("Shelf Limit", selection: $model.settings.general.continueWatchingLimit) {
+                    Text("All").tag(Int?.none)
+                    ForEach([5, 10, 20], id: \.self) { Text("\($0)").tag(Int?.some($0)) }
+                }
+                .disabled(!model.settings.general.showContinueWatching)
+                Toggle("Show Continue Watching Release Date", isOn: $model.settings.general.showContinueWatchingReleaseDate)
+                    .disabled(!model.settings.general.showContinueWatching)
+                Toggle("Show Upcoming", isOn: Binding(
+                    get: { model.settings.general.showUpcoming },
+                    set: { on in
+                        model.settings.general.showUpcoming = on
+                        if on { model.ensureUpcomingShelf() }
+                    }
+                ))
+                Toggle("Include Watchlist Premieres", isOn: $model.settings.general.includeWatchlistPremieres)
+                    .disabled(!model.settings.general.showUpcoming)
+                Picker("Film Dates", selection: $model.settings.general.filmDates) {
+                    ForEach(FilmDateKind.allCases) { Text($0.title).tag($0) }
+                }
+                .disabled(!model.settings.general.showUpcoming || !model.settings.general.includeWatchlistPremieres)
+                Picker("Upcoming Within", selection: $model.settings.general.upcomingWithinDays) {
+                    ForEach([3, 7, 14, 30], id: \.self) { Text("\($0) days").tag($0) }
+                }
+                .disabled(!model.settings.general.showUpcoming)
+            } header: {
+                Text("Home Shelves")
+            } footer: {
+                Text("Content shelves such as Trending hold this many titles. Upcoming lists the next episode of shows you're caught up on, with its air date. Watchlist premieres add new seasons and unreleased films from your watchlist, dated by their digital or theatrical release.")
+            }
+            Section {
+                Toggle("Show Release Year", isOn: $model.settings.general.showReleaseYear)
+                Toggle("Show Titles Under Posters", isOn: $model.settings.general.showPosterTitles)
+                Toggle("Show Episodes Remaining", isOn: $model.settings.general.showEpisodesRemaining)
+            } header: {
+                Text("Posters")
+            } footer: {
+                Text("The year appears under the title, or alone when titles are hidden. Episodes remaining adds watched/aired counts such as 3/10 to series posters and \"6 Remaining\" to Continue Watching cards.")
             }
             Section {
                 Picker("Text Size", selection: $model.settings.general.detailTextSize) {

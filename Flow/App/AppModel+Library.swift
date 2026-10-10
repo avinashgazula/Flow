@@ -84,28 +84,37 @@ extension AppModel {
             .filter { ($0.lastWatchedAt ?? .distantPast) > Date().addingTimeInterval(-60 * 86400) }
             .sorted { ($0.lastWatchedAt ?? .distantPast) > ($1.lastWatchedAt ?? .distantPast) }
             .prefix(15)
+        var airedCounts: [MediaKey: Int] = [:]
         if let catalog {
-            await withTaskGroup(of: (MediaKey, EpisodeRef, Date)?.self) { group in
+            await withTaskGroup(of: (MediaKey, Int, EpisodeRef?, Date)?.self) { group in
                 for state in recentShows {
                     let rewatch = rewatches.first { $0.key == state.key }
                     group.addTask {
                         guard let detail = try? await catalog.details(.show, id: state.key.tmdbID) else { return nil }
                         let aired = Self.airedEpisodes(detail)
                         let effective = rewatch.map { ShowWatchState(key: state.key, watched: $0.watched, lastWatchedAt: $0.startedAt) } ?? state
-                        guard let next = effective.nextUp(aired: aired) else { return nil }
-                        return (state.key, next, state.lastWatchedAt ?? Date())
+                        return (state.key, aired.count, effective.nextUp(aired: aired), state.lastWatchedAt ?? Date())
                     }
                 }
-                for await result in group { if let result { nextUp.append(result) } }
+                for await result in group {
+                    guard let (key, count, next, date) = result else { continue }
+                    airedCounts[key] = count
+                    if let next { nextUp.append((key, next, date)) }
+                }
             }
         }
         // Rewatches with no tracker history yet still deserve a Next Up.
         for rewatch in rewatches where !nextUp.contains(where: { $0.0 == rewatch.key }) {
-            if let catalog, let detail = try? await catalog.details(.show, id: rewatch.key.tmdbID),
-               let next = ShowWatchState(key: rewatch.key, watched: rewatch.watched).nextUp(aired: Self.airedEpisodes(detail)) {
-                nextUp.append((rewatch.key, next, rewatch.startedAt))
+            if let catalog, let detail = try? await catalog.details(.show, id: rewatch.key.tmdbID) {
+                let aired = Self.airedEpisodes(detail)
+                airedCounts[rewatch.key] = aired.count
+                if let next = ShowWatchState(key: rewatch.key, watched: rewatch.watched).nextUp(aired: aired) {
+                    nextUp.append((rewatch.key, next, rewatch.startedAt))
+                }
             }
         }
+        // Aired counts learned here feed the "3/10" poster capsule and "6 Remaining" pill without opening each show.
+        for (key, count) in airedCounts where count > 0 { completedShowThresholds[key] = count }
         continueWatching = ContinueWatchingBuilder.build(progress: progress, nextUp: nextUp, finishedPercent: settings.playback.watchedThresholdPercent)
     }
 
@@ -149,6 +158,14 @@ extension AppModel {
     private func isShowCompleted(_ key: MediaKey) -> Bool {
         guard let state = showStates[key] else { return false }
         return state.watched.count >= (completedShowThresholds[key] ?? Int.max)
+    }
+
+    /// Watched and aired regular episodes of a show, once both are known: the aired count is learned
+    /// from detail pages and Continue Watching, so shows you haven't opened or followed have none.
+    func episodeProgress(for item: MediaItem) -> (watched: Int, aired: Int)? {
+        guard item.type == .show, let key = item.key, let aired = completedShowThresholds[key], aired > 0 else { return nil }
+        guard let watched = localLibrary.rewatches.first(where: { $0.key == key })?.watched ?? showStates[key]?.watched else { return nil }
+        return (min(aired, watched.filter { $0.season > 0 }.count), aired)
     }
 
     func isEpisodeWatched(_ show: MediaItem, _ ref: EpisodeRef) -> Bool {

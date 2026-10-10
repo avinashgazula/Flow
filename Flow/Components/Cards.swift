@@ -35,17 +35,31 @@ struct PosterCardContent: View {
     var zoomID: String?
     @Environment(AppModel.self) private var model
 
+    private var showTitle: Bool { model.settings.general.showPosterTitles }
+    /// With titles hidden the year stands alone under the poster.
+    private var year: Int? { model.settings.general.showReleaseYear ? item.year : nil }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             PosterArtwork(item: item)
                 .frame(width: width, height: width.map { $0 * 1.5 })
                 .zoomSource(zoomID)
-            if model.settings.general.showPosterTitles {
-                Text(item.title)
-                    .font(.system(.footnote, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .lineLimit(1)
-                    .frame(width: width, alignment: .leading)
+            if showTitle || year != nil {
+                VStack(alignment: .leading, spacing: 1) {
+                    if showTitle {
+                        Text(item.title)
+                            .font(.system(.footnote, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .lineLimit(1)
+                    }
+                    if let year {
+                        Text(String(year))
+                            .font(.system(.caption))
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                            .lineLimit(1)
+                    }
+                }
+                .frame(width: width, alignment: .leading)
             }
         }
     }
@@ -70,6 +84,7 @@ struct PosterArtwork: View {
                     WatchedCheck().padding(Theme.Space.xs)
                 }
             }
+            .overlay(alignment: .bottomLeading) { episodeCount }
             .overlay(alignment: .topTrailing) {
                 if model.settings.mediaServers.showBadgeOnPosters && model.isOnServer(item) {
                     Image(systemName: "server.rack")
@@ -82,6 +97,21 @@ struct PosterArtwork: View {
                 }
             }
             .artworkShadow(0.55)
+    }
+
+    /// "3/10": episodes watched of those aired, where the app knows the show's watch state.
+    @ViewBuilder
+    private var episodeCount: some View {
+        if model.settings.general.showEpisodesRemaining, let p = model.episodeProgress(for: item), p.watched > 0 {
+            Text("\(p.watched)/\(p.aired)")
+                .font(.system(size: 10 * Theme.scale, weight: .bold).monospacedDigit())
+                .foregroundStyle(.white)
+                .padding(.horizontal, 7).padding(.vertical, 3)
+                .background(.black.opacity(0.55), in: Capsule())
+                .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
+                .padding(Theme.Space.xs)
+                .accessibilityLabel("\(p.watched) of \(p.aired) episodes watched")
+        }
     }
 
     @ViewBuilder
@@ -143,6 +173,53 @@ struct PosterPreview: View {
     }
 }
 
+/// Poster for the Upcoming shelf with when it arrives: "S02E05 · Thu" for an episode, the day for a film.
+struct UpcomingCard: View {
+    let entry: UpcomingEntry
+    var context: String = "upcoming"
+    @Environment(AppModel.self) private var model
+
+    private var zoomID: String { "\(context)-\(entry.id)" }
+
+    var body: some View {
+        NavigationLink(value: Route.detail(entry.item, zoom: zoomID)) {
+            VStack(alignment: .leading, spacing: 2) {
+                PosterCardContent(item: entry.item, width: Platform.posterWidth, zoomID: zoomID)
+                Text(caption)
+                    .font(.system(.caption, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .lineLimit(1)
+                    .frame(width: Platform.posterWidth, alignment: .leading)
+            }
+        }
+        .buttonStyle(CardButtonStyle())
+        .contextMenu { MediaContextMenu(item: entry.item) } preview: { PosterPreview(item: entry.item) }
+        .accessibilityLabel("\(entry.item.title), \(caption)")
+    }
+
+    /// Air dates are bare days (midnight UTC), so they're written in UTC or they'd slip a day.
+    private var caption: String {
+        let day = Self.dayLabel(entry.date)
+        guard let episode = entry.episode else { return day }
+        return "\(episode.code) · \(day)"
+    }
+
+    private static func dayLabel(_ date: Date) -> String {
+        let soon = date.timeIntervalSinceNow < 6 * 86400
+        return (soon ? weekday : monthDay).string(from: date)
+    }
+
+    private static let weekday = formatter("EEE")
+    private static let monthDay = formatter("MMM d")
+
+    private static func formatter(_ format: String) -> DateFormatter {
+        let f = DateFormatter()
+        f.timeZone = TimeZone(identifier: "UTC")
+        f.setLocalizedDateFormatFromTemplate(format)
+        return f
+    }
+}
+
 /// Wide card for Continue Watching: still/backdrop, progress and what's next.
 struct ContinueWatchingCard: View {
     let entry: ContinueWatchingBuilder.Entry
@@ -182,6 +259,14 @@ struct ContinueWatchingCard: View {
                         if let p = entry.progress { ProgressCapsule(value: p.percent / 100) }
                     }
                     .padding(Theme.Space.s)
+                    if let remaining = episodesRemaining {
+                        Text("\(remaining) Remaining")
+                            .font(.system(.caption2, weight: .semibold))
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(.black.opacity(0.5), in: Capsule())
+                            .padding(Theme.Space.s)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    }
                     Image(systemName: "play.fill")
                         .font(.system(size: 15 * Theme.scale, weight: .bold))
                         .frame(width: 38 * Theme.scale, height: 38 * Theme.scale)
@@ -221,9 +306,17 @@ struct ContinueWatchingCard: View {
         return entry.isNextUp ? "Up Next" : nil
     }
 
+    /// Episodes of a show not yet watched, once the app knows how many have aired.
+    private var episodesRemaining: Int? {
+        guard model.settings.general.showEpisodesRemaining, entry.episode != nil, let p = model.episodeProgress(for: item) else { return nil }
+        let remaining = p.aired - p.watched
+        return remaining > 0 ? remaining : nil
+    }
+
     private var subtitle: String {
         if entry.episode != nil { return entry.isNextUp ? "Next episode" : "Resume episode" }
-        return [item.year.map(String.init), item.genres.first?.name].compactMap { $0 }.joined(separator: " · ")
+        let year = model.settings.general.showContinueWatchingReleaseDate ? item.year.map(String.init) : nil
+        return [year, item.genres.first?.name].compactMap { $0 }.joined(separator: " · ")
     }
 }
 

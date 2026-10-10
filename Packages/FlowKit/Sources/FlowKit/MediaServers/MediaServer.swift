@@ -41,10 +41,13 @@ public struct MediaLibrary: Codable, Hashable, Sendable, Identifiable {
     public var id: String
     public var name: String
     public var type: MediaType?
-    public init(id: String, name: String, type: MediaType?) {
+    /// The server's own cover art for the library, for Home's server rows.
+    public var imageURL: URL?
+    public init(id: String, name: String, type: MediaType?, imageURL: URL? = nil) {
         self.id = id
         self.name = name
         self.type = type
+        self.imageURL = imageURL
     }
 }
 

@@ -42,6 +42,8 @@ extension AppModel {
             case .topRatedShows: result = try await catalog.list(.topRated, type: .show, page: page)
             case .nowPlaying: result = try await catalog.list(.nowPlaying, type: .movie, page: page)
             case .upcomingMovies: result = try await catalog.list(.upcoming, type: .movie, page: page)
+            case .upcomingEpisodes:
+                result = single(await upcoming().map(\.item))
             case .airingToday: result = try await catalog.list(.airingToday, type: .show, page: page)
             case .anticipatedMovies, .anticipatedShows:
                 let type: MediaType = builtIn == .anticipatedMovies ? .movie : .show
@@ -92,6 +94,26 @@ extension AppModel {
         return result
     }
 
+    /// A shelf's row on Home. Catalogue rows hold at most the shelf-length setting, fetching a second page
+    /// when the length is more than one page; your own lists always show in full.
+    func shelfItems(for shelf: ShelfConfig) async throws -> [MediaItem] {
+        let first = try await page(for: shelf)
+        let isContent: Bool
+        switch shelf.source {
+        case .builtIn(let builtIn): isContent = builtIn.isContentShelf
+        case .discover: isContent = true
+        default: isContent = false
+        }
+        guard isContent else { return first.items }
+        let length = settings.general.contentShelfLength
+        var items = first.items
+        if items.count < length, first.hasMore, let next = try? await page(for: shelf, page: 2) {
+            var seen = Set(items.map(\.id))
+            items += next.items.filter { seen.insert($0.id).inserted }
+        }
+        return Array(items.prefix(length))
+    }
+
     /// The most recent title in your history, which seeds "Because You Watched".
     var becauseYouWatchedSeed: MediaKey? { history.first?.key }
 
@@ -133,11 +155,27 @@ extension AppModel {
         return out
     }
 
-    /// Items for the home hero carousel.
+    /// Items for the home hero carousel: the primary source, with the secondary one interleaved when set.
     func heroItems() async -> [MediaItem] {
+        let primary = settings.general.heroSource
+        var items = await heroItems(from: primary)
+        if let secondary = settings.general.heroSecondarySource, secondary != primary {
+            let extra = await heroItems(from: secondary)
+            var mixed: [MediaItem] = []
+            for index in 0..<max(items.count, extra.count) {
+                if index < items.count { mixed.append(items[index]) }
+                if index < extra.count { mixed.append(extra[index]) }
+            }
+            items = mixed
+        }
+        var seen = Set<String>()
+        return Array(items.filter { seen.insert($0.id).inserted }.prefix(15))
+    }
+
+    private func heroItems(from source: HeroSource) async -> [MediaItem] {
         guard let catalog else { return [] }
         var items: [MediaItem]
-        switch settings.general.heroSource {
+        switch source {
         case .trending:
             async let movies = try? catalog.trending(.movie)
             async let shows = try? catalog.trending(.show)
@@ -148,8 +186,100 @@ extension AppModel {
         case .watchlist:
             items = await hydrate(watchlistKeys, limit: 15)
         }
-        items = await catalog.apply(catalogFilters, to: items.filter { $0.backdropPath != nil || $0.posterPath != nil }, exemptFromRelease: settings.general.heroSource == .watchlist)
-        return Array(items.prefix(15))
+        return await catalog.apply(catalogFilters, to: items.filter { $0.backdropPath != nil || $0.posterPath != nil }, exemptFromRelease: source == .watchlist)
+    }
+
+    // MARK: Upcoming
+
+    /// What's coming within the configured window: the next episodes of shows you're caught up on and, when
+    /// asked, season premieres and films from your watchlist.
+    func upcoming() async -> [UpcomingEntry] {
+        guard let catalog else { return [] }
+        let general = settings.general
+        let states = showStates
+        let watchlist = Set(watchlistKeys)
+
+        // Shows you've watched lately, plus the watchlist when premieres are wanted.
+        var keys = states.values
+            .filter { !$0.watched.isEmpty }
+            .sorted { ($0.lastWatchedAt ?? .distantPast) > ($1.lastWatchedAt ?? .distantPast) }
+            .prefix(40).map(\.key)
+        if general.includeWatchlistPremieres {
+            let known = Set(keys)
+            keys += watchlistKeys.filter { $0.type == .show && !known.contains($0) }.prefix(30)
+        }
+        let shows = await withTaskGroup(of: UpcomingBuilder.ShowInput?.self) { group in
+            for key in keys {
+                group.addTask {
+                    guard let detail = try? await catalog.details(.show, id: key.tmdbID) else { return nil }
+                    let state = states[key] ?? ShowWatchState(key: key)
+                    let caughtUp = !state.watched.isEmpty && state.nextUp(aired: Self.airedEpisodes(detail)) == nil
+                    return UpcomingBuilder.ShowInput(item: detail.item, nextEpisode: detail.nextEpisode, caughtUp: caughtUp, onWatchlist: watchlist.contains(key))
+                }
+            }
+            var all: [UpcomingBuilder.ShowInput] = []
+            for await input in group { if let input { all.append(input) } }
+            return all
+        }
+
+        var films: [UpcomingBuilder.FilmInput] = []
+        if general.includeWatchlistPremieres {
+            // A film that came out long ago can't still be on its way to digital.
+            let cutoff = Date().addingTimeInterval(-200 * 86400)
+            let candidates = await hydrate(watchlistKeys.filter { $0.type == .movie }, limit: 60)
+                .filter { !isWatched($0) && ($0.releaseDate.map { $0 > cutoff } ?? true) }
+            films = await withTaskGroup(of: UpcomingBuilder.FilmInput?.self) { group in
+                for item in candidates.prefix(30) {
+                    guard let id = item.ids.tmdb else { continue }
+                    group.addTask { UpcomingBuilder.FilmInput(item: item, releases: await catalog.releaseDates(movieID: id)) }
+                }
+                var all: [UpcomingBuilder.FilmInput] = []
+                for await input in group { if let input { all.append(input) } }
+                return all
+            }
+        }
+
+        return UpcomingBuilder.build(shows: shows, films: films, withinDays: general.upcomingWithinDays,
+                                     includeWatchlistPremieres: general.includeWatchlistPremieres,
+                                     filmDates: general.filmDates, region: catalog.tmdb.region)
+    }
+
+    /// Turning Upcoming on needs a shelf to show it in: add one, or switch the existing one back on.
+    func ensureUpcomingShelf() {
+        if let index = settings.shelves.firstIndex(where: { $0.source == .builtIn(.upcomingEpisodes) }) {
+            settings.shelves[index].enabled = true
+        } else {
+            let after = settings.shelves.firstIndex { $0.source == .builtIn(.continueWatching) }.map { $0 + 1 } ?? 0
+            settings.shelves.insert(.builtIn(.upcomingEpisodes), at: after)
+        }
+    }
+
+    // MARK: Server home rows
+
+    /// One library of one connected server, for Home's server row.
+    struct ServerLibrary: Identifiable, Hashable {
+        let server: MediaServerConfig
+        let library: MediaLibrary
+        var id: String { "\(server.id):\(library.id)" }
+
+        /// What opening the card shows: the library's titles, newest first.
+        var shelf: ShelfConfig {
+            ShelfConfig(id: id, title: library.name, source: .mediaServerLibrary(serverID: server.id, libraryID: library.id))
+        }
+    }
+
+    /// Every connected server's libraries, in server order.
+    func serverLibraries() async -> [ServerLibrary] {
+        let servers = mediaServers
+        let found = await withTaskGroup(of: (Int, [ServerLibrary]).self) { group in
+            for (index, server) in servers.enumerated() {
+                group.addTask { (index, ((try? await server.libraries()) ?? []).map { ServerLibrary(server: server.config, library: $0) }) }
+            }
+            var all: [(Int, [ServerLibrary])] = []
+            for await chunk in group { all.append(chunk) }
+            return all
+        }
+        return found.sorted { $0.0 < $1.0 }.flatMap(\.1)
     }
 
     /// Multi-search plus media-server results.

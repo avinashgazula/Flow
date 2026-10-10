@@ -133,6 +133,8 @@ struct ShelfView: View {
         Group {
             if case .builtIn(let b) = shelf.source, b == .continueWatching || b == .nextUp {
                 ContinueWatchingShelf(title: shelf.title, nextUpOnly: b == .nextUp)
+            } else if case .builtIn(.upcomingEpisodes) = shelf.source {
+                UpcomingShelf(shelf: shelf)
             } else if !items.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     SectionHeader(title ?? shelf.title, route: .shelf(shelf))
@@ -148,12 +150,126 @@ struct ShelfView: View {
     }
 
     private func load() async {
+        // Upcoming loads its own dated entries.
+        if case .builtIn(.upcomingEpisodes) = shelf.source { return }
         if case .builtIn(.becauseYouWatched) = shelf.source, let seed = model.becauseYouWatchedSeed,
            let source = await model.hydrate([seed]).first {
             title = "Because You Watched \(source.title)"
         }
-        if let page = try? await model.page(for: shelf) { items = page.items }
+        if let loadedItems = try? await model.shelfItems(for: shelf) { items = loadedItems }
         loaded = true
+    }
+}
+
+/// The next episodes (and, optionally, premieres and films) arriving soon, each with its date.
+struct UpcomingShelf: View {
+    let shelf: ShelfConfig
+    @Environment(AppModel.self) private var model
+    @State private var entries: [UpcomingEntry] = []
+
+    var body: some View {
+        Group {
+            if !entries.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    SectionHeader(shelf.title, route: .shelf(shelf))
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
+                            ForEach(entries) { entry in UpcomingCard(entry: entry, context: shelf.id) }
+                        }
+                        .padding(.horizontal, Theme.Space.gutter)
+                        .padding(.vertical, Platform.isTV ? 36 : 6)
+                        .scrollTargetLayout()
+                    }
+                    .scrollTargetBehavior(.viewAligned)
+                    .scrollClipDisabled()
+                    .pagingArrows(ids: entries.map(\.id), itemWidth: Platform.posterWidth + 14)
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(Theme.Motion.fade, value: entries.isEmpty)
+        .task(id: "\(model.contentVersion)-\(model.settings.general.upcomingWithinDays)-\(model.settings.general.includeWatchlistPremieres)-\(model.settings.general.filmDates.rawValue)") {
+            entries = await model.upcoming()
+        }
+    }
+}
+
+/// Each connected server's libraries as cards with the server's own cover art.
+struct ServerLibrariesShelf: View {
+    @Environment(AppModel.self) private var model
+    @State private var libraries: [AppModel.ServerLibrary] = []
+
+    private var title: String {
+        let servers = model.mediaServers
+        return servers.count == 1 ? servers[0].config.name : "Your Servers"
+    }
+
+    var body: some View {
+        Group {
+            if !libraries.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    SectionHeader<Route>(title)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
+                            ForEach(libraries) { entry in
+                                ServerLibraryCard(entry: entry, showServer: model.mediaServers.count > 1)
+                            }
+                        }
+                        .padding(.horizontal, Theme.Space.gutter)
+                        .padding(.vertical, Platform.isTV ? 36 : 6)
+                        .scrollTargetLayout()
+                    }
+                    .scrollTargetBehavior(.viewAligned)
+                    .scrollClipDisabled()
+                    .pagingArrows(ids: libraries.map(\.id), itemWidth: Platform.landscapeWidth + 14)
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(Theme.Motion.fade, value: libraries.isEmpty)
+        .task(id: "\(model.settings.mediaServers.servers.map(\.id))-\(model.contentVersion)") {
+            libraries = await model.serverLibraries()
+        }
+    }
+}
+
+private struct ServerLibraryCard: View {
+    let entry: AppModel.ServerLibrary
+    let showServer: Bool
+
+    private var width: CGFloat { Platform.landscapeWidth }
+    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous) }
+
+    var body: some View {
+        NavigationLink(value: Route.shelf(entry.shelf)) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                ZStack(alignment: .bottomLeading) {
+                    RemoteImage(url: entry.library.imageURL, maxPixel: Platform.isTV ? 1000 : 700, fallbackTitle: entry.library.name)
+                        .frame(width: width, height: width * 9 / 16)
+                    // Without cover art the generated poster already carries the name.
+                    if entry.library.imageURL != nil {
+                        LinearGradient(colors: [.clear, .black.opacity(0.7)], startPoint: .center, endPoint: .bottom)
+                        Text(entry.library.name)
+                            .font(.system(.subheadline, weight: .bold))
+                            .lineLimit(1)
+                            .padding(Theme.Space.s)
+                    }
+                }
+                .frame(width: width, height: width * 9 / 16)
+                .clipShape(shape)
+                .hairline(shape)
+                .artworkShadow(0.5)
+                if showServer {
+                    Text(entry.server.name)
+                        .font(.system(.caption))
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                        .lineLimit(1)
+                        .frame(width: width, alignment: .leading)
+                }
+            }
+        }
+        .buttonStyle(CardButtonStyle())
+        .accessibilityLabel("\(entry.library.name), \(entry.server.name)")
     }
 }
 
@@ -186,8 +302,11 @@ struct ContinueWatchingShelf: View {
     @Environment(AppModel.self) private var model
     @State private var items: [MediaKey: MediaItem] = [:]
 
+    /// Most recent first, so a limit keeps the latest.
     private var entries: [ContinueWatchingBuilder.Entry] {
-        nextUpOnly ? model.continueWatching.filter(\.isNextUp) : model.continueWatching
+        let all = nextUpOnly ? model.continueWatching.filter(\.isNextUp) : model.continueWatching
+        guard let limit = model.settings.general.continueWatchingLimit else { return all }
+        return Array(all.prefix(limit))
     }
 
     var body: some View {
@@ -222,7 +341,8 @@ struct ContinueWatchingShelf: View {
 
 // MARK: - Hero
 
-/// Paged, full-bleed hero. Reports the visible title so Home can tint itself with its artwork.
+/// The home hero: a rounded carousel with its neighbours peeking in, or the backdrop edge to edge,
+/// per Settings. Reports the visible title so Home can tint itself with its artwork.
 struct HeroCarousel: View {
     @Binding var current: MediaItem?
     @Environment(AppModel.self) private var model
@@ -232,49 +352,99 @@ struct HeroCarousel: View {
     @State private var interacting = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private var isCard: Bool { model.settings.general.heroStyle == .card }
+
     var body: some View {
+        let stretches = !isCard
         Group {
             if items.isEmpty {
-                Rectangle().fill(Theme.Palette.surface)
-                    .frame(height: height)
-                    .shimmering()
+                placeholder
+            } else if isCard {
+                cardPager
             } else {
-                ZStack(alignment: Platform.isPhone ? .bottom : .bottomTrailing) {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(spacing: 0) {
-                            ForEach(items) { item in
-                                HeroPage(item: details[item.id] ?? item, height: height)
-                                    .containerRelativeFrame(.horizontal)
-                                    .id(item.id)
-                                    .task { await loadDetail(item) }
-                            }
-                        }
-                        .scrollTargetLayout()
-                    }
-                    .scrollTargetBehavior(.paging)
-                    .scrollPosition(id: $currentID)
-                    .onScrollPhaseChangeIfAvailable { interacting = $0 }
-                    PageDots(count: items.count, index: items.firstIndex { $0.id == currentID } ?? 0)
-                        .padding(.bottom, Platform.isPhone ? 14 : Theme.Space.l)
-                        .padding(.trailing, Platform.isPhone ? 0 : Theme.Space.gutter)
-                }
-                .frame(height: height)
+                fullscreenPager
             }
         }
         .visualEffect { content, proxy in
-            // Stretch when pulled down; drift slower than the page when scrolled up.
+            // Stretch when pulled down; drift slower than the page when scrolled up. Full-bleed only: a card stays put.
             let y = proxy.frame(in: .scrollView(axis: .vertical)).minY
             return content
-                .scaleEffect(y > 0 ? 1 + y / max(proxy.size.height, 1) : 1, anchor: .bottom)
-                .offset(y: y < 0 ? -y * 0.35 : 0)
+                .scaleEffect(stretches && y > 0 ? 1 + y / max(proxy.size.height, 1) : 1, anchor: .bottom)
+                .offset(y: stretches && y < 0 ? -y * 0.35 : 0)
         }
-        .task(id: model.contentVersion) {
+        .task(id: "\(model.contentVersion)-\(model.settings.general.heroSource.rawValue)-\(model.settings.general.heroSecondarySource?.rawValue ?? "")") {
             let loaded = await model.heroItems()
             withAnimation(Theme.Motion.fade) { items = loaded }
             if currentID == nil || !loaded.contains(where: { $0.id == currentID }) { currentID = loaded.first?.id }
         }
         .task(id: items.count) { await autoAdvance() }
         .onChange(of: currentID) { _, id in current = items.first { $0.id == id } }
+    }
+
+    @ViewBuilder
+    private var placeholder: some View {
+        if isCard {
+            RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.Palette.surface)
+                .frame(height: cardHeight)
+                .padding(.horizontal, Theme.Space.gutter)
+                .padding(.top, cardTopInset)
+                .shimmering()
+        } else {
+            Rectangle().fill(Theme.Palette.surface)
+                .frame(height: height)
+                .shimmering()
+        }
+    }
+
+    private var fullscreenPager: some View {
+        ZStack(alignment: Platform.isPhone ? .bottom : .bottomTrailing) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 0) {
+                    ForEach(items) { item in
+                        HeroPage(item: details[item.id] ?? item, height: height)
+                            .containerRelativeFrame(.horizontal)
+                            .id(item.id)
+                            .task { await loadDetail(item) }
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.paging)
+            .scrollPosition(id: $currentID)
+            .onScrollPhaseChangeIfAvailable { interacting = $0 }
+            PageDots(count: items.count, index: items.firstIndex { $0.id == currentID } ?? 0)
+                .padding(.bottom, Platform.isPhone ? 14 : Theme.Space.l)
+                .padding(.trailing, Platform.isPhone ? 0 : Theme.Space.gutter)
+        }
+        .frame(height: height)
+    }
+
+    /// The centred card snaps in place, so the ones either side show their edges.
+    private var cardPager: some View {
+        VStack(spacing: Theme.Space.s) {
+            GeometryReader { proxy in
+                let cardWidth = min(proxy.size.width * (Platform.isPhone ? 0.86 : 0.78), 900 * Theme.scale)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: Platform.isTV ? 40 : 12) {
+                        ForEach(items) { item in
+                            HeroPage(item: details[item.id] ?? item, height: cardHeight, card: true)
+                                .frame(width: cardWidth)
+                                .id(item.id)
+                                .task { await loadDetail(item) }
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                .contentMargins(.horizontal, max(0, (proxy.size.width - cardWidth) / 2), for: .scrollContent)
+                .scrollTargetBehavior(.viewAligned)
+                .scrollClipDisabled()
+                .scrollPosition(id: $currentID, anchor: .center)
+                .onScrollPhaseChangeIfAvailable { interacting = $0 }
+            }
+            .frame(height: cardHeight)
+            PageDots(count: items.count, index: items.firstIndex { $0.id == currentID } ?? 0)
+        }
+        .padding(.top, cardTopInset)
     }
 
     private var height: CGFloat {
@@ -284,6 +454,27 @@ struct HeroCarousel: View {
         560
         #else
         Platform.isPhone ? 620 : 600
+        #endif
+    }
+
+    private var cardHeight: CGFloat {
+        #if os(tvOS)
+        660
+        #elseif os(macOS)
+        420
+        #else
+        Platform.isPhone ? 470 : 440
+        #endif
+    }
+
+    /// Clears the status bar and the settings button, since Home scrolls under them.
+    private var cardTopInset: CGFloat {
+        #if os(tvOS)
+        110
+        #elseif os(macOS)
+        12
+        #else
+        Platform.isPhone ? 112 : 84
         #endif
     }
 
@@ -307,9 +498,22 @@ struct HeroCarousel: View {
 private struct HeroPage: View {
     let item: MediaItem
     let height: CGFloat
+    /// Rounded and inset, for the card carousel; otherwise the page runs edge to edge.
+    var card = false
     @Environment(AppModel.self) private var model
 
+    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous) }
+
+    @ViewBuilder
     var body: some View {
+        if card {
+            page.clipShape(shape).hairline(shape).artworkShadow(0.6)
+        } else {
+            page
+        }
+    }
+
+    private var page: some View {
         ZStack(alignment: Platform.isPhone ? .bottom : .bottomLeading) {
             Button { model.navigate(to: .detail(item)) } label: {
                 RemoteImage(url: artworkURL, maxPixel: Platform.isPhone ? 900 : 1920, fallbackTitle: item.title)
@@ -340,8 +544,8 @@ private struct HeroPage: View {
                 HeroActions(item: item)
                     .padding(.top, Theme.Space.xs)
             }
-            .padding(.horizontal, Theme.Space.gutter)
-            .padding(.bottom, Platform.isPhone ? 44 : Theme.Space.xxl)
+            .padding(.horizontal, card ? Theme.Space.m : Theme.Space.gutter)
+            .padding(.bottom, card ? Theme.Space.l : (Platform.isPhone ? 44 : Theme.Space.xxl))
         }
         .frame(height: height)
     }
@@ -357,8 +561,10 @@ private struct HeroPage: View {
             if !Platform.isPhone {
                 LinearGradient(colors: [.black.opacity(0.75), .black.opacity(0.2), .clear], startPoint: .leading, endPoint: .trailing)
             }
-            // Keeps the status bar legible over bright posters.
-            LinearGradient(colors: [.black.opacity(0.45), .clear], startPoint: .top, endPoint: .init(x: 0.5, y: 0.18))
+            if !card {
+                // Keeps the status bar legible over bright posters.
+                LinearGradient(colors: [.black.opacity(0.45), .clear], startPoint: .top, endPoint: .init(x: 0.5, y: 0.18))
+            }
         }
     }
 }

@@ -6,6 +6,8 @@ struct ShelvesSettingsView: View {
     @State private var editing: ShelfConfig?
     @State private var addingDiscover = false
     @State private var addingList = false
+    /// Shelves read from the clipboard, awaiting confirmation before they replace the current ones.
+    @State private var importedShelves: [ShelfConfig]?
 
     var body: some View {
         @Bindable var model = model
@@ -47,6 +49,42 @@ struct ShelvesSettingsView: View {
                 }
                 Button("Restore Defaults", role: .destructive) { model.settings.shelves = ShelfConfig.defaults }
             }
+
+            Section {
+                Picker("Style", selection: $model.settings.general.heroStyle) {
+                    ForEach(HeroStyle.allCases) { Text($0.title).tag($0) }
+                }
+                Picker("Primary Source", selection: $model.settings.general.heroSource) {
+                    ForEach(HeroSource.allCases) { Text($0.title).tag($0) }
+                }
+                Picker("Secondary Source", selection: $model.settings.general.heroSecondarySource) {
+                    Text("None").tag(HeroSource?.none)
+                    ForEach(HeroSource.allCases) { Text($0.title).tag(HeroSource?.some($0)) }
+                }
+            } header: {
+                Text("Hero")
+            } footer: {
+                Text("Card shows a rounded carousel with peeking neighbours. Fullscreen renders the backdrop edge-to-edge.")
+            }
+
+            Section {
+                Toggle("Show Libraries on Home", isOn: $model.settings.mediaServers.serverHomeRows)
+            } header: {
+                Text("Server Home Rows")
+            } footer: {
+                Text("Adds a row to Home with each connected media server's own libraries, using the server's cover images.")
+            }
+
+            #if !os(tvOS)
+            Section {
+                Button("Copy to Clipboard") { exportShelves() }
+                Button("Import from Clipboard") { importShelves() }
+            } header: {
+                Text("Import / Export")
+            } footer: {
+                Text("Copies your shelves as JSON to share or keep, and replaces them with shelves copied the same way.")
+            }
+            #endif
         }
         #if os(iOS)
         .toolbar { EditButton() }
@@ -60,6 +98,26 @@ struct ShelvesSettingsView: View {
         .sheet(isPresented: $addingList) {
             ListShelfPicker().environment(model)
         }
+        .alert("Replace Shelves?", isPresented: Binding(get: { importedShelves != nil }, set: { if !$0 { importedShelves = nil } }), presenting: importedShelves) { shelves in
+            Button("Replace", role: .destructive) { model.settings.shelves = shelves }
+            Button("Cancel", role: .cancel) {}
+        } message: { shelves in
+            Text("Your current shelves will be replaced by the \(shelves.count) from the clipboard.")
+        }
+    }
+
+    private func exportShelves() {
+        guard let data = try? SettingsCodec.encode(model.settings.shelves, pretty: true) else { return }
+        Platform.copyToPasteboard(String(decoding: data, as: UTF8.self))
+        model.showToast("Shelves copied")
+    }
+
+    private func importShelves() {
+        guard let text = Platform.pasteboardString(), let shelves = try? JSONDecoder.flow.decode([ShelfConfig].self, from: Data(text.utf8)), !shelves.isEmpty else {
+            model.showToast("The clipboard doesn't hold shelves")
+            return
+        }
+        importedShelves = shelves
     }
 
     @ViewBuilder

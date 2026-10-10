@@ -134,6 +134,12 @@ public actor CatalogService {
         return Review.merged(tmdbReviews, traktReviews)
     }
 
+    /// A film's release dates per country, cached: Upcoming dates digital and theatrical releases from them.
+    public func releaseDates(movieID: Int) async -> [MovieRelease] {
+        let client = tmdb
+        return (try? await cache.cached("releases:\(movieID)", maxAge: detailMaxAge) { try await client.releaseDates(movieID: movieID) }) ?? []
+    }
+
     public func person(_ id: Int) async throws -> Person {
         let client = tmdb
         return try await cache.cached("person:\(id):\(lang)", maxAge: detailMaxAge) { try await client.person(id) }
