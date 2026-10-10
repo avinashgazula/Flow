@@ -83,6 +83,9 @@ enum ScreenshotTour {
             Step(name: "settings") { m in m.selectedTab = .home; m.showSettings = true },
             Step(name: "settings-metadata") { m in m.settingsPath = [.settings(.metadata)] },
             Step(name: "settings-sources") { m in m.settingsPath = [.settings(.sources)] },
+            Step(name: "settings-general") { m in m.settingsPath = [.settings(.general)] },
+            Step(name: "settings-playback") { m in m.settingsPath = [.settings(.playback)] },
+            Step(name: "settings-data") { m in m.settingsPath = [.settings(.dataStorage)] },
         ]
         #endif
         return steps

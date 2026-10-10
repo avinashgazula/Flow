@@ -127,6 +127,7 @@ public struct DemoTransport: HTTPTransport {
             case "release_dates": return releaseDates(t)
             case "external_ids": return ["imdb_id": t.imdb, "tvdb_id": t.id + 70000]
             case "images": return ["logos": [], "backdrops": [], "posters": []]
+            case "reviews": return reviews(t)
             default: return nil
             }
         case "find":
@@ -134,6 +135,18 @@ public struct DemoTransport: HTTPTransport {
         default:
             return nil
         }
+    }
+
+    /// Sample reviews for demo mode, plainly generic.
+    static func reviews(_ t: DemoCatalog.Title) -> [String: Any] {
+        ["results": [
+            ["id": "r1-\(t.id)", "author": "Sample Reviewer", "author_details": ["rating": 8.0],
+             "content": "A sample review for the demo: striking images, a score that fills the room, and a story that takes its time. Worth seeing on the biggest screen you have.",
+             "created_at": "\(t.year)-07-01T12:00:00.000Z"],
+            ["id": "r2-\(t.id)", "author": "Demo Critic", "author_details": ["rating": 6.0],
+             "content": "Another sample review: beautifully made, if long in the middle. The final act makes up for it.",
+             "created_at": "\(t.year)-08-12T12:00:00.000Z"],
+        ]]
     }
 
     static func releaseDates(_ t: DemoCatalog.Title) -> [String: Any] {
@@ -160,7 +173,12 @@ public struct DemoTransport: HTTPTransport {
         o["recommendations"] = page(Array(similar.prefix(10)))
         o["similar"] = page(Array(similar.suffix(6)))
         o["images"] = ["logos": []]
+        o["original_language"] = "en"
+        o["origin_country"] = ["US"]
+        o["production_companies"] = [["id": 923, "name": "Legendary Pictures"], ["id": 174, "name": "Warner Bros. Pictures"]].prefix(1 + t.id % 2).map { $0 }
         if type == .movie {
+            o["budget"] = 40_000_000 + (t.id % 9) * 20_000_000
+            o["revenue"] = 120_000_000 + (t.id % 13) * 45_000_000
             o["runtime"] = t.runtime
             o["release_dates"] = releaseDates(t)
         } else {
