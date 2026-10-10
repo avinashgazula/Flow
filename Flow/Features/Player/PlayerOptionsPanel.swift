@@ -87,6 +87,7 @@ struct PlayerOptionsPanel: View {
     }
 
     @State private var page = Page.root
+    @State private var listHeight: CGFloat = 0
 
     /// Below the top bar and its gap.
     private let topInset: CGFloat = 56
@@ -119,37 +120,26 @@ struct PlayerOptionsPanel: View {
     // MARK: Card
 
     private func card(maxHeight: CGFloat) -> some View {
-        ZStack(alignment: .top) {
-            // Short lists sit at their natural height; long ones scroll under the header.
-            ViewThatFits(in: .vertical) {
-                content(scrolls: false)
-                content(scrolls: true)
-            }
-            .id(page)
-            .transition(.opacity)
-        }
-        .frame(maxHeight: maxHeight, alignment: .top)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .flowGlass(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .shadow(color: .black.opacity(0.28), radius: 24, y: 8)
-        .animation(Theme.Motion.snappy, value: page)
-        .accessibilityAction(.escape) { close() }
-    }
-
-    private func content(scrolls: Bool) -> some View {
         VStack(spacing: 0) {
             if page != .root {
                 header
                 Divider().overlay(Theme.Palette.hairline)
             }
-            if scrolls {
-                ScrollView { list }
-                    .scrollBounceBehavior(.basedOnSize)
-            } else {
-                list
+            // Sized to its rows, so a short list doesn't leave an empty slab of glass; a long one scrolls.
+            ScrollView {
+                list.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { listHeight = $0 }
             }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(height: max(44, min(listHeight, maxHeight - (page == .root ? 12 : 60))))
         }
         .padding(.vertical, 6)
+        .id(page)
+        .transition(.opacity)
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .flowGlass(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .shadow(color: .black.opacity(0.28), radius: 24, y: 8)
+        .animation(Theme.Motion.snappy, value: page)
+        .accessibilityAction(.escape) { close() }
     }
 
     private var header: some View {

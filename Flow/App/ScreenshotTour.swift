@@ -69,6 +69,8 @@ enum ScreenshotTour {
             steps.insert(contentsOf: [
                 Step(name: "player-options") { m in
                     m.activePlayback?.tourScrubPreview = nil
+                    // Held still: the sample is short, and would otherwise end under the panels.
+                    m.activePlayback?.player.pause()
                     m.activePlayback?.tourPanel = "options"
                 },
                 Step(name: "player-advanced") { m in m.activePlayback?.tourPanel = "advanced" },

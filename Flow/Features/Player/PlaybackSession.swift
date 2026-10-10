@@ -511,7 +511,7 @@ final class PlaybackSession: Identifiable {
     private func configureBitmapSubtitles(_ remuxer: MatroskaRemuxer) {
         bitmapTracks = remuxer.bitmapSubtitles.map { track in
             var title = track.label
-            if track.source.isForced { title += " (Forced)" }
+            if track.source.isForced, !title.localizedCaseInsensitiveContains("forced") { title += " (Forced)" }
             if track.source.isHearingImpaired { title += " (SDH)" }
             return PlayerTrack(id: track.id, title: title)
         }
