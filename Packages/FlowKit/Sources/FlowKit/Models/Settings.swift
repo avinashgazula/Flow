@@ -668,6 +668,10 @@ public struct PlaybackSettings: Codable, Hashable, Sendable {
     public var matroskaPlayback: MatroskaPlayback = .remux
     /// When a source fails to start, quietly move on to the next one.
     public var tryNextSourceOnFailure = true
+    /// Say so when a film has a scene during or after its credits.
+    public var postCreditsAlert = true
+    /// Play the next episode only when this one ends, rather than counting down as its credits start.
+    public var upNextWaitsForEnd = false
     /// Decode DTS and Dolby TrueHD in MKVs (with FFmpeg) instead of skipping them.
     public var decodeLosslessAudio = true
     /// Remember the audio and subtitle languages chosen for a show, so its next episodes start the same way.

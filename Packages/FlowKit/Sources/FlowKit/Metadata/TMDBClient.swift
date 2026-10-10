@@ -130,7 +130,7 @@ public struct TMDBClient: Sendable {
 
     public func details(_ type: MediaType, id: Int) async throws -> MediaDetail {
         let append = type == .movie
-            ? "credits,videos,recommendations,similar,release_dates,external_ids,images,watch/providers"
+            ? "credits,videos,recommendations,similar,release_dates,external_ids,images,watch/providers,keywords"
             : "aggregate_credits,credits,videos,recommendations,similar,content_ratings,external_ids,images,watch/providers"
         let lang = String(language.prefix(2))
         let dto = try await get(TMDBDetailDTO.self, "/\(type.tmdbPath)/\(id)", [
@@ -435,9 +435,17 @@ struct TMDBDetailDTO: Decodable {
     var nextEpisodeToAir: TMDBEpisodeDTO?
     var lastEpisodeToAir: TMDBEpisodeDTO?
     var watchProviders: TMDBWatchProvidersDTO?
+    var keywords: Keywords?
+    /// Movies list them under "keywords", shows under "results".
+    struct Keywords: Decodable {
+        struct Keyword: Decodable { var name: String }
+        var keywords: [Keyword]?
+        var results: [Keyword]?
+        var names: [String] { (keywords ?? results ?? []).map(\.name) }
+    }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, name, tagline, overview, runtime, genres, popularity, status, credits, videos, recommendations, similar, images, seasons, networks
+        case id, title, name, tagline, overview, runtime, genres, popularity, status, credits, videos, recommendations, similar, images, seasons, networks, keywords
         case originalTitle = "original_title", originalName = "original_name"
         case posterPath = "poster_path", backdropPath = "backdrop_path"
         case releaseDate = "release_date", firstAirDate = "first_air_date"
@@ -503,7 +511,8 @@ struct TMDBDetailDTO: Decodable {
             numberOfSeasons: numberOfSeasons,
             nextEpisode: nextEpisodeToAir?.episode(showID: id),
             lastEpisode: lastEpisodeToAir?.episode(showID: id),
-            availability: watchProviders?.availability(region: region)
+            availability: watchProviders?.availability(region: region),
+            creditsScenes: keywords.map { CreditsScenes(keywords: $0.names) }
         )
     }
 }

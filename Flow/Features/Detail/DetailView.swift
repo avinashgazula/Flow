@@ -99,6 +99,13 @@ struct DetailView: View {
                     if !showFullOverview && overview.count > 160 {
                         Text("MORE").font(Theme.Typeface.micro).kerning(1).foregroundStyle(.white.opacity(0.85))
                     }
+                    if let scenes = detail?.creditsScenes, scenes.any {
+                        Label(scenes.afterCredits ? (scenes.duringCredits ? "Scenes during and after the credits" : "Scene after the credits")
+                                                  : "Scene during the credits", systemImage: "sparkles")
+                            .font(Theme.Typeface.caption)
+                            .foregroundStyle(.white.opacity(0.85))
+                            .padding(.top, 6)
+                    }
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { withAnimation(Theme.Motion.gentle) { showFullOverview.toggle() } }

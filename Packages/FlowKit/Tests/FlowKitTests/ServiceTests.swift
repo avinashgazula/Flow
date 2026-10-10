@@ -51,10 +51,13 @@ final class TMDBTests: XCTestCase {
          "videos":{"results":[{"id":"v1","name":"Teaser","key":"k1","site":"YouTube","type":"Teaser","official":true},{"id":"v2","name":"Official Trailer","key":"k2","site":"YouTube","type":"Trailer","official":true}]},
          "release_dates":{"results":[{"iso_3166_1":"CA","release_dates":[{"certification":"18A","release_date":"2026-09-18T00:00:00.000Z","type":3}]},{"iso_3166_1":"US","release_dates":[{"certification":"R","release_date":"2026-10-07T00:00:00.000Z","type":4}]}]},
          "images":{"logos":[{"file_path":"/fr.png","iso_639_1":"fr","vote_average":9},{"file_path":"/en.png","iso_639_1":"en","vote_average":5}]},
-         "recommendations":{"results":[]},"similar":{"results":[]}}
+         "recommendations":{"results":[]},"similar":{"results":[]},
+         "keywords":{"keywords":[{"id":9663,"name":"sequel"},{"id":179430,"name":"aftercreditsstinger"}]}}
         """)
         let client = TMDBClient(credential: "0123456789abcdef0123456789abcdef", region: "CA", http: HTTPClient(transport: mock))
         let detail = try await client.details(.movie, id: 1)
+        XCTAssertEqual(detail.creditsScenes, CreditsScenes(duringCredits: false, afterCredits: true))
+        XCTAssertEqual(detail.creditsScenes?.alert, "Stay until the end: there's a scene after the credits.")
         XCTAssertEqual(detail.item.certification, "18A")
         XCTAssertEqual(detail.item.logoPath, "/en.png")
         XCTAssertEqual(detail.item.runtimeMinutes, 95)

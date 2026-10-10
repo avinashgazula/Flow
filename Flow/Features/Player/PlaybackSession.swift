@@ -72,6 +72,9 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private var readyAt: Date?
     @ObservationIgnored private var lastReport = Date.distantPast
     @ObservationIgnored private var skippedSegments = Set<Double>()
+    /// A film's scenes during or after its credits, and whether the viewer has been told.
+    @ObservationIgnored private var creditsScenes: CreditsScenes?
+    @ObservationIgnored private var creditsAlertShown = false
     @ObservationIgnored private var countdownTask: Task<Void, Never>?
     @ObservationIgnored private var didStart = false
     /// Where to pick up after reloading a stream that failed mid-playback.
@@ -579,6 +582,10 @@ final class PlaybackSession: Identifiable {
         if logoPath == nil, let catalog = model.catalog { logoPath = await catalog.logo(for: request.item) }
         let resolved = await SkipSegmentResolver.resolve(source: source, providers: model.skipProviders(), request: request)
         segments = resolved.isEmpty ? chapterSegments : resolved
+        if request.episode == nil, request.item.type == .movie, model.settings.playback.postCreditsAlert, let id = request.item.ids.tmdb,
+           let detail = try? await model.catalog?.details(.movie, id: id) {
+            creditsScenes = detail.creditsScenes
+        }
         // Automatic subtitles, or the language picked for this show in an earlier episode.
         if model.settings.subtitles.autoEnable || showChoice?.subtitleLanguage != nil { await autoLoadSubtitle() }
         upNext = await model.nextRequest(after: request)
@@ -689,12 +696,23 @@ final class PlaybackSession: Identifiable {
         if duration <= 0, let d = player.currentItem?.duration.seconds, d.isFinite { duration = d }
         subtitleText = subtitle?.text(at: seconds, offset: subtitleOffset)
         updateSegment(seconds)
+        alertCreditsScenes(seconds)
         if Date().timeIntervalSince(lastReport) > 10 {
             lastReport = Date()
             Task { await report(.progress) }
             nowPlaying.update(elapsed: seconds, duration: duration, rate: player.rate)
         }
         maybeStartUpNextCountdown()
+    }
+
+    /// As a film's credits begin (from its credits segment, or its last six percent), says to stay
+    /// when there's a scene during or after them.
+    private func alertCreditsScenes(_ time: Double) {
+        guard !creditsAlertShown, let alert = creditsScenes?.alert, duration > 3600 * 0.5 else { return }
+        let creditsStart = segments.first { $0.kind == .credits }?.start ?? duration * 0.94
+        guard time >= creditsStart, time < duration - 10 else { return }
+        creditsAlertShown = true
+        show(notice: alert)
     }
 
     private func updateSegment(_ time: Double) {
@@ -706,7 +724,8 @@ final class PlaybackSession: Identifiable {
         switch active.kind {
         case .intro: behaviour = model.settings.playback.skipIntro
         case .recap: behaviour = model.settings.playback.skipRecap
-        case .credits: behaviour = model.settings.playback.skipCredits
+        // Credits hiding a scene are never skipped by themselves.
+        case .credits: behaviour = creditsScenes?.any == true && model.settings.playback.skipCredits == .automatic ? .button : model.settings.playback.skipCredits
         case .preview, .commercial: behaviour = model.settings.playback.skipIntro
         }
         switch behaviour {
@@ -730,8 +749,10 @@ final class PlaybackSession: Identifiable {
 
     private func maybeStartUpNextCountdown() {
         guard let model, model.settings.playback.autoPlayNextEpisode, upNext != nil, countdownTask == nil, duration > 60 else { return }
-        let creditsStart = segments.first { $0.kind == .credits }?.start
-        let threshold = creditsStart ?? (duration - Double(model.settings.playback.nextEpisodeCountdownSeconds) - 20)
+        // Count down as the credits start, or, when the viewer would rather see them, so it ends as the episode does.
+        let creditsStart = model.settings.playback.upNextWaitsForEnd ? nil : segments.first { $0.kind == .credits }?.start
+        let tail = model.settings.playback.upNextWaitsForEnd ? 1 : 20
+        let threshold = creditsStart ?? (duration - Double(model.settings.playback.nextEpisodeCountdownSeconds) - Double(tail))
         guard currentTime >= threshold else { return }
         let total = model.settings.playback.nextEpisodeCountdownSeconds
         countdownTask = Task { [weak self] in

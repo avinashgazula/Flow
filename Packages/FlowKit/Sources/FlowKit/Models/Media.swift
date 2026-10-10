@@ -295,6 +295,36 @@ public struct Video: Codable, Hashable, Sendable, Identifiable {
 }
 
 /// Everything the detail page needs.
+/// Whether a film has a scene during or after its end credits, so the player can say to stay.
+public struct CreditsScenes: Codable, Hashable, Sendable {
+    public var duringCredits: Bool
+    public var afterCredits: Bool
+
+    public init(duringCredits: Bool, afterCredits: Bool) {
+        self.duringCredits = duringCredits
+        self.afterCredits = afterCredits
+    }
+
+    /// From TMDb's keywords "duringcreditsstinger" and "aftercreditsstinger".
+    public init(keywords: [String]) {
+        let names = Set(keywords.map { $0.lowercased() })
+        duringCredits = names.contains("duringcreditsstinger")
+        afterCredits = names.contains("aftercreditsstinger")
+    }
+
+    public var any: Bool { duringCredits || afterCredits }
+
+    /// What the player says as the credits begin.
+    public var alert: String? {
+        switch (duringCredits, afterCredits) {
+        case (true, true): return "Stay for the credits: there's a scene during them, and another at the very end."
+        case (true, false): return "Stay for the credits: there's a scene partway through them."
+        case (false, true): return "Stay until the end: there's a scene after the credits."
+        default: return nil
+        }
+    }
+}
+
 public struct MediaDetail: Codable, Hashable, Sendable {
     public var item: MediaItem
     public var tagline: String?
@@ -311,8 +341,10 @@ public struct MediaDetail: Codable, Hashable, Sendable {
     public var lastEpisode: Episode?
     /// Streaming, rental and purchase options in the viewer's region.
     public var availability: Availability?
+    /// Scenes during or after the end credits (films; from TMDb keywords).
+    public var creditsScenes: CreditsScenes?
 
-    public init(item: MediaItem, tagline: String? = nil, cast: [CastMember] = [], crew: [CastMember] = [], videos: [Video] = [], seasons: [Season] = [], recommendations: [MediaItem] = [], similar: [MediaItem] = [], collection: MediaCollection? = nil, networks: [String] = [], numberOfSeasons: Int? = nil, nextEpisode: Episode? = nil, lastEpisode: Episode? = nil, availability: Availability? = nil) {
+    public init(item: MediaItem, tagline: String? = nil, cast: [CastMember] = [], crew: [CastMember] = [], videos: [Video] = [], seasons: [Season] = [], recommendations: [MediaItem] = [], similar: [MediaItem] = [], collection: MediaCollection? = nil, networks: [String] = [], numberOfSeasons: Int? = nil, nextEpisode: Episode? = nil, lastEpisode: Episode? = nil, availability: Availability? = nil, creditsScenes: CreditsScenes? = nil) {
         self.item = item
         self.tagline = tagline
         self.cast = cast
@@ -327,6 +359,7 @@ public struct MediaDetail: Codable, Hashable, Sendable {
         self.nextEpisode = nextEpisode
         self.lastEpisode = lastEpisode
         self.availability = availability
+        self.creditsScenes = creditsScenes
     }
 
     /// Director(s) first, then top-billed cast — the order shown in the Cast row.

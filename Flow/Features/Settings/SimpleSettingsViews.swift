@@ -74,21 +74,27 @@ struct PlaybackSettingsView: View {
             } footer: {
                 Text("Sources above this resolution are hidden from the picker, whatever your source ordering.")
             }
-            Section("Episodes") {
+            Section {
                 Toggle("Auto-Play Next Episode", isOn: $model.settings.playback.autoPlayNextEpisode)
                 Picker("Countdown", selection: $model.settings.playback.nextEpisodeCountdownSeconds) {
                     ForEach([5, 10, 15, 20, 30], id: \.self) { Text("\($0) seconds").tag($0) }
                 }
+                Toggle("Wait for the Episode to End", isOn: $model.settings.playback.upNextWaitsForEnd)
                 Toggle("Reuse Last Source For Show", isOn: $model.settings.playback.rememberLastSourcePerShow)
+            } header: {
+                Text("Episodes")
+            } footer: {
+                Text("Up Next counts down as the credits start, or, with Wait for the Episode to End, so the next one begins as this one finishes.")
             }
             Section {
                 Picker("Intro", selection: $model.settings.playback.skipIntro) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
                 Picker("Recap", selection: $model.settings.playback.skipRecap) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
                 Picker("Credits", selection: $model.settings.playback.skipCredits) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
+                Toggle("Post-Credits Scene Alert", isOn: $model.settings.playback.postCreditsAlert)
             } header: {
                 Text("Skip Segments")
             } footer: {
-                Text("Segments come from your media server (Jellyfin media segments, Plex markers), IntroDB or PublicMetaDB.")
+                Text("Segments come from your media server (Jellyfin media segments, Plex markers), IntroDB, PublicMetaDB or the file's chapter names. When a film has a scene during or after its credits, Flow says so as they begin, and won't skip them by itself.")
             }
             Section("Resume & Progress") {
                 Toggle("Ask Before Resuming", isOn: $model.settings.playback.askToResume)
