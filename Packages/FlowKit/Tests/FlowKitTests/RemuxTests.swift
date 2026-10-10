@@ -328,7 +328,7 @@ final class AudioOrderTests: XCTestCase {
 final class TrickPlayTests: XCTestCase {
     func testDumpFixtures() async throws {
         guard ProcessInfo.processInfo.environment["FLOW_REMUX_OUT"] != nil else { throw XCTSkip("set FLOW_REMUX_OUT to inspect output") }
-        for name in ["hevc-eac3-ac3", "avc-aac-srt", "opus"] {
+        for name in ["hevc-eac3-ac3", "avc-aac-srt"] {
             let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture(name)), targetSegment: 2)
             try await RemuxTests.dump(remuxer, to: RemuxTests.outputRoot.appendingPathComponent(name))
         }
@@ -479,23 +479,12 @@ final class AtmosTests: XCTestCase {
 }
 
 final class OpusTests: XCTestCase {
-    func testOpusTracksRemux() async throws {
+    /// AVPlayer won't play Opus through HLS, so Opus tracks are reported, not remuxed.
+    func testOpusTracksAreSkippedWithAReason() async throws {
         let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("opus")), targetSegment: 2)
-        XCTAssertEqual(remuxer.audio.map(\.codecString), ["opus", "opus"])
-        XCTAssertTrue(remuxer.skipped.isEmpty, "\(remuxer.skipped)")
-        let surround = try XCTUnwrap(remuxer.audio.first { $0.source.channels == 6 })
-        XCTAssertTrue(surround.label.contains("Opus 5.1"), surround.label)
-        let master = await remuxer.masterPlaylist()
-        XCTAssertTrue(master.contains("opus"), master)
-        let fragment = try await remuxer.mediaSegment(track: surround.id, index: 1)
-        XCTAssertGreaterThan(RemuxTests.sampleCount(fragment ?? []), 50)
-    }
-
-    func testPacketDurations() {
-        XCTAssertEqual(Opus.samples([0xFC]), 960)        // CELT 20 ms, one frame
-        XCTAssertEqual(Opus.samples([0xFD]), 1920)       // two frames
-        XCTAssertEqual(Opus.samples([0x1B, 0x03]), 8640) // SILK 60 ms, code 3 with three frames
-        XCTAssertEqual(Opus.samples([0x0B, 0x03]), 2880) // SILK 20 ms, three frames
+        XCTAssertTrue(remuxer.audio.isEmpty)
+        XCTAssertEqual(remuxer.skipped.map(\.reason), ["Opus audio", "Opus audio"])
+        XCTAssertFalse(remuxer.hasPlayableSoundtrack, "the player says why instead of playing silence")
     }
 }
 

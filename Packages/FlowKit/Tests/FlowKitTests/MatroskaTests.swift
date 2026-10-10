@@ -335,7 +335,6 @@ final class FuzzTests: XCTestCase {
             _ = SubtitleText.fromASSEvent(text)
             _ = SubtitleText.cleanSRT(text)
             _ = EAC3.dec3(mutate(AtmosTests.atmosFrame(mixingMetadata: true)))
-            _ = Opus.dOps(mutate(Array("OpusHead".utf8) + [1, 6, 0x38, 0x01, 0x80, 0xBB, 0, 0, 0, 0, 1, 4, 2, 0, 4, 1, 2, 3, 5]))
         }
     }
 }

@@ -17,7 +17,7 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
 - **Source picker**: gathers results from every provider in parallel. Categories and providers are ordered, there are optional sort rules, filters and a result cap, and the add-on text and badges are parsed.
 - **Player**: resume, skip intro, recap and credits (from Jellyfin media segments, Plex markers, IntroDB, PublicMetaDB or MKV chapter names), a Playback Info panel, an Up Next card with a countdown ring, double-tap to skip on iPhone, scrobbling, subtitle search (OpenSubtitles, SubDL, Wyzie, SubSource), AirPlay, Picture in Picture and external players.
 - **MKV playback**: Matroska files play in Apple's own player. Flow remuxes them on the device, without re-encoding, into HLS served from a loopback address.
-  - Codecs: H.264, HEVC (HDR10, and Dolby Vision profiles 5 and 8; profile 7 plays as HDR10), AV1 (on devices with an AV1 decoder), AAC, Dolby Digital (Plus) with Atmos, FLAC and MP3. Opus is experimental: Apple decodes it in MP4 from iOS 17, but not in every player.
+  - Codecs: H.264, HEVC (HDR10, and Dolby Vision profiles 5 and 8; profile 7 plays as HDR10), AV1 (on devices with an AV1 decoder), AAC, Dolby Digital (Plus) with Atmos, FLAC and MP3.
   - Every audio track, text subtitles and chapters come through, plus Blu-ray and DVD picture subtitles (PGS and VobSub), which Flow draws itself.
   - Scrubbing previews on Apple TV, iPhone and iPad.
   - Each file's index is cached, so reopening it is quick.
@@ -70,5 +70,5 @@ CI (`.github/workflows/ci.yml`) runs the FlowKit tests on Linux and macOS and bu
 
 ## Notes
 
-- Apple devices can't decode DTS, TrueHD or Vorbis audio, or VP9 video. Flow skips those tracks, says so, and prefers sources whose soundtrack plays. Media servers are asked for HLS when direct play isn't possible. On iOS, MKV files can also go to an external player (Settings → Playback).
+- Apple's player can't play DTS, TrueHD, Opus or Vorbis audio, or VP9 video, from these files. Flow skips those tracks, says so, and prefers sources whose soundtrack plays. Media servers are asked for HLS when direct play isn't possible. On iOS, MKV files can also go to an external player (Settings → Playback).
 - The PublicMetaDB and IntroDB base URLs are configurable because deployments differ.
