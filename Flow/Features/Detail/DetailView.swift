@@ -404,6 +404,8 @@ struct RatingsRow: View {
                 .foregroundStyle(dark ? .black : .white)
             Text(value)
         }
+        // Never squeezed: laid out at exactly its ideal width, a fraction of a point short truncates the label.
+        .fixedSize()
         .accessibilityElement(children: .combine)
     }
 
@@ -412,6 +414,7 @@ struct RatingsRow: View {
             Image(systemName: symbol).foregroundStyle(color).imageScale(.small)
             Text(value)
         }
+        .fixedSize()
         .accessibilityElement(children: .combine)
     }
 }
