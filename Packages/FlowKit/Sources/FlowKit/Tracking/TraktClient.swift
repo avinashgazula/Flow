@@ -350,6 +350,28 @@ public actor TraktClient: TrackingService, ListService {
         return try await get(DTO.self, "/\(type.traktPath)/\(id)/ratings", auth: false).rating.map { Int(($0 * 10).rounded()) }
     }
 
+    /// The most-liked comments, which are mostly reviews. Public, so no sign-in needed.
+    public func comments(_ type: MediaType, id: String) async throws -> [Review] {
+        struct DTO: Decodable {
+            struct User: Decodable { var username: String? }
+            struct Stats: Decodable { var rating: Double? }
+            var id: Int
+            var comment: String
+            var spoiler: Bool?
+            var created_at: String?
+            var user: User?
+            var user_stats: Stats?
+            var user_rating: Double?
+        }
+        let comments = try await get([DTO].self, "/\(type.traktPath)/\(id)/comments/likes", query: ["limit": "10"], auth: false)
+        return comments.compactMap { c in
+            let text = c.comment.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return nil }
+            return Review(id: "trakt:\(c.id)", source: .trakt, author: c.user?.username ?? "Anonymous", text: text,
+                          rating: (c.user_stats?.rating ?? c.user_rating).map { Int($0.rounded()) }, date: c.created_at.flatMap(FlowDate.parse), spoiler: c.spoiler ?? false)
+        }
+    }
+
     public func episodes(showID: String, showTMDB: Int) async throws -> [Episode] {
         struct SeasonDTO: Decodable { var number: Int; var episodes: [EpisodeDTO]? }
         let seasons = try await get([SeasonDTO].self, "/shows/\(showID)/seasons", query: ["extended": "episodes,full"], auth: false)

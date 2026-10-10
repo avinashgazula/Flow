@@ -9,7 +9,7 @@ struct SeasonsSection: View {
     @Environment(AppModel.self) private var model
 
     private var orderedSeasons: [Season] {
-        seasons.filter { $0.number > 0 } + seasons.filter { $0.number == 0 }
+        seasons.filter { $0.number > 0 } + (model.settings.general.showSpecialsSeason ? seasons.filter { $0.number == 0 } : [])
     }
 
     private var episodes: [Episode] {
@@ -66,6 +66,12 @@ struct SeasonsSection: View {
                 .scrollClipDisabled()
             }
         }
+        .onAppear {
+            // Specials turned off while season 0 was the one in view.
+            if !orderedSeasons.contains(where: { $0.number == selectedSeason }), let first = orderedSeasons.first {
+                selectedSeason = first.number
+            }
+        }
     }
 
     private var seasonPicker: some View {
@@ -105,6 +111,7 @@ struct EpisodeRow: View {
 
     private var aired: Bool { (episode.airDate ?? .distantFuture) <= Date() }
     private var watched: Bool { model.isEpisodeWatched(show, episode.ref) }
+    private var hidden: Bool { model.hidesSpoilers(show, episode) }
 
     var body: some View {
         Button {
@@ -126,7 +133,7 @@ struct EpisodeRow: View {
                     }
                     .font(.system(.caption, weight: .medium))
                     .foregroundStyle(Theme.Palette.textTertiary)
-                    if let overview = episode.overview, !overview.isEmpty {
+                    if let overview = episode.overview, !overview.isEmpty, !hidden {
                         Text(overview)
                             .font(.system(.footnote))
                             .foregroundStyle(Theme.Palette.textSecondary)
@@ -151,6 +158,7 @@ struct EpisodeCard: View {
     @Environment(AppModel.self) private var model
 
     private var aired: Bool { (episode.airDate ?? .distantFuture) <= Date() }
+    private var hidden: Bool { model.hidesSpoilers(show, episode) }
 
     var body: some View {
         Button {
@@ -168,7 +176,7 @@ struct EpisodeCard: View {
                         if let runtime = episode.runtimeMinutes, runtime > 0 { Text("· \(runtime)m") }
                     }
                     .font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary)
-                    if let overview = episode.overview, !overview.isEmpty {
+                    if let overview = episode.overview, !overview.isEmpty, !hidden {
                         Text(overview).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary).lineLimit(2)
                     }
                 }
@@ -192,6 +200,7 @@ struct EpisodeStill: View {
     var body: some View {
         RemoteImage(url: TMDBImage.url(episode.stillPath, size: .still) ?? show.smallBackdropURL, maxPixel: Int(width * 2.5), fallbackTitle: episode.title)
             .frame(width: width, height: width * 9 / 16)
+            .blur(radius: model.hidesSpoilers(show, episode) ? 18 : 0)
             .clipShape(shape)
             .hairline(shape)
             .overlay(alignment: .bottomTrailing) {

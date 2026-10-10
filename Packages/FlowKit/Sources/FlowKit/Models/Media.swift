@@ -343,8 +343,14 @@ public struct MediaDetail: Codable, Hashable, Sendable {
     public var availability: Availability?
     /// Scenes during or after the end credits (films; from TMDb keywords).
     public var creditsScenes: CreditsScenes?
+    /// US dollars; optional so details cached before these fields existed still decode.
+    public var budget: Int?
+    public var revenue: Int?
+    public var productionCompanies: [String]?
+    /// ISO 3166-1 codes of the countries the title comes from.
+    public var originCountries: [String]?
 
-    public init(item: MediaItem, tagline: String? = nil, cast: [CastMember] = [], crew: [CastMember] = [], videos: [Video] = [], seasons: [Season] = [], recommendations: [MediaItem] = [], similar: [MediaItem] = [], collection: MediaCollection? = nil, networks: [String] = [], numberOfSeasons: Int? = nil, nextEpisode: Episode? = nil, lastEpisode: Episode? = nil, availability: Availability? = nil, creditsScenes: CreditsScenes? = nil) {
+    public init(item: MediaItem, tagline: String? = nil, cast: [CastMember] = [], crew: [CastMember] = [], videos: [Video] = [], seasons: [Season] = [], recommendations: [MediaItem] = [], similar: [MediaItem] = [], collection: MediaCollection? = nil, networks: [String] = [], numberOfSeasons: Int? = nil, nextEpisode: Episode? = nil, lastEpisode: Episode? = nil, availability: Availability? = nil, creditsScenes: CreditsScenes? = nil, budget: Int? = nil, revenue: Int? = nil, productionCompanies: [String]? = nil, originCountries: [String]? = nil) {
         self.item = item
         self.tagline = tagline
         self.cast = cast
@@ -360,6 +366,10 @@ public struct MediaDetail: Codable, Hashable, Sendable {
         self.lastEpisode = lastEpisode
         self.availability = availability
         self.creditsScenes = creditsScenes
+        self.budget = budget
+        self.revenue = revenue
+        self.productionCompanies = productionCompanies
+        self.originCountries = originCountries
     }
 
     /// Director(s) first, then top-billed cast — the order shown in the Cast row.

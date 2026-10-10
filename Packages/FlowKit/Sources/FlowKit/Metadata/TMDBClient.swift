@@ -146,6 +146,12 @@ public struct TMDBClient: Sendable {
         return dto.detail(type: type, region: region, language: String(language.prefix(2))).item
     }
 
+    /// Written reviews, in the order TMDb returns them.
+    public func reviews(type: MediaType, id: Int) async throws -> [Review] {
+        let dto = try await get(TMDBReviewsDTO.self, "/\(type.tmdbPath)/\(id)/reviews")
+        return dto.results.compactMap(\.review)
+    }
+
     public func season(showID: Int, season: Int) async throws -> [Episode] {
         let dto = try await get(TMDBSeasonDTO.self, "/tv/\(showID)/season/\(season)")
         return dto.episodes.map { $0.episode(showID: showID) }
@@ -398,6 +404,11 @@ struct TMDBDetailDTO: Decodable {
         enum CodingKeys: String, CodingKey { case id, name, posterPath = "poster_path", backdropPath = "backdrop_path" }
     }
     struct Network: Decodable { var name: String }
+    struct Company: Decodable { var name: String }
+    struct Country: Decodable {
+        var iso31661: String
+        enum CodingKeys: String, CodingKey { case iso31661 = "iso_3166_1" }
+    }
 
     var id: Int
     var title: String?
@@ -436,6 +447,12 @@ struct TMDBDetailDTO: Decodable {
     var lastEpisodeToAir: TMDBEpisodeDTO?
     var watchProviders: TMDBWatchProvidersDTO?
     var keywords: Keywords?
+    var budget: Int?
+    var revenue: Int?
+    var productionCompanies: [Company]?
+    var productionCountries: [Country]?
+    /// ISO codes; present on shows, and on newer movie responses.
+    var originCountry: [String]?
     /// Movies list them under "keywords", shows under "results".
     struct Keywords: Decodable {
         struct Keyword: Decodable { var name: String }
@@ -455,6 +472,7 @@ struct TMDBDetailDTO: Decodable {
         case externalIds = "external_ids", belongsToCollection = "belongs_to_collection", numberOfSeasons = "number_of_seasons"
         case nextEpisodeToAir = "next_episode_to_air", lastEpisodeToAir = "last_episode_to_air"
         case watchProviders = "watch/providers"
+        case budget, revenue, productionCompanies = "production_companies", productionCountries = "production_countries", originCountry = "origin_country"
     }
 
     func detail(type: MediaType, region: String, language: String) -> MediaDetail {
@@ -512,7 +530,11 @@ struct TMDBDetailDTO: Decodable {
             nextEpisode: nextEpisodeToAir?.episode(showID: id),
             lastEpisode: lastEpisodeToAir?.episode(showID: id),
             availability: watchProviders?.availability(region: region),
-            creditsScenes: keywords.map { CreditsScenes(keywords: $0.names) }
+            creditsScenes: keywords.map { CreditsScenes(keywords: $0.names) },
+            budget: budget.flatMap { $0 > 0 ? $0 : nil },
+            revenue: revenue.flatMap { $0 > 0 ? $0 : nil },
+            productionCompanies: productionCompanies.map { $0.map(\.name) },
+            originCountries: originCountry ?? productionCountries.map { $0.map(\.iso31661) }
         )
     }
 }
@@ -536,6 +558,26 @@ struct TMDBEpisodeDTO: Decodable {
     func episode(showID: Int) -> Episode {
         Episode(showTMDB: showID, season: seasonNumber, number: episodeNumber, title: name ?? "Episode \(episodeNumber)", overview: overview, stillPath: stillPath, airDate: airDate.flatMap(FlowDate.parse), runtimeMinutes: runtime, voteAverage: voteAverage, ids: ExternalIDs(tmdb: id))
     }
+}
+
+struct TMDBReviewsDTO: Decodable {
+    struct Entry: Decodable {
+        struct Details: Decodable { var rating: Double? }
+        var id: String
+        var author: String?
+        var authorDetails: Details?
+        var content: String
+        var createdAt: String?
+        enum CodingKeys: String, CodingKey { case id, author, content, authorDetails = "author_details", createdAt = "created_at" }
+
+        var review: Review? {
+            let text = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return nil }
+            return Review(id: "tmdb:\(id)", source: .tmdb, author: author?.nilIfEmpty ?? "Anonymous", text: text,
+                          rating: authorDetails?.rating.map { Int($0.rounded()) }, date: createdAt.flatMap(FlowDate.parse))
+        }
+    }
+    var results: [Entry]
 }
 
 struct TMDBSeasonDTO: Decodable { var episodes: [TMDBEpisodeDTO] }

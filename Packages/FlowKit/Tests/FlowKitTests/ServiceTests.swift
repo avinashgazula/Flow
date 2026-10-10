@@ -46,7 +46,8 @@ final class TMDBTests: XCTestCase {
     func testMovieDetailsCertificationLogoAndHomeRelease() async throws {
         let mock = MockTransport()
         mock.routes["/movie/1"] = (200, """
-        {"id":1,"title":"Resident Evil","runtime":95,"release_date":"2026-09-18","genres":[{"id":27,"name":"Horror"}],"imdb_id":"tt1",
+        {"id":1,"title":"Resident Evil","runtime":95,"release_date":"2026-09-18","status":"Released","original_language":"en","budget":80000000,"revenue":120400000,
+         "production_companies":[{"id":1,"name":"Davis Entertainment"},{"id":2,"name":"Warner Bros."}],"production_countries":[{"iso_3166_1":"US","name":"United States of America"},{"iso_3166_1":"CA","name":"Canada"}],"genres":[{"id":27,"name":"Horror"}],"imdb_id":"tt1",
          "credits":{"cast":[{"id":10,"name":"Austin Abrams","character":"Bryan","order":0}],"crew":[{"id":11,"name":"Zach Cregger","job":"Director"}]},
          "videos":{"results":[{"id":"v1","name":"Teaser","key":"k1","site":"YouTube","type":"Teaser","official":true},{"id":"v2","name":"Official Trailer","key":"k2","site":"YouTube","type":"Trailer","official":true}]},
          "release_dates":{"results":[{"iso_3166_1":"CA","release_dates":[{"certification":"18A","release_date":"2026-09-18T00:00:00.000Z","type":3}]},{"iso_3166_1":"US","release_dates":[{"certification":"R","release_date":"2026-10-07T00:00:00.000Z","type":4}]}]},
@@ -64,6 +65,79 @@ final class TMDBTests: XCTestCase {
         XCTAssertEqual(detail.item.homeReleaseDate, FlowDate.parse("2026-10-07T00:00:00.000Z"))
         XCTAssertEqual(detail.castRow.map(\.name), ["Zach Cregger", "Austin Abrams"])
         XCTAssertEqual(detail.trailers.first?.key, "k2")
+        XCTAssertEqual(detail.budget, 80_000_000)
+        XCTAssertEqual(detail.revenue, 120_400_000)
+        XCTAssertEqual(CompactMoney.string(detail.budget ?? 0), "$80M")
+        XCTAssertEqual(CompactMoney.string(detail.revenue ?? 0), "$120.4M")
+        XCTAssertEqual(detail.productionCompanies, ["Davis Entertainment", "Warner Bros."])
+        XCTAssertEqual(detail.originCountries, ["US", "CA"])
+        XCTAssertEqual(detail.item.status, "Released")
+        XCTAssertEqual(detail.item.originalLanguage, "en")
+    }
+
+    func testShowDetailsAboutFieldsAndOldCacheStillDecodes() async throws {
+        let mock = MockTransport()
+        mock.routes["/tv/2"] = (200, """
+        {"id":2,"name":"Severance","status":"Returning Series","origin_country":["US"],"budget":0,
+         "production_companies":[{"id":3,"name":"Apple Studios"}],"networks":[{"name":"Apple TV+"}]}
+        """)
+        let client = TMDBClient(credential: "0123456789abcdef0123456789abcdef", http: HTTPClient(transport: mock))
+        let detail = try await client.details(.show, id: 2)
+        XCTAssertEqual(detail.item.status, "Returning Series")
+        XCTAssertEqual(detail.originCountries, ["US"])
+        XCTAssertEqual(detail.productionCompanies, ["Apple Studios"])
+        XCTAssertNil(detail.budget)
+        XCTAssertEqual(detail.networks, ["Apple TV+"])
+
+        // Details cached before the About fields existed carry none of those keys.
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(detail)) as? [String: Any])
+        for key in ["budget", "revenue", "productionCompanies", "originCountries"] { json[key] = nil }
+        let old = try JSONDecoder().decode(MediaDetail.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertNil(old.productionCompanies)
+        XCTAssertEqual(old.networks, ["Apple TV+"])
+    }
+
+    func testCompactMoney() {
+        XCTAssertEqual(CompactMoney.string(1_500_000_000), "$1.5B")
+        XCTAssertEqual(CompactMoney.string(950_000), "$950K")
+        XCTAssertEqual(CompactMoney.string(900), "$900")
+    }
+
+    func testTMDBReviewsDecoding() async throws {
+        let mock = MockTransport()
+        mock.routes["/movie/1/reviews"] = (200, """
+        {"id":1,"page":1,"results":[
+          {"id":"r1","author":"alex","author_details":{"name":"","username":"alex","rating":2.0},"content":"  Not for me.  ","created_at":"2026-09-20T10:00:00.000Z"},
+          {"id":"r2","author":"","author_details":{"rating":null},"content":"Loved it","created_at":"2026-09-21T10:00:00.000Z"},
+          {"id":"r3","author":"empty","author_details":{},"content":"  ","created_at":"2026-09-22T10:00:00.000Z"}]}
+        """)
+        let client = TMDBClient(credential: "0123456789abcdef0123456789abcdef", http: HTTPClient(transport: mock))
+        let reviews = try await client.reviews(type: .movie, id: 1)
+        XCTAssertEqual(reviews.map(\.id), ["tmdb:r1", "tmdb:r2"])
+        XCTAssertEqual(reviews[0].author, "alex")
+        XCTAssertEqual(reviews[0].text, "Not for me.")
+        XCTAssertEqual(reviews[0].rating, 2)
+        XCTAssertNotNil(reviews[0].date)
+        XCTAssertNil(reviews[1].rating)
+        XCTAssertEqual(reviews[1].author, "Anonymous")
+        XCTAssertFalse(reviews[0].spoiler)
+    }
+
+    func testTraktCommentsAsReviews() async throws {
+        let mock = MockTransport()
+        mock.routes["/movies/tt1/comments/likes"] = (200, """
+        [{"id":7,"comment":"Great, the ending is a twist.","spoiler":true,"review":true,"created_at":"2026-09-25T10:00:00.000Z","user":{"username":"sam"},"user_stats":{"rating":9}},
+         {"id":8,"comment":"Fine.","spoiler":false,"created_at":"2026-09-18T10:00:00.000Z","user":{"username":"kim"}}]
+        """)
+        let trakt = TraktClient(clientID: "id", clientSecret: "secret", token: nil, http: HTTPClient(transport: mock))
+        let reviews = try await trakt.comments(.movie, id: "tt1")
+        XCTAssertEqual(reviews.map(\.author), ["sam", "kim"])
+        XCTAssertEqual(reviews[0].source, .trakt)
+        XCTAssertTrue(reviews[0].spoiler)
+        XCTAssertEqual(reviews[0].rating, 9)
+        XCTAssertNil(reviews[1].rating)
+        let merged = Review.merged(reviews, [Review(id: "tmdb:x", source: .tmdb, author: "a", text: "t", date: FlowDate.parse("2026-09-20T00:00:00.000Z"))])
+        XCTAssertEqual(merged.map(\.id), ["trakt:7", "tmdb:x", "trakt:8"])
     }
 
     func testDiscoverParametersForFutureWindow() {

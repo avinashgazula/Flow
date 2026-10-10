@@ -13,7 +13,9 @@ struct DetailView: View {
     @State private var rewatching = false
     @State private var downloadRequest: PlaybackRequest?
     @State private var showFullOverview = false
+    @State private var reviews: [Review] = []
 
+    private var general: GeneralSettings { model.settings.general }
     private var current: MediaItem { detail?.item ?? item }
     private var wide: Bool { !Platform.isPhone }
 
@@ -33,6 +35,7 @@ struct DetailView: View {
             .padding(.bottom, Theme.Space.xxl)
         }
         .scrollIndicators(.hidden)
+        .detailTextSize(general.detailTextSize)
         .background(AmbientBackground(url: current.smallBackdropURL ?? current.posterURL))
         #if os(iOS)
         .ignoresSafeArea(edges: .top)
@@ -211,8 +214,15 @@ struct DetailView: View {
 
     @ViewBuilder
     private func sections(_ detail: MediaDetail) -> some View {
-        if let availability = detail.availability, !availability.isEmpty {
+        if general.showWhereToWatch, let availability = detail.availability, !availability.isEmpty {
             WhereToWatch(availability: availability)
+        }
+        if general.showAboutSection {
+            let about = AboutSection(detail: detail)
+            if !about.isEmpty { about }
+        }
+        if general.showReviews, !reviews.isEmpty {
+            ReviewsSection(reviews: reviews, textSize: general.detailTextSize)
         }
         if !detail.castRow.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
@@ -323,12 +333,13 @@ struct DetailView: View {
                     info(detail.item.type == .movie ? "Released" : "First Aired", AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))
                 }
                 if let runtime = detail.item.runtimeMinutes, runtime > 0 { info("Runtime", TimeFormat.runtime(runtime)) }
-                if let status = detail.item.status { info("Status", status) }
+                // About already lists these.
+                if !general.showAboutSection, let status = detail.item.status { info("Status", status) }
                 if let seasons = detail.numberOfSeasons { info("Seasons", String(seasons)) }
-                if !detail.networks.isEmpty { info("Network", detail.networks.joined(separator: ", ")) }
+                if !general.showAboutSection, !detail.networks.isEmpty { info("Network", detail.networks.joined(separator: ", ")) }
                 let directors = detail.crew.filter { $0.role == "Director" || $0.role == "Creator" }.map(\.name)
                 if !directors.isEmpty { info(detail.item.type == .movie ? "Director" : "Created By", directors.joined(separator: ", ")) }
-                if let lang = detail.item.originalLanguage { info("Language", Locale.current.localizedString(forLanguageCode: lang) ?? lang) }
+                if !general.showAboutSection, let lang = detail.item.originalLanguage { info("Language", Locale.current.localizedString(forLanguageCode: lang) ?? lang) }
                 if let certification = detail.item.certification { info("Rated", certification) }
             }
         }
@@ -347,6 +358,12 @@ struct DetailView: View {
 
     // MARK: Loading
 
+    /// Skipped entirely when Reviews is off, so no request goes out.
+    private func fetchReviews(from catalog: CatalogService, for item: MediaItem) async -> [Review] {
+        guard general.showReviews else { return [] }
+        return await catalog.reviews(for: item)
+    }
+
     private func load() async {
         guard let catalog = model.catalog, let id = item.ids.tmdb else { return }
         do {
@@ -356,18 +373,21 @@ struct DetailView: View {
                 model.completedShowThresholds[key] = AppModel.airedEpisodes(loaded).count
                 rewatching = await model.isRewatching(loaded.item)
                 let firstRegular = loaded.seasons.first { $0.number > 0 }?.number ?? 0
-                if let entry = model.continueWatching.first(where: { $0.key == key }), let ep = entry.episode {
+                if let entry = model.continueWatching.first(where: { $0.key == key }), let ep = entry.episode, ep.season > 0 || general.showSpecialsSeason {
                     selectedSeason = ep.season
                 } else {
                     selectedSeason = firstRegular
                 }
             }
             async let ratingsTask = catalog.ratings(for: loaded.item)
+            async let reviewsTask = fetchReviews(from: catalog, for: loaded.item)
             if loaded.item.type == .show, let provider = model.episodeProvider {
                 episodesBySeason = (try? await provider.episodes(for: loaded.item, seasons: loaded.seasons)) ?? [:]
             }
             let fetched = await ratingsTask
             withAnimation(Theme.Motion.fade) { ratings = fetched }
+            let fetchedReviews = await reviewsTask
+            withAnimation(Theme.Motion.fade) { reviews = fetchedReviews }
         } catch {
             self.error = error.localizedDescription
         }

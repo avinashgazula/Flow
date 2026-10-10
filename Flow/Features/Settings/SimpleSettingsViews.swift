@@ -49,6 +49,26 @@ struct GeneralSettingsView: View {
                 }
                 Toggle("Auto-Advance Hero", isOn: $model.settings.general.heroAutoAdvance)
             }
+            Section {
+                Toggle("About", isOn: $model.settings.general.showAboutSection)
+                Toggle("Where to Watch", isOn: $model.settings.general.showWhereToWatch)
+                Toggle("Reviews", isOn: $model.settings.general.showReviews)
+                Toggle("Episode Spoilers", isOn: $model.settings.general.showEpisodeSpoilers)
+                Toggle("Specials Season", isOn: $model.settings.general.showSpecialsSeason)
+            } header: {
+                Text("Detail Views")
+            } footer: {
+                Text("About shows status, country and production companies. Where to Watch shows streaming, rent and buy availability (JustWatch via TMDB). Reviews shows TMDB and Trakt reviews. Episode Spoilers off blurs the stills of aired episodes you haven't watched. Specials Season adds season 0 to a show's seasons.")
+            }
+            Section {
+                Picker("Text Size", selection: $model.settings.general.detailTextSize) {
+                    ForEach(DetailTextSize.allCases) { Text($0.title).tag($0) }
+                }
+            } header: {
+                Text("Display")
+            } footer: {
+                Text("Adjusts the size of titles, synopsis and other text on detail screens.")
+            }
             #if os(iOS)
             Section {
                 Toggle("Haptics", isOn: $model.settings.general.haptics)

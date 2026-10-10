@@ -116,6 +116,24 @@ public actor CatalogService {
         }
     }
 
+    /// TMDb reviews plus Trakt's most-liked comments; either source failing leaves the other.
+    public func reviews(for item: MediaItem) async -> [Review] {
+        let client = tmdb
+        var tmdbReviews: [Review] = []
+        if let id = item.ids.tmdb {
+            tmdbReviews = (try? await cache.cached("reviews:tmdb:\(item.type.rawValue):\(id):\(lang)", maxAge: detailMaxAge) {
+                try await client.reviews(type: item.type, id: id)
+            }) ?? []
+        }
+        var traktReviews: [Review] = []
+        if let trakt, let slug = item.ids.imdb ?? item.ids.traktSlug {
+            traktReviews = (try? await cache.cached("reviews:trakt:\(item.type.rawValue):\(slug)", maxAge: detailMaxAge) {
+                try await trakt.comments(item.type, id: slug)
+            }) ?? []
+        }
+        return Review.merged(tmdbReviews, traktReviews)
+    }
+
     public func person(_ id: Int) async throws -> Person {
         let client = tmdb
         return try await cache.cached("person:\(id):\(lang)", maxAge: detailMaxAge) { try await client.person(id) }
