@@ -13,9 +13,12 @@ struct PlayerView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             surface
-            #if !os(tvOS)
-            // On tvOS subtitles live in the player's content overlay, beneath its transport bar.
+            #if os(macOS)
+            // On iPhone and iPad subtitles sit between the video and Flow's controls; on tvOS in the
+            // player's content overlay, beneath its transport bar.
             SubtitleLayer(session: session, settings: model.settings.subtitles)
+            #endif
+            #if !os(tvOS)
             if session.showsInfo, session.phase == .playing {
                 PlaybackInfoPanel(session: session)
                     .onTapGesture { session.showsInfo = false }
@@ -626,6 +629,8 @@ struct IOSPlayerControls: View {
                         withAnimation(Theme.Motion.fade) { if seekFlash?.id == flash.id { seekFlash = nil } }
                     }
             }
+
+            SubtitleLayer(session: session, settings: model.settings.subtitles)
 
             if visible {
                 controls.transition(.opacity)
