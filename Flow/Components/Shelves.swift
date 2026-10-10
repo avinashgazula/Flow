@@ -479,7 +479,8 @@ struct HeroCarousel: View {
         #elseif os(macOS)
         12
         #else
-        Platform.isPhone ? 112 : 84
+        // Below the settings button, which sits at the top right over the peeking card on iPad.
+        Platform.isPhone ? 112 : 132
         #endif
     }
 
