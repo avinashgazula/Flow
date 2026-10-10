@@ -129,11 +129,12 @@ Principles
 - **Reading**: `EBML`/`MatroskaReader` read the header, tracks, seek index (Cues) and chapters with a few range reads (`HTTPByteSource`). Results are cached by file identity (`MatroskaHeaderCache`).
 - **Packaging**: `MatroskaRemuxer` plans keyframe-aligned segments, sized by bitrate. It writes fragmented MP4 (`MP4`) and WebVTT, and serves HLS (master, media and I-frame playlists) to AVPlayer through `LocalHLSServer` on 127.0.0.1.
 - **Audio setup**: `AudioConfig` builds the codec boxes for AAC, AC-3, E-AC-3 (with Atmos detection), FLAC and MP3.
+- **DTS and TrueHD**: decoded through the `AudioDecoding` protocol (FFmpeg, supplied by the app) and re-encoded by `FLACEncoder`.
 - **Picture subtitles**: PGS and VobSub are decoded (`PGS`, `VobSub`) and drawn by the app over the video.
 - **Networking**: the next segment is prefetched; large reads go out as parallel range requests; failed reads are retried.
 - **Robustness**: the parser is fuzz-tested against corrupt input.
 
 ## 4. Known assumptions
 - PublicMetaDB and IntroDB endpoint shapes are implemented against a configurable base URL (`Settings → Account → API Keys`) because their public API contracts are not standardised; adjust `PublicMetaDBClient` / `IntroDBClient` if your instance differs.
-- AVPlayer can't decode DTS, TrueHD, Vorbis or VP9, and won't play Opus through HLS (CI probes checked this on macOS 15 and the iOS 26 and tvOS 26 simulators). Such tracks are skipped and named. Sources whose soundtrack plays are tried first, and media servers are asked for HLS when direct play isn't possible.
+- AVPlayer can't decode DTS or TrueHD; Flow decodes them with FFmpeg (`Packages/FlowDecoders`, LGPL 2.1) and re-encodes them as FLAC. It can't decode Vorbis or VP9 either, and won't play Opus through HLS (CI probes checked this on macOS 15 and the iOS 26 and tvOS 26 simulators). Such tracks are skipped and named. Sources whose soundtrack plays are tried first, and media servers are asked for HLS when direct play isn't possible.
 - Trakt and Simkl require your own OAuth client IDs (see README).

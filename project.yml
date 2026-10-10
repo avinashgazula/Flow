@@ -28,6 +28,8 @@ settings:
 packages:
   FlowKit:
     path: Packages/FlowKit
+  FlowDecoders:
+    path: Packages/FlowDecoders
 
 targetTemplates:
   FlowApp:
@@ -40,6 +42,7 @@ targetTemplates:
       - path: Shared
     dependencies:
       - package: FlowKit
+      - package: FlowDecoders
     settings:
       base:
         INFOPLIST_KEY_CFBundleDisplayName: Flow

@@ -37,13 +37,16 @@ enum ScreenshotTour {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first(where: { $0.id == DemoSourceProvider.matroskaSampleID }) {
                     m.startPlayback(source, request: PlaybackRequest(item: duneItem))
-                    #if os(iOS)
-                    // Show a scrubbing preview, as if a finger were on the scrubber.
                     Task {
                         try? await Task.sleep(nanoseconds: 2_500_000_000)
+                        // The info panel shows the DTS track being decoded to FLAC.
+                        m.activePlayback?.showsInfo = true
+                        if let info = m.activePlayback?.infoRows() { log("info: " + info.map { "\($0.label)=\($0.value)" }.joined(separator: "; ")) }
+                        #if os(iOS)
+                        // A scrubbing preview, as if a finger were on the scrubber.
                         m.activePlayback?.tourScrubPreview = 7
+                        #endif
                     }
-                    #endif
                 } else {
                     log("no bundled MKV sample")
                 }

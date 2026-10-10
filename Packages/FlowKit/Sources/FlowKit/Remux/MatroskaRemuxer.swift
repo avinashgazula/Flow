@@ -428,6 +428,14 @@ public actor MatroskaRemuxer {
         return "SDR"
     }
 
+    /// Tracks Flow decodes itself and re-encodes as FLAC, e.g. "DTS (English)".
+    public nonisolated var decodedSummary: [String] {
+        audio.filter { $0.codec == .decoded }.map { track in
+            let codec = track.source.codecID == "A_DTS" ? "DTS" : "Dolby TrueHD"
+            return "\(codec) (\(LanguageName.display(track.source.language)))"
+        }
+    }
+
     /// What was left out and why, e.g. "DTS audio (English)".
     public nonisolated var skippedSummary: [String] {
         skipped.map { item in

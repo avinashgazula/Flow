@@ -1,5 +1,29 @@
 import SwiftUI
 import FlowKit
+import FlowDecoders
+
+/// Third-party software Flow ships, with its licence (FFmpeg, LGPL 2.1). A list rather than one long
+/// text so it scrolls with the Siri Remote too.
+struct LicencesView: View {
+    private let paragraphs: [String] = FFmpegLicence.text
+        .components(separatedBy: "\n\n")
+        .map { $0.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespaces) }
+        .filter { !$0.isEmpty }
+
+    var body: some View {
+        List {
+            Section("FFmpeg") {
+                Text(FFmpegLicence.notice)
+            }
+            Section("GNU Lesser General Public License 2.1") {
+                ForEach(Array(paragraphs.enumerated()), id: \.offset) { _, paragraph in
+                    Text(paragraph).font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .navigationTitle("Licences")
+    }
+}
 
 struct GeneralSettingsView: View {
     @Environment(AppModel.self) private var model
@@ -30,6 +54,9 @@ struct GeneralSettingsView: View {
                 Toggle("Haptics", isOn: $model.settings.general.haptics)
             }
             #endif
+            Section("About") {
+                NavigationLink("Open Source Licences") { LicencesView() }
+            }
         }
     }
 }
@@ -91,6 +118,7 @@ struct PlaybackSettingsView: View {
             }
             Section {
                 Toggle("Try the Next Source Automatically", isOn: $model.settings.playback.tryNextSourceOnFailure)
+                Toggle("Decode DTS and Dolby TrueHD", isOn: $model.settings.playback.decodeLosslessAudio)
                 Toggle("Prefer Sources With Playable Audio", isOn: $model.settings.sources.preferPlayableAudio)
                 #if os(iOS)
                 Picker("MKV Files", selection: $model.settings.playback.matroskaPlayback) {

@@ -806,6 +806,9 @@ final class PlaybackSession: Identifiable {
         if let item, let group = audibleGroup, let option = item.currentMediaSelection.selectedMediaOption(in: group) {
             rows.append(InfoRow(label: "Audio", value: option.displayName))
         }
+        if let remuxer, !remuxer.decodedSummary.isEmpty {
+            rows.append(InfoRow(label: "Decoded", value: remuxer.decodedSummary.joined(separator: ", ") + " → lossless FLAC, on this device"))
+        }
         if let remuxer, !remuxer.skippedSummary.isEmpty {
             rows.append(InfoRow(label: "Not Playable", value: remuxer.skippedSummary.joined(separator: ", ")))
         }

@@ -162,7 +162,9 @@ public enum SourceRanker {
     /// Orders sources: category order → provider order → (custom sort rules) → original order.
     /// The preferred resolution cap always applies; filters and the result cap only when custom ordering is on.
     /// `decodesAV1` false (devices without an AV1 decoder) moves AV1 encodes to the end.
-    public static func rank(_ sources: [StreamSource], settings: SourceSettings, resolutionCap: VideoResolution, decodesAV1: Bool = true) -> [StreamSource] {
+    /// `decodesLosslessAudio` true (Flow's own DTS and TrueHD decoding is on) stops demoting those sources.
+    public static func rank(_ sources: [StreamSource], settings: SourceSettings, resolutionCap: VideoResolution, decodesAV1: Bool = true,
+                            decodesLosslessAudio: Bool = false) -> [StreamSource] {
         var list = sources.filter { $0.traits.resolution == .unknown || $0.traits.resolution <= resolutionCap }
         if settings.useCustomOrdering { list = list.filter { passes($0, settings.filters) } }
 
@@ -183,7 +185,7 @@ public enum SourceRanker {
             return (original[a.id] ?? 0) < (original[b.id] ?? 0)
         }
 
-        if settings.preferPlayableAudio {
+        if settings.preferPlayableAudio, !decodesLosslessAudio {
             // Blu-ray remuxes often pair DTS-HD or TrueHD with a Dolby Digital *commentary*, so the
             // "DD" in their label doesn't make them playable. Try sources led by playable audio first.
             let playable = list.filter { !needsAudioDecoder($0) }

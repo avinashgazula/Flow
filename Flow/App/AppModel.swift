@@ -1,6 +1,7 @@
 import SwiftUI
 import Observation
 import FlowKit
+import FlowDecoders
 
 /// Navigation targets shared by every NavigationStack in the app.
 enum Route: Hashable {
@@ -157,6 +158,12 @@ final class AppModel {
         }
         rebuildServices()
         configureImageCache()
+        applyAudioDecoding()
+    }
+
+    /// DTS and Dolby TrueHD in MKVs: decoded with FFmpeg and handed to AVPlayer as FLAC, unless turned off.
+    private func applyAudioDecoding() {
+        MatroskaRemuxer.audioDecoders = settings.playback.decodeLosslessAudio ? FFmpegAudioDecoders() : nil
     }
 
     static func demoSettings() -> AppSettings {
@@ -214,6 +221,7 @@ final class AppModel {
     }
 
     private func settingsDidChange(from old: AppSettings) {
+        if old.playback.decodeLosslessAudio != settings.playback.decodeLosslessAudio { applyAudioDecoding() }
         let servicesChanged = old.metadata != settings.metadata
             || old.account != settings.account
             || old.mediaServers.servers != settings.mediaServers.servers

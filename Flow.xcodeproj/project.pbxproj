@@ -33,6 +33,7 @@
 		3A8C96F16161DAFA0841443E /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0989E9FE254B064FABEA61E /* PlayerView.swift */; };
 		3B888582C9530FD7091DF714 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0989E9FE254B064FABEA61E /* PlayerView.swift */; };
 		3C42A5DEC180CACD0FB17DE6 /* SportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDC8FFF7F3CED5F10C0F96E2 /* SportsView.swift */; };
+		3EF7C8F1B6E1DA5F3A864D91 /* FlowDecoders in Frameworks */ = {isa = PBXBuildFile; productRef = D4D4059D9C908BF2BBD6711A /* FlowDecoders */; };
 		40F86A12EA0AB70C906F2189 /* AppModel+Shelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9180D9C82DCFC46BFA6D629E /* AppModel+Shelves.swift */; };
 		42DF98BD23C1824917EF0AC3 /* FlowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */; };
 		42EE82AA63397ACBA998F8A7 /* LocalHLSServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC0B31C1F62EA8C4E81F3DE /* LocalHLSServer.swift */; };
@@ -64,11 +65,13 @@
 		5F73EE90AEBC11CE4BE0CB77 /* LocalHLSServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC0B31C1F62EA8C4E81F3DE /* LocalHLSServer.swift */; };
 		606EBDF08B80ECA673799CF3 /* PersonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2530CF7AECC3DEE2DDC5DEE7 /* PersonView.swift */; };
 		6A182C159C9EFF00A423D3C2 /* FlowSample.mkv in Resources */ = {isa = PBXBuildFile; fileRef = 85D121444256864EF4E443FE /* FlowSample.mkv */; };
+		6AE0ED86C53921E3691E4199 /* FlowDecoders in Frameworks */ = {isa = PBXBuildFile; productRef = 93789CDDC28FF2C666B77EC9 /* FlowDecoders */; };
 		6AF48813641FA3FD88FCDB4A /* ScreenshotTour.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE2CE055DCDAD495019235C4 /* ScreenshotTour.swift */; };
 		6BE668F74488DFE23EB76DE4 /* MediaServersSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451D5176A69CC78183D18794 /* MediaServersSettingsView.swift */; };
 		6BFD9EE4624B0025C2EF5EA9 /* Images.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA44AEFB6B607BA1E78A020 /* Images.swift */; };
 		70A00484854EA1E77DE4FE53 /* Transitions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D23C128DA930E2AAD88D54D /* Transitions.swift */; };
 		73952EE8010C9312A4384E61 /* ScreenshotTour.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE2CE055DCDAD495019235C4 /* ScreenshotTour.swift */; };
+		73969B56361B89AEDB520CEF /* FlowDecoders in Frameworks */ = {isa = PBXBuildFile; productRef = 99B7863B719B35970DFD2ADC /* FlowDecoders */; };
 		74A0362211FFF73133591A3A /* SportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDC8FFF7F3CED5F10C0F96E2 /* SportsView.swift */; };
 		75E67AD71E6F368686ACD7E6 /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F94293E928197317DF1F8C /* SettingsRootView.swift */; };
 		776023F73CD60A0CCDE0D029 /* GuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AF73C27E4D142EE2CA80A1 /* GuideView.swift */; };
@@ -245,6 +248,7 @@
 		85D121444256864EF4E443FE /* FlowSample.mkv */ = {isa = PBXFileReference; path = FlowSample.mkv; sourceTree = "<group>"; };
 		8A899EF832EB2F6309B4822B /* SeasonsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeasonsSection.swift; sourceTree = "<group>"; };
 		8CC0B31C1F62EA8C4E81F3DE /* LocalHLSServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalHLSServer.swift; sourceTree = "<group>"; };
+		8E53F80D5A686681EFC82977 /* FlowDecoders */ = {isa = PBXFileReference; lastKnownFileType = folder; name = FlowDecoders; path = Packages/FlowDecoders; sourceTree = SOURCE_ROOT; };
 		9180D9C82DCFC46BFA6D629E /* AppModel+Shelves.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppModel+Shelves.swift"; sourceTree = "<group>"; };
 		98C8F5D695E36798C8EC974D /* ImagePipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePipeline.swift; sourceTree = "<group>"; };
 		A0A93336F88B7099468CD68A /* AccountSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
@@ -278,6 +282,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A3ABE4EC6F563604C1098B05 /* FlowKit in Frameworks */,
+				3EF7C8F1B6E1DA5F3A864D91 /* FlowDecoders in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -286,6 +291,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E197E9DC8878B85BF83BFA21 /* FlowKit in Frameworks */,
+				73969B56361B89AEDB520CEF /* FlowDecoders in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -294,6 +300,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F1904ADA48EB73B78A1FC484 /* FlowKit in Frameworks */,
+				6AE0ED86C53921E3691E4199 /* FlowDecoders in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -368,6 +375,7 @@
 		4CE58DBC5DB1B54CF9DCFDC1 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
+				8E53F80D5A686681EFC82977 /* FlowDecoders */,
 				3242A5E3E4210663266FDC7F /* FlowKit */,
 			);
 			path = Packages;
@@ -616,6 +624,7 @@
 			name = "Flow-iOS";
 			packageProductDependencies = (
 				FDE4C0153DD0F6B1072FB8BF /* FlowKit */,
+				D4D4059D9C908BF2BBD6711A /* FlowDecoders */,
 			);
 			productName = "Flow-iOS";
 			productReference = 01495BA2052DEEA5E6EB55E7 /* Flow-iOS.app */;
@@ -638,6 +647,7 @@
 			name = "Flow-tvOS";
 			packageProductDependencies = (
 				260CFC46D33868BB12C131B0 /* FlowKit */,
+				99B7863B719B35970DFD2ADC /* FlowDecoders */,
 			);
 			productName = "Flow-tvOS";
 			productReference = B57EAE07618FE51177989487 /* Flow-tvOS.app */;
@@ -658,6 +668,7 @@
 			name = "Flow-macOS";
 			packageProductDependencies = (
 				B1C54662DBCE3CD8E78A748D /* FlowKit */,
+				93789CDDC28FF2C666B77EC9 /* FlowDecoders */,
 			);
 			productName = "Flow-macOS";
 			productReference = 4AB914167C0E60D7E61706B6 /* Flow-macOS.app */;
@@ -714,6 +725,7 @@
 			);
 			mainGroup = C3DBD8A85E3100385348A5C6;
 			packageReferences = (
+				7FFF20DBD0C2032755C39E1C /* XCLocalSwiftPackageReference "Packages/FlowDecoders" */,
 				BC3FF5BFA7173836CCE87EC4 /* XCLocalSwiftPackageReference "Packages/FlowKit" */,
 			);
 			projectDirPath = "";
@@ -1331,6 +1343,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		7FFF20DBD0C2032755C39E1C /* XCLocalSwiftPackageReference "Packages/FlowDecoders" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/FlowDecoders;
+		};
 		BC3FF5BFA7173836CCE87EC4 /* XCLocalSwiftPackageReference "Packages/FlowKit" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/FlowKit;
@@ -1342,9 +1358,21 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = FlowKit;
 		};
+		93789CDDC28FF2C666B77EC9 /* FlowDecoders */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FlowDecoders;
+		};
+		99B7863B719B35970DFD2ADC /* FlowDecoders */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FlowDecoders;
+		};
 		B1C54662DBCE3CD8E78A748D /* FlowKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = FlowKit;
+		};
+		D4D4059D9C908BF2BBD6711A /* FlowDecoders */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FlowDecoders;
 		};
 		FDE4C0153DD0F6B1072FB8BF /* FlowKit */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -416,6 +416,8 @@ final class PlayableAudioRankingTests: XCTestCase {
         ]
         var settings = SourceSettings()
         XCTAssertEqual(SourceRanker.rank(sources, settings: settings, resolutionCap: .uhd4k).map(\.id), ["web", "aac", "remux", "truehd"])
+        XCTAssertEqual(SourceRanker.rank(sources, settings: settings, resolutionCap: .uhd4k, decodesLosslessAudio: true).map(\.id),
+                       ["remux", "truehd", "web", "aac"], "Flow decodes DTS and TrueHD itself: no reason to demote them")
         settings.preferPlayableAudio = false
         XCTAssertEqual(SourceRanker.rank(sources, settings: settings, resolutionCap: .uhd4k).map(\.id), ["remux", "truehd", "web", "aac"])
     }

@@ -17,11 +17,10 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
 - **Source picker**: gathers results from every provider in parallel. Categories and providers are ordered, there are optional sort rules, filters and a result cap, and the add-on text and badges are parsed.
 - **Player**: resume, skip intro, recap and credits (from Jellyfin media segments, Plex markers, IntroDB, PublicMetaDB or MKV chapter names), a Playback Info panel, an Up Next card with a countdown ring, double-tap to skip on iPhone, scrobbling, subtitle search (OpenSubtitles, SubDL, Wyzie, SubSource), AirPlay, Picture in Picture and external players.
 - **MKV playback**: Matroska files play in Apple's own player. Flow remuxes them on the device, without re-encoding, into HLS served from a loopback address.
-  - Codecs: H.264, HEVC (HDR10, and Dolby Vision profiles 5 and 8; profile 7 plays as HDR10), AV1 (on devices with an AV1 decoder), AAC, Dolby Digital (Plus) with Atmos, FLAC and MP3.
+  - Codecs: H.264, HEVC (HDR10, and Dolby Vision profiles 5 and 8; profile 7 plays as HDR10), AV1 (on devices with an AV1 decoder), AAC, Dolby Digital (Plus) with Atmos, FLAC and MP3, plus DTS (including DTS-HD Master Audio) and Dolby TrueHD, which Flow decodes with FFmpeg and hands over as lossless FLAC.
   - Every audio track, text subtitles and chapters come through, plus Blu-ray and DVD picture subtitles (PGS and VobSub), which Flow draws itself.
   - Scrubbing previews on Apple TV, iPhone and iPad.
   - Each file's index is cached, so reopening it is quick.
-  - A file whose soundtrack is DTS or TrueHD falls back to another audio track, or to the next source.
 - **Sync**: Trakt or Simkl device sign-in, iCloud key-value sync, and Share/Import Setup by file, link or QR code.
 - **System**: a Continue Watching widget on iPhone and iPad, an Apple TV Top Shelf (Continue Watching with progress, and your Watchlist), Spotlight indexing, Handoff, `flow://` deep links, and Shortcuts/Siri actions for Continue Watching, Upcoming and Search. The widget and Top Shelf read a snapshot shared through the `group.<bundle id>` App Group, so enable App Groups for your team when you sign the app.
 - **Demo mode**: "Explore with Sample Data" fills every screen with real TMDb artwork and Apple's sample streams, no keys required.
@@ -70,5 +69,15 @@ CI (`.github/workflows/ci.yml`) runs the FlowKit tests on Linux and macOS and bu
 
 ## Notes
 
-- Apple's player can't play DTS, TrueHD, Opus or Vorbis audio, or VP9 video, from these files. Flow skips those tracks, says so, and prefers sources whose soundtrack plays. Media servers are asked for HLS when direct play isn't possible. On iOS, MKV files can also go to an external player (Settings → Playback).
+- Apple's player can't play Opus or Vorbis audio or VP9 video from these files. Flow skips those tracks, says so, and prefers sources whose soundtrack plays. Media servers are asked for HLS when direct play isn't possible. On iOS, MKV files can also go to an external player (Settings → Playback).
 - The PublicMetaDB and IntroDB base URLs are configurable because deployments differ.
+
+## Third-party software
+
+Flow decodes DTS and Dolby TrueHD with [FFmpeg](https://ffmpeg.org) 7.1.1, licensed under the
+[LGPL 2.1](Packages/FlowDecoders/Sources/FlowDecoders/Resources/COPYING.LGPLv2.1). It is built from the
+unmodified release with only the DTS and TrueHD/MLP decoders (no GPL or non-free parts) by
+`scripts/build-ffmpeg-decoders.sh`, which CI runs on macOS to produce
+`Packages/FlowDecoders/FFmpegDecoders`. Flow links it statically; because Flow's source is public, it
+can be rebuilt against a modified FFmpeg. The licence also appears in the app under Settings → General →
+Open Source Licences, and **Decode DTS and Dolby TrueHD** in Playback settings turns the decoding off.
