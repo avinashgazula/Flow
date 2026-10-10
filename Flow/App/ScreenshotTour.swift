@@ -48,6 +48,15 @@ enum ScreenshotTour {
                     log("no bundled MKV sample")
                 }
             },
+            // Opus in fragmented MP4 isn't in Apple's HLS spec; this records whether AVPlayer takes it.
+            Step(name: "opus-probe") { m in
+                m.activePlayback?.stop()
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                guard let url = Bundle.main.url(forResource: "FlowOpusProbe", withExtension: "mkv") else { return log("no Opus probe") }
+                let probe = StreamSource(id: "probe#opus", category: .addons, providerID: "probe", providerName: "Opus probe",
+                                         title: "Opus probe", filename: "FlowOpusProbe.mkv", location: .url(url, headers: [:]))
+                m.startPlayback(probe, request: PlaybackRequest(item: duneItem))
+            },
             Step(name: "person") { m in m.activePlayback?.stop(); m.paths[.home] = [.detail(duneItem), .person(id: 1190668, name: "Timothée Chalamet")] },
             Step(name: "explore") { m in m.paths[.home] = []; m.selectedTab = .explore },
             Step(name: "library") { m in m.selectedTab = .library },

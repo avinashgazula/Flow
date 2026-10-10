@@ -23,7 +23,7 @@ public actor MatroskaRemuxer {
         public var language: String { source.language }
     }
 
-    enum Codec: Sendable { case h264, hevc, av1, aac, mp3, ac3, eac3, flac, text, ass, pgs, vobsub }
+    enum Codec: Sendable { case h264, hevc, av1, aac, mp3, ac3, eac3, flac, opus, text, ass, pgs, vobsub }
 
     public struct Skipped: Sendable, Hashable {
         public let track: MatroskaTrack
@@ -330,7 +330,11 @@ public actor MatroskaRemuxer {
                                         frameSamples: firstFrame.flatMap(FLAC.blockSize) ?? 4096, codec: .flac))
         case "A_DTS": return .failure(Unsupported(message: "DTS audio"))
         case "A_TRUEHD", "A_MLP": return .failure(Unsupported(message: "Dolby TrueHD audio"))
-        case "A_OPUS": return .failure(Unsupported(message: "Opus audio"))
+        case "A_OPUS":
+            guard let dOps = Opus.dOps(t.codecPrivate) else { return .failure(Unsupported(message: "Opus without its header")) }
+            let entry = MP4.audioSampleEntry("Opus", channels: Opus.channels(t.codecPrivate), sampleRate: 48000, children: MP4.box("dOps", dOps))
+            return .success(OutputTrack(role: .audio, source: t, codecString: "opus", timescale: 48000, label: label, sampleEntry: entry,
+                                        frameSamples: 960, codec: .opus))
         case "A_VORBIS": return .failure(Unsupported(message: "Vorbis audio"))
         case let id where id.hasPrefix("A_PCM"): return .failure(Unsupported(message: "Uncompressed PCM audio"))
         default: return .failure(Unsupported(message: "Audio format \(t.codecID)"))
@@ -373,6 +377,7 @@ public actor MatroskaRemuxer {
         case "A_AC3": codec = "Dolby Digital"
         case "A_EAC3": codec = "Dolby Digital Plus"
         case "A_FLAC": codec = "FLAC"
+        case "A_OPUS": codec = "Opus"
         case "A_MPEG/L3": codec = "MP3"
         default: codec = t.codecID.hasPrefix("A_AAC") ? "AAC" : t.codecID
         }
@@ -668,6 +673,7 @@ public actor MatroskaRemuxer {
                 case .eac3: duration = EAC3.samples(in: frame)
                 case .flac: duration = FLAC.blockSize(frame) ?? track.frameSamples
                 case .mp3: duration = MP3.samplesPerFrame(frame)
+                case .opus: duration = Opus.samples(frame)
                 default: duration = track.frameSamples
                 }
                 samples.append(MP4.Sample(data: frame, duration: UInt32(duration), isSync: true))
