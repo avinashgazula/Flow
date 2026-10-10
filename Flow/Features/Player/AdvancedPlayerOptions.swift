@@ -10,6 +10,8 @@ struct AdvancedPlayerOptions: View {
     let showSearch: () -> Void
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    /// The boost while the slider is held; applied on release, since each change reloads the stream.
+    @State private var boostDraft: Double?
 
     var body: some View {
         @Bindable var model = model
@@ -46,6 +48,15 @@ struct AdvancedPlayerOptions: View {
                     Text("Subtitles")
                 } footer: {
                     Text("Size, colour, background and position apply to subtitles Flow draws itself.")
+                }
+                Section {
+                    volumeBoost
+                } header: {
+                    Text("Audio")
+                } footer: {
+                    Text(session.volumeBoostHeadroom > 0
+                         ? "Gives back the loudness Dolby Digital soundtracks hold in reserve: this one plays up to \(session.volumeBoostHeadroom) dB louder. Applies straight away and stays on for other films."
+                         : "Volume Boost works on Dolby Digital and Dolby Digital Plus soundtracks in MKV files that leave headroom in their mix.")
                 }
                 Section("Playback") {
                     Picker("Speed", selection: Binding(get: { media.speed }, set: { media.setSpeed($0) })) {
@@ -85,6 +96,22 @@ struct AdvancedPlayerOptions: View {
             Text("Positive shows subtitles later. Only for subtitles Flow loads itself.")
                 .font(Theme.Typeface.caption)
                 .foregroundStyle(Theme.Palette.textSecondary)
+        }
+    }
+
+    /// In whole decibels up to what this soundtrack can give: anything past its headroom changes nothing.
+    private var volumeBoost: some View {
+        let headroom = session.volumeBoostHeadroom
+        let current = boostDraft.map { Int($0.rounded()) } ?? min(model.settings.playback.volumeBoostDB, headroom)
+        return VStack(alignment: .leading, spacing: 4) {
+            LabeledContent("Volume Boost", value: current > 0 ? "+\(current) dB" : "Off")
+            if headroom > 0 {
+                Slider(value: Binding(get: { boostDraft ?? Double(current) }, set: { boostDraft = $0 }), in: 0...Double(headroom), step: 1) { editing in
+                    guard !editing, let draft = boostDraft else { return }
+                    session.setVolumeBoost(Int(draft.rounded()))
+                    boostDraft = nil
+                }
+            }
         }
     }
 
