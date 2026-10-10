@@ -14,6 +14,7 @@
 		0BC7F58ABE20D3241F77CD28 /* ImagePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98C8F5D695E36798C8EC974D /* ImagePipeline.swift */; };
 		0E03528DFC36D51C2BA37450 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFDC10E881E9DB671424D280 /* CalendarView.swift */; };
 		108C5E9687C98F5671A9A2F8 /* ScrubPreviewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CB8E97377E31ECE3DAB98F /* ScrubPreviewer.swift */; };
+		14676D13B73780B4FBB9730C /* FolderShelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD8CA6AA38443F2D4A150475 /* FolderShelves.swift */; };
 		147917F99D7CEA08D5C53108 /* LiveTVView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11A5725FE1CA04C7ABACBFB /* LiveTVView.swift */; };
 		168AA239910FADFD0A5DAC06 /* DataSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F2212A970B6865DC66B1898 /* DataSettingsViews.swift */; };
 		197E35749543578A771BCF95 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7785133DEC097B45A1126DA /* OnboardingView.swift */; };
@@ -111,6 +112,7 @@
 		934FEEDC27CB6DAF07257FB8 /* ScrubPreviewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CB8E97377E31ECE3DAB98F /* ScrubPreviewer.swift */; };
 		93FB6214934E715C1BCD5A67 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434D840AB6866F096CBB9D82 /* Platform.swift */; };
 		96CB1CBC664603888D6E75C3 /* GuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AF73C27E4D142EE2CA80A1 /* GuideView.swift */; };
+		96E52E808468DC2F8B2C460D /* FolderShelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD8CA6AA38443F2D4A150475 /* FolderShelves.swift */; };
 		97106BE2EFCC9FA496CD2E58 /* DetailExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC4635E39CCCBADCFF8937F /* DetailExtras.swift */; };
 		97C0CD31DA843E59C8D75E48 /* RequestButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9B65C32FD3DCF62AB118C7 /* RequestButton.swift */; };
 		98D6D2FD82A372732418CB36 /* EpisodeShelf.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88BEF739F9A9682C799EE4A /* EpisodeShelf.swift */; };
@@ -157,6 +159,7 @@
 		D252265633902B30F575402C /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5289F6C0111AC96F58A5B8A9 /* Cards.swift */; };
 		D2D2008AC8ACC92B230EBD42 /* FlowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */; };
 		D2E6E062AE9FD4CF3ADF16D0 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0989E9FE254B064FABEA61E /* PlayerView.swift */; };
+		D3C00E3917A5C9707EC798F1 /* FolderShelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD8CA6AA38443F2D4A150475 /* FolderShelves.swift */; };
 		D7238BBEC40F070902A57934 /* PersonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2530CF7AECC3DEE2DDC5DEE7 /* PersonView.swift */; };
 		D8A6B22B413C870859DA4BD6 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F088D0F4A55BC78D157C430 /* Theme.swift */; };
 		D8E388090E8B4DD49BA3514B /* AppModel+Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDFD9452BB4553C5D6D0B9D5 /* AppModel+Playback.swift */; };
@@ -304,6 +307,7 @@
 		D9D03A2B99C78348BE0EB427 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		D9ED31EC7E6444B795906246 /* DownloadManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadManager.swift; sourceTree = "<group>"; };
 		DAA44AEFB6B607BA1E78A020 /* Images.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Images.swift; sourceTree = "<group>"; };
+		DD8CA6AA38443F2D4A150475 /* FolderShelves.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderShelves.swift; sourceTree = "<group>"; };
 		E7785133DEC097B45A1126DA /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		EBA393B9CEE6890CBADEE423 /* NowPlaying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlaying.swift; sourceTree = "<group>"; };
 		EBC2B539AB9BA72E74E143DF /* ExploreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreView.swift; sourceTree = "<group>"; };
@@ -633,6 +637,7 @@
 			isa = PBXGroup;
 			children = (
 				5289F6C0111AC96F58A5B8A9 /* Cards.swift */,
+				DD8CA6AA38443F2D4A150475 /* FolderShelves.swift */,
 				DAA44AEFB6B607BA1E78A020 /* Images.swift */,
 				1E4B0A67CC21E053989BB58A /* Shelves.swift */,
 			);
@@ -861,6 +866,7 @@
 				F23D6984C99C9A161ABAFA41 /* ExploreView.swift in Sources */,
 				FA377569BA4AEFA2781D9549 /* FlowApp.swift in Sources */,
 				7BBEDFED27F66D4F425AFE8F /* FlowSnapshot.swift in Sources */,
+				14676D13B73780B4FBB9730C /* FolderShelves.swift in Sources */,
 				1F329A0B16D263223C08ABB3 /* GeneralExtrasSettings.swift in Sources */,
 				776023F73CD60A0CCDE0D029 /* GuideView.swift in Sources */,
 				510271A6C7046E82671FE374 /* HomeView.swift in Sources */,
@@ -926,6 +932,7 @@
 				EB65E4648D060FC7CC48DC09 /* ExploreView.swift in Sources */,
 				E246BFF4BD7FE5509952989B /* FlowApp.swift in Sources */,
 				D2D2008AC8ACC92B230EBD42 /* FlowSnapshot.swift in Sources */,
+				D3C00E3917A5C9707EC798F1 /* FolderShelves.swift in Sources */,
 				EE89C39BC3CC38E912DEECE6 /* GeneralExtrasSettings.swift in Sources */,
 				96CB1CBC664603888D6E75C3 /* GuideView.swift in Sources */,
 				D14A5CC3A0D0362CC9135221 /* HomeView.swift in Sources */,
@@ -991,6 +998,7 @@
 				ED54398CF83C0B32A2997B48 /* ExploreView.swift in Sources */,
 				4A898422FE42EF909E126D20 /* FlowApp.swift in Sources */,
 				27C0E92B9404C9989AD1F99A /* FlowSnapshot.swift in Sources */,
+				96E52E808468DC2F8B2C460D /* FolderShelves.swift in Sources */,
 				1FD9D035BDB2470D59CCC2F8 /* GeneralExtrasSettings.swift in Sources */,
 				A0EE84DBCC08CCE262822E93 /* GuideView.swift in Sources */,
 				CC9E60022EA9AD97A053BC0F /* HomeView.swift in Sources */,
