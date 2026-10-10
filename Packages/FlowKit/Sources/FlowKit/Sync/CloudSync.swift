@@ -190,6 +190,15 @@ public struct CloudSync: Sendable {
         CloudDomain.allCases.reduce(0) { $0 + (store.data(forKey: $1.key)?.count ?? 0) + $1.key.utf8.count }
     }
 
+    /// Empties the tracking domains of the cloud copy, leaving settings, shelves and servers in place.
+    public func clearTracking() throws {
+        try write([PlaybackProgress](), .playbackProgress)
+        try write([Rewatch](), .rewatches)
+        try write([ShuffleRecord](), .shuffleHistory)
+        try write(LocalLibrary(), .library)
+        store.synchronize()
+    }
+
     public func clear() {
         for domain in CloudDomain.allCases { store.set(nil, forKey: domain.key) }
         store.synchronize()

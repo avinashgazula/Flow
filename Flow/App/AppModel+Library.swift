@@ -66,6 +66,16 @@ extension AppModel {
         await publishSnapshot()
     }
 
+    /// Remembers a rejected update so Settings → Account can show it; the next successful update or sync clears it.
+    func recordSyncFailure(_ error: Error) {
+        guard tracker.kind != .local else { return }
+        if case FlowError.http(let status, _) = error {
+            lastSyncError = "\(tracker.kind.displayName) rejected the last update to your account. (HTTP \(status))"
+        } else {
+            lastSyncError = error.localizedDescription
+        }
+    }
+
     /// Continue Watching = resume points + Next Up for recently watched shows.
     func rebuildContinueWatching() async {
         let rewatches = await local.library.rewatches
@@ -165,10 +175,12 @@ extension AppModel {
                 try await listService(for: settings.account.watchlistDestination).setWatchlisted(item, listed)
             }
             showToast(listed ? "Added to Watchlist" : "Removed from Watchlist")
+            lastSyncError = nil
             contentVersion += 1
         } catch {
             if listed { watchlistKeys.removeAll { $0 == key } } else { watchlistKeys.insert(key, at: 0) }
             showToast(error.localizedDescription)
+            recordSyncFailure(error)
         }
     }
 
@@ -183,10 +195,12 @@ extension AppModel {
             } else {
                 try await listService(for: settings.account.favouritesDestination).setFavourite(item, favourite)
             }
+            lastSyncError = nil
             contentVersion += 1
         } catch {
             if favourite { favouriteKeys.removeAll { $0 == key } } else { favouriteKeys.insert(key, at: 0) }
             showToast(error.localizedDescription)
+            recordSyncFailure(error)
         }
     }
 
@@ -228,10 +242,12 @@ extension AppModel {
             }
             progress.removeAll { $0.key == key && (refs == nil || $0.episode.map { refs!.contains($0) } ?? true) }
             await rebuildContinueWatching()
+            lastSyncError = nil
             contentVersion += 1
         } catch {
             showToast(error.localizedDescription)
             await refreshLibrary(force: true)
+            recordSyncFailure(error)
         }
     }
 
@@ -270,6 +286,78 @@ extension AppModel {
         guard let ref = await local.nextShuffle(for: key, from: Self.airedEpisodes(detail)) else { return nil }
         let episodes = (try? await catalog.tmdb.season(showID: key.tmdbID, season: ref.season)) ?? []
         return episodes.first { $0.number == ref.episode } ?? Episode(showTMDB: key.tmdbID, season: ref.season, number: ref.episode, title: "Episode \(ref.episode)")
+    }
+
+    // MARK: Data & Storage
+
+    /// Forgets what was fetched from the tracker and fetches it again.
+    func clearTrackerCache() async {
+        progress = []
+        history = []
+        watchedMovies = []
+        showStates = [:]
+        watchlistKeys = []
+        favouriteKeys = []
+        continueWatching = []
+        settings.sync.lastTrackerSync = nil
+        await refreshLibrary(force: true)
+        showToast("Trakt cache cleared")
+    }
+
+    func clearRewatches() async {
+        await local.clearRewatches()
+        await rebuildContinueWatching()
+        contentVersion += 1
+        showToast("Rewatches cleared")
+    }
+
+    func clearShuffleHistory() async {
+        await local.clearShuffleHistory()
+        showToast("Shuffle history cleared")
+    }
+
+    /// Clears this device's resume positions; the tracker's own are re-fetched.
+    func resetPlaybackProgress() async {
+        await local.clearProgress()
+        await refreshLibrary(force: true)
+        showToast("Playback progress reset")
+    }
+
+    /// Deletes the iCloud copy and uploads this device's in its place.
+    func resetCloudCopy() {
+        cloud.clear()
+        do {
+            try cloud.push(settings: settings, library: localLibrary, includeLibrary: true)
+            settings.sync.lastCloudSync = Date()
+            showToast("iCloud copy reset")
+        } catch {
+            showToast("iCloud reset failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Everything the on-device tracker holds, and the same in the iCloud copy.
+    func deleteAllTrackingData() async {
+        await local.replace(LocalLibrary())
+        try? cloud.clearTracking()
+        await refreshLibrary(force: true)
+        showToast("Tracking data deleted")
+    }
+
+    /// Image, metadata and remux header caches. Tracking data and downloads are untouched.
+    func clearAllCaches() async {
+        URLCache.shared.removeAllCachedResponses()
+        await catalog?.clearCache()
+        await cache.clear()
+        await MatroskaHeaderCache.shared.clear()
+        showToast("Cache cleared")
+    }
+
+    /// The on-device library as a JSON file in the temp directory, ready for a ShareLink.
+    func exportTrackingData() -> URL? {
+        guard let data = try? TrackingExport(library: localLibrary).json() else { return nil }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Flow Tracking Data.json")
+        do { try data.write(to: url, options: .atomic) } catch { return nil }
+        return url
     }
 
     // MARK: Media server index

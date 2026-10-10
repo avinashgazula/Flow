@@ -86,7 +86,7 @@ targets:
         UIApplicationSupportsIndirectInputEvents: true
         UIStatusBarStyle: UIStatusBarStyleLightContent
         UIUserInterfaceStyle: Dark
-        LSSupportsOpeningDocumentsInPlace: false
+        LSSupportsOpeningDocumentsInPlace: true
         UIFileSharingEnabled: true
         LSApplicationQueriesSchemes: [infuse, vlc-x-callback, outplayer, SenPlayer, youtube]
     entitlements:

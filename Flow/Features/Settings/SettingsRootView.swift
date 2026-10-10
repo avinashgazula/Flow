@@ -85,7 +85,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .webDAV: return "webdav nas share files"
         case .liveTV: return "iptv m3u xtream epg channels guide"
         case .sources: return "addons aiostreams order sort filter cap resolution"
-        case .dataStorage: return "icloud sync push pull cache storage clear"
+        case .dataStorage: return "icloud sync push pull cache storage clear downloads export tracking"
         case .shareSetup: return "export qr share backup"
         case .importSetup: return "import restore qr"
         case .playback: return "resolution autoplay skip intro credits resume audio external player infuse vlc pip"

@@ -15,6 +15,8 @@ struct DownloadItem: Codable, Identifiable, Hashable {
     var bytes: Int64?
     var error: String?
     var createdAt: Date
+    /// Where the file was saved; downloads from before the setting existed live in Documents.
+    var location: DownloadLocation?
 }
 
 /// Background-capable file downloads for offline playback (iOS / macOS).
@@ -33,10 +35,23 @@ final class DownloadManager: NSObject {
         return URLSession(configuration: config, delegate: self, delegateQueue: .main)
     }()
 
-    static var directory: URL {
-        let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        let dir = base.appendingPathComponent("Downloads", isDirectory: true)
+    /// Documents shows up in the Files app; Application Support stays inside Flow and out of backups.
+    /// Only iOS has the choice: elsewhere downloads always go to Documents.
+    static func directory(for location: DownloadLocation) -> URL {
+        #if os(iOS)
+        let inFiles = location == .files
+        #else
+        let inFiles = true
+        #endif
+        let fallback = URL(fileURLWithPath: NSTemporaryDirectory())
+        let base = FileManager.default.urls(for: inFiles ? .documentDirectory : .applicationSupportDirectory, in: .userDomainMask).first ?? fallback
+        var dir = base.appendingPathComponent("Downloads", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        if !inFiles {
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try? dir.setResourceValues(values)
+        }
         return dir
     }
 
@@ -50,11 +65,11 @@ final class DownloadManager: NSObject {
         }
     }
 
-    func localURL(for item: DownloadItem) -> URL { Self.directory.appendingPathComponent(item.fileName) }
+    func localURL(for item: DownloadItem) -> URL { Self.directory(for: item.location ?? .files).appendingPathComponent(item.fileName) }
 
     /// Queues a download; returns an error message when the source can't be saved.
     @discardableResult
-    func start(source: StreamSource, request: PlaybackRequest) -> String? {
+    func start(source: StreamSource, request: PlaybackRequest, location: DownloadLocation) -> String? {
         guard let url = source.location.playableURL else { return "This source can't be downloaded." }
         if url.pathExtension.lowercased() == "m3u8" {
             return "This source is a stream (HLS) and can't be saved. Pick a file source instead."
@@ -62,7 +77,7 @@ final class DownloadManager: NSObject {
         let ext = url.pathExtension.isEmpty ? "mp4" : url.pathExtension
         let safeTitle = request.displayTitle.replacingOccurrences(of: "[^A-Za-z0-9 ._-]", with: "", options: .regularExpression)
         let item = DownloadItem(id: UUID().uuidString, request: request, sourceTitle: source.providerName, remoteURL: url, headers: source.location.headers,
-                                fileName: "\(safeTitle)-\(UUID().uuidString.prefix(6)).\(ext)", state: .queued, progress: 0, bytes: source.traits.sizeBytes, error: nil, createdAt: Date())
+                                fileName: "\(safeTitle)-\(UUID().uuidString.prefix(6)).\(ext)", state: .queued, progress: 0, bytes: source.traits.sizeBytes, error: nil, createdAt: Date(), location: location)
         items.insert(item, at: 0)
         resume(item)
         save()

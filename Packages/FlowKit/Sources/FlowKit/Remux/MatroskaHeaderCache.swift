@@ -46,6 +46,12 @@ public actor MatroskaHeaderCache {
         prune()
     }
 
+    /// Forgets every remembered header, in memory and on disk.
+    public func clear() {
+        memory = [:]
+        try? FileManager.default.removeItem(at: directory)
+    }
+
     /// Keeps the most recently used files.
     private func prune() {
         guard let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey]),

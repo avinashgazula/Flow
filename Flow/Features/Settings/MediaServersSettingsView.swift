@@ -64,6 +64,11 @@ struct MediaServersSettingsView: View {
                 Text("Uses posters and backdrops from your media server for titles in its library. Everything else — and all text details — still comes from TMDb.")
             }
             Section {
+                Toggle("Track Only With Your Tracking Service", isOn: $model.settings.mediaServers.trackOnlyWithTracker)
+            } footer: {
+                Text("Ignores the media server's own watched state, resume position and Continue Watching, and stops reporting playback to it. Progress comes only from your tracking service. The server still provides artwork and streams.")
+            }
+            Section {
                 Button("Refresh Library Index") { Task { await model.refreshServerIndex() } }
                 LabeledContent("Indexed Titles", value: "\(model.serverKeys.count)")
             }

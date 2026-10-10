@@ -47,6 +47,29 @@ public struct LocalLibrary: Codable, Hashable, Sendable {
     }
 }
 
+/// What "Export Tracking Data" writes: the on-device library without display caches or shuffle bookkeeping.
+public struct TrackingExport: Codable, Sendable {
+    public var format = "flow-tracking"
+    public var version = 1
+    public var exportedAt: Date
+    public var history: [HistoryEntry]
+    public var watchlist: [ListEntry]
+    public var favourites: [ListEntry]
+    public var resumePositions: [PlaybackProgress]
+    public var rewatches: [Rewatch]
+
+    public init(library: LocalLibrary, exportedAt: Date = Date()) {
+        self.exportedAt = exportedAt
+        history = library.history
+        watchlist = library.watchlist
+        favourites = library.favourites
+        resumePositions = library.progress
+        rewatches = library.rewatches
+    }
+
+    public func json() throws -> Data { try SettingsCodec.encode(self, pretty: true) }
+}
+
 /// On-device tracker. Mutations are persisted through `save` immediately.
 public actor LocalTracker: TrackingService, ListService {
     public nonisolated let kind: TrackerKind = .local
@@ -208,4 +231,8 @@ public actor LocalTracker: TrackingService, ListService {
     }
 
     public func clearShuffleHistory() { mutate { $0.shuffle = [] } }
+
+    // MARK: Reset
+
+    public func clearProgress() { mutate { $0.progress = [] } }
 }

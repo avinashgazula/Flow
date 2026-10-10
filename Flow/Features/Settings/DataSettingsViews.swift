@@ -7,19 +7,32 @@ struct DataStorageView: View {
     @State private var statuses: [CloudDomainStatus] = []
     @State private var usedBytes = 0
     @State private var cacheBytes: Int64 = 0
+    @State private var downloadBytes: Int64 = 0
+    @State private var exportURL: URL?
     @State private var confirmClear: ClearAction?
 
     enum ClearAction: String, Identifiable {
-        case trakt, rewatches, shuffle, responses, cloud, downloads
+        case trakt, rewatches, shuffle, progress, resetCloud, allCache, cloud, downloads, tracking
         var id: String { rawValue }
         var title: String {
             switch self {
             case .trakt: return "Clear Trakt Cache"
             case .rewatches: return "Clear Rewatches"
             case .shuffle: return "Clear Shuffle History"
-            case .responses: return "Clear Metadata Cache"
+            case .progress: return "Reset Playback Progress"
+            case .resetCloud: return "Reset iCloud Copy"
+            case .allCache: return "Clear All Cache"
             case .cloud: return "Erase iCloud Data"
             case .downloads: return "Delete All Downloads"
+            case .tracking: return "Delete All Tracking Data"
+            }
+        }
+        var message: String? {
+            switch self {
+            case .progress: return "Clears the resume positions saved on this device."
+            case .resetCloud: return "Deletes the iCloud copy and uploads this device's in its place."
+            case .tracking: return "Erases your on-device watch history, watchlist, favourites, resume positions and rewatches, including the iCloud copy. This can't be undone."
+            default: return nil
             }
         }
     }
@@ -45,7 +58,6 @@ struct DataStorageView: View {
                         Text("\(ByteCountFormatter.string(fromByteCount: Int64(usedBytes), countStyle: .file)) of 1 MB").font(.caption).foregroundStyle(.secondary)
                     }
                     Button { model.pushToCloud(); refresh() } label: { Label("Push to iCloud", systemImage: "icloud.and.arrow.up") }
-                    Button { model.pullFromCloud(); refresh() } label: { Label("Pull from iCloud", systemImage: "icloud.and.arrow.down") }
                     if let last = model.settings.sync.lastCloudSync {
                         LabeledContent("Last Synced") { Text(last, style: .relative) + Text(" ago") }
                     }
@@ -53,32 +65,113 @@ struct DataStorageView: View {
             } header: {
                 Text("iCloud")
             } footer: {
-                Text("Syncs playback progress, settings, rewatch state, and shuffle history across your devices. Push and Pull also sync your on-device watchlist, watch history and favourites through iCloud.")
+                Text("Syncs playback progress, settings, rewatch state, and shuffle history across your devices. Push also syncs your on-device watchlist, watch history and favourites through iCloud.")
             }
 
-            Section("Cache") {
+            Section {
                 Button { confirmClear = .trakt } label: { Label("Clear Trakt Cache", systemImage: "arrow.triangle.2.circlepath") }
                 Button { confirmClear = .rewatches } label: { Label("Clear Rewatches", systemImage: "arrow.counterclockwise") }
                 Button { confirmClear = .shuffle } label: { Label("Clear Shuffle History", systemImage: "shuffle") }
-                Button { confirmClear = .responses } label: {
-                    LabeledContent { Text(ByteCountFormatter.string(fromByteCount: cacheBytes, countStyle: .file)) } label: {
-                        Label("Clear Metadata Cache", systemImage: "trash")
+                Button(role: .destructive) { confirmClear = .progress } label: {
+                    LabeledContent {
+                        Text(progressCount == 1 ? "1 item" : "\(progressCount) items").foregroundStyle(.red)
+                    } label: {
+                        Label("Reset Playback Progress", systemImage: "gobackward")
                     }
                 }
+            } header: {
+                Text("Cache")
+            } footer: {
+                Text("Clearing the Trakt cache re-fetches your watchlist, history and progress from Trakt.")
             }
+
             Section {
+                if model.settings.sync.iCloudEnabled {
+                    Button { model.pullFromCloud(); refresh() } label: { Label("Re-download from iCloud", systemImage: "icloud.and.arrow.down") }
+                    Button { confirmClear = .resetCloud } label: { Label("Reset iCloud Copy", systemImage: "icloud.and.arrow.up") }
+                }
+                #if !os(tvOS)
+                if let exportURL {
+                    ShareLink(item: exportURL) { Label("Export Tracking Data", systemImage: "square.and.arrow.up") }
+                }
+                #endif
+            } header: {
+                Text("On-Device Tracking")
+            } footer: {
+                Text("Re-download reads the whole iCloud copy and merges anything missing into this device; nothing is uploaded or deleted. Reset replaces the iCloud copy with this device's. Export saves your watch history, watchlist, favourites, resume positions and rewatches as a JSON file.")
+            }
+
+            if Platform.supportsDownloads {
+                Section {
+                    LabeledContent("Storage Used", value: ByteCountFormatter.string(fromByteCount: downloadBytes, countStyle: .file))
+                    #if os(iOS)
+                    Picker("Download Location", selection: $model.settings.downloads.location) {
+                        ForEach(DownloadLocation.allCases) { Text($0.title).tag($0) }
+                    }
+                    #endif
+                    NavigationLink(value: Route.downloads) { Label("Manage Downloads", systemImage: "arrow.down.circle") }
+                } header: {
+                    Text("Downloads")
+                } footer: {
+                    #if os(iOS)
+                    Text("Files App keeps downloads in Flow's folder in the Files app, so you can copy them off this device. App Storage keeps them inside Flow and out of backups. Downloads already saved stay where they are.")
+                    #else
+                    Text("Downloads are saved for watching offline.")
+                    #endif
+                }
+
+                Section {
+                    Picker("Movies", selection: $model.settings.downloads.movieLimitGB) {
+                        ForEach(Self.sizeLimits, id: \.self) { Text(Self.limitTitle($0)).tag($0) }
+                    }
+                    Picker("TV Episodes", selection: $model.settings.downloads.episodeLimitGB) {
+                        ForEach(Self.sizeLimits, id: \.self) { Text(Self.limitTitle($0)).tag($0) }
+                    }
+                    Picker("Resolution", selection: $model.settings.downloads.resolution) {
+                        ForEach(Self.resolutions) { Text($0 == .unknown ? "Highest Available" : $0.label).tag($0) }
+                    }
+                    Toggle("Download Automatically", isOn: $model.settings.downloads.downloadAutomatically)
+                } header: {
+                    Text("Download Limits")
+                } footer: {
+                    Text("Applies to downloads only: playing still offers every source. With Download Automatically on, Download takes the best source within these limits, in your source order, and the source list opens only when nothing fits. Sources that don't report their size or resolution aren't picked automatically.")
+                }
+            }
+
+            Section {
+                Button(role: .destructive) { confirmClear = .allCache } label: {
+                    LabeledContent { Text(ByteCountFormatter.string(fromByteCount: cacheBytes, countStyle: .file)) } label: {
+                        Label("Clear All Cache", systemImage: "trash")
+                    }
+                }
                 if Platform.supportsDownloads {
                     Button(role: .destructive) { confirmClear = .downloads } label: { Label("Delete All Downloads", systemImage: "arrow.down.circle") }
                 }
                 Button(role: .destructive) { confirmClear = .cloud } label: { Label("Erase iCloud Data", systemImage: "icloud.slash") }
+                Button(role: .destructive) { confirmClear = .tracking } label: { Label("Delete All Tracking Data", systemImage: "person.crop.circle.badge.xmark") }
+            } header: {
+                Text("Danger Zone")
+            } footer: {
+                Text("Clear All Cache removes artwork, metadata and stream header caches; they download again as needed. Delete All Tracking Data erases your on-device history, watchlist, favourites, resume positions and rewatches, along with their iCloud copy. It can't be undone.")
             }
         }
         .onAppear { refresh() }
         .confirmationDialog(confirmClear?.title ?? "", isPresented: Binding(get: { confirmClear != nil }, set: { if !$0 { confirmClear = nil } }), titleVisibility: .visible) {
             Button(confirmClear?.title ?? "Clear", role: .destructive) { perform(confirmClear) }
             Button("Cancel", role: .cancel) {}
+        } message: {
+            if let message = confirmClear?.message { Text(message) }
         }
     }
+
+    private static let sizeLimits: [Double?] = [nil, 2, 5, 10, 20, 40]
+    private static let resolutions: [VideoResolution] = [.unknown, .uhd4k, .hd1080, .hd720]
+
+    private static func limitTitle(_ gb: Double?) -> String {
+        gb.map { "\(Int($0)) GB" } ?? "No Limit"
+    }
+
+    private var progressCount: Int { model.localLibrary.progress.count }
 
     private func detail(_ status: CloudDomainStatus) -> String {
         let cloud = status.cloudCount.map { "\($0) cloud" } ?? "—"
@@ -91,30 +184,30 @@ struct DataStorageView: View {
     private func refresh() {
         statuses = model.cloud.status(settings: model.settings, library: model.localLibrary)
         usedBytes = model.cloud.usedBytes
-        cacheBytes = JSONFileStore.caches("FlowResponses").sizeInBytes
+        cacheBytes = JSONFileStore.caches("FlowResponses").sizeInBytes + JSONFileStore.caches("FlowMatroskaHeaders").sizeInBytes + Int64(URLCache.shared.currentDiskUsage)
+        downloadBytes = DownloadManager.shared.totalBytes
+        exportURL = model.exportTrackingData()
     }
 
     private func perform(_ action: ClearAction?) {
         guard let action else { return }
         Task {
             switch action {
-            case .trakt:
-                model.settings.sync.lastTrackerSync = nil
-                await model.refreshLibrary(force: true)
-            case .rewatches:
-                await model.local.clearRewatches()
-            case .shuffle:
-                await model.local.clearShuffleHistory()
-            case .responses:
-                await model.catalog?.clearCache()
-                await model.cache.clear()
+            case .trakt: await model.clearTrackerCache()
+            case .rewatches: await model.clearRewatches()
+            case .shuffle: await model.clearShuffleHistory()
+            case .progress: await model.resetPlaybackProgress()
+            case .resetCloud: model.resetCloudCopy()
+            case .allCache: await model.clearAllCaches()
             case .cloud:
                 model.cloud.clear()
+                model.showToast("iCloud data erased")
             case .downloads:
                 for item in DownloadManager.shared.items { DownloadManager.shared.remove(item) }
+                model.showToast("Downloads deleted")
+            case .tracking: await model.deleteAllTrackingData()
             }
             refresh()
-            model.showToast("Done")
         }
     }
 }

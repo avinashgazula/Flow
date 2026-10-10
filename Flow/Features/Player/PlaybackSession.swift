@@ -1041,7 +1041,7 @@ final class PlaybackSession: Identifiable {
     // MARK: Finishing
 
     private func report(_ state: PlaybackReport.State) async {
-        guard let model, source.category == .mediaServers, let server = model.mediaServers.first(where: { $0.config.id == source.providerID }) else { return }
+        guard let model, !model.settings.mediaServers.trackOnlyWithTracker, source.category == .mediaServers, let server = model.mediaServers.first(where: { $0.config.id == source.providerID }) else { return }
         await server.report(PlaybackReport(state: state, source: source, positionSeconds: currentTime, durationSeconds: duration > 0 ? duration : nil, sessionID: sessionID))
     }
 

@@ -34,7 +34,7 @@ struct AccountSettingsView: View {
 
             Section("Trakt") {
                 if model.credentials.traktToken != nil {
-                    accountRow(name: model.settings.account.tracker == .trakt ? model.profile?.username : nil, service: "Trakt")
+                    accountRow(name: model.settings.account.tracker == .trakt ? model.profile?.username : nil, service: "Trakt", tracker: .trakt)
                     Button("Sign Out", role: .destructive) {
                         Task {
                             await model.trakt?.signOut()
@@ -51,7 +51,7 @@ struct AccountSettingsView: View {
 
             Section("Simkl") {
                 if model.credentials.simklToken != nil {
-                    accountRow(name: model.settings.account.tracker == .simkl ? model.profile?.username : nil, service: "Simkl")
+                    accountRow(name: model.settings.account.tracker == .simkl ? model.profile?.username : nil, service: "Simkl", tracker: .simkl)
                     Button("Sign Out", role: .destructive) {
                         model.credentials.simklToken = nil
                         if model.settings.account.tracker == .simkl { model.settings.account.tracker = .local }
@@ -69,10 +69,10 @@ struct AccountSettingsView: View {
                     Spacer()
                     if model.isSyncing { ProgressView() }
                     else if let last = model.settings.sync.lastTrackerSync {
-                        (Text(last, style: .relative) + Text(" ago")).foregroundStyle(.secondary)
+                        Text(last, format: .relative(presentation: .numeric, unitsStyle: .wide)).foregroundStyle(.secondary)
                     }
                 }
-                if let error = model.lastSyncError {
+                if let error = model.lastSyncError, !showsSyncIssueInAccountRow {
                     Text(error).font(.caption).foregroundStyle(.orange)
                 }
                 Picker("Sync Interval", selection: $model.settings.account.syncInterval) {
@@ -132,17 +132,33 @@ struct AccountSettingsView: View {
         return count == 0 ? "Not configured" : "\(count) configured"
     }
 
-    private func accountRow(name: String?, service: String) -> some View {
-        HStack(spacing: 12) {
-            RemoteImage(url: model.profile?.avatarURL)
-                .overlay { if model.profile?.avatarURL == nil { Image(systemName: "person.fill") } }
-                .frame(width: 44, height: 44).clipShape(Circle())
-            VStack(alignment: .leading) {
-                Text(name ?? service).font(.headline)
-                Text("Connected").font(.caption).foregroundStyle(.secondary)
+    /// Trakt and Simkl show a failed sync under their own account row; other trackers have no row to hang it on.
+    private var showsSyncIssueInAccountRow: Bool {
+        (model.settings.account.tracker == .trakt && model.credentials.traktToken != nil)
+            || (model.settings.account.tracker == .simkl && model.credentials.simklToken != nil)
+    }
+
+    private func accountRow(name: String?, service: String, tracker: TrackerKind) -> some View {
+        let issue = model.settings.account.tracker == tracker ? model.lastSyncError : nil
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                RemoteImage(url: model.profile?.avatarURL)
+                    .overlay { if model.profile?.avatarURL == nil { Image(systemName: "person.fill") } }
+                    .frame(width: 44, height: 44).clipShape(Circle())
+                VStack(alignment: .leading) {
+                    Text(name ?? service).font(.headline)
+                    Text(issue == nil ? "Connected" : "Sync issues").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                if issue == nil {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                } else {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.yellow)
+                }
             }
-            Spacer()
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            if let issue {
+                Text(issue).font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
 

@@ -180,11 +180,15 @@ struct DetailView: View {
                     if Platform.supportsDownloads {
                         action("arrow.down.circle", label: "Download", active: false) {
                             Task {
+                                var request: PlaybackRequest?
                                 if current.type == .movie {
-                                    downloadRequest = PlaybackRequest(item: current)
+                                    request = PlaybackRequest(item: current)
                                 } else if let ep = await model.nextEpisodeToPlay(for: current) {
-                                    downloadRequest = PlaybackRequest(item: current, episode: ep)
+                                    request = PlaybackRequest(item: current, episode: ep)
                                 }
+                                guard let request else { return }
+                                if model.settings.downloads.downloadAutomatically, await model.downloadAutomatically(request) { return }
+                                downloadRequest = request
                             }
                         }
                     }

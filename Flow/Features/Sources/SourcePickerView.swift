@@ -170,7 +170,7 @@ struct SourcePickerView: View {
 
     private func choose(_ source: StreamSource) {
         if forDownload {
-            if let error = DownloadManager.shared.start(source: source, request: request) {
+            if let error = DownloadManager.shared.start(source: source, request: request, location: model.settings.downloads.location) {
                 model.showToast(error)
             } else {
                 model.showToast("Downloading \(request.displayTitle)")

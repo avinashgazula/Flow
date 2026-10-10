@@ -123,7 +123,9 @@ extension AppModel {
         }
         let saved = progress(for: request.item, episode: request.episodeRef)
         let runtime = Double((request.episode?.runtimeMinutes ?? request.item.runtimeMinutes) ?? 0) * 60
-        var resume = source.serverResumeSeconds ?? saved?.resumePosition(runtimeSeconds: runtime > 0 ? runtime : nil)
+        // The server's own resume point is ignored when progress comes only from the tracking service.
+        let serverResume = settings.mediaServers.trackOnlyWithTracker ? nil : source.serverResumeSeconds
+        var resume = serverResume ?? saved?.resumePosition(runtimeSeconds: runtime > 0 ? runtime : nil)
         if let r = resume, r < 30 { resume = nil }
         if Platform.externalPlayers.contains(settings.playback.externalPlayer),
            let launch = settings.playback.externalPlayer.launchURL(for: url, position: resume, filename: source.filename) {
@@ -165,6 +167,22 @@ extension AppModel {
                                        decodesLosslessAudio: MatroskaRemuxer.audioDecoders != nil, prefersHDR: settings.playback.preferHDR).filter(\.isPlayable)
         if let group = previous.bingeGroup, let match = ranked.first(where: { $0.bingeGroup == group }) { return match }
         return ranked.first { $0.providerID == previous.providerID && $0.traits.resolution == previous.traits.resolution } ?? ranked.first
+    }
+
+    /// With Download Automatically on, saves the first source within the download limits.
+    /// Returns false when nothing fits so the caller opens the source list instead.
+    func downloadAutomatically(_ request: PlaybackRequest) async -> Bool {
+        showToast("Finding a source to download…")
+        let found = await SourceAggregator.collect(sourceProviders(), request: request, timeout: settings.sources.timeoutSeconds)
+        // The download resolution limit decides here, not the playback one: playing still offers every source.
+        let ranked = SourceRanker.rank(found, settings: settings.sources, resolutionCap: .uhd4k, decodesAV1: Platform.decodesAV1, decodesLosslessAudio: MatroskaRemuxer.audioDecoders != nil).filter(\.isPlayable)
+        guard let source = DownloadPicker.pick(from: ranked, isMovie: request.episode == nil, settings: settings.downloads),
+              DownloadManager.shared.start(source: source, request: request, location: settings.downloads.location) == nil else {
+            toast = nil
+            return false
+        }
+        showToast("Downloading \(request.displayTitle)")
+        return true
     }
 
     /// Called by the player as playback progresses or stops.
