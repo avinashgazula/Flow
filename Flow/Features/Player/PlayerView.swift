@@ -489,10 +489,34 @@ struct Scrubber: View {
     /// A picture of the frame at `previewTime`, shown above the track while scrubbing.
     var preview: CGImage? = nil
     var previewTime: Double? = nil
+    /// Intro, recap and credits spans, marked on the track so you can see what a skip button will jump over.
+    var segments: [SkipSegment] = []
+    /// Chapter start times in seconds, drawn as notches in the track.
+    var chapters: [Double] = []
     let onScrub: (Double?) -> Void
     let onCommit: (Double) -> Void
 
     @State private var dragging: Double?
+
+    /// Segments that sit inside the runtime and have a length; anything else is bad metadata.
+    private var markedSegments: [SkipSegment] {
+        guard duration > 0 else { return [] }
+        return segments.filter { $0.end > $0.start && $0.start >= 0 && $0.end <= duration }
+    }
+
+    /// Chapter starts worth a notch. A film with dozens of chapters would turn the track into a comb.
+    private var chapterNotches: [Double] {
+        guard duration > 0, chapters.count <= 40 else { return [] }
+        return chapters.filter { $0 > 0 && $0 < duration }
+    }
+
+    /// Content you skip is bright; things that merely might be skippable (trailers, ad breaks) are fainter.
+    private static func opacity(of kind: SkipSegmentKind) -> Double {
+        switch kind {
+        case .intro, .recap, .credits: 0.9
+        case .preview, .commercial: 0.5
+        }
+    }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -503,6 +527,25 @@ struct Scrubber: View {
                     Capsule().fill(.white.opacity(0.22))
                     Capsule().fill(.white.opacity(0.35)).frame(width: width * min(1, buffered))
                     Capsule().fill(.white).frame(width: max(0, width * min(1, fraction)))
+                    // Above the played fill, not under it: yellow stays visible once you have watched
+                    // past a segment, and it is the one colour on the track that never reads as progress.
+                    ZStack(alignment: .leading) {
+                        Color.clear
+                        ForEach(Array(markedSegments.enumerated()), id: \.offset) { _, segment in
+                            Rectangle()
+                                .fill(Color(red: 1, green: 0.8, blue: 0.2).opacity(Self.opacity(of: segment.kind)))
+                                .frame(width: width * (segment.end - segment.start) / duration)
+                                .offset(x: width * segment.start / duration)
+                        }
+                        ForEach(Array(chapterNotches.enumerated()), id: \.offset) { _, start in
+                            Rectangle()
+                                .fill(.black.opacity(0.6))
+                                .frame(width: 2)
+                                .offset(x: width * start / duration - 1)
+                        }
+                    }
+                    .clipShape(Capsule())
+                    .allowsHitTesting(false)
                 }
                 .frame(height: dragging == nil ? 4 : 9)
                 .frame(maxHeight: .infinity)
@@ -592,6 +635,8 @@ struct IOSPlayerControls: View {
     let session: PlaybackSession
     @Binding var showSubtitles: Bool
     @Environment(AppModel.self) private var model
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @State private var volume = SystemVolume()
     @State private var visible = true
     @State private var scrubbing: Double?
     @State private var hideTask: Task<Void, Never>?
@@ -679,6 +724,12 @@ struct IOSPlayerControls: View {
                         }
                     }
                     Spacer()
+                    // iPhone in portrait has no room beside the title; landscape and iPad do.
+                    if !Platform.isPhone || verticalSizeClass == .compact {
+                        VolumePill(volume: volume) { editing in
+                            if editing { hideTask?.cancel() } else { scheduleHide() }
+                        }
+                    }
                     GlassGroup(spacing: 8) {
                         HStack(spacing: 8) {
                             if let pip {
@@ -784,6 +835,7 @@ struct IOSPlayerControls: View {
 
                 Scrubber(current: session.currentTime, duration: session.duration, buffered: buffered,
                          preview: preview, previewTime: previewTime,
+                         segments: session.segments, chapters: session.chapters.map(\.start),
                          onScrub: { value in
                              scrubbing = value
                              if value != nil { hideTask?.cancel() } else { scheduleHide() }
