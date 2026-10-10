@@ -256,18 +256,35 @@ struct ChannelGroupView: View {
     }
 }
 
-/// Simple live player using the system controls on every platform.
+/// Live player using the system controls on every platform. Tries the channel's HLS form when it
+/// was given as raw MPEG-TS, shows progress while connecting and says so when nothing plays.
 struct LivePlayerView: View {
     let channel: Channel
     let epg: EPG
     @Environment(\.dismiss) private var dismiss
     @State private var player = AVPlayer()
+    @State private var state: LoadState = .connecting
+    @State private var attempt = 0
+
+    enum LoadState: Equatable {
+        case connecting, playing
+        case failed(String)
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.black.ignoresSafeArea()
             VideoPlayer(player: player)
                 .ignoresSafeArea()
+            if state == .connecting {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.white)
+                    .padding(22)
+                    .flowGlass(Circle())
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .allowsHitTesting(false)
+            }
             #if !os(tvOS)
             HStack(spacing: 12) {
                 CircleButton(systemImage: "xmark") { dismiss() }
@@ -278,14 +295,44 @@ struct LivePlayerView: View {
             }
             .padding(20)
             #endif
+            if case .failed(let message) = state {
+                PlaybackErrorView(message: message, retry: { attempt += 1 }, close: { dismiss() })
+            }
         }
-        .onAppear {
-            var options: [String: Any] = [:]
-            if let ua = channel.userAgent { options["AVURLAssetHTTPHeaderFieldsKey"] = ["User-Agent": ua] }
-            player.replaceCurrentItem(with: AVPlayerItem(asset: AVURLAsset(url: channel.streamURL, options: options)))
-            player.play()
-        }
+        .task(id: attempt) { await start() }
         .onDisappear { player.pause(); player.replaceCurrentItem(with: nil) }
+    }
+
+    private func start() async {
+        state = .connecting
+        var options: [String: Any] = [:]
+        if let ua = channel.userAgent { options["AVURLAssetHTTPHeaderFieldsKey"] = ["User-Agent": ua] }
+        for url in LiveStreamURL.candidates(for: channel.streamURL) {
+            let item = AVPlayerItem(asset: AVURLAsset(url: url, options: options))
+            player.replaceCurrentItem(with: item)
+            player.play()
+            if await ready(item) {
+                state = .playing
+                return
+            }
+            if Task.isCancelled { return }
+        }
+        player.replaceCurrentItem(with: nil)
+        state = .failed("\(channel.name) isn't broadcasting right now, or its stream can't play on Apple devices.")
+    }
+
+    /// Waits up to 15 seconds for the stream to start.
+    private func ready(_ item: AVPlayerItem) async -> Bool {
+        for _ in 0..<60 {
+            switch item.status {
+            case .readyToPlay: return true
+            case .failed: return false
+            default: break
+            }
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            if Task.isCancelled { return false }
+        }
+        return false
     }
 }
 

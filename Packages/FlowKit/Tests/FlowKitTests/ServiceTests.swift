@@ -453,3 +453,17 @@ final class ChapterSkipTests: XCTestCase {
         XCTAssertTrue(SkipSegmentResolver.fromChapters([("Intro", 0), ("Main", 1800)], duration: 3600).isEmpty)
     }
 }
+
+final class LiveStreamURLTests: XCTestCase {
+    func testCandidates() {
+        let ts = URL(string: "http://panel.test:8080/live/user/pass/1234.ts?token=x")!
+        XCTAssertEqual(LiveStreamURL.candidates(for: ts).map(\.absoluteString),
+                       ["http://panel.test:8080/live/user/pass/1234.m3u8?token=x", ts.absoluteString])
+        let bare = URL(string: "http://panel.test:8080/user/pass/1234")!
+        XCTAssertEqual(LiveStreamURL.candidates(for: bare).map(\.absoluteString), [bare.absoluteString, bare.absoluteString + ".m3u8"])
+        let hls = URL(string: "https://cdn.test/channel/index.m3u8")!
+        XCTAssertEqual(LiveStreamURL.candidates(for: hls), [hls])
+        let page = URL(string: "https://cdn.test/watch")!
+        XCTAssertEqual(LiveStreamURL.candidates(for: page), [page])
+    }
+}
