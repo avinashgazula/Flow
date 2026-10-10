@@ -34,6 +34,8 @@ final class PlaybackSession: Identifiable {
     var subtitleText: String?
     var upNext: PlaybackRequest?
     var upNextCountdown: Int?
+    /// Counts player items, so views holding an item's tracks know to read them again.
+    private(set) var itemGeneration = 0
     /// Every playable source found for this title, the current one included, for switching mid-film.
     private(set) var sources: [StreamSource]
     /// The rest of this episode's season, for the player's episode list.
@@ -261,6 +263,7 @@ final class PlaybackSession: Identifiable {
     }
 
     private func attach(_ asset: AVURLAsset) {
+        itemGeneration += 1
         let item = AVPlayerItem(asset: asset)
         item.preferredForwardBufferDuration = usesRemux ? 20 : 10
         applyMetadata(to: item)

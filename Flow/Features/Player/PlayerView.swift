@@ -726,7 +726,9 @@ struct IOSPlayerControls: View {
             })
             .environment(model)
         }
-        .task(id: session.request.episode?.id ?? session.request.item.id) { await loadMediaOptions() }
+        // Again whenever a stream becomes ready (a remuxed MKV has no item for its first seconds, and a
+        // source or episode switch brings new tracks).
+        .task(id: "\(session.itemGeneration)-\(session.phase == .playing)") { await loadMediaOptions() }
         .onChange(of: session.tourPanel) { _, panel in
             visible = true
             showsOptions = panel == "options"
@@ -906,8 +908,10 @@ struct IOSPlayerControls: View {
 
     private func loadMediaOptions() async {
         guard let asset = session.player.currentItem?.asset else { return }
-        if let group = try? await asset.loadMediaSelectionGroup(for: .audible) { audioGroup = group; audioOptions = group.options }
-        if let group = try? await asset.loadMediaSelectionGroup(for: .legible) { legibleGroup = group; legibleOptions = group.options }
+        audioGroup = try? await asset.loadMediaSelectionGroup(for: .audible)
+        audioOptions = audioGroup?.options ?? []
+        legibleGroup = try? await asset.loadMediaSelectionGroup(for: .legible)
+        legibleOptions = legibleGroup?.options ?? []
         audioChoice = selected(in: audioGroup)
         legibleChoice = selected(in: legibleGroup)
         if let preferred = model.settings.playback.preferredAudioLanguage,
