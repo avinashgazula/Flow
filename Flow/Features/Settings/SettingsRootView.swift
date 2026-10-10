@@ -78,7 +78,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
     /// Words that make a page show up in Search Settings.
     var keywords: String {
         switch self {
-        case .general: return "accent color start tab poster titles hero haptics"
+        case .general: return "accent color start tab opening tab tab order app icon light dark notifications episodes matches poster titles hero haptics"
         case .account: return "trakt simkl mdblist publicmetadb tracking sync interval watchlist favourites sign in"
         case .shelves: return "home rows discover lists reorder"
         case .mediaServers: return "jellyfin emby plex server badge artwork"
@@ -93,7 +93,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .metadata: return "tvdb tmdb episode source time zone unreleased language api key"
         case .about: return "version licenses"
         case .sourceAppearance: return "badges formatting title"
-        case .apiKeys: return "keys opensubtitles subdl introdb"
+        case .apiKeys: return "keys opensubtitles subdl introdb sports spoilers scores channel"
         case .addons: return "stremio manifest addon"
         }
     }

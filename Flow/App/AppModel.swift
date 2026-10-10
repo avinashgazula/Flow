@@ -237,6 +237,12 @@ final class AppModel {
             || old.mediaServers.onlyShowServerContent != settings.mediaServers.onlyShowServerContent || old.metadata.language != settings.metadata.language {
             contentVersion += 1
         }
+        if old.general.episodeNotifications != settings.general.episodeNotifications
+            || old.general.matchStartNotifications != settings.general.matchStartNotifications
+            || old.general.matchResultNotifications != settings.general.matchResultNotifications
+            || old.sports.followedTeams != settings.sports.followedTeams {
+            scheduleNotificationRefresh(force: true)
+        }
         if settings.sync.iCloudEnabled, old.shelves != settings.shelves || old.mediaServers.servers != settings.mediaServers.servers || old.general != settings.general {
             scheduleCloudPush()
         }

@@ -31,6 +31,13 @@ struct GeneralSettingsView: View {
     var body: some View {
         @Bindable var model = model
         Form {
+            #if os(iOS)
+            AppIconSection()
+            #endif
+            NavigationSettingsSection()
+            #if !os(tvOS)
+            NotificationsSection()
+            #endif
             Section("Appearance") {
                 Picker("Accent Colour", selection: $model.settings.general.accent) {
                     ForEach(AccentColorChoice.allCases) { choice in
@@ -41,9 +48,6 @@ struct GeneralSettingsView: View {
                 Toggle("Show Watched Check Marks", isOn: $model.settings.general.showWatchedBadges)
             }
             Section("Home") {
-                Picker("Start On", selection: $model.settings.general.startTab) {
-                    ForEach(AppTab.allCases) { Text($0.title).tag($0) }
-                }
                 Picker("Hero Shows", selection: $model.settings.general.heroSource) {
                     ForEach(HeroSource.allCases) { Text($0.title).tag($0) }
                 }

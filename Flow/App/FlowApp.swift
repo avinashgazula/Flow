@@ -10,6 +10,11 @@ extension Notification.Name {
 @main
 struct FlowApp: App {
     @State private var model = AppModel()
+    @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        NotificationScheduler.install()
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -22,6 +27,21 @@ struct FlowApp: App {
                 .task(id: ObjectIdentifier(model)) {
                     await model.start()
                     IntentInbox.drain(into: model)
+                    model.scheduleNotificationRefresh(force: true)
+                    #if os(iOS)
+                    await AppIconSwitcher.sync(model.settings.general.appIcon)
+                    #endif
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { model.scheduleNotificationRefresh() }
+                }
+                // Results land while Flow is open, so look for new ones every few minutes.
+                .task(id: model.settings.general.matchResultNotifications) {
+                    guard model.settings.general.matchResultNotifications else { return }
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: 300_000_000_000)
+                        await model.refreshMatchResults()
+                    }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: IntentInbox.arrived)) { _ in IntentInbox.drain(into: model) }
                 .task(id: ObjectIdentifier(model)) {
@@ -45,7 +65,7 @@ struct FlowApp: App {
                     .keyboardShortcut("r", modifiers: [.command, .shift])
             }
             CommandMenu("Go") {
-                ForEach(Array(AppTab.allCases.enumerated()), id: \.element) { index, tab in
+                ForEach(Array(model.settings.general.orderedTabs.enumerated()), id: \.element) { index, tab in
                     Button(tab.title) { model.go(to: tab) }
                         .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
                 }

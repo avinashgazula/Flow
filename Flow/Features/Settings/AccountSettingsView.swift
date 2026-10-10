@@ -302,8 +302,14 @@ struct APIKeysView: View {
                 Text("Create an app at trakt.tv/oauth/applications (redirect URI urn:ietf:wg:oauth:2.0:oob) or simkl.com/settings/developer.")
             }
 
-            Section("Sports") {
+            Section {
                 TextField("TheSportsDB Key", text: $model.settings.sports.apiKey).autocorrectionDisabled()
+                Toggle("Show Score Spoilers", isOn: $model.settings.sports.showScoreSpoilers)
+                Toggle("Choose Channel on Tap", isOn: $model.settings.sports.chooseChannelOnTap)
+            } header: {
+                Text("Sports")
+            } footer: {
+                Text("Hide Score Spoilers blurs live and final scores so results stay hidden until you're ready. Tap a finished game to reveal its score. Choose Channel on Tap opens the channel list when you tap a game so you can pick a broadcast; press and hold to start the best match. Off taps straight into the best match and press-and-hold opens the list.")
             }
         }
     }

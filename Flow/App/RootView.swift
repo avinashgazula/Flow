@@ -84,7 +84,7 @@ struct TabShell: View {
         @Bindable var model = model
         if #available(iOS 18.0, tvOS 18.0, macOS 15.0, *) {
             TabView(selection: $model.selectedTab) {
-                ForEach(AppTab.allCases) { tab in
+                ForEach(model.settings.general.orderedTabs) { tab in
                     Tab(tab.title, systemImage: tab.systemImage, value: tab, role: tab == .search ? .search : nil) {
                         stack(for: tab)
                     }
@@ -93,7 +93,7 @@ struct TabShell: View {
             .modifier(ModernTabChrome())
         } else {
             TabView(selection: $model.selectedTab) {
-                ForEach(AppTab.allCases) { tab in
+                ForEach(model.settings.general.orderedTabs) { tab in
                     stack(for: tab)
                         .tabItem { Label(tab.title, systemImage: tab.systemImage) }
                         .tag(tab)
@@ -181,7 +181,7 @@ struct MacShell: View {
                 .padding(.horizontal, 14)
                 .padding(.top, 34)
                 .padding(.bottom, 14)
-            ForEach(AppTab.allCases) { tab in
+            ForEach(model.settings.general.orderedTabs) { tab in
                 Button { model.selectedTab = tab } label: {
                     Label(tab.title, systemImage: tab.systemImage)
                         .font(.system(size: 13, weight: .medium))
