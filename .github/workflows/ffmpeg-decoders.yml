@@ -1,0 +1,36 @@
+name: FFmpeg decoders
+
+# Builds Vendor/FFmpegDecoders (DTS and TrueHD decoders for Apple platforms) and commits it,
+# whenever the build script changes or on request.
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - scripts/build-ffmpeg-decoders.sh
+      - .github/workflows/ffmpeg-decoders.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo xcode-select -s /Applications/Xcode_26.3.app
+      - name: Build
+        run: scripts/build-ffmpeg-decoders.sh
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ffmpeg-logs
+          path: build/ffmpeg/*.log
+      - name: Commit
+        run: |
+          git config user.name "flow-ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add Vendor/FFmpegDecoders
+          if git diff --cached --quiet; then echo "unchanged"; exit 0; fi
+          git commit -m "Build FFmpeg decoders (DTS, TrueHD) for Apple platforms"
+          git push origin HEAD:${GITHUB_REF_NAME}
