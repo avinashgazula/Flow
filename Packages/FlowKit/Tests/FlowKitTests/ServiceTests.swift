@@ -469,3 +469,28 @@ final class LiveStreamURLTests: XCTestCase {
         XCTAssertEqual(LiveStreamURL.candidates(for: page), [page])
     }
 }
+
+final class ExternalPlayerTests: XCTestCase {
+    let stream = URL(string: "https://cdn.test/play/Movie (2024).mkv?token=a&b=1")!
+
+    func testLinksMatchWhatEachAppExpects() {
+        // The stream URL already has %20 for the space; as a query value that becomes %2520.
+        let encoded = "https%3A%2F%2Fcdn.test%2Fplay%2FMovie%2520(2024).mkv%3Ftoken%3Da%26b%3D1"
+        XCTAssertEqual(ExternalPlayer.infuse.launchURL(for: stream)?.absoluteString, "infuse://x-callback-url/play?url=\(encoded)")
+        XCTAssertEqual(ExternalPlayer.infuse.launchURL(for: stream, position: 754.6, filename: "Movie (2024).mkv")?.absoluteString,
+                       "infuse://x-callback-url/play?url=\(encoded)&position=754&filename=Movie%20(2024).mkv")
+        XCTAssertEqual(ExternalPlayer.vlc.launchURL(for: stream)?.absoluteString, "vlc-x-callback://x-callback-url/stream?url=\(encoded)")
+        XCTAssertEqual(ExternalPlayer.outplayer.launchURL(for: URL(string: "https://cdn.test/a.mkv")!)?.absoluteString, "outplayer://cdn.test/a.mkv")
+        XCTAssertEqual(ExternalPlayer.vidHub.launchURL(for: stream)?.absoluteString, "open-vidhub://x-callback-url/open?url=\(encoded)")
+        XCTAssertEqual(ExternalPlayer.cineUltra.launchURL(for: stream)?.absoluteString, "cineultra://playback?url=\(encoded)")
+        XCTAssertEqual(ExternalPlayer.moonPlayer.launchURL(for: URL(string: "https://cdn.test/a.mkv")!)?.absoluteString, "moonplayer://open?url=https://cdn.test/a.mkv")
+        XCTAssertEqual(ExternalPlayer.iina.launchURL(for: stream)?.absoluteString, "iina://weblink?url=\(encoded)")
+        XCTAssertNil(ExternalPlayer.none.launchURL(for: stream))
+    }
+
+    func testPlayersPerPlatform() {
+        XCTAssertEqual(ExternalPlayer.available(on: .iOS).map(\.title),
+                       ["Built-in Player", "Infuse", "VLC", "Outplayer", "SenPlayer", "VidHub", "CineUltra", "Moon Player"])
+        XCTAssertEqual(ExternalPlayer.available(on: .macOS).map(\.title), ["Built-in Player", "Infuse", "VidHub", "IINA", "mpv"])
+    }
+}

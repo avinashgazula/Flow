@@ -572,8 +572,11 @@ public enum SkipBehaviour: String, Codable, Hashable, Sendable, CaseIterable, Id
 }
 
 public enum ExternalPlayer: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
-    case none, infuse, vlc, outplayer, senPlayer
+    case none, infuse, vlc, outplayer, senPlayer, vidHub, cineUltra, moonPlayer, iina, mpv
     public var id: String { rawValue }
+
+    public enum Platform: Sendable { case iOS, macOS }
+
     public var title: String {
         switch self {
         case .none: return "Built-in Player"
@@ -581,20 +584,60 @@ public enum ExternalPlayer: String, Codable, Hashable, Sendable, CaseIterable, I
         case .vlc: return "VLC"
         case .outplayer: return "Outplayer"
         case .senPlayer: return "SenPlayer"
+        case .vidHub: return "VidHub"
+        case .cineUltra: return "CineUltra"
+        case .moonPlayer: return "Moon Player"
+        case .iina: return "IINA"
+        case .mpv: return "mpv"
         }
     }
 
-    /// URL that hands `stream` to the external app.
-    public func launchURL(for stream: URL) -> URL? {
-        let encoded = stream.absoluteString.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? stream.absoluteString
+    /// Where the app exists and takes a link.
+    public var platforms: Set<Platform> {
         switch self {
-        case .none: return nil
-        case .infuse: return URL(string: "infuse://x-callback-url/play?url=\(encoded)")
-        case .vlc: return URL(string: "vlc-x-callback://x-callback-url/stream?url=\(encoded)")
-        case .outplayer: return URL(string: "outplayer://\(stream.absoluteString)")
-        case .senPlayer: return URL(string: "SenPlayer://x-callback-url/play?url=\(encoded)")
+        case .none, .infuse, .vidHub: return [.iOS, .macOS]
+        case .vlc, .outplayer, .senPlayer, .cineUltra, .moonPlayer: return [.iOS]
+        case .iina, .mpv: return [.macOS]
         }
     }
+
+    public static func available(on platform: Platform) -> [ExternalPlayer] {
+        allCases.filter { $0.platforms.contains(platform) }
+    }
+
+    /// The link that hands `stream` to the app, in the forms Stremio uses. Infuse also takes the
+    /// resume position and the file name (which helps it identify the title).
+    public func launchURL(for stream: URL, position: Double? = nil, filename: String? = nil) -> URL? {
+        let raw = stream.absoluteString
+        let encoded = raw.addingPercentEncoding(withAllowedCharacters: .urlComponentAllowed) ?? raw
+        func withoutScheme(_ scheme: String) -> URL? {
+            URL(string: raw.replacingOccurrences(of: #"^https?://"#, with: scheme + "://", options: .regularExpression))
+        }
+        switch self {
+        case .none:
+            return nil
+        case .infuse:
+            var link = "infuse://x-callback-url/play?url=\(encoded)"
+            if let position, position > 0 { link += "&position=\(Int(position))" }
+            if let filename, !filename.isEmpty, let name = filename.addingPercentEncoding(withAllowedCharacters: .urlComponentAllowed) {
+                link += "&filename=\(name)"
+            }
+            return URL(string: link)
+        case .vlc: return URL(string: "vlc-x-callback://x-callback-url/stream?url=\(encoded)")
+        case .outplayer: return withoutScheme("outplayer")
+        case .senPlayer: return URL(string: "SenPlayer://x-callback-url/play?url=\(encoded)")
+        case .vidHub: return URL(string: "open-vidhub://x-callback-url/open?url=\(encoded)")
+        case .cineUltra: return URL(string: "cineultra://playback?url=\(encoded)")
+        case .moonPlayer: return URL(string: "moonplayer://open?url=\(raw)")
+        case .iina: return URL(string: "iina://weblink?url=\(encoded)")
+        case .mpv: return URL(string: "mpv://\(raw)")
+        }
+    }
+}
+
+extension CharacterSet {
+    /// encodeURIComponent's set: everything but letters, digits and -_.!~*'().
+    static let urlComponentAllowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.!~*'()")
 }
 
 /// What to do with Matroska (MKV/WebM) files, which AVPlayer can't open by itself.

@@ -116,15 +116,16 @@ extension AppModel {
             showToast("This source needs a debrid-enabled add-on to play.")
             return
         }
-        if settings.playback.externalPlayer != .none, let launch = settings.playback.externalPlayer.launchURL(for: url) {
-            openExternally(launch)
-            Task { try? await tracker.scrobble(.start, request: request, percent: 0) }
-            return
-        }
         let saved = progress(for: request.item, episode: request.episodeRef)
         let runtime = Double((request.episode?.runtimeMinutes ?? request.item.runtimeMinutes) ?? 0) * 60
         var resume = source.serverResumeSeconds ?? saved?.resumePosition(runtimeSeconds: runtime > 0 ? runtime : nil)
         if let r = resume, r < 30 { resume = nil }
+        if Platform.externalPlayers.contains(settings.playback.externalPlayer),
+           let launch = settings.playback.externalPlayer.launchURL(for: url, position: resume, filename: source.filename) {
+            openExternally(launch)
+            Task { try? await tracker.scrobble(.start, request: request, percent: 0) }
+            return
+        }
         activePlayback = PlaybackSession(model: self, request: request, source: source, resumeAt: resume, alternatives: alternatives)
         ScreenshotTour.log("activePlayback set: \(activePlayback != nil)")
     }

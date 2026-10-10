@@ -454,7 +454,8 @@ final class PlaybackSession: Identifiable {
     func handOffToExternalPlayer(_ url: URL? = nil) -> Bool {
         guard let model, let stream = url ?? source.location.playableURL else { return false }
         let player = model.settings.playback.externalPlayer
-        guard player != .none, let launch = player.launchURL(for: stream) else { return false }
+        guard player != .none, Platform.externalPlayers.contains(player),
+              let launch = player.launchURL(for: stream, position: currentTime > 30 ? currentTime : resumeAt, filename: source.filename) else { return false }
         model.openExternally(launch)
         close()
         return true

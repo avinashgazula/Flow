@@ -100,12 +100,8 @@ struct PlayerView: View {
     }
 
     private var externalPlayerName: String? {
-        #if os(iOS)
         let player = model.settings.playback.externalPlayer
-        return player == .none ? nil : player.title
-        #else
-        return nil
-        #endif
+        return player != .none && Platform.externalPlayers.contains(player) ? player.title : nil
     }
 
     @ViewBuilder

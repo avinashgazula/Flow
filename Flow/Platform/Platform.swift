@@ -43,6 +43,17 @@ enum Platform {
 
     static var supportsDownloads: Bool { !isTV }
 
+    /// External players offered here (none on Apple TV, whose apps can't be handed a link this way).
+    static var externalPlayers: [ExternalPlayer] {
+        #if os(iOS)
+        ExternalPlayer.available(on: .iOS)
+        #elseif os(macOS)
+        ExternalPlayer.available(on: .macOS)
+        #else
+        []
+        #endif
+    }
+
     /// AV1 needs a hardware decoder (iPhone 15 Pro, M3 Macs and later); elsewhere AVPlayer can't play it.
     static let decodesAV1: Bool = VTIsHardwareDecodeSupported(CMVideoCodecType(0x6176_3031)) // 'av01'
 

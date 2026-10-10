@@ -120,7 +120,7 @@ struct PlaybackSettingsView: View {
                 Toggle("Try the Next Source Automatically", isOn: $model.settings.playback.tryNextSourceOnFailure)
                 Toggle("Decode DTS and Dolby TrueHD", isOn: $model.settings.playback.decodeLosslessAudio)
                 Toggle("Prefer Sources With Playable Audio", isOn: $model.settings.sources.preferPlayableAudio)
-                #if os(iOS)
+                #if os(iOS) || os(macOS)
                 Picker("MKV Files", selection: $model.settings.playback.matroskaPlayback) {
                     ForEach(MatroskaPlayback.allCases) { Text($0.title).tag($0) }
                 }
@@ -128,16 +128,20 @@ struct PlaybackSettingsView: View {
             } header: {
                 Text("Formats")
             } footer: {
-                Text("Flow plays MKV files itself by repackaging them on the fly for Apple's player, without re-encoding: HDR, Dolby Vision, Dolby audio, embedded subtitles and chapters all come through. DTS and TrueHD audio and picture-based subtitles can't play on Apple devices; when a file has nothing else, Flow moves to the next source or offers your external player.")
+                Text("Flow plays MKV files itself by repackaging them on the fly for Apple's player, without re-encoding: HDR, Dolby Vision, Dolby Atmos, embedded and disc subtitles and chapters all come through, and DTS and TrueHD are decoded to lossless FLAC. When a file still can't play, Flow moves to the next source or offers your external player.")
             }
-            #if os(iOS)
+            #if os(iOS) || os(macOS)
             Section {
                 Picker("Player", selection: $model.settings.playback.externalPlayer) {
-                    ForEach(ExternalPlayer.allCases) { Text($0.title).tag($0) }
+                    ForEach(Platform.externalPlayers) { Text($0.title).tag($0) }
                 }
+                #if os(iOS)
                 Toggle("Picture in Picture", isOn: $model.settings.playback.pictureInPicture)
+                #endif
+            } header: {
+                Text("Player")
             } footer: {
-                Text("External players receive the stream URL; progress is only tracked for the built-in player.")
+                Text("Another player gets the stream's link (Infuse also the resume point). Flow tracks progress only in its own player.")
             }
             #endif
         }
