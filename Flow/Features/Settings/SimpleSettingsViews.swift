@@ -90,11 +90,18 @@ struct PlaybackSettingsView: View {
                 Picker("Intro", selection: $model.settings.playback.skipIntro) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
                 Picker("Recap", selection: $model.settings.playback.skipRecap) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
                 Picker("Credits", selection: $model.settings.playback.skipCredits) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
-                Toggle("Post-Credits Scene Alert", isOn: $model.settings.playback.postCreditsAlert)
             } header: {
                 Text("Skip Segments")
             } footer: {
-                Text("Segments come from your media server (Jellyfin media segments, Plex markers), IntroDB, PublicMetaDB or the file's chapter names. When a film has a scene during or after its credits, Flow says so as they begin, and won't skip them by itself.")
+                Text("Segments come from your media server (Jellyfin media segments, Plex markers), IntroDB, PublicMetaDB or the file's chapter names.")
+            }
+            Section {
+                Toggle("Post-Credits Scene Alert", isOn: $model.settings.playback.postCreditsAlert)
+                Toggle("Because You Watched", isOn: $model.settings.playback.becauseYouWatched)
+            } header: {
+                Text("Films")
+            } footer: {
+                Text("When a film has a scene during or after its credits, Flow says so as they begin and won't skip them by itself. Because You Watched suggests what to watch next as the credits roll, and when the film ends.")
             }
             Section("Resume & Progress") {
                 Toggle("Ask Before Resuming", isOn: $model.settings.playback.askToResume)

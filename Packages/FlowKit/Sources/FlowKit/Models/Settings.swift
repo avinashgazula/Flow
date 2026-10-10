@@ -670,6 +670,8 @@ public struct PlaybackSettings: Codable, Hashable, Sendable {
     public var tryNextSourceOnFailure = true
     /// Say so when a film has a scene during or after its credits.
     public var postCreditsAlert = true
+    /// As a film's credits roll, suggest films like it ("Because You Watched").
+    public var becauseYouWatched = true
     /// Play the next episode only when this one ends, rather than counting down as its credits start.
     public var upNextWaitsForEnd = false
     /// Decode DTS and Dolby TrueHD in MKVs (with FFmpeg) instead of skipping them.

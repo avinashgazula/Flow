@@ -80,6 +80,8 @@ struct TVPlayerController: UIViewControllerRepresentable {
         context.coordinator.subtitleHost?.rootView = SubtitleLayer(session: session, settings: subtitleSettings)
         if let segment = session.activeSegment {
             controller.contextualActions = [UIAction(title: segment.kind.buttonTitle, image: UIImage(systemName: "forward.end.fill")) { _ in session.skip(segment) }]
+        } else if session.showsSuggestions, session.phase == .playing {
+            controller.contextualActions = [UIAction(title: "Because You Watched", image: UIImage(systemName: "rectangle.stack")) { _ in session.endWithSuggestions() }]
         } else if let countdown = session.upNextCountdown {
             controller.contextualActions = [UIAction(title: "Next Episode in \(countdown)", image: UIImage(systemName: "forward.fill")) { _ in
                 Task { await session.playUpNext() }

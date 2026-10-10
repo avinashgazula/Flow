@@ -15,7 +15,8 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
 - **Search**: movies, shows and people, with a top-result card, genre browsing, results from your media servers and recent searches.
 - **Detail pages**: ratings from IMDb, Rotten Tomatoes, Popcornmeter, Metacritic, TMDb, Letterboxd and Trakt. Cast, trailers, seasons and episodes (TVDB numbering by default), Shuffle, Rewatch, buttons for watched, favourite, watchlist and download, and Where to Watch (streaming, rental and purchase options from JustWatch via TMDb).
 - **Source picker**: gathers results from every provider in parallel. Categories and providers are ordered, there are optional sort rules, filters and a result cap, and the add-on text and badges are parsed.
-- **Player**: resume, skip intro, recap and credits (from Jellyfin media segments, Plex markers, IntroDB, PublicMetaDB or MKV chapter names), a Playback Info panel, an Up Next card with a countdown ring, double-tap to skip on iPhone, scrobbling, subtitle search (OpenSubtitles, SubDL, Wyzie, SubSource), AirPlay, Picture in Picture and external players.
+- **Player**: resume, skip intro, recap and credits (from Jellyfin media segments, Plex markers, IntroDB, PublicMetaDB or MKV chapter names), a Playback Info panel, an Up Next card with a countdown ring (or one that waits for the episode to end), a heads-up when a film has a scene during or after its credits, "Because You Watched" suggestions as a film's credits roll and when it ends, double-tap to skip on iPhone, scrobbling, subtitle search (OpenSubtitles, SubDL, Wyzie, SubSource), AirPlay and Picture in Picture.
+- **External players**: Infuse, VLC, Outplayer, SenPlayer, VidHub, CineUltra and Moon Player on iPhone and iPad; Infuse, VidHub, IINA and mpv on the Mac. Flow passes the resume position where the player accepts one.
 - **MKV playback**: Matroska files play in Apple's own player. Flow remuxes them on the device, without re-encoding, into HLS served from a loopback address.
   - Codecs: H.264, HEVC (HDR10, and Dolby Vision profiles 5 and 8; profile 7 plays as HDR10), AV1 (on devices with an AV1 decoder), AAC, Dolby Digital (Plus) with Atmos, FLAC and MP3, plus DTS (including DTS-HD Master Audio) and Dolby TrueHD, which Flow decodes with FFmpeg and hands over as lossless FLAC.
   - Every audio track, text subtitles and chapters come through, plus Blu-ray and DVD picture subtitles (PGS and VobSub), which Flow draws itself.
@@ -69,7 +70,7 @@ CI (`.github/workflows/ci.yml`) runs the FlowKit tests on Linux and macOS and bu
 
 ## Notes
 
-- Apple's player can't play Opus or Vorbis audio or VP9 video from these files. Flow skips those tracks, says so, and prefers sources whose soundtrack plays. Media servers are asked for HLS when direct play isn't possible. On iOS, MKV files can also go to an external player (Settings → Playback).
+- Apple's player can't play Opus or Vorbis audio or VP9 video from these files. Flow skips those tracks, says so, and prefers sources whose soundtrack plays. Media servers are asked for HLS when direct play isn't possible. On iPhone, iPad and Mac, MKV files can also go to an external player (Settings → Playback).
 - The PublicMetaDB and IntroDB base URLs are configurable because deployments differ.
 
 ## Third-party software

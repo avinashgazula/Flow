@@ -51,6 +51,10 @@ struct PlayerView: View {
                                   tryAnother: { session.tryNextSource() },
                                   openExternally: { session.handOffToExternalPlayer() },
                                   close: { session.stop() })
+            case .finished where session.showsSuggestions:
+                SuggestionsEndScreen(session: session)
+                    .transition(.opacity)
+                    .zIndex(6)
             default:
                 EmptyView()
             }
@@ -63,6 +67,7 @@ struct PlayerView: View {
             }
         }
         .animation(Theme.Motion.gentle, value: session.notice)
+        .animation(Theme.Motion.gentle, value: session.showsSuggestions)
         .animation(Theme.Motion.snappy, value: session.showsInfo)
         .sheet(isPresented: $showSubtitles) {
             SubtitlePickerView(session: session).environment(model)
@@ -357,6 +362,9 @@ struct SkipAndUpNextOverlay: View {
                                play: { Task { await session.playUpNext() } },
                                cancel: { session.cancelUpNext() })
                         .transition(.move(edge: .trailing).combined(with: .opacity))
+                } else if session.showsSuggestions, session.phase == .playing {
+                    SuggestionsCard(session: session)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                 } else if let segment = session.activeSegment {
                     Button {
                         session.skip(segment)
@@ -380,6 +388,7 @@ struct SkipAndUpNextOverlay: View {
         }
         .animation(Theme.Motion.gentle, value: session.activeSegment)
         .animation(Theme.Motion.gentle, value: session.upNextCountdown)
+        .animation(Theme.Motion.gentle, value: session.showsSuggestions)
     }
 }
 

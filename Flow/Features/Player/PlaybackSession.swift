@@ -34,6 +34,9 @@ final class PlaybackSession: Identifiable {
     var subtitleText: String?
     var upNext: PlaybackRequest?
     var upNextCountdown: Int?
+    /// Films like this one ("Because You Watched"), offered as its credits roll and when it ends.
+    var suggestions: [MediaItem] = []
+    var showsSuggestions = false
     var logoPath: String?
     /// A short message over the video ("Playing English 5.1; DTS isn't supported").
     var notice: String?
@@ -75,6 +78,7 @@ final class PlaybackSession: Identifiable {
     /// A film's scenes during or after its credits, and whether the viewer has been told.
     @ObservationIgnored private var creditsScenes: CreditsScenes?
     @ObservationIgnored private var creditsAlertShown = false
+    @ObservationIgnored private var suggestionsOffered = false
     @ObservationIgnored private var countdownTask: Task<Void, Never>?
     @ObservationIgnored private var didStart = false
     /// Where to pick up after reloading a stream that failed mid-playback.
@@ -582,9 +586,16 @@ final class PlaybackSession: Identifiable {
         if logoPath == nil, let catalog = model.catalog { logoPath = await catalog.logo(for: request.item) }
         let resolved = await SkipSegmentResolver.resolve(source: source, providers: model.skipProviders(), request: request)
         segments = resolved.isEmpty ? chapterSegments : resolved
-        if request.episode == nil, request.item.type == .movie, model.settings.playback.postCreditsAlert, let id = request.item.ids.tmdb,
+        let playback = model.settings.playback
+        if request.episode == nil, request.item.type == .movie, playback.postCreditsAlert || playback.becauseYouWatched, let id = request.item.ids.tmdb,
            let detail = try? await model.catalog?.details(.movie, id: id) {
-            creditsScenes = detail.creditsScenes
+            if playback.postCreditsAlert { creditsScenes = detail.creditsScenes }
+            if playback.becauseYouWatched {
+                var seen: Set<String> = [request.item.id]
+                suggestions = (detail.recommendations + detail.similar)
+                    .filter { $0.backdropPath != nil && !model.isWatched($0) && seen.insert($0.id).inserted }
+                    .prefix(8).map { $0 }
+            }
         }
         // Automatic subtitles, or the language picked for this show in an earlier episode.
         if model.settings.subtitles.autoEnable || showChoice?.subtitleLanguage != nil { await autoLoadSubtitle() }
@@ -697,6 +708,7 @@ final class PlaybackSession: Identifiable {
         subtitleText = subtitle?.text(at: seconds, offset: subtitleOffset)
         updateSegment(seconds)
         alertCreditsScenes(seconds)
+        offerSuggestions(seconds)
         if Date().timeIntervalSince(lastReport) > 10 {
             lastReport = Date()
             Task { await report(.progress) }
@@ -713,6 +725,44 @@ final class PlaybackSession: Identifiable {
         guard time >= creditsStart, time < duration - 10 else { return }
         creditsAlertShown = true
         show(notice: alert)
+    }
+
+    /// Shows "Because You Watched" as a film's credits begin, unless there's a scene to stay for.
+    private func offerSuggestions(_ time: Double) {
+        guard !suggestions.isEmpty, creditsScenes?.any != true, duration > 3600 * 0.5, phase == .playing else { return }
+        let creditsStart = segments.first { $0.kind == .credits }?.start ?? max(duration * 0.96, duration - 180)
+        if time < creditsStart {
+            // Seeking back out of the credits takes the card away, and lets it come back.
+            showsSuggestions = false
+            suggestionsOffered = false
+        } else if !suggestionsOffered, time < duration - 5 {
+            suggestionsOffered = true
+            showsSuggestions = true
+        }
+    }
+
+    /// Stops the credits and goes straight to the end screen's suggestions (tvOS offers this from the transport bar).
+    func endWithSuggestions() {
+        guard !suggestions.isEmpty, phase == .playing else { return }
+        player.pause()
+        countdownTask?.cancel()
+        phase = .finished
+        showsSuggestions = true
+        Task { await finishCurrent(completed: false) }
+    }
+
+    /// Hides the suggestions; over the end screen, that closes the player.
+    func dismissSuggestions() {
+        showsSuggestions = false
+        if phase == .finished { close() }
+    }
+
+    /// Leaves the player for a suggested film's page.
+    func openSuggestion(_ item: MediaItem) {
+        let model = model
+        showsSuggestions = false
+        if phase == .finished { close() } else { stop() }
+        model?.navigate(to: .detail(item))
     }
 
     private func updateSegment(_ time: Double) {
@@ -906,6 +956,10 @@ final class PlaybackSession: Identifiable {
         }
         if upNext != nil, model?.settings.playback.autoPlayNextEpisode == true {
             await playUpNext()
+        } else if upNext == nil, !suggestions.isEmpty {
+            // End on "Because You Watched" rather than dropping back to where the film was started.
+            await finishCurrent(completed: true)
+            showsSuggestions = true
         } else {
             await finishCurrent(completed: true)
             close()
@@ -989,6 +1043,7 @@ final class PlaybackSession: Identifiable {
     var isPlaying: Bool { player.rate > 0 }
 
     func togglePlay() {
+        guard phase != .finished else { return }
         if isPlaying { player.pause() } else { player.play() }
     }
 

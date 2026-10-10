@@ -51,6 +51,11 @@ enum ScreenshotTour {
                     log("no bundled MKV sample")
                 }
             },
+            Step(name: "player-suggestions") { m in
+                // Where the film ends: "Because You Watched".
+                log("suggestions: \(m.activePlayback?.suggestions.count ?? -1) phase=\(String(describing: m.activePlayback?.phase))")
+                m.activePlayback?.endWithSuggestions()
+            },
             Step(name: "person") { m in m.activePlayback?.stop(); m.paths[.home] = [.detail(duneItem), .person(id: 1190668, name: "Timothée Chalamet")] },
             Step(name: "explore") { m in m.paths[.home] = []; m.selectedTab = .explore },
             Step(name: "library") { m in m.selectedTab = .library },
