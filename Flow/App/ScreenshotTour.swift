@@ -63,6 +63,19 @@ enum ScreenshotTour {
             Step(name: "search") { m in m.paths[.library] = []; m.selectedTab = .search; m.searchText = "the" },
             Step(name: "livetv") { m in m.searchText = ""; m.selectedTab = .liveTV },
         ]
+        #if os(iOS)
+        // The player's options panel and Advanced Options, over the MKV sample.
+        if let index = steps.firstIndex(where: { $0.name == "player-suggestions" }) {
+            steps.insert(contentsOf: [
+                Step(name: "player-options") { m in
+                    m.activePlayback?.tourScrubPreview = nil
+                    m.activePlayback?.tourPanel = "options"
+                },
+                Step(name: "player-advanced") { m in m.activePlayback?.tourPanel = "advanced" },
+                Step(name: "player-panels-closed") { m in m.activePlayback?.tourPanel = nil },
+            ], at: index)
+        }
+        #endif
         #if !os(macOS)
         steps += [
             Step(name: "settings") { m in m.selectedTab = .home; m.showSettings = true },

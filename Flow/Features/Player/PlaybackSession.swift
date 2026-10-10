@@ -70,6 +70,8 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private(set) var scrubPreviewer: ScrubPreviewer?
     /// Set by the screenshot tour to show a scrubbing preview without a finger on the screen.
     var tourScrubPreview: Double?
+    /// Set by the screenshot tour to open a player panel: "options" or "advanced".
+    var tourPanel: String?
     #endif
 
     @ObservationIgnored private weak var model: AppModel?

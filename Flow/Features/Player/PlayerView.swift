@@ -727,6 +727,11 @@ struct IOSPlayerControls: View {
             .environment(model)
         }
         .task(id: session.request.episode?.id ?? session.request.item.id) { await loadMediaOptions() }
+        .onChange(of: session.tourPanel) { _, panel in
+            visible = true
+            showsOptions = panel == "options"
+            showsAdvanced = panel == "advanced"
+        }
         .onChange(of: session.tourScrubPreview) { _, time in
             hideTask?.cancel()
             visible = true
