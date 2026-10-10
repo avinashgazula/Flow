@@ -717,6 +717,9 @@ public struct SubtitleSettings: Codable, Hashable, Sendable {
     public var color: SubtitleColor = .white
     public var background: SubtitleBackground = .shadow
     public var defaultOffsetSeconds: Double = 0
+    /// How far Flow's own subtitles are raised from their usual spot, as a fraction of the picture
+    /// height: 0 leaves them at the bottom, 0.4 lifts them by 40%.
+    public var verticalPosition: Double = 0
     public var enabledProviders: [String] = ["opensubtitles", "subdl", "wyzie", "subsource"]
     public var hearingImpaired = false
     public init() {}

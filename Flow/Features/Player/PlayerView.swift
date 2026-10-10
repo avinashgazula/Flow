@@ -329,20 +329,23 @@ struct SubtitleOverlay: View {
     let settings: SubtitleSettings
 
     var body: some View {
-        VStack {
-            Spacer()
-            if let text, !text.isEmpty {
-                Text(text)
-                    .font(.system(size: baseSize * settings.fontScale, weight: .semibold))
-                    .foregroundStyle(settings.color.color)
-                    .multilineTextAlignment(.center)
-                    .shadow(color: settings.background == .shadow ? .black : .clear, radius: 2, x: 1, y: 1)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(background, in: RoundedRectangle(cornerRadius: 6))
-                    .padding(.bottom, Platform.isTV ? 90 : 48)
-                    .padding(.horizontal, 40)
+        GeometryReader { proxy in
+            VStack {
+                Spacer()
+                if let text, !text.isEmpty {
+                    Text(text)
+                        .font(.system(size: baseSize * settings.fontScale, weight: .semibold))
+                        .foregroundStyle(settings.color.color)
+                        .multilineTextAlignment(.center)
+                        .shadow(color: settings.background == .shadow ? .black : .clear, radius: 2, x: 1, y: 1)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(background, in: RoundedRectangle(cornerRadius: 6))
+                        .padding(.bottom, (Platform.isTV ? 90 : 48) + proxy.size.height * min(max(settings.verticalPosition, 0), 0.4))
+                        .padding(.horizontal, 40)
+                }
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
     }
 
@@ -648,6 +651,11 @@ struct IOSPlayerControls: View {
     @State private var audioGroup: AVMediaSelectionGroup?
     @State private var legibleGroup: AVMediaSelectionGroup?
     @State private var speed = 1.0
+    @State private var audioChoice: AVMediaSelectionOption?
+    @State private var legibleChoice: AVMediaSelectionOption?
+    @State private var showsOptions = false
+    @State private var showsEpisodes = false
+    @State private var showsAdvanced = false
     @State private var seekFlash: SeekFlash?
     @State private var preview: CGImage?
     @State private var previewTime: Double?
@@ -695,9 +703,29 @@ struct IOSPlayerControls: View {
             if visible {
                 controls.transition(.opacity)
             }
+
+            PlayerOptionsPanel(session: session, media: mediaOptions, isPresented: $showsOptions, fill: $fill,
+                               showSearch: { showSubtitles = true }, showAdvanced: { showsAdvanced = true })
+            if hasEpisodes {
+                EpisodeShelf(session: session, isPresented: $showsEpisodes)
+            }
         }
         .animation(.easeInOut(duration: 0.2), value: visible)
         .onAppear { scheduleHide() }
+        // The controls stay up while a panel or the sheet is open, then go back to timing out.
+        .onChange(of: overlayOpen) { _, open in
+            if open { hideTask?.cancel(); visible = true } else { scheduleHide() }
+        }
+        .sheet(isPresented: $showsAdvanced) {
+            AdvancedPlayerOptions(session: session, media: mediaOptions, showSearch: {
+                // Let this sheet finish dismissing before the search sheet comes up.
+                Task {
+                    try? await Task.sleep(nanoseconds: 450_000_000)
+                    showSubtitles = true
+                }
+            })
+            .environment(model)
+        }
         .task(id: session.request.episode?.id ?? session.request.item.id) { await loadMediaOptions() }
         .onChange(of: session.tourScrubPreview) { _, time in
             hideTask?.cancel()
@@ -738,79 +766,9 @@ struct IOSPlayerControls: View {
                             RoutePicker()
                                 .frame(width: 40, height: 40)
                                 .flowGlass(Circle())
-                            Menu {
-                                if !session.bitmapTracks.isEmpty {
-                                    Section("Subtitles") {
-                                        Button { session.selectBitmapSubtitle(nil) } label: {
-                                            if session.selectedBitmapTrack == nil { Label("Off", systemImage: "checkmark") } else { Text("Off") }
-                                        }
-                                        ForEach(session.bitmapTracks) { track in
-                                            Button { session.selectBitmapSubtitle(track.id) } label: {
-                                                if session.selectedBitmapTrack == track.id { Label(track.title, systemImage: "checkmark") } else { Text(track.title) }
-                                            }
-                                        }
-                                    }
-                                }
-                                if !audioOptions.isEmpty {
-                                    Section("Audio") {
-                                        ForEach(audioOptions, id: \.self) { option in
-                                            Button { select(option, characteristic: .audible) } label: {
-                                                checked(option.title, selected(in: audioGroup) == option)
-                                            }
-                                        }
-                                    }
-                                }
-                                if !legibleOptions.isEmpty {
-                                    Section("Embedded Subtitles") {
-                                        Button { select(nil, characteristic: .legible) } label: {
-                                            checked("Off", selected(in: legibleGroup) == nil)
-                                        }
-                                        ForEach(legibleOptions, id: \.self) { option in
-                                            Button { select(option, characteristic: .legible) } label: {
-                                                checked(option.title, selected(in: legibleGroup) == option)
-                                            }
-                                        }
-                                    }
-                                }
-                                if !session.chapters.isEmpty {
-                                    Section("Chapters") {
-                                        ForEach(session.chapters) { chapter in
-                                            Button { session.seek(toChapter: chapter) } label: {
-                                                Text(chapter.title.isEmpty ? "Chapter" : chapter.title)
-                                                Text(TimeFormat.clock(chapter.start))
-                                            }
-                                        }
-                                    }
-                                }
-                                Menu {
-                                    ForEach(SleepTimer.choices) { choice in
-                                        Button { session.sleepTimer = choice } label: {
-                                            if session.sleepTimer == choice { Label(choice.title, systemImage: "checkmark") } else { Text(choice.title) }
-                                        }
-                                    }
-                                    if session.sleepTimer != nil {
-                                        Button("Turn Off", role: .destructive) { session.sleepTimer = nil }
-                                    }
-                                } label: {
-                                    Label("Sleep Timer", systemImage: session.sleepTimer == nil ? "moon.zzz" : "moon.zzz.fill")
-                                }
-                                Section("Speed") {
-                                    ForEach([0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { rate in
-                                        Button { setRate(rate) } label: {
-                                            if speed == rate { Label(rateLabel(rate), systemImage: "checkmark") } else { Text(rateLabel(rate)) }
-                                        }
-                                    }
-                                }
-                                Button("Search Subtitles…", systemImage: "magnifyingglass") { showSubtitles = true }
-                                Button(session.showsInfo ? "Hide Playback Info" : "Playback Info", systemImage: "info.circle") { session.showsInfo.toggle() }
-                                Button(fill ? "Fit to Screen" : "Fill Screen", systemImage: fill ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right") { fill.toggle() }
-                            } label: {
-                                Image(systemName: "ellipsis")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .frame(width: 40, height: 40)
-                                    .flowGlass(Circle(), interactive: true)
-                            }
-                            .foregroundStyle(.white)
+                            CircleButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle", size: 40) { session.showsInfo.toggle() }
+                                .accessibilityLabel("Playback Info")
+                            PlayerOptionsButtons(showsEpisodes: hasEpisodes, episodes: toggleEpisodes, options: toggleOptions)
                         }
                     }
                 }
@@ -889,8 +847,32 @@ struct IOSPlayerControls: View {
         if session.player.rate > 0 { session.player.rate = Float(rate) }
     }
 
-    private func rateLabel(_ rate: Double) -> String {
-        rate == 1 ? "Normal" : String(format: "%gx", rate)
+    /// What the options panel and Advanced Options read and change.
+    private var mediaOptions: PlayerMediaOptions {
+        PlayerMediaOptions(audio: audioOptions, audioSelection: audioChoice,
+                           legible: legibleOptions, legibleSelection: legibleChoice, speed: speed,
+                           selectAudio: { select($0, characteristic: .audible) },
+                           selectLegible: { select($0, characteristic: .legible) },
+                           setSpeed: setRate)
+    }
+
+    private var hasEpisodes: Bool { session.request.episode != nil && !session.seasonEpisodes.isEmpty }
+    private var overlayOpen: Bool { showsOptions || showsEpisodes || showsAdvanced }
+
+    private func toggleOptions() {
+        audioChoice = selected(in: audioGroup)
+        legibleChoice = selected(in: legibleGroup)
+        withAnimation(Theme.Motion.snappy) {
+            showsEpisodes = false
+            showsOptions.toggle()
+        }
+    }
+
+    private func toggleEpisodes() {
+        withAnimation(Theme.Motion.snappy) {
+            showsOptions = false
+            showsEpisodes.toggle()
+        }
     }
 
     private func toggle() {
@@ -902,7 +884,7 @@ struct IOSPlayerControls: View {
         hideTask?.cancel()
         hideTask = Task {
             try? await Task.sleep(nanoseconds: 4_000_000_000)
-            if !Task.isCancelled, isPlaying, scrubbing == nil { visible = false }
+            if !Task.isCancelled, isPlaying, scrubbing == nil, !overlayOpen { visible = false }
         }
     }
 
@@ -921,6 +903,8 @@ struct IOSPlayerControls: View {
         guard let asset = session.player.currentItem?.asset else { return }
         if let group = try? await asset.loadMediaSelectionGroup(for: .audible) { audioGroup = group; audioOptions = group.options }
         if let group = try? await asset.loadMediaSelectionGroup(for: .legible) { legibleGroup = group; legibleOptions = group.options }
+        audioChoice = selected(in: audioGroup)
+        legibleChoice = selected(in: legibleGroup)
         if let preferred = model.settings.playback.preferredAudioLanguage,
            let match = audioOptions.first(where: { $0.extendedLanguageTag?.hasPrefix(preferred) == true || $0.locale?.language.languageCode?.identifier == preferred }) {
             select(match, characteristic: .audible)
@@ -932,13 +916,10 @@ struct IOSPlayerControls: View {
         return item.currentMediaSelection.selectedMediaOption(in: group)
     }
 
-    @ViewBuilder
-    private func checked(_ title: String, _ isOn: Bool) -> some View {
-        if isOn { Label(title, systemImage: "checkmark") } else { Text(title) }
-    }
-
     private func select(_ option: AVMediaSelectionOption?, characteristic: AVMediaCharacteristic) {
         guard let item = session.player.currentItem else { return }
+        // Shown at once; the group loads asynchronously.
+        if characteristic == .audible { audioChoice = option } else if characteristic == .legible { legibleChoice = option }
         Task {
             guard let group = try? await item.asset.loadMediaSelectionGroup(for: characteristic) else { return }
             item.select(option, in: group)
