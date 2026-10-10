@@ -94,6 +94,10 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private let nowPlaying = NowPlaying()
     @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
     @ObservationIgnored private var remuxer: MatroskaRemuxer?
+    /// Remux without Dolby Vision and Atmos signalling: set after the player turns the full version down.
+    @ObservationIgnored private var remuxCompatible = false
+    /// The player's own error, for the error screen's details (domain and code say more than its wording).
+    var failureDetail: String?
     @ObservationIgnored private var bitmapTask: Task<Void, Never>?
 
     init(model: AppModel, request: PlaybackRequest, source: StreamSource, resumeAt: Double?, alternatives: [StreamSource] = []) {
@@ -167,6 +171,7 @@ final class PlaybackSession: Identifiable {
         chapterSegments = []
         readyAt = nil
         stopBitmapSubtitles()
+        failureDetail = nil
         phase = .connecting(0.1)
         loadTask = Task { [weak self] in await self?.prepare(source, url: url) }
     }
@@ -206,7 +211,7 @@ final class PlaybackSession: Identifiable {
         phase = .connecting(0.2)
         do {
             let remuxer = try await MatroskaRemuxer.open(reader ?? Self.byteSource(url, headers: headers),
-                                                         preferredAudioLanguage: preferredAudioLanguage, headerCache: .shared)
+                                                         preferredAudioLanguage: preferredAudioLanguage, headerCache: .shared, compatible: remuxCompatible)
             guard !Task.isCancelled else { return }
             if remuxer.video?.source.codecID == "V_AV1", !Platform.decodesAV1 {
                 fail("This video is AV1, which this \(Platform.deviceKind) can't decode. Try another source.")
@@ -311,7 +316,11 @@ final class PlaybackSession: Identifiable {
 
     private var showChoice: ShowTrackChoice? { showKey.flatMap { model?.settings.playback.showTracks[$0] } }
 
-    private var preferredAudioLanguage: String? { showChoice?.audioLanguage ?? model?.settings.playback.preferredAudioLanguage }
+    /// The show's choice, then Settings, then the device's language: a multi-language release often marks
+    /// its dub as the default track, and an English speaker shouldn't land in French.
+    private var preferredAudioLanguage: String? {
+        showChoice?.audioLanguage ?? model?.settings.playback.preferredAudioLanguage ?? Locale.current.language.languageCode?.identifier
+    }
 
     /// The show's subtitle language first, then the viewer's general preferences.
     private var subtitleLanguages: [String] {
@@ -454,6 +463,7 @@ final class PlaybackSession: Identifiable {
         guard !alternatives.isEmpty else { return }
         let next = alternatives.removeFirst()
         source = next
+        remuxCompatible = false
         show(notice: "That source didn't work, so Flow is trying \(next.providerName)\(next.traits.resolution == .unknown ? "" : " " + next.traits.resolution.label).")
         load(next)
     }
@@ -659,6 +669,16 @@ final class PlaybackSession: Identifiable {
                 }
             }
         case .failed:
+            failureDetail = Self.detail(item.error)
+            ScreenshotTour.log("item failed: \(failureDetail ?? "")")
+            // Some devices turn down a stream's Dolby Vision or Atmos signalling; the HDR10 picture and
+            // 5.1 bed underneath still play, so try that once before giving up.
+            if !didStart, usesRemux, !remuxCompatible, let remuxer,
+               remuxer.video?.source.dolbyVision != nil || remuxer.audio.contains(where: \.isAtmos) {
+                remuxCompatible = true
+                load(source)
+                return
+            }
             // A dropped connection mid-film: reconnect where it stopped, a couple of times, before giving up.
             if didStart, recoveries < 2 {
                 recoveries += 1
@@ -1024,6 +1044,16 @@ final class PlaybackSession: Identifiable {
     func retry() {
         if didStart, currentTime > 1 { recoverAt = currentTime }
         load(source)
+    }
+
+    /// "AVFoundationErrorDomain −11829 · CoreMediaErrorDomain −12927": what to quote when reporting a stream that won't play.
+    static func detail(_ error: Error?) -> String? {
+        guard let error = error as NSError? else { return nil }
+        var parts = ["\(error.domain) \(error.code)"]
+        if let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError {
+            parts.append("\(underlying.domain) \(underlying.code)")
+        }
+        return parts.joined(separator: " · ")
     }
 
     /// AVFoundation's errors are terse; say what probably happened.

@@ -44,7 +44,7 @@ struct PlayerView: View {
             case .connecting(let progress):
                 ConnectingView(session: session, progress: progress)
             case .failed(let message):
-                PlaybackErrorView(message: message,
+                PlaybackErrorView(message: message, detail: session.failureDetail,
                                   canTryAnother: session.canTryAnotherSource,
                                   externalPlayer: externalPlayerName,
                                   retry: { session.retry() },
@@ -258,6 +258,8 @@ struct ConnectingView: View {
 
 struct PlaybackErrorView: View {
     let message: String
+    /// The player's error domain and code, small and selectable, for reporting.
+    var detail: String?
     var canTryAnother = false
     var externalPlayer: String?
     let retry: () -> Void
@@ -278,6 +280,14 @@ struct PlaybackErrorView: View {
                     .foregroundStyle(Theme.Palette.textSecondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 460 * Theme.scale)
+                if let detail {
+                    Text(detail)
+                        .font(.system(.caption2).monospaced())
+                        .foregroundStyle(Theme.Palette.textTertiary)
+                        #if !os(tvOS)
+                        .textSelection(.enabled)
+                        #endif
+                }
                 VStack(spacing: Theme.Space.s) {
                     if canTryAnother {
                         Button("Try Another Source", action: tryAnother).buttonStyle(PrimaryButtonStyle())

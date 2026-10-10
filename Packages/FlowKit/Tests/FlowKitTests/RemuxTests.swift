@@ -531,6 +531,31 @@ final class DolbyVisionProfileTests: XCTestCase {
         XCTAssertTrue(p5.hasDV)
         XCTAssertTrue(p5.OutputTrack.codecString.hasPrefix("dvh1.05"))
     }
+
+    /// WEB-DLs often carry no Matroska colour: the base layer's colour comes from the Dolby Vision
+    /// record, and compatible mode (Flow's retry when a stream won't play) keeps it while dropping Dolby Vision.
+    func testColourFromDolbyVisionAndCompatibleMode() async throws {
+        let header = try await MatroskaReader.readHeader(FileByteSource(url: MatroskaTests.fixture("hevc-eac3-ac3")))
+        var track = try XCTUnwrap(header.tracks.first { $0.kind == .video })
+        track.colour = nil
+        track.dolbyVision = [1, 0, 8 << 1, 0x10, 1 << 4] + [UInt8](repeating: 0, count: 19)
+        track.dolbyVisionBoxType = "dvvC"
+        func boxes(_ compatible: Bool) throws -> (dv: Bool, colr: [UInt8]?) {
+            guard case .success(let out) = MatroskaRemuxer.output(for: track, firstFrame: nil, compatible: compatible) else { throw XCTSkip("unsupported") }
+            let b = out.sampleEntry
+            func find(_ type: String) -> Int? { (0..<(b.count - 3)).first { Array(b[$0..<($0 + 4)]) == Array(type.utf8) } }
+            return (find("dvvC") != nil, find("colr").map { Array(b[($0 + 4)..<($0 + 14)]) })
+        }
+        let normal = try boxes(false)
+        XCTAssertTrue(normal.dv)
+        // nclx, BT.2020 primaries (9), PQ transfer (16), BT.2020 matrix (9).
+        XCTAssertEqual(normal.colr, Array("nclx".utf8) + [0, 9, 0, 16, 0, 9])
+        let compatible = try boxes(true)
+        XCTAssertFalse(compatible.dv)
+        XCTAssertEqual(compatible.colr, normal.colr)
+        XCTAssertEqual(MatroskaRemuxer.colourFromDolbyVision([1, 0, 8 << 1, 0, 4 << 4])?.isHLG, true)
+        XCTAssertNil(MatroskaRemuxer.colourFromDolbyVision([1, 0, 5 << 1, 0, 0]))
+    }
 }
 
 final class ParallelReadTests: XCTestCase {

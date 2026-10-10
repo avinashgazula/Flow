@@ -55,6 +55,8 @@ public actor MatroskaRemuxer {
     /// Keyframes, a few seconds apart, for the I-frame playlist that gives Apple TV's scrubber its
     /// thumbnails. Each is fetched on its own, so scrubbing never downloads whole segments.
     public nonisolated let trickPlayFrames: [MatroskaCue]
+    /// Opened with `compatible`: no Dolby Vision configuration or Atmos signalling.
+    public nonisolated let isCompatible: Bool
 
     /// False when the only playable audio is commentary: the soundtrack itself can't be played.
     public nonisolated var hasPlayableSoundtrack: Bool { audio.contains { !$0.source.isCommentary } }
@@ -72,8 +74,10 @@ public actor MatroskaRemuxer {
     /// Reads the header and enough of the first clusters to configure Dolby audio, then plans segments.
     /// `targetSegment` nil picks a length from the file's bitrate (see `segmentLength`).
     /// `preferredAudioLanguage` (ISO 639 or BCP 47) makes that language's soundtrack the default.
+    /// `compatible` drops the extras some players refuse: the Dolby Vision configuration (the HDR10 base
+    /// layer still plays) and Atmos signalling (the 5.1 bed still plays). Flow retries with it when a stream fails.
     public static func open(_ source: ByteSource, targetSegment: Double? = nil, preferredAudioLanguage: String? = nil,
-                            headerCache: MatroskaHeaderCache? = nil) async throws -> MatroskaRemuxer {
+                            headerCache: MatroskaHeaderCache? = nil, compatible: Bool = false) async throws -> MatroskaRemuxer {
         let header = try await MatroskaReader.readHeader(source, cache: headerCache)
         guard let firstCluster = header.firstClusterPosition else { throw MatroskaError.malformed("no clusters") }
 
@@ -90,7 +94,7 @@ public actor MatroskaRemuxer {
         var skipped: [Skipped] = []
         var bitmaps: [OutputTrack] = []
         for track in header.tracks where track.isEnabled {
-            switch Self.output(for: track, firstFrame: firstFrames[track.number]) {
+            switch Self.output(for: track, firstFrame: firstFrames[track.number], compatible: compatible) {
             case .success(let out):
                 switch out.role {
                 case .video where video == nil: video = out
@@ -117,7 +121,7 @@ public actor MatroskaRemuxer {
         let segments = try Self.plan(header: header, anchorTrack: video?.source.number ?? audio.first!.source.number, target: target)
         let delay = video.map { Self.reorderDelay(probeBlocks.filter { $0.track == video!.id }, frame: $0.source.defaultDuration) } ?? 0
         return MatroskaRemuxer(source: source, header: header, video: video, audio: audio, subtitles: subtitles, bitmapSubtitles: bitmaps,
-                               skipped: skipped, segments: segments, duration: duration, presentationDelay: delay)
+                               skipped: skipped, segments: segments, duration: duration, presentationDelay: delay, isCompatible: compatible)
     }
 
     /// The soundtrack first (the viewer's language if there is one, then the file's default, then any
@@ -146,7 +150,9 @@ public actor MatroskaRemuxer {
     }
 
     private init(source: ByteSource, header: MatroskaHeader, video: OutputTrack?, audio: [OutputTrack], subtitles: [OutputTrack],
-                 bitmapSubtitles: [OutputTrack], skipped: [Skipped], segments: [Segment], duration: Double, presentationDelay: Int64) {
+                 bitmapSubtitles: [OutputTrack], skipped: [Skipped], segments: [Segment], duration: Double, presentationDelay: Int64,
+                 isCompatible: Bool = false) {
+        self.isCompatible = isCompatible
         self.bitmapSubtitles = bitmapSubtitles
         self.presentationDelay = presentationDelay
         self.source = source
@@ -221,13 +227,13 @@ public actor MatroskaRemuxer {
 
     struct Unsupported: Error { let message: String }
 
-    static func output(for t: MatroskaTrack, firstFrame: [UInt8]?) -> Result<OutputTrack, Unsupported> {
+    static func output(for t: MatroskaTrack, firstFrame: [UInt8]?, compatible: Bool = false) -> Result<OutputTrack, Unsupported> {
         if t.isEncrypted { return .failure(Unsupported(message: "Encrypted track")) }
         if t.isCompressedUnsupported { return .failure(Unsupported(message: "Compressed track (zlib)")) }
         let label = trackLabel(t)
         switch t.kind {
         case .video:
-            return videoOutput(t, label: label)
+            return videoOutput(t, label: label, compatible: compatible)
         case .audio:
             return audioOutput(t, firstFrame: firstFrame, label: label)
         case .subtitle:
@@ -247,7 +253,7 @@ public actor MatroskaRemuxer {
         }
     }
 
-    private static func videoOutput(_ t: MatroskaTrack, label: String) -> Result<OutputTrack, Unsupported> {
+    private static func videoOutput(_ t: MatroskaTrack, label: String, compatible: Bool) -> Result<OutputTrack, Unsupported> {
         var children: [UInt8] = []
         var type: String
         var codecString: String
@@ -277,14 +283,15 @@ public actor MatroskaRemuxer {
         default: return .failure(Unsupported(message: "Video format \(t.codecID)"))
         }
 
-        if let colour = t.colour, colour.primaries != nil || colour.transfer != nil {
+        if let colour = t.colour.flatMap({ $0.primaries != nil || $0.transfer != nil ? $0 : nil }) ?? Self.colourFromDolbyVision(t.dolbyVision) {
             children += MP4.colr(colour)
             if let mastering = colour.mastering { children += MP4.mdcv(mastering) }
             if colour.maxCLL != nil || colour.maxFALL != nil { children += MP4.clli(maxCLL: colour.maxCLL ?? 0, maxFALL: colour.maxFALL ?? 0) }
         }
         // Apple plays Dolby Vision profiles 5 and 8. Others (7, from UHD Blu-rays) play as their HDR10
         // base layer: without the Dolby Vision configuration, the decoder ignores the enhancement layer.
-        if let dv = t.dolbyVision, let boxType = t.dolbyVisionBoxType, dv.count >= 4, codec == .hevc, [5, 8].contains(Int(dv[2] >> 1)) {
+        if let dv = t.dolbyVision, let boxType = t.dolbyVisionBoxType, dv.count >= 4, codec == .hevc, [5, 8].contains(Int(dv[2] >> 1)),
+           !compatible || Int(dv[2] >> 1) == 5 {
             let profile = Int(dv[2] >> 1)
             let level = Int((dv[2] & 1) << 5 | dv[3] >> 3)
             children += MP4.box(boxType, dv)
@@ -450,13 +457,13 @@ public actor MatroskaRemuxer {
         var lines = ["#EXTM3U", "#EXT-X-VERSION:7", "#EXT-X-INDEPENDENT-SEGMENTS"]
         for (i, a) in audio.enumerated() {
             var attrs = ["TYPE=AUDIO", "GROUP-ID=\"audio\"", "NAME=\"\(Self.quoted(a.label))\"", "LANGUAGE=\"\(LanguageName.bcp47(a.language))\"",
-                         "DEFAULT=\(i == 0 ? "YES" : "NO")", "AUTOSELECT=YES", "CHANNELS=\"\(a.isAtmos ? "16/JOC" : String(a.source.channels))\""]
+                         "DEFAULT=\(i == 0 ? "YES" : "NO")", "AUTOSELECT=YES", "CHANNELS=\"\(a.isAtmos && !isCompatible ? "16/JOC" : String(a.source.channels))\""]
             if video == nil { attrs.removeAll { $0.hasPrefix("DEFAULT") }; attrs.append("DEFAULT=YES") }
             attrs.append("URI=\"\(a.id).m3u8\"")
             lines.append("#EXT-X-MEDIA:" + attrs.joined(separator: ","))
         }
         for s in subtitles {
-            var attrs = ["TYPE=SUBTITLES", "GROUP-ID=\"subs\"", "NAME=\"\(Self.quoted(s.label + (s.source.isForced ? " (Forced)" : "")))\"",
+            var attrs = ["TYPE=SUBTITLES", "GROUP-ID=\"subs\"", "NAME=\"\(Self.quoted(s.label + (s.source.isForced && !s.label.localizedCaseInsensitiveContains("forced") ? " (Forced)" : "")))\"",
                          "LANGUAGE=\"\(LanguageName.bcp47(s.language))\"", "DEFAULT=NO", "AUTOSELECT=YES", "FORCED=\(s.source.isForced ? "YES" : "NO")"]
             if s.source.isHearingImpaired {
                 attrs.append("CHARACTERISTICS=\"public.accessibility.transcribes-spoken-dialog,public.accessibility.describes-music-and-sound\"")
@@ -577,9 +584,22 @@ public actor MatroskaRemuxer {
 
     private var videoRange: String {
         guard let v = video?.source else { return "SDR" }
-        if v.dolbyVision != nil || v.colour?.isPQ == true { return "PQ" }
-        if v.colour?.isHLG == true { return "HLG" }
+        let colour = v.colour.flatMap { $0.transfer != nil ? $0 : nil } ?? Self.colourFromDolbyVision(v.dolbyVision)
+        if colour?.isPQ == true || (v.dolbyVision != nil && colour == nil) { return "PQ" }
+        if colour?.isHLG == true { return "HLG" }
         return "SDR"
+    }
+
+    /// What a Dolby Vision stream's base layer is, from its compatibility ID, for files whose Matroska
+    /// header says nothing about colour (common in WEB-DLs): 1 is HDR10, 2 SDR (BT.709), 4 HLG.
+    static func colourFromDolbyVision(_ dv: [UInt8]?) -> MatroskaColour? {
+        guard let dv, dv.count >= 5 else { return nil }
+        switch Int(dv[4] >> 4) {
+        case 1: return MatroskaColour(matrix: 9, transfer: 16, primaries: 9)
+        case 2: return MatroskaColour(matrix: 1, transfer: 1, primaries: 1)
+        case 4: return MatroskaColour(matrix: 9, transfer: 18, primaries: 9)
+        default: return nil
+        }
     }
 
     private var peakBandwidth: Int {
