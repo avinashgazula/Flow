@@ -145,6 +145,8 @@ enum EAC3 {
         var lfeon: Int
         var bsid: Int
         var chanmap: Int?
+        /// Dolby Atmos (joint object coding): the complexity index from the frame's addbsi, when flagged.
+        var atmosComplexity: Int?
 
         var sampleRate: Int { [48000, 44100, 32000, 24000, 22050, 16000][min(fscod, 5)] }
     }
@@ -174,8 +176,62 @@ enum EAC3 {
         }
         var chanmap: Int?
         if strmtyp == 1, r.read(1) == 1 { chanmap = Int(r.read(16)) }
+        let atmos = atmosComplexity(&r, strmtyp: strmtyp, fscod: fscod, numblks: numblks, acmod: acmod, lfeon: lfeon)
         return Frame(streamType: strmtyp, substreamID: substreamid, bytes: (frmsiz + 1) * 2, fscod: fscod, blocks: numblks,
-                     acmod: acmod, lfeon: lfeon, bsid: bsid, chanmap: chanmap)
+                     acmod: acmod, lfeon: lfeon, bsid: bsid, chanmap: chanmap, atmosComplexity: atmos)
+    }
+
+    /// Reads the rest of the bit stream information (ETSI TS 102 366 E.1.2.2) to reach addbsi, where
+    /// encoders flag Atmos: its first byte ends in flag_ec3_extension_type_a, and the next byte is
+    /// the complexity index.
+    private static func atmosComplexity(_ r: inout BitReader, strmtyp: Int, fscod: Int, numblks: Int, acmod: Int, lfeon: Int) -> Int? {
+        if r.read(1) == 1 { // mixmdate
+            if acmod > 2 { r.skip(2) }
+            if acmod & 1 == 1, acmod > 2 { r.skip(6) }
+            if acmod & 4 != 0 { r.skip(6) }
+            if lfeon == 1, r.read(1) == 1 { r.skip(5) }
+            if strmtyp == 0 {
+                if r.read(1) == 1 { r.skip(6) }
+                if acmod == 0, r.read(1) == 1 { r.skip(6) }
+                if r.read(1) == 1 { r.skip(6) }
+                switch r.read(2) {
+                case 1: r.skip(5)
+                case 2: r.skip(12)
+                case 3: r.skip((Int(r.read(5)) + 2) * 8)
+                default: break
+                }
+                if acmod < 2 {
+                    if r.read(1) == 1 { r.skip(14) }
+                    if acmod == 0, r.read(1) == 1 { r.skip(14) }
+                }
+                if r.read(1) == 1 { // frmmixcfginfoe
+                    if numblks == 1 {
+                        r.skip(5)
+                    } else {
+                        for _ in 0..<numblks where r.read(1) == 1 { r.skip(5) }
+                    }
+                }
+            }
+        }
+        if r.read(1) == 1 { // infomdate
+            r.skip(5) // bsmod, copyrightb, origbs
+            if acmod == 2 { r.skip(4) }
+            if acmod >= 6 { r.skip(2) }
+            if r.read(1) == 1 { r.skip(8) }
+            if acmod == 0, r.read(1) == 1 { r.skip(8) }
+            if fscod < 3 { r.skip(1) }
+        }
+        if strmtyp == 0, numblks != 6 { r.skip(1) } // convsync
+        if strmtyp == 2 {
+            let blkid = numblks == 6 ? 1 : r.read(1)
+            if blkid == 1 { r.skip(6) }
+        }
+        guard r.read(1) == 1 else { return nil } // addbsie
+        let length = Int(r.read(6)) + 1
+        guard length >= 2, r.bitsLeft >= 16 else { return nil }
+        r.skip(7)
+        guard r.read(1) == 1 else { return nil }
+        return Int(r.read(8))
     }
 
     static func frames(_ b: [UInt8]) -> [Frame] {
@@ -230,7 +286,17 @@ enum EAC3 {
                 w.write(UInt32(location), 9)
             }
         }
+        if let complexity = first.atmosComplexity {
+            w.write(0, 7) // reserved
+            w.write(1, 1) // flag_ec3_extension_type_a
+            w.write(UInt32(complexity), 8)
+        }
         return w.bytes
+    }
+
+    /// True when the stream carries Dolby Atmos objects.
+    static func isAtmos(_ block: [UInt8]) -> Bool {
+        frames(block).contains { $0.atmosComplexity != nil }
     }
 
     static func channels(_ block: [UInt8]) -> Int {

@@ -417,3 +417,63 @@ final class SummaryTests: XCTestCase {
         XCTAssertEqual(MatroskaRemuxer.dynamicRange(t), "Dolby Vision 5")
     }
 }
+
+final class AtmosTests: XCTestCase {
+    /// An independent 5.1 E-AC-3 frame header whose addbsi flags Atmos with complexity 16.
+    static func atmosFrame(mixingMetadata: Bool) -> [UInt8] {
+        var w = BitWriter()
+        w.write(0x0B77, 16)
+        w.write(0, 2)        // strmtyp: independent
+        w.write(0, 3)        // substreamid
+        w.write(383, 11)     // frmsiz: 768 bytes
+        w.write(0, 2)        // fscod: 48 kHz
+        w.write(3, 2)        // numblkscod: 6 blocks
+        w.write(7, 3)        // acmod: 3/2
+        w.write(1, 1)        // lfeon
+        w.write(16, 5)       // bsid
+        w.write(27, 5)       // dialnorm
+        w.write(0, 1)        // compre
+        w.write(mixingMetadata ? 1 : 0, 1) // mixmdate
+        if mixingMetadata {
+            w.write(1, 2)    // dmixmod
+            w.write(0b100100, 6) // ltrtcmixlev, lorocmixlev
+            w.write(0b101101, 6) // ltrtsurmixlev, lorosurmixlev
+            w.write(1, 1); w.write(10, 5) // lfemixlevcode, lfemixlevcod
+            w.write(0, 1)    // pgmscle
+            w.write(0, 1)    // extpgmscle
+            w.write(3, 2); w.write(0, 5); w.write(0xABCD, 16) // mixdef 3 with two bytes of mixdata
+            w.write(0, 1)    // frmmixcfginfoe
+        }
+        w.write(1, 1)        // infomdate
+        w.write(0, 3); w.write(0, 1); w.write(1, 1) // bsmod, copyrightb, origbs
+        w.write(0, 2)        // dsurexmod (acmod 7 is 3/2, so it has one)
+        w.write(0, 1)        // audprodie
+        w.write(0, 1)        // sourcefscod
+        w.write(1, 1)        // addbsie
+        w.write(1, 6)        // addbsil: two bytes
+        w.write(1, 8)        // ...0000001: flag_ec3_extension_type_a
+        w.write(16, 8)       // complexity_index_type_a
+        var bytes = w.bytes
+        bytes += [UInt8](repeating: 0, count: 768 - bytes.count)
+        return bytes
+    }
+
+    func testAtmosIsDetectedAndSignalled() throws {
+        for mixing in [false, true] {
+            let frame = Self.atmosFrame(mixingMetadata: mixing)
+            XCTAssertEqual(EAC3.parse(frame)?.atmosComplexity, 16, "mixing metadata: \(mixing)")
+            XCTAssertTrue(EAC3.isAtmos(frame))
+            let dec3 = try XCTUnwrap(EAC3.dec3(frame))
+            XCTAssertEqual(dec3.count, 5 + 2, "header, one substream, then the Atmos extension")
+            XCTAssertEqual(Array(dec3.suffix(2)), [0x01, 16])
+        }
+    }
+
+    func testOrdinaryDolbyDigitalPlusIsNotAtmos() async throws {
+        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("hevc-eac3-ac3")), targetSegment: 2)
+        let eac3 = try XCTUnwrap(remuxer.audio.first { $0.codecString == "ec-3" })
+        XCTAssertFalse(eac3.isAtmos)
+        let master = await remuxer.masterPlaylist()
+        XCTAssertFalse(master.contains("JOC"))
+    }
+}

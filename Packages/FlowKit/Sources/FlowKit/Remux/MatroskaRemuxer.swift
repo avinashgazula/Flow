@@ -16,6 +16,8 @@ public actor MatroskaRemuxer {
         /// PCM samples per frame for fixed-frame audio codecs.
         let frameSamples: Int
         let codec: Codec
+        /// Dolby Atmos in Dolby Digital Plus (joint object coding).
+        public var isAtmos = false
 
         public var id: Int { source.number }
         public var language: String { source.language }
@@ -316,8 +318,11 @@ public actor MatroskaRemuxer {
                 return .failure(Unsupported(message: "E-AC-3 stream without a readable frame"))
             }
             let entry = MP4.audioSampleEntry("ec-3", channels: EAC3.channels(frame), sampleRate: first.sampleRate, children: MP4.box("dec3", dec3))
-            return .success(OutputTrack(role: .audio, source: t, codecString: "ec-3", timescale: UInt32(first.sampleRate), label: label, sampleEntry: entry,
-                                        frameSamples: EAC3.samples(in: frame), codec: .eac3))
+            let atmos = EAC3.isAtmos(frame)
+            // "English (Dolby Digital Plus 5.1)" → "English (Dolby Atmos)"
+            let shown = atmos ? label.replacingOccurrences(of: #"Dolby Digital Plus [0-9.]+"#, with: "Dolby Atmos", options: .regularExpression) : label
+            return .success(OutputTrack(role: .audio, source: t, codecString: "ec-3", timescale: UInt32(first.sampleRate), label: shown, sampleEntry: entry,
+                                        frameSamples: EAC3.samples(in: frame), codec: .eac3, isAtmos: atmos))
         case "A_FLAC":
             guard let dfLa = FLAC.dfLa(t.codecPrivate) else { return .failure(Unsupported(message: "FLAC without stream info")) }
             let entry = MP4.audioSampleEntry("fLaC", channels: t.channels, sampleRate: rate, children: MP4.fullBox("dfLa") { w in w.append(dfLa) })
@@ -421,7 +426,7 @@ public actor MatroskaRemuxer {
         var lines = ["#EXTM3U", "#EXT-X-VERSION:7", "#EXT-X-INDEPENDENT-SEGMENTS"]
         for (i, a) in audio.enumerated() {
             var attrs = ["TYPE=AUDIO", "GROUP-ID=\"audio\"", "NAME=\"\(Self.quoted(a.label))\"", "LANGUAGE=\"\(LanguageName.bcp47(a.language))\"",
-                         "DEFAULT=\(i == 0 ? "YES" : "NO")", "AUTOSELECT=YES", "CHANNELS=\"\(a.source.channels)\""]
+                         "DEFAULT=\(i == 0 ? "YES" : "NO")", "AUTOSELECT=YES", "CHANNELS=\"\(a.isAtmos ? "16/JOC" : String(a.source.channels))\""]
             if video == nil { attrs.removeAll { $0.hasPrefix("DEFAULT") }; attrs.append("DEFAULT=YES") }
             attrs.append("URI=\"\(a.id).m3u8\"")
             lines.append("#EXT-X-MEDIA:" + attrs.joined(separator: ","))
