@@ -34,6 +34,10 @@ final class PlaybackSession: Identifiable {
     var subtitleText: String?
     var upNext: PlaybackRequest?
     var upNextCountdown: Int?
+    /// Every playable source found for this title, the current one included, for switching mid-film.
+    private(set) var sources: [StreamSource]
+    /// The rest of this episode's season, for the player's episode list.
+    private(set) var seasonEpisodes: [Episode] = []
     /// Films like this one ("Because You Watched"), offered as its credits roll and when it ends.
     var suggestions: [MediaItem] = []
     /// The film after this one in its collection, when it's out; leads the suggestions.
@@ -103,6 +107,7 @@ final class PlaybackSession: Identifiable {
     init(model: AppModel, request: PlaybackRequest, source: StreamSource, resumeAt: Double?, alternatives: [StreamSource] = []) {
         self.model = model
         self.alternatives = alternatives
+        self.sources = ([source] + alternatives).filter { $0.location.playableURL != nil }
         self.request = request
         self.source = source
         self.resumeAt = resumeAt
@@ -613,6 +618,9 @@ final class PlaybackSession: Identifiable {
                     .prefix(8).map { $0 }
             }
         }
+        if let episode = request.episode, let showID = request.item.ids.tmdb, seasonEpisodes.first?.season != episode.season {
+            seasonEpisodes = (try? await model.catalog?.tmdb.season(showID: showID, season: episode.season)) ?? []
+        }
         // Automatic subtitles, or the language picked for this show in an earlier episode.
         if model.settings.subtitles.autoEnable || showChoice?.subtitleLanguage != nil { await autoLoadSubtitle() }
         upNext = await model.nextRequest(after: request)
@@ -849,15 +857,41 @@ final class PlaybackSession: Identifiable {
     }
 
     func playUpNext() async {
-        guard let model, let next = upNext else { return }
+        guard let next = upNext else { return }
+        await switchEpisode(to: next, finished: true)
+    }
+
+    /// Plays another episode of this show from the player's episode list.
+    func play(episode: Episode) async {
+        guard episode.id != request.episode?.id else { return }
+        await switchEpisode(to: PlaybackRequest(item: request.item, episode: episode), finished: false)
+    }
+
+    /// Switches to another source of the same title, carrying on from the same moment.
+    func switchSource(to next: StreamSource) {
+        guard next.id != source.id else { return }
+        if didStart, currentTime > 1 { recoverAt = currentTime }
+        alternatives = sources.filter { $0.id != next.id }
+        source = next
+        remuxCompatible = false
+        recoveries = 0
+        show(notice: "Switching to \(next.providerName)…")
+        load(next)
+    }
+
+    /// Records this episode and moves to `next` on a source like the current one, or back to the picker.
+    private func switchEpisode(to next: PlaybackRequest, finished: Bool) async {
+        guard let model else { return }
         countdownTask?.cancel()
         countdownTask = nil
         upNextCountdown = nil
-        await finishCurrent(completed: true)
+        await finishCurrent(completed: finished)
         if let source = await model.matchingSource(for: next, like: source) {
             request = next
             self.source = source
             alternatives = []
+            sources = [source]
+            remuxCompatible = false
             upNext = nil
             didStart = false
             skippedSegments = []
