@@ -102,6 +102,12 @@ final class RemuxTests: XCTestCase {
         let i = range + 8
         return Int(b[i]) << 24 | Int(b[i + 1]) << 16 | Int(b[i + 2]) << 8 | Int(b[i + 3])
     }
+
+    /// The fragment's tfdt (version 1) decode time.
+    static func baseDecodeTime(_ b: [UInt8]) -> UInt64? {
+        guard let at = b.indices.dropLast(16).first(where: { b[$0] == 0x74 && b[$0 + 1] == 0x66 && b[$0 + 2] == 0x64 && b[$0 + 3] == 0x74 }) else { return nil }
+        return (0..<8).reduce(UInt64(0)) { $0 << 8 | UInt64(b[at + 8 + $1]) }
+    }
 }
 
 /// Serves a file's bytes with Range support, like a real streaming server.
@@ -588,5 +594,125 @@ final class ParallelReadTests: XCTestCase {
         _ = try await source.length()
         let read = try await source.read(100..<(100 + 10 * 1024 * 1024))
         XCTAssertTrue(read == Array(bytes[100..<(100 + 10 * 1024 * 1024)]))
+    }
+}
+
+final class FLACEncoderTests: XCTestCase {
+    /// 5.1, 24-bit: a sine, silence, noise, a ramp, a square wave and a quiet sine.
+    static func testSignal(frames: Int, channels: Int = 6) -> [Int32] {
+        var out = [Int32](repeating: 0, count: frames * channels)
+        var seed: UInt32 = 12345
+        for i in 0..<frames {
+            let t = Double(i) / 48000
+            seed = seed &* 1_664_525 &+ 1_013_904_223
+            let values: [Int32] = [
+                Int32(sin(2 * .pi * 440 * t) * 4_000_000),
+                0,
+                Int32(Int32(bitPattern: seed) >> 9),
+                Int32((i * 37) % 8_000_000 - 4_000_000),
+                (i / 100) % 2 == 0 ? 3_000_000 : -3_000_000,
+                Int32(sin(2 * .pi * 60 * t) * 2000),
+            ]
+            for c in 0..<channels { out[i * channels + c] = values[c % values.count] }
+        }
+        return out
+    }
+
+    func testEncodesFramesWithValidHeaders() throws {
+        var encoder = FLACEncoder(sampleRate: 48000, channels: 6, bitsPerSample: 24)
+        let pcm = Self.testSignal(frames: 4096 * 3 + 1000)
+        var file: [UInt8] = Array("fLaC".utf8) + encoder.dfLa
+        try pcm.withUnsafeBufferPointer { buffer in
+            var offset = 0
+            while offset < pcm.count / 6 {
+                let count = min(FLACEncoder.blockSize, pcm.count / 6 - offset)
+                let slice = UnsafeBufferPointer(rebasing: buffer[(offset * 6)..<((offset + count) * 6)])
+                let frame = encoder.encodeFrame(slice, count: count)
+                XCTAssertEqual(Array(frame.prefix(2)), [0xFF, 0xF8])
+                XCTAssertEqual(FLAC.blockSize(frame), count)
+                XCTAssertLessThan(frame.count, count * 6 * 3, "smaller than raw PCM")
+                file += frame
+                offset += count
+            }
+            if let dir = ProcessInfo.processInfo.environment["FLOW_REMUX_OUT"] {
+                try Data(file).write(to: URL(fileURLWithPath: dir).appendingPathComponent("encoded.flac"))
+                try Data(pcm.flatMap { v -> [UInt8] in let u = UInt32(bitPattern: v); return [UInt8(u & 0xFF), UInt8((u >> 8) & 0xFF), UInt8((u >> 16) & 0xFF)] })
+                    .write(to: URL(fileURLWithPath: dir).appendingPathComponent("encoded.s24le"))
+            }
+        }
+        XCTAssertEqual(FLACEncoder.crc8(Array("123456789".utf8)), 0xF4)
+        XCTAssertEqual(FLACEncoder.crc16(Array("123456789".utf8)), 0xFEE8)
+    }
+}
+
+final class DecodedAudioTests: XCTestCase {
+    /// Stands in for FFmpeg: every frame decodes to 512 samples per channel, and the first
+    /// `warmUp` frames after a reset produce nothing (as TrueHD does before a major sync).
+    final class FakeDecoder: AudioDecoding {
+        let channels: Int
+        let warmUp: Int
+        var sinceReset = 0
+        var resets = 0
+        init(channels: Int, warmUp: Int) { self.channels = channels; self.warmUp = warmUp }
+        func decode(_ frame: [UInt8]) -> [Int32] {
+            sinceReset += 1
+            guard sinceReset > warmUp else { return [] }
+            return [Int32](repeating: Int32(frame.count), count: 512 * channels)
+        }
+        func reset() { sinceReset = 0; resets += 1 }
+    }
+
+    final class FakeProvider: AudioDecoderProvider, @unchecked Sendable {
+        var made: [FakeDecoder] = []
+        let warmUp: Int
+        init(warmUp: Int) { self.warmUp = warmUp }
+        func makeDecoder(codecID: String, codecPrivate: [UInt8], sampleRate: Int, channels: Int) -> AudioDecoding? {
+            guard codecID == "A_DTS" else { return nil }
+            let decoder = FakeDecoder(channels: channels, warmUp: warmUp)
+            made.append(decoder)
+            return decoder
+        }
+    }
+
+    override func tearDown() { MatroskaRemuxer.audioDecoders = nil }
+
+    func testDTSBecomesFLACAndConsecutiveSegmentsContinue() async throws {
+        let provider = FakeProvider(warmUp: 0)
+        MatroskaRemuxer.audioDecoders = provider
+        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("dts-commentary")), targetSegment: 2)
+        let dts = try XCTUnwrap(remuxer.audio.first { $0.source.codecID == "A_DTS" })
+        XCTAssertEqual(dts.codecString, "fLaC")
+        XCTAssertFalse(remuxer.skipped.contains { $0.reason == "DTS audio" })
+        XCTAssertFalse(dts.source.isCommentary)
+        XCTAssertEqual(remuxer.audio.first?.id, dts.id, "the soundtrack leads again, ahead of the commentary")
+
+        var total = 0
+        for s in remuxer.segments {
+            let fragment = try await remuxer.mediaSegment(track: dts.id, index: s.index) ?? []
+            total += RemuxTests.sampleCount(fragment)
+        }
+        XCTAssertGreaterThan(total, 0)
+        let decoder = try XCTUnwrap(provider.made.last)
+        XCTAssertEqual(decoder.resets, 1, "one reset at the start, none between consecutive segments")
+    }
+
+    func testSeekingRestartsTheDecoderAndTimesFromItsFirstOutput() async throws {
+        let provider = FakeProvider(warmUp: 3)
+        MatroskaRemuxer.audioDecoders = provider
+        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("dts-commentary")), targetSegment: 2)
+        let dts = try XCTUnwrap(remuxer.audio.first { $0.source.codecID == "A_DTS" })
+        let last = remuxer.segments.count - 1
+        let fragment = try await remuxer.mediaSegment(track: dts.id, index: last) ?? []
+        XCTAssertGreaterThan(RemuxTests.sampleCount(fragment), 0)
+        // tfdt: the decode time starts after the frames the decoder swallowed.
+        let tfdt = try XCTUnwrap(RemuxTests.baseDecodeTime(fragment))
+        let segmentStart = UInt64(remuxer.segments[last].start + remuxer.presentationDelay) * UInt64(dts.timescale) / 1_000_000_000
+        XCTAssertGreaterThan(tfdt, segmentStart)
+    }
+
+    func testWithoutADecoderDTSStaysUnplayable() async throws {
+        MatroskaRemuxer.audioDecoders = nil
+        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("dts-commentary")), targetSegment: 2)
+        XCTAssertTrue(remuxer.skipped.contains { $0.reason == "DTS audio" })
     }
 }

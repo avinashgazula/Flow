@@ -23,7 +23,7 @@ public actor MatroskaRemuxer {
         public var language: String { source.language }
     }
 
-    enum Codec: Sendable { case h264, hevc, av1, aac, mp3, ac3, eac3, flac, text, ass, pgs, vobsub }
+    enum Codec: Sendable { case h264, hevc, av1, aac, mp3, ac3, eac3, flac, decoded, text, ass, pgs, vobsub }
 
     public struct Skipped: Sendable, Hashable {
         public let track: MatroskaTrack
@@ -67,6 +67,7 @@ public actor MatroskaRemuxer {
     private var bitmapDecoder = BitmapDecoder.pgs(PGSDecoder())
     private var bitmapCues: [BitmapSubtitle] = []
     private var decodedSegments = Set<Int>()
+    private var transcoders: [Int: AudioTranscoder] = [:]
 
     /// Reads the header and enough of the first clusters to configure Dolby audio, then plans segments.
     /// `targetSegment` nil picks a length from the file's bitrate (see `segmentLength`).
@@ -330,8 +331,16 @@ public actor MatroskaRemuxer {
             let entry = MP4.audioSampleEntry("fLaC", channels: t.channels, sampleRate: rate, children: MP4.fullBox("dfLa") { w in w.append(dfLa) })
             return .success(OutputTrack(role: .audio, source: t, codecString: "fLaC", timescale: UInt32(rate), label: label, sampleEntry: entry,
                                         frameSamples: firstFrame.flatMap(FLAC.blockSize) ?? 4096, codec: .flac))
-        case "A_DTS": return .failure(Unsupported(message: "DTS audio"))
-        case "A_TRUEHD", "A_MLP": return .failure(Unsupported(message: "Dolby TrueHD audio"))
+        case let id where decodedCodecIDs.contains(id):
+            // Decoded by the app's decoder (FFmpeg) and re-encoded as lossless 24-bit FLAC.
+            let channels = max(1, min(8, t.channels))
+            guard rate > 0, audioDecoders?.makeDecoder(codecID: id, codecPrivate: t.codecPrivate, sampleRate: rate, channels: channels) != nil else {
+                return .failure(Unsupported(message: id == "A_DTS" ? "DTS audio" : "Dolby TrueHD audio"))
+            }
+            let encoder = FLACEncoder(sampleRate: rate, channels: channels, bitsPerSample: 24)
+            let entry = MP4.audioSampleEntry("fLaC", channels: channels, sampleRate: rate, children: MP4.fullBox("dfLa") { w in w.append(encoder.dfLa) })
+            return .success(OutputTrack(role: .audio, source: t, codecString: "fLaC", timescale: UInt32(rate), label: label, sampleEntry: entry,
+                                        frameSamples: FLACEncoder.blockSize, codec: .decoded))
         // AVPlayer decodes Opus in MP4 files but not through HLS (checked on macOS 15 and the iOS 26 and
         // tvOS 26 simulators): the stream ends at once.
         case "A_OPUS": return .failure(Unsupported(message: "Opus audio"))
@@ -378,6 +387,8 @@ public actor MatroskaRemuxer {
         case "A_EAC3": codec = "Dolby Digital Plus"
         case "A_FLAC": codec = "FLAC"
         case "A_MPEG/L3": codec = "MP3"
+        case "A_DTS": codec = "DTS"
+        case "A_TRUEHD", "A_MLP": codec = "Dolby TrueHD"
         default: codec = t.codecID.hasPrefix("A_AAC") ? "AAC" : t.codecID
         }
         let layout = t.channels >= 8 ? "7.1" : (t.channels >= 6 ? "5.1" : (t.channels == 2 ? "Stereo" : (t.channels == 1 ? "Mono" : "\(t.channels)ch")))
@@ -597,6 +608,8 @@ public actor MatroskaRemuxer {
         let base: UInt64
         if t.role == .video {
             (samples, base) = videoSamples(blocks, segment: segment, track: t)
+        } else if t.codec == .decoded {
+            (samples, base) = decodedSamples(blocks, segment: segment, track: t)
         } else {
             (samples, base) = audioSamples(blocks, segment: segment, track: t)
         }
@@ -681,6 +694,54 @@ public actor MatroskaRemuxer {
             }
         }
         return (samples, UInt64((max(0, first.time) + presentationDelay) * rate / 1_000_000_000))
+    }
+
+    /// DTS or TrueHD, decoded and re-encoded as FLAC. Consecutive segments continue one decoder, so
+    /// they join seamlessly; after a seek the decoder starts afresh, timed from the first frame it decodes.
+    private func decodedSamples(_ blocks: [MatroskaBlock], segment: Segment, track: OutputTrack) -> ([MP4.Sample], UInt64) {
+        let isLast = segment.index == segments.count - 1
+        let isFirst = segment.index == 0
+        let chosen = blocks.filter { (isFirst || $0.time >= segment.start) && (isLast || $0.time < segment.end) }
+        let rate = Int64(track.timescale)
+        let channels = max(1, min(8, track.source.channels))
+        guard let transcoder = transcoders[track.id] ?? Self.audioDecoders?.makeDecoder(codecID: track.source.codecID, codecPrivate: track.source.codecPrivate,
+                                                                                      sampleRate: Int(rate), channels: channels)
+            .map({ AudioTranscoder(decoder: $0, sampleRate: Int(rate), channels: channels) }) else {
+            return ([], UInt64((max(0, segment.start) + presentationDelay) * rate / 1_000_000_000))
+        }
+        transcoders[track.id] = transcoder
+        if transcoder.lastSegment != segment.index - 1 || segment.index == 0 {
+            transcoder.decoder.reset()
+            transcoder.pending = []
+            transcoder.nextSample = nil
+        }
+        transcoder.lastSegment = segment.index
+        for block in chosen {
+            for frame in block.frames {
+                let decoded = transcoder.decoder.decode(frame)
+                guard !decoded.isEmpty else { continue }
+                if transcoder.nextSample == nil {
+                    transcoder.nextSample = (max(0, block.time) + presentationDelay) * rate / 1_000_000_000
+                }
+                transcoder.pending += decoded
+            }
+        }
+        let start = transcoder.nextSample ?? (max(0, segment.start) + presentationDelay) * rate / 1_000_000_000
+        var samples: [MP4.Sample] = []
+        let ch = transcoder.channels
+        var consumed = 0
+        transcoder.pending.withUnsafeBufferPointer { buffer in
+            let available = buffer.count / ch
+            while available - consumed >= FLACEncoder.blockSize || (isLast && available > consumed) {
+                let count = min(FLACEncoder.blockSize, available - consumed)
+                let slice = UnsafeBufferPointer(rebasing: buffer[(consumed * ch)..<((consumed + count) * ch)])
+                samples.append(MP4.Sample(data: transcoder.encoder.encodeFrame(slice, count: count), duration: UInt32(count), isSync: true))
+                consumed += count
+            }
+        }
+        transcoder.pending.removeFirst(consumed * ch)
+        transcoder.nextSample = start + Int64(consumed)
+        return (samples, UInt64(max(0, start)))
     }
 
     /// Demuxed blocks for a segment, shared by every rendition that asks for it. Serving one

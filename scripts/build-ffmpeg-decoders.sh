@@ -1,6 +1,6 @@
 #!/bin/bash
 # Builds a minimal FFmpeg (libavcodec + libavutil with only the DTS and Dolby TrueHD/MLP decoders)
-# as a static xcframework for iOS, tvOS, macOS and their simulators, into Vendor/FFmpegDecoders.
+# as a static xcframework for iOS, tvOS, macOS and their simulators, into Packages/FlowDecoders/FFmpegDecoders.
 #
 # LGPL 2.1: no GPL or non-free parts are enabled. Flow links it statically, which the LGPL allows
 # because Flow's own source is public, so anyone can relink against a modified FFmpeg.
@@ -12,7 +12,7 @@ VERSION=7.1.1
 SHA256=733984395e0dbbe5c046abda2dc49a5544e7e0e1e2366bba849222ae9e3a03b1
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=$ROOT/build/ffmpeg
-OUT=$ROOT/Vendor/FFmpegDecoders
+OUT=$ROOT/Packages/FlowDecoders/FFmpegDecoders
 JOBS=$(sysctl -n hw.ncpu)
 
 mkdir -p "$WORK"
@@ -45,7 +45,7 @@ build() {
   rm -rf "$WORK/build-$name-$arch" && mkdir -p "$WORK/build-$name-$arch" && cd "$WORK/build-$name-$arch"
   "$SRC/configure" --prefix="$dir" --arch="$arch" --cc="$cc" --sysroot="$sysroot" \
     --extra-cflags="-target $target" --extra-ldflags="-target $target" \
-    "${FLAGS[@]}" "${extra[@]}" > "$WORK/configure-$name-$arch.log"
+    "${FLAGS[@]}" ${extra[@]+"${extra[@]}"} > "$WORK/configure-$name-$arch.log"
   make -j"$JOBS" > "$WORK/make-$name-$arch.log" 2>&1 || { tail -40 "$WORK/make-$name-$arch.log"; exit 1; }
   make install > /dev/null
   libtool -static -o "$dir/libFFmpegDecoders.a" "$dir/lib/libavcodec.a" "$dir/lib/libavutil.a" 2>/dev/null
