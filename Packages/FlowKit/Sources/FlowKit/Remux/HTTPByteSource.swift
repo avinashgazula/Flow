@@ -41,6 +41,15 @@ public actor HTTPByteSource: ByteSource {
         let isHead = head == nil && range.lowerBound < headSize
         let lower = isHead ? 0 : range.lowerBound
         let fetchUpper = isHead ? max(upper, headSize) : upper
+        // Big reads (4K segments) go out as parallel range requests: CDNs often cap each connection.
+        if !isHead, !parallelRefused, knownLength != nil, fetchUpper - lower >= 2 * parallelChunk {
+            do {
+                return try await parallelFetch(lower..<fetchUpper)
+            } catch {
+                // Some hosts limit connections per file: carry on one request at a time.
+                parallelRefused = true
+            }
+        }
         var bytes = try await fetch(lower..<fetchUpper)
         // Some servers cap how much one range response carries; ask again for the rest.
         while Int64(bytes.count) < fetchUpper - lower, !bytes.isEmpty {
@@ -57,6 +66,37 @@ public actor HTTPByteSource: ByteSource {
             return Array(bytes[from..<min(bytes.count, from + Int(upper - range.lowerBound))])
         }
         return Array(bytes.prefix(Int(upper - range.lowerBound)))
+    }
+
+    /// Each part of a big read (at least this size; at most `parallelism` parts at once).
+    private let parallelChunk: Int64 = 4 * 1024 * 1024
+    private let parallelism = 4
+    private var parallelRefused = false
+
+    private func parallelFetch(_ range: Range<Int64>) async throws -> [UInt8] {
+        let total = range.upperBound - range.lowerBound
+        let size = max(parallelChunk, (total + Int64(parallelism) - 1) / Int64(parallelism))
+        let parts = stride(from: range.lowerBound, to: range.upperBound, by: Int(size)).map { $0..<min($0 + size, range.upperBound) }
+        let pieces = try await withThrowingTaskGroup(of: (Int, [UInt8]).self) { group in
+            for (index, part) in parts.enumerated() {
+                group.addTask { (index, try await self.complete(part)) }
+            }
+            var out = [[UInt8]](repeating: [], count: parts.count)
+            for try await (index, bytes) in group { out[index] = bytes }
+            return out
+        }
+        return pieces.flatMap { $0 }
+    }
+
+    /// One range, re-requesting the remainder from servers that cap a response's size.
+    private func complete(_ range: Range<Int64>) async throws -> [UInt8] {
+        var bytes = try await fetch(range)
+        while Int64(bytes.count) < range.upperBound - range.lowerBound, !bytes.isEmpty {
+            let more = try await fetch((range.lowerBound + Int64(bytes.count))..<range.upperBound)
+            if more.isEmpty { break }
+            bytes += more
+        }
+        return bytes
     }
 
     private func fetch(_ range: Range<Int64>) async throws -> [UInt8] {

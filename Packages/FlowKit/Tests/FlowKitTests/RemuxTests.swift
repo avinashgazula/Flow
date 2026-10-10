@@ -118,7 +118,7 @@ struct RangeServingTransport: HTTPTransport {
         }
         let parts = header.dropFirst("bytes=".count).split(separator: "-").compactMap { Int($0) }
         let lower = min(parts[0], bytes.count)
-        let upper = min(parts[1] + 1, bytes.count, lower + cap)
+        let upper = min(parts[1] + 1, bytes.count, cap >= bytes.count ? bytes.count : lower + cap)
         let fields = ["Content-Range": "bytes \(lower)-\(upper - 1)/\(bytes.count)"]
         return (Data(bytes[lower..<upper]), HTTPURLResponse(url: url, statusCode: 206, httpVersion: nil, headerFields: fields)!)
     }
@@ -535,5 +535,69 @@ final class DolbyVisionProfileTests: XCTestCase {
         let p5 = try entry(profile: 5, compatibility: 0)
         XCTAssertTrue(p5.hasDV)
         XCTAssertTrue(p5.OutputTrack.codecString.hasPrefix("dvh1.05"))
+    }
+}
+
+final class ParallelReadTests: XCTestCase {
+    /// Serves ranges after a short delay and records how many were in flight at once.
+    final class SlowTransport: HTTPTransport, @unchecked Sendable {
+        let inner: RangeServingTransport
+        private let lock = NSLock()
+        private var inFlight = 0
+        private(set) var peak = 0
+        private(set) var requests = 0
+        init(bytes: [UInt8], cap: Int = .max) { inner = RangeServingTransport(bytes: bytes, cap: cap) }
+        func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+            lock.withLock { inFlight += 1; requests += 1; peak = max(peak, inFlight) }
+            try await Task.sleep(nanoseconds: 30_000_000)
+            defer { lock.withLock { inFlight -= 1 } }
+            return try await inner.send(request)
+        }
+    }
+
+    func testBigReadsGoOutInParallelAndReassembleInOrder() async throws {
+        // Position-dependent bytes, so any misplaced piece shows.
+        var bytes = [UInt8](repeating: 0, count: 24 * 1024 * 1024)
+        bytes.withUnsafeMutableBufferPointer { buffer in
+            for i in buffer.indices { buffer[i] = UInt8(truncatingIfNeeded: (i &* 2_654_435_761) >> 13) }
+        }
+        let transport = SlowTransport(bytes: bytes)
+        let source = HTTPByteSource(url: URL(string: "https://example.invalid/big.mkv")!, transport: transport, headSize: 1024)
+        _ = try await source.length()
+        let range: Range<Int64> = 1_000_000..<(1_000_000 + 18 * 1024 * 1024)
+        let read = try await source.read(range)
+        XCTAssertEqual(read.count, 18 * 1024 * 1024)
+        XCTAssertTrue(read == Array(bytes[1_000_000..<(1_000_000 + 18 * 1024 * 1024)]))
+        XCTAssertGreaterThan(transport.peak, 1)
+
+        // Servers that cap each response still deliver the whole range.
+        let capped = HTTPByteSource(url: URL(string: "https://example.invalid/big.mkv")!, transport: SlowTransport(bytes: bytes, cap: 3 * 1024 * 1024), headSize: 1024)
+        _ = try await capped.length()
+        let cappedRead = try await capped.read(range)
+        XCTAssertTrue(cappedRead == Array(bytes[1_000_000..<(1_000_000 + 18 * 1024 * 1024)]))
+    }
+
+    /// Refuses a second simultaneous connection, as some hosts do.
+    final class OneConnectionTransport: HTTPTransport, @unchecked Sendable {
+        let inner: RangeServingTransport
+        private let lock = NSLock()
+        private var inFlight = 0
+        init(bytes: [UInt8]) { inner = RangeServingTransport(bytes: bytes) }
+        func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+            let busy = lock.withLock { () -> Bool in inFlight += 1; return inFlight > 1 }
+            defer { lock.withLock { inFlight -= 1 } }
+            try await Task.sleep(nanoseconds: 20_000_000)
+            if busy { return (Data(), HTTPURLResponse(url: request.url!, statusCode: 429, httpVersion: nil, headerFields: nil)!) }
+            return try await inner.send(request)
+        }
+    }
+
+    func testHostsAllowingOneConnectionStillWork() async throws {
+        var bytes = [UInt8](repeating: 0, count: 12 * 1024 * 1024)
+        bytes.withUnsafeMutableBufferPointer { b in for i in b.indices { b[i] = UInt8(truncatingIfNeeded: i >> 7) } }
+        let source = HTTPByteSource(url: URL(string: "https://example.invalid/one.mkv")!, transport: OneConnectionTransport(bytes: bytes), headSize: 1024)
+        _ = try await source.length()
+        let read = try await source.read(100..<(100 + 10 * 1024 * 1024))
+        XCTAssertTrue(read == Array(bytes[100..<(100 + 10 * 1024 * 1024)]))
     }
 }
