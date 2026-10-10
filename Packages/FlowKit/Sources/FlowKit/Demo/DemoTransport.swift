@@ -94,6 +94,10 @@ public struct DemoTransport: HTTPTransport {
                 let wanted = Set(genres.split(separator: ",").compactMap { Int($0) })
                 list = list.filter { !wanted.isDisjoint(with: $0.genres) }
             }
+            if let providers = query["with_watch_providers"], !providers.isEmpty {
+                let wanted = Set(providers.split(separator: "|").compactMap { Int($0) })
+                list = list.filter { !wanted.isDisjoint(with: offeredOn($0)) }
+            }
             if query["sort_by"]?.hasPrefix("vote_average") == true { list.sort { $0.rating > $1.rating } }
             if query["sort_by"]?.contains("date.desc") == true { list.sort { $0.year > $1.year } }
             return page(list, page: pageNumber)
@@ -108,7 +112,7 @@ public struct DemoTransport: HTTPTransport {
             let table = path.contains("/movie") ? TMDBGenres.movie : TMDBGenres.tv
             return ["genres": table.map { ["id": $0.key, "name": $0.value] }]
         case "watch":
-            return ["results": []]
+            return ["results": parts.contains("providers") ? providerList : []]
         case "person":
             guard parts.count >= 2, let id = Int(parts[1]), let person = DemoCatalog.cast.first(where: { $0.0 == id }) else { return nil }
             return ["id": id, "name": person.1, "known_for_department": "Acting", "birthday": "1985-04-12", "place_of_birth": "Los Angeles, California",
@@ -209,6 +213,23 @@ public struct DemoTransport: HTTPTransport {
         ["provider_id": 337, "provider_name": "Disney Plus", "logo_path": "/7rwgEs15tFwyR9NPQ5vpzxTj19Q.jpg", "display_priority": 3],
         ["provider_id": 9, "provider_name": "Amazon Prime Video", "logo_path": "/emthp39XA2YScoYL1p0sdbAH2WA.jpg", "display_priority": 4],
     ]
+    /// The rest of the featured services, so every Home tile has titles behind it.
+    static let moreStreamingServices: [[String: Any]] = [
+        ["provider_id": 1899, "provider_name": "Max", "logo_path": "/jbe4gVSfRlbPTdESXhEKpornsfu.jpg", "display_priority": 5],
+        ["provider_id": 15, "provider_name": "Hulu", "logo_path": "/bxBlRPEPpMVDc4jMhSrTf2339DW.jpg", "display_priority": 6],
+        ["provider_id": 531, "provider_name": "Paramount Plus", "logo_path": "/h5DcR0J2EESLitnhR8xLG1QymTE.jpg", "display_priority": 7],
+        ["provider_id": 386, "provider_name": "Peacock Premium", "logo_path": "/2aGrp1xw3qhwCYvNGAJZPdjfeeX.jpg", "display_priority": 8],
+    ]
+
+    /// What `/watch/providers/movie` answers: the services above and the stores.
+    static var providerList: [[String: Any]] { streamingServices + moreStreamingServices + stores }
+
+    /// Provider ids a title streams on: one of the first four services, as its detail page says, and one of the rest.
+    static func offeredOn(_ t: DemoCatalog.Title) -> Set<Int> {
+        let ids = [streamingServices[t.id % streamingServices.count], moreStreamingServices[t.id % moreStreamingServices.count]]
+        return Set(ids.compactMap { $0["provider_id"] as? Int })
+    }
+
     static let stores: [[String: Any]] = [
         ["provider_id": 2, "provider_name": "Apple TV", "logo_path": "/peURlLlr8jggOwK53fJ5wdQl05y.jpg", "display_priority": 5],
         ["provider_id": 3, "provider_name": "Google Play Movies", "logo_path": "/tbEdFQDwx5LEVr8WpSeXQSIirVq.jpg", "display_priority": 6],

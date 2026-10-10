@@ -74,6 +74,9 @@ extension AppModel {
                 let detail = try await catalog.details(seed.type, id: seed.tmdbID)
                 let recommendations = detail.recommendations.isEmpty ? detail.similar : detail.recommendations
                 result = single(recommendations.filter { !isWatched($0) })
+            case .streamingServices, .genres:
+                // Tiles that open other shelves; they hold no titles of their own.
+                result = single([])
             }
         case .discover(let query):
             exempt = query.targetsFuture

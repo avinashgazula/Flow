@@ -271,6 +271,10 @@ public enum BuiltInShelf: String, Codable, Hashable, Sendable, CaseIterable {
     case mediaServerRecent
     /// Recommendations seeded by the last title you watched; the row is titled after it.
     case becauseYouWatched
+    /// A row of streaming-service tiles, each opening what's popular on that service.
+    case streamingServices
+    /// A row of genre tiles over artwork from a popular title in each.
+    case genres
 
     public var title: String {
         switch self {
@@ -294,8 +298,13 @@ public enum BuiltInShelf: String, Codable, Hashable, Sendable, CaseIterable {
         case .recommendedForYou: return "Recommended For You"
         case .mediaServerRecent: return "Recently Added to Your Server"
         case .becauseYouWatched: return "Because You Watched"
+        case .streamingServices: return "Streaming Services"
+        case .genres: return "Genres"
         }
     }
+
+    /// Rows of tiles that open other shelves rather than holding titles themselves.
+    public var isFolder: Bool { self == .streamingServices || self == .genres }
 
     /// Rows whose purpose is to show what's coming: never filtered for unreleased titles.
     public var showsUpcomingByDesign: Bool {
@@ -425,6 +434,8 @@ public struct ShelfConfig: Codable, Hashable, Sendable, Identifiable {
         .builtIn(.mediaServerRecent, enabled: false),
         .builtIn(.favourites, enabled: false),
         .builtIn(.recentlyWatched, enabled: false),
+        .builtIn(.streamingServices),
+        .builtIn(.genres),
     ]
 }
 

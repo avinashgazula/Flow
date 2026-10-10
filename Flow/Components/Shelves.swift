@@ -135,6 +135,10 @@ struct ShelfView: View {
                 ContinueWatchingShelf(title: shelf.title, nextUpOnly: b == .nextUp)
             } else if case .builtIn(.upcomingEpisodes) = shelf.source {
                 UpcomingShelf(shelf: shelf)
+            } else if case .builtIn(.streamingServices) = shelf.source {
+                StreamingServicesShelf(shelf: shelf)
+            } else if case .builtIn(.genres) = shelf.source {
+                GenresShelf(shelf: shelf)
             } else if !items.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     SectionHeader(title ?? shelf.title, route: .shelf(shelf))
@@ -150,8 +154,9 @@ struct ShelfView: View {
     }
 
     private func load() async {
-        // Upcoming loads its own dated entries.
+        // Upcoming loads its own dated entries, and folder rows their own tiles.
         if case .builtIn(.upcomingEpisodes) = shelf.source { return }
+        if case .builtIn(let builtIn) = shelf.source, builtIn.isFolder { return }
         if case .builtIn(.becauseYouWatched) = shelf.source, let seed = model.becauseYouWatchedSeed,
            let source = await model.hydrate([seed]).first {
             title = "Because You Watched \(source.title)"

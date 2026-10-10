@@ -96,8 +96,44 @@ struct HomeView: View {
     }
 }
 
-/// "Show All" for any shelf, with paging where the source supports it.
+/// "Show All" for any shelf. A streaming service's page offers Movies or TV Shows.
 struct ShelfGridView: View {
+    let shelf: ShelfConfig
+    @State private var type: MediaType?
+
+    private var providerQuery: DiscoverQuery? {
+        if case .discover(let query) = shelf.source, !query.watchProviders.isEmpty { return query }
+        return nil
+    }
+
+    /// The shelf with the picked type applied.
+    private var typed: ShelfConfig {
+        guard let type, var query = providerQuery else { return shelf }
+        query.type = type
+        var copy = shelf
+        copy.source = .discover(query)
+        return copy
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if let query = providerQuery {
+                Picker("Type", selection: Binding(get: { type ?? query.type }, set: { type = $0 })) {
+                    Text("Movies").tag(MediaType.movie)
+                    Text("TV Shows").tag(MediaType.show)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, Theme.Space.gutter)
+                .padding(.vertical, Theme.Space.xs)
+            }
+            ShelfGridContent(shelf: typed).id(type)
+        }
+        .navigationTitle(shelf.title)
+    }
+}
+
+/// One type's worth of a shelf, with paging where the source supports it.
+private struct ShelfGridContent: View {
     let shelf: ShelfConfig
     @Environment(AppModel.self) private var model
     @State private var items: [MediaItem] = []
@@ -115,7 +151,6 @@ struct ShelfGridView: View {
                 ContentUnavailableView("Couldn't Load", systemImage: "exclamationmark.triangle", description: Text(error))
             }
         }
-        .navigationTitle(shelf.title)
         .task { if items.isEmpty { await loadMore() } }
     }
 

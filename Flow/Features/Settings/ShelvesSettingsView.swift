@@ -145,7 +145,7 @@ struct ShelvesSettingsView: View {
 
     private func icon(_ source: ShelfSource) -> String {
         switch source {
-        case .builtIn: return "star"
+        case .builtIn(let builtIn): return builtIn.isFolder ? "folder" : "star"
         case .discover: return "sparkles"
         case .traktList: return "checkmark.circle"
         case .mdblist: return "star.square.on.square"

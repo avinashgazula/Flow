@@ -84,6 +84,15 @@ public actor CatalogService {
         return Page(items: items.items, page: items.page, totalPages: items.totalPages)
     }
 
+    /// The featured streaming services for the viewer's region, with logos. Falls back to names alone offline.
+    public func streamingServices() async -> [StreamingService] {
+        let client = tmdb
+        let available = (try? await cache.cached("providers:movie:\(client.region):\(lang)", maxAge: detailMaxAge * 2) {
+            try await client.watchProviders(.movie)
+        }) ?? []
+        return StreamingServices.resolve(available: available)
+    }
+
     struct CachedPage: Codable, Sendable { var items: [MediaItem]; var page: Int; var totalPages: Int }
 
     // MARK: Hydration
