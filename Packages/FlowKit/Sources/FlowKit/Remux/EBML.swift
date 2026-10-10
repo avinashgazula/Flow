@@ -84,10 +84,15 @@ enum EBML {
     /// Clamped to 2^48 so a corrupt value can't trap when converted to Int or multiplied by a
     /// timecode scale. Real positions and times stay far below it (2^48 bytes is 281 TB).
     static func uint(_ b: [UInt8], _ e: Element) -> UInt64 {
+        min(bits(b, e), 1 << 48)
+    }
+
+    /// The payload's raw bits, unclamped (floats need every one).
+    private static func bits(_ b: [UInt8], _ e: Element) -> UInt64 {
         guard let end = e.end, end <= b.count, end >= e.dataStart else { return 0 }
         var value: UInt64 = 0
         for k in e.dataStart..<end { value = value << 8 | UInt64(b[k]) }
-        return min(value, 1 << 48)
+        return value
     }
 
     static func int(_ b: [UInt8], _ e: Element) -> Int64 {
@@ -99,7 +104,7 @@ enum EBML {
 
     static func float(_ b: [UInt8], _ e: Element) -> Double {
         guard let end = e.end, end <= b.count else { return 0 }
-        let bits = uint(b, e)
+        let bits = bits(b, e)
         switch end - e.dataStart {
         case 4: return Double(Float(bitPattern: UInt32(truncatingIfNeeded: bits)))
         case 8: return Double(bitPattern: bits)
