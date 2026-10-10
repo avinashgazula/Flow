@@ -357,7 +357,8 @@ struct HeroCarousel: View {
     @State private var interacting = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var isCard: Bool { model.settings.general.heroStyle == .card }
+    /// Apple TV keeps the full-bleed hero: a card would sit under the tab bar, as the TV app never does.
+    private var isCard: Bool { !Platform.isTV && model.settings.general.heroStyle == .card }
 
     var body: some View {
         let stretches = !isCard
