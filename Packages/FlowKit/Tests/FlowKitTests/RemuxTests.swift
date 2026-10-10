@@ -697,17 +697,19 @@ final class DecodedAudioTests: XCTestCase {
     }
 
     func testSeekingRestartsTheDecoderAndTimesFromItsFirstOutput() async throws {
-        let provider = FakeProvider(warmUp: 3)
-        MatroskaRemuxer.audioDecoders = provider
-        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("dts-commentary")), targetSegment: 2)
-        let dts = try XCTUnwrap(remuxer.audio.first { $0.source.codecID == "A_DTS" })
-        let last = remuxer.segments.count - 1
-        let fragment = try await remuxer.mediaSegment(track: dts.id, index: last) ?? []
-        XCTAssertGreaterThan(RemuxTests.sampleCount(fragment), 0)
-        // tfdt: the decode time starts after the frames the decoder swallowed.
-        let tfdt = try XCTUnwrap(RemuxTests.baseDecodeTime(fragment))
-        let segmentStart = UInt64(remuxer.segments[last].start + remuxer.presentationDelay) * UInt64(dts.timescale) / 1_000_000_000
-        XCTAssertGreaterThan(tfdt, segmentStart)
+        // The same seek with a decoder that outputs at once, and one that swallows three frames first.
+        func seekTime(warmUp: Int) async throws -> UInt64 {
+            MatroskaRemuxer.audioDecoders = FakeProvider(warmUp: warmUp)
+            let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("dts-commentary")), targetSegment: 2)
+            let dts = try XCTUnwrap(remuxer.audio.first { $0.source.codecID == "A_DTS" })
+            let fragment = try await remuxer.mediaSegment(track: dts.id, index: remuxer.segments.count - 1) ?? []
+            XCTAssertGreaterThan(RemuxTests.sampleCount(fragment), 0)
+            return try XCTUnwrap(RemuxTests.baseDecodeTime(fragment))
+        }
+        let immediate = try await seekTime(warmUp: 0)
+        let delayed = try await seekTime(warmUp: 3)
+        // Three DTS frames of 512 samples at 48 kHz.
+        XCTAssertEqual(Int(delayed) - Int(immediate), 3 * 512, accuracy: 48)
     }
 
     func testWithoutADecoderDTSStaysUnplayable() async throws {

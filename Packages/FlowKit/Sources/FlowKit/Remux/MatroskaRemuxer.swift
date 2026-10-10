@@ -682,9 +682,9 @@ public actor MatroskaRemuxer {
     }
 
     private func audioSamples(_ blocks: [MatroskaBlock], segment: Segment, track: OutputTrack) -> ([MP4.Sample], UInt64) {
-        let isLast = segment.index == segments.count - 1
-        let isFirst = segment.index == 0
-        let chosen = blocks.filter { (isFirst || $0.time >= segment.start) && (isLast || $0.time < segment.end) }
+        // Every frame stored in this segment's bytes, whatever its timestamp: muxers interleave audio a
+        // little ahead of or behind the video, so filtering by time would drop frames at the boundaries.
+        let chosen = blocks
         let rate = Int64(track.timescale)
         guard let first = chosen.first else { return ([], UInt64((max(0, segment.start) + presentationDelay) * rate / 1_000_000_000)) }
         var samples: [MP4.Sample] = []
@@ -708,8 +708,9 @@ public actor MatroskaRemuxer {
     /// they join seamlessly; after a seek the decoder starts afresh, timed from the first frame it decodes.
     private func decodedSamples(_ blocks: [MatroskaBlock], segment: Segment, track: OutputTrack) -> ([MP4.Sample], UInt64) {
         let isLast = segment.index == segments.count - 1
-        let isFirst = segment.index == 0
-        let chosen = blocks.filter { (isFirst || $0.time >= segment.start) && (isLast || $0.time < segment.end) }
+        // Every frame stored in this segment's bytes, whatever its timestamp: muxers interleave audio a
+        // little ahead of or behind the video, so filtering by time would drop frames at the boundaries.
+        let chosen = blocks
         let rate = Int64(track.timescale)
         let channels = max(1, min(8, track.source.channels))
         guard let transcoder = transcoders[track.id] ?? Self.audioDecoders?.makeDecoder(codecID: track.source.codecID, codecPrivate: track.source.codecPrivate,

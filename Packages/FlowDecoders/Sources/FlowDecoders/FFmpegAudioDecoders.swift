@@ -5,7 +5,10 @@ import CFFmpegDecoders
 /// DTS (including DTS-HD Master Audio) and Dolby TrueHD decoding with FFmpeg's libavcodec, for
 /// the MKV remuxer, which re-encodes the output as lossless FLAC for Apple's player.
 public struct FFmpegAudioDecoders: AudioDecoderProvider {
-    public init() {}
+    public init() {
+        // Decoding restarts mid-stream after every seek; FFmpeg's complaints until the next sync point are expected.
+        av_log_set_level(AV_LOG_QUIET)
+    }
 
     public func makeDecoder(codecID: String, codecPrivate: [UInt8], sampleRate: Int, channels: Int) -> AudioDecoding? {
         let id: AVCodecID
