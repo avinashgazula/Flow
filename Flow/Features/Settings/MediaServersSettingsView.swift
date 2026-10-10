@@ -67,6 +67,8 @@ struct MediaServersSettingsView: View {
                 Button("Refresh Library Index") { Task { await model.refreshServerIndex() } }
                 LabeledContent("Indexed Titles", value: "\(model.serverKeys.count)")
             }
+
+            SeerrSettingsSection()
         }
         .sheet(isPresented: $adding) { AddServerView().environment(model) }
         .task(id: model.settings.mediaServers.servers.map(\.id)) { await probe() }

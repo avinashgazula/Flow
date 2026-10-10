@@ -187,6 +187,7 @@ struct DetailView: View {
                     }
                 }
             }
+            RequestButton(item: current, seasons: detail?.seasons ?? [])
             if let next = detail?.nextEpisode, let date = next.airDate {
                 Label("\(next.code) airs \(AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))", systemImage: "calendar")
                     .font(Theme.Typeface.caption)

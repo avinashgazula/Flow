@@ -60,6 +60,7 @@ public enum SetupShare {
         s.sync.lastTrackerSync = nil
         guard !includeSecrets else { return s }
         s.mediaServers.servers = s.mediaServers.servers.map { var c = $0; c.accessToken = nil; c.userID = nil; return c }
+        s.mediaServers.seerr?.apiKey = ""
         s.webDAV = s.webDAV.map { var c = $0; c.password = nil; return c }
         s.liveTV.providers = s.liveTV.providers.map { var c = $0; c.password = nil; return c }
         return s
@@ -102,6 +103,9 @@ public enum SetupShare {
             var c = server
             if c.accessToken == nil, let old = existingServers[c.id] { c.accessToken = old.accessToken; c.userID = old.userID }
             return c
+        }
+        if s.mediaServers.seerr?.apiKey.isEmpty == true, let old = settings.mediaServers.seerr, old.baseURL == s.mediaServers.seerr?.baseURL {
+            s.mediaServers.seerr?.apiKey = old.apiKey
         }
         s.sync = settings.sync
         var creds = credentials
