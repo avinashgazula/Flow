@@ -30,8 +30,9 @@ def glyph_mask(dark: np.ndarray) -> np.ndarray:
     green = dark[:, :, 1]
     background = np.median(green[:, 900:], axis=1, keepdims=True)
     mask = np.clip((green - background) / (255.0 - background), 0.0, 1.0)
-    # The background's slight radial falloff leaves faint noise; it isn't glyph.
-    return np.where(mask < 0.06, 0.0, mask)
+    # The background's radial falloff and the faint reflection under the glyph read up to ~0.06;
+    # the glyph's own edges never drop below ~0.4.
+    return np.where(mask < 0.12, 0.0, mask)
 
 
 def light_icon(dark: Image.Image) -> Image.Image:
