@@ -630,7 +630,7 @@ struct IOSPlayerControls: View {
                     }
             }
 
-            SubtitleLayer(session: session, settings: model.settings.subtitles)
+            SubtitleLayer(session: session, settings: model.settings.subtitles, lifted: visible)
 
             if visible {
                 controls.transition(.opacity)
@@ -995,6 +995,8 @@ struct PlaybackInfoPanel: View {
 struct SubtitleLayer: View {
     let session: PlaybackSession
     let settings: SubtitleSettings
+    /// Raised clear of the scrubber while the controls show, as in Apple's TV app.
+    var lifted = false
 
     var body: some View {
         ZStack {
@@ -1003,6 +1005,8 @@ struct SubtitleLayer: View {
                 BitmapSubtitleView(overlay: bitmap)
             }
         }
+        .offset(y: lifted ? -72 : 0)
+        .animation(Theme.Motion.snappy, value: lifted)
         .allowsHitTesting(false)
     }
 }
