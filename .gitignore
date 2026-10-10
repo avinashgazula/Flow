@@ -6,3 +6,4 @@ xcuserdata/
 Config/Secrets.xcconfig
 .remux-out/
 build/
+.claude/worktrees/
