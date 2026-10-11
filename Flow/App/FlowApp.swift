@@ -34,7 +34,13 @@ struct FlowApp: App {
                 }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active { model.scheduleNotificationRefresh() }
+                    if phase == .background { model.flushSettings() }
                 }
+                #if os(macOS)
+                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                    model.flushSettings(waits: true)
+                }
+                #endif
                 // Results land while Flow is open, so look for new ones every few minutes.
                 .task(id: model.settings.general.matchResultNotifications) {
                     guard model.settings.general.matchResultNotifications else { return }

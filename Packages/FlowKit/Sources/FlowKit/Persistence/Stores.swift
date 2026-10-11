@@ -61,31 +61,55 @@ public actor ResponseCache {
     struct Entry<T: Codable>: Codable { var storedAt: Date; var value: T }
     let store: JSONFileStore
     private var memory: [String: (Date, Any)] = [:]
+    /// Requests already on their way, so shelves asking for the same thing at launch share one fetch.
+    private var inflight: [String: Task<Any, Error>] = [:]
 
     public init(store: JSONFileStore) { self.store = store }
 
     public func value<T: Codable & Sendable>(_ key: String, maxAge: TimeInterval, as type: T.Type = T.self) -> T? {
-        if let (date, value) = memory[key], Date().timeIntervalSince(date) < maxAge, let typed = value as? T { return typed }
-        guard let entry = store.load(Entry<T>.self, Self.fileName(key)), Date().timeIntervalSince(entry.storedAt) < maxAge else { return nil }
+        guard let (date, value) = entry(key, as: type), Date().timeIntervalSince(date) < maxAge else { return nil }
+        return value
+    }
+
+    /// The stored value and when it was stored, however old.
+    private func entry<T: Codable & Sendable>(_ key: String, as type: T.Type) -> (Date, T)? {
+        if let (date, value) = memory[key], let typed = value as? T { return (date, typed) }
+        guard let entry = store.load(Entry<T>.self, Self.fileName(key)) else { return nil }
         memory[key] = (entry.storedAt, entry.value)
-        return entry.value
+        return (entry.storedAt, entry.value)
     }
 
     public func set<T: Codable & Sendable>(_ value: T, for key: String) {
-        memory[key] = (Date(), value)
-        store.save(Entry(storedAt: Date(), value: value), Self.fileName(key))
+        let now = Date()
+        memory[key] = (now, value)
+        // Encoding and writing happen off the actor: they're the slow part, and nothing waits on them.
+        let store = self.store, name = Self.fileName(key)
+        Task.detached(priority: .utility) { store.save(Entry(storedAt: now, value: value), name) }
     }
 
-    /// Returns a cached value or computes and stores a fresh one.
-    public func cached<T: Codable & Sendable>(_ key: String, maxAge: TimeInterval, _ produce: @Sendable () async throws -> T) async throws -> T {
-        if let hit: T = value(key, maxAge: maxAge) { return hit }
-        let fresh = try await produce()
-        set(fresh, for: key)
-        return fresh
+    /// Returns a cached value or computes and stores a fresh one. Concurrent calls for the same key
+    /// share one computation; when it fails, an expired copy is better than nothing (offline, a
+    /// flaky network), so that's returned instead of the error.
+    public func cached<T: Codable & Sendable>(_ key: String, maxAge: TimeInterval, _ produce: @Sendable @escaping () async throws -> T) async throws -> T {
+        let stale = entry(key, as: T.self)
+        if let (date, value) = stale, Date().timeIntervalSince(date) < maxAge { return value }
+        if let running = inflight[key], let value = try? await running.value as? T { return value }
+        let task = Task<Any, Error> { try await produce() }
+        inflight[key] = task
+        defer { inflight[key] = nil }
+        do {
+            guard let fresh = try await task.value as? T else { throw CancellationError() }
+            set(fresh, for: key)
+            return fresh
+        } catch {
+            if let (_, value) = stale { return value }
+            throw error
+        }
     }
 
     public func clear() {
         memory = [:]
+        inflight = [:]
         store.removeAll()
     }
 

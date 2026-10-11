@@ -49,6 +49,10 @@ final class AppModel {
     @ObservationIgnored private var cloudObserver: NSObjectProtocol?
     @ObservationIgnored private var cloudPushTask: Task<Void, Never>?
 
+    @ObservationIgnored private var settingsSaveTask: Task<Void, Never>?
+    /// Settings and library writes, one at a time and in order, so an older copy never lands last.
+    static let persistence = DispatchQueue(label: "app.flow.persistence", qos: .utility)
+
     var settings: AppSettings {
         didSet {
             guard settings != oldValue else { return }
@@ -215,11 +219,30 @@ final class AppModel {
         URLCache.shared = URLCache(memoryCapacity: 128 * 1024 * 1024, diskCapacity: 1024 * 1024 * 1024)
     }
 
+    /// Saves a moment after the last change, off the main thread: dragging a slider changes
+    /// settings dozens of times a second, and each save encodes and writes the whole file.
     private func saveSettings() {
         guard !isDemo else { return }
-        if let data = try? SettingsCodec.encode(settings) {
-            try? data.write(to: store.directory.appendingPathComponent("settings.json"), options: .atomic)
+        settingsSaveTask?.cancel()
+        settingsSaveTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard !Task.isCancelled else { return }
+            self?.flushSettings()
         }
+    }
+
+    /// Writes settings now (also when the app moves to the background, so nothing pending is lost).
+    /// `waits` writes before returning, for when the app is about to quit.
+    func flushSettings(waits: Bool = false) {
+        guard !isDemo else { return }
+        settingsSaveTask?.cancel()
+        settingsSaveTask = nil
+        let snapshot = settings
+        let url = store.directory.appendingPathComponent("settings.json")
+        let write: @Sendable () -> Void = {
+            if let data = try? SettingsCodec.encode(snapshot) { try? data.write(to: url, options: .atomic) }
+        }
+        if waits { Self.persistence.sync(execute: write) } else { Self.persistence.async(execute: write) }
     }
 
     private func settingsDidChange(from old: AppSettings) {
@@ -361,7 +384,9 @@ final class AppModel {
 
     private func localLibraryDidChange(_ library: LocalLibrary) {
         localLibrary = library
-        store.save(library, "library")
+        // The library carries every title's details, so encoding it is too slow for the main thread.
+        let store = self.store
+        Self.persistence.async { store.save(library, "library") }
         if settings.account.tracker == .local || settings.account.watchlistDestination == .local || settings.account.favouritesDestination == .local {
             applyLocalLists()
         }

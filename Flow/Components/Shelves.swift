@@ -150,7 +150,23 @@ struct ShelfView: View {
             }
         }
         .animation(Theme.Motion.fade, value: items.isEmpty)
-        .task(id: "\(shelf.id)-\(model.contentVersion)") { await load() }
+        .task(id: "\(shelf.id)-\(reloadKey)") { await load() }
+    }
+
+    /// What this row's contents depend on. Catalogue rows (trending, popular, Discover) don't change
+    /// when you mark something watched, so they don't reload with every library change.
+    private var reloadKey: String {
+        var filters = "\(model.settings.general.contentShelfLength)-\(model.settings.metadata.showUnreleasedTitles)"
+        // Filtering to your servers depends on their index, which refreshes with the library.
+        if model.settings.mediaServers.onlyShowServerContent { filters += "-\(model.contentVersion)" }
+        switch shelf.source {
+        case .builtIn(let builtIn) where builtIn.isContentShelf && builtIn != .recommendedForYou && builtIn != .becauseYouWatched:
+            return filters
+        case .discover:
+            return filters
+        default:
+            return "\(filters)-\(model.contentVersion)"
+        }
     }
 
     private func load() async {
@@ -161,7 +177,8 @@ struct ShelfView: View {
            let source = await model.hydrate([seed]).first {
             title = "Because You Watched \(source.title)"
         }
-        if let loadedItems = try? await model.shelfItems(for: shelf) { items = loadedItems }
+        // Unchanged contents leave the row alone, so a reload never re-renders it.
+        if let loadedItems = try? await model.shelfItems(for: shelf), loadedItems != items { items = loadedItems }
         loaded = true
     }
 }

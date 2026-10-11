@@ -18,6 +18,10 @@ actor ImagePipeline {
         return c
     }()
     private var inflight: [String: Task<CGImage?, Never>] = [:]
+    /// The largest size each image has been decoded at, so a smaller request (a poster after the
+    /// detail page showed it bigger) is answered from memory instead of decoding again.
+    nonisolated(unsafe) private var largest: [String: Int] = [:]
+    private let largestLock = NSLock()
     private var colors: [URL: ArtworkColor] = [:]
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
@@ -29,15 +33,20 @@ actor ImagePipeline {
 
     /// Memory-cached, synchronous lookup so cells can render instantly when scrolled back into view.
     nonisolated func cached(_ url: URL, maxPixel: Int) -> CGImage? {
-        cache.object(forKey: Self.key(url, maxPixel))?.image
+        if let exact = cache.object(forKey: Self.key(url, maxPixel))?.image { return exact }
+        let size = largestLock.withLock { largest[url.absoluteString] }
+        guard let size, size > maxPixel else { return nil }
+        return cache.object(forKey: Self.key(url, size))?.image
     }
 
     func image(_ url: URL, maxPixel: Int) async -> CGImage? {
         let key = Self.key(url, maxPixel)
-        if let hit = cache.object(forKey: key) { return hit.image }
+        if let hit = cached(url, maxPixel: maxPixel) { return hit }
         if let running = inflight[key as String] { return await running.value }
         let session = self.session
-        let task = Task<CGImage?, Never> {
+        // Detached: decoding is the expensive part, and inheriting the actor would run every
+        // image's decode one after another.
+        let task = Task.detached(priority: .userInitiated) { () -> CGImage? in
             guard let (data, response) = try? await session.data(from: url),
                   (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true else { return nil }
             return Self.downsample(data, maxPixel: maxPixel)
@@ -45,7 +54,12 @@ actor ImagePipeline {
         inflight[key as String] = task
         let image = await task.value
         inflight[key as String] = nil
-        if let image { cache.setObject(Box(image), forKey: key, cost: image.bytesPerRow * image.height) }
+        if let image {
+            cache.setObject(Box(image), forKey: key, cost: image.bytesPerRow * image.height)
+            largestLock.withLock {
+                if (largest[url.absoluteString] ?? 0) < maxPixel { largest[url.absoluteString] = maxPixel }
+            }
+        }
         return image
     }
 
