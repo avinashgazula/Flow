@@ -7,6 +7,9 @@ struct SeasonsSection: View {
     let episodesBySeason: [Int: [Episode]]
     @Binding var selectedSeason: Int
     var libraryProviderID: String?
+    var isLoading = false
+    var failed = false
+    var retry: () -> Void = {}
     @Environment(AppModel.self) private var model
 
     private var orderedSeasons: [Season] {
@@ -40,7 +43,16 @@ struct SeasonsSection: View {
 
             seasonPicker
 
-            if episodes.isEmpty {
+            if episodes.isEmpty && !isLoading {
+                VStack(spacing: Theme.Space.s) {
+                    Text(failed ? "Couldn't load the episodes." : "No episodes listed for this season yet.")
+                        .font(Theme.Typeface.body)
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                    if failed { Button("Try Again", action: retry).buttonStyle(GlassButtonStyle()) }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Theme.Space.l)
+            } else if episodes.isEmpty {
                 VStack(spacing: Theme.Space.s) {
                     ForEach(0..<3, id: \.self) { _ in
                         RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.Palette.surface).frame(height: 84)

@@ -10,6 +10,8 @@ struct DetailView: View {
     @State private var ratings = Ratings()
     @State private var error: String?
     @State private var episodesBySeason: [Int: [Episode]] = [:]
+    @State private var loadingEpisodes = true
+    @State private var episodesFailed = false
     @State private var selectedSeason = 1
     @State private var selectedTrailer = 0
     @State private var rewatching = false
@@ -27,7 +29,8 @@ struct DetailView: View {
                 header
                 // Specials alone, with Specials Season off, leave nothing to list.
                 if current.type == .show, let detail, detail.seasons.contains(where: { $0.number > 0 || general.showSpecialsSeason }) {
-                    SeasonsSection(show: current, seasons: detail.seasons, episodesBySeason: episodesBySeason, selectedSeason: $selectedSeason, libraryProviderID: libraryProviderID)
+                    SeasonsSection(show: current, seasons: detail.seasons, episodesBySeason: episodesBySeason, selectedSeason: $selectedSeason, libraryProviderID: libraryProviderID,
+                                   isLoading: loadingEpisodes, failed: episodesFailed) { Task { await loadEpisodes(detail) } }
                 }
                 if let detail {
                     sections(detail)
@@ -147,7 +150,13 @@ struct DetailView: View {
         if current.type == .show, let key = current.key, let entry = model.continueWatching.first(where: { $0.key == key }), let ep = entry.episode {
             return entry.progress != nil ? "Resume \(ep.code)" : "Play \(ep.code)"
         }
-        return current.type == .show ? "Play S01E01" : "Play"
+        // What Play opens: the next unwatched aired episode (a rewatch keeps its own list, so just "Play").
+        if current.type == .show, !rewatching, let detail, let key = current.key {
+            let aired = AppModel.airedEpisodes(detail)
+            let state = model.showStates[key] ?? ShowWatchState(key: key)
+            if let next = state.nextUp(aired: aired) ?? aired.first { return "Play \(next.code)" }
+        }
+        return "Play"
     }
 
     private var actions: some View {
@@ -389,9 +398,7 @@ struct DetailView: View {
             }
             async let ratingsTask = catalog.ratings(for: loaded.item)
             async let reviewsTask = fetchReviews(from: catalog, for: loaded.item)
-            if loaded.item.type == .show, let provider = model.episodeProvider {
-                episodesBySeason = (try? await provider.episodes(for: loaded.item, seasons: loaded.seasons)) ?? [:]
-            }
+            if loaded.item.type == .show { await loadEpisodes(loaded) }
             let fetched = await ratingsTask
             withAnimation(Theme.Motion.fade) { ratings = fetched }
             let fetchedReviews = await reviewsTask
@@ -399,6 +406,23 @@ struct DetailView: View {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+}
+
+extension DetailView {
+    /// Every season's episodes in one go; a failure leaves a Try Again in place of the list.
+    fileprivate func loadEpisodes(_ loaded: MediaDetail) async {
+        guard let provider = model.episodeProvider else { loadingEpisodes = false; return }
+        loadingEpisodes = true
+        episodesFailed = false
+        do {
+            episodesBySeason = try await provider.episodes(for: loaded.item, seasons: loaded.seasons)
+        } catch is CancellationError {
+            return
+        } catch {
+            episodesFailed = true
+        }
+        loadingEpisodes = false
     }
 }
 
