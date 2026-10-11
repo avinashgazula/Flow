@@ -29,8 +29,8 @@ struct HomeView: View {
                         ForEach(shelves) { shelf in
                             ShelfView(shelf: shelf)
                         }
-                        if model.settings.mediaServers.serverHomeRows && !model.mediaServers.isEmpty {
-                            ServerLibrariesShelf()
+                        ForEach(model.mediaServers.map(\.config).filter { model.settings.mediaServers.showsHomeRow(for: $0.id) }) { server in
+                            ServerLibrariesShelf(server: server)
                         }
                         if shelves.isEmpty {
                             ContentUnavailableView("No Shelves", systemImage: "square.grid.2x2", description: Text("Turn shelves on in Settings → Shelves."))

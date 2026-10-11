@@ -70,11 +70,16 @@ struct ShelvesSettingsView: View {
             }
 
             Section {
-                Toggle("Show Libraries on Home", isOn: $model.settings.mediaServers.serverHomeRows)
+                ForEach(model.settings.mediaServers.servers.filter(\.enabled)) { server in
+                    Toggle(server.name, isOn: Binding(
+                        get: { model.settings.mediaServers.showsHomeRow(for: server.id) },
+                        set: { model.settings.mediaServers.setHomeRow($0, for: server.id) }
+                    ))
+                }
             } header: {
                 Text("Server Home Rows")
             } footer: {
-                Text("Adds a row to Home with each connected media server's own libraries, using the server's cover images.")
+                Text("Adds a row to Home showing a server's own libraries and collections, in the order and with the covers set on that server. Your other shelves stay.")
             }
 
             #if !os(tvOS)

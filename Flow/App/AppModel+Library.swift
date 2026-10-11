@@ -345,28 +345,35 @@ extension AppModel {
         cloud.clear()
         do {
             try cloud.push(settings: settings, library: localLibrary, includeLibrary: true)
+            cloudWriteFailed = false
             settings.sync.lastCloudSync = Date()
             showToast("iCloud copy reset")
         } catch {
+            cloudWriteFailed = true
             showToast("iCloud reset failed: \(error.localizedDescription)")
         }
     }
 
     /// Everything the on-device tracker holds, and the same in the iCloud copy.
     func deleteAllTrackingData() async {
+        let old = localLibrary
         await local.replace(LocalLibrary())
         try? cloud.clearTracking()
         await refreshLibrary(force: true)
-        showToast("Tracking data deleted")
+        let parts = [(old.history.count, "watched"), (old.watchlist.count, "watchlist"), (old.favourites.count, "favourites"),
+                     (old.progress.count, "resume positions"), (old.rewatches.count, "rewatches")]
+            .filter { $0.0 > 0 }.map { "\($0.0) \($0.1)" }
+        showToast(parts.isEmpty ? "Tracking data deleted" : "Tracking data deleted: " + parts.joined(separator: ", "))
     }
 
     /// Image, metadata and remux header caches. Tracking data and downloads are untouched.
     func clearAllCaches() async {
+        let before = JSONFileStore.caches("FlowResponses").sizeInBytes + JSONFileStore.caches("FlowMatroskaHeaders").sizeInBytes + Int64(URLCache.shared.currentDiskUsage)
         URLCache.shared.removeAllCachedResponses()
         await catalog?.clearCache()
         await cache.clear()
         await MatroskaHeaderCache.shared.clear()
-        showToast("Cache cleared")
+        showToast(before > 0 ? "Cache cleared: \(ByteCountFormatter.string(fromByteCount: before, countStyle: .file)) freed" : "Cache cleared")
     }
 
     /// The on-device library as a JSON file in the temp directory, ready for a ShareLink.

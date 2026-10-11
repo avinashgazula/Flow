@@ -216,25 +216,21 @@ struct UpcomingShelf: View {
     }
 }
 
-/// Each connected server's libraries as cards with the server's own cover art.
+/// One server's libraries as cards with the server's own cover art, titled with the server's name.
 struct ServerLibrariesShelf: View {
+    let server: MediaServerConfig
     @Environment(AppModel.self) private var model
     @State private var libraries: [AppModel.ServerLibrary] = []
-
-    private var title: String {
-        let servers = model.mediaServers
-        return servers.count == 1 ? servers[0].config.name : "Your Servers"
-    }
 
     var body: some View {
         Group {
             if !libraries.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    SectionHeader<Route>(title)
+                    SectionHeader<Route>(server.name)
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
                             ForEach(libraries) { entry in
-                                ServerLibraryCard(entry: entry, showServer: model.mediaServers.count > 1)
+                                ServerLibraryCard(entry: entry)
                             }
                         }
                         .padding(.horizontal, Theme.Space.gutter)
@@ -249,15 +245,14 @@ struct ServerLibrariesShelf: View {
             }
         }
         .animation(Theme.Motion.fade, value: libraries.isEmpty)
-        .task(id: "\(model.settings.mediaServers.servers.map(\.id))-\(model.contentVersion)") {
-            libraries = await model.serverLibraries()
+        .task(id: "\(server.id)-\(model.contentVersion)") {
+            libraries = await model.serverLibraries(for: server.id)
         }
     }
 }
 
 private struct ServerLibraryCard: View {
     let entry: AppModel.ServerLibrary
-    let showServer: Bool
 
     private var width: CGFloat { Platform.landscapeWidth }
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous) }
@@ -281,13 +276,6 @@ private struct ServerLibraryCard: View {
                 .clipShape(shape)
                 .hairline(shape)
                 .artworkShadow(0.5)
-                if showServer {
-                    Text(entry.server.name)
-                        .font(.system(.caption))
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                        .lineLimit(1)
-                        .frame(width: width, alignment: .leading)
-                }
             }
         }
         .buttonStyle(CardButtonStyle())

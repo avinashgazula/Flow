@@ -499,12 +499,33 @@ public struct MediaServerSettings: Codable, Hashable, Sendable {
     /// Ignore the servers' own watched state, resume points and Continue Watching, and stop reporting
     /// playback to them: progress comes only from the tracking service.
     public var trackOnlyWithTracker = false
-    /// Adds a row of each server's own libraries and collections to Home.
+    /// Older all-servers switch; `migrateHomeRows()` turns it into `serverHomeRowIDs`.
     public var serverHomeRows = false
+    /// Servers that get a row of their own libraries and collections on Home.
+    public var serverHomeRowIDs: [String] = []
     /// A Seerr, Overseerr or Jellyseerr instance for requesting titles you don't have.
     public var seerr: SeerrConfig?
     public var preferDirectPlay = true
     public init() {}
+
+    /// Carries the old all-servers switch over to the per-server list once, so saved settings keep their Home rows.
+    public mutating func migrateHomeRows() {
+        guard serverHomeRows, !servers.isEmpty else { return }
+        if serverHomeRowIDs.isEmpty { serverHomeRowIDs = servers.map(\.id) }
+        serverHomeRows = false
+    }
+
+    /// Servers with a Home row switched on, in server order.
+    public var homeRowServers: [MediaServerConfig] {
+        servers.filter { serverHomeRowIDs.contains($0.id) }
+    }
+
+    public func showsHomeRow(for serverID: String) -> Bool { serverHomeRowIDs.contains(serverID) }
+
+    public mutating func setHomeRow(_ on: Bool, for serverID: String) {
+        serverHomeRowIDs.removeAll { $0 == serverID }
+        if on { serverHomeRowIDs.append(serverID) }
+    }
 }
 
 // MARK: - WebDAV

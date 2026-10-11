@@ -271,18 +271,10 @@ extension AppModel {
         }
     }
 
-    /// Every connected server's libraries, in server order.
-    func serverLibraries() async -> [ServerLibrary] {
-        let servers = mediaServers
-        let found = await withTaskGroup(of: (Int, [ServerLibrary]).self) { group in
-            for (index, server) in servers.enumerated() {
-                group.addTask { (index, ((try? await server.libraries()) ?? []).map { ServerLibrary(server: server.config, library: $0) }) }
-            }
-            var all: [(Int, [ServerLibrary])] = []
-            for await chunk in group { all.append(chunk) }
-            return all
-        }
-        return found.sorted { $0.0 < $1.0 }.flatMap(\.1)
+    /// One connected server's libraries, in the order the server lists them.
+    func serverLibraries(for serverID: String) async -> [ServerLibrary] {
+        guard let server = mediaServers.first(where: { $0.config.id == serverID }) else { return [] }
+        return ((try? await server.libraries()) ?? []).map { ServerLibrary(server: server.config, library: $0) }
     }
 
     /// Multi-search plus media-server results.

@@ -74,6 +74,8 @@ public struct CloudSnapshot: Sendable {
 
 public struct CloudSync: Sendable {
     public static let quotaBytes = 1_048_576
+    /// Most recent resume positions that go up; older ones stay local.
+    static let progressLimit = 150
     let store: KeyValueStore
 
     public init(store: KeyValueStore) { self.store = store }
@@ -107,7 +109,7 @@ public struct CloudSync: Sendable {
         try write(Self.portableSettings(settings), .settings)
         try write(settings.shelves, .shelves)
         try write(settings.mediaServers.servers, .mediaServers)
-        try write(Array(library.progress.prefix(150)), .playbackProgress)
+        try write(Array(library.progress.prefix(Self.progressLimit)), .playbackProgress)
         try write(library.rewatches, .rewatches)
         try write(library.shuffle, .shuffleHistory)
         if includeLibrary {
@@ -122,7 +124,7 @@ public struct CloudSync: Sendable {
 
     /// Pushes only the lightweight domains that change during normal use.
     public func pushIncremental(progress: [PlaybackProgress], rewatches: [Rewatch], shuffle: [ShuffleRecord]) throws {
-        try write(Array(progress.prefix(150)), .playbackProgress)
+        try write(Array(progress.prefix(Self.progressLimit)), .playbackProgress)
         try write(rewatches, .rewatches)
         try write(shuffle, .shuffleHistory)
         store.synchronize()
@@ -169,6 +171,7 @@ public struct CloudSync: Sendable {
         cloudLibrary.progress = snapshot.progress ?? []
         cloudLibrary.rewatches = snapshot.rewatches ?? []
         cloudLibrary.shuffle = snapshot.shuffle ?? []
+        s.mediaServers.migrateHomeRows()
         return (s, library.merged(with: cloudLibrary))
     }
 
@@ -188,6 +191,16 @@ public struct CloudSync: Sendable {
 
     public var usedBytes: Int {
         CloudDomain.allCases.reduce(0) { $0 + (store.data(forKey: $1.key)?.count ?? 0) + $1.key.utf8.count }
+    }
+
+    /// Counts and storage health for Data & Storage. `writeFailed` is the last push erroring.
+    public func syncStatus(settings: AppSettings, library: LocalLibrary, writeFailed: Bool = false) -> CloudSyncStatus {
+        CloudSyncStatus(domains: status(settings: settings, library: library), usedBytes: storeBytes, writeFailed: writeFailed)
+    }
+
+    /// Every key in the store, not just Flow's, since the 1 MB quota is shared by all of them.
+    var storeBytes: Int {
+        store.allKeys.reduce(0) { $0 + (store.data(forKey: $1)?.count ?? 0) + $1.utf8.count }
     }
 
     /// Empties the tracking domains of the cloud copy, leaving settings, shelves and servers in place.

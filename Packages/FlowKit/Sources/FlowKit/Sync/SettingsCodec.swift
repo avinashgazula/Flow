@@ -108,6 +108,7 @@ public enum SetupShare {
             s.mediaServers.seerr?.apiKey = old.apiKey
         }
         s.sync = settings.sync
+        s.mediaServers.migrateHomeRows()
         var creds = credentials
         if let incoming = bundle.credentials {
             // Only overwrite a secret when the import actually carries one.

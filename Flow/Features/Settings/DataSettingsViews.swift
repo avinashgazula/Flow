@@ -4,8 +4,7 @@ import FlowKit
 
 struct DataStorageView: View {
     @Environment(AppModel.self) private var model
-    @State private var statuses: [CloudDomainStatus] = []
-    @State private var usedBytes = 0
+    @State private var cloudStatus: CloudSyncStatus?
     @State private var cacheBytes: Int64 = 0
     @State private var downloadBytes: Int64 = 0
     @State private var exportURL: URL?
@@ -43,21 +42,15 @@ struct DataStorageView: View {
             Section {
                 Toggle("iCloud Sync", isOn: $model.settings.sync.iCloudEnabled)
                 if model.settings.sync.iCloudEnabled {
-                    ForEach(statuses) { status in
-                        HStack {
-                            Image(systemName: "checkmark.circle").foregroundStyle(.green)
-                            Text(status.domain.title).foregroundStyle(.green)
-                            Spacer()
-                            Text(detail(status)).font(.caption).foregroundStyle(.secondary)
+                    if let cloudStatus {
+                        ForEach(cloudStatus.rows) { row in
+                            statusRow(row.domain.title, health: row.health, detail: detail(row))
                         }
-                    }
-                    HStack {
-                        Image(systemName: "checkmark.circle").foregroundStyle(.green)
-                        Text("iCloud Storage").foregroundStyle(.green)
-                        Spacer()
-                        Text("\(ByteCountFormatter.string(fromByteCount: Int64(usedBytes), countStyle: .file)) of 1 MB").font(.caption).foregroundStyle(.secondary)
+                        statusRow("iCloud Storage", health: cloudStatus.storageHealth,
+                                  detail: "\(ByteCountFormatter.string(fromByteCount: Int64(cloudStatus.usedBytes), countStyle: .file)) of 1 MB")
                     }
                     Button { model.pushToCloud(); refresh() } label: { Label("Push to iCloud", systemImage: "icloud.and.arrow.up") }
+                    Button { model.pullFromCloud(); refresh() } label: { Label("Pull from iCloud", systemImage: "icloud.and.arrow.down") }
                     if let last = model.settings.sync.lastCloudSync {
                         LabeledContent("Last Synced") { Text(last, style: .relative) + Text(" ago") }
                     }
@@ -157,6 +150,8 @@ struct DataStorageView: View {
             }
         }
         .onAppear { refresh() }
+        // Background pushes and pulls move the counts too.
+        .onChange(of: model.settings.sync.lastCloudSync) { refresh() }
         .confirmationDialog(confirmClear?.title ?? "", isPresented: Binding(get: { confirmClear != nil }, set: { if !$0 { confirmClear = nil } }), titleVisibility: .visible) {
             Button(confirmClear?.title ?? "Clear", role: .destructive) { perform(confirmClear) }
             Button("Cancel", role: .cancel) {}
@@ -174,17 +169,29 @@ struct DataStorageView: View {
 
     private var progressCount: Int { model.localLibrary.progress.count }
 
-    private func detail(_ status: CloudDomainStatus) -> String {
-        let cloud = status.cloudCount.map { "\($0) cloud" } ?? "—"
-        if status.domain == .playbackProgress && model.settings.account.tracker != .local {
-            return "\(status.localCount) local · via \(model.settings.account.tracker.displayName)"
+    /// Green when local and cloud agree, yellow when they differ or the store is nearly full, red on a failed write or a full store.
+    private func statusRow(_ title: String, health: CloudSyncStatus.Health, detail: String) -> some View {
+        let color: Color = health == .synced ? .green : (health == .warning ? .yellow : .red)
+        let symbol = health == .synced ? "checkmark.circle" : (health == .warning ? "exclamationmark.triangle" : "xmark.circle")
+        return HStack {
+            Image(systemName: symbol).foregroundStyle(color)
+            Text(title).foregroundStyle(color)
+            Spacer()
+            Text(detail).font(.caption).foregroundStyle(.secondary)
         }
-        return "\(status.localCount) local · \(cloud)"
+        .accessibilityElement(children: .combine)
+    }
+
+    private func detail(_ row: CloudSyncStatus.Row) -> String {
+        let cloud = row.cloudCount.map { "\($0) cloud" } ?? "—"
+        if row.domain == .playbackProgress && model.settings.account.tracker != .local {
+            return "\(row.localCount) local · via \(model.settings.account.tracker.displayName)"
+        }
+        return "\(row.localCount) local · \(cloud)"
     }
 
     private func refresh() {
-        statuses = model.cloud.status(settings: model.settings, library: model.localLibrary)
-        usedBytes = model.cloud.usedBytes
+        cloudStatus = model.cloud.syncStatus(settings: model.settings, library: model.localLibrary, writeFailed: model.cloudWriteFailed)
         cacheBytes = JSONFileStore.caches("FlowResponses").sizeInBytes + JSONFileStore.caches("FlowMatroskaHeaders").sizeInBytes + Int64(URLCache.shared.currentDiskUsage)
         downloadBytes = DownloadManager.shared.totalBytes
         exportURL = model.exportTrackingData()

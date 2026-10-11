@@ -99,6 +99,8 @@ final class AppModel {
     /// Bumped whenever something shelves depend on changes, so they reload.
     var contentVersion = 0
     var toast: String?
+    /// The last upload to iCloud failed, so Data & Storage shows its rows red.
+    var cloudWriteFailed = false
 
     // MARK: Presentation
 
@@ -149,12 +151,13 @@ final class AppModel {
             #endif
             cache = ResponseCache(store: .caches("FlowResponses"))
             http = HTTPClient(userAgent: "Flow/1.0")
-            let loaded: AppSettings
+            var loaded: AppSettings
             if let data = store.loadData("settings"), let decoded = try? SettingsCodec.decode(AppSettings.self, from: data, defaults: AppSettings()) {
                 loaded = decoded
             } else {
                 loaded = AppSettings()
             }
+            loaded.mediaServers.migrateHomeRows()
             settings = loaded
             selectedTab = loaded.general.startTab
             credentials = secretStore.load()
@@ -418,17 +421,24 @@ final class AppModel {
         cloudPushTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             guard !Task.isCancelled, let self else { return }
-            try? self.cloud.push(settings: self.settings, library: self.localLibrary, includeLibrary: false)
-            self.settings.sync.lastCloudSync = Date()
+            do {
+                try self.cloud.push(settings: self.settings, library: self.localLibrary, includeLibrary: false)
+                self.cloudWriteFailed = false
+                self.settings.sync.lastCloudSync = Date()
+            } catch {
+                self.cloudWriteFailed = true
+            }
         }
     }
 
     func pushToCloud() {
         do {
             try cloud.push(settings: settings, library: localLibrary, includeLibrary: true)
+            cloudWriteFailed = false
             settings.sync.lastCloudSync = Date()
             showToast("Pushed to iCloud")
         } catch {
+            cloudWriteFailed = true
             showToast("iCloud push failed: \(error.localizedDescription)")
         }
     }
