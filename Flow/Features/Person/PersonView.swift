@@ -78,18 +78,17 @@ struct PersonView: View {
 
     private var header: some View {
         VStack(spacing: Theme.Space.m) {
-            RemoteImage(url: portraitURL, maxPixel: 600)
-                .overlay {
-                    if person?.profilePath == nil {
-                        Text(name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined())
-                            .font(.system(size: 48 * Theme.scale, weight: .semibold))
-                            .foregroundStyle(Theme.Palette.textSecondary)
-                    }
+            ZStack {
+                if person?.profilePath == nil {
+                    Monogram(name: name, fontSize: 48 * Theme.scale)
+                } else {
+                    RemoteImage(url: portraitURL, maxPixel: 600)
                 }
-                .frame(width: 168 * Theme.scale, height: 168 * Theme.scale)
-                .clipShape(Circle())
-                .overlay(Circle().strokeBorder(Theme.Palette.hairline, lineWidth: 1))
-                .artworkShadow()
+            }
+            .frame(width: 168 * Theme.scale, height: 168 * Theme.scale)
+            .clipShape(Circle())
+            .overlay(Circle().strokeBorder(Theme.Palette.hairline, lineWidth: 1))
+            .artworkShadow()
             VStack(spacing: 4) {
                 Text(name).font(Theme.Typeface.display).displayTracking().multilineTextAlignment(.center)
                 if let known = person?.knownFor {

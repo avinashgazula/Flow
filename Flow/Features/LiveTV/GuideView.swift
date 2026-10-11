@@ -148,25 +148,25 @@ struct GuideView: View {
     }
 }
 
-/// Channel logo, or its initials on a plate when there's no logo.
+/// Channel logo, or its initials on a tinted plate when there's no logo.
 struct ChannelBadge: View {
     let channel: Channel
     let size: CGFloat
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
         Group {
             if channel.logoURL != nil {
                 RemoteImage(url: channel.logoURL, contentMode: .fit, maxPixel: 300)
                     .padding(6)
+                    .background(Theme.Palette.surfaceStrong)
             } else {
-                Text(channel.name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined())
-                    .font(.system(size: size * 0.38, weight: .heavy).width(.condensed))
-                    .foregroundStyle(.white.opacity(0.88))
+                Monogram(name: channel.name, fontSize: size * 0.38, condensed: true)
             }
         }
         .frame(width: size * 1.6, height: size)
-        .background(Theme.Palette.surfaceStrong, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.Palette.hairline))
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(Theme.Palette.hairline))
     }
 }
 

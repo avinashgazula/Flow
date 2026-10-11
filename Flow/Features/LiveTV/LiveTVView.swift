@@ -240,18 +240,7 @@ struct ChannelRow: View {
     var body: some View {
         let (now, next) = epg.nowAndNext(for: channel.epgID)
         return HStack(spacing: 14) {
-            Group {
-                if channel.logoURL != nil {
-                    RemoteImage(url: channel.logoURL, contentMode: .fit, maxPixel: 300)
-                } else {
-                    Text(channel.name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined())
-                        .font(.system(size: 18 * Theme.scale, weight: .heavy).width(.condensed))
-                        .foregroundStyle(.white.opacity(0.85))
-                }
-            }
-            .frame(width: Platform.isTV ? 120 : 64, height: Platform.isTV ? 72 : 40)
-            .padding(6)
-            .background(Theme.Palette.surfaceStrong, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            logo
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     if let number = channel.number { Text("\(number)").font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
@@ -260,7 +249,10 @@ struct ChannelRow: View {
                 }
                 if let now {
                     Text(now.title).font(.subheadline).lineLimit(1)
-                    ProgressView(value: now.progress(at: Date())).tint(.white.opacity(0.8))
+                    // Only the bar re-renders on each tick; the row (and its nowAndNext lookup) doesn't.
+                    TimelineView(.periodic(from: .now, by: 30)) { context in
+                        ProgressView(value: now.progress(at: context.date)).tint(.white.opacity(0.8))
+                    }
                     if let next {
                         Text("Next: \(next.start.formatted(date: .omitted, time: .shortened)) \(next.title)")
                             .font(.caption).foregroundStyle(.secondary).lineLimit(1)
@@ -273,6 +265,25 @@ struct ChannelRow: View {
         }
         .padding(10)
         .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var logo: some View {
+        let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+        let width: CGFloat = Platform.isTV ? 120 : 64
+        let height: CGFloat = Platform.isTV ? 72 : 40
+        return Group {
+            if channel.logoURL != nil {
+                RemoteImage(url: channel.logoURL, contentMode: .fit, maxPixel: 300)
+                    .frame(width: width, height: height)
+                    .padding(6)
+                    .background(Theme.Palette.surfaceStrong)
+            } else {
+                Monogram(name: channel.name, fontSize: 18 * Theme.scale, condensed: true)
+                    .frame(width: width + 12, height: height + 12)
+            }
+        }
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(Theme.Palette.hairline))
     }
 }
 

@@ -41,16 +41,19 @@ struct ExploreView: View {
                 }
                 .scrollClipDisabled()
 
-                HStack {
+                // Styled like SectionHeader, with Reset trailing.
+                HStack(alignment: .firstTextBaseline) {
                     Text(isFiltered ? "Filtered · \(query.sort.title)" : "Trending Now")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                    Spacer()
+                        .font(Theme.Typeface.sectionTitle)
+                        .displayTracking()
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: Theme.Space.s)
                     if isFiltered {
                         Button("Reset") { query = DiscoverQuery(type: type) }
                             .font(.subheadline)
                     }
                 }
-                .padding(.horizontal, Platform.horizontalPadding)
+                .padding(.horizontal, Theme.Space.gutter)
 
                 if model.catalog == nil {
                     MissingKeyView()

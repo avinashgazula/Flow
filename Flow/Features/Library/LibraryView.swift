@@ -8,22 +8,25 @@ struct LibraryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 14) {
-                        if Platform.supportsDownloads {
-                            LibraryTile(title: "Downloads", subtitle: downloadCount > 0 ? "\(downloadCount) saved" : "Watch offline", systemImage: "arrow.down.circle.fill", route: .downloads, tint: .blue)
-                        }
-                        LibraryTile(title: "Upcoming", subtitle: "New episodes", systemImage: "calendar", route: .calendar, tint: .pink)
-                        LibraryTile(title: "Sports", subtitle: model.settings.sports.followedTeams.isEmpty ? "Follow your teams" : model.settings.sports.followedTeams.count == 1 ? "1 team followed" : "\(model.settings.sports.followedTeams.count) teams followed", systemImage: "sportscourt.fill", route: .sports, tint: .green)
-                        LibraryTile(title: "History", subtitle: model.history.count == 1 ? "1 play" : "\(model.history.count) plays", systemImage: "clock.fill", route: .library(.history), tint: .orange)
-                        #if os(tvOS)
-                        ActionChip(title: model.isSyncing ? "Syncing…" : "Sync", systemImage: "arrow.clockwise") {
-                            Task { await model.refreshLibrary(force: true) }
-                        }
-                        .disabled(model.isSyncing)
-                        #endif
+                // Two equal columns on iPhone so no tile is clipped; a scrolling row where there's room.
+                if Platform.isPhone {
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.s), GridItem(.flexible())], spacing: Theme.Space.s) {
+                        tiles
                     }
                     .padding(.horizontal, Platform.horizontalPadding)
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 14) {
+                            tiles
+                            #if os(tvOS)
+                            ActionChip(title: model.isSyncing ? "Syncing…" : "Sync", systemImage: "arrow.clockwise") {
+                                Task { await model.refreshLibrary(force: true) }
+                            }
+                            .disabled(model.isSyncing)
+                            #endif
+                        }
+                        .padding(.horizontal, Platform.horizontalPadding)
+                    }
                 }
 
                 ContinueWatchingShelf(title: "Continue Watching")
@@ -58,6 +61,15 @@ struct LibraryView: View {
         }
     }
 
+    @ViewBuilder private var tiles: some View {
+        if Platform.supportsDownloads {
+            LibraryTile(title: "Downloads", subtitle: downloadCount > 0 ? "\(downloadCount) saved" : "Watch offline", systemImage: "arrow.down.circle.fill", route: .downloads, tint: .blue)
+        }
+        LibraryTile(title: "Upcoming", subtitle: "New episodes", systemImage: "calendar", route: .calendar, tint: .pink)
+        LibraryTile(title: "Sports", subtitle: model.settings.sports.followedTeams.isEmpty ? "Follow your teams" : model.settings.sports.followedTeams.count == 1 ? "1 team followed" : "\(model.settings.sports.followedTeams.count) teams followed", systemImage: "sportscourt.fill", route: .sports, tint: .green)
+        LibraryTile(title: "History", subtitle: model.history.count == 1 ? "1 play" : "\(model.history.count) plays", systemImage: "clock.fill", route: .library(.history), tint: .orange)
+    }
+
     private var uniqueHistoryKeys: [MediaKey] {
         var seen = Set<MediaKey>()
         return model.history.map(\.key).filter { seen.insert($0).inserted }
@@ -70,31 +82,59 @@ struct LibraryTile: View {
     let systemImage: String
     let route: Route
     var tint: Color = .white
+    /// Fills its grid cell, with the chevron above the text, instead of a fixed-width row tile.
+    var stacked = Platform.isPhone
 
     var body: some View {
         NavigationLink(value: route) {
-            HStack(spacing: Theme.Space.s) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 17 * Theme.scale, weight: .semibold))
-                    .foregroundStyle(tint)
-                    .frame(width: 42 * Theme.scale, height: 42 * Theme.scale)
-                    .background(tint.opacity(0.16), in: Circle())
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(Theme.Typeface.headline)
-                    if let subtitle {
-                        Text(subtitle).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+            Group {
+                if stacked {
+                    VStack(alignment: .leading, spacing: Theme.Space.s) {
+                        HStack(spacing: 0) {
+                            icon
+                            Spacer(minLength: 0)
+                            chevron
+                        }
+                        labels
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    HStack(spacing: Theme.Space.s) {
+                        icon
+                        labels
+                        Spacer(minLength: 0)
+                        chevron
+                    }
+                    .frame(width: Platform.isTV ? 460 : 230, alignment: .leading)
                 }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12 * Theme.scale, weight: .bold))
-                    .foregroundStyle(Theme.Palette.textTertiary)
             }
             .padding(Theme.Space.m)
-            .frame(width: Platform.isTV ? 460 : 230, alignment: .leading)
             .flowGlass(RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
         }
         .buttonStyle(CardButtonStyle())
+    }
+
+    private var icon: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 17 * Theme.scale, weight: .semibold))
+            .foregroundStyle(tint)
+            .frame(width: 42 * Theme.scale, height: 42 * Theme.scale)
+            .background(tint.opacity(0.16), in: Circle())
+    }
+
+    private var labels: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(Theme.Typeface.headline).lineLimit(1)
+            if let subtitle {
+                Text(subtitle).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+            }
+        }
+    }
+
+    private var chevron: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(size: 12 * Theme.scale, weight: .bold))
+            .foregroundStyle(Theme.Palette.textTertiary)
     }
 }
 

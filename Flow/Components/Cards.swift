@@ -381,15 +381,16 @@ struct PersonCard: View {
     var body: some View {
         NavigationLink(value: Route.person(id: id, name: name)) {
             VStack(spacing: Theme.Space.xs) {
-                RemoteImage(url: TMDBImage.url(profilePath, size: .profile), maxPixel: 300)
-                    .overlay {
-                        if profilePath == nil {
-                            Text(initials).font(.system(size: size * 0.32, weight: .semibold)).foregroundStyle(Theme.Palette.textSecondary)
-                        }
+                ZStack {
+                    if profilePath == nil {
+                        Monogram(name: name, fontSize: size * 0.32)
+                    } else {
+                        RemoteImage(url: TMDBImage.url(profilePath, size: .profile), maxPixel: 300)
                     }
-                    .frame(width: size, height: size)
-                    .clipShape(Circle())
-                    .overlay(Circle().strokeBorder(Theme.Palette.hairline))
+                }
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+                .overlay(Circle().strokeBorder(Theme.Palette.hairline))
                 VStack(spacing: 1) {
                     Text(name).font(.system(.caption, weight: .semibold)).lineLimit(1)
                     Text(role).font(.system(.caption2)).foregroundStyle(Theme.Palette.textTertiary).lineLimit(1)
@@ -400,11 +401,46 @@ struct PersonCard: View {
         .buttonStyle(CardButtonStyle())
     }
 
-    private var initials: String {
-        name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
+    private var size: CGFloat { Platform.isTV ? 150 : 78 }
+}
+
+/// Initials on a gradient whose hue comes from the name, for people and channels without a picture.
+/// Fills whatever it's given; the caller clips and strokes it.
+struct Monogram: View {
+    let name: String
+    var fontSize: CGFloat
+    /// Channel plates use a heavy condensed face; people a semibold one.
+    var condensed = false
+
+    var body: some View {
+        let hue = Self.hue(for: name)
+        LinearGradient(
+            colors: [
+                Color(hue: hue, saturation: 0.45, brightness: 0.38),
+                Color(hue: (hue + 0.06).truncatingRemainder(dividingBy: 1), saturation: 0.55, brightness: 0.22),
+            ],
+            startPoint: .topLeading, endPoint: .bottomTrailing
+        )
+        .overlay {
+            Text(Self.initials(name))
+                .font(condensed ? .system(size: fontSize, weight: .heavy).width(.condensed) : .system(size: fontSize, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.92))
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+        }
+        .accessibilityHidden(true)
     }
 
-    private var size: CGFloat { Platform.isTV ? 150 : 78 }
+    static func initials(_ name: String) -> String {
+        let letters = name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
+        return letters.isEmpty ? "?" : letters.uppercased()
+    }
+
+    /// Stable across launches (String.hashValue is seeded per process): djb2 over the unicode scalars.
+    static func hue(for name: String) -> Double {
+        let hash = name.lowercased().unicodeScalars.reduce(UInt32(5381)) { ($0 &* 33) &+ $1.value }
+        return Double(hash % 360) / 360
+    }
 }
 
 /// A capsule action beside a row of filter chips (Filters, Refresh, Guide): how tvOS reaches what
