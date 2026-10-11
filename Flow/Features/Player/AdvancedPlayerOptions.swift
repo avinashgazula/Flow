@@ -30,11 +30,17 @@ struct AdvancedPlayerOptions: View {
                         LabeledContent("Size", value: String(format: "%.0f%%", model.settings.subtitles.fontScale * 100))
                         Slider(value: $model.settings.subtitles.fontScale, in: 0.6...2.0, step: 0.05)
                     }
+                    Picker("Font", selection: $model.settings.subtitles.font) {
+                        ForEach(SubtitleFont.allCases) { Text($0.title).tag($0) }
+                    }
                     Picker("Colour", selection: $model.settings.subtitles.color) {
-                        ForEach(SubtitleColor.allCases) { Text($0.rawValue.capitalized).tag($0) }
+                        ForEach(SubtitleColor.allCases) { Text($0.title).tag($0) }
+                    }
+                    Picker("Edge", selection: $model.settings.subtitles.edgeStyle) {
+                        ForEach(SubtitleEdgeStyle.allCases) { Text($0.title).tag($0) }
                     }
                     Picker("Background", selection: $model.settings.subtitles.background) {
-                        ForEach(SubtitleBackground.allCases) { Text($0.rawValue.capitalized).tag($0) }
+                        ForEach(SubtitleBackground.allCases) { Text($0.title).tag($0) }
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         LabeledContent("Position", value: positionLabel(model.settings.subtitles.verticalPosition))
@@ -47,7 +53,7 @@ struct AdvancedPlayerOptions: View {
                 } header: {
                     Text("Subtitles")
                 } footer: {
-                    Text("Size, colour, background and position apply to subtitles Flow draws itself.")
+                    Text("Font, size, colour, edge, background and position apply to subtitles Flow draws itself. Weight, opacity and ASS styling are in Settings.")
                 }
                 Section {
                     volumeBoost

@@ -328,38 +328,160 @@ struct PlayerNotice: View {
     }
 }
 
+/// Flow's own subtitles: the viewer's font, colour, edge and background, or, with "Keep original ASS
+/// styling", the colour, weight, size and placement an ASS/SSA author gave each line.
 struct SubtitleOverlay: View {
     let text: String?
     let settings: SubtitleSettings
+    /// The cues on screen, for ASS styling. Only drawn (instead of `text`) when `keepASSStyling` is on.
+    var cues: [SubtitleCue] = []
+
+    private struct Line {
+        let text: String
+        let style: SubtitleCueStyle?
+    }
+
+    /// Lines that share an alignment stack together; the others sit in their own corner.
+    private struct Block: Identifiable {
+        let alignment: Int
+        let lines: [Line]
+        var id: Int { alignment }
+    }
 
     var body: some View {
         GeometryReader { proxy in
-            VStack {
-                Spacer()
-                if let text, !text.isEmpty {
-                    Text(text)
-                        .font(.system(size: baseSize * settings.fontScale, weight: .semibold))
-                        .foregroundStyle(settings.color.color)
-                        .multilineTextAlignment(.center)
-                        .shadow(color: settings.background == .shadow ? .black : .clear, radius: 2, x: 1, y: 1)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(background, in: RoundedRectangle(cornerRadius: 6))
-                        .padding(.bottom, (Platform.isTV ? 90 : 48) + proxy.size.height * min(max(settings.verticalPosition, 0), 0.4))
-                        .padding(.horizontal, 40)
+            ZStack {
+                if blocks.isEmpty {
+                    if let text, !text.isEmpty {
+                        block([Line(text: text, style: nil)], in: proxy.size)
+                    }
+                } else {
+                    ForEach(blocks) { block($0.lines, in: proxy.size) }
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
     }
 
-    private var baseSize: CGFloat { Platform.isTV ? 44 : Platform.isPhone ? 20 : 28 }
+    private var blocks: [Block] {
+        guard settings.keepASSStyling else { return [] }
+        let styled = cues.filter { $0.style != nil }
+        guard !styled.isEmpty else { return [] }
+        let grouped = Dictionary(grouping: styled) { $0.style?.alignment ?? 2 }
+        return grouped.keys.sorted().map { key in
+            Block(alignment: key, lines: grouped[key, default: []].map { Line(text: $0.text, style: $0.style) })
+        }
+    }
 
-    private var background: Color {
-        switch settings.background {
-        case .none, .shadow: return .clear
-        case .translucent: return .black.opacity(0.55)
-        case .solid: return .black
+    /// One alignment's lines, placed by the author's margins or, without them, where the viewer's
+    /// own subtitles sit.
+    private func block(_ lines: [Line], in size: CGSize) -> some View {
+        let style = lines.first?.style
+        let placement = style?.placement
+        let vertical = placement?.vertical ?? .bottom
+        let horizontal = placement?.horizontal ?? .centre
+        let boxed = settings.background.drawsBox
+        let textAlignment: TextAlignment = horizontal == .left ? .leading : horizontal == .right ? .trailing : .center
+        return VStack(alignment: horizontal == .left ? .leading : horizontal == .right ? .trailing : .center, spacing: boxed ? 3 : 0) {
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                ForEach(Array(line.text.split(separator: "\n", omittingEmptySubsequences: true).enumerated()), id: \.offset) { _, part in
+                    row(String(part), style: line.style, height: size.height, alignment: textAlignment)
+                }
+            }
+        }
+        .padding(.top, vertical == .top ? verticalMargin(style, size: size, top: true) : 0)
+        .padding(.bottom, vertical == .bottom ? verticalMargin(style, size: size, top: false) : 0)
+        .padding(.leading, sideMargin(style?.marginL, width: size.width))
+        .padding(.trailing, sideMargin(style?.marginR, width: size.width))
+        .frame(maxWidth: .infinity, maxHeight: .infinity,
+               alignment: Alignment(horizontal: horizontal == .left ? .leading : horizontal == .right ? .trailing : .center,
+                                    vertical: vertical == .top ? .top : vertical == .bottom ? .bottom : .center))
+    }
+
+    /// The author's margin when they gave one; otherwise the usual spot, raised by the viewer's setting.
+    private func verticalMargin(_ style: SubtitleCueStyle?, size: CGSize, top: Bool) -> CGFloat {
+        if let margin = style?.marginV, margin > 0 { return margin * size.height }
+        if top { return Platform.isTV ? 60 : 24 }
+        return (Platform.isTV ? 90 : 48) + size.height * min(max(settings.verticalPosition, 0), 0.4)
+    }
+
+    private func sideMargin(_ fraction: Double?, width: CGFloat) -> CGFloat {
+        if let fraction, fraction > 0 { return fraction * width }
+        return 40
+    }
+
+    private func row(_ text: String, style: SubtitleCueStyle?, height: CGFloat, alignment: TextAlignment) -> some View {
+        let size = fontSize(style, height: height)
+        let color = style?.colour != nil ? Color(red: style?.red ?? 1, green: style?.green ?? 1, blue: style?.blue ?? 1) : settings.color.color
+        let weight: Font.Weight = style?.bold.map { $0 ? .bold : .regular } ?? settings.weight.fontWeight
+        return glyphs(text, font: font(size: size, weight: weight, italic: style?.italic == true), color: color, size: size, alignment: alignment)
+            .padding(.horizontal, 10)
+            .padding(.vertical, settings.background.drawsBox ? 3 : 0)
+            .background(settings.background.drawsBox ? Color.black.opacity(min(max(settings.backgroundOpacity, 0), 1)) : .clear,
+                        in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
+
+    /// ASS sizes measure the whole line, a little more than the em SwiftUI sizes by, so the author's
+    /// fraction of the picture height is trimmed to match.
+    private func fontSize(_ style: SubtitleCueStyle?, height: CGFloat) -> CGFloat {
+        if let scale = style?.scale, height > 0 { return max(scale * height * 0.85, 10) }
+        return baseSize * settings.fontScale
+    }
+
+    private func font(size: CGFloat, weight: Font.Weight, italic: Bool) -> Font {
+        var font: Font
+        switch settings.font {
+        case .system, .condensed: font = .system(size: size, weight: weight, design: .default)
+        case .rounded: font = .system(size: size, weight: weight, design: .rounded)
+        case .serif: font = .system(size: size, weight: weight, design: .serif)
+        case .monospaced: font = .system(size: size, weight: weight, design: .monospaced)
+        }
+        if settings.font == .condensed { font = font.width(.condensed) }
+        return italic ? font.italic() : font
+    }
+
+    /// The text with its edge: shadows for the soft and relief looks, eight dark copies around it for an outline.
+    @ViewBuilder
+    private func glyphs(_ text: String, font: Font, color: Color, size: CGFloat, alignment: TextAlignment) -> some View {
+        let base = Text(text).font(font).multilineTextAlignment(alignment)
+        switch settings.edgeStyle {
+        case .none:
+            base.foregroundStyle(color)
+        case .dropShadow:
+            base.foregroundStyle(color)
+                .shadow(color: .black.opacity(0.85), radius: 2.5, x: 1, y: 1.5)
+        case .raised:
+            base.foregroundStyle(color)
+                .shadow(color: .black.opacity(0.85), radius: 0, x: 1, y: 1)
+                .shadow(color: .white.opacity(0.6), radius: 0, x: -1, y: -1)
+        case .depressed:
+            base.foregroundStyle(color)
+                .shadow(color: .white.opacity(0.6), radius: 0, x: 1, y: 1)
+                .shadow(color: .black.opacity(0.85), radius: 0, x: -1, y: -1)
+        case .outline:
+            let width = max(1, size * 0.06)
+            ZStack {
+                ForEach(0..<8, id: \.self) { step in
+                    let angle = Double(step) * .pi / 4
+                    base.foregroundStyle(.black)
+                        .offset(x: CGFloat(cos(angle)) * width, y: CGFloat(sin(angle)) * width)
+                }
+                base.foregroundStyle(color)
+            }
+        }
+    }
+
+    private var baseSize: CGFloat { Platform.isTV ? 44 : Platform.isPhone ? 20 : 28 }
+}
+
+extension SubtitleWeight {
+    var fontWeight: Font.Weight {
+        switch self {
+        case .regular: return .regular
+        case .medium: return .medium
+        case .semibold: return .semibold
+        case .bold: return .bold
+        case .heavy: return .heavy
         }
     }
 }
@@ -1061,7 +1183,7 @@ struct SubtitleLayer: View {
 
     var body: some View {
         ZStack {
-            SubtitleOverlay(text: session.subtitleText, settings: settings)
+            SubtitleOverlay(text: session.subtitleText, settings: settings, cues: styledCues)
             if let bitmap = session.bitmapSubtitle {
                 BitmapSubtitleView(overlay: bitmap)
             }
@@ -1069,6 +1191,12 @@ struct SubtitleLayer: View {
         .offset(y: lifted ? -72 : 0)
         .animation(Theme.Motion.snappy, value: lifted)
         .allowsHitTesting(false)
+    }
+
+    /// The downloaded subtitle's cues at this moment, with the author's styling, when the viewer wants it.
+    private var styledCues: [SubtitleCue] {
+        guard settings.keepASSStyling else { return [] }
+        return session.subtitle?.cues(at: session.currentTime, offset: session.subtitleOffset) ?? []
     }
 }
 

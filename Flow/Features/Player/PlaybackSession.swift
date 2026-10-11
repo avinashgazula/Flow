@@ -380,8 +380,9 @@ final class PlaybackSession: Identifiable {
         }
     }
 
-    /// The viewer's subtitle size, colour and background for subtitles inside the stream (WebVTT and
-    /// MKV text tracks), matching the ones Flow draws. Untouched defaults leave the system caption style alone.
+    /// The viewer's subtitle font, size, colour, edge and background for subtitles inside the stream
+    /// (WebVTT and MKV text tracks), matching the ones Flow draws. Untouched defaults leave the system
+    /// caption style alone.
     static func textStyleRules(_ s: SubtitleSettings) -> [AVTextStyleRule]? {
         var attributes: [String: Any] = [:]
         if s.fontScale != 1 { attributes[kCMTextMarkupAttribute_RelativeFontSize as String] = s.fontScale * 100 }
@@ -392,14 +393,25 @@ final class PlaybackSession: Identifiable {
         case .green: [0.2, 0.78, 0.35]
         }
         if let rgb { attributes[kCMTextMarkupAttribute_ForegroundColorARGB as String] = [1] + rgb }
-        switch s.background {
-        case .shadow: break
-        case .none:
-            attributes[kCMTextMarkupAttribute_CharacterEdgeStyle as String] = kCMTextMarkupCharacterEdgeStyle_None as String
-        case .translucent:
-            attributes[kCMTextMarkupAttribute_CharacterBackgroundColorARGB as String] = [0.55, 0, 0, 0]
-        case .solid:
-            attributes[kCMTextMarkupAttribute_CharacterBackgroundColorARGB as String] = [1, 0, 0, 0]
+        // Captions have generic families for serif and monospaced; the other two ask for a family by name.
+        switch s.font {
+        case .system: break
+        case .serif: attributes[kCMTextMarkupAttribute_GenericFontFamilyName as String] = kCMTextMarkupGenericFontName_Serif as String
+        case .monospaced: attributes[kCMTextMarkupAttribute_GenericFontFamilyName as String] = kCMTextMarkupGenericFontName_Monospace as String
+        case .rounded: attributes[kCMTextMarkupAttribute_FontFamilyName as String] = "Arial Rounded MT Bold"
+        case .condensed: attributes[kCMTextMarkupAttribute_FontFamilyName as String] = "Avenir Next Condensed"
+        }
+        if s.weight == .bold || s.weight == .heavy { attributes[kCMTextMarkupAttribute_BoldStyle as String] = true }
+        let edge: CFString? = switch s.edgeStyle {
+        case .dropShadow: nil
+        case .none: kCMTextMarkupCharacterEdgeStyle_None
+        case .raised: kCMTextMarkupCharacterEdgeStyle_Raised
+        case .depressed: kCMTextMarkupCharacterEdgeStyle_Depressed
+        case .outline: kCMTextMarkupCharacterEdgeStyle_Uniform
+        }
+        if let edge { attributes[kCMTextMarkupAttribute_CharacterEdgeStyle as String] = edge as String }
+        if s.background.drawsBox {
+            attributes[kCMTextMarkupAttribute_CharacterBackgroundColorARGB as String] = [min(max(s.backgroundOpacity, 0), 1), 0, 0, 0]
         }
         guard !attributes.isEmpty, let rule = AVTextStyleRule(textMarkupAttributes: attributes) else { return nil }
         return [rule]

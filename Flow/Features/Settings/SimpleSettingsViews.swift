@@ -262,6 +262,8 @@ struct SubtitleSettingsView: View {
     var body: some View {
         @Bindable var model = model
         Form {
+            SubtitlePreviewSection()
+            SubtitleAppearanceSections()
             Section {
                 Toggle("Auto-sync", isOn: $model.settings.subtitles.autoSync)
             } header: {
@@ -291,26 +293,6 @@ struct SubtitleSettingsView: View {
             Section("Behaviour") {
                 Toggle("Load Automatically", isOn: $model.settings.subtitles.autoEnable)
                 Toggle("Prefer Hearing Impaired", isOn: $model.settings.subtitles.hearingImpaired)
-                Picker("Default Offset", selection: $model.settings.subtitles.defaultOffsetSeconds) {
-                    ForEach([-2.0, -1, -0.5, 0, 0.5, 1, 2], id: \.self) { Text(String(format: "%+.1fs", $0)).tag($0) }
-                }
-            }
-            Section("Style") {
-                Picker("Size", selection: $model.settings.subtitles.fontScale) {
-                    Text("Small").tag(0.8)
-                    Text("Medium").tag(1.0)
-                    Text("Large").tag(1.25)
-                    Text("Extra Large").tag(1.5)
-                }
-                Picker("Colour", selection: $model.settings.subtitles.color) {
-                    ForEach(SubtitleColor.allCases) { Text($0.rawValue.capitalized).tag($0) }
-                }
-                Picker("Background", selection: $model.settings.subtitles.background) {
-                    ForEach(SubtitleBackground.allCases) { Text($0.rawValue.capitalized).tag($0) }
-                }
-                SubtitleOverlay(text: "The quick brown fox jumps over the lazy dog.", settings: model.settings.subtitles)
-                    .frame(height: 90)
-                    .background(LinearGradient(colors: [.gray, .black], startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 10))
             }
             Section("Sources") {
                 ForEach([("opensubtitles", "OpenSubtitles"), ("subdl", "SubDL"), ("wyzie", "Wyzie (no key)"), ("subsource", "SubSource")], id: \.0) { id, name in

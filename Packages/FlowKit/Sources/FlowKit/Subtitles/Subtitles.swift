@@ -5,13 +5,16 @@ public struct SubtitleCue: Hashable, Sendable, Identifiable {
     public var start: Double
     public var end: Double
     public var text: String
+    /// The author's styling, for ASS/SSA cues; nil for SRT and WebVTT.
+    public var style: SubtitleCueStyle?
     public var id: Int { index }
 
-    public init(index: Int, start: Double, end: Double, text: String) {
+    public init(index: Int, start: Double, end: Double, text: String, style: SubtitleCueStyle? = nil) {
         self.index = index
         self.start = start
         self.end = end
         self.text = text
+        self.style = style
     }
 }
 
@@ -23,21 +26,27 @@ public struct SubtitleDocument: Sendable {
 
     /// Text visible at `time` (seconds), applying `offset` (positive delays subtitles).
     public func text(at time: Double, offset: Double = 0) -> String? {
+        let active = cues(at: time, offset: offset)
+        return active.isEmpty ? nil : active.map(\.text).joined(separator: "\n")
+    }
+
+    /// Every cue visible at `time`, in start order.
+    public func cues(at time: Double, offset: Double = 0) -> [SubtitleCue] {
         let t = time - offset
         var lo = 0, hi = cues.count - 1, found = -1
         while lo <= hi {
             let mid = (lo + hi) / 2
             if cues[mid].start <= t { found = mid; lo = mid + 1 } else { hi = mid - 1 }
         }
-        guard found >= 0 else { return nil }
+        guard found >= 0 else { return [] }
         // Overlapping cues: gather every cue active at t, scanning back a little.
-        var lines: [String] = []
+        var active: [SubtitleCue] = []
         var i = found
         while i >= 0 && i >= found - 5 {
-            if cues[i].start <= t && t < cues[i].end { lines.insert(cues[i].text, at: 0) }
+            if cues[i].start <= t && t < cues[i].end { active.insert(cues[i], at: 0) }
             i -= 1
         }
-        return lines.isEmpty ? nil : lines.joined(separator: "\n")
+        return active
     }
 }
 
@@ -53,6 +62,7 @@ public enum SubtitleParser {
 
     public static func parse(_ text: String) -> SubtitleDocument {
         let normalized = text.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
+        if ASSParser.isASS(normalized) { return ASSParser.parse(normalized) }
         var cues: [SubtitleCue] = []
         for block in normalized.components(separatedBy: "\n\n") {
             let lines = block.components(separatedBy: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -123,7 +133,7 @@ extension SubtitleProvider {
         let (data, _) = try await http.data(HTTPRequest(.get, url: url, headers: h, timeout: 30))
         if data.starts(with: [0x50, 0x4B, 0x03, 0x04]) {
             let entries = try ZipArchive.entries(data)
-            guard let entry = entries.first(where: { entry in [".srt", ".vtt"].contains { entry.name.lowercased().hasSuffix($0) } }) ?? entries.first else {
+            guard let entry = entries.first(where: { entry in [".srt", ".vtt", ".ass", ".ssa"].contains { entry.name.lowercased().hasSuffix($0) } }) ?? entries.first else {
                 throw FlowError.decoding("empty subtitle archive")
             }
             return SubtitleParser.parse(entry.data)
