@@ -18,6 +18,8 @@ struct DetailView: View {
     @State private var downloadRequest: PlaybackRequest?
     @State private var showFullOverview = false
     @State private var reviews: [Review] = []
+    /// The logo has scrolled up under the navigation bar, so the bar shows the title instead.
+    @State private var titleCollapsed = false
 
     private var general: GeneralSettings { model.settings.general }
     private var current: MediaItem { detail?.item ?? item }
@@ -48,7 +50,7 @@ struct DetailView: View {
         #elseif os(tvOS)
         .ignoresSafeArea(edges: [.top, .horizontal])
         #endif
-        .transparentNavigationBar()
+        .collapsingNavigationTitle(current.title, collapsed: titleCollapsed)
         .inlineNavigationTitle()
         .task(id: item.id) { await load() }
         .advertisesTitle(current)
@@ -89,6 +91,11 @@ struct DetailView: View {
             LogoOrTitle(logoPath: current.logoPath, title: current.title, maxHeight: Platform.isTV ? 200 : (wide ? 130 : 110),
                         alignment: wide ? .leading : .center)
                 .frame(maxWidth: wide ? 520 : 330, alignment: wide ? .leading : .center)
+                #if os(iOS)
+                .onGeometryChange(for: Bool.self) { $0.frame(in: .global).maxY < 100 } action: { collapsed in
+                    withAnimation(Theme.Motion.fade) { titleCollapsed = collapsed }
+                }
+                #endif
             MetadataLine(item: current, certification: current.certification, showRating: false)
             if !ratings.isEmpty || current.voteAverage != nil {
                 RatingsRow(ratings: ratings.isEmpty ? Ratings(tmdb: current.voteAverage) : ratings, item: current, centered: !wide)
@@ -170,38 +177,36 @@ struct DetailView: View {
             .frame(maxWidth: wide ? nil : 420)
 
             GlassGroup(spacing: 12) {
-                HStack(spacing: 12) {
-                    action(model.isWatched(current) ? "eye.fill" : "eye", label: model.isWatched(current) ? "Watched" : "Mark Watched", active: model.isWatched(current)) {
-                        Task { await model.setWatched(current, episodes: nil, watched: !model.isWatched(current)) }
+                HStack(alignment: .top, spacing: wide ? Theme.Space.m : Theme.Space.xs) {
+                    let watched = model.isWatched(current)
+                    action(watched ? "checkmark.circle.fill" : "checkmark.circle", title: "Watched",
+                           accessibility: watched ? "Watched" : "Mark Watched", active: watched) {
+                        Task { await model.setWatched(current, episodes: nil, watched: !watched) }
                     }
-                    action(model.isWatchlisted(current) ? "bookmark.fill" : "bookmark", label: "Watchlist", active: model.isWatchlisted(current)) {
+                    action(model.isWatchlisted(current) ? "bookmark.fill" : "bookmark", title: "Watchlist", active: model.isWatchlisted(current)) {
                         Task { await model.toggleWatchlist(current) }
                     }
-                    action(model.isFavourite(current) ? "heart.fill" : "heart", label: "Favourite", active: model.isFavourite(current)) {
+                    action(model.isFavourite(current) ? "heart.fill" : "heart", title: "Favourite", active: model.isFavourite(current)) {
                         Task { await model.toggleFavourite(current) }
                     }
-                    if current.type == .show {
-                        action("shuffle", label: "Shuffle", active: false) { Task { await model.shufflePlay(current) } }
-                        action("arrow.counterclockwise", label: rewatching ? "End Rewatch" : "Rewatch", active: rewatching) {
-                            Task {
-                                if rewatching { await model.endRewatch(current) } else { await model.startRewatch(current) }
-                                rewatching.toggle()
-                            }
-                        }
-                    }
                     if Platform.supportsDownloads {
-                        action("arrow.down.circle", label: "Download", active: false) {
-                            Task {
-                                var request: PlaybackRequest?
-                                if current.type == .movie {
-                                    request = PlaybackRequest(item: current)
-                                } else if let ep = await model.nextEpisodeToPlay(for: current) {
-                                    request = PlaybackRequest(item: current, episode: ep)
+                        action("arrow.down.circle", title: "Download", active: false) { Task { await download() } }
+                    }
+                    if current.type == .show {
+                        // iPhone has room for four labelled actions; the show-only ones fold into More.
+                        if wide {
+                            action("shuffle", title: "Shuffle", active: false) { Task { await model.shufflePlay(current) } }
+                            action("arrow.counterclockwise", title: rewatching ? "End Rewatch" : "Rewatch", active: rewatching) { toggleRewatch() }
+                        } else {
+                            Menu {
+                                Button { Task { await model.shufflePlay(current) } } label: { Label("Shuffle Play", systemImage: "shuffle") }
+                                Button { toggleRewatch() } label: {
+                                    Label(rewatching ? "End Rewatch" : "Rewatch", systemImage: "arrow.counterclockwise")
                                 }
-                                guard let request else { return }
-                                if model.settings.downloads.downloadAutomatically, await model.downloadAutomatically(request) { return }
-                                downloadRequest = request
+                            } label: {
+                                Label("More", systemImage: "ellipsis").labelStyle(DetailActionLabelStyle(active: false))
                             }
+                            .buttonStyle(DetailActionButtonStyle())
                         }
                     }
                 }
@@ -215,15 +220,34 @@ struct DetailView: View {
         }
     }
 
-    private func action(_ symbol: String, label: String, active: Bool, perform: @escaping () -> Void) -> some View {
+    /// An icon in a glass circle with its name underneath, so nobody has to guess what a symbol does.
+    private func action(_ symbol: String, title: String, accessibility: String? = nil, active: Bool, perform: @escaping () -> Void) -> some View {
         Button(action: perform) {
-            Image(systemName: symbol)
-                .foregroundStyle(active ? Color.accentColor : .white)
-                .contentTransition(.symbolEffect(.replace))
+            Label(title, systemImage: symbol).labelStyle(DetailActionLabelStyle(active: active))
         }
-        .buttonStyle(GlassButtonStyle(circle: true))
-        .accessibilityLabel(label)
+        .buttonStyle(DetailActionButtonStyle())
+        .accessibilityLabel(accessibility ?? title)
         .sensoryFeedbackIfAvailable(active)
+    }
+
+    private func toggleRewatch() {
+        Task {
+            if rewatching { await model.endRewatch(current) } else { await model.startRewatch(current) }
+            rewatching.toggle()
+        }
+    }
+
+    /// The film, or the episode Play would open, through the picker unless automatic downloads pick for itself.
+    private func download() async {
+        var request: PlaybackRequest?
+        if current.type == .movie {
+            request = PlaybackRequest(item: current)
+        } else if let ep = await model.nextEpisodeToPlay(for: current) {
+            request = PlaybackRequest(item: current, episode: ep)
+        }
+        guard let request else { return }
+        if model.settings.downloads.downloadAutomatically, await model.downloadAutomatically(request) { return }
+        downloadRequest = request
     }
 
     // MARK: Sections
@@ -607,5 +631,50 @@ struct WhereToWatch: View {
         }
         .buttonStyle(CardButtonStyle())
         .accessibilityLabel("\(provider.providerName), \(kind.label)")
+    }
+}
+
+/// A detail page action: the symbol in a glass circle, its name in small type below.
+struct DetailActionLabelStyle: LabelStyle {
+    let active: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        DetailActionLabel(icon: configuration.icon, title: configuration.title, active: active)
+    }
+}
+
+private struct DetailActionLabel<Icon: View, Title: View>: View {
+    let icon: Icon
+    let title: Title
+    let active: Bool
+    /// Apple TV shows focus the system way: the circle turns white.
+    @Environment(\.isFocused) private var focused
+
+    var body: some View {
+        VStack(spacing: 6 * Theme.scale) {
+            icon
+                .font(.system(size: 19 * Theme.scale, weight: .semibold))
+                .foregroundStyle(focused ? Color.black : (active ? Color.accentColor : .white))
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 50 * Theme.scale, height: 50 * Theme.scale)
+                .background { if focused { Circle().fill(.white) } }
+                .flowGlass(Circle(), interactive: true)
+            title
+                .font(.system(size: 11 * Theme.scale, weight: .semibold))
+                .foregroundStyle(active || focused ? .white : Theme.Palette.textSecondary)
+                .lineLimit(1)
+                .fixedSize()
+        }
+        .frame(minWidth: 64 * Theme.scale)
+        .contentShape(Rectangle())
+    }
+}
+
+struct DetailActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .animation(Theme.Motion.snappy, value: configuration.isPressed)
+            .modifier(FocusLift())
     }
 }

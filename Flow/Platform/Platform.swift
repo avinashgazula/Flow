@@ -309,6 +309,28 @@ extension View {
 
     /// Hides the navigation bar background so content can run under it (iOS only).
     @ViewBuilder
+    /// A bar that stays clear over a page's artwork, then fills in with the page's title once
+    /// the title on the page itself has scrolled away beneath it.
+    @ViewBuilder
+    func collapsingNavigationTitle(_ title: String, collapsed: Bool) -> some View {
+        #if os(iOS)
+        self
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(title)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .opacity(collapsed ? 1 : 0)
+                        .offset(y: collapsed ? 0 : 6)
+                        .accessibilityHidden(!collapsed)
+                }
+            }
+            .toolbarBackground(collapsed ? .visible : .hidden, for: .navigationBar)
+        #else
+        self
+        #endif
+    }
+
     func transparentNavigationBar() -> some View {
         #if os(iOS)
         self.toolbarBackground(.hidden, for: .navigationBar)
