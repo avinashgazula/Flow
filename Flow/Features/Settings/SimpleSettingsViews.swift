@@ -263,6 +263,13 @@ struct SubtitleSettingsView: View {
         @Bindable var model = model
         Form {
             Section {
+                Toggle("Auto-sync", isOn: $model.settings.subtitles.autoSync)
+            } header: {
+                Text("Auto-sync (Beta)")
+            } footer: {
+                Text("Aligns out-of-sync subtitles to the dialogue. Turn it on, start playback, and an Auto-sync action appears in the player's subtitle options after a minute of watching. Works with subtitles Flow loads itself, on files Flow plays itself (MKVs).")
+            }
+            Section {
                 ForEach(Self.languageOptions, id: \.0) { code, name in
                     let index = model.settings.subtitles.preferredLanguages.firstIndex(of: code)
                     Button {

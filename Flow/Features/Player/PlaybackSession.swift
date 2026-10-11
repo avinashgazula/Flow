@@ -748,6 +748,7 @@ final class PlaybackSession: Identifiable {
     private func tick(_ seconds: Double) {
         guard seconds.isFinite else { return }
         currentTime = seconds
+        if !playedLongEnough, seconds >= 60 { playedLongEnough = true }
         if duration <= 0, let d = player.currentItem?.duration.seconds, d.isFinite { duration = d }
         subtitleText = subtitle?.text(at: seconds, offset: subtitleOffset)
         updateSegment(seconds)
@@ -952,6 +953,7 @@ final class PlaybackSession: Identifiable {
             subtitle = nil
             subtitleText = nil
             currentTime = 0
+            playedLongEnough = false
             recoverAt = nil
             recoveries = 0
             duration = 0
@@ -1039,6 +1041,52 @@ final class PlaybackSession: Identifiable {
         }
     }
 
+    // MARK: Subtitle auto-sync
+
+    /// True while the soundtrack is being analysed.
+    private(set) var isAutoSyncing = false
+    /// Set once a minute has played, so the action doesn't appear before there's dialogue to listen to.
+    private(set) var playedLongEnough = false
+    @ObservationIgnored private var autoSyncTask: Task<Void, Never>?
+
+    /// Subtitles Flow loaded itself, on a film Flow remuxes (so it can read the audio), once a minute has played.
+    var canAutoSync: Bool {
+        (model?.settings.subtitles.autoSync ?? false) && usesRemux && remuxer != nil && subtitle != nil && playedLongEnough
+    }
+
+    /// Listens to about three minutes of the soundtrack around the playhead and moves the subtitles to fit.
+    func autoSyncSubtitles() {
+        guard canAutoSync, !isAutoSyncing, let remuxer, let subtitle else { return }
+        // The rendition being heard, by the name the HLS playlist gave it.
+        var track = remuxer.audio.first { !$0.source.isCommentary } ?? remuxer.audio.first
+        if let group = audibleGroup, let option = player.currentItem?.currentMediaSelection.selectedMediaOption(in: group),
+           let playing = remuxer.audio.first(where: { $0.label == option.title }) {
+            track = playing
+        }
+        guard let track else { return }
+        let position = currentTime, previous = subtitleOffset, loaded = subtitleTrack?.id
+        isAutoSyncing = true
+        show(notice: "Syncing subtitles…")
+        autoSyncTask = Task { [weak self] in
+            let outcome = await SubtitleAutoSync.analyse(remuxer: remuxer, track: track, around: position, subtitle: subtitle)
+            guard let self, !Task.isCancelled else { return }
+            isAutoSyncing = false
+            // Picking other subtitles meanwhile makes the answer moot.
+            guard subtitleTrack?.id == loaded else { return }
+            switch outcome {
+            case .matched(let offset, _):
+                let change = offset - previous
+                subtitleOffset = offset
+                show(notice: abs(change) < 0.05 ? "Subtitles already line up"
+                     : String(format: "Subtitles moved %.1f s %@", abs(change), change > 0 ? "later" : "earlier"))
+            case .noMatch:
+                show(notice: "Couldn't find a confident match")
+            case .unreadable:
+                show(notice: "Couldn't read this soundtrack")
+            }
+        }
+    }
+
     // MARK: Finishing
 
     private func report(_ state: PlaybackReport.State) async {
@@ -1105,6 +1153,7 @@ final class PlaybackSession: Identifiable {
         loadTask?.cancel()
         noticeTask?.cancel()
         sleepTask?.cancel()
+        autoSyncTask?.cancel()
         nowPlaying.end()
         if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
         interruptionObserver = nil

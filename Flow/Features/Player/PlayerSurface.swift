@@ -100,6 +100,11 @@ struct TVPlayerController: UIViewControllerRepresentable {
             items.append(UIMenu(title: "Disc Subtitles", image: UIImage(systemName: "captions.bubble"), options: .singleSelection, children: choices))
         }
         items.append(search)
+        if session.canAutoSync {
+            let sync = UIAction(title: session.isAutoSyncing ? "Syncing Subtitles…" : "Auto-sync Subtitles (Beta)", image: UIImage(systemName: "waveform"),
+                                attributes: session.isAutoSyncing ? .disabled : []) { _ in session.autoSyncSubtitles() }
+            items.append(sync)
+        }
         controller.transportBarCustomMenuItems = items
     }
 

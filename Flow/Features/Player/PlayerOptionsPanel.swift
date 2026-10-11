@@ -270,6 +270,12 @@ struct PlayerOptionsPanel: View {
                 go(.root)
             })
         }
+        if session.canAutoSync {
+            rows.append(PanelItem(id: "autosync", icon: "waveform", title: "Auto-sync", detail: "Beta", value: session.isAutoSyncing ? "Syncing…" : nil) {
+                session.autoSyncSubtitles()
+                close()
+            })
+        }
         rows.append(PanelItem(id: "search", icon: "magnifyingglass", title: "Search for More…") {
             close()
             showSearch()

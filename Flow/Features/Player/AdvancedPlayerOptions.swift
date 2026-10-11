@@ -96,6 +96,16 @@ struct AdvancedPlayerOptions: View {
             Text("Positive shows subtitles later. Only for subtitles Flow loads itself.")
                 .font(Theme.Typeface.caption)
                 .foregroundStyle(Theme.Palette.textSecondary)
+            if session.canAutoSync {
+                Button { session.autoSyncSubtitles() } label: {
+                    HStack {
+                        Label("Auto-sync (Beta)", systemImage: "waveform")
+                        Spacer()
+                        if session.isAutoSyncing { ProgressView() }
+                    }
+                }
+                .disabled(session.isAutoSyncing)
+            }
         }
     }
 
