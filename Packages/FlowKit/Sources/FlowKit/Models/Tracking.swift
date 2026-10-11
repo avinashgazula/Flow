@@ -82,6 +82,9 @@ public struct ShowWatchState: Codable, Hashable, Sendable {
         self.lastWatchedAt = lastWatchedAt
     }
 
+    /// Watched episodes outside the Specials season: the ones an aired-episode count (which leaves specials out) compares to.
+    public var regularWatchedCount: Int { watched.filter { $0.season > 0 }.count }
+
     /// The first unwatched episode after the furthest watched one, among `aired` episodes.
     public func nextUp(aired: [EpisodeRef]) -> EpisodeRef? {
         let regular = aired.filter { $0.season > 0 }.sorted()

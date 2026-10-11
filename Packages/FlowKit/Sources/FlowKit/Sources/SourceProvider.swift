@@ -182,11 +182,16 @@ public enum SourceRanker {
             if ca != cb { return ca < cb }
             let pa = providerIndex(a), pb = providerIndex(b)
             if pa != pb { return pa < pb }
-            if a.providerID != b.providerID { return a.providerName < b.providerName }
+            // Two providers can share a name; the ID keeps their sources from interleaving.
+            if a.providerID != b.providerID { return (a.providerName, a.providerID) < (b.providerName, b.providerID) }
             if settings.useCustomOrdering, let decided = compare(a, b, rules: settings.sortRules, filters: settings.filters) { return decided }
             return (original[a.id] ?? 0) < (original[b.id] ?? 0)
         }
 
+        // Within-provider preferences first: the playability demotions below are stable partitions, so
+        // they keep this order and nothing a device can't play is pulled ahead of what it can.
+        if !prefersHDR { list = sdrFirst(list) }
+        if let language = preferredAudioLanguage, !language.isEmpty { list = audioLanguageFirst(list, language: language) }
         if settings.preferPlayableAudio, !decodesLosslessAudio {
             // Blu-ray remuxes often pair DTS-HD or TrueHD with a Dolby Digital *commentary*, so the
             // "DD" in their label doesn't make them playable. Try sources led by playable audio first.
@@ -196,8 +201,6 @@ public enum SourceRanker {
         if !decodesAV1 {
             list = list.filter { !isAV1($0) } + list.filter(isAV1)
         }
-        if !prefersHDR { list = sdrFirst(list) }
-        if let language = preferredAudioLanguage, !language.isEmpty { list = audioLanguageFirst(list, language: language) }
         if settings.useCustomOrdering, let cap = settings.resultCap, cap > 0 { list = Array(list.prefix(cap)) }
         return list
     }

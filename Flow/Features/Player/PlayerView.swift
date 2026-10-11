@@ -171,7 +171,7 @@ struct ConnectingView: View {
 
     var body: some View {
         ZStack {
-            AmbientBackground(url: session.request.item.smallBackdropURL ?? session.request.item.posterURL, intensity: 0.8)
+            AmbientBackground(url: session.request.item.smallBackdropURL ?? session.request.item.tmdbPosterURL, intensity: 0.8)
             VStack(spacing: Theme.Space.l) {
                 Spacer()
                 LogoOrTitle(logoPath: session.logoPath, title: session.title, maxHeight: Platform.isTV ? 220 : 120)

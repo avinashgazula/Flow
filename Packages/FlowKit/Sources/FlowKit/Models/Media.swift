@@ -430,6 +430,20 @@ public struct Page<Element: Sendable>: Sendable {
     public var hasMore: Bool { page < totalPages }
 }
 
+extension Array {
+    /// Alternates this array's elements with `other`'s, then carries on with whichever is longer, so one
+    /// short or empty list never truncates the other (unlike `zip`).
+    public func interleaved(with other: [Element]) -> [Element] {
+        var out: [Element] = []
+        out.reserveCapacity(count + other.count)
+        for index in 0..<Swift.max(count, other.count) {
+            if index < count { out.append(self[index]) }
+            if index < other.count { out.append(other[index]) }
+        }
+        return out
+    }
+}
+
 public enum SearchResult: Hashable, Sendable, Identifiable {
     case media(MediaItem)
     case person(Person)

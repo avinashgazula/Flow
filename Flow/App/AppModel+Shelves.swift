@@ -59,7 +59,8 @@ extension AppModel {
                 if let trakt, credentials.traktToken != nil {
                     async let movies = trakt.recommendations(.movie)
                     async let shows = trakt.recommendations(.show)
-                    let keys = zip(try await movies, try await shows).flatMap { [$0, $1] }
+                    let (movieKeys, showKeys) = (try await movies, try await shows)
+                    let keys = movieKeys.interleaved(with: showKeys)
                     result = single(await catalog.items(keys))
                 } else if let recent = history.first {
                     let detail = try await catalog.details(recent.key.type, id: recent.key.tmdbID)
@@ -164,12 +165,7 @@ extension AppModel {
         var items = await heroItems(from: primary)
         if let secondary = settings.general.heroSecondarySource, secondary != primary {
             let extra = await heroItems(from: secondary)
-            var mixed: [MediaItem] = []
-            for index in 0..<max(items.count, extra.count) {
-                if index < items.count { mixed.append(items[index]) }
-                if index < extra.count { mixed.append(extra[index]) }
-            }
-            items = mixed
+            items = items.interleaved(with: extra)
         }
         var seen = Set<String>()
         return Array(items.filter { seen.insert($0.id).inserted }.prefix(15))
@@ -183,7 +179,7 @@ extension AppModel {
             async let movies = try? catalog.trending(.movie)
             async let shows = try? catalog.trending(.show)
             let m = await movies?.items ?? [], s = await shows?.items ?? []
-            items = zip(m, s).flatMap { [$0, $1] }
+            items = m.interleaved(with: s)
         case .popular:
             items = (try? await catalog.list(.popular, type: .movie))?.items ?? []
         case .watchlist:

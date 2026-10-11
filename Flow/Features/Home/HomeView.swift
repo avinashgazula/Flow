@@ -47,7 +47,7 @@ struct HomeView: View {
                 .refreshable { await model.refreshLibrary(force: true) }
                 .background(alignment: .top) {
                     // The page takes on the colour of whichever title the hero is showing.
-                    AmbientBackground(url: heroItem?.smallBackdropURL ?? heroItem?.posterURL, intensity: 0.9)
+                    AmbientBackground(url: heroItem?.smallBackdropURL ?? heroItem?.tmdbPosterURL, intensity: 0.9)
                         .mask(LinearGradient(colors: [.black, .black, .clear], startPoint: .top, endPoint: .bottom))
                         .frame(height: 1400)
                         .animation(Theme.Motion.gentle, value: heroItem?.id)
@@ -151,7 +151,16 @@ private struct ShelfGridContent: View {
                 ContentUnavailableView("Couldn't Load", systemImage: "exclamationmark.triangle", description: Text(error))
             }
         }
-        .task { if items.isEmpty { await loadMore() } }
+        .task {
+            guard items.isEmpty else { return }
+            await loadMore()
+            // Filters can leave a page empty, and an empty grid never reaches its end to ask for the next one.
+            var extra = 0
+            while items.isEmpty, hasMore, error == nil, extra < 4 {
+                extra += 1
+                await loadMore()
+            }
+        }
     }
 
     private func loadMore() async {

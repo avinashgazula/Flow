@@ -57,7 +57,8 @@ struct SourcePickerView: View {
                                     .font(Theme.Typeface.micro).kerning(1.2)
                                     .foregroundStyle(Theme.Palette.textTertiary)
                             }
-                            ForEach(Self.byProvider(sources), id: \.first?.providerID) { group in
+                            // By position: the demotions can leave one provider's sources in two separate runs.
+                            ForEach(Array(Self.byProvider(sources).enumerated()), id: \.offset) { _, group in
                                 // The provider's name once, over its sources, rather than as every row's title.
                                 if providerHeaders, let first = group.first {
                                     HStack(spacing: 6) {
@@ -82,7 +83,7 @@ struct SourcePickerView: View {
                 .padding(.bottom, Theme.Space.xxl)
                 .animation(Theme.Motion.gentle, value: ranked.map(\.id))
             }
-            .background(AmbientBackground(url: request.item.smallBackdropURL ?? request.item.posterURL, intensity: 0.7))
+            .background(AmbientBackground(url: request.item.smallBackdropURL ?? request.item.tmdbPosterURL, intensity: 0.7))
             .inlineNavigationTitle()
             .sheetDismissButton("Close") { dismiss() }
             .toolbar {
@@ -216,6 +217,8 @@ struct SourcePickerView: View {
     }
 
     private func choose(_ source: StreamSource) {
+        // A pick made while the search was still running must not be followed by an auto-play when it ends.
+        autoPlayed = true
         if forDownload {
             if let error = DownloadManager.shared.start(source: source, request: request, location: model.settings.downloads.location) {
                 model.showToast(error)

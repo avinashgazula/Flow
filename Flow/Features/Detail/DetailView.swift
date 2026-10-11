@@ -25,7 +25,8 @@ struct DetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 header
-                if current.type == .show, let detail, !detail.seasons.isEmpty {
+                // Specials alone, with Specials Season off, leave nothing to list.
+                if current.type == .show, let detail, detail.seasons.contains(where: { $0.number > 0 || general.showSpecialsSeason }) {
                     SeasonsSection(show: current, seasons: detail.seasons, episodesBySeason: episodesBySeason, selectedSeason: $selectedSeason, libraryProviderID: libraryProviderID)
                 }
                 if let detail {
@@ -38,7 +39,7 @@ struct DetailView: View {
         }
         .scrollIndicators(.hidden)
         .detailTextSize(general.detailTextSize)
-        .background(AmbientBackground(url: current.smallBackdropURL ?? current.posterURL))
+        .background(AmbientBackground(url: current.smallBackdropURL ?? current.tmdbPosterURL))
         #if os(iOS)
         .ignoresSafeArea(edges: .top)
         #elseif os(tvOS)

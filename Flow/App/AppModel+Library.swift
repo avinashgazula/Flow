@@ -157,7 +157,7 @@ extension AppModel {
     /// A show counts as watched (poster check) once its watched set covers the aired episode count we know of.
     private func isShowCompleted(_ key: MediaKey) -> Bool {
         guard let state = showStates[key] else { return false }
-        return state.watched.count >= (completedShowThresholds[key] ?? Int.max)
+        return state.regularWatchedCount >= (completedShowThresholds[key] ?? Int.max)
     }
 
     /// Watched and aired regular episodes of a show, once both are known: the aired count is learned

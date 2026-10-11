@@ -23,7 +23,7 @@ struct RequestButton: View {
         .task(id: "\(item.id)|\(config?.baseURL.absoluteString ?? "")|\(config?.apiKey ?? "")") { await load() }
         .confirmationDialog("Request \(item.title)", isPresented: $choosingSeasons, titleVisibility: .visible) {
             Button("All Seasons") { Task { await request(.all) } }
-            if let latest = latestSeason, seasons.count > 1 {
+            if let latest = latestSeason, seasons.filter({ !$0.isSpecials }).count > 1 {
                 Button("Latest Season (\(latest))") { Task { await request(.only([latest])) } }
             }
             Button("Cancel", role: .cancel) {}

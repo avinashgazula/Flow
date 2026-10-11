@@ -10,6 +10,8 @@ struct ExploreView: View {
     @State private var page = 0
     @State private var hasMore = true
     @State private var loading = false
+    /// Bumped by every reload, so a page still in flight for the previous filters is dropped when it lands.
+    @State private var generation = 0
     @State private var error: String?
     @State private var showFilters = false
 
@@ -74,7 +76,13 @@ struct ExploreView: View {
                 .environment(model)
         }
         .onChange(of: type) { _, newType in query = DiscoverQuery(type: newType) }
-        .task(id: "\(query.hashValue)-\(model.contentVersion)") { await reload() }
+        .task(id: "\(query.hashValue)-\(filtersFollowLibrary ? model.contentVersion : 0)") { await reload() }
+    }
+
+    /// Only filtering to your servers' titles depends on the library; otherwise a watch-state change
+    /// mustn't send the grid back to the top.
+    private var filtersFollowLibrary: Bool {
+        model.settings.mediaServers.onlyShowServerContent && !model.settings.mediaServers.servers.isEmpty
     }
 
     static func quickGenres(_ type: MediaType) -> [Int] {
@@ -99,25 +107,38 @@ struct ExploreView: View {
     }
 
     private func reload() async {
+        generation += 1
         items = []
         page = 0
         hasMore = true
         error = nil
+        // A page still loading for the old filters is abandoned, not waited for.
+        loading = false
+        let started = generation
         await loadMore()
+        // Filters can leave a page empty, and an empty grid never reaches its end to ask for the next one.
+        var extra = 0
+        while items.isEmpty, hasMore, error == nil, extra < 4, started == generation {
+            extra += 1
+            await loadMore()
+        }
     }
 
     private func loadMore() async {
         guard hasMore, !loading, let catalog = model.catalog else { return }
+        let started = generation
         loading = true
-        defer { loading = false }
+        defer { if started == generation { loading = false } }
         do {
             let next = isFiltered ? try await catalog.discover(query, page: page + 1) : try await catalog.trending(type, page: page + 1)
             let filtered = await catalog.apply(model.catalogFilters, to: next.items, exemptFromRelease: query.targetsFuture)
+            guard started == generation else { return }
             var seen = Set(items.map(\.id))
             items += filtered.filter { seen.insert($0.id).inserted }
             page = next.page
             hasMore = next.hasMore && page < 50
         } catch {
+            guard started == generation else { return }
             self.error = error.localizedDescription
             hasMore = false
         }

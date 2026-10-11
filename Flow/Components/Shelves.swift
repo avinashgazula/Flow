@@ -159,7 +159,8 @@ struct ShelfView: View {
     /// What this row's contents depend on. Catalogue rows (trending, popular, Discover) don't change
     /// when you mark something watched, so they don't reload with every library change.
     private var reloadKey: String {
-        var filters = "\(model.settings.general.contentShelfLength)-\(model.settings.metadata.showUnreleasedTitles)"
+        // Language and region change what TMDb returns, so they reload catalogue rows too.
+        var filters = "\(model.settings.general.contentShelfLength)-\(model.settings.metadata.showUnreleasedTitles)-\(model.settings.metadata.language)-\(model.settings.metadata.region)"
         // Filtering to your servers depends on their index, which refreshes with the library.
         if model.settings.mediaServers.onlyShowServerContent { filters += "-\(model.contentVersion)" }
         switch shelf.source {

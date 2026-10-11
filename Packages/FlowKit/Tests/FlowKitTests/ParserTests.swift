@@ -135,6 +135,31 @@ final class SourceRankerTests: XCTestCase {
         XCTAssertEqual(SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .uhd4k, preferredAudioLanguage: "en").map(\.id), ["a", "b"])
     }
 
+    /// Language and SDR preferences reorder within a provider, but never pull an AV1 encode (on a device
+    /// that can't decode it) back ahead of sources it can play.
+    func testPlayabilityDemotionsSurvivePreferenceReordering() {
+        let sources = [
+            source("hdr", .addons, provider: "aio", text: "1080p HEVC English HDR WEB-DL"),
+            source("av1-en", .addons, provider: "aio", text: "1080p AV1 English WEB-DL"),
+            source("plain", .addons, provider: "aio", text: "1080p HEVC French WEB-DL"),
+        ]
+        XCTAssertTrue(SourceRanker.isAV1(sources[1]))
+        let ranked = SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .uhd4k, decodesAV1: false,
+                                       prefersHDR: false, preferredAudioLanguage: "en")
+        XCTAssertEqual(ranked.last?.id, "av1-en")
+        let language = SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .uhd4k, decodesAV1: false, preferredAudioLanguage: "en")
+        XCTAssertEqual(language.map(\.id), ["hdr", "plain", "av1-en"])
+    }
+
+    func testProvidersSharingANameStayTogether() {
+        let sources = [
+            source("a1", .addons, provider: "one", text: "1080p"),
+            source("b1", .addons, provider: "two", text: "1080p"),
+            source("a2", .addons, provider: "one", text: "720p"),
+        ].map { s -> StreamSource in var s = s; s.providerName = "Same"; return s }
+        XCTAssertEqual(SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .uhd4k).map(\.id), ["a1", "a2", "b1"])
+    }
+
     func testResolutionCapAlwaysApplies() {
         let sources = [source("4k", .addons, provider: "aio", text: "2160p"), source("hd", .addons, provider: "aio", text: "1080p"), source("u", .addons, provider: "aio", text: "no info")]
         let ranked = SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .hd1080)

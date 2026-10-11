@@ -114,7 +114,7 @@ private struct SuggestionTile: View {
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 6) {
-                RemoteImage(url: item.smallBackdropURL ?? item.posterURL, maxPixel: Platform.isTV ? 900 : 560, fallbackTitle: item.title)
+                RemoteImage(url: item.smallBackdropURL ?? item.tmdbPosterURL, maxPixel: Platform.isTV ? 900 : 560, fallbackTitle: item.title)
                     .frame(width: width, height: width * 9 / 16)
                     .overlay(alignment: .topLeading) {
                         if isNext {

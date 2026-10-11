@@ -67,11 +67,14 @@ struct SeasonsSection: View {
                 .scrollClipDisabled()
             }
         }
-        .onAppear {
-            // Specials turned off while season 0 was the one in view.
-            if !orderedSeasons.contains(where: { $0.number == selectedSeason }), let first = orderedSeasons.first {
-                selectedSeason = first.number
-            }
+        .onAppear(perform: keepSelectionVisible)
+        .onChange(of: model.settings.general.showSpecialsSeason) { _, _ in keepSelectionVisible() }
+    }
+
+    /// Specials turned off while season 0 was the one in view.
+    private func keepSelectionVisible() {
+        if !orderedSeasons.contains(where: { $0.number == selectedSeason }), let first = orderedSeasons.first {
+            selectedSeason = first.number
         }
     }
 
@@ -245,7 +248,8 @@ struct EpisodeMenu: View {
             Label(watched ? "Mark as Unwatched" : "Mark as Watched", systemImage: watched ? "eye.slash" : "eye")
         }
         Button {
-            let earlier = (1...episode.number).map { EpisodeRef(season: episode.season, episode: $0) }
+            // Specials can be numbered 0, and 1...0 would trap.
+            let earlier = stride(from: min(1, episode.number), through: episode.number, by: 1).map { EpisodeRef(season: episode.season, episode: $0) }
             Task { await model.setWatched(show, episodes: earlier, watched: true) }
         } label: {
             Label("Mark Watched Up to Here", systemImage: "checkmark.circle")

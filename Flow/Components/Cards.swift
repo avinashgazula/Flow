@@ -160,7 +160,7 @@ struct PosterPreview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            RemoteImage(url: item.smallBackdropURL ?? item.posterURL, maxPixel: 900, fallbackTitle: item.title)
+            RemoteImage(url: item.smallBackdropURL ?? item.tmdbPosterURL, maxPixel: 900, fallbackTitle: item.title)
                 .frame(width: 320, height: 180)
                 .clipped()
             VStack(alignment: .leading, spacing: 6) {
@@ -241,7 +241,7 @@ struct ContinueWatchingCard: View {
         } label: {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 ZStack(alignment: .bottomLeading) {
-                    RemoteImage(url: item.smallBackdropURL ?? item.posterURL, maxPixel: Platform.isTV ? 1000 : 700, fallbackTitle: item.title)
+                    RemoteImage(url: item.smallBackdropURL ?? item.tmdbPosterURL, maxPixel: Platform.isTV ? 1000 : 700, fallbackTitle: item.title)
                         .frame(width: width, height: width * 9 / 16)
                     LinearGradient(colors: [.clear, .black.opacity(0.7)], startPoint: .center, endPoint: .bottom)
                     VStack(alignment: .leading, spacing: Theme.Space.xs) {

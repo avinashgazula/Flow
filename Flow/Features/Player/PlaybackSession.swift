@@ -156,7 +156,7 @@ final class PlaybackSession: Identifiable {
             seek: { [weak self] position in self?.player.seek(to: CMTime(seconds: position, preferredTimescale: 600)) })
         nowPlaying.begin(title: request.episode?.title ?? request.item.title,
                          subtitle: request.episode != nil ? "\(request.item.title) · \(request.episode!.code)" : request.item.year.map(String.init),
-                         artwork: request.item.smallBackdropURL ?? request.item.posterURL,
+                         artwork: request.item.smallBackdropURL ?? request.item.tmdbPosterURL,
                          skipForward: model.settings.playback.seekForwardSeconds, skipBackward: model.settings.playback.seekBackwardSeconds,
                          handlers: handlers)
     }

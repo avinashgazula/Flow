@@ -288,7 +288,7 @@ private struct CalendarStill: View {
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.poster, style: .continuous) }
 
     var body: some View {
-        RemoteImage(url: TMDBImage.url(entry.episode?.stillPath, size: .still) ?? entry.item.smallBackdropURL ?? entry.item.posterURL,
+        RemoteImage(url: TMDBImage.url(entry.episode?.stillPath, size: .still) ?? entry.item.smallBackdropURL ?? entry.item.tmdbPosterURL,
                     maxPixel: Int(width * 2.5), fallbackTitle: entry.item.title)
             .frame(width: width, height: width * 9 / 16)
             .clipShape(shape)
