@@ -203,12 +203,24 @@ struct DetailView: View {
                                 Button { toggleRewatch() } label: {
                                     Label(rewatching ? "End Rewatch" : "Rewatch", systemImage: "arrow.counterclockwise")
                                 }
+                                #if !os(tvOS)
+                                TitleShareLink(item: current) { Label("Share", systemImage: "square.and.arrow.up") }
+                                #endif
                             } label: {
                                 Label("More", systemImage: "ellipsis").labelStyle(DetailActionLabelStyle(active: false))
                             }
                             .buttonStyle(DetailActionButtonStyle())
                         }
                     }
+                    #if !os(tvOS)
+                    // On iPhone a show's Share lives in More; a film has the room for it (five across, like a show with More).
+                    if wide || current.type == .movie {
+                        TitleShareLink(item: current) {
+                            Label("Share", systemImage: "square.and.arrow.up").labelStyle(DetailActionLabelStyle(active: false))
+                        }
+                        .buttonStyle(DetailActionButtonStyle())
+                    }
+                    #endif
                 }
             }
             if model.isWatched(current) || model.rating(for: current) != nil {
@@ -218,12 +230,29 @@ struct DetailView: View {
                 }
             }
             RequestButton(item: current, seasons: detail?.seasons ?? [])
-            if let next = detail?.nextEpisode, let date = next.airDate {
-                Label("\(next.code) airs \(AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))", systemImage: "calendar")
-                    .font(Theme.Typeface.caption)
-                    .foregroundStyle(Theme.Palette.textSecondary)
+            if let next = detail?.nextEpisode, let date = next.airDate { airsLine(next, date: date) }
+        }
+    }
+
+    @ViewBuilder
+    private func airsLine(_ next: Episode, date: Date) -> some View {
+        let line = Label("\(next.code) airs \(AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))", systemImage: "calendar")
+            .font(Theme.Typeface.caption)
+            .foregroundStyle(Theme.Palette.textSecondary)
+        #if os(tvOS)
+        line
+        #else
+        Menu {
+            AddToCalendarButton(item: current, episode: next, date: date)
+        } label: {
+            HStack(spacing: 4) {
+                line
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.Palette.textTertiary)
             }
         }
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        #endif
     }
 
     /// An icon in a glass circle with its name underneath, so nobody has to guess what a symbol does.

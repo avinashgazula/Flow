@@ -358,8 +358,36 @@ struct MediaContextMenu: View {
         if item.type == .show {
             Button { Task { await model.shufflePlay(item) } } label: { Label("Shuffle Play", systemImage: "shuffle") }
         }
+        #if !os(tvOS)
+        TitleShareLink(item: item) { Label("Share", systemImage: "square.and.arrow.up") }
+        #endif
     }
 }
+
+extension MediaItem {
+    /// The title's page on TMDb, which opens anywhere.
+    var tmdbWebURL: URL? {
+        ids.tmdb.flatMap { URL(string: "https://www.themoviedb.org/\(type == .movie ? "movie" : "tv")/\($0)") }
+    }
+}
+
+#if !os(tvOS)
+/// The system share sheet for a title: its TMDb page, with "Dune: Part Two (2024)" as the message.
+struct TitleShareLink<Content: View>: View {
+    let item: MediaItem
+    @ViewBuilder var label: () -> Content
+
+    var body: some View {
+        if let url = item.tmdbWebURL {
+            ShareLink(item: url, subject: Text(item.title), message: Text(message), preview: SharePreview(item.title), label: label)
+        }
+    }
+
+    private var message: String {
+        item.year.map { "\(item.title) (\($0))" } ?? item.title
+    }
+}
+#endif
 
 struct PersonCard: View {
     let id: Int

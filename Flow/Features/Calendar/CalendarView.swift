@@ -72,7 +72,7 @@ struct CalendarView: View {
             header("Just Aired", detail: "The last seven days")
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 16) {
-                    ForEach(justAired) { entry in CalendarCard(entry: entry, dateLabel: relativeDay(day(of: entry))) }
+                    ForEach(justAired) { entry in CalendarCard(entry: entry, dateLabel: relativeDay(day(of: entry)), upcoming: false) }
                 }
                 .padding(.horizontal, Theme.Space.gutter)
                 .padding(.vertical, Platform.isTV ? 36 : 4)
@@ -229,7 +229,12 @@ private struct CalendarRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(CardButtonStyle())
-        .contextMenu { MediaContextMenu(item: entry.item) }
+        .contextMenu {
+            #if !os(tvOS)
+            AddToCalendarButton(item: entry.item, episode: entry.episode, date: entry.date)
+            #endif
+            MediaContextMenu(item: entry.item)
+        }
     }
 }
 
@@ -237,6 +242,8 @@ private struct CalendarRow: View {
 private struct CalendarCard: View {
     let entry: CalendarEntry
     let dateLabel: String?
+    /// Just Aired cards are in the past: nothing to put in a calendar.
+    var upcoming = true
     @Environment(AppModel.self) private var model
 
     private var width: CGFloat { Platform.landscapeWidth }
@@ -252,6 +259,9 @@ private struct CalendarCard: View {
         .buttonStyle(CardButtonStyle())
         .contextMenu {
             Button { model.navigate(to: .detail(entry.item)) } label: { Label("Go to Details", systemImage: "info.circle") }
+            #if !os(tvOS)
+            if upcoming { AddToCalendarButton(item: entry.item, episode: entry.episode, date: entry.date) }
+            #endif
             MediaContextMenu(item: entry.item)
         }
     }
