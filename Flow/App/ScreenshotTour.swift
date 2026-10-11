@@ -86,6 +86,7 @@ enum ScreenshotTour {
             Step(name: "settings-general") { m in m.settingsPath = [.settings(.general)] },
             Step(name: "settings-playback") { m in m.settingsPath = [.settings(.playback)] },
             Step(name: "settings-data") { m in m.settingsPath = [.settings(.dataStorage)] },
+            Step(name: "settings-subtitles") { m in m.settingsPath = [.settings(.subtitles)] },
         ]
         #endif
         return steps
