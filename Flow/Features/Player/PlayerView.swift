@@ -153,6 +153,7 @@ struct PlayerView: View {
                         .menuIndicator(.hidden)
                         .fixedSize()
                     }
+                    MacPlayerMenu(session: session)
                     CircleButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle") { session.showsInfo.toggle() }
                     CircleButton(systemImage: "magnifyingglass") { showSubtitles = true }
                     CircleButton(systemImage: "xmark") { session.stop() }

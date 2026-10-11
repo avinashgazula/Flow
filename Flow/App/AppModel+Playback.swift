@@ -160,6 +160,8 @@ extension AppModel {
             Task { try? await tracker.scrobble(.start, request: request, percent: 0) }
             return
         }
+        // A new title (from Siri, a link, or Handoff) replaces one already playing: save its place and let it go.
+        activePlayback?.stop()
         activePlayback = PlaybackSession(model: self, request: request, source: source, resumeAt: resume, alternatives: alternatives)
         ScreenshotTour.log("activePlayback set: \(activePlayback != nil)")
     }
