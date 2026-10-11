@@ -8,6 +8,7 @@ struct GuideView: View {
     let onPlay: (Channel) -> Void
 
     @State private var start = GuideView.roundedNow()
+    @State private var inspecting: GuideSelection?
 
     private let hours: Double = 6
     private var pointsPerMinute: CGFloat { Platform.isTV ? 12 : (Platform.isPhone ? 4.2 : 6) }
@@ -41,6 +42,9 @@ struct GuideView: View {
                     .scrollClipDisabled()
                 }
             }
+        }
+        .sheet(item: $inspecting) { selection in
+            ProgrammeSheet(selection: selection) { onPlay(selection.channel) }
         }
     }
 
@@ -101,7 +105,7 @@ struct GuideView: View {
                 let x = CGFloat(visibleStart.timeIntervalSince(start) / 60) * pointsPerMinute
                 let width = max(2, CGFloat(visibleEnd.timeIntervalSince(visibleStart) / 60) * pointsPerMinute - 4)
                 let live = programme.isAiring(at: now)
-                Button { if live { onPlay(channel) } } label: {
+                Button { if live { onPlay(channel) } else { inspecting = GuideSelection(channel: channel, programme: programme) } } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(programme.title).font(.system(size: 13 * Theme.scale, weight: .semibold)).lineLimit(1)
                         Text("\(programme.start.formatted(date: .omitted, time: .shortened)) – \(programme.end.formatted(date: .omitted, time: .shortened))")
@@ -119,6 +123,10 @@ struct GuideView: View {
                     .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.Palette.hairline))
                 }
                 .buttonStyle(CardButtonStyle())
+                .contextMenu {
+                    if live { Button { onPlay(channel) } label: { Label("Watch Now", systemImage: "play.fill") } }
+                    Button { inspecting = GuideSelection(channel: channel, programme: programme) } label: { Label("Details", systemImage: "info.circle") }
+                }
                 .offset(x: x)
             }
         }
@@ -155,5 +163,87 @@ struct ChannelBadge: View {
         .frame(width: size * 1.6, height: size)
         .background(Theme.Palette.surfaceStrong, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.Palette.hairline))
+    }
+}
+
+struct GuideSelection: Identifiable {
+    let channel: Channel
+    let programme: Programme
+    var id: String { "\(channel.id)-\(programme.id)" }
+}
+
+/// One programme's details: what it is, when, and a way in if it's on now.
+private struct ProgrammeSheet: View {
+    let selection: GuideSelection
+    let watch: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    private var programme: Programme { selection.programme }
+
+    var body: some View {
+        NavigationStack {
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                let live = programme.isAiring(at: context.date)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
+                        HStack(spacing: Theme.Space.s) {
+                            ChannelBadge(channel: selection.channel, size: Platform.isTV ? 64 : 36)
+                            Text(selection.channel.name).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary)
+                            if live {
+                                Text("LIVE").font(.system(size: 11 * Theme.scale, weight: .heavy)).foregroundStyle(.white)
+                                    .padding(.horizontal, 6).padding(.vertical, 2)
+                                    .background(Color.red, in: Capsule())
+                            }
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(programme.title).font(Theme.Typeface.title)
+                            if let subtitle = programme.subtitle, !subtitle.isEmpty {
+                                Text(subtitle).font(Theme.Typeface.body).foregroundStyle(Theme.Palette.textSecondary)
+                            }
+                        }
+                        Text(timing(at: context.date))
+                            .font(Theme.Typeface.caption)
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                        if live {
+                            ProgressView(value: programme.progress(at: context.date)).tint(.white)
+                        }
+                        if let category = programme.category, !category.isEmpty {
+                            Text(category.uppercased()).font(.system(size: 11 * Theme.scale, weight: .semibold)).tracking(0.6)
+                                .foregroundStyle(Theme.Palette.textTertiary)
+                        }
+                        if let description = programme.description, !description.isEmpty {
+                            Text(description).font(Theme.Typeface.body)
+                        }
+                        if live {
+                            Button {
+                                dismiss()
+                                watch()
+                            } label: { Label("Watch Now", systemImage: "play.fill").frame(maxWidth: .infinity) }
+                            .buttonStyle(PrimaryButtonStyle())
+                            .padding(.top, Theme.Space.s)
+                        }
+                    }
+                    .frame(maxWidth: 640, alignment: .leading)
+                    .padding(Theme.Space.gutter)
+                }
+            }
+            .inlineNavigationTitle()
+            .sheetDoneButton { dismiss() }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func timing(at now: Date) -> String {
+        let day = Calendar.current.isDateInToday(programme.start) ? "" : programme.start.formatted(.dateTime.weekday(.wide)) + " · "
+        let range = "\(programme.start.formatted(date: .omitted, time: .shortened)) – \(programme.end.formatted(date: .omitted, time: .shortened))"
+        let minutes = Int(programme.end.timeIntervalSince(programme.start) / 60)
+        if programme.start > now {
+            let until = Int(programme.start.timeIntervalSince(now) / 60)
+            let starts = until < 60 ? "Starts in \(max(1, until)) min" : "Starts in \(until / 60) h \(until % 60) min"
+            return day + range + " · " + starts
+        }
+        if programme.end <= now { return day + range + " · Ended" }
+        let left = Int(programme.end.timeIntervalSince(now) / 60)
+        return range + " · \(max(1, left)) min left of \(minutes)"
     }
 }
