@@ -71,6 +71,8 @@ struct GuideView: View {
                 .accessibilityLabel("Play \(channel.name)")
             }
         }
+        // A lazy stack takes all the width it's offered; pinned, the timeline starts right beside it.
+        .frame(width: channelColumn)
         .background(Theme.Palette.canvas.opacity(0.85))
         .zIndex(1)
     }
