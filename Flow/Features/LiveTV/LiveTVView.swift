@@ -324,7 +324,7 @@ struct LivePlayerView: View {
             }
             #endif
             if case .failed(let message) = state {
-                PlaybackErrorView(message: message, canTryAnother: lineup.count > 1, retry: { attempt += 1 },
+                PlaybackErrorView(message: message, canTryAnother: lineup.count > 1, tryAnotherTitle: "Next Channel", retry: { attempt += 1 },
                                   tryAnother: { zap(by: 1) }, close: { dismiss() })
             }
         }

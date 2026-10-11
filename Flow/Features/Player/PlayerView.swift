@@ -265,6 +265,7 @@ struct PlaybackErrorView: View {
     /// The player's error domain and code, small and selectable, for reporting.
     var detail: String?
     var canTryAnother = false
+    var tryAnotherTitle = "Try Another Source"
     var externalPlayer: String?
     let retry: () -> Void
     var tryAnother: () -> Void = {}
@@ -294,7 +295,7 @@ struct PlaybackErrorView: View {
                 }
                 VStack(spacing: Theme.Space.s) {
                     if canTryAnother {
-                        Button("Try Another Source", action: tryAnother).buttonStyle(PrimaryButtonStyle())
+                        Button(tryAnotherTitle, action: tryAnother).buttonStyle(PrimaryButtonStyle())
                     }
                     if let externalPlayer {
                         Button("Open in \(externalPlayer)", action: openExternally).buttonStyle(GlassButtonStyle())
