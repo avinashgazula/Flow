@@ -129,12 +129,13 @@ struct PlayerView: View {
                         } label: {
                             Image(systemName: "list.bullet")
                                 .font(.system(size: 16, weight: .semibold))
-                                .frame(width: 44, height: 44)
-                                .flowGlass(Circle(), interactive: true)
                         }
                         .menuStyle(.borderlessButton)
                         .menuIndicator(.hidden)
                         .fixedSize()
+                        .frame(width: 44, height: 44)
+                        .contentShape(Circle())
+                        .flowGlass(Circle(), interactive: true)
                     }
                     if !session.bitmapTracks.isEmpty {
                         Menu {
@@ -146,12 +147,13 @@ struct PlayerView: View {
                         } label: {
                             Image(systemName: session.selectedBitmapTrack == nil ? "captions.bubble" : "captions.bubble.fill")
                                 .font(.system(size: 16, weight: .semibold))
-                                .frame(width: 44, height: 44)
-                                .flowGlass(Circle(), interactive: true)
                         }
                         .menuStyle(.borderlessButton)
                         .menuIndicator(.hidden)
                         .fixedSize()
+                        .frame(width: 44, height: 44)
+                        .contentShape(Circle())
+                        .flowGlass(Circle(), interactive: true)
                     }
                     MacPlayerMenu(session: session)
                     CircleButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle") { session.showsInfo.toggle() }

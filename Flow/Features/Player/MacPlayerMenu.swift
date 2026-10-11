@@ -67,12 +67,14 @@ struct MacPlayerMenu: View {
         } label: {
             Image(systemName: "ellipsis")
                 .font(.system(size: 16, weight: .bold))
-                .frame(width: 44, height: 44)
-                .flowGlass(Circle(), interactive: true)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
+        // A borderless menu draws only its label's image, so the glass goes around the menu itself.
+        .frame(width: 44, height: 44)
+        .contentShape(Circle())
+        .flowGlass(Circle(), interactive: true)
         .accessibilityLabel("Options")
         .onAppear { speed = session.player.defaultRate }
     }
