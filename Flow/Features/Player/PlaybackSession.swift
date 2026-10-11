@@ -32,9 +32,6 @@ final class PlaybackSession: Identifiable {
     var subtitleTrack: SubtitleTrackInfo?
     /// Seconds the subtitle is delayed by (negative shows it earlier), as `SubtitleDocument.text(at:offset:)` takes it.
     var subtitleOffset: Double = 0
-    /// The downloaded subtitle's line for the playhead and the current delay. Worked out when read, so a
-    /// change of delay shows at once, even while paused.
-    var subtitleText: String? { subtitle?.text(at: currentTime, offset: subtitleOffset) }
     var upNext: PlaybackRequest?
     var upNextCountdown: Int?
     /// Counts player items, so views holding an item's tracks know to read them again.

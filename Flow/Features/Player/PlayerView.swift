@@ -1190,7 +1190,15 @@ struct SubtitleLayer: View {
 
     var body: some View {
         ZStack {
-            SubtitleOverlay(text: session.subtitleText, settings: settings, cues: styledCues)
+            if let subtitle = session.subtitle {
+                // Its own clock, a tenth of a second: the session's half-second tick would show lines late.
+                TimelineView(.periodic(from: .now, by: 0.1)) { _ in
+                    let now = session.player.currentTime().seconds
+                    let time = now.isFinite ? now : session.currentTime
+                    SubtitleOverlay(text: subtitle.text(at: time, offset: session.subtitleOffset), settings: settings,
+                                    cues: settings.keepASSStyling ? subtitle.cues(at: time, offset: session.subtitleOffset) : [])
+                }
+            }
             if let bitmap = session.bitmapSubtitle {
                 BitmapSubtitleView(overlay: bitmap)
             }
@@ -1198,12 +1206,6 @@ struct SubtitleLayer: View {
         .offset(y: lifted ? -72 : 0)
         .animation(Theme.Motion.snappy, value: lifted)
         .allowsHitTesting(false)
-    }
-
-    /// The downloaded subtitle's cues at this moment, with the author's styling, when the viewer wants it.
-    private var styledCues: [SubtitleCue] {
-        guard settings.keepASSStyling else { return [] }
-        return session.subtitle?.cues(at: session.currentTime, offset: session.subtitleOffset) ?? []
     }
 }
 
