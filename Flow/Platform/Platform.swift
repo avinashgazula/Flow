@@ -261,6 +261,17 @@ extension View {
         #endif
     }
 
+    /// A sheet's Cancel or Close button. tvOS leaves it out: the remote's Back button dismisses every
+    /// sheet, and a text item in that spot draws white on the white glass of Flow's accent.
+    @ViewBuilder
+    func sheetDismissButton(_ title: String = "Cancel", action: @escaping () -> Void) -> some View {
+        #if os(tvOS)
+        self
+        #else
+        toolbar { ToolbarItem(placement: .cancellationAction) { Button(title, action: action) } }
+        #endif
+    }
+
     @ViewBuilder
     func largeNavigationTitle() -> some View {
         #if os(iOS)

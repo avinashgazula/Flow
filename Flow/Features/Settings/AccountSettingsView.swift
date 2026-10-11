@@ -228,7 +228,7 @@ struct DeviceSignInView: View {
             .padding(30)
             .navigationTitle("Sign In to \(service == .trakt ? "Trakt" : "Simkl")")
             .inlineNavigationTitle()
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .sheetDismissButton("Cancel") { dismiss() }
             .task { await run() }
         }
     }

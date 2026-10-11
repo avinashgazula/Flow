@@ -137,6 +137,12 @@ struct DiscoverFilterView: View {
     var body: some View {
         NavigationStack {
             Form {
+                #if os(tvOS)
+                // The toolbar's Reset doesn't read on tvOS (white on Flow's white accent), so it lives in the form.
+                Section {
+                    Button("Reset Filters") { query = DiscoverQuery(type: query.type) }
+                }
+                #endif
                 Section("Sort By") {
                     Picker("Sort", selection: $query.sort) {
                         ForEach(DiscoverSort.allCases) { Text($0.title).tag($0) }
@@ -204,7 +210,9 @@ struct DiscoverFilterView: View {
             .navigationTitle(title)
             .inlineNavigationTitle()
             .toolbar {
+                #if !os(tvOS)
                 ToolbarItem(placement: .cancellationAction) { Button("Reset") { query = DiscoverQuery(type: query.type) } }
+                #endif
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
             .task { providers = (try? await model.catalog?.tmdb.watchProviders(query.type)) ?? [] }

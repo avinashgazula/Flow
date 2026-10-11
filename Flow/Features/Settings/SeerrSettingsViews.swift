@@ -60,7 +60,7 @@ struct ConnectSeerrView: View {
             }
             .navigationTitle("Connect Seerr")
             .inlineNavigationTitle()
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .sheetDismissButton("Cancel") { dismiss() }
         }
     }
 

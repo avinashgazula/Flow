@@ -84,8 +84,8 @@ struct SourcePickerView: View {
             }
             .background(AmbientBackground(url: request.item.smallBackdropURL ?? request.item.posterURL, intensity: 0.7))
             .inlineNavigationTitle()
+            .sheetDismissButton("Close") { dismiss() }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
                 ToolbarItem(placement: .primaryAction) {
                     Button { reloadToken += 1 } label: { Image(systemName: "arrow.clockwise") }
                         .disabled(!finished)

@@ -255,7 +255,7 @@ struct TeamSearchView: View {
             .searchable(text: $query, prompt: "Team name")
             .navigationTitle("Follow a Team")
             .inlineNavigationTitle()
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .sheetDismissButton("Cancel") { dismiss() }
             .task(id: query) {
                 guard query.count >= 3 else { teams = []; return }
                 try? await Task.sleep(nanoseconds: 400_000_000)

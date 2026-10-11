@@ -198,8 +198,8 @@ struct DiscoverShelfEditor: View {
             }
             .navigationTitle(shelf == nil ? "New Discover Shelf" : "Edit Shelf")
             .inlineNavigationTitle()
+            .sheetDismissButton("Cancel") { dismiss() }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }.disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
@@ -288,7 +288,7 @@ struct ListShelfPicker: View {
             }
             .navigationTitle("Add List Shelf")
             .inlineNavigationTitle()
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .sheetDismissButton("Cancel") { dismiss() }
             .task {
                 if model.credentials.traktToken != nil { traktLists = (try? await model.trakt?.myLists()) ?? [] }
                 mdbLists = (try? await model.mdblist?.myLists()) ?? []

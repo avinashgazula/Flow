@@ -158,7 +158,7 @@ struct AddServerView: View {
             }
             .navigationTitle("Add Server")
             .inlineNavigationTitle()
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .sheetDismissButton("Cancel") { dismiss() }
         }
     }
 

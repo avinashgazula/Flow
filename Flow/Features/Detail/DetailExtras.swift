@@ -211,7 +211,7 @@ struct ReviewSheet: View {
             }
             .navigationTitle("Review")
             .inlineNavigationTitle()
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .sheetDismissButton("Close") { dismiss() }
         }
         .presentationDetents([.medium, .large])
         .preferredColorScheme(.dark)
