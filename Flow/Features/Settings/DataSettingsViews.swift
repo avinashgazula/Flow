@@ -130,6 +130,15 @@ struct DataStorageView: View {
                 } footer: {
                     Text("Applies to downloads only: playing still offers every source. With Download Automatically on, Download takes the best source within these limits, in your source order, and the source list opens only when nothing fits. Sources that don't report their size or resolution aren't picked automatically.")
                 }
+
+                Section {
+                    Toggle("Delete Watched Episodes", isOn: $model.settings.downloads.deleteWatchedDownloads)
+                    Toggle("Download Next Episode", isOn: $model.settings.downloads.downloadNextEpisode)
+                } header: {
+                    Text("Smart Downloads")
+                } footer: {
+                    Text("These apply to episodes you've downloaded. Delete Watched Episodes removes a download once you've watched it to the end. Download Next Episode then saves the next episode that has aired, within the download limits above; when no source fits, it tells you instead of opening the source list.")
+                }
             }
 
             Section {

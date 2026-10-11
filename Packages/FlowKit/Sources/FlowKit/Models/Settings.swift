@@ -1091,6 +1091,10 @@ public struct DownloadSettings: Codable, Hashable, Sendable {
     public var resolution: VideoResolution = .unknown
     /// Download takes the best source within the limits instead of opening the source list.
     public var downloadAutomatically = false
+    /// Removes a downloaded episode once it has been watched to the end.
+    public var deleteWatchedDownloads = false
+    /// Downloads the next aired episode when a downloaded one has been watched.
+    public var downloadNextEpisode = false
     public init() {}
 }
 

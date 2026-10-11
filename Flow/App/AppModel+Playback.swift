@@ -215,6 +215,32 @@ extension AppModel {
         return true
     }
 
+    /// Smart Downloads: runs once an episode has been watched to the end. It acts only for episodes with a saved download
+    /// (whether the viewing played the file or a stream), so shows that aren't being downloaded are left alone, and the
+    /// chain continues because each downloaded next episode qualifies in turn. The player is on screen, so it only toasts.
+    /// Delete Watched Episodes removes that download; Download Next Episode saves the next aired one, unless it's
+    /// already downloaded or on its way.
+    func downloadedEpisodeFinished(_ request: PlaybackRequest) async {
+        let downloads = settings.downloads
+        guard Platform.supportsDownloads, downloads.deleteWatchedDownloads || downloads.downloadNextEpisode,
+              request.episode != nil, let watched = DownloadManager.shared.finished(for: request) else { return }
+        var summary: [String] = []
+        if downloads.deleteWatchedDownloads {
+            DownloadManager.shared.remove(watched)
+            summary.append("Downloaded episode removed")
+        }
+        if downloads.downloadNextEpisode, let next = await nextRequest(after: request) {
+            // Already saved or on its way is left alone; a failed attempt is replaced, not duplicated.
+            let existing = DownloadManager.shared.items.filter { $0.request.id == next.id }
+            if !existing.contains(where: { $0.state != .failed }) {
+                existing.forEach(DownloadManager.shared.remove)
+                let code = next.episode?.code ?? next.displayTitle
+                summary.append(await downloadAutomatically(next) ? "Downloading \(code)" : "No source fits to download \(code)")
+            }
+        }
+        if !summary.isEmpty { showToast(summary.joined(separator: " · ")) }
+    }
+
     /// Called by the player as playback progresses or stops.
     func recordPlayback(request: PlaybackRequest, position: Double, duration: Double, finished: Bool) async {
         guard let key = request.item.key, duration > 0 else { return }

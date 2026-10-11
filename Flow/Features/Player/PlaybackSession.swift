@@ -1436,6 +1436,7 @@ final class PlaybackSession: Identifiable {
         try? await model.tracker.scrobble(.stop, request: request, percent: pct)
         await report(.stopped)
         await model.recordPlayback(request: request, position: position, duration: duration, finished: completed)
+        if completed, request.episode != nil { Task { await model.downloadedEpisodeFinished(request) } }
         didStart = false
     }
 

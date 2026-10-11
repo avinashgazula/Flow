@@ -193,6 +193,9 @@ struct DownloadsView: View {
 
     var body: some View {
         List {
+            if model.settings.downloads.deleteWatchedDownloads || model.settings.downloads.downloadNextEpisode {
+                Text(smartDownloadsNote).font(.footnote).foregroundStyle(.secondary).listRowBackground(Color.clear)
+            }
             if manager.items.isEmpty {
                 ContentUnavailableView("No Downloads", systemImage: "arrow.down.circle",
                                        description: Text("Tap the download button on a movie or episode to save it for offline viewing."))
@@ -238,5 +241,14 @@ struct DownloadsView: View {
             }
         }
         .navigationTitle("Downloads")
+    }
+
+    private var smartDownloadsNote: String {
+        let settings = model.settings.downloads
+        switch (settings.deleteWatchedDownloads, settings.downloadNextEpisode) {
+        case (true, true): return "Watched episodes are removed and the next one downloads automatically."
+        case (true, false): return "Watched episodes are removed."
+        default: return "The next episode downloads when you finish one."
+        }
     }
 }
