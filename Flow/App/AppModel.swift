@@ -455,7 +455,7 @@ final class AppModel {
             self.cloudSettingsDirty = false
             guard self.settings.sync.iCloudEnabled else { return }
             do {
-                try self.cloud.push(settings: self.settings, library: self.localLibrary, includeLibrary: false)
+                try self.cloud.push(settings: self.settings, library: self.localLibrary, includeLibrary: true)
                 self.cloudWriteFailed = false
                 self.settings.sync.lastCloudSync = Date()
             } catch {

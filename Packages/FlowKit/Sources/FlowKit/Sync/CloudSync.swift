@@ -117,6 +117,7 @@ public struct CloudSync: Sendable {
             trimmed.watchlist = library.watchlist
             trimmed.favourites = library.favourites
             trimmed.history = Array(library.history.prefix(1500))
+            trimmed.removed = library.removed
             try write(trimmed, .library)
         }
         store.synchronize()

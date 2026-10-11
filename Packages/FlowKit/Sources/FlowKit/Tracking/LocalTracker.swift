@@ -10,8 +10,45 @@ public struct LocalLibrary: Codable, Hashable, Sendable {
     public var shuffle: [ShuffleRecord] = []
     /// Cached display data so lists render offline.
     public var items: [String: MediaItem] = [:]
+    /// When something was taken off a list, by `Self.tombstone`, so a merge with a copy that still
+    /// has it (iCloud, another device) doesn't bring it back. Anything added again later wins.
+    public var removed: [String: Date] = [:]
 
     public init() {}
+
+    /// How long a removal is remembered: past that, a device that has been offline all along can bring the entry back.
+    static let tombstoneLifetime: TimeInterval = 180 * 86_400
+    static let tombstoneLimit = 2000
+
+    static func tombstone(_ list: String, _ id: String) -> String { "\(list):\(id)" }
+
+    /// Records the removal of everything `old` had and this copy doesn't.
+    mutating func recordRemovals(since old: LocalLibrary, at date: Date = Date()) {
+        func diff<T>(_ list: String, _ before: [T], _ after: [T], _ id: KeyPath<T, String>) {
+            let kept = Set(after.map { $0[keyPath: id] })
+            for entry in before where !kept.contains(entry[keyPath: id]) { removed[Self.tombstone(list, entry[keyPath: id])] = date }
+        }
+        diff("progress", old.progress, progress, \.id)
+        diff("history", old.history, history, \.id)
+        diff("watchlist", old.watchlist, watchlist, \.id)
+        diff("favourites", old.favourites, favourites, \.id)
+        diff("rewatches", old.rewatches, rewatches, \.id)
+        pruneRemovals(now: date)
+    }
+
+    private mutating func pruneRemovals(now: Date) {
+        removed = removed.filter { now.timeIntervalSince($0.value) < Self.tombstoneLifetime }
+        if removed.count > Self.tombstoneLimit {
+            let keep = removed.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.prefix(Self.tombstoneLimit)
+            removed = Dictionary(uniqueKeysWithValues: keep.map { ($0.key, $0.value) })
+        }
+    }
+
+    /// Whether `id` on `list` was removed at or after `date`, the time the entry was made.
+    private static func wasRemoved(_ removed: [String: Date], _ list: String, _ id: String, after date: Date) -> Bool {
+        guard let at = removed[tombstone(list, id)] else { return false }
+        return at >= date
+    }
 
     public mutating func remember(_ item: MediaItem) {
         guard let key = item.key else { return }
@@ -35,6 +72,13 @@ public struct LocalLibrary: Codable, Hashable, Sendable {
         // Dictionary order is random; a stable order lets two devices see that they already agree.
         out.shuffle = shuffleByKey.values.sorted { $0.key.description < $1.key.description }
         out.items = items.merging(other.items) { a, _ in a }
+        let gone = removed.merging(other.removed) { max($0, $1) }
+        out.removed = gone
+        out.progress.removeAll { Self.wasRemoved(gone, "progress", $0.id, after: $0.updatedAt) }
+        out.history.removeAll { Self.wasRemoved(gone, "history", $0.id, after: $0.watchedAt) }
+        out.watchlist.removeAll { Self.wasRemoved(gone, "watchlist", $0.id, after: $0.addedAt) }
+        out.favourites.removeAll { Self.wasRemoved(gone, "favourites", $0.id, after: $0.addedAt) }
+        out.rewatches.removeAll { Self.wasRemoved(gone, "rewatches", $0.id, after: $0.startedAt) }
         return out
     }
 
@@ -49,6 +93,23 @@ public struct LocalLibrary: Codable, Hashable, Sendable {
             let (a, b) = ($0[keyPath: date], $1[keyPath: date])
             return a != b ? a > b : $0[keyPath: id] < $1[keyPath: id]
         }
+    }
+}
+
+extension LocalLibrary {
+    /// Every field optional on the way in, so a library saved by an older version (without `removed`,
+    /// or anything added later) still loads instead of starting empty.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init()
+        progress = try c.decodeIfPresent([PlaybackProgress].self, forKey: .progress) ?? []
+        history = try c.decodeIfPresent([HistoryEntry].self, forKey: .history) ?? []
+        watchlist = try c.decodeIfPresent([ListEntry].self, forKey: .watchlist) ?? []
+        favourites = try c.decodeIfPresent([ListEntry].self, forKey: .favourites) ?? []
+        rewatches = try c.decodeIfPresent([Rewatch].self, forKey: .rewatches) ?? []
+        shuffle = try c.decodeIfPresent([ShuffleRecord].self, forKey: .shuffle) ?? []
+        items = try c.decodeIfPresent([String: MediaItem].self, forKey: .items) ?? [:]
+        removed = try c.decodeIfPresent([String: Date].self, forKey: .removed) ?? [:]
     }
 }
 
@@ -89,7 +150,9 @@ public actor LocalTracker: TrackingService, ListService {
     }
 
     private func mutate(_ change: (inout LocalLibrary) -> Void) {
+        let before = library
         change(&library)
+        library.recordRemovals(since: before)
         save(library)
     }
 

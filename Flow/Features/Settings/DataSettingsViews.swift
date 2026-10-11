@@ -58,7 +58,7 @@ struct DataStorageView: View {
             } header: {
                 Text("iCloud")
             } footer: {
-                Text("Syncs playback progress, settings, rewatch state, and shuffle history across your devices. Push also syncs your on-device watchlist, watch history and favourites through iCloud.")
+                Text("Keeps playback progress, settings, rewatch state, shuffle history and your on-device watchlist, watch history and favourites the same on all your devices. Anything you remove stays removed everywhere.")
             }
 
             Section {
@@ -91,7 +91,7 @@ struct DataStorageView: View {
             } header: {
                 Text("On-Device Tracking")
             } footer: {
-                Text((model.settings.sync.iCloudEnabled ? "Re-download reads the whole iCloud copy and merges anything missing into this device; nothing is uploaded or deleted. Reset replaces the iCloud copy with this device's. " : "")
+                Text((model.settings.sync.iCloudEnabled ? "Re-download reads the whole iCloud copy and merges anything missing into this device. Reset replaces the iCloud copy with this device's. " : "")
                      + "Export saves your watch history, watchlist, favourites, resume positions and rewatches as a JSON file.")
             }
 
