@@ -199,11 +199,7 @@ struct DiscoverShelfEditor: View {
             .navigationTitle(shelf == nil ? "New Discover Shelf" : "Edit Shelf")
             .inlineNavigationTitle()
             .sheetDismissButton("Cancel") { dismiss() }
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }.disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
+            .sheetSaveButton(disabled: title.trimmingCharacters(in: .whitespaces).isEmpty) { save() }
             .sheet(isPresented: $showFilters) { DiscoverFilterView(query: $query).environment(model) }
             .onAppear {
                 if let shelf, case .discover(let q) = shelf.source {

@@ -71,9 +71,7 @@ struct WebDAVEditor: View {
             .navigationTitle(config.name)
             .inlineNavigationTitle()
             .sheetDismissButton("Cancel") { dismiss() }
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(URL(string: urlText)?.host == nil) }
-            }
+            .sheetSaveButton(disabled: URL(string: urlText)?.host == nil) { save() }
             .onAppear { urlText = config.baseURL.host == "example.invalid" ? "" : config.baseURL.absoluteString }
         }
     }
@@ -193,9 +191,7 @@ struct IPTVEditor: View {
             .navigationTitle(config.name)
             .inlineNavigationTitle()
             .sheetDismissButton("Cancel") { dismiss() }
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(URL(string: urlText)?.host == nil) }
-            }
+            .sheetSaveButton(disabled: URL(string: urlText)?.host == nil) { save() }
             .onAppear {
                 urlText = config.url.host == "example.invalid" ? "" : config.url.absoluteString
                 epgText = config.epgURL?.absoluteString ?? ""

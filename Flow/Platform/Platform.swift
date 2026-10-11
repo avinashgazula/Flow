@@ -272,6 +272,32 @@ extension View {
         #endif
     }
 
+    /// A sheet's Done. tvOS leaves it out for the same reasons as Cancel: Back closes the sheet.
+    @ViewBuilder
+    func sheetDoneButton(_ title: String = "Done", action: @escaping () -> Void) -> some View {
+        #if os(tvOS)
+        self
+        #else
+        toolbar { ToolbarItem(placement: .confirmationAction) { Button(title, action: action) } }
+        #endif
+    }
+
+    /// A sheet's Save. On tvOS a toolbar item draws white on white and focus rarely reaches it, so the
+    /// button sits under the form instead, where swiping down lands on it.
+    @ViewBuilder
+    func sheetSaveButton(_ title: String = "Save", disabled: Bool = false, action: @escaping () -> Void) -> some View {
+        #if os(tvOS)
+        safeAreaInset(edge: .bottom) {
+            Button(title, action: action)
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(disabled)
+                .padding(.vertical, Theme.Space.m)
+        }
+        #else
+        toolbar { ToolbarItem(placement: .confirmationAction) { Button(title, action: action).disabled(disabled) } }
+        #endif
+    }
+
     @ViewBuilder
     func largeNavigationTitle() -> some View {
         #if os(iOS)

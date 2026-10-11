@@ -209,12 +209,12 @@ struct DiscoverFilterView: View {
             }
             .navigationTitle(title)
             .inlineNavigationTitle()
+            #if !os(tvOS)
             .toolbar {
-                #if !os(tvOS)
                 ToolbarItem(placement: .cancellationAction) { Button("Reset") { query = DiscoverQuery(type: query.type) } }
-                #endif
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
+            #endif
+            .sheetDoneButton { dismiss() }
             .task { providers = (try? await model.catalog?.tmdb.watchProviders(query.type)) ?? [] }
         }
         #if os(macOS)

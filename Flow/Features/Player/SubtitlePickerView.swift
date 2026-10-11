@@ -75,9 +75,7 @@ struct SubtitlePickerView: View {
             }
             .navigationTitle("Subtitles")
             .inlineNavigationTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
+            .sheetDoneButton { dismiss() }
             .task {
                 tracks = await SubtitleSearch.search(model.subtitleProviders(), request: session.request,
                                                      languages: model.settings.subtitles.preferredLanguages,
