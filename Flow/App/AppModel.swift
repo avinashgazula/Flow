@@ -49,6 +49,8 @@ final class AppModel {
     @ObservationIgnored let serverIndex = MediaServerIndex()
     @ObservationIgnored private var cloudObserver: NSObjectProtocol?
     @ObservationIgnored private var cloudPushTask: Task<Void, Never>?
+    /// A settings change is waiting for its debounced upload, so the local settings are newer than iCloud's copy.
+    @ObservationIgnored private var cloudSettingsDirty = false
 
     @ObservationIgnored private var settingsSaveTask: Task<Void, Never>?
     /// Settings and library writes, one at a time and in order, so an older copy never lands last.
@@ -277,8 +279,11 @@ final class AppModel {
             || old.sports.followedTeams != settings.sports.followedTeams {
             scheduleNotificationRefresh(force: true)
         }
-        if settings.sync.iCloudEnabled, old.shelves != settings.shelves || old.mediaServers.servers != settings.mediaServers.servers || old.general != settings.general {
-            scheduleCloudPush()
+        // Everything iCloud carries, not just shelves, servers and General: a change that never went up would be
+        // replaced by the cloud copy on the next pull.
+        if settings.sync.iCloudEnabled, old.shelves != settings.shelves || old.mediaServers.servers != settings.mediaServers.servers
+            || CloudSync.portableSettings(old) != CloudSync.portableSettings(settings) {
+            scheduleCloudPush(settingsChanged: true)
         }
     }
 
@@ -303,7 +308,8 @@ final class AppModel {
 
         if let key = tmdbKey {
             let tmdb = TMDBClient(credential: key, language: settings.metadata.language, region: settings.metadata.region, includeAdult: settings.metadata.includeAdult, http: http)
-            if catalog == nil || catalog?.tmdb.credential != key || catalog?.tmdb.language != tmdb.language || catalog?.tmdb.region != tmdb.region {
+            if catalog == nil || catalog?.tmdb.credential != key || catalog?.tmdb.language != tmdb.language || catalog?.tmdb.region != tmdb.region
+                || catalog?.tmdb.includeAdult != tmdb.includeAdult {
                 catalog = CatalogService(tmdb: tmdb, cache: cache)
             }
         } else {
@@ -435,12 +441,15 @@ final class AppModel {
         #endif
     }
 
-    func scheduleCloudPush() {
+    func scheduleCloudPush(settingsChanged: Bool = false) {
         guard settings.sync.iCloudEnabled else { return }
         cloudPushTask?.cancel()
+        if settingsChanged { cloudSettingsDirty = true }
         cloudPushTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             guard !Task.isCancelled, let self else { return }
+            self.cloudSettingsDirty = false
+            guard self.settings.sync.iCloudEnabled else { return }
             do {
                 try self.cloud.push(settings: self.settings, library: self.localLibrary, includeLibrary: false)
                 self.cloudWriteFailed = false
@@ -452,6 +461,8 @@ final class AppModel {
     }
 
     func pushToCloud() {
+        cloudPushTask?.cancel()
+        cloudSettingsDirty = false
         do {
             try cloud.push(settings: settings, library: localLibrary, includeLibrary: true)
             cloudWriteFailed = false
@@ -464,12 +475,18 @@ final class AppModel {
     }
 
     func pullFromCloud(silent: Bool = false) {
-        let snapshot = cloud.pull()
-        let (newSettings, newLibrary) = CloudSync.apply(snapshot, settings: settings, library: localLibrary)
-        if newSettings != settings { settings = newSettings }
-        if newLibrary != localLibrary {
-            Task { await local.replace(newLibrary) }
+        var snapshot = cloud.pull()
+        // An automatic pull must not undo a settings change that is still waiting to go up: the upload replaces the cloud copy anyway.
+        if silent && cloudSettingsDirty {
+            snapshot.settings = nil
+            snapshot.shelves = nil
+            snapshot.mediaServers = nil
         }
+        let (newSettings, _) = CloudSync.apply(snapshot, settings: settings, library: localLibrary)
+        if newSettings != settings { settings = newSettings }
+        // Merged where the library lives, so a change made a moment ago isn't lost to a merge of the older mirror.
+        let cloudLibrary = CloudSync.cloudLibrary(snapshot)
+        Task { await local.merge(cloudLibrary) }
         settings.sync.lastCloudSync = Date()
         if !silent { showToast("Pulled from iCloud") }
     }

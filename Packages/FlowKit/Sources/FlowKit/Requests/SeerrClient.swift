@@ -37,6 +37,16 @@ public struct SeerrClient: Sendable {
         try await http.json(ServerStatus.self, request(.get, "status"))
     }
 
+    /// `status` answers without a key, so a wrong key would pass it and only show up later as a Request button
+    /// that never appears. The signed-in user is only returned for a key Seerr accepts.
+    public func verifyKey() async throws {
+        do {
+            try await http.send(request(.get, "auth/me"))
+        } catch FlowError.unauthorized {
+            throw FlowError.unsupported("Seerr rejected that API key.")
+        }
+    }
+
     public func mediaStatus(type: MediaType, tmdbID: Int) async throws -> SeerrMediaStatus {
         struct Request: Decodable { var status: Int? }
         struct MediaInfo: Decodable { var status: Int?; var requests: [Request]? }

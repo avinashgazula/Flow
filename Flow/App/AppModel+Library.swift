@@ -36,14 +36,16 @@ extension AppModel {
             }
         }
 
-        var trackerProgress = take(await progressResult) ?? []
+        // A failed fetch keeps the resume points already shown instead of emptying Continue Watching while offline.
+        let fetchedProgress = take(await progressResult)
+        var trackerProgress = fetchedProgress ?? []
         // Trackers without resume points still get local ones (This Device keeps them for everyone).
         if settings.account.tracker != .local {
             let localProgress = (try? await local.playbackProgress()) ?? []
             let remoteIDs = Set(trackerProgress.map(\.id))
             trackerProgress += localProgress.filter { !remoteIDs.contains($0.id) && tracker.kind != .trakt }
         }
-        progress = trackerProgress.sorted { $0.updatedAt > $1.updatedAt }
+        if fetchedProgress != nil || settings.account.tracker == .local { progress = trackerProgress.sorted { $0.updatedAt > $1.updatedAt } }
         if let movies = take(await moviesResult) { watchedMovies = movies }
         if let shows = take(await showsResult) { showStates = Dictionary(shows.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a }) }
         if let h = take(await historyResult) { history = h }
@@ -255,7 +257,11 @@ extension AppModel {
             }
             if tracker.kind != .local {
                 // Mirror into the local history so offline views stay accurate.
-                if watched { try? await local.markWatched(item, episodes: refs, at: Date()) }
+                if watched {
+                    try? await local.markWatched(item, episodes: refs, at: Date())
+                } else {
+                    try? await local.markUnwatched(item, episodes: item.type == .show ? refs : nil)
+                }
             }
             progress.removeAll { $0.key == key && (refs == nil || $0.episode.map { refs!.contains($0) } ?? true) }
             await rebuildContinueWatching()

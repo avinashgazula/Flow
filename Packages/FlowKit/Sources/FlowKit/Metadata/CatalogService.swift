@@ -54,7 +54,9 @@ public actor CatalogService {
     let listMaxAge: TimeInterval = 60 * 30
     let detailMaxAge: TimeInterval = 60 * 60 * 12
 
-    var lang: String { tmdb.language }
+    /// Cache-key suffix for everything the client's settings change in a response (region picks certifications,
+    /// availability and regional lists; adult content changes search), so a switch isn't answered from the old copy.
+    var lang: String { "\(tmdb.language)|\(tmdb.region)\(tmdb.includeAdult ? "|adult" : "")" }
 
     public func trending(_ type: MediaType, page: Int = 1) async throws -> Page<MediaItem> {
         let client = tmdb

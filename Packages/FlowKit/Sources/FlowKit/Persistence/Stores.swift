@@ -63,6 +63,9 @@ public actor ResponseCache {
     private var memory: [String: (Date, Any)] = [:]
     /// Requests already on their way, so shelves asking for the same thing at launch share one fetch.
     private var inflight: [String: Task<Any, Error>] = [:]
+    /// Disk writes and wipes in the order they were asked for, so an older copy never lands after a newer
+    /// one and `clear()` isn't undone by a write still waiting.
+    private let diskQueue = DispatchQueue(label: "app.flow.response-cache", qos: .utility)
 
     public init(store: JSONFileStore) { self.store = store }
 
@@ -84,33 +87,55 @@ public actor ResponseCache {
         memory[key] = (now, value)
         // Encoding and writing happen off the actor: they're the slow part, and nothing waits on them.
         let store = self.store, name = Self.fileName(key)
-        Task.detached(priority: .utility) { store.save(Entry(storedAt: now, value: value), name) }
+        diskQueue.async { store.save(Entry(storedAt: now, value: value), name) }
     }
 
     /// Returns a cached value or computes and stores a fresh one. Concurrent calls for the same key
-    /// share one computation; when it fails, an expired copy is better than nothing (offline, a
-    /// flaky network), so that's returned instead of the error.
+    /// share one computation and its failure; when it fails, an expired copy is better than nothing
+    /// (offline, a flaky network), so that's returned instead of the error. A rejected key or session
+    /// is the exception: old data shown forever would hide that it needs fixing.
     public func cached<T: Codable & Sendable>(_ key: String, maxAge: TimeInterval, _ produce: @Sendable @escaping () async throws -> T) async throws -> T {
         let stale = entry(key, as: T.self)
         if let (date, value) = stale, Date().timeIntervalSince(date) < maxAge { return value }
-        if let running = inflight[key], let value = try? await running.value as? T { return value }
+        if let running = inflight[key] {
+            do {
+                if let value = try await running.value as? T { return value }
+            } catch {
+                return try fallback(stale, for: error)
+            }
+            // The same key holding another type: fetch our own below.
+        }
         let task = Task<Any, Error> { try await produce() }
         inflight[key] = task
-        defer { inflight[key] = nil }
+        // Only remove our own entry: another caller may have replaced it while this one was suspended.
+        defer { if inflight[key] == task { inflight[key] = nil } }
         do {
             guard let fresh = try await task.value as? T else { throw CancellationError() }
             set(fresh, for: key)
             return fresh
         } catch {
-            if let (_, value) = stale { return value }
-            throw error
+            return try fallback(stale, for: error)
+        }
+    }
+
+    private func fallback<T>(_ stale: (Date, T)?, for error: Error) throws -> T {
+        if let (_, value) = stale, !Self.isRejectedCredential(error) { return value }
+        throw error
+    }
+
+    static func isRejectedCredential(_ error: Error) -> Bool {
+        switch error as? FlowError {
+        case .unauthorized?, .missingCredential?: return true
+        default: return false
         }
     }
 
     public func clear() {
         memory = [:]
         inflight = [:]
-        store.removeAll()
+        let store = self.store
+        // Waits for writes already queued, so none of them lands after the wipe.
+        diskQueue.sync { store.removeAll() }
     }
 
     static func fileName(_ key: String) -> String {

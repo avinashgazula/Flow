@@ -32,7 +32,8 @@ public struct LocalLibrary: Codable, Hashable, Sendable {
             for ep in record.played where !existing.played.contains(ep) { existing.played.append(ep) }
             shuffleByKey[record.key] = existing
         }
-        out.shuffle = Array(shuffleByKey.values)
+        // Dictionary order is random; a stable order lets two devices see that they already agree.
+        out.shuffle = shuffleByKey.values.sorted { $0.key.description < $1.key.description }
         out.items = items.merging(other.items) { a, _ in a }
         return out
     }
@@ -43,7 +44,11 @@ public struct LocalLibrary: Codable, Hashable, Sendable {
             if let existing = best[v[keyPath: id]], existing[keyPath: date] >= v[keyPath: date] { continue }
             best[v[keyPath: id]] = v
         }
-        return best.values.sorted { $0[keyPath: date] > $1[keyPath: date] }
+        // Ties (a whole season marked watched at once) break by id so the order is the same every time.
+        return best.values.sorted {
+            let (a, b) = ($0[keyPath: date], $1[keyPath: date])
+            return a != b ? a > b : $0[keyPath: id] < $1[keyPath: id]
+        }
     }
 }
 
@@ -91,6 +96,15 @@ public actor LocalTracker: TrackingService, ListService {
     public func replace(_ library: LocalLibrary) {
         self.library = library
         save(library)
+    }
+
+    /// Folds in another copy (iCloud) on top of what is here right now, so a change made while the
+    /// pull was being worked out isn't overwritten by a merge of an older snapshot. Saves only if it changed anything.
+    public func merge(_ other: LocalLibrary) {
+        let merged = library.merged(with: other)
+        guard merged != library else { return }
+        library = merged
+        save(merged)
     }
 
     // MARK: Progress (also used to keep resume points for every tracker that lacks them)

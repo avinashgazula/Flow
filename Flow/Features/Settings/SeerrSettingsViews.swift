@@ -78,7 +78,9 @@ struct ConnectSeerrView: View {
         error = nil
         defer { working = false }
         do {
-            _ = try await SeerrClient(config: config, http: model.http).status()
+            let client = SeerrClient(config: config, http: model.http)
+            _ = try await client.status()
+            try await client.verifyKey()
             model.settings.mediaServers.seerr = config
             dismiss()
         } catch {

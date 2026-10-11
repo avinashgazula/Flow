@@ -96,7 +96,7 @@ public struct CloudSync: Sendable {
     }
 
     /// Settings without the domains stored separately or device-local state.
-    static func portableSettings(_ settings: AppSettings) -> AppSettings {
+    public static func portableSettings(_ settings: AppSettings) -> AppSettings {
         var s = settings
         s.shelves = []
         s.mediaServers.servers = []
@@ -167,12 +167,17 @@ public struct CloudSync: Sendable {
             for server in s.mediaServers.servers where !servers.contains(where: { $0.id == server.id }) { merged.append(server) }
             s.mediaServers.servers = merged.map { local[$0.id]?.accessToken != nil && $0.accessToken == nil ? local[$0.id]! : $0 }
         }
+        s.mediaServers.migrateHomeRows()
+        return (s, library.merged(with: cloudLibrary(snapshot)))
+    }
+
+    /// The tracking data of a pull as one library, for merging into the local one.
+    public static func cloudLibrary(_ snapshot: CloudSnapshot) -> LocalLibrary {
         var cloudLibrary = snapshot.library ?? LocalLibrary()
         cloudLibrary.progress = snapshot.progress ?? []
         cloudLibrary.rewatches = snapshot.rewatches ?? []
         cloudLibrary.shuffle = snapshot.shuffle ?? []
-        s.mediaServers.migrateHomeRows()
-        return (s, library.merged(with: cloudLibrary))
+        return cloudLibrary
     }
 
     public func status(settings: AppSettings, library: LocalLibrary) -> [CloudDomainStatus] {

@@ -40,6 +40,7 @@ struct AccountSettingsView: View {
                             await model.trakt?.signOut()
                             model.credentials.traktToken = nil
                             if model.settings.account.tracker == .trakt { model.settings.account.tracker = .local }
+                            dropDestinations(.trakt)
                         }
                     }
                 } else if model.traktClientID == nil {
@@ -55,6 +56,7 @@ struct AccountSettingsView: View {
                     Button("Sign Out", role: .destructive) {
                         model.credentials.simklToken = nil
                         if model.settings.account.tracker == .simkl { model.settings.account.tracker = .local }
+                        dropDestinations(.simkl)
                     }
                 } else if model.simklClientID == nil {
                     Text("Add a Simkl client ID in API Keys to sign in.").foregroundStyle(.secondary)
@@ -180,6 +182,12 @@ struct AccountSettingsView: View {
         case .publicMetaDB: return model.credentials.publicMetaDBAPIKey?.nonEmpty != nil
         case .local: return true
         }
+    }
+
+    /// Lists saved to a service you've just signed out of go back to this device, rather than pointing at a picker entry that's gone.
+    private func dropDestinations(_ destination: ListDestination) {
+        if model.settings.account.watchlistDestination == destination { model.settings.account.watchlistDestination = .local }
+        if model.settings.account.favouritesDestination == destination { model.settings.account.favouritesDestination = .local }
     }
 
     private func select(_ kind: TrackerKind) {

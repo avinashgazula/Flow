@@ -149,8 +149,20 @@ extension DownloadManager: URLSessionDownloadDelegate {
         let staging = FileManager.default.temporaryDirectory.appendingPathComponent(id)
         try? FileManager.default.removeItem(at: staging)
         let moved = (try? FileManager.default.moveItem(at: location, to: staging)) != nil
+        // URLSession hands over an error page (401, 404, 5xx) as if it were the file; don't keep that as a download.
+        let status = (downloadTask.response as? HTTPURLResponse)?.statusCode ?? 200
         MainActor.assumeIsolated {
-            guard let item = items.first(where: { $0.id == id }) else { return }
+            guard let item = items.first(where: { $0.id == id }) else {
+                try? FileManager.default.removeItem(at: staging)
+                return
+            }
+            guard (200..<300).contains(status) else {
+                try? FileManager.default.removeItem(at: staging)
+                update(id) { $0.state = .failed; $0.error = "The server responded with status \(status)." }
+                tasks[id] = nil
+                save()
+                return
+            }
             let destination = localURL(for: item)
             try? FileManager.default.removeItem(at: destination)
             if moved, (try? FileManager.default.moveItem(at: staging, to: destination)) != nil {

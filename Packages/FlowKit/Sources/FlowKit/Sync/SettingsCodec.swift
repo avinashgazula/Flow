@@ -109,6 +109,17 @@ public enum SetupShare {
         if s.mediaServers.seerr?.apiKey.isEmpty == true, let old = settings.mediaServers.seerr, old.baseURL == s.mediaServers.seerr?.baseURL {
             s.mediaServers.seerr?.apiKey = old.apiKey
         }
+        // Passwords stripped from the export come back from the same share or provider (same address) already on this device.
+        s.webDAV = s.webDAV.map { share in
+            var c = share
+            if c.password == nil, let old = settings.webDAV.first(where: { $0.id == c.id && $0.baseURL == c.baseURL }) { c.password = old.password }
+            return c
+        }
+        s.liveTV.providers = s.liveTV.providers.map { provider in
+            var c = provider
+            if c.password == nil, let old = settings.liveTV.providers.first(where: { $0.id == c.id && $0.url == c.url }) { c.password = old.password }
+            return c
+        }
         s.sync = settings.sync
         s.mediaServers.migrateHomeRows()
         var creds = credentials
