@@ -50,6 +50,8 @@ struct HomeView: View {
                     AmbientBackground(url: heroItem?.smallBackdropURL ?? heroItem?.tmdbPosterURL, intensity: 0.9)
                         .mask(LinearGradient(colors: [.black, .black, .clear], startPoint: .top, endPoint: .bottom))
                         .frame(height: 1400)
+                        // Under the status bar too: the mask stops at the safe area unless the frame reaches past it.
+                        .ignoresSafeArea(edges: .top)
                         .animation(Theme.Motion.gentle, value: heroItem?.id)
                 }
                 .background(Theme.Palette.canvas)

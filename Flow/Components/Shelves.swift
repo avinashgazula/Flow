@@ -397,7 +397,8 @@ struct HeroCarousel: View {
             withAnimation(Theme.Motion.fade) { items = loaded }
             if currentID == nil || !loaded.contains(where: { $0.id == currentID }) { currentID = loaded.first?.id }
         }
-        .task(id: items.count) { await autoAdvance() }
+        // Restarts with every page, swiped or automatic, so the indicator and the timer agree.
+        .task(id: "\(items.count)-\(currentID ?? "")") { await autoAdvance() }
         .onChange(of: currentID) { _, id in current = items.first { $0.id == id } }
     }
 
@@ -432,7 +433,7 @@ struct HeroCarousel: View {
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $currentID)
             .onScrollPhaseChangeIfAvailable { interacting = $0 }
-            PageDots(count: items.count, index: items.firstIndex { $0.id == currentID } ?? 0)
+            PageDots(count: items.count, index: items.firstIndex { $0.id == currentID } ?? 0, interval: advanceInterval)
                 .padding(.bottom, Platform.isPhone ? 14 : Theme.Space.l)
                 .padding(.trailing, Platform.isPhone ? 0 : Theme.Space.gutter)
         }
@@ -462,7 +463,7 @@ struct HeroCarousel: View {
                 .onScrollPhaseChangeIfAvailable { interacting = $0 }
             }
             .frame(height: cardHeight)
-            PageDots(count: items.count, index: items.firstIndex { $0.id == currentID } ?? 0)
+            PageDots(count: items.count, index: items.firstIndex { $0.id == currentID } ?? 0, interval: advanceInterval)
         }
         .padding(.top, cardTopInset)
     }
@@ -505,13 +506,20 @@ struct HeroCarousel: View {
         details[item.id] = detail.item
     }
 
+    /// Seconds each title stays before the next slides in; nil when the hero doesn't move on by itself.
+    private var advanceInterval: TimeInterval? {
+        model.settings.general.heroAutoAdvance && !reduceMotion && items.count > 1 ? 8 : nil
+    }
+
     private func autoAdvance() async {
-        guard model.settings.general.heroAutoAdvance, !reduceMotion, items.count > 1 else { return }
+        guard let interval = advanceInterval else { return }
         while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+            // Someone is swiping: give them another round.
             guard !Task.isCancelled, !interacting else { continue }
             let index = items.firstIndex { $0.id == currentID } ?? 0
             withAnimation(Theme.Motion.gentle) { currentID = items[(index + 1) % items.count].id }
+            return
         }
     }
 }
@@ -659,19 +667,49 @@ struct MetadataLine: View {
 struct PageDots: View {
     let count: Int
     let index: Int
+    /// With auto-advance on, the current page's capsule fills over this many seconds, so you can see
+    /// the next title coming instead of being surprised by it.
+    var interval: TimeInterval?
+    @State private var fill: CGFloat = 0
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 6 * Theme.scale) {
             ForEach(0..<count, id: \.self) { i in
-                Capsule()
-                    .fill(i == index ? Color.white : Color.white.opacity(0.32))
-                    .frame(width: i == index ? 18 : 6, height: 6)
+                if i == index {
+                    Capsule()
+                        .fill(Color.white.opacity(interval == nil ? 1 : 0.32))
+                        .overlay(alignment: .leading) {
+                            if interval != nil {
+                                GeometryReader { proxy in Capsule().fill(.white).frame(width: proxy.size.width * fill) }
+                            }
+                        }
+                        .frame(width: (interval == nil ? 18 : 26) * Theme.scale, height: 6 * Theme.scale)
+                } else {
+                    Capsule()
+                        .fill(Color.white.opacity(0.32))
+                        .frame(width: 6 * Theme.scale, height: 6 * Theme.scale)
+                }
             }
         }
         .padding(.horizontal, 8).padding(.vertical, 6)
         .animation(Theme.Motion.snappy, value: index)
+        .onAppear(perform: restart)
+        .onChange(of: index) { _, _ in restart() }
+        .onChange(of: interval) { _, _ in restart() }
         .accessibilityElement()
         .accessibilityLabel("Page \(index + 1) of \(count)")
+    }
+
+    private func restart() {
+        var reset = Transaction()
+        reset.disablesAnimations = true
+        withTransaction(reset) { fill = 0 }
+        guard let interval else { return }
+        // A beat after the reset, or the two changes merge and the capsule never empties.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 60_000_000)
+            withAnimation(.linear(duration: max(0.1, interval - 0.06))) { fill = 1 }
+        }
     }
 }
 

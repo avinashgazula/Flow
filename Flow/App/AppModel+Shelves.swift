@@ -168,7 +168,7 @@ extension AppModel {
             items = items.interleaved(with: extra)
         }
         var seen = Set<String>()
-        return Array(items.filter { seen.insert($0.id).inserted }.prefix(15))
+        return Array(items.filter { seen.insert($0.id).inserted }.prefix(10))
     }
 
     private func heroItems(from source: HeroSource) async -> [MediaItem] {
