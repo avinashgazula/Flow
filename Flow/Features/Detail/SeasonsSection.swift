@@ -50,14 +50,14 @@ struct SeasonsSection: View {
                 .shimmering()
             } else if Platform.isPhone {
                 LazyVStack(spacing: Theme.Space.m) {
-                    ForEach(episodes) { episode in EpisodeRow(show: show, episode: episode) }
+                    ForEach(episodes) { episode in EpisodeRow(show: show, episode: episode, libraryProviderID: libraryProviderID) }
                 }
                 .padding(.horizontal, Theme.Space.gutter)
                 .animation(Theme.Motion.gentle, value: selectedSeason)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 16) {
-                        ForEach(episodes) { episode in EpisodeCard(show: show, episode: episode) }
+                        ForEach(episodes) { episode in EpisodeCard(show: show, episode: episode, libraryProviderID: libraryProviderID) }
                     }
                     .padding(.horizontal, Theme.Space.gutter)
                     .padding(.vertical, Platform.isTV ? 36 : 4)
@@ -108,6 +108,8 @@ struct SeasonsSection: View {
 struct EpisodeRow: View {
     let show: MediaItem
     let episode: Episode
+    /// The library the title was opened from, for Play From This Library Only.
+    var libraryProviderID: String? = nil
     @Environment(AppModel.self) private var model
 
     private var aired: Bool { (episode.airDate ?? .distantFuture) <= Date() }
@@ -148,7 +150,7 @@ struct EpisodeRow: View {
             .opacity(aired ? 1 : 0.5)
         }
         .buttonStyle(CardButtonStyle())
-        .contextMenu { EpisodeMenu(show: show, episode: episode) }
+        .contextMenu { EpisodeMenu(show: show, episode: episode, libraryProviderID: libraryProviderID) }
     }
 }
 
@@ -156,6 +158,8 @@ struct EpisodeRow: View {
 struct EpisodeCard: View {
     let show: MediaItem
     let episode: Episode
+    /// The library the title was opened from, for Play From This Library Only.
+    var libraryProviderID: String? = nil
     @Environment(AppModel.self) private var model
 
     private var aired: Bool { (episode.airDate ?? .distantFuture) <= Date() }
@@ -186,7 +190,7 @@ struct EpisodeCard: View {
             .opacity(aired ? 1 : 0.5)
         }
         .buttonStyle(CardButtonStyle())
-        .contextMenu { EpisodeMenu(show: show, episode: episode) }
+        .contextMenu { EpisodeMenu(show: show, episode: episode, libraryProviderID: libraryProviderID) }
     }
 }
 
@@ -226,6 +230,8 @@ struct EpisodeStill: View {
 struct EpisodeMenu: View {
     let show: MediaItem
     let episode: Episode
+    /// The library the title was opened from, for Play From This Library Only.
+    var libraryProviderID: String? = nil
     @Environment(AppModel.self) private var model
 
     var body: some View {
