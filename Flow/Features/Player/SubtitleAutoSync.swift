@@ -16,12 +16,17 @@ enum SubtitleAutoSync {
 
     /// Speech detection needs little more than 3.5 kHz of bandwidth.
     private static let sampleRate = 16_000
-    /// How much of the film to listen to, centred on the playhead.
-    private static let window = 180.0
+    /// How much of the film to listen to, centred on the playhead: up to three minutes, less for big
+    /// files, since an MKV's audio is read along with the video around it (about 120 MB at most).
+    private static func window(_ remuxer: MatroskaRemuxer) -> Double {
+        guard remuxer.bytesPerSecond > 0 else { return 180 }
+        return min(180, max(60, 120_000_000 / remuxer.bytesPerSecond))
+    }
 
     /// `offset` is the absolute delay to apply to the document's own cue times, not a change to the current one.
     static func analyse(remuxer: MatroskaRemuxer, track: MatroskaRemuxer.OutputTrack, around position: Double,
                         subtitle: SubtitleDocument) async -> Outcome {
+        let window = Self.window(remuxer)
         let duration = remuxer.duration > 0 ? remuxer.duration : position + window
         let end = min(duration, max(0, position - window / 2) + window)
         let start = max(0, end - window)

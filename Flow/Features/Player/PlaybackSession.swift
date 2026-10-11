@@ -1063,7 +1063,15 @@ final class PlaybackSession: Identifiable {
            let playing = remuxer.audio.first(where: { $0.label == option.title }) {
             track = playing
         }
-        guard let track else { return }
+        // Reading a decoded track's segments out of turn would reset the decoder the player is
+        // listening through; another track has the same timing and is safe to read.
+        if track?.isDecodedOnDevice == true, let other = remuxer.audio.first(where: { !$0.isDecodedOnDevice && !$0.source.isCommentary }) {
+            track = other
+        }
+        guard let track, !track.isDecodedOnDevice else {
+            show(notice: "Auto-sync can't read this soundtrack yet.")
+            return
+        }
         let position = currentTime, previous = subtitleOffset, loaded = subtitleTrack?.id
         isAutoSyncing = true
         show(notice: "Syncing subtitles…")

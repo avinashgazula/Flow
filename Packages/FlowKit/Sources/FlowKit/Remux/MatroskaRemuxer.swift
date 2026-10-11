@@ -28,6 +28,8 @@ public actor MatroskaRemuxer {
 
         public var id: Int { source.number }
         public var language: String { source.language }
+        /// DTS or TrueHD decoded on the device: its decoder carries state from one segment to the next.
+        public var isDecodedOnDevice: Bool { codec == .decoded }
     }
 
     enum Codec: Sendable { case h264, hevc, av1, aac, mp3, ac3, eac3, flac, decoded, text, ass, pgs, vobsub }
@@ -64,6 +66,13 @@ public actor MatroskaRemuxer {
     public nonisolated let trickPlayFrames: [MatroskaCue]
     /// Opened with `compatible`: no Dolby Vision configuration or Atmos signalling.
     public nonisolated let isCompatible: Bool
+
+    /// The file's average data rate, from its segment plan.
+    public nonisolated var bytesPerSecond: Double {
+        let duration = segments.reduce(0) { $0 + $1.duration }
+        guard duration > 0 else { return 0 }
+        return Double(segments.reduce(Int64(0)) { $0 + ($1.byteEnd - $1.byteStart) }) / duration
+    }
 
     /// False when the only playable audio is commentary: the soundtrack itself can't be played.
     public nonisolated var hasPlayableSoundtrack: Bool { audio.contains { !$0.source.isCommentary } }
