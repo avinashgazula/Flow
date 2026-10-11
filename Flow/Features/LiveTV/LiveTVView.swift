@@ -310,8 +310,13 @@ struct LivePlayerView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.black.ignoresSafeArea()
+            #if os(tvOS)
+            LiveTransportPlayer(player: player, lineup: lineup, current: current, tune: tune(_:), zap: zap(by:))
+                .ignoresSafeArea()
+            #else
             VideoPlayer(player: player)
                 .ignoresSafeArea()
+            #endif
             if state == .connecting {
                 ProgressView()
                     .controlSize(.large)
@@ -363,7 +368,11 @@ struct LivePlayerView: View {
     /// Tunes to the channel `offset` places along the lineup, wrapping at either end.
     private func zap(by offset: Int) {
         guard lineup.count > 1, let index = lineup.firstIndex(where: { $0.id == current.id }) else { return }
-        let next = lineup[(index + offset + lineup.count) % lineup.count]
+        tune(lineup[(index + offset + lineup.count) % lineup.count])
+    }
+
+    private func tune(_ next: Channel) {
+        guard next.id != current.id else { return }
         tuned = next
         attempt = 0
         onTune(next)
@@ -386,6 +395,9 @@ struct LivePlayerView: View {
         if let ua = channel.userAgent { options["AVURLAssetHTTPHeaderFieldsKey"] = ["User-Agent": ua] }
         for url in LiveStreamURL.candidates(for: channel.streamURL) {
             let item = AVPlayerItem(asset: AVURLAsset(url: url, options: options))
+            #if os(tvOS)
+            item.externalMetadata = LiveTransportPlayer.metadata(for: channel, epg: epg)
+            #endif
             player.replaceCurrentItem(with: item)
             player.play()
             if await ready(item) {
@@ -479,3 +491,51 @@ enum StableHash {
         return String(hash, radix: 16)
     }
 }
+
+#if os(tvOS)
+/// The system player with the remote's channel controls: Previous and Next Channel, and the whole
+/// lineup, in the transport bar; the info panel names the channel and what's on.
+private struct LiveTransportPlayer: UIViewControllerRepresentable {
+    let player: AVPlayer
+    let lineup: [Channel]
+    let current: Channel
+    let tune: (Channel) -> Void
+    let zap: (Int) -> Void
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let controller = AVPlayerViewController()
+        controller.player = player
+        return controller
+    }
+
+    func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
+        if controller.player !== player { controller.player = player }
+        guard lineup.count > 1 else { controller.transportBarCustomMenuItems = []; return }
+        let previous = UIAction(title: "Previous Channel", image: UIImage(systemName: "chevron.up")) { _ in zap(-1) }
+        let next = UIAction(title: "Next Channel", image: UIImage(systemName: "chevron.down")) { _ in zap(1) }
+        let channels = UIMenu(title: "Channels", image: UIImage(systemName: "list.bullet"), children: lineup.prefix(300).map { channel in
+            UIAction(title: channel.name, state: channel.id == current.id ? .on : .off) { _ in tune(channel) }
+        })
+        controller.transportBarCustomMenuItems = [previous, next, channels]
+    }
+
+    /// Title and programme for the info panel and the transport bar.
+    static func metadata(for channel: Channel, epg: EPG) -> [AVMetadataItem] {
+        let (now, next) = epg.nowAndNext(for: channel.epgID)
+        var items = [item(.commonIdentifierTitle, now?.title ?? channel.name)]
+        if now != nil { items.append(item(.iTunesMetadataTrackSubTitle, channel.name)) }
+        let about = [now?.description, next.map { "Next: \($0.title) at \($0.start.formatted(date: .omitted, time: .shortened))" }]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "\n\n")
+        if !about.isEmpty { items.append(item(.commonIdentifierDescription, about)) }
+        return items
+    }
+
+    private static func item(_ identifier: AVMetadataIdentifier, _ value: String) -> AVMetadataItem {
+        let item = AVMutableMetadataItem()
+        item.identifier = identifier
+        item.value = value as NSString
+        item.extendedLanguageTag = "und"
+        return item
+    }
+}
+#endif

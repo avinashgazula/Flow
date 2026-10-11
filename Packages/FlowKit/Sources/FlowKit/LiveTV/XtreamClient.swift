@@ -61,7 +61,8 @@ public struct XtreamClient: IPTVProvider {
         async let categoriesJSON = api("get_live_categories")
         async let streamsJSON = api("get_live_streams")
         var groups: [String: String] = [:]
-        for c in try await categoriesJSON.array ?? [] {
+        // Categories only name the groups: without them the channels still play, as "Uncategorised".
+        for c in (try? await categoriesJSON)?.array ?? [] {
             if let id = c["category_id"]?.string, let name = c["category_name"]?.string { groups[id] = name }
         }
         return (try await streamsJSON.array ?? []).compactMap { s in
