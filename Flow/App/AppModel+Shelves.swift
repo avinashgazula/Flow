@@ -185,7 +185,8 @@ extension AppModel {
         case .watchlist:
             items = await hydrate(watchlistKeys, limit: 15)
         }
-        return await catalog.apply(catalogFilters, to: items.filter { $0.backdropPath != nil || $0.posterPath != nil }, exemptFromRelease: source == .watchlist)
+        // The hero is a poster on iPhone and a backdrop everywhere else: only titles with that art.
+        return await catalog.apply(catalogFilters, to: items.filter { Platform.isPhone ? $0.posterPath != nil : $0.backdropPath != nil }, exemptFromRelease: source == .watchlist)
     }
 
     // MARK: Upcoming
