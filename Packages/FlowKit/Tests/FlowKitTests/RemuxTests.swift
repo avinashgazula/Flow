@@ -69,6 +69,22 @@ final class RemuxTests: XCTestCase {
         try await Self.dump(remuxer, to: Self.outputRoot.appendingPathComponent("avc"))
     }
 
+    func testAudioClipIsAPlayableMP4FromThePlayhead() async throws {
+        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("avc-aac-srt")), targetSegment: 2)
+        let audio = try XCTUnwrap(remuxer.audio.first)
+        // From 2.5 s: the segment holding that moment and the next one.
+        let maybeClip = try await remuxer.audioClip(at: 2.5)
+        let clip = try XCTUnwrap(maybeClip)
+        XCTAssertEqual(Array(clip[4..<8]), Array("ftyp".utf8))
+        let initSegment = await remuxer.initSegment(track: audio.id)
+        let second = try await remuxer.mediaSegment(track: audio.id, index: 1)
+        let third = try await remuxer.mediaSegment(track: audio.id, index: 2)
+        XCTAssertEqual(clip.count, (initSegment?.count ?? 0) + (second?.count ?? 0) + (third?.count ?? 0))
+        // Past the end, the last segment rather than nothing.
+        let tail = try await remuxer.audioClip(at: 60)
+        XCTAssertNotNil(tail)
+    }
+
     func testHEVCWithDolbyAudio() async throws {
         let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("hevc-eac3-ac3")), targetSegment: 2)
         let video = try XCTUnwrap(remuxer.video)

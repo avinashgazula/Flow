@@ -76,6 +76,7 @@ targets:
           NSAllowsArbitraryLoads: true
           NSAllowsArbitraryLoadsForMedia: true
         NSLocalNetworkUsageDescription: Flow connects to media servers, WebDAV shares and IPTV providers on your local network.
+        NSMicrophoneUsageDescription: To name the song that's playing, Flow listens for a few seconds when it can't read the soundtrack itself.
         CFBundleURLTypes:
           - CFBundleURLName: flow
             CFBundleURLSchemes: [flow]
@@ -125,6 +126,7 @@ targets:
           - CFBundleURLName: flow
             CFBundleURLSchemes: [flow]
         NSUserActivityTypes: [app.flow.title]
+        NSMicrophoneUsageDescription: To name the song that's playing, Flow listens for a few seconds when it can't read the soundtrack itself.
         LSApplicationCategoryType: public.app-category.entertainment
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
     entitlements:
@@ -135,6 +137,7 @@ targets:
         com.apple.security.network.server: true
         com.apple.security.files.user-selected.read-write: true
         com.apple.security.files.downloads.read-write: true
+        com.apple.security.device.audio-input: true
         com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(FLOW_BUNDLE_ID)
 
   Flow-tvOS:

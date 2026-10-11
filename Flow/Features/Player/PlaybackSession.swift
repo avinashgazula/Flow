@@ -53,6 +53,8 @@ final class PlaybackSession: Identifiable {
     var showsInfo = false
     /// The X-Ray panel beside the picture (iPhone, iPad, Mac); Apple TV has it as a tab in its info panel.
     var showsXRay = false
+    /// Shazam for the song that's playing, and the songs found so far.
+    let songs = SongRecognizer()
     @ObservationIgnored private var audibleGroup: AVMediaSelectionGroup?
     @ObservationIgnored private var chapterSegments: [SkipSegment] = []
     /// True when an MKV is being repackaged on the device for AVPlayer.
@@ -633,7 +635,11 @@ final class PlaybackSession: Identifiable {
     }
 
     func seek(toChapter chapter: PlayerChapter) {
-        player.seek(to: CMTime(seconds: chapter.start, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+        seek(to: chapter.start)
+    }
+
+    func seek(to seconds: Double) {
+        player.seek(to: CMTime(seconds: max(0, seconds), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
     private func applyMetadata(to item: AVPlayerItem) {
@@ -1427,6 +1433,20 @@ final class PlaybackSession: Identifiable {
     // MARK: Transport (shared by on-screen controls and the keyboard)
 
     var isPlaying: Bool { player.rate > 0 }
+
+    /// Twelve-odd seconds of the soundtrack from the playhead, as an MP4, when Flow is remuxing the file itself.
+    func soundtrackClip() async -> [UInt8]? {
+        guard let remuxer else { return nil }
+        return try? await remuxer.audioClip(at: currentTime)
+    }
+
+    /// The stream's address, when AVFoundation can read its soundtrack directly: a plain file, not HLS.
+    var directSoundtrack: (url: URL, headers: [String: String])? {
+        guard !usesRemux, let url = source.location.playableURL else { return nil }
+        let address = url.absoluteString.lowercased()
+        guard !address.contains(".m3u8"), !address.contains("/hls/"), url.pathExtension.lowercased() != "m3u" else { return nil }
+        return (url, source.location.headers)
+    }
 
     func togglePlay() {
         guard phase != .finished else { return }

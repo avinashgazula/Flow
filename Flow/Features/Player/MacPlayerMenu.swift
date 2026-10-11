@@ -35,6 +35,10 @@ struct MacPlayerMenu: View {
                     Button { setSpeed(rate) } label: { checked(rate == 1 ? "Normal" : String(format: "%gx", rate), speed == rate) }
                 }
             }
+            Button(session.songs.isListening ? "Listening…" : "Identify Song") { session.songs.identify(session) }
+                .disabled(session.songs.isListening)
+                .keyboardShortcut("i", modifiers: [.command, .shift])
+            Divider()
             Menu("Sleep Timer") {
                 ForEach(SleepTimer.choices) { choice in
                     Button { session.sleepTimer = choice } label: { checked(choice.title, session.sleepTimer == choice) }

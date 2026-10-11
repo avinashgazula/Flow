@@ -62,6 +62,8 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Flow connects to media servers, WebDAV shares and IPTV providers on your local network.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>To name the song that's playing, Flow listens for a few seconds when it can't read the soundtrack itself.</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>app.flow.title</string>

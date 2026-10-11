@@ -241,6 +241,10 @@ struct PlayerOptionsPanel: View {
         rows.append(PanelItem(id: "zoom", icon: fill ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right", title: "Zoom", value: fill ? "Fill" : "Fit") {
             withAnimation(Theme.Motion.snappy) { fill.toggle() }
         })
+        rows.append(PanelItem(id: "song", icon: "shazam.logo", title: "Identify Song", value: session.songs.isListening ? "Listening…" : session.songs.found.first?.title) {
+            close()
+            session.songs.identify(session)
+        })
         rows.append(PanelItem(id: "advanced", icon: "slider.horizontal.3", title: "Advanced Options", chevron: true) {
             close()
             showAdvanced()

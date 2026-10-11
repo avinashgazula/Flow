@@ -132,6 +132,41 @@ struct XRayPanel: View {
                 ForEach(store.crew) { member in row(member) }
             }
         }
+        section("Music") {
+            Button { session.songs.identify(session) } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "shazam.logo.fill")
+                        .font(.system(size: 20))
+                        .symbolEffect(.variableColor.iterative, isActive: session.songs.isListening)
+                        .frame(width: 44, height: 44)
+                        .background(Color.blue.opacity(0.85), in: Circle())
+                    Text(session.songs.isListening ? "Listening…" : "Identify Song")
+                        .font(.system(.subheadline, weight: .semibold))
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(session.songs.isListening)
+            ForEach(session.songs.found) { song in
+                Button { session.seek(to: song.at) } label: {
+                    HStack(spacing: 12) {
+                        RemoteImage(url: song.item.artworkURL, maxPixel: 200, fallbackTitle: song.title)
+                            .frame(width: 44, height: 44)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(song.title).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
+                            Text([song.artist, TimeFormat.clock(song.at)].filter { !$0.isEmpty }.joined(separator: " · "))
+                                .font(.system(.caption)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Goes back to where it played")
+            }
+        }
         if !session.chapters.isEmpty {
             section("Scenes") {
                 ForEach(session.chapters) { chapter in

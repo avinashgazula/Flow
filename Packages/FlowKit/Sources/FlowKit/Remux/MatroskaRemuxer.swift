@@ -689,6 +689,20 @@ public actor MatroskaRemuxer {
         return MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: base, samples: samples, isVideo: t.role == .video)
     }
 
+    /// A stretch of soundtrack from `seconds` on, as a fragmented MP4 (the audio track's init segment and
+    /// `count` media segments), for song recognition. DTS and TrueHD come out as FLAC, like the stream itself.
+    public func audioClip(at seconds: Double, track: Int? = nil, count: Int = 2) async throws -> [UInt8]? {
+        guard let output = track.flatMap({ id in audio.first { $0.id == id } }) ?? audio.first,
+              var bytes = initSegment(track: output.id), !segments.isEmpty else { return nil }
+        let time = Int64(seconds * 1e9)
+        let first = segments.firstIndex { time < $0.end } ?? segments.count - 1
+        for index in first..<min(segments.count, first + max(1, count)) {
+            guard let media = try await mediaSegment(track: output.id, index: index) else { break }
+            bytes += media
+        }
+        return bytes
+    }
+
     public func subtitleSegment(track: Int, index: Int) async throws -> String? {
         guard let t = subtitles.first(where: { $0.id == track }), segments.indices.contains(index) else { return nil }
         let segment = segments[index]

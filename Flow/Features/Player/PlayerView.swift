@@ -50,6 +50,15 @@ struct PlayerView: View {
                     .transition(.opacity)
             }
             #endif
+            SongCard(recognizer: session.songs)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .padding(.top, Platform.isTV ? 60 : (Platform.isPhone ? 64 : 76))
+                .padding(.trailing, Platform.isTV ? 80 : (Platform.isPhone ? 64 : 20))
+                #if os(tvOS)
+                // Above the system player, never in the way of its focus.
+                .allowsHitTesting(false)
+                #endif
+                .zIndex(5)
             switch session.phase {
             case .connecting(let progress):
                 ConnectingView(session: session, progress: progress)

@@ -106,6 +106,8 @@ struct TVPlayerController: UIViewControllerRepresentable {
             items.append(UIMenu(title: "Disc Subtitles", image: UIImage(systemName: "captions.bubble"), options: .singleSelection, children: choices))
         }
         items.append(search)
+        items.append(UIAction(title: session.songs.isListening ? "Listening…" : "Identify Song", image: UIImage(systemName: "shazam.logo"),
+                              attributes: session.songs.isListening ? .disabled : []) { _ in session.songs.identify(session) })
         if session.canAutoSync {
             let sync = UIAction(title: session.isAutoSyncing ? "Syncing Subtitles…" : "Auto-sync Subtitles (Beta)", image: UIImage(systemName: "waveform"),
                                 attributes: session.isAutoSyncing ? .disabled : []) { _ in session.autoSyncSubtitles() }
