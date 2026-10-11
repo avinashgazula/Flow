@@ -43,6 +43,8 @@ final class LiveTVStore {
                 }
             }
         }
+        // Leaving the tab cancels the load; every request then "fails", which isn't a channel list worth keeping.
+        guard !Task.isCancelled else { loadedFor = []; return }
         channels = all.sorted { ($0.number ?? Int.max, $0.name) < ($1.number ?? Int.max, $1.name) }
         error = errors.first
 
@@ -58,6 +60,9 @@ final class LiveTVStore {
             for client in clients { group.addTask { try? await client.epg(window: window) } }
             for await guide in group { if let guide { merged.merge(guide) } }
         }
+        // A cancelled or failed download is empty; caching that would hide the guide until the next refresh.
+        guard !Task.isCancelled else { loadedFor = []; return }
+        guard !merged.programmes.isEmpty else { if !force { epg = merged }; return }
         epg = merged
         cache.save(merged, cacheName)
     }
@@ -73,14 +78,20 @@ struct LiveTVView: View {
     /// The Live TV tab itself, rather than a channel group pushed from it.
     var isTabRoot = true
 
+    init(isTabRoot: Bool = true, group: String? = nil) {
+        self.isTabRoot = isTabRoot
+        _group = State(initialValue: group)
+    }
+
     private var favourites: [Channel] {
-        let ids = model.settings.liveTV.favouriteChannelIDs
-        return ids.compactMap { id in store.channels.first { $0.id == id } }
+        let ids = Set(model.settings.liveTV.favouriteChannelIDs)
+        return store.channels.filter { ids.contains($0.id) }
     }
 
     private var visible: [Channel] {
         var list = store.channels
-        if let group { list = group == "★ Favourites" ? favourites : list.filter { $0.group == group } }
+        // With the last favourite gone its chip is too, so the list falls back to everything rather than staying blank.
+        if let group, !(group == "★ Favourites" && favourites.isEmpty) { list = group == "★ Favourites" ? favourites : list.filter { $0.group == group } }
         if !search.isEmpty { list = list.filter { $0.name.localizedCaseInsensitiveContains(search) } }
         return list
     }
@@ -116,6 +127,7 @@ struct LiveTVView: View {
             }
             ToolbarItem(placement: .primaryAction) {
                 Button { refresh() } label: { Image(systemName: "arrow.clockwise") }
+                    .accessibilityLabel("Refresh")
             }
         }
         #endif
@@ -225,11 +237,9 @@ struct ChannelRow: View {
     let epg: EPG
     let isFavourite: Bool
 
-    private var now: Programme? { epg.nowAndNext(for: channel.epgID).now }
-    private var next: Programme? { epg.nowAndNext(for: channel.epgID).next }
-
     var body: some View {
-        HStack(spacing: 14) {
+        let (now, next) = epg.nowAndNext(for: channel.epgID)
+        return HStack(spacing: 14) {
             Group {
                 if channel.logoURL != nil {
                     RemoteImage(url: channel.logoURL, contentMode: .fit, maxPixel: 300)
@@ -269,7 +279,7 @@ struct ChannelRow: View {
 struct ChannelGroupView: View {
     let group: String
     var body: some View {
-        LiveTVView(isTabRoot: false).navigationTitle(group)
+        LiveTVView(isTabRoot: false, group: group).navigationTitle(group)
     }
 }
 
@@ -315,6 +325,7 @@ struct LivePlayerView: View {
             if showsInfo {
                 VStack(alignment: .leading) {
                     CircleButton(systemImage: "xmark") { dismiss() }
+                        .accessibilityLabel("Close")
                     Spacer()
                     LiveInfoCard(channel: current, epg: epg, canZap: lineup.count > 1,
                                  previous: { zap(by: -1) }, next: { zap(by: 1) })

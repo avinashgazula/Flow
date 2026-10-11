@@ -48,6 +48,7 @@ struct SportsView: View {
                             model.settings.sports.followedTeams.removeAll { $0.id == team.id }
                         } label: { Image(systemName: "minus.circle") }
                         .buttonStyle(.borderless)
+                        .accessibilityLabel("Unfollow \(team.name)")
                     }
                 }
             }
@@ -56,6 +57,7 @@ struct SportsView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { showSearch = true } label: { Image(systemName: "plus") }
+                    .accessibilityLabel("Follow a Team")
             }
         }
         .sheet(isPresented: $showSearch) { TeamSearchView().environment(model) }
@@ -73,8 +75,9 @@ struct SportsView: View {
         for team in model.settings.sports.followedTeams {
             async let next = try? client.nextEvents(teamID: team.id)
             async let last = try? client.lastEvents(teamID: team.id)
-            upcoming[team.id] = await next ?? []
-            results[team.id] = await last ?? []
+            // A failed (or cancelled) request keeps what was already showing instead of blanking the team.
+            if let fixtures = await next { upcoming[team.id] = fixtures }
+            if let recent = await last { results[team.id] = recent }
         }
         // A refresh is the moment to notice matches that have just finished.
         await model.announceResults(results.values.flatMap { $0 })
@@ -126,6 +129,7 @@ struct GameChannelsView: View {
     var body: some View {
         NavigationStack {
             Group {
+                let matches = self.matches
                 if model.settings.liveTV.providers.isEmpty {
                     ContentUnavailableView {
                         Label("No IPTV Providers", systemImage: "tv.and.mediabox")
@@ -261,7 +265,10 @@ struct TeamSearchView: View {
                 try? await Task.sleep(nanoseconds: 400_000_000)
                 guard !Task.isCancelled else { return }
                 searching = true
-                teams = (try? await SportsClient(apiKey: model.settings.sports.apiKey, http: model.http).searchTeams(query)) ?? []
+                let found = (try? await SportsClient(apiKey: model.settings.sports.apiKey, http: model.http).searchTeams(query)) ?? []
+                // A newer keystroke owns the list and the spinner now.
+                guard !Task.isCancelled else { return }
+                teams = found
                 searching = false
             }
         }

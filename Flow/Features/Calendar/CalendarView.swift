@@ -7,7 +7,7 @@ struct CalendarView: View {
     @State private var entries: [CalendarEntry]?
 
     /// Air dates are calendar days, not instants: keep them in UTC so a 9pm local evening doesn't shift the day.
-    private static let utc: Calendar = {
+    static let utc: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC")!
         return calendar
@@ -162,7 +162,8 @@ private struct DayStrip: View {
     let marked: Set<Date>
     let onSelect: (Date) -> Void
 
-    private var days: [Date] { (0..<14).compactMap { Calendar(identifier: .gregorian).date(byAdding: .day, value: $0, to: start) } }
+    // UTC like `start`: stepping in the local calendar drifts an hour across a daylight-saving change and misses the markers.
+    private var days: [Date] { (0..<14).compactMap { CalendarView.utc.date(byAdding: .day, value: $0, to: start) } }
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {

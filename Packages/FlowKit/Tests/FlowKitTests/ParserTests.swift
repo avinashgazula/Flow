@@ -248,6 +248,67 @@ final class LiveTVParserTests: XCTestCase {
     }
 }
 
+final class LiveTVEdgeCaseTests: XCTestCase {
+    func testM3UNamesAndGroupsWithCommas() {
+        let m3u = "\u{FEFF}#EXTM3U x-tvg-url=\"https://a.example/g.xml,https://b.example/g.xml\"\r\n" + """
+        #EXTINF:-1 tvg-id="x.uk" group-title="News, Sport",Sky Sports, Main Event
+        https://stream.example.com/live/1.m3u8
+        #EXTINF:-1 tvg-name="Quiet One" group-title="",
+        https://stream.example.com/live/2.m3u8
+        """
+        let playlist = M3UParser.parse(m3u, providerID: "p")
+        XCTAssertEqual(playlist.epgURL?.absoluteString, "https://a.example/g.xml")
+        XCTAssertEqual(playlist.channels.count, 2, "A byte-order mark must not turn the header into a channel")
+        XCTAssertEqual(playlist.channels[0].name, "Sky Sports, Main Event")
+        XCTAssertEqual(playlist.channels[0].group, "News, Sport")
+        XCTAssertEqual(playlist.channels[1].name, "Quiet One")
+        XCTAssertEqual(playlist.channels[1].group, "Uncategorised")
+    }
+
+    func testXMLTVDateForms() {
+        let utc = FlowDate.parse("2026-01-01T19:30:00Z")!
+        XCTAssertEqual(XMLTVParser.date("20260101193000 +0000"), utc)
+        XCTAssertEqual(XMLTVParser.date("20260101203000 +0100"), utc)
+        XCTAssertEqual(XMLTVParser.date("20260101203000+0100"), utc, "The offset can follow without a space")
+        XCTAssertEqual(XMLTVParser.date("20260101143000 -0500"), utc)
+        XCTAssertEqual(XMLTVParser.date("202601011930 +0000"), utc, "Seconds are optional")
+        XCTAssertEqual(XMLTVParser.date("20260101193000"), utc, "No offset means UTC")
+        XCTAssertNil(XMLTVParser.date("2026"))
+    }
+
+    func testMergeDropsDuplicateProgrammesAndScheduleStopsAtTheWindow() {
+        let t0 = FlowDate.parse("2026-01-01T12:00:00Z")!
+        func programme(_ title: String, _ hour: Double) -> Programme {
+            Programme(channelID: "a", title: title, start: t0.addingTimeInterval(hour * 3600), end: t0.addingTimeInterval((hour + 1) * 3600))
+        }
+        var epg = EPG(programmes: ["a": [programme("One", 0), programme("Two", 1)]])
+        epg.merge(EPG(programmes: ["a": [programme("One", 0), programme("Three", 2)]]))
+        XCTAssertEqual(epg.programmes["a"]?.map(\.title), ["One", "Two", "Three"])
+        XCTAssertEqual(epg.schedule(for: "a", from: t0.addingTimeInterval(1800), hours: 1.5).map(\.title), ["One", "Two"])
+        XCTAssertEqual(epg.schedule(for: "zzz", from: t0, hours: 1).count, 0, "Unknown ids give an empty schedule")
+    }
+
+    func testScheduleFindsLowercasedGuideIDsLikeNowAndNext() {
+        let t0 = FlowDate.parse("2026-01-01T12:00:00Z")!
+        let epg = EPG(programmes: ["bbc1.uk": [Programme(channelID: "bbc1.uk", title: "News", start: t0, end: t0.addingTimeInterval(3600))]])
+        XCTAssertEqual(epg.schedule(for: "BBC1.uk", from: t0, hours: 1).count, 1)
+        XCTAssertEqual(epg.nowAndNext(for: "BBC1.uk", at: t0.addingTimeInterval(60)).now?.title, "News")
+    }
+
+    func testXtreamCredentialsAreEscapedInStreamAddresses() {
+        let config = IPTVProviderConfig(name: "X", kind: .xtream, url: URL(string: "https://panel.example.com:8080/")!, username: "me", password: "p w#1/2")
+        let client = XtreamClient(config: config)
+        XCTAssertEqual(client.streamURL("live", "42", "m3u8")?.absoluteString, "https://panel.example.com:8080/live/me/p%20w%231%2F2/42.m3u8")
+    }
+
+    func testJSONNumbersTooLargeForIntDoNotTrap() {
+        XCTAssertNil(JSONValue.number(1e30).int)
+        XCTAssertNil(JSONValue.string("nan").int)
+        XCTAssertEqual(JSONValue.number(1e30).string, String(1e30))
+        XCTAssertEqual(JSONValue.string("42").int, 42)
+    }
+}
+
 final class SubtitleTests: XCTestCase {
     func testSRT() {
         let srt = "1\r\n00:00:01,000 --> 00:00:02,500\r\n<i>Hello</i> there\r\n\r\n2\r\n00:00:03,000 --> 00:00:04,000\r\nLine one\r\nLine two\r\n"

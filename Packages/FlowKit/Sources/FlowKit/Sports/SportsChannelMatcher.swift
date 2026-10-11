@@ -29,7 +29,7 @@ public enum SportsChannelMatcher {
         for channel in channels {
             var score = 0
             var found: Programme?
-            if let epgID = channel.epgID, let list = epg.programmes[epgID] ?? epg.programmes[epgID.lowercased()] {
+            if let list = epg.programmes(for: channel.epgID) {
                 for programme in list where programme.end > window.lowerBound && programme.start < window.upperBound {
                     let text = " " + normalised([programme.title, programme.subtitle, programme.description].compactMap { $0 }.joined(separator: " ")) + " "
                     let named = teams.filter { text.contains(" \($0) ") }.count

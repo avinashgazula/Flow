@@ -7,7 +7,6 @@ struct GuideView: View {
     let epg: EPG
     let onPlay: (Channel) -> Void
 
-    @State private var start = GuideView.roundedNow()
     @State private var inspecting: GuideSelection?
 
     private let hours: Double = 6
@@ -16,26 +15,29 @@ struct GuideView: View {
     private var channelColumn: CGFloat { Platform.isTV ? 260 : (Platform.isPhone ? 92 : 150) }
     private var timelineWidth: CGFloat { CGFloat(hours * 60) * pointsPerMinute }
 
-    static func roundedNow() -> Date {
-        let now = Date().timeIntervalSince1970
+    static func roundedNow(_ date: Date = Date()) -> Date {
+        let now = date.timeIntervalSince1970
         return Date(timeIntervalSince1970: (now / 1800).rounded(.down) * 1800 - 1800)
     }
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
+            // Derived from the clock so a guide left open for hours keeps "now" inside the window.
+            let start = Self.roundedNow(context.date)
             ScrollView(.vertical) {
                 HStack(alignment: .top, spacing: 0) {
                     channelsColumn
                     ScrollView(.horizontal, showsIndicators: false) {
                         ZStack(alignment: .topLeading) {
-                            VStack(alignment: .leading, spacing: 0) {
-                                timeHeader
+                            // Lazy: a few thousand channels would otherwise each look up their schedule every minute.
+                            LazyVStack(alignment: .leading, spacing: 0) {
+                                timeHeader(start: start)
                                 ForEach(channels) { channel in
-                                    programmeRow(channel, now: context.date)
+                                    programmeRow(channel, start: start, now: context.date)
                                         .frame(height: rowHeight)
                                 }
                             }
-                            nowLine(context.date)
+                            nowLine(context.date, start: start)
                         }
                         .frame(width: timelineWidth, alignment: .leading)
                     }
@@ -51,7 +53,7 @@ struct GuideView: View {
     // MARK: Parts
 
     private var channelsColumn: some View {
-        VStack(spacing: 0) {
+        LazyVStack(spacing: 0) {
             // Fixed width: a bare Color.clear is greedy and would take half the row from the timeline.
             Color.clear.frame(width: channelColumn, height: 34)
             ForEach(channels) { channel in
@@ -73,7 +75,7 @@ struct GuideView: View {
         .zIndex(1)
     }
 
-    private var timeHeader: some View {
+    private func timeHeader(start: Date) -> some View {
         HStack(spacing: 0) {
             ForEach(0..<Int(hours * 2), id: \.self) { i in
                 let date = start.addingTimeInterval(Double(i) * 1800)
@@ -87,7 +89,7 @@ struct GuideView: View {
         .frame(height: 34, alignment: .center)
     }
 
-    private func programmeRow(_ channel: Channel, now: Date) -> some View {
+    private func programmeRow(_ channel: Channel, start: Date, now: Date) -> some View {
         let end = start.addingTimeInterval(hours * 3600)
         let programmes = epg.schedule(for: channel.epgID, from: start, hours: hours)
         return ZStack(alignment: .leading) {
@@ -133,7 +135,7 @@ struct GuideView: View {
         .frame(width: timelineWidth, alignment: .leading)
     }
 
-    private func nowLine(_ now: Date) -> some View {
+    private func nowLine(_ now: Date, start: Date) -> some View {
         let x = CGFloat(now.timeIntervalSince(start) / 60) * pointsPerMinute
         return VStack(spacing: 0) {
             Circle().fill(Color.red).frame(width: 8, height: 8)

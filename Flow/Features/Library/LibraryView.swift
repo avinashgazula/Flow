@@ -3,7 +3,7 @@ import FlowKit
 
 struct LibraryView: View {
     @Environment(AppModel.self) private var model
-    @State private var downloadCount = 0
+    private var downloadCount: Int { DownloadManager.shared.items.filter { $0.state == .finished }.count }
 
     var body: some View {
         ScrollView {
@@ -14,8 +14,8 @@ struct LibraryView: View {
                             LibraryTile(title: "Downloads", subtitle: downloadCount > 0 ? "\(downloadCount) saved" : "Watch offline", systemImage: "arrow.down.circle.fill", route: .downloads, tint: .blue)
                         }
                         LibraryTile(title: "Upcoming", subtitle: "New episodes", systemImage: "calendar", route: .calendar, tint: .pink)
-                        LibraryTile(title: "Sports", subtitle: model.settings.sports.followedTeams.isEmpty ? "Follow your teams" : "\(model.settings.sports.followedTeams.count) teams followed", systemImage: "sportscourt.fill", route: .sports, tint: .green)
-                        LibraryTile(title: "History", subtitle: "\(model.history.count) plays", systemImage: "clock.fill", route: .library(.history), tint: .orange)
+                        LibraryTile(title: "Sports", subtitle: model.settings.sports.followedTeams.isEmpty ? "Follow your teams" : model.settings.sports.followedTeams.count == 1 ? "1 team followed" : "\(model.settings.sports.followedTeams.count) teams followed", systemImage: "sportscourt.fill", route: .sports, tint: .green)
+                        LibraryTile(title: "History", subtitle: model.history.count == 1 ? "1 play" : "\(model.history.count) plays", systemImage: "clock.fill", route: .library(.history), tint: .orange)
                         #if os(tvOS)
                         ActionChip(title: model.isSyncing ? "Syncing…" : "Sync", systemImage: "arrow.clockwise") {
                             Task { await model.refreshLibrary(force: true) }
@@ -56,7 +56,6 @@ struct LibraryView: View {
                 }
             }
         }
-        .task { downloadCount = DownloadManager.shared.items.count }
     }
 
     private var uniqueHistoryKeys: [MediaKey] {
@@ -117,6 +116,8 @@ struct LibraryKeysShelf: View {
         }
         .task(id: keys) {
             let loaded = await model.hydrate(Array(keys.prefix(20)))
+            // Cancelled (the keys changed or the tab went away): the result is partial, and a newer task is coming.
+            guard !Task.isCancelled else { return }
             withAnimation(Theme.Motion.fade) { items = loaded }
         }
     }
@@ -152,7 +153,9 @@ struct LibraryListView: View {
         }
         .navigationTitle(list.title)
         .task(id: model.contentVersion) {
-            items = await model.hydrate(keys, limit: 300)
+            let loaded = await model.hydrate(keys, limit: 300)
+            guard !Task.isCancelled else { return }
+            items = loaded
             loading = false
         }
     }
@@ -176,6 +179,7 @@ struct CollectionView: View {
     let name: String
     @Environment(AppModel.self) private var model
     @State private var collection: MediaCollection?
+    @State private var failed = false
 
     var body: some View {
         ScrollView {
@@ -184,12 +188,19 @@ struct CollectionView: View {
                     RemoteImage(url: TMDBImage.url(collection.backdropPath, size: .backdropLarge))
                         .frame(height: 220).clipped()
                     PosterGrid(items: collection.parts)
+                } else if failed {
+                    Text("Couldn't load this collection.").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary)
+                        .frame(maxWidth: .infinity).padding(.top, 60)
                 } else {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
                 }
             }
         }
         .navigationTitle(name)
-        .task { collection = try? await model.catalog?.collection(collectionID) }
+        .task {
+            failed = false
+            collection = try? await model.catalog?.collection(collectionID)
+            failed = collection == nil && !Task.isCancelled
+        }
     }
 }

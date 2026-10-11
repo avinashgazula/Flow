@@ -28,7 +28,7 @@ struct SearchView: View {
         @Bindable var model = model
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
-                if text.trimmingCharacters(in: .whitespaces).isEmpty {
+                if text.trimmingCharacters(in: .whitespaces).count < 2 {
                     idleContent
                 } else if searching && results.isEmpty && serverResults.isEmpty {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
@@ -137,7 +137,9 @@ struct SearchView: View {
         try? await Task.sleep(nanoseconds: 350_000_000)
         guard !Task.isCancelled else { return }
         searching = true
-        defer { searching = false }
+        // A superseded search must not switch off the spinner of the one that replaced it.
+        defer { if !Task.isCancelled { searching = false } }
+        error = nil
         do {
             let found = try await model.search(query)
             guard !Task.isCancelled else { return }

@@ -70,8 +70,14 @@ public struct EPG: Codable, Sendable {
         self.displayNames = displayNames
     }
 
+    /// The programmes for a channel's EPG id, tolerating a lowercased id in the guide.
+    public func programmes(for epgID: String?) -> [Programme]? {
+        guard let epgID else { return nil }
+        return programmes[epgID] ?? programmes[epgID.lowercased()]
+    }
+
     public func nowAndNext(for epgID: String?, at date: Date = Date()) -> (now: Programme?, next: Programme?) {
-        guard let epgID, let list = programmes[epgID] ?? programmes[epgID.lowercased()] else { return (nil, nil) }
+        guard let list = programmes(for: epgID) else { return (nil, nil) }
         guard let index = list.firstIndex(where: { $0.end > date }) else { return (nil, nil) }
         let current = list[index].isAiring(at: date) ? list[index] : nil
         let nextIndex = current == nil ? index : index + 1
@@ -79,13 +85,23 @@ public struct EPG: Codable, Sendable {
     }
 
     public func schedule(for epgID: String?, from: Date, hours: Double) -> [Programme] {
-        guard let epgID, let list = programmes[epgID] else { return [] }
+        guard let list = programmes(for: epgID) else { return [] }
         let to = from.addingTimeInterval(hours * 3600)
-        return list.filter { $0.end > from && $0.start < to }
+        var out: [Programme] = []
+        // Sorted by start, so nothing after `to` can overlap the window.
+        for programme in list {
+            if programme.start >= to { break }
+            if programme.end > from { out.append(programme) }
+        }
+        return out
     }
 
     public mutating func merge(_ other: EPG) {
-        for (k, v) in other.programmes { programmes[k] = ((programmes[k] ?? []) + v).sorted { $0.start < $1.start } }
+        for (k, v) in other.programmes {
+            var seen = Set<TimeInterval>()
+            // Two providers often carry the same channel; a start time already listed is the same programme.
+            programmes[k] = ((programmes[k] ?? []) + v).sorted { $0.start < $1.start }.filter { seen.insert($0.start.timeIntervalSince1970).inserted }
+        }
         displayNames.merge(other.displayNames) { a, _ in a }
     }
 }
@@ -109,14 +125,16 @@ public enum M3UParser {
         var groupOverride: String?
 
         for raw in text.components(separatedBy: .newlines) {
-            let line = raw.trimmingCharacters(in: .whitespaces)
+            // A byte-order mark in front of "#EXTM3U" would make the first line look like a stream address.
+            let line = raw.trimmingCharacters(in: .whitespaces.union(CharacterSet(charactersIn: "\u{FEFF}")))
             if line.isEmpty { continue }
             if line.hasPrefix("#EXTM3U") {
                 let attrs = attributes(in: line)
                 epgURL = (attrs["x-tvg-url"] ?? attrs["url-tvg"])?.components(separatedBy: ",").first.flatMap(URL.init(string:))
             } else if line.hasPrefix("#EXTINF") {
                 let attrs = attributes(in: line)
-                let name = line.lastIndex(of: ",").map { String(line[line.index(after: $0)...]).trimmingCharacters(in: .whitespaces) } ?? attrs["tvg-name"] ?? "Channel"
+                let title = splitInfo(line).title.trimmingCharacters(in: .whitespaces)
+                let name = title.isEmpty ? (attrs["tvg-name"].flatMap { $0.isEmpty ? nil : $0 } ?? "Channel") : title
                 pending = (attrs, name)
             } else if line.hasPrefix("#EXTVLCOPT:http-user-agent=") {
                 userAgent = String(line.dropFirst("#EXTVLCOPT:http-user-agent=".count))
@@ -125,7 +143,7 @@ public enum M3UParser {
             } else if !line.hasPrefix("#"), let url = URL(string: line) {
                 let attrs = pending?.attrs ?? [:]
                 let name = pending?.name ?? url.lastPathComponent
-                let group = attrs["group-title"] ?? groupOverride ?? "Uncategorised"
+                let group = attrs["group-title"].flatMap { $0.isEmpty ? nil : $0 } ?? groupOverride ?? "Uncategorised"
                 let channel = Channel(
                     id: "\(providerID):\(attrs["tvg-id"].flatMap { $0.isEmpty ? nil : $0 } ?? name):\(channels.count + vod.count)",
                     providerID: providerID,
@@ -157,11 +175,30 @@ public enum M3UParser {
         return g.contains("vod")
     }
 
+    /// Splits `#EXTINF:-1 tvg-name="A, B",A, B` at the first comma outside a quoted attribute value:
+    /// names can hold commas, and so can values like group-title="News, Sport".
+    static func splitInfo(_ line: String) -> (header: String, title: String) {
+        var quote: Character?
+        var previous: Character?
+        for index in line.indices {
+            let c = line[index]
+            if let q = quote {
+                if c == q { quote = nil }
+            } else if (c == "\"" || c == "'") && previous == "=" {
+                quote = c
+            } else if c == "," {
+                return (String(line[..<index]), String(line[line.index(after: index)...]))
+            }
+            previous = c
+        }
+        return (line, "")
+    }
+
     /// Parses key="value" pairs; tolerates single quotes and unquoted values.
     static func attributes(in line: String) -> [String: String] {
         var result: [String: String] = [:]
         guard let regex = try? NSRegularExpression(pattern: #"([a-zA-Z0-9\-_]+)=(?:"([^"]*)"|'([^']*)'|([^\s,]+))"#) else { return result }
-        let header = line.range(of: ",", options: .backwards).map { String(line[..<$0.lowerBound]) } ?? line
+        let header = splitInfo(line).header
         for match in regex.matches(in: header, range: NSRange(header.startIndex..., in: header)) {
             guard let kr = Range(match.range(at: 1), in: header) else { continue }
             let value = [2, 3, 4].lazy.compactMap { Range(match.range(at: $0), in: header) }.first.map { String(header[$0]) } ?? ""
@@ -227,24 +264,28 @@ public final class XMLTVParser: NSObject, XMLParserDelegate {
         text = ""
     }
 
-    /// "20240501193000 +0100" → Date
+    private static let gregorian = Calendar(identifier: .gregorian)
+
+    /// "20240501193000 +0100" → Date. Seconds may be left off and the offset may follow without a space.
     static func date(_ raw: String) -> Date? {
-        let parts = raw.split(separator: " ")
-        guard let stamp = parts.first, stamp.count >= 14 else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        let digits = Array(trimmed.prefix { $0.isASCII && $0.isNumber })
+        guard digits.count >= 12 else { return nil }
+        func num(_ a: Int, _ b: Int) -> Int? { b <= digits.count ? Int(String(digits[a..<b])) : nil }
         var comps = DateComponents()
-        let s = Array(stamp)
-        func num(_ a: Int, _ b: Int) -> Int? { Int(String(s[a..<b])) }
         comps.year = num(0, 4); comps.month = num(4, 6); comps.day = num(6, 8)
-        comps.hour = num(8, 10); comps.minute = num(10, 12); comps.second = num(12, 14)
+        comps.hour = num(8, 10); comps.minute = num(10, 12); comps.second = num(12, 14) ?? 0
         var offset = 0
-        if parts.count > 1 {
-            let tz = String(parts[1])
-            if tz.count == 5, let h = Int(tz.dropFirst().prefix(2)), let m = Int(tz.suffix(2)) {
-                offset = (h * 3600 + m * 60) * (tz.hasPrefix("-") ? -1 : 1)
+        let tz = trimmed.dropFirst(digits.count).trimmingCharacters(in: .whitespaces)
+        if let sign = tz.first, sign == "+" || sign == "-" {
+            let d = tz.dropFirst().filter { $0.isASCII && $0.isNumber }
+            if d.count >= 2, let h = Int(d.prefix(2)) {
+                let m = d.count >= 4 ? Int(d.dropFirst(2).prefix(2)) ?? 0 : 0
+                offset = (h * 3600 + m * 60) * (sign == "-" ? -1 : 1)
             }
         }
-        comps.timeZone = TimeZone(secondsFromGMT: offset)
-        return Calendar(identifier: .gregorian).date(from: comps)
+        comps.timeZone = TimeZone(secondsFromGMT: offset) ?? TimeZone(secondsFromGMT: 0)
+        return gregorian.date(from: comps)
     }
 }
 

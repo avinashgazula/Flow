@@ -308,7 +308,7 @@ public enum JSONValue: Codable, Hashable, Sendable {
     public var string: String? {
         switch self {
         case .string(let s): return s
-        case .number(let n): return n.rounded() == n ? String(Int(n)) : String(n)
+        case .number(let n): return n.rounded() == n && abs(n) < 9e18 ? String(Int(n)) : String(n)
         default: return nil
         }
     }
@@ -321,7 +321,8 @@ public enum JSONValue: Codable, Hashable, Sendable {
         }
     }
 
-    public var int: Int? { double.map { Int($0) } }
+    /// Nil for NaN and values too large for an Int, which would otherwise trap.
+    public var int: Int? { double.flatMap { abs($0) < 9e18 ? Int($0) : nil } }
     public var array: [JSONValue]? { if case .array(let a) = self { return a }; return nil }
     public var object: [String: JSONValue]? { if case .object(let o) = self { return o }; return nil }
     public var bool: Bool? {

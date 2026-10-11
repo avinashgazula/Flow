@@ -20,6 +20,19 @@ public struct XtreamClient: IPTVProvider {
     var username: String { config.username ?? "" }
     var password: String { config.password ?? "" }
 
+    /// Stream addresses carry the login in their path, so a space or "#" in a password must not break the URL.
+    private static let segmentAllowed: CharacterSet = {
+        var set = CharacterSet.urlPathAllowed
+        set.remove(charactersIn: "/")
+        return set
+    }()
+
+    func segment(_ value: String) -> String { value.addingPercentEncoding(withAllowedCharacters: Self.segmentAllowed) ?? value }
+
+    func streamURL(_ kind: String, _ id: String, _ ext: String) -> URL? {
+        URL(string: "\(base)/\(kind)/\(segment(username))/\(segment(password))/\(segment(id)).\(ext)")
+    }
+
     func api(_ action: String?, _ extra: [String: String?] = [:]) async throws -> JSONValue {
         var query: [String: String?] = ["username": username, "password": password]
         if let action { query["action"] = action }
@@ -52,7 +65,7 @@ public struct XtreamClient: IPTVProvider {
             if let id = c["category_id"]?.string, let name = c["category_name"]?.string { groups[id] = name }
         }
         return (try await streamsJSON.array ?? []).compactMap { s in
-            guard let id = s["stream_id"]?.string, let url = URL(string: "\(base)/live/\(username)/\(password)/\(id).m3u8") else { return nil }
+            guard let id = s["stream_id"]?.string, let url = streamURL("live", id, "m3u8") else { return nil }
             return Channel(
                 id: "\(config.id):\(id)",
                 providerID: config.id,
@@ -69,8 +82,9 @@ public struct XtreamClient: IPTVProvider {
     }
 
     public func epg(window: ClosedRange<Date>) async throws -> EPG {
-        let url = config.epgURL ?? URL(string: "\(base)/xmltv.php?username=\(username)&password=\(password)")!
-        let (data, _) = try await http.data(HTTPRequest(.get, url: url, headers: ["Accept": "*/*"], timeout: 120))
+        guard let url = config.epgURL ?? URL(string: "\(base)/xmltv.php") else { throw FlowError.invalidURL(base) }
+        let query = config.epgURL == nil ? [URLQueryItem(name: "username", value: username), URLQueryItem(name: "password", value: password)] : []
+        let (data, _) = try await http.data(HTTPRequest(.get, url: url, query: query, headers: ["Accept": "*/*"], timeout: 120))
         return XMLTVParser.parse(Gzip.isGzip(data) ? try Gzip.decompress(data) : data, window: window)
     }
 
@@ -110,19 +124,21 @@ public struct XtreamClient: IPTVProvider {
     }
 
     public func movieURL(_ movie: VODMovie) -> URL? {
-        URL(string: "\(base)/movie/\(username)/\(password)/\(movie.streamID).\(movie.container)")
+        streamURL("movie", movie.streamID, movie.container)
     }
 
     public func episodeURL(seriesID: String, episode: EpisodeRef) async throws -> (URL, String)? {
         let info = try await api("get_series_info", ["series_id": seriesID])
-        guard let seasons = info["episodes"]?.object else { return nil }
-        for (_, list) in seasons {
+        // Keyed by season number, or a plain array when the seasons happen to be numbered from zero.
+        let seasons = info["episodes"]?.object.map { Array($0.values) } ?? info["episodes"]?.array
+        guard let seasons else { return nil }
+        for list in seasons {
             for e in list.array ?? [] {
                 let season = e["season"]?.int ?? 0
                 let number = e["episode_num"]?.int ?? 0
                 if season == episode.season && number == episode.episode, let id = e["id"]?.string {
                     let ext = e["container_extension"]?.string ?? "mp4"
-                    return URL(string: "\(base)/series/\(username)/\(password)/\(id).\(ext)").map { ($0, e["title"]?.string ?? "") }
+                    return streamURL("series", id, ext).map { ($0, e["title"]?.string ?? "") }
                 }
             }
         }

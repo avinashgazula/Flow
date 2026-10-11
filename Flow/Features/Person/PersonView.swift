@@ -6,6 +6,7 @@ struct PersonView: View {
     let name: String
     @Environment(AppModel.self) private var model
     @State private var person: Person?
+    @State private var failed = false
     @State private var expanded = false
     @State private var filter: MediaType?
 
@@ -51,7 +52,12 @@ struct PersonView: View {
                         PosterGrid(items: sorted(credits), context: "filmography-\(personID)")
                     }
                 } else if person == nil {
-                    ProgressView().frame(maxWidth: .infinity).padding(.top, Theme.Space.xxl)
+                    if failed {
+                        Text("Couldn't load details.").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary)
+                            .frame(maxWidth: .infinity).padding(.top, Theme.Space.xxl)
+                    } else {
+                        ProgressView().frame(maxWidth: .infinity).padding(.top, Theme.Space.xxl)
+                    }
                 }
             }
             .padding(.bottom, Theme.Space.xxl)
@@ -63,7 +69,11 @@ struct PersonView: View {
         .navigationTitle(name)
         .inlineNavigationTitle()
         #endif
-        .task { person = try? await model.catalog?.person(personID) }
+        .task {
+            failed = false
+            person = try? await model.catalog?.person(personID)
+            failed = person == nil && !Task.isCancelled
+        }
     }
 
     private var header: some View {
@@ -95,16 +105,29 @@ struct PersonView: View {
         .padding(.horizontal, Theme.Space.gutter)
     }
 
+    /// TMDb gives birthdays as bare days, parsed as midnight UTC; shown in the local zone they'd land a day early west of Greenwich.
+    private static let utc: TimeZone = TimeZone(identifier: "UTC") ?? .gmt
+
+    private func day(_ date: Date) -> String {
+        date.formatted(Date.FormatStyle(date: .long, time: .omitted, timeZone: Self.utc))
+    }
+
     private var lifeLine: String? {
         guard let person else { return nil }
         var parts: [String] = []
         if let birthday = person.birthday {
-            var born = "Born \(birthday.formatted(date: .long, time: .omitted))"
-            if person.deathday == nil, let age = Calendar.current.dateComponents([.year], from: birthday, to: Date()).year { born += " (age \(age))" }
+            var born = "Born \(day(birthday))"
+            if person.deathday == nil {
+                var calendar = Calendar(identifier: .gregorian)
+                calendar.timeZone = Self.utc
+                // Today's local date, as a UTC day, so the age turns over on the birthday itself.
+                let today = calendar.date(from: Calendar.current.dateComponents([.year, .month, .day], from: Date())) ?? Date()
+                if let age = calendar.dateComponents([.year], from: birthday, to: today).year { born += " (age \(age))" }
+            }
             parts.append(born)
         }
         if let place = person.placeOfBirth { parts.append(place) }
-        if let death = person.deathday { parts.append("Died \(death.formatted(date: .long, time: .omitted))") }
+        if let death = person.deathday { parts.append("Died \(day(death))") }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
