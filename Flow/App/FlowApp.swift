@@ -34,7 +34,7 @@ struct FlowApp: App {
                 }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active { model.scheduleNotificationRefresh() }
-                    if phase == .background { model.flushSettings() }
+                    if phase == .background { model.flushSettings(waits: true) }
                 }
                 #if os(macOS)
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in

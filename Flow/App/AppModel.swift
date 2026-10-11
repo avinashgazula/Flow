@@ -159,11 +159,15 @@ final class AppModel {
             #endif
             cache = ResponseCache(store: .caches("FlowResponses"))
             http = HTTPClient(userAgent: "Flow/1.0")
-            var loaded: AppSettings
-            if let data = store.loadData("settings"), let decoded = try? SettingsCodec.decode(AppSettings.self, from: data, defaults: AppSettings()) {
-                loaded = decoded.migrated()
-            } else {
-                loaded = AppSettings()
+            var loaded = AppSettings()
+            if let data = store.loadData("settings") {
+                if let decoded = try? SettingsCodec.decode(AppSettings.self, from: data, defaults: AppSettings()) {
+                    loaded = decoded.migrated()
+                } else {
+                    // Defaults would be saved over it on the next change: keep the unreadable file to recover from.
+                    let backup = store.directory.appendingPathComponent("settings-unreadable-\(Int(Date().timeIntervalSince1970)).json")
+                    try? data.write(to: backup, options: .atomic)
+                }
             }
             loaded.mediaServers.migrateHomeRows()
             settings = loaded
