@@ -16,6 +16,7 @@ enum Route: Hashable {
     case sports
     case downloads
     case calendar
+    case stats
     case channelGroup(String)
 }
 

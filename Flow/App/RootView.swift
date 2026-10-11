@@ -260,6 +260,7 @@ extension View {
             case .sports: SportsView()
             case .downloads: DownloadsView()
             case .calendar: CalendarView()
+            case .stats: StatsView()
             case .channelGroup(let group): ChannelGroupView(group: group)
             }
         }

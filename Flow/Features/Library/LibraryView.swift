@@ -68,6 +68,7 @@ struct LibraryView: View {
         LibraryTile(title: "Upcoming", subtitle: "New episodes", systemImage: "calendar", route: .calendar, tint: .pink)
         LibraryTile(title: "Sports", subtitle: model.settings.sports.followedTeams.isEmpty ? "Follow your teams" : model.settings.sports.followedTeams.count == 1 ? "1 team followed" : "\(model.settings.sports.followedTeams.count) teams followed", systemImage: "sportscourt.fill", route: .sports, tint: .green)
         LibraryTile(title: "History", subtitle: model.history.count == 1 ? "1 play" : "\(model.history.count) plays", systemImage: "clock.fill", route: .library(.history), tint: .orange)
+        LibraryTile(title: "Stats", subtitle: "Your watching", systemImage: "chart.bar.fill", route: .stats, tint: .teal)
     }
 
     private var uniqueHistoryKeys: [MediaKey] {
