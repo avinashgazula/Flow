@@ -7,3 +7,7 @@ Config/Secrets.xcconfig
 .remux-out/
 build/
 .claude/worktrees/
+shots/
+dd/
+tour-step-*
+build-shots.log

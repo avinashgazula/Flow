@@ -42,7 +42,8 @@ Flow/              SwiftUI app shared by the iOS, macOS and tvOS targets
 Widgets/           WidgetKit extension (iOS): Continue Watching
 TopShelf/          Top Shelf extension (tvOS)
 Shared/            The snapshot the app writes for its extensions
-scripts/           Screenshot tour used by CI (demo data, every platform)
+scripts/           sim.sh (build, run and screenshot in the simulators) and the screenshot tour used by CI
+docs/              TEST_PLAN.md: what to test and improve, screen by screen
 project.yml        XcodeGen spec for Flow.xcodeproj
 Config/            Build settings and optional baked-in API keys
 ```
@@ -67,6 +68,10 @@ iCloud sync uses the iCloud key-value store entitlement, which needs a paid deve
 | MDBList | Ratings row, list shelves, optional tracking | Settings → Account → API Keys |
 | IntroDB / PublicMetaDB | Skip segments, tracking | Settings → Account → API Keys |
 | OpenSubtitles / SubDL / SubSource | Subtitle search (Wyzie needs no key) | Settings → Account → API Keys |
+
+## Testing in the simulators
+
+`scripts/sim.sh run ios` builds Flow and launches it in an iPhone simulator with sample data (`ipad`, `tvos` and `mac` work too; `--real` uses your own keys). `scripts/sim.sh shot`, `open` and `logs` take screenshots, follow `flow://` links and stream the log. `CLAUDE.md` is the guide for working on Flow with Claude Code, and `docs/TEST_PLAN.md` is the full test-and-improve checklist.
 
 ## Tests
 
