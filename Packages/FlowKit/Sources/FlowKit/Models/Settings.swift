@@ -238,6 +238,7 @@ public struct Credentials: Codable, Hashable, Sendable {
     public var openSubtitlesPassword: String?
     public var subdlAPIKey: String?
     public var subSourceAPIKey: String?
+    public var rpdbAPIKey: String?
     public var traktClientID: String?
     public var traktClientSecret: String?
     public var traktToken: OAuthToken?
@@ -678,6 +679,8 @@ public struct SourceSettings: Codable, Hashable, Sendable {
     public var timeoutSeconds: Double = 15
     /// Rank sources whose main audio Apple devices can't decode (DTS, TrueHD) after the rest.
     public var preferPlayableAudio = true
+    /// A title opened from a library in the Library tab lists only that library's sources.
+    public var playFromLibraryOnly = false
     public init() {}
 }
 
@@ -800,6 +803,9 @@ public struct PlaybackSettings: Codable, Hashable, Sendable {
     public var upNextWaitsForEnd = false
     /// Extra loudness for quiet Dolby Digital (Plus) soundtracks in MKVs, in dB (see DolbyLoudness).
     public var volumeBoostDB = 0
+    /// Tried when no track is in `preferredAudioLanguage`.
+    public var audioFallbackLanguage: String?
+    public var animeAudio: AnimeAudio = .noPreference
     /// Decode DTS and Dolby TrueHD in MKVs (with FFmpeg) instead of skipping them.
     public var decodeLosslessAudio = true
     /// Remember the audio and subtitle languages chosen for a show, so its next episodes start the same way.
@@ -848,6 +854,73 @@ public enum SubtitleBackground: String, Codable, Hashable, Sendable, CaseIterabl
     public var id: String { rawValue }
 }
 
+public enum SubtitleFont: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case system, rounded, serif, monospaced, condensed
+    public var id: String { rawValue }
+    public var title: String { self == .system ? "System" : rawValue.capitalized }
+}
+
+public enum SubtitleWeight: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case regular, medium, semibold, bold, heavy
+    public var id: String { rawValue }
+    public var title: String { rawValue.capitalized }
+}
+
+/// How the edge of subtitle text is drawn, as in the system's caption settings.
+public enum SubtitleEdgeStyle: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case none, dropShadow, raised, depressed, outline
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .none: return "None"
+        case .dropShadow: return "Drop Shadow"
+        case .raised: return "Raised"
+        case .depressed: return "Depressed"
+        case .outline: return "Outline"
+        }
+    }
+}
+
+/// When subtitles turn on by themselves.
+public enum AutoSubtitleMode: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    /// Only when the audio isn't in your first subtitle language; otherwise forced subtitles only.
+    case automatic
+    case always
+    case forcedOnly
+    case never
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .automatic: return "Automatic"
+        case .always: return "Always"
+        case .forcedOnly: return "Forced Only"
+        case .never: return "Never"
+        }
+    }
+}
+
+public enum SubtitleTypePreference: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case standard, sdh
+    public var id: String { rawValue }
+    public var title: String { self == .standard ? "Standard" : "SDH" }
+}
+
+public enum AnimeAudio: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case noPreference
+    /// Japanese audio with subtitles.
+    case sub
+    /// Your preferred-language audio, subtitles off.
+    case dub
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .noPreference: return "No Preference"
+        case .sub: return "Sub"
+        case .dub: return "Dub"
+        }
+    }
+}
+
 public struct SubtitleSettings: Codable, Hashable, Sendable {
     public var preferredLanguages: [String] = ["en"]
     public var autoEnable = false
@@ -860,6 +933,18 @@ public struct SubtitleSettings: Codable, Hashable, Sendable {
     public var verticalPosition: Double = 0
     public var enabledProviders: [String] = ["opensubtitles", "subdl", "wyzie", "subsource"]
     public var hearingImpaired = false
+    public var font: SubtitleFont = .system
+    public var weight: SubtitleWeight = .semibold
+    public var edgeStyle: SubtitleEdgeStyle = .dropShadow
+    /// 0...1, for the translucent and solid backgrounds.
+    public var backgroundOpacity: Double = 0.6
+    /// Draw ASS/SSA subtitles with their own colours, weights, sizes and placement.
+    public var keepASSStyling = false
+    /// Offer to align out-of-sync subtitles to the dialogue (remuxed MKVs).
+    public var autoSync = false
+    /// When subtitles turn on by themselves; replaces `autoEnable` once set.
+    public var autoSelect: AutoSubtitleMode = .automatic
+    public var subtitleType: SubtitleTypePreference = .standard
     public init() {}
 }
 
@@ -883,6 +968,33 @@ public enum PrimaryMetadataSource: String, Codable, Hashable, Sendable, CaseIter
     public var title: String { self == .tmdb ? "TMDb" : "Trakt" }
 }
 
+/// Ratings shown on detail pages, in order.
+public enum RatingSource: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case imdb, tomatometer, popcornmeter, metacritic, tmdb, letterboxd, trakt, mal
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .imdb: return "IMDb"
+        case .tomatometer: return "Rotten Tomatoes"
+        case .popcornmeter: return "Popcornmeter"
+        case .metacritic: return "Metacritic"
+        case .tmdb: return "TMDB"
+        case .letterboxd: return "Letterboxd"
+        case .trakt: return "Trakt"
+        case .mal: return "MyAnimeList"
+        }
+    }
+}
+
+/// Posters with ratings drawn on them.
+public enum PosterEnhancement: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case off
+    /// RatingPosterDB (needs its API key).
+    case rpdb
+    public var id: String { rawValue }
+    public var title: String { self == .off ? "Off" : "RPDB" }
+}
+
 public struct MetadataSettings: Codable, Hashable, Sendable {
     public var episodeSource: EpisodeSource = .tvdb
     public var airDatesInLocalTimeZone = true
@@ -891,6 +1003,14 @@ public struct MetadataSettings: Codable, Hashable, Sendable {
     public var language = "en-US"
     public var region = "US"
     public var includeAdult = false
+    /// Look for sources (and load the trailer) as soon as a detail page opens, so Play is instant.
+    public var prefetchOnDetail = true
+    public var posterEnhancement: PosterEnhancement = .off
+    public var ratingsShown: [RatingSource] = RatingSource.allCases
+    /// Tapping a score opens that site's page for the title.
+    public var tapRatingOpensReviews = false
+    /// A JSON array of {"name", "url"} icons for the ratings row.
+    public var ratingIconPackURL: URL?
     public init() {}
 }
 
