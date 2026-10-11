@@ -30,7 +30,7 @@ struct SearchView: View {
             LazyVStack(alignment: .leading, spacing: 28) {
                 if text.trimmingCharacters(in: .whitespaces).isEmpty {
                     idleContent
-                } else if searching && results.isEmpty {
+                } else if searching && results.isEmpty && serverResults.isEmpty {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
                 } else if let error {
                     ContentUnavailableView("Search Failed", systemImage: "exclamationmark.triangle", description: Text(error))
@@ -105,6 +105,9 @@ struct SearchView: View {
                                     .overlay(Capsule().strokeBorder(Theme.Palette.hairline))
                             }
                             .buttonStyle(CardButtonStyle())
+                            .contextMenu {
+                                Button(role: .destructive) { forget(term) } label: { Label("Remove", systemImage: "trash") }
+                            }
                         }
                     }
                     .padding(.horizontal, Platform.horizontalPadding)
@@ -117,6 +120,13 @@ struct SearchView: View {
             ShelfView(shelf: .builtIn(.trendingShows))
         } else {
             MissingKeyView()
+        }
+    }
+
+    private func forget(_ term: String) {
+        withAnimation(Theme.Motion.fade) {
+            model.recentSearches.removeAll { $0 == term }
+            recents = model.recentSearches
         }
     }
 
