@@ -925,6 +925,9 @@ struct IOSPlayerControls: View {
                         }
                     }
                 }
+                // A landscape iPhone has no room for both: while the info card is up it takes the middle.
+                .opacity(Platform.isPhone && session.showsInfo ? 0 : 1)
+                .allowsHitTesting(!(Platform.isPhone && session.showsInfo))
 
                 Spacer()
 
