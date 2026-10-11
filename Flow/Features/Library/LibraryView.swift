@@ -37,7 +37,7 @@ struct LibraryView: View {
                     default: return false
                     }
                 }) { shelf in
-                    ShelfView(shelf: shelf)
+                    ShelfView(shelf: shelf, inLibraryTab: true)
                 }
 
                 if model.watchlistKeys.isEmpty && model.history.isEmpty && model.favouriteKeys.isEmpty && !model.isSyncing {

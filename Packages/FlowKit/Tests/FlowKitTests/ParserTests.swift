@@ -108,6 +108,33 @@ final class SourceRankerTests: XCTestCase {
                        ["sdr4k", "dv4k", "sdr1080", "hdr1080", "other"])
     }
 
+    /// Audio Language also sorts sources: within a provider, matching releases first, nothing else moves.
+    func testPreferredAudioLanguageComesFirstWithinAProvider() {
+        let sources = [
+            source("fr", .addons, provider: "aio", text: "1080p French WEB-DL"),
+            source("en1", .addons, provider: "aio", text: "1080p English WEB-DL"),
+            source("none", .addons, provider: "aio", text: "1080p WEB-DL"),
+            source("en2", .addons, provider: "aio", text: "720p English WEB-DL"),
+            source("other-fr", .addons, provider: "zzz", text: "1080p French WEB-DL"),
+            source("other-en", .addons, provider: "zzz", text: "1080p English WEB-DL"),
+        ]
+        let plain = SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .uhd4k)
+        XCTAssertEqual(plain.map(\.id), ["fr", "en1", "none", "en2", "other-fr", "other-en"])
+        let english = SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .uhd4k, preferredAudioLanguage: "en")
+        XCTAssertEqual(english.map(\.id), ["en1", "en2", "fr", "none", "other-en", "other-fr"])
+        XCTAssertEqual(SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .uhd4k, preferredAudioLanguage: "fr-FR").map(\.id),
+                       ["fr", "en1", "none", "en2", "other-fr", "other-en"])
+        XCTAssertEqual(SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .uhd4k, preferredAudioLanguage: nil).map(\.id), plain.map(\.id))
+    }
+
+    func testPreferredAudioLanguageNeverCrossesProviders() {
+        let sources = [
+            source("a", .mediaServers, provider: "jelly", text: "1080p French"),
+            source("b", .addons, provider: "aio", text: "1080p English"),
+        ]
+        XCTAssertEqual(SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .uhd4k, preferredAudioLanguage: "en").map(\.id), ["a", "b"])
+    }
+
     func testResolutionCapAlwaysApplies() {
         let sources = [source("4k", .addons, provider: "aio", text: "2160p"), source("hd", .addons, provider: "aio", text: "1080p"), source("u", .addons, provider: "aio", text: "no info")]
         let ranked = SourceRanker.rank(sources, settings: SourceSettings(), resolutionCap: .hd1080)

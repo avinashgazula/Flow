@@ -81,7 +81,7 @@ struct SubtitlePickerView: View {
             .task {
                 tracks = await SubtitleSearch.search(model.subtitleProviders(), request: session.request,
                                                      languages: model.settings.subtitles.preferredLanguages,
-                                                     hearingImpaired: model.settings.subtitles.hearingImpaired)
+                                                     hearingImpaired: model.settings.subtitles.subtitleType == .sdh)
                 loading = false
             }
         }

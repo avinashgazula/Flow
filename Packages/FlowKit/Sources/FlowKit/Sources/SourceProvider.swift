@@ -164,8 +164,9 @@ public enum SourceRanker {
     /// `decodesAV1` false (devices without an AV1 decoder) moves AV1 encodes to the end.
     /// `decodesLosslessAudio` true (Flow's own DTS and TrueHD decoding is on) stops demoting those sources.
     /// `prefersHDR` false puts a provider's SDR versions ahead of its HDR ones at the same resolution.
+    /// `preferredAudioLanguage` (a code like "en") puts a provider's sources in that language ahead of its others.
     public static func rank(_ sources: [StreamSource], settings: SourceSettings, resolutionCap: VideoResolution, decodesAV1: Bool = true,
-                            decodesLosslessAudio: Bool = false, prefersHDR: Bool = true) -> [StreamSource] {
+                            decodesLosslessAudio: Bool = false, prefersHDR: Bool = true, preferredAudioLanguage: String? = nil) -> [StreamSource] {
         var list = sources.filter { $0.traits.resolution == .unknown || $0.traits.resolution <= resolutionCap }
         if settings.useCustomOrdering { list = list.filter { passes($0, settings.filters) } }
 
@@ -196,6 +197,7 @@ public enum SourceRanker {
             list = list.filter { !isAV1($0) } + list.filter(isAV1)
         }
         if !prefersHDR { list = sdrFirst(list) }
+        if let language = preferredAudioLanguage, !language.isEmpty { list = audioLanguageFirst(list, language: language) }
         if settings.useCustomOrdering, let cap = settings.resultCap, cap > 0 { list = Array(list.prefix(cap)) }
         return list
     }
@@ -212,6 +214,25 @@ public enum SourceRanker {
         for indices in slots.values where indices.count > 1 {
             let members = indices.map { list[$0] }
             let reordered = members.filter { $0.traits.hdr.isEmpty } + members.filter { !$0.traits.hdr.isEmpty }
+            for (slot, source) in zip(indices, reordered) { out[slot] = source }
+        }
+        return out
+    }
+
+    /// Within each provider, sources whose release names the language come first; every group keeps the
+    /// places it had, so the overall order (category, provider, sort rules) doesn't change. A "Multi" or
+    /// "Dual Audio" release counts: it carries the language among others.
+    static func audioLanguageFirst(_ list: [StreamSource], language: String) -> [StreamSource] {
+        let name = LanguageName.display(TrackSelection.primaryLanguage(language)).lowercased()
+        func matches(_ s: StreamSource) -> Bool {
+            s.traits.languages.contains { $0.lowercased() == name || $0 == "Multi" }
+        }
+        var slots: [String: [Int]] = [:]
+        for (index, source) in list.enumerated() { slots[source.providerID, default: []].append(index) }
+        var out = list
+        for indices in slots.values where indices.count > 1 {
+            let members = indices.map { list[$0] }
+            let reordered = members.filter(matches) + members.filter { !matches($0) }
             for (slot, source) in zip(indices, reordered) { out[slot] = source }
         }
         return out

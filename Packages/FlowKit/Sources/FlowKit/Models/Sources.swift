@@ -163,10 +163,13 @@ public struct StreamSource: Codable, Hashable, Sendable, Identifiable {
 public struct PlaybackRequest: Codable, Hashable, Sendable, Identifiable {
     public var item: MediaItem
     public var episode: Episode?
+    /// The provider of the library this title was opened from (Library tab); see `SourceSettings.playFromLibraryOnly`.
+    public var libraryProviderID: String?
 
-    public init(item: MediaItem, episode: Episode? = nil) {
+    public init(item: MediaItem, episode: Episode? = nil, libraryProviderID: String? = nil) {
         self.item = item
         self.episode = episode
+        self.libraryProviderID = libraryProviderID
     }
 
     public var episodeRef: EpisodeRef? { episode?.ref }

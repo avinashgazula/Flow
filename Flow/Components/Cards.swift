@@ -7,16 +7,18 @@ struct PosterCard: View {
     var width: CGFloat = Platform.posterWidth
     /// Distinguishes the same title appearing on several shelves, for the zoom transition.
     var context: String = "poster"
+    /// The provider of the library this poster belongs to, when it's on a library's shelf.
+    var libraryProviderID: String?
     @Environment(AppModel.self) private var model
 
     private var zoomID: String { "\(context)-\(item.id)" }
 
     var body: some View {
-        NavigationLink(value: Route.detail(item, zoom: zoomID)) {
+        NavigationLink(value: Route.detail(item, zoom: zoomID, library: libraryProviderID)) {
             PosterCardContent(item: item, width: width, zoomID: zoomID)
         }
         .buttonStyle(CardButtonStyle())
-        .contextMenu { MediaContextMenu(item: item) } preview: { PosterPreview(item: item) }
+        .contextMenu { MediaContextMenu(item: item, libraryProviderID: libraryProviderID) } preview: { PosterPreview(item: item) }
         .accessibilityLabel(accessibilityText)
     }
 
@@ -350,10 +352,11 @@ struct FocusLift: ViewModifier {
 
 struct MediaContextMenu: View {
     let item: MediaItem
+    var libraryProviderID: String?
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        Button { Task { await model.play(item) } } label: { Label("Play", systemImage: "play.fill") }
+        Button { Task { await model.play(item, library: libraryProviderID) } } label: { Label("Play", systemImage: "play.fill") }
         Button { Task { await model.toggleWatchlist(item) } } label: {
             Label(model.isWatchlisted(item) ? "Remove from Watchlist" : "Add to Watchlist", systemImage: model.isWatchlisted(item) ? "bookmark.slash" : "bookmark")
         }

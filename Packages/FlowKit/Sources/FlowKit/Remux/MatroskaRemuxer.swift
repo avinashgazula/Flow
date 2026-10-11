@@ -95,11 +95,12 @@ public actor MatroskaRemuxer {
 
     /// Reads the header and enough of the first clusters to configure Dolby audio, then plans segments.
     /// `targetSegment` nil picks a length from the file's bitrate (see `segmentLength`).
-    /// `preferredAudioLanguage` (ISO 639 or BCP 47) makes that language's soundtrack the default.
+    /// `preferredAudioLanguage` (ISO 639 or BCP 47) makes that language's soundtrack the default;
+    /// `fallbackAudioLanguages` are tried, in order, when the file has none in it.
     /// `compatible` drops the extras some players refuse: the Dolby Vision configuration (the HDR10 base
     /// layer still plays) and Atmos signalling (the 5.1 bed still plays). Flow retries with it when a stream fails.
     public static func open(_ source: ByteSource, targetSegment: Double? = nil, preferredAudioLanguage: String? = nil,
-                            headerCache: MatroskaHeaderCache? = nil, compatible: Bool = false, dolbyVision: Bool = true,
+                            fallbackAudioLanguages: [String] = [], headerCache: MatroskaHeaderCache? = nil, compatible: Bool = false, dolbyVision: Bool = true,
                             convertProfile7: Bool = false) async throws -> MatroskaRemuxer {
         let header = try await MatroskaReader.readHeader(source, cache: headerCache)
         guard let firstCluster = header.firstClusterPosition else { throw MatroskaError.malformed("no clusters") }
@@ -138,7 +139,7 @@ public actor MatroskaRemuxer {
         if video == nil && audio.isEmpty {
             throw MatroskaError.unsupported(skipped.first?.reason ?? "no playable tracks")
         }
-        audio = Self.ordered(audio, preferredLanguage: preferredAudioLanguage)
+        audio = Self.ordered(audio, preferredLanguages: ([preferredAudioLanguage].compactMap { $0 }) + fallbackAudioLanguages)
 
         let duration = Double(header.duration ?? 0) / 1e9
         let target = targetSegment ?? Self.segmentLength(header: header)
@@ -148,17 +149,12 @@ public actor MatroskaRemuxer {
                                skipped: skipped, segments: segments, duration: duration, presentationDelay: delay, isCompatible: compatible)
     }
 
-    /// The soundtrack first (the viewer's language if there is one, then the file's default, then any
+    /// The soundtrack first (the viewer's first language the file has, then the file's default, then any
     /// other non-commentary track), commentaries last, so what plays unprompted is the film's own audio.
-    static func ordered(_ audio: [OutputTrack], preferredLanguage: String?) -> [OutputTrack] {
-        func matches(_ t: OutputTrack) -> Bool {
-            guard let preferred = preferredLanguage?.lowercased(), !preferred.isEmpty else { return false }
-            let tag = LanguageName.bcp47(t.language).lowercased()
-            return tag == preferred || tag.hasPrefix(preferred + "-") || t.language.lowercased() == preferred
-                || LanguageName.bcp47(preferred).lowercased() == tag
-        }
+    static func ordered(_ audio: [OutputTrack], preferredLanguages: [String]) -> [OutputTrack] {
         func rank(_ t: OutputTrack) -> (Int, Int, Int, Int) {
-            (t.source.isCommentary ? 1 : 0, matches(t) ? 0 : 1, t.source.isDefault ? 0 : 1, t.source.number)
+            let language = preferredLanguages.firstIndex { TrackSelection.matches(t.language, $0) } ?? Int.max
+            return (t.source.isCommentary ? 1 : 0, language, t.source.isDefault ? 0 : 1, t.source.number)
         }
         return audio.sorted { rank($0) < rank($1) }
     }

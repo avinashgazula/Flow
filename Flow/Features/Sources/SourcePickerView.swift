@@ -16,7 +16,8 @@ struct SourcePickerView: View {
 
     private var ranked: [StreamSource] {
         SourceRanker.rank(raw, settings: model.settings.sources, resolutionCap: model.resolutionCap, decodesAV1: Platform.decodesAV1,
-                          decodesLosslessAudio: MatroskaRemuxer.audioDecoders != nil, prefersHDR: model.settings.playback.preferHDR)
+                          decodesLosslessAudio: MatroskaRemuxer.audioDecoders != nil, prefersHDR: model.settings.playback.preferHDR,
+                          preferredAudioLanguage: model.settings.playback.preferredAudioLanguage)
     }
 
     private var grouped: [(SourceCategory, [StreamSource])] {
@@ -162,30 +163,48 @@ struct SourcePickerView: View {
     }
 
     private func gather() async {
+        let providers = model.sourceProviders()
+        // A title opened from a library asks that library first, and the rest only if it has nothing (Settings → Sources).
+        let library = model.settings.sources.playFromLibraryOnly
+            ? request.libraryProviderID.flatMap { id in providers.first { $0.providerID == id } } : nil
         // The first search starts from what the detail page already found, then refreshes; Search Again starts clean.
-        let prefetched = reloadToken == 0 ? model.prefetchedSources.sources(for: request) : nil
+        var prefetched = reloadToken == 0 ? model.prefetchedSources.sources(for: request) : nil
+        if let library, let own = prefetched?.filter({ $0.providerID == library.providerID }), !own.isEmpty { prefetched = own }
         raw = prefetched ?? []
-        var fresh: [StreamSource] = []
         failures = [:]
         finished = false
-        let providers = model.sourceProviders()
+        let live = prefetched == nil
+        var fresh: [StreamSource]
+        if let library {
+            fresh = await collect([library], live: live)
+            if fresh.isEmpty { fresh = await collect(providers.filter { $0.providerID != library.providerID }, live: live) }
+        } else {
+            fresh = await collect(providers, live: live)
+        }
+        guard !Task.isCancelled else { return }
+        // Keep the prefetched list if the refresh came back empty only because providers failed.
+        if prefetched != nil, !fresh.isEmpty || failures.isEmpty { raw = fresh }
+        finished = true
+        maybeAutoPlay(final: true)
+    }
+
+    /// Everything the providers found; with `live`, rows appear as each provider answers.
+    private func collect(_ providers: [SourceProvider], live: Bool) async -> [StreamSource] {
+        var found: [StreamSource] = []
         for await update in SourceAggregator.stream(providers, request: request, timeout: model.settings.sources.timeoutSeconds) {
             switch update {
             case .loading(let id, let name): pending[id] = name
             case .loaded(let id, let sources):
                 pending[id] = nil
-                if prefetched == nil { raw += sources } else { fresh += sources }
-                maybeAutoPlay()
+                found += sources
+                if live { raw += sources }
             case .failed(let id, _, let error):
                 pending[id] = nil
                 failures[id] = error
-            case .finished:
-                // Keep the prefetched list if the refresh came back empty only because providers failed.
-                if prefetched != nil, !fresh.isEmpty || failures.isEmpty { raw = fresh }
-                finished = true
-                maybeAutoPlay(final: true)
+            case .finished: break
             }
         }
+        return found
     }
 
     /// With "auto-play first source" on, start as soon as every provider answered.

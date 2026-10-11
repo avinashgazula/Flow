@@ -92,7 +92,9 @@ public enum SetupShare {
         let defaults = SetupBundle(settings: AppSettings(), credentials: nil)
         let bundle = try SettingsCodec.decode(SetupBundle.self, from: data, defaults: defaults)
         guard bundle.format == "flow-setup" else { throw FlowError.decoding("Not a Flow setup") }
-        return bundle
+        var migrated = bundle
+        migrated.settings = bundle.settings.migrated()
+        return migrated
     }
 
     /// Applies an import on top of the current setup, keeping secrets the import doesn't carry.

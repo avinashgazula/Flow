@@ -109,6 +109,14 @@ final class PlaybackSession: Identifiable {
     /// The player's own error, for the error screen's details (domain and code say more than its wording).
     var failureDetail: String?
     @ObservationIgnored private var bitmapTask: Task<Void, Never>?
+    /// Choosing the audio and subtitle tracks once the stream's are known.
+    @ObservationIgnored private var trackTask: Task<Void, Never>?
+    /// Japanese animation (see `TrackSelection.isAnime`); only looked up when Anime Audio is set.
+    @ObservationIgnored private var isAnime = false
+    /// Anime or not, by title, so each episode doesn't ask TMDb again.
+    private static var animeTitles: [String: Bool] = [:]
+    /// Picture subtitle ids sit above the stream's own options in `TrackSelection`'s numbering.
+    private static let bitmapTrackBase = 10_000
 
     init(model: AppModel, request: PlaybackRequest, source: StreamSource, resumeAt: Double?, alternatives: [StreamSource] = []) {
         self.model = model
@@ -185,10 +193,13 @@ final class PlaybackSession: Identifiable {
         failureDetail = nil
         phase = .connecting(0.1)
         loadTask = Task { [weak self] in await self?.prepare(source, url: url) }
+        trackTask?.cancel()
+        trackTask = Task { [weak self] in await self?.applyTrackSelection() }
     }
 
     /// Picks the path for this stream: straight to AVPlayer, through the remuxer, or out to another app.
     private func prepare(_ source: StreamSource, url: URL) async {
+        await resolveAnime()
         let headers = source.location.headers
         var container = ContainerDetector.container(url: url, filename: source.filename)
         // Debrid links carry no extension: look at the first bytes, and keep what was read for the remuxer.
@@ -221,8 +232,10 @@ final class PlaybackSession: Identifiable {
     private func startRemux(url: URL, headers: [String: String], reader: ByteSource? = nil) async {
         phase = .connecting(0.2)
         do {
+            let languages = audioLanguages
             let remuxer = try await MatroskaRemuxer.open(reader ?? Self.byteSource(url, headers: headers),
-                                                         preferredAudioLanguage: preferredAudioLanguage, headerCache: .shared, compatible: remuxCompatible,
+                                                         preferredAudioLanguage: languages.first, fallbackAudioLanguages: Array(languages.dropFirst()),
+                                                         headerCache: .shared, compatible: remuxCompatible,
                                                          dolbyVision: model?.settings.playback.neverUseDolbyVision != true,
                                                          convertProfile7: model?.settings.playback.convertDolbyVisionProfile7 ?? true)
             guard !Task.isCancelled else { return }
@@ -304,21 +317,13 @@ final class PlaybackSession: Identifiable {
         if !(resumeAt != nil && model?.settings.playback.askToResume == true) { player.play() }
     }
 
-    /// The viewer's audio language, and with automatic subtitles their subtitle languages, for
-    /// streams that carry several (HLS renditions, multi-track MP4s and remuxed MKVs).
+    /// The viewer's audio languages, for streams that carry several (HLS renditions, multi-track MP4s and
+    /// remuxed MKVs). The subtitle is chosen once the stream's tracks are known (`applyTrackSelection`).
     private func applyLanguagePreferences() {
-        guard let settings = model?.settings else { return }
-        if let audio = preferredAudioLanguage {
-            player.setMediaSelectionCriteria(AVPlayerMediaSelectionCriteria(preferredLanguages: [audio], preferredMediaCharacteristics: nil),
-                                             forMediaCharacteristic: .audible)
-        }
-        if showChoice?.subtitlesOff != true, settings.subtitles.autoEnable || showChoice?.subtitleLanguage != nil, !subtitleLanguages.isEmpty {
-            var characteristics: [AVMediaCharacteristic] = []
-            if settings.subtitles.hearingImpaired { characteristics.append(.transcribesSpokenDialogForAccessibility) }
-            player.setMediaSelectionCriteria(AVPlayerMediaSelectionCriteria(preferredLanguages: subtitleLanguages,
-                                                                            preferredMediaCharacteristics: characteristics),
-                                             forMediaCharacteristic: .legible)
-        }
+        let languages = audioLanguages
+        guard !languages.isEmpty else { return }
+        player.setMediaSelectionCriteria(AVPlayerMediaSelectionCriteria(preferredLanguages: languages, preferredMediaCharacteristics: nil),
+                                         forMediaCharacteristic: .audible)
     }
 
     // MARK: Remembered tracks
@@ -333,15 +338,25 @@ final class PlaybackSession: Identifiable {
 
     /// The show's choice, then Settings, then the device's language: a multi-language release often marks
     /// its dub as the default track, and an English speaker shouldn't land in French.
-    private var preferredAudioLanguage: String? {
-        showChoice?.audioLanguage ?? model?.settings.playback.preferredAudioLanguage ?? Locale.current.language.languageCode?.identifier
+    private var audioLanguages: [String] {
+        guard let model else { return [] }
+        return TrackSelection.audioLanguages(playback: model.settings.playback, isAnime: isAnime, showChoice: showChoice,
+                                             deviceLanguage: Locale.current.language.languageCode?.identifier)
     }
 
-    /// The show's subtitle language first, then the viewer's general preferences.
-    private var subtitleLanguages: [String] {
-        let general = model?.settings.subtitles.preferredLanguages ?? []
-        guard let language = showChoice?.subtitleLanguage else { return general }
-        return [language] + general.filter { $0 != language }
+    private func resolveAnime() async {
+        guard let model, model.settings.playback.animeAudio != .noPreference else { isAnime = false; return }
+        let item = request.item
+        if let known = Self.animeTitles[item.id] { isAnime = known; return }
+        var genres = item.genres.map(\.id)
+        var language = item.originalLanguage
+        // A poster from a library or a search can lack these; the detail page's data is usually cached already.
+        if genres.isEmpty || language == nil, let id = item.ids.tmdb, let detail = try? await model.catalog?.details(item.type, id: id) {
+            genres = detail.item.genres.map(\.id)
+            language = detail.item.originalLanguage
+        }
+        isAnime = TrackSelection.isAnime(genreIDs: genres, originalLanguage: language)
+        if !genres.isEmpty, language != nil { Self.animeTitles[item.id] = isAnime }
     }
 
     private func remember(_ update: (inout ShowTrackChoice) -> Void) {
@@ -415,19 +430,6 @@ final class PlaybackSession: Identifiable {
         }
         guard !attributes.isEmpty, let rule = AVTextStyleRule(textMarkupAttributes: attributes) else { return nil }
         return [rule]
-    }
-
-    /// A full (not forced-only) subtitle track inside the stream in one of the viewer's languages.
-    private func embeddedSubtitle(in item: AVPlayerItem, languages: [String]) async -> AVMediaSelectionOption? {
-        guard let group = try? await item.asset.loadMediaSelectionGroup(for: .legible) else { return nil }
-        let full = group.options.filter { !$0.hasMediaCharacteristic(.containsOnlyForcedSubtitles) }
-        for language in languages {
-            if let match = full.first(where: { option in
-                let tag = option.extendedLanguageTag?.lowercased() ?? ""
-                return tag == language.lowercased() || tag.hasPrefix(language.lowercased() + "-")
-            }) { return match }
-        }
-        return nil
     }
 
     private func applyChapters(to item: AVPlayerItem) {
@@ -527,6 +529,7 @@ final class PlaybackSession: Identifiable {
 
     // MARK: Picture subtitles
 
+    /// Lists the disc subtitles for the menu; `applyTrackSelection` decides whether one shows.
     private func configureBitmapSubtitles(_ remuxer: MatroskaRemuxer) {
         bitmapTracks = remuxer.bitmapSubtitles.map { track in
             var title = track.label
@@ -534,18 +537,6 @@ final class PlaybackSession: Identifiable {
             if track.source.isHearingImpaired { title += " (SDH)" }
             return PlayerTrack(id: track.id, title: title)
         }
-        guard let model, !remuxer.bitmapSubtitles.isEmpty else { return }
-        // Forced captions in the soundtrack's language always show; full subtitles when the viewer
-        // turned on automatic subtitles and there's no text track to use instead.
-        let language = remuxer.audio.first?.language
-        let forced = remuxer.bitmapSubtitles.first { $0.source.isForced && $0.language == language }
-        let preferred = subtitleLanguages
-        let wanted = (model.settings.subtitles.autoEnable || showChoice?.subtitleLanguage != nil) && showChoice?.subtitlesOff != true && remuxer.subtitles.isEmpty
-            ? remuxer.bitmapSubtitles.first { track in
-                !track.source.isCommentary && preferred.contains { LanguageName.bcp47(track.language) == $0 || track.language.hasPrefix($0) }
-            }
-            : nil
-        if let choice = wanted ?? forced { showBitmapSubtitle(choice.id) }
     }
 
     /// The viewer's choice from a menu: shown, and remembered for the show.
@@ -643,14 +634,14 @@ final class PlaybackSession: Identifiable {
         if let episode = request.episode, let showID = request.item.ids.tmdb, seasonEpisodes.first?.season != episode.season {
             seasonEpisodes = (try? await model.catalog?.tmdb.season(showID: showID, season: episode.season)) ?? []
         }
-        // Automatic subtitles, or the language picked for this show in an earlier episode.
-        if model.settings.subtitles.autoEnable || showChoice?.subtitleLanguage != nil { await autoLoadSubtitle() }
         upNext = await model.nextRequest(after: request)
     }
 
-    private func autoLoadSubtitle() async {
-        guard let model, showChoice?.subtitlesOff != true else { return }
-        // Subtitles that come with the stream beat a search: they're timed to this exact cut.
+    /// Picks the audio and subtitle from the tracks the stream carries (`TrackSelection` has the rules).
+    /// Subtitles that come with the stream beat a search: they're timed to this exact cut, so Flow
+    /// looks online only when the rules ask for one the stream lacks.
+    private func applyTrackSelection() async {
+        guard let model else { return }
         // Opening an MKV takes a few seconds, so wait until the stream's tracks are known.
         var waited = 0
         while player.currentItem?.status != .readyToPlay, waited < 120 {
@@ -659,14 +650,58 @@ final class PlaybackSession: Identifiable {
             if Task.isCancelled { return }
             waited += 1
         }
-        if let item = player.currentItem, let embedded = await embeddedSubtitle(in: item, languages: subtitleLanguages) {
-            if let group = try? await item.asset.loadMediaSelectionGroup(for: .legible) { item.select(embedded, in: group) }
+        guard let item = player.currentItem, item.status == .readyToPlay else { return }
+        let audible = try? await item.asset.loadMediaSelectionGroup(for: .audible)
+        let legible = try? await item.asset.loadMediaSelectionGroup(for: .legible)
+        guard !Task.isCancelled, item === player.currentItem else { return }
+
+        let audioTracks = (audible?.options ?? []).enumerated().map { index, option in
+            TrackSelection.AudioTrack(id: index, language: option.extendedLanguageTag ?? "und",
+                                      isCommentary: option.hasMediaCharacteristic(.describesVideoForAccessibility) || option.displayName.localizedCaseInsensitiveContains("comment"),
+                                      isDefault: option == audible?.defaultOption)
+        }
+        var subtitleTracks = (legible?.options ?? []).enumerated().map { index, option in
+            TrackSelection.SubtitleTrack(id: index, language: option.extendedLanguageTag ?? "und",
+                                         isForced: option.hasMediaCharacteristic(.containsOnlyForcedSubtitles),
+                                         isSDH: option.hasMediaCharacteristic(.describesMusicAndSoundForAccessibility) || option.hasMediaCharacteristic(.transcribesSpokenDialogForAccessibility))
+        }
+        for track in remuxer?.bitmapSubtitles ?? [] where !track.source.isCommentary {
+            subtitleTracks.append(TrackSelection.SubtitleTrack(id: Self.bitmapTrackBase + track.id, language: track.language,
+                                                               isForced: track.source.isForced, isSDH: track.source.isHearingImpaired))
+        }
+        let decision = TrackSelection.decide(audio: audioTracks, subtitles: subtitleTracks, playback: model.settings.playback, subtitleSettings: model.settings.subtitles,
+                                             isAnime: isAnime, showChoice: showChoice, deviceLanguage: Locale.current.language.languageCode?.identifier)
+
+        if let audible, let id = decision.audio, audible.options.indices.contains(id),
+           item.currentMediaSelection.selectedMediaOption(in: audible) != audible.options[id] {
+            item.select(audible.options[id], in: audible)
+        }
+        // A downloaded subtitle stays through a source switch.
+        guard subtitle == nil else { return }
+        func clearStreamSubtitle() {
+            if let legible, legible.allowsEmptySelection { item.select(nil, in: legible) }
+        }
+        switch decision.subtitle {
+        case .off:
+            clearStreamSubtitle()
+            if selectedBitmapTrack != nil { showBitmapSubtitle(nil) }
+        case .track(let id) where id >= Self.bitmapTrackBase:
+            clearStreamSubtitle()
+            showBitmapSubtitle(id - Self.bitmapTrackBase)
+        case .track(let id):
+            if selectedBitmapTrack != nil { showBitmapSubtitle(nil) }
+            if let legible, legible.options.indices.contains(id) { item.select(legible.options[id], in: legible) }
+        case .search(let languages):
+            clearStreamSubtitle()
+            // Tell the menus the tracks changed before the search, which can take a while.
+            itemGeneration += 1
+            let tracks = await SubtitleSearch.search(model.subtitleProviders(), request: request, languages: languages,
+                                                     hearingImpaired: model.settings.subtitles.subtitleType == .sdh)
+            guard !Task.isCancelled, let first = tracks.first else { return }
+            await selectSubtitle(first)
             return
         }
-        // So does a disc subtitle Flow draws itself.
-        if let selected = selectedBitmapTrack, remuxer?.bitmapSubtitles.first(where: { $0.id == selected })?.source.isForced == false { return }
-        let tracks = await SubtitleSearch.search(model.subtitleProviders(), request: request, languages: subtitleLanguages, hearingImpaired: model.settings.subtitles.hearingImpaired)
-        if let first = tracks.first { await selectSubtitle(first) }
+        itemGeneration += 1
     }
 
     // MARK: Observers
@@ -1171,6 +1206,7 @@ final class PlaybackSession: Identifiable {
         ScreenshotTour.log("PlaybackSession.close from \(caller) phase=\(phase)")
         countdownTask?.cancel()
         loadTask?.cancel()
+        trackTask?.cancel()
         noticeTask?.cancel()
         sleepTask?.cancel()
         autoSyncTask?.cancel()

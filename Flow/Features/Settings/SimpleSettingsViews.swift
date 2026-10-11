@@ -130,6 +130,26 @@ struct GeneralSettingsView: View {
 struct PlaybackSettingsView: View {
     @Environment(AppModel.self) private var model
 
+    /// The viewer's first or second subtitle language, which live in one list with Subtitles' other choices.
+    private func subtitleLanguage(at index: Int) -> Binding<String> {
+        Binding(
+            get: {
+                let languages = model.settings.subtitles.preferredLanguages
+                return index < languages.count ? languages[index] : ""
+            },
+            set: { value in
+                var languages = model.settings.subtitles.preferredLanguages
+                if value.isEmpty {
+                    if index < languages.count { languages.remove(at: index) }
+                } else if index < languages.count {
+                    languages[index] = value
+                } else {
+                    languages.append(value)
+                }
+                model.settings.subtitles.preferredLanguages = languages
+            })
+    }
+
     var body: some View {
         @Bindable var model = model
         Form {
@@ -204,10 +224,38 @@ struct PlaybackSettingsView: View {
                 }
             }
             Section {
-                Picker("Preferred Audio", selection: Binding(get: { model.settings.playback.preferredAudioLanguage ?? "" }, set: { model.settings.playback.preferredAudioLanguage = $0.isEmpty ? nil : $0 })) {
+                Picker("Audio Language", selection: Binding(get: { model.settings.playback.preferredAudioLanguage ?? "" }, set: { model.settings.playback.preferredAudioLanguage = $0.isEmpty ? nil : $0 })) {
                     Text("Default").tag("")
-                    ForEach(DiscoverFilterView.languages, id: \.0) { Text($0.1).tag($0.0) }
+                    ForEach(SubtitleSettingsView.languageOptions, id: \.0) { Text($0.1).tag($0.0) }
                 }
+                Picker("Audio Fallback", selection: Binding(get: { model.settings.playback.audioFallbackLanguage ?? "" }, set: { model.settings.playback.audioFallbackLanguage = $0.isEmpty ? nil : $0 })) {
+                    Text("None").tag("")
+                    ForEach(SubtitleSettingsView.languageOptions, id: \.0) { Text($0.1).tag($0.0) }
+                }
+                Picker("Subtitle Language", selection: subtitleLanguage(at: 0)) {
+                    if model.settings.subtitles.preferredLanguages.isEmpty { Text("None").tag("") }
+                    ForEach(SubtitleSettingsView.languageOptions, id: \.0) { Text($0.1).tag($0.0) }
+                }
+                Picker("Subtitle Fallback", selection: subtitleLanguage(at: 1)) {
+                    Text("None").tag("")
+                    ForEach(SubtitleSettingsView.languageOptions, id: \.0) { Text($0.1).tag($0.0) }
+                }
+                .disabled(model.settings.subtitles.preferredLanguages.isEmpty)
+                Picker("Subtitle Type", selection: $model.settings.subtitles.subtitleType) {
+                    ForEach(SubtitleTypePreference.allCases) { Text($0.title).tag($0) }
+                }
+                Picker("Auto-Select Subtitles", selection: $model.settings.subtitles.autoSelect) {
+                    ForEach(AutoSubtitleMode.allCases) { Text($0.title).tag($0) }
+                }
+                Picker("Anime Audio", selection: $model.settings.playback.animeAudio) {
+                    ForEach(AnimeAudio.allCases) { Text($0.title).tag($0) }
+                }
+            } header: {
+                Text("Language")
+            } footer: {
+                Text("Automatic turns subtitles on only when the audio isn't in your subtitle language, such as a foreign-language film: your first language before your second, and a subtitle in the file before an online one. When the audio is in your subtitle language it shows only a forced subtitle from the file, for foreign-language scenes. Always turns them on for everything, Forced Only shows forced subtitles only, Never leaves them off. Audio Language also sorts sources: matching ones come first. For anime, Sub plays Japanese audio with subtitles and Dub plays your audio language without them.")
+            }
+            Section {
                 Toggle("Remember Tracks for Each Show", isOn: $model.settings.playback.rememberTracksPerShow)
                 if !model.settings.playback.showTracks.isEmpty {
                     Button("Forget Remembered Tracks", role: .destructive) { model.settings.playback.showTracks = [:] }
@@ -252,7 +300,7 @@ struct PlaybackSettingsView: View {
 struct SubtitleSettingsView: View {
     @Environment(AppModel.self) private var model
 
-    private static let languageOptions: [(String, String)] = [
+    static let languageOptions: [(String, String)] = [
         ("en", "English"), ("es", "Spanish"), ("fr", "French"), ("de", "German"), ("it", "Italian"), ("pt", "Portuguese"),
         ("nl", "Dutch"), ("sv", "Swedish"), ("da", "Danish"), ("no", "Norwegian"), ("fi", "Finnish"), ("pl", "Polish"),
         ("ru", "Russian"), ("tr", "Turkish"), ("ar", "Arabic"), ("hi", "Hindi"), ("ta", "Tamil"), ("te", "Telugu"),
@@ -291,8 +339,12 @@ struct SubtitleSettingsView: View {
                 Text("Tap in order of preference. Numbers show the order used to rank search results.")
             }
             Section("Behaviour") {
-                Toggle("Load Automatically", isOn: $model.settings.subtitles.autoEnable)
-                Toggle("Prefer Hearing Impaired", isOn: $model.settings.subtitles.hearingImpaired)
+                Picker("Auto-Select", selection: $model.settings.subtitles.autoSelect) {
+                    ForEach(AutoSubtitleMode.allCases) { Text($0.title).tag($0) }
+                }
+                Picker("Type", selection: $model.settings.subtitles.subtitleType) {
+                    ForEach(SubtitleTypePreference.allCases) { Text($0.title).tag($0) }
+                }
             }
             Section("Sources") {
                 ForEach([("opensubtitles", "OpenSubtitles"), ("subdl", "SubDL"), ("wyzie", "Wyzie (no key)"), ("subsource", "SubSource")], id: \.0) { id, name in

@@ -136,7 +136,7 @@ public struct CloudSync: Sendable {
         var settings: AppSettings?
         if let settingsData, let object = try? JSONSerialization.jsonObject(with: settingsData) as? [String: Any], let payload = object["payload"],
            let payloadData = try? JSONSerialization.data(withJSONObject: payload) {
-            settings = try? SettingsCodec.decode(AppSettings.self, from: payloadData, defaults: AppSettings())
+            settings = (try? SettingsCodec.decode(AppSettings.self, from: payloadData, defaults: AppSettings()))?.migrated()
         }
         return CloudSnapshot(
             settings: settings,

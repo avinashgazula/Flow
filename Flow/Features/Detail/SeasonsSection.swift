@@ -6,6 +6,7 @@ struct SeasonsSection: View {
     let seasons: [Season]
     let episodesBySeason: [Int: [Episode]]
     @Binding var selectedSeason: Int
+    var libraryProviderID: String?
     @Environment(AppModel.self) private var model
 
     private var orderedSeasons: [Season] {
@@ -116,7 +117,7 @@ struct EpisodeRow: View {
     var body: some View {
         Button {
             guard aired else { return }
-            Task { await model.play(show, episode: episode) }
+            Task { await model.play(show, episode: episode, library: libraryProviderID) }
         } label: {
             HStack(alignment: .top, spacing: Theme.Space.s) {
                 EpisodeStill(show: show, episode: episode, width: 140)
@@ -163,7 +164,7 @@ struct EpisodeCard: View {
     var body: some View {
         Button {
             guard aired else { return }
-            Task { await model.play(show, episode: episode) }
+            Task { await model.play(show, episode: episode, library: libraryProviderID) }
         } label: {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 EpisodeStill(show: show, episode: episode, width: Platform.landscapeWidth)
@@ -230,7 +231,7 @@ struct EpisodeMenu: View {
     var body: some View {
         let watched = model.isEpisodeWatched(show, episode.ref)
         if (episode.airDate ?? .distantFuture) <= Date() {
-            Button { Task { await model.play(show, episode: episode) } } label: { Label("Play", systemImage: "play.fill") }
+            Button { Task { await model.play(show, episode: episode, library: libraryProviderID) } } label: { Label("Play", systemImage: "play.fill") }
         }
         Button {
             Task { await model.setWatched(show, episodes: [episode.ref], watched: !watched) }

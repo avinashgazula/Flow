@@ -1040,10 +1040,6 @@ struct IOSPlayerControls: View {
         legibleOptions = legibleGroup?.options ?? []
         audioChoice = selected(in: audioGroup)
         legibleChoice = selected(in: legibleGroup)
-        if let preferred = model.settings.playback.preferredAudioLanguage,
-           let match = audioOptions.first(where: { $0.extendedLanguageTag?.hasPrefix(preferred) == true || $0.locale?.language.languageCode?.identifier == preferred }) {
-            select(match, characteristic: .audible)
-        }
     }
 
     private func selected(in group: AVMediaSelectionGroup?) -> AVMediaSelectionOption? {

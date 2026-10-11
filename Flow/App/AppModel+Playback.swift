@@ -72,8 +72,8 @@ extension AppModel {
     // MARK: Starting playback
 
     /// Opens the source picker for a movie or episode. Shows resolve to their Next Up episode.
-    func play(_ item: MediaItem, episode: Episode? = nil) async {
-        guard let request = await playbackRequest(for: item, episode: episode) else {
+    func play(_ item: MediaItem, episode: Episode? = nil, library: String? = nil) async {
+        guard let request = await playbackRequest(for: item, episode: episode, library: library) else {
             showToast("No episodes available yet.")
             return
         }
@@ -81,7 +81,8 @@ extension AppModel {
     }
 
     /// The request Play would open the picker with, nil for a show with nothing aired to play.
-    private func playbackRequest(for item: MediaItem, episode: Episode?) async -> PlaybackRequest? {
+    /// `library` limits the picker to that provider (Play From This Library Only).
+    private func playbackRequest(for item: MediaItem, episode: Episode?, library: String? = nil) async -> PlaybackRequest? {
         var resolved = item
         if resolved.ids.imdb == nil || (item.type == .show && resolved.ids.tvdb == nil), let catalog, let id = item.ids.tmdb {
             if let ids = try? await catalog.tmdb.externalIDs(item.type, id: id) { resolved.ids = resolved.ids.merged(with: ids) }
@@ -91,7 +92,7 @@ extension AppModel {
             target = await nextEpisodeToPlay(for: resolved)
         }
         guard item.type == .movie || target != nil else { return nil }
-        return PlaybackRequest(item: resolved, episode: target)
+        return PlaybackRequest(item: resolved, episode: target, libraryProviderID: library)
     }
 
     // MARK: Prefetch
@@ -190,7 +191,8 @@ extension AppModel {
         let providers = sourceProviders().filter { $0.providerID == previous.providerID }
         let found = await SourceAggregator.collect(providers.isEmpty ? sourceProviders() : providers, request: request, timeout: settings.sources.timeoutSeconds)
         let ranked = SourceRanker.rank(found, settings: settings.sources, resolutionCap: resolutionCap, decodesAV1: Platform.decodesAV1,
-                                       decodesLosslessAudio: MatroskaRemuxer.audioDecoders != nil, prefersHDR: settings.playback.preferHDR).filter(\.isPlayable)
+                                       decodesLosslessAudio: MatroskaRemuxer.audioDecoders != nil, prefersHDR: settings.playback.preferHDR,
+                                       preferredAudioLanguage: settings.playback.preferredAudioLanguage).filter(\.isPlayable)
         if let group = previous.bingeGroup, let match = ranked.first(where: { $0.bingeGroup == group }) { return match }
         return ranked.first { $0.providerID == previous.providerID && $0.traits.resolution == previous.traits.resolution } ?? ranked.first
     }

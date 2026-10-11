@@ -211,7 +211,7 @@ extension View {
     func flowDestinations() -> some View {
         navigationDestination(for: Route.self) { route in
             switch route {
-            case .detail(let item, let zoom): DetailView(item: item).zoomDestination(zoom)
+            case .detail(let item, let zoom, let library): DetailView(item: item, libraryProviderID: library).zoomDestination(zoom)
             case .person(let id, let name): PersonView(personID: id, name: name)
             case .shelf(let shelf): ShelfGridView(shelf: shelf)
             case .library(let list): LibraryListView(list: list)

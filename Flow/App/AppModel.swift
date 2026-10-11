@@ -5,8 +5,9 @@ import FlowDecoders
 
 /// Navigation targets shared by every NavigationStack in the app.
 enum Route: Hashable {
-    /// `zoom` identifies the card the detail page zooms out of (iOS 18+).
-    case detail(MediaItem, zoom: String? = nil)
+    /// `zoom` identifies the card the detail page zooms out of (iOS 18+); `library` is the provider of the
+    /// library the title was opened from, for Play From This Library Only.
+    case detail(MediaItem, zoom: String? = nil, library: String? = nil)
     case person(id: Int, name: String)
     case shelf(ShelfConfig)
     case library(LibraryList)
@@ -158,7 +159,7 @@ final class AppModel {
             http = HTTPClient(userAgent: "Flow/1.0")
             var loaded: AppSettings
             if let data = store.loadData("settings"), let decoded = try? SettingsCodec.decode(AppSettings.self, from: data, defaults: AppSettings()) {
-                loaded = decoded
+                loaded = decoded.migrated()
             } else {
                 loaded = AppSettings()
             }

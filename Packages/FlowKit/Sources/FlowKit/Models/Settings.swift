@@ -20,6 +20,13 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var downloads = DownloadSettings()
 
     public init() {}
+
+    /// Settings saved before a setting changed shape, brought up to date. Run after decoding.
+    public func migrated() -> AppSettings {
+        var copy = self
+        copy.subtitles.migrateLegacy()
+        return copy
+    }
 }
 
 // MARK: - General
@@ -944,6 +951,7 @@ public enum AnimeAudio: String, Codable, Hashable, Sendable, CaseIterable, Ident
 
 public struct SubtitleSettings: Codable, Hashable, Sendable {
     public var preferredLanguages: [String] = ["en"]
+    /// Superseded by `autoSelect`.
     public var autoEnable = false
     public var fontScale: Double = 1.0
     public var color: SubtitleColor = .white
@@ -953,6 +961,7 @@ public struct SubtitleSettings: Codable, Hashable, Sendable {
     /// height: 0 leaves them at the bottom, 0.4 lifts them by 40%.
     public var verticalPosition: Double = 0
     public var enabledProviders: [String] = ["opensubtitles", "subdl", "wyzie", "subsource"]
+    /// Superseded by `subtitleType`.
     public var hearingImpaired = false
     public var font: SubtitleFont = .system
     public var weight: SubtitleWeight = .semibold
@@ -963,10 +972,23 @@ public struct SubtitleSettings: Codable, Hashable, Sendable {
     public var keepASSStyling = false
     /// Offer to align out-of-sync subtitles to the dialogue (remuxed MKVs).
     public var autoSync = false
-    /// When subtitles turn on by themselves; replaces `autoEnable` once set.
+    /// When subtitles turn on by themselves; replaces `autoEnable` (see `migrateLegacy`).
     public var autoSelect: AutoSubtitleMode = .automatic
     public var subtitleType: SubtitleTypePreference = .standard
     public init() {}
+
+    /// Carries the old "Load Automatically" and "Prefer Hearing Impaired" switches over to
+    /// `autoSelect` and `subtitleType`, then clears them so a later change isn't undone on the next launch.
+    public mutating func migrateLegacy() {
+        if autoEnable {
+            autoSelect = .always
+            autoEnable = false
+        }
+        if hearingImpaired {
+            subtitleType = .sdh
+            hearingImpaired = false
+        }
+    }
 }
 
 // MARK: - Metadata

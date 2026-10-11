@@ -75,6 +75,14 @@ struct SourcesSettingsView: View {
                     }
                 } footer: { Text("Shows at most this many sources after sorting and filtering.") }
             }
+
+            Section {
+                Toggle("Play From This Library Only", isOn: $model.settings.sources.playFromLibraryOnly)
+            } header: {
+                Text("Library")
+            } footer: {
+                Text("A title opened from a library in the Library tab (a media server, an IPTV provider's On Demand or a WebDAV share) lists only that library's sources, so they're ready sooner and Play picks from them. If that library has no source for the title, every source is searched as usual. Titles opened anywhere else are unchanged.")
+            }
         }
         #if os(iOS)
         .toolbar { EditButton() }

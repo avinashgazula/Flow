@@ -41,11 +41,12 @@ extension SectionHeader where Destination == Route {
 struct PosterRow: View {
     let items: [MediaItem]
     var context: String = "row"
+    var libraryProviderID: String?
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
-                ForEach(items) { item in PosterCard(item: item, context: context) }
+                ForEach(items) { item in PosterCard(item: item, context: context, libraryProviderID: libraryProviderID) }
             }
             .padding(.horizontal, Theme.Space.gutter)
             .padding(.vertical, Platform.isTV ? 36 : 6)
@@ -123,6 +124,8 @@ private struct PagingArrows<ID: Hashable>: ViewModifier {
 /// A configured home/library shelf that loads its own content.
 struct ShelfView: View {
     let shelf: ShelfConfig
+    /// True in the Library tab, where a media server library's titles remember the server they were opened from.
+    var inLibraryTab = false
     @Environment(AppModel.self) private var model
     @State private var items: [MediaItem] = []
     @State private var loaded = false
@@ -142,7 +145,7 @@ struct ShelfView: View {
             } else if !items.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     SectionHeader(title ?? shelf.title, route: .shelf(shelf))
-                    PosterRow(items: items, context: shelf.id)
+                    PosterRow(items: items, context: shelf.id, libraryProviderID: libraryProviderID)
                 }
                 .transition(.opacity)
             } else if !loaded {
@@ -167,6 +170,11 @@ struct ShelfView: View {
         default:
             return "\(filters)-\(model.contentVersion)"
         }
+    }
+
+    private var libraryProviderID: String? {
+        if inLibraryTab, case .mediaServerLibrary(let serverID, _) = shelf.source { return serverID }
+        return nil
     }
 
     private func load() async {

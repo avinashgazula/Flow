@@ -3,6 +3,8 @@ import FlowKit
 
 struct DetailView: View {
     let item: MediaItem
+    /// The library the title was opened from, if any.
+    var libraryProviderID: String?
     @Environment(AppModel.self) private var model
     @State private var detail: MediaDetail?
     @State private var ratings = Ratings()
@@ -24,7 +26,7 @@ struct DetailView: View {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 header
                 if current.type == .show, let detail, !detail.seasons.isEmpty {
-                    SeasonsSection(show: current, seasons: detail.seasons, episodesBySeason: episodesBySeason, selectedSeason: $selectedSeason)
+                    SeasonsSection(show: current, seasons: detail.seasons, episodesBySeason: episodesBySeason, selectedSeason: $selectedSeason, libraryProviderID: libraryProviderID)
                 }
                 if let detail {
                     sections(detail)
@@ -149,7 +151,7 @@ struct DetailView: View {
 
     private var actions: some View {
         VStack(alignment: wide ? .leading : .center, spacing: Theme.Space.s) {
-            Button { Task { await model.play(current) } } label: {
+            Button { Task { await model.play(current, library: libraryProviderID) } } label: {
                 Label(playLabel, systemImage: "play.fill")
                     .frame(maxWidth: wide ? nil : .infinity)
                     .frame(minWidth: wide ? 240 * Theme.scale : nil)
