@@ -97,6 +97,7 @@ final class PlaybackSession: Identifiable {
     /// Where to pick up after reloading a stream that failed mid-playback.
     @ObservationIgnored private var recoverAt: Double?
     @ObservationIgnored private var recoveries = 0
+    @ObservationIgnored private var lastRecovery: Date?
     /// Set by `close()`: whatever was still waiting on the network must not bring the player back.
     @ObservationIgnored private var isClosed = false
     @ObservationIgnored private var isStopping = false
@@ -833,8 +834,11 @@ final class PlaybackSession: Identifiable {
                 return
             }
             // A dropped connection mid-film: reconnect where it stopped, a couple of times, before giving up.
+            // Drops far apart in a long film are separate bad moments, not a dead stream: each gets its own tries.
+            if let lastRecovery, Date().timeIntervalSince(lastRecovery) > 600 { recoveries = 0 }
             if didStart, recoveries < 2 {
                 recoveries += 1
+                lastRecovery = Date()
                 show(notice: "Connection lost. Reconnecting…")
                 recoveryTask?.cancel()
                 recoveryTask = Task { [weak self] in
