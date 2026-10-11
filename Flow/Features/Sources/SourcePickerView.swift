@@ -327,6 +327,10 @@ struct SourceRow: View {
 
     private var badges: [String] {
         var out = source.traits.badges
+        // The headline already leads with the resolution.
+        if providerShownAbove && appearance.titleDisplay == .provider, source.traits.resolution != .unknown, !out.isEmpty {
+            out.removeFirst()
+        }
         if appearance.badgePack == .minimal { out = Array(out.prefix(2)) }
         if source.traits.isCached == true && source.category == .addons { out.append("Cached") }
         return out

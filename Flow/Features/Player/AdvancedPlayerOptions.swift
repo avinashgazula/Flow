@@ -39,8 +39,8 @@ struct AdvancedPlayerOptions: View {
                     Picker("Edge", selection: $model.settings.subtitles.edgeStyle) {
                         ForEach(SubtitleEdgeStyle.allCases) { Text($0.title).tag($0) }
                     }
-                    Picker("Background", selection: $model.settings.subtitles.background) {
-                        ForEach(SubtitleBackground.allCases) { Text($0.title).tag($0) }
+                    Picker("Background", selection: Binding(get: { model.settings.subtitles.background.choice }, set: { model.settings.subtitles.background = $0 })) {
+                        ForEach(SubtitleBackground.choices) { Text($0.title).tag($0) }
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         LabeledContent("Position", value: positionLabel(model.settings.subtitles.verticalPosition))

@@ -48,8 +48,8 @@ struct SubtitleAppearanceSections: View {
             Picker("Text Edge Style", selection: $model.settings.subtitles.edgeStyle) {
                 ForEach(SubtitleEdgeStyle.allCases) { Text($0.title).tag($0) }
             }
-            Picker("Background", selection: $model.settings.subtitles.background) {
-                ForEach(SubtitleBackground.allCases) { Text($0.title).tag($0) }
+            Picker("Background", selection: Binding(get: { model.settings.subtitles.background.choice }, set: { model.settings.subtitles.background = $0 })) {
+                ForEach(SubtitleBackground.choices) { Text($0.title).tag($0) }
             }
             Picker("Opacity", selection: $model.settings.subtitles.backgroundOpacity) {
                 ForEach(Self.choices(Self.opacities, including: model.settings.subtitles.backgroundOpacity), id: \.self) { Text(Self.percent($0)).tag($0) }
