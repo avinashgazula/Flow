@@ -123,9 +123,9 @@ struct LiveTVView: View {
             await store.load(providers: model.settings.liveTV.providers, refreshHours: model.settings.liveTV.epgRefreshHours, http: model.http)
         }
         #if os(macOS)
-        .sheet(item: $playing) { channel in LivePlayerView(channel: channel, epg: store.epg).frame(minWidth: 800, minHeight: 450) }
+        .sheet(item: $playing) { channel in LivePlayerView(channel: channel, epg: store.epg, lineup: visible, onTune: recordRecent).frame(minWidth: 800, minHeight: 450) }
         #else
-        .fullScreenCover(item: $playing) { channel in LivePlayerView(channel: channel, epg: store.epg) }
+        .fullScreenCover(item: $playing) { channel in LivePlayerView(channel: channel, epg: store.epg, lineup: visible, onTune: recordRecent) }
         #endif
     }
 
@@ -201,10 +201,14 @@ struct LiveTVView: View {
     }
 
     private func play(_ channel: Channel) {
+        recordRecent(channel)
+        playing = channel
+    }
+
+    private func recordRecent(_ channel: Channel) {
         var recents = model.settings.liveTV.recentChannelIDs.filter { $0 != channel.id }
         recents.insert(channel.id, at: 0)
         model.settings.liveTV.recentChannelIDs = Array(recents.prefix(20))
-        playing = channel
     }
 
     private func toggleFavourite(_ channel: Channel) {
@@ -274,15 +278,24 @@ struct ChannelGroupView: View {
 struct LivePlayerView: View {
     let channel: Channel
     let epg: EPG
+    /// The channels around this one, for flipping up and down without leaving the player.
+    var lineup: [Channel] = []
+    /// Told about each channel tuned to, so Recents follow zapping too.
+    var onTune: (Channel) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
     @State private var player = AVPlayer()
     @State private var state: LoadState = .connecting
     @State private var attempt = 0
+    @State private var tuned: Channel?
+    @State private var showsInfo = true
+    @State private var hideTask: Task<Void, Never>?
 
     enum LoadState: Equatable {
         case connecting, playing
         case failed(String)
     }
+
+    private var current: Channel { tuned ?? channel }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -299,25 +312,65 @@ struct LivePlayerView: View {
                     .allowsHitTesting(false)
             }
             #if !os(tvOS)
-            HStack(spacing: 12) {
-                CircleButton(systemImage: "xmark") { dismiss() }
+            if showsInfo {
                 VStack(alignment: .leading) {
-                    Text(channel.name).font(.headline)
-                    if let now = epg.nowAndNext(for: channel.epgID).now { Text(now.title).font(.caption).foregroundStyle(.secondary) }
+                    CircleButton(systemImage: "xmark") { dismiss() }
+                    Spacer()
+                    LiveInfoCard(channel: current, epg: epg, canZap: lineup.count > 1,
+                                 previous: { zap(by: -1) }, next: { zap(by: 1) })
                 }
+                .padding(20)
+                .transition(.opacity)
             }
-            .padding(20)
             #endif
             if case .failed(let message) = state {
-                PlaybackErrorView(message: message, retry: { attempt += 1 }, close: { dismiss() })
+                PlaybackErrorView(message: message, canTryAnother: lineup.count > 1, retry: { attempt += 1 },
+                                  tryAnother: { zap(by: 1) }, close: { dismiss() })
             }
         }
-        .task(id: attempt) { await start() }
+        .animation(Theme.Motion.fade, value: showsInfo)
+        #if os(iOS)
+        // Swipe up for the next channel, down for the one before, like a remote's channel buttons.
+        .gesture(DragGesture(minimumDistance: 40).onEnded { value in
+            guard abs(value.translation.height) > abs(value.translation.width) * 1.5 else { return }
+            zap(by: value.translation.height < 0 ? 1 : -1)
+        })
+        .simultaneousGesture(TapGesture().onEnded { showsInfo.toggle(); if showsInfo { scheduleHide() } })
+        #endif
+        #if os(macOS)
+        .focusable()
+        .focusEffectDisabled()
+        .onKeyPress(.upArrow) { zap(by: -1); return .handled }
+        .onKeyPress(.downArrow) { zap(by: 1); return .handled }
+        .onKeyPress(.escape) { dismiss(); return .handled }
+        #endif
+        .task(id: "\(current.id)-\(attempt)") { await start() }
+        .onAppear { scheduleHide() }
         .onDisappear { player.pause(); player.replaceCurrentItem(with: nil) }
+    }
+
+    /// Tunes to the channel `offset` places along the lineup, wrapping at either end.
+    private func zap(by offset: Int) {
+        guard lineup.count > 1, let index = lineup.firstIndex(where: { $0.id == current.id }) else { return }
+        let next = lineup[(index + offset + lineup.count) % lineup.count]
+        tuned = next
+        attempt = 0
+        onTune(next)
+        showsInfo = true
+        scheduleHide()
+    }
+
+    private func scheduleHide() {
+        hideTask?.cancel()
+        hideTask = Task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            if !Task.isCancelled, state == .playing { showsInfo = false }
+        }
     }
 
     private func start() async {
         state = .connecting
+        let channel = current
         var options: [String: Any] = [:]
         if let ua = channel.userAgent { options["AVURLAssetHTTPHeaderFieldsKey"] = ["User-Agent": ua] }
         for url in LiveStreamURL.candidates(for: channel.streamURL) {
@@ -326,6 +379,7 @@ struct LivePlayerView: View {
             player.play()
             if await ready(item) {
                 state = .playing
+                scheduleHide()
                 return
             }
             if Task.isCancelled { return }
@@ -346,6 +400,63 @@ struct LivePlayerView: View {
             if Task.isCancelled { return false }
         }
         return false
+    }
+}
+
+/// What's on: the channel, the programme with how far through it is, and what's next.
+struct LiveInfoCard: View {
+    let channel: Channel
+    let epg: EPG
+    var canZap = false
+    let previous: () -> Void
+    let next: () -> Void
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            let (now, upcoming) = epg.nowAndNext(for: channel.epgID, at: context.date)
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        if let number = channel.number {
+                            Text("\(number)").font(.system(.subheadline, weight: .bold).monospacedDigit()).foregroundStyle(Theme.Palette.textSecondary)
+                        }
+                        Text(channel.name).font(Theme.Typeface.headline).lineLimit(1)
+                        Text("LIVE")
+                            .font(Theme.Typeface.micro).kerning(1)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(.red, in: Capsule())
+                    }
+                    if let now {
+                        Text(now.title).font(.system(.title3, weight: .semibold)).lineLimit(1)
+                        HStack(spacing: 8) {
+                            Text(now.start, style: .time)
+                            ProgressCapsule(value: min(1, max(0, context.date.timeIntervalSince(now.start) / max(1, now.end.timeIntervalSince(now.start)))), height: 3)
+                                .frame(width: 140)
+                            Text(now.end, style: .time)
+                        }
+                        .font(.system(.caption).monospacedDigit())
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                    }
+                    if let upcoming {
+                        (Text("Next ") + Text(upcoming.start, style: .time) + Text(" · \(upcoming.title)"))
+                            .font(.system(.caption))
+                            .foregroundStyle(Theme.Palette.textTertiary)
+                            .lineLimit(1)
+                    }
+                }
+                if canZap {
+                    VStack(spacing: 8) {
+                        CircleButton(systemImage: "chevron.up", size: 36, action: previous)
+                            .accessibilityLabel("Previous Channel")
+                        CircleButton(systemImage: "chevron.down", size: 36, action: next)
+                            .accessibilityLabel("Next Channel")
+                    }
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: 520, alignment: .leading)
+            .flowGlass(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
     }
 }
 
