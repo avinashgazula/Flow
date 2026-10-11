@@ -116,6 +116,8 @@ final class AppModel {
     var ratingIconPack: RatingIconPack?
     var activePlayback: PlaybackSession?
     var showSettings = false
+    /// Apple TV (tvOS 18+) keeps Settings as the last tab instead of a full-screen modal.
+    var settingsInTab = false
     /// A flow://setup link waiting for the user to confirm the import.
     var pendingImport: String?
     /// Navigation stacks per tab, so the app (and the screenshot tour) can drive navigation.

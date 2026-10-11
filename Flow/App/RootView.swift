@@ -40,7 +40,7 @@ struct RootView: View {
                 .environment(model)
         }
         #if !os(macOS)
-        .flowModal(isPresented: $model.showSettings) {
+        .flowModal(isPresented: Binding(get: { model.showSettings && !model.settingsInTab }, set: { model.showSettings = $0 })) {
             NavigationStack(path: $model.settingsPath) {
                 SettingsRootView()
                     .flowDestinations()
@@ -79,10 +79,35 @@ struct RootView: View {
 /// iOS 26 adds the Liquid Glass tab bar that minimises while scrolling.
 struct TabShell: View {
     @Environment(AppModel.self) private var model
+    #if os(tvOS)
+    @State private var onSettings = false
+    #endif
 
     var body: some View {
         @Bindable var model = model
         if #available(iOS 18.0, tvOS 18.0, macOS 15.0, *) {
+            #if os(tvOS)
+            // Settings is a tab on Apple TV, last in the row, as in Apple's own apps.
+            TabView(selection: tvSelection) {
+                ForEach(model.settings.general.orderedTabs) { tab in
+                    Tab(tab.title, systemImage: tab.systemImage, value: ShellTab.app(tab), role: tab == .search ? .search : nil) {
+                        stack(for: tab)
+                    }
+                }
+                Tab("Settings", systemImage: "gearshape.fill", value: ShellTab.settings) {
+                    NavigationStack(path: $model.settingsPath) {
+                        SettingsRootView().flowDestinations()
+                    }
+                }
+            }
+            .onAppear { model.settingsInTab = true }
+            // Anything that asks for Settings ("Open Settings" buttons) lands on the tab.
+            .onChange(of: model.showSettings) { _, show in
+                guard show else { return }
+                onSettings = true
+                model.showSettings = false
+            }
+            #else
             TabView(selection: $model.selectedTab) {
                 ForEach(model.settings.general.orderedTabs) { tab in
                     Tab(tab.title, systemImage: tab.systemImage, value: tab, role: tab == .search ? .search : nil) {
@@ -91,6 +116,7 @@ struct TabShell: View {
                 }
             }
             .modifier(ModernTabChrome())
+            #endif
         } else {
             TabView(selection: $model.selectedTab) {
                 ForEach(model.settings.general.orderedTabs) { tab in
@@ -101,6 +127,20 @@ struct TabShell: View {
             }
         }
     }
+
+    #if os(tvOS)
+    private enum ShellTab: Hashable { case app(AppTab), settings }
+
+    private var tvSelection: Binding<ShellTab> {
+        Binding(get: { onSettings ? .settings : .app(model.selectedTab) },
+                set: { selection in
+                    switch selection {
+                    case .app(let tab): onSettings = false; model.selectedTab = tab
+                    case .settings: onSettings = true
+                    }
+                })
+    }
+    #endif
 
     func stack(for tab: AppTab) -> some View {
         NavigationStack(path: model.path(for: tab)) {

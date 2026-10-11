@@ -66,8 +66,11 @@ struct HomeView: View {
         .toolbar(.hidden, for: .navigationBar)
         #elseif os(tvOS)
         .toolbar {
-            ToolbarItem(placement: .automatic) {
-                Button { model.showSettings = true } label: { Image(systemName: "gearshape.fill") }
+            // tvOS 17 has no Settings tab.
+            if !model.settingsInTab {
+                ToolbarItem(placement: .automatic) {
+                    Button { model.showSettings = true } label: { Image(systemName: "gearshape.fill") }
+                }
             }
         }
         #else
