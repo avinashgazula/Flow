@@ -23,6 +23,7 @@
 		1B6C6571C6885AF8EC43EFD3 /* AppModel+Shelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9180D9C82DCFC46BFA6D629E /* AppModel+Shelves.swift */; };
 		1F329A0B16D263223C08ABB3 /* GeneralExtrasSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2243827C9C5818A17C0A1D14 /* GeneralExtrasSettings.swift */; };
 		1FD9D035BDB2470D59CCC2F8 /* GeneralExtrasSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2243827C9C5818A17C0A1D14 /* GeneralExtrasSettings.swift */; };
+		227F7B273003C9E4DD6974F5 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5C129751F030C3236F99521 /* StatsView.swift */; };
 		23E49541C058EFD09A2C5EF5 /* SeerrSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 900F0094938C3C01C12ABADF /* SeerrSettingsViews.swift */; };
 		24D3ABB53650A225DBD77CD7 /* PlayerOptionsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D928606BCAD9ECA49FD73E /* PlayerOptionsPanel.swift */; };
 		26373EF208DA8C7E889F1EE2 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434D840AB6866F096CBB9D82 /* Platform.swift */; };
@@ -147,6 +148,7 @@
 		AD996EE1BBDD6CB8A4EBEB42 /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F94293E928197317DF1F8C /* SettingsRootView.swift */; };
 		AFACAC6A0C6F3E439A6C9EB6 /* PlayerOptionsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D928606BCAD9ECA49FD73E /* PlayerOptionsPanel.swift */; };
 		B34EC0D8CD87F37C02191238 /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F94293E928197317DF1F8C /* SettingsRootView.swift */; };
+		B3CE454654AEEA4041744C64 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5C129751F030C3236F99521 /* StatsView.swift */; };
 		B64D983919599DA5F6BE4EC5 /* SubtitleAutoSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD737624EF9765468432FC9 /* SubtitleAutoSync.swift */; };
 		B6F0CE7FA65838A8D582C77D /* SubtitleAutoSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD737624EF9765468432FC9 /* SubtitleAutoSync.swift */; };
 		B9B075118F9531D9971AE3EF /* Intents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27A6255A7C16EB8875FE0467 /* Intents.swift */; };
@@ -166,6 +168,7 @@
 		CD6875984893289A1107D8C3 /* EpisodeShelf.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88BEF739F9A9682C799EE4A /* EpisodeShelf.swift */; };
 		CE1FCAD1F0959FCB9154AC8B /* SystemIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B3B66222812A0C035066700 /* SystemIntegration.swift */; };
 		CFB03CFA700FC736C6699A40 /* AppModel+Snapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B1E42308B468C5EABF03CD /* AppModel+Snapshot.swift */; };
+		D141CF14B024F98315C101D0 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5C129751F030C3236F99521 /* StatsView.swift */; };
 		D14A5CC3A0D0362CC9135221 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428B38EA5FEC2E7977F8EA76 /* HomeView.swift */; };
 		D1B3B09A8A8919C402C37C7E /* LiveTVView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11A5725FE1CA04C7ABACBFB /* LiveTVView.swift */; };
 		D252265633902B30F575402C /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5289F6C0111AC96F58A5B8A9 /* Cards.swift */; };
@@ -336,6 +339,7 @@
 		EE2CE055DCDAD495019235C4 /* ScreenshotTour.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTour.swift; sourceTree = "<group>"; };
 		F0989E9FE254B064FABEA61E /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		F0CB8E97377E31ECE3DAB98F /* ScrubPreviewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrubPreviewer.swift; sourceTree = "<group>"; };
+		F5C129751F030C3236F99521 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
 		F68AC53DAC814019C2653549 /* FlowWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = FlowWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F8D928606BCAD9ECA49FD73E /* PlayerOptionsPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerOptionsPanel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -602,6 +606,7 @@
 			isa = PBXGroup;
 			children = (
 				D304FE1F649816E97D48C1D7 /* LibraryView.swift */,
+				F5C129751F030C3236F99521 /* StatsView.swift */,
 			);
 			path = Library;
 			sourceTree = "<group>";
@@ -928,6 +933,7 @@
 				FA08D5F3311C1E38BD232FDE /* SourcePickerView.swift in Sources */,
 				54B629CBC83538B2FD02FCBC /* SourcesSettingsView.swift in Sources */,
 				E5D35F448C3528FEE4DFC7A7 /* SportsView.swift in Sources */,
+				D141CF14B024F98315C101D0 /* StatsView.swift in Sources */,
 				2B7F18E4B0A61D40B614042E /* SubtitleAppearanceSettings.swift in Sources */,
 				B64D983919599DA5F6BE4EC5 /* SubtitleAutoSync.swift in Sources */,
 				A3E849D839BA8E1B6B562F7E /* SubtitlePickerView.swift in Sources */,
@@ -999,6 +1005,7 @@
 				D9974BD1EC592ACF61DEECC0 /* SourcePickerView.swift in Sources */,
 				54BC477E4D4B547FA5581505 /* SourcesSettingsView.swift in Sources */,
 				3C42A5DEC180CACD0FB17DE6 /* SportsView.swift in Sources */,
+				B3CE454654AEEA4041744C64 /* StatsView.swift in Sources */,
 				4D18F0DA9465A8A1751FA0B1 /* SubtitleAppearanceSettings.swift in Sources */,
 				B6F0CE7FA65838A8D582C77D /* SubtitleAutoSync.swift in Sources */,
 				C06EF165EB47B0CA4D01C031 /* SubtitlePickerView.swift in Sources */,
@@ -1070,6 +1077,7 @@
 				AD78565CF8F3E82D88A04CCC /* SourcePickerView.swift in Sources */,
 				384862B1C149482255FB0EAB /* SourcesSettingsView.swift in Sources */,
 				74A0362211FFF73133591A3A /* SportsView.swift in Sources */,
+				227F7B273003C9E4DD6974F5 /* StatsView.swift in Sources */,
 				E720E7186F769695A38E3C27 /* SubtitleAppearanceSettings.swift in Sources */,
 				5D2F0EF48A710F2C9BD03A73 /* SubtitleAutoSync.swift in Sources */,
 				8D5CC8DE79A6CA50B942B21D /* SubtitlePickerView.swift in Sources */,
