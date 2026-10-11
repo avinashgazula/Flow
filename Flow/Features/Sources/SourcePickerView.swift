@@ -316,7 +316,9 @@ struct BestMatchCard: View {
             .accessibilityHidden(true)
             Button(action: action) {
                 Label(verb, systemImage: forDownload ? "arrow.down.to.line" : "play.fill")
-                    .frame(maxWidth: .infinity)
+                    // Full width, except on Apple TV, where a full-width button grows past the card when focused.
+                    .frame(maxWidth: Platform.isTV ? nil : .infinity)
+                    .frame(minWidth: Platform.isTV ? 360 : nil)
             }
             .buttonStyle(PrimaryButtonStyle())
             .accessibilityLabel("\(verb) best match, \(summary.accessibilityLabel)")
