@@ -57,4 +57,19 @@ final class LibraryRemovalTests: XCTestCase {
         XCTAssertTrue(lib.removed.isEmpty)
         XCTAssertTrue(lib.history.isEmpty)
     }
+
+    func testRatingsSyncNewestWinsAndRemovalSticks() async throws {
+        let a = tracker(), b = tracker()
+        await a.setRating(6, for: film)
+        await b.merge(await a.library)
+        try await Task.sleep(nanoseconds: 10_000_000)
+        await b.setRating(9, for: film)
+        await a.merge(await b.library)
+        let rated = await a.rating(for: film.key!)
+        XCTAssertEqual(rated, 9)
+        await a.setRating(nil, for: film)
+        await b.merge(await a.library)
+        let cleared = await b.rating(for: film.key!)
+        XCTAssertNil(cleared)
+    }
 }

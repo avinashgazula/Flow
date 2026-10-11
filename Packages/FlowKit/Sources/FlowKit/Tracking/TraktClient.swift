@@ -382,3 +382,13 @@ public actor TraktClient: TrackingService, ListService {
         }
     }
 }
+
+extension TraktClient: RatingService {
+    public func rate(_ item: MediaItem, rating: Int?) async throws {
+        struct Entry: Encodable { var ids: IDs; var rating: Int? }
+        struct Body: Encodable { var movies: [Entry]?; var shows: [Entry]? }
+        let entry = Entry(ids: IDs(item.ids), rating: rating.map { min(10, max(1, $0)) })
+        let body = item.type == .movie ? Body(movies: [entry]) : Body(shows: [entry])
+        try await post(rating == nil ? "/sync/ratings/remove" : "/sync/ratings", body: body)
+    }
+}

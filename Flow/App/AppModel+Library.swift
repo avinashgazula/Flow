@@ -409,4 +409,22 @@ extension AppModel {
         serverKeys = await serverIndex.keys
         contentVersion += 1
     }
+
+    // MARK: Ratings
+
+    /// The viewer's own score for a title, 1–10.
+    func rating(for item: MediaItem) -> Int? {
+        item.key.flatMap { localLibrary.ratings[$0.description]?.value }
+    }
+
+    /// Scores a title (nil clears it): kept on the device, and sent to Trakt or Simkl when one is the tracker.
+    func rate(_ item: MediaItem, _ value: Int?) async {
+        await local.setRating(value, for: item)
+        guard let service = tracker as? RatingService else { return }
+        do {
+            try await service.rate(item, rating: value)
+        } catch {
+            showToast("Couldn't send the rating to \(settings.account.tracker.displayName).")
+        }
+    }
 }

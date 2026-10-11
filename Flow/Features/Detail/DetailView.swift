@@ -211,6 +211,12 @@ struct DetailView: View {
                     }
                 }
             }
+            if model.isWatched(current) || model.rating(for: current) != nil {
+                HStack(spacing: Theme.Space.s) {
+                    Text("Your Rating").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary)
+                    RatingStars(item: current, size: 18)
+                }
+            }
             RequestButton(item: current, seasons: detail?.seasons ?? [])
             if let next = detail?.nextEpisode, let date = next.airDate {
                 Label("\(next.code) airs \(AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))", systemImage: "calendar")

@@ -68,6 +68,12 @@ struct SuggestionsEndScreen: View {
                         .displayTracking()
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
+                    // While it's fresh: a score for the film just watched.
+                    HStack(spacing: Theme.Space.s) {
+                        Text("How was it?").font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.textSecondary)
+                        RatingStars(item: session.request.item, size: 20)
+                    }
+                    .padding(.top, 4)
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Platform.isTV ? 40 : 14) {
@@ -141,5 +147,36 @@ private struct SuggestionTile: View {
         }
         .buttonStyle(CardButtonStyle())
         .accessibilityLabel(isNext ? "Next: \(item.title)" : item.title)
+    }
+}
+
+/// Five stars for a 1–10 score: each star is two points. Tapping the score already given clears it.
+struct RatingStars: View {
+    let item: MediaItem
+    var size: CGFloat = 26
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let stars = (model.rating(for: item) ?? 0) / 2
+        HStack(spacing: 6 * Theme.scale) {
+            ForEach(1...5, id: \.self) { star in
+                Button {
+                    Task { await model.rate(item, star == stars ? nil : star * 2) }
+                } label: {
+                    Image(systemName: star <= stars ? "star.fill" : "star")
+                        .font(.system(size: size * Theme.scale, weight: .semibold))
+                        .foregroundStyle(star <= stars ? Theme.Palette.gold : .white.opacity(0.55))
+                        .contentTransition(.symbolEffect(.replace))
+                        .frame(minWidth: 36 * Theme.scale, minHeight: 36 * Theme.scale)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(star) star\(star == 1 ? "" : "s")")
+                .accessibilityAddTraits(star == stars ? .isSelected : [])
+            }
+        }
+        .sensoryFeedbackIfAvailable(stars)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Your rating")
     }
 }

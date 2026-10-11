@@ -876,6 +876,8 @@ struct IOSPlayerControls: View {
                 }
             }
             .animation(Theme.Motion.snappy, value: boosting)
+            .sensoryFeedback(.impact(weight: .light), trigger: seekFlash?.id) { _, new in new != nil }
+            .sensoryFeedback(.impact(weight: .medium), trigger: boosting) { _, new in new }
             .gesture(MagnifyGesture().onEnded { value in fill = value.magnification > 1 })
 
             if let flash = seekFlash {

@@ -230,3 +230,10 @@ public actor SimklClient: TrackingService, ListService {
         }
     }
 }
+
+extension SimklClient: RatingService {
+    public func rate(_ item: MediaItem, rating: Int?) async throws {
+        let extra: [String: JSONValue] = rating.map { ["rating": .number(Double(min(10, max(1, $0))))] } ?? [:]
+        try await post(rating == nil ? "/sync/ratings/remove" : "/sync/ratings", body: Self.body(item, extra: extra))
+    }
+}

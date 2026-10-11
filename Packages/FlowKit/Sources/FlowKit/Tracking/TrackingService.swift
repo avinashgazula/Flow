@@ -20,6 +20,11 @@ public protocol TrackingService: Sendable {
     func scrobble(_ action: ScrobbleAction, request: PlaybackRequest, percent: Double) async throws
 }
 
+/// A backend that keeps the viewer's own scores (1–10), or forgets one with `nil`.
+public protocol RatingService: Sendable {
+    func rate(_ item: MediaItem, rating: Int?) async throws
+}
+
 /// A backend that can hold a watchlist or favourites.
 public protocol ListService: Sendable {
     var destination: ListDestination { get }

@@ -13,6 +13,14 @@ public struct LocalLibrary: Codable, Hashable, Sendable {
     /// When something was taken off a list, by `Self.tombstone`, so a merge with a copy that still
     /// has it (iCloud, another device) doesn't bring it back. Anything added again later wins.
     public var removed: [String: Date] = [:]
+    /// The viewer's own scores, 1–10, by media key.
+    public var ratings: [String: Rating] = [:]
+
+    public struct Rating: Codable, Hashable, Sendable {
+        public var value: Int
+        public var ratedAt: Date
+        public init(value: Int, ratedAt: Date = Date()) { self.value = value; self.ratedAt = ratedAt }
+    }
 
     public init() {}
 
@@ -33,6 +41,7 @@ public struct LocalLibrary: Codable, Hashable, Sendable {
         diff("watchlist", old.watchlist, watchlist, \.id)
         diff("favourites", old.favourites, favourites, \.id)
         diff("rewatches", old.rewatches, rewatches, \.id)
+        for key in old.ratings.keys where ratings[key] == nil { removed[Self.tombstone("ratings", key)] = date }
         pruneRemovals(now: date)
     }
 
@@ -74,6 +83,9 @@ public struct LocalLibrary: Codable, Hashable, Sendable {
         out.items = items.merging(other.items) { a, _ in a }
         let gone = removed.merging(other.removed) { max($0, $1) }
         out.removed = gone
+        // The newer score wins; a removed one stays removed until rated again.
+        out.ratings = ratings.merging(other.ratings) { $0.ratedAt >= $1.ratedAt ? $0 : $1 }
+            .filter { key, rating in !Self.wasRemoved(gone, "ratings", key, after: rating.ratedAt) }
         out.progress.removeAll { Self.wasRemoved(gone, "progress", $0.id, after: $0.updatedAt) }
         out.history.removeAll { Self.wasRemoved(gone, "history", $0.id, after: $0.watchedAt) }
         out.watchlist.removeAll { Self.wasRemoved(gone, "watchlist", $0.id, after: $0.addedAt) }
@@ -110,6 +122,7 @@ extension LocalLibrary {
         shuffle = try c.decodeIfPresent([ShuffleRecord].self, forKey: .shuffle) ?? []
         items = try c.decodeIfPresent([String: MediaItem].self, forKey: .items) ?? [:]
         removed = try c.decodeIfPresent([String: Date].self, forKey: .removed) ?? [:]
+        ratings = try c.decodeIfPresent([String: Rating].self, forKey: .ratings) ?? [:]
     }
 }
 
@@ -261,6 +274,22 @@ public actor LocalTracker: TrackingService, ListService {
         mutate { lib in
             lib.favourites.removeAll { $0.key == key }
             if favourite { lib.remember(item); lib.favourites.insert(ListEntry(key: key), at: 0) }
+        }
+    }
+
+    // MARK: Ratings
+
+    public func rating(for key: MediaKey) -> Int? { library.ratings[key.description]?.value }
+
+    public func setRating(_ value: Int?, for item: MediaItem) {
+        guard let key = item.key else { return }
+        mutate { lib in
+            if let value {
+                lib.remember(item)
+                lib.ratings[key.description] = LocalLibrary.Rating(value: min(10, max(1, value)))
+            } else {
+                lib.ratings[key.description] = nil
+            }
         }
     }
 
