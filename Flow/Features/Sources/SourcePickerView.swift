@@ -321,6 +321,8 @@ struct BestMatchCard: View {
                     .frame(minWidth: Platform.isTV ? 360 : nil)
             }
             .buttonStyle(PrimaryButtonStyle())
+            // Room for the focus lift, which would otherwise cover the badges above.
+            .padding(.top, Platform.isTV ? Theme.Space.s : 0)
             .accessibilityLabel("\(verb) best match, \(summary.accessibilityLabel)")
         }
         .padding(Theme.Space.m)
