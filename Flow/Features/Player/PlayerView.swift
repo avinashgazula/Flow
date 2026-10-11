@@ -1028,17 +1028,26 @@ struct IOSPlayerControls: View {
     }
 
     private func seek(by seconds: Double) {
-        let target = max(0, min(session.duration, session.currentTime + seconds))
-        session.player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
+        // The session adds quick repeated skips up, and doesn't clamp to a duration that isn't known yet.
+        session.seek(by: seconds)
         scheduleHide()
     }
 
     private func loadMediaOptions() async {
-        guard let asset = session.player.currentItem?.asset else { return }
-        audioGroup = try? await asset.loadMediaSelectionGroup(for: .audible)
-        audioOptions = audioGroup?.options ?? []
-        legibleGroup = try? await asset.loadMediaSelectionGroup(for: .legible)
-        legibleOptions = legibleGroup?.options ?? []
+        guard let asset = session.player.currentItem?.asset else {
+            // Between streams (a source or episode switch) the last one's tracks mustn't stay on offer.
+            audioGroup = nil; audioOptions = []; audioChoice = nil
+            legibleGroup = nil; legibleOptions = []; legibleChoice = nil
+            return
+        }
+        let audio = try? await asset.loadMediaSelectionGroup(for: .audible)
+        let legible = try? await asset.loadMediaSelectionGroup(for: .legible)
+        // Replaced while the groups loaded: they belong to a stream that's gone.
+        guard !Task.isCancelled, session.player.currentItem?.asset === asset else { return }
+        audioGroup = audio
+        audioOptions = audio?.options ?? []
+        legibleGroup = legible
+        legibleOptions = legible?.options ?? []
         audioChoice = selected(in: audioGroup)
         legibleChoice = selected(in: legibleGroup)
     }

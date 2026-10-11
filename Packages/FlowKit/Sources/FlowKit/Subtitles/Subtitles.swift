@@ -39,14 +39,17 @@ public struct SubtitleDocument: Sendable {
             if cues[mid].start <= t { found = mid; lo = mid + 1 } else { hi = mid - 1 }
         }
         guard found >= 0 else { return [] }
-        // Overlapping cues: gather every cue active at t, scanning back a little.
+        // Overlapping cues: gather every cue active at t. One that started earlier is still showing only
+        // if it's long enough to reach t, so look back as far as the longest cue goes (a sign that stays
+        // up for a whole scene, with dozens of lines of dialogue starting after it).
+        let reach = cues.reduce(0) { max($0, $1.end - $1.start) }
         var active: [SubtitleCue] = []
         var i = found
-        while i >= 0 && i >= found - 5 {
-            if cues[i].start <= t && t < cues[i].end { active.insert(cues[i], at: 0) }
+        while i >= 0 && cues[i].start > t - reach {
+            if t < cues[i].end { active.append(cues[i]) }
             i -= 1
         }
-        return active
+        return Array(active.reversed())
     }
 }
 

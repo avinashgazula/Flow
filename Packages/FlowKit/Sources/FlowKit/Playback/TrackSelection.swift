@@ -178,9 +178,15 @@ public enum TrackSelection {
 
     /// "eng", "en-US" and "en" all name English; region and script are ignored.
     static func primaryLanguage(_ tag: String) -> String {
-        let normalised = LanguageName.bcp47(tag.replacingOccurrences(of: "_", with: "-"))
-        return String(normalised.split(separator: "-").first ?? "").lowercased()
+        // The language subtag alone: "eng-US" has no entry in `LanguageName`, "eng" does.
+        let head = String(tag.replacingOccurrences(of: "_", with: "-").split(separator: "-").first ?? "")
+        let language = LanguageName.bcp47(head).lowercased()
+        return aliases[language] ?? language
     }
+
+    /// Codes that name the same language as a Settings entry: Apple and most releases tag Norwegian
+    /// as Bokmål ("nb", "nob"), where Settings says "no"; "tl" and "fil" are Tagalog and Filipino.
+    private static let aliases = ["nb": "no", "nn": "no", "nob": "no", "nno": "no", "iw": "he", "in": "id", "tl": "fil"]
 
     public static func matches(_ tag: String, _ language: String) -> Bool {
         let a = primaryLanguage(tag)

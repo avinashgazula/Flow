@@ -250,7 +250,9 @@ struct PlayerOptionsPanel: View {
 
     private var subtitleItems: [PanelItem] {
         var rows = [PanelItem(id: "off", title: "Off", checked: subtitlesAreOff) {
-            clearEmbedded(); clearBitmap(); clearDownloaded()
+            clearEmbedded(); clearBitmap()
+            // Always, so a search for automatic subtitles still under way knows the viewer wants none.
+            Task { await session.selectSubtitle(nil) }
             go(.root)
         }]
         if let track = session.subtitleTrack {

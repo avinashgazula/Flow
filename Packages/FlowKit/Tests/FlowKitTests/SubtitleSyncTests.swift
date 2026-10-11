@@ -31,6 +31,21 @@ final class SubtitleSyncTests: XCTestCase {
         return SubtitleSync.cueActivity(shifted, from: 0, to: length, frame: 0.1).map { Double.random(in: 0..<1, using: &rng) < flips ? !$0 : $0 }
     }
 
+    func testLongCueStaysUpUnderLaterShortOnes() {
+        // A sign that stays up for a minute, then a dozen lines of dialogue starting after it.
+        var cues = [SubtitleCue(index: 0, start: 10, end: 70, text: "sign")]
+        for i in 0..<12 { cues.append(SubtitleCue(index: i + 1, start: 20 + Double(i) * 3, end: 22 + Double(i) * 3, text: "line \(i)")) }
+        let doc = SubtitleDocument(cues: cues)
+        XCTAssertEqual(doc.cues(at: 60).map(\.text), ["sign"])
+        XCTAssertEqual(doc.cues(at: 21).map(\.text), ["sign", "line 0"])
+        XCTAssertEqual(doc.text(at: 62, offset: 5), "sign")
+        XCTAssertNil(doc.text(at: 71))
+        XCTAssertNil(doc.text(at: 9))
+        // A delay moves the cue later, as `offset` documents.
+        XCTAssertEqual(doc.text(at: 22.5, offset: 2), "sign\nline 0")
+        XCTAssertEqual(doc.cues(at: 20.5, offset: 2).map(\.text), ["sign"])
+    }
+
     func testCueActivityMarksFramesUnderCues() {
         let doc = SubtitleDocument(cues: [SubtitleCue(index: 0, start: 1.0, end: 2.0, text: "a")])
         let frames = SubtitleSync.cueActivity(doc, from: 0, to: 3, frame: 0.1)

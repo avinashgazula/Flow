@@ -30,8 +30,11 @@ final class PlaybackSession: Identifiable {
     var activeSegment: SkipSegment?
     var subtitle: SubtitleDocument?
     var subtitleTrack: SubtitleTrackInfo?
+    /// Seconds the subtitle is delayed by (negative shows it earlier), as `SubtitleDocument.text(at:offset:)` takes it.
     var subtitleOffset: Double = 0
-    var subtitleText: String?
+    /// The downloaded subtitle's line for the playhead and the current delay. Worked out when read, so a
+    /// change of delay shows at once, even while paused.
+    var subtitleText: String? { subtitle?.text(at: currentTime, offset: subtitleOffset) }
     var upNext: PlaybackRequest?
     var upNextCountdown: Int?
     /// Counts player items, so views holding an item's tracks know to read them again.
@@ -94,6 +97,31 @@ final class PlaybackSession: Identifiable {
     /// Where to pick up after reloading a stream that failed mid-playback.
     @ObservationIgnored private var recoverAt: Double?
     @ObservationIgnored private var recoveries = 0
+    /// Set by `close()`: whatever was still waiting on the network must not bring the player back.
+    @ObservationIgnored private var isClosed = false
+    @ObservationIgnored private var isStopping = false
+    /// Set while `switchEpisode` runs, so the up-next countdown, a skipped credits segment and the
+    /// item's own end can't each start the same switch.
+    @ObservationIgnored private var switchingEpisode = false
+    /// The pending reconnect after a stream dropped mid-film.
+    @ObservationIgnored private var recoveryTask: Task<Void, Never>?
+    /// The skip segments, suggestions and Up Next lookups for the episode on screen.
+    @ObservationIgnored private var extrasTask: Task<Void, Never>?
+    /// Where the last skip is heading, so quick repeated skips add up instead of each counting from `currentTime`, which is up to half a second old.
+    @ObservationIgnored private var pendingSeek: (target: Double, at: Date)?
+    /// The viewer's audio and subtitle picks when a dropped stream reloads, so reconnecting doesn't undo them.
+    @ObservationIgnored private var keptTracks: KeptTracks?
+    /// The stream's own tracks are chosen for the current item (`applyTrackSelection` got that far).
+    @ObservationIgnored private var tracksApplied = false
+    /// The viewer picked a subtitle themselves, which a search still running for the automatic choice must not override.
+    @ObservationIgnored private var subtitleChosenByViewer = false
+    @ObservationIgnored private var legibleGroup: AVMediaSelectionGroup?
+
+    private struct KeptTracks {
+        var audio: String?
+        var legible: String?
+        var bitmap: Int?
+    }
     @ObservationIgnored private let sessionID = UUID().uuidString
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var hlsToken: String?
@@ -130,7 +158,7 @@ final class PlaybackSession: Identifiable {
         configureAudioSession()
         observeInterruptions()
         load(source)
-        Task { await loadExtras() }
+        extrasTask = Task { [weak self] in await self?.loadExtras() }
     }
 
     /// After a call or Siri, pick up again if the system says to.
@@ -177,11 +205,16 @@ final class PlaybackSession: Identifiable {
     }
 
     private func load(_ source: StreamSource) {
+        guard !isClosed else { return }
         guard let url = source.location.playableURL else {
             fail("This source can't be played directly.")
             return
         }
         loadTask?.cancel()
+        recoveryTask?.cancel()
+        // An analysis of the old stream's soundtrack says nothing about the new one's.
+        autoSyncTask?.cancel()
+        isAutoSyncing = false
         teardownObservers()
         releaseRemux()
         player.replaceCurrentItem(with: nil)
@@ -189,6 +222,9 @@ final class PlaybackSession: Identifiable {
         chapters = []
         chapterSegments = []
         readyAt = nil
+        tracksApplied = false
+        audibleGroup = nil
+        legibleGroup = nil
         stopBitmapSubtitles()
         failureDetail = nil
         phase = .connecting(0.1)
@@ -268,6 +304,8 @@ final class PlaybackSession: Identifiable {
             phase = .connecting(0.35)
             attach(AVURLAsset(url: hls))
         } catch let error as MatroskaError {
+            // A load that was replaced while this one opened must not report its failure over the new one.
+            guard !Task.isCancelled else { return }
             switch error {
             case .unsupported(let what):
                 fail("This file uses \(what), which Apple devices can't play. Try another source, or open it in VLC or Infuse.")
@@ -275,6 +313,7 @@ final class PlaybackSession: Identifiable {
                 fail(error.localizedDescription)
             }
         } catch {
+            guard !Task.isCancelled else { return }
             fail("Couldn't open this file. \(error.localizedDescription)")
         }
     }
@@ -370,11 +409,11 @@ final class PlaybackSession: Identifiable {
     /// Track changes from any menu (Flow's, or the system player's on Apple TV and Mac). Ignores
     /// the automatic choices AVPlayer makes while the stream starts.
     private func mediaSelectionChanged(_ item: AVPlayerItem) {
-        guard didStart, let readyAt, Date().timeIntervalSince(readyAt) > 3 else { return }
+        guard didStart, let readyAt, Date().timeIntervalSince(readyAt) > 3, item === player.currentItem else { return }
         Task { [weak self] in
             let audible = try? await item.asset.loadMediaSelectionGroup(for: .audible)
             let legible = try? await item.asset.loadMediaSelectionGroup(for: .legible)
-            guard let self else { return }
+            guard let self, self.player.currentItem === item else { return }
             let audio = audible.flatMap { item.currentMediaSelection.selectedMediaOption(in: $0) }?.extendedLanguageTag
             var subtitle: AVMediaSelectionOption?
             if let legible { subtitle = item.currentMediaSelection.selectedMediaOption(in: legible) }
@@ -493,6 +532,7 @@ final class PlaybackSession: Identifiable {
         let next = alternatives.removeFirst()
         source = next
         remuxCompatible = false
+        keptTracks = nil
         show(notice: "That source didn't work, so Flow is trying \(next.providerName)\(next.traits.resolution == .unknown ? "" : " " + next.traits.resolution.label).")
         load(next)
     }
@@ -541,6 +581,7 @@ final class PlaybackSession: Identifiable {
 
     /// The viewer's choice from a menu: shown, and remembered for the show.
     func selectBitmapSubtitle(_ id: Int?) {
+        subtitleChosenByViewer = true
         showBitmapSubtitle(id)
         let language = remuxer?.bitmapSubtitles.first { $0.id == id }?.language
         remember { choice in
@@ -613,15 +654,20 @@ final class PlaybackSession: Identifiable {
 
     private func loadExtras() async {
         guard let model else { return }
-        if logoPath == nil, let catalog = model.catalog { logoPath = await catalog.logo(for: request.item) }
-        let resolved = await SkipSegmentResolver.resolve(source: source, providers: model.skipProviders(), request: request)
+        let loading = request
+        /// Another episode or closing makes what this one was still looking up moot.
+        func isStale() -> Bool { Task.isCancelled || isClosed || request != loading }
+        if logoPath == nil, let catalog = model.catalog { logoPath = await catalog.logo(for: loading.item) }
+        let resolved = await SkipSegmentResolver.resolve(source: source, providers: model.skipProviders(), request: loading)
+        guard !isStale() else { return }
         segments = resolved.isEmpty ? chapterSegments : resolved
         let playback = model.settings.playback
-        if request.episode == nil, request.item.type == .movie, playback.postCreditsAlert || playback.becauseYouWatched, let id = request.item.ids.tmdb,
+        if loading.episode == nil, loading.item.type == .movie, playback.postCreditsAlert || playback.becauseYouWatched, let id = loading.item.ids.tmdb,
            let detail = try? await model.catalog?.details(.movie, id: id) {
+            guard !isStale() else { return }
             if playback.postCreditsAlert { creditsScenes = detail.creditsScenes }
             if playback.becauseYouWatched {
-                var seen: Set<String> = [request.item.id]
+                var seen: Set<String> = [loading.item.id]
                 if let collection = detail.collection, let parts = try? await model.catalog?.collection(collection.id),
                    let next = parts.part(after: detail.item), !model.isWatched(next) {
                     nextInCollection = next
@@ -631,10 +677,14 @@ final class PlaybackSession: Identifiable {
                     .prefix(8).map { $0 }
             }
         }
-        if let episode = request.episode, let showID = request.item.ids.tmdb, seasonEpisodes.first?.season != episode.season {
-            seasonEpisodes = (try? await model.catalog?.tmdb.season(showID: showID, season: episode.season)) ?? []
+        if let episode = loading.episode, let showID = loading.item.ids.tmdb, seasonEpisodes.first?.season != episode.season {
+            let season = (try? await model.catalog?.tmdb.season(showID: showID, season: episode.season)) ?? []
+            guard !isStale() else { return }
+            seasonEpisodes = season
         }
-        upNext = await model.nextRequest(after: request)
+        let next = await model.nextRequest(after: loading)
+        guard !isStale() else { return }
+        upNext = next
     }
 
     /// Picks the audio and subtitle from the tracks the stream carries (`TrackSelection` has the rules).
@@ -657,7 +707,8 @@ final class PlaybackSession: Identifiable {
 
         let audioTracks = (audible?.options ?? []).enumerated().map { index, option in
             TrackSelection.AudioTrack(id: index, language: option.extendedLanguageTag ?? "und",
-                                      isCommentary: option.hasMediaCharacteristic(.describesVideoForAccessibility) || option.displayName.localizedCaseInsensitiveContains("comment"),
+                                      // The rendition's name, not `displayName` (an HLS track's is only its language).
+                                      isCommentary: option.hasMediaCharacteristic(.describesVideoForAccessibility) || option.title.localizedCaseInsensitiveContains("comment"),
                                       isDefault: option == audible?.defaultOption)
         }
         var subtitleTracks = (legible?.options ?? []).enumerated().map { index, option in
@@ -672,10 +723,19 @@ final class PlaybackSession: Identifiable {
         let decision = TrackSelection.decide(audio: audioTracks, subtitles: subtitleTracks, playback: model.settings.playback, subtitleSettings: model.settings.subtitles,
                                              isAnime: isAnime, showChoice: showChoice, deviceLanguage: Locale.current.language.languageCode?.identifier)
 
+        // The same stream reloading after a drop: the viewer's own picks stand, not the rules' choice.
+        if let kept = keptTracks {
+            keptTracks = nil
+            restore(kept, in: item, audible: audible, legible: legible)
+            tracksApplied = true
+            itemGeneration += 1
+            return
+        }
         if let audible, let id = decision.audio, audible.options.indices.contains(id),
            item.currentMediaSelection.selectedMediaOption(in: audible) != audible.options[id] {
             item.select(audible.options[id], in: audible)
         }
+        tracksApplied = true
         // A downloaded subtitle stays through a source switch.
         guard subtitle == nil else { return }
         func clearStreamSubtitle() {
@@ -693,24 +753,52 @@ final class PlaybackSession: Identifiable {
             if let legible, legible.options.indices.contains(id) { item.select(legible.options[id], in: legible) }
         case .search(let languages):
             clearStreamSubtitle()
+            subtitleChosenByViewer = false
             // Tell the menus the tracks changed before the search, which can take a while.
             itemGeneration += 1
             let tracks = await SubtitleSearch.search(model.subtitleProviders(), request: request, languages: languages,
                                                      hearingImpaired: model.settings.subtitles.subtitleType == .sdh)
-            guard !Task.isCancelled, let first = tracks.first else { return }
-            await selectSubtitle(first)
+            // Everything was switched off before the search, so whatever shows now is the viewer's own pick.
+            let embeddedShowing = legible.flatMap { item.currentMediaSelection.selectedMediaOption(in: $0) } != nil
+            guard !Task.isCancelled, item === player.currentItem, !subtitleChosenByViewer, subtitle == nil, selectedBitmapTrack == nil,
+                  !embeddedShowing, let first = tracks.first else { return }
+            await selectSubtitle(first, automatic: true)
             return
         }
         itemGeneration += 1
     }
 
+    /// Puts back the audio and subtitle the viewer had on, by the rendition names the playlist gave them.
+    private func restore(_ kept: KeptTracks, in item: AVPlayerItem, audible: AVMediaSelectionGroup?, legible: AVMediaSelectionGroup?) {
+        if let audible, let name = kept.audio, let option = audible.options.first(where: { $0.title == name }) {
+            item.select(option, in: audible)
+        }
+        if let legible {
+            if let name = kept.legible, let option = legible.options.first(where: { $0.title == name }) {
+                item.select(option, in: legible)
+            } else if kept.legible == nil, legible.allowsEmptySelection {
+                // Off (or a downloaded or picture subtitle instead): the stream's own stays off.
+                item.select(nil, in: legible)
+            }
+        }
+        if let bitmap = kept.bitmap { showBitmapSubtitle(bitmap) }
+    }
+
     // MARK: Observers
 
     private func itemStatusChanged(_ item: AVPlayerItem) {
+        // A report queued by an item that has since been replaced says nothing about the one playing now.
+        guard item === player.currentItem else { return }
         ScreenshotTour.log("item status \(item.status.rawValue) error=\(item.error?.localizedDescription ?? "-")")
         switch item.status {
         case .readyToPlay:
-            Task { [weak self] in self?.audibleGroup = try? await item.asset.loadMediaSelectionGroup(for: .audible) }
+            Task { [weak self] in
+                let audible = try? await item.asset.loadMediaSelectionGroup(for: .audible)
+                let legible = try? await item.asset.loadMediaSelectionGroup(for: .legible)
+                guard let self, self.player.currentItem === item else { return }
+                self.audibleGroup = audible
+                self.legibleGroup = legible
+            }
             if readyAt == nil { readyAt = Date() }
             if case .connecting = phase { phase = .connecting(0.7) }
             let seconds = item.duration.seconds
@@ -748,8 +836,11 @@ final class PlaybackSession: Identifiable {
             if didStart, recoveries < 2 {
                 recoveries += 1
                 show(notice: "Connection lost. Reconnecting…")
-                Task { [weak self] in
+                recoveryTask?.cancel()
+                recoveryTask = Task { [weak self] in
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    // Closed, or the viewer switched source, in the meantime.
+                    guard !Task.isCancelled else { return }
                     self?.retry()
                 }
                 return
@@ -760,7 +851,7 @@ final class PlaybackSession: Identifiable {
     }
 
     private func bufferChanged(_ item: AVPlayerItem) {
-        guard case .connecting(let p) = phase, let range = item.loadedTimeRanges.first?.timeRangeValue else { return }
+        guard item === player.currentItem, case .connecting(let p) = phase, let range = item.loadedTimeRanges.first?.timeRangeValue else { return }
         let buffered = min(1, range.duration.seconds / 8)
         phase = .connecting(max(p, 0.15 + buffered * 0.8))
     }
@@ -780,7 +871,8 @@ final class PlaybackSession: Identifiable {
                 }
             }
         case .paused:
-            guard didStart, phase == .playing else { return }
+            // Stopping pauses first and then reports its own stop; a pause report would only race it.
+            guard didStart, phase == .playing, !isStopping else { return }
             let request = self.request, percent = self.percent
             Task {
                 try? await model.tracker.scrobble(.pause, request: request, percent: percent)
@@ -797,7 +889,6 @@ final class PlaybackSession: Identifiable {
         currentTime = seconds
         if !playedLongEnough, seconds >= 60 { playedLongEnough = true }
         if duration <= 0, let d = player.currentItem?.duration.seconds, d.isFinite { duration = d }
-        subtitleText = subtitle?.text(at: seconds, offset: subtitleOffset)
         updateSegment(seconds)
         alertCreditsScenes(seconds)
         offerSuggestions(seconds)
@@ -880,7 +971,8 @@ final class PlaybackSession: Identifiable {
     func skip(_ segment: SkipSegment) {
         skippedSegments.insert(segment.start)
         activeSegment = nil
-        if segment.kind == .credits, upNext != nil, segment.end >= duration - 5 {
+        // "End of episode" means this one: let the credits run out instead of starting the next.
+        if segment.kind == .credits, upNext != nil, sleepTimer != .endOfItem, segment.end >= duration - 5 {
             Task { await playUpNext() }
         } else {
             player.seek(to: CMTime(seconds: segment.end, preferredTimescale: 600))
@@ -890,7 +982,7 @@ final class PlaybackSession: Identifiable {
     // MARK: Up Next
 
     private func maybeStartUpNextCountdown() {
-        guard let model, model.settings.playback.autoPlayNextEpisode, upNext != nil, countdownTask == nil, duration > 60 else { return }
+        guard let model, model.settings.playback.autoPlayNextEpisode, upNext != nil, sleepTimer != .endOfItem, !switchingEpisode, countdownTask == nil, duration > 60 else { return }
         // Count down as the credits start, or, when the viewer would rather see them, so it ends as the episode does.
         let creditsStart = model.settings.playback.upNextWaitsForEnd ? nil : segments.first { $0.kind == .credits }?.start
         let tail = model.settings.playback.upNextWaitsForEnd ? 1 : 20
@@ -922,7 +1014,7 @@ final class PlaybackSession: Identifiable {
     /// Plays another episode of this show from the player's episode list.
     func play(episode: Episode) async {
         guard episode.id != request.episode?.id else { return }
-        await switchEpisode(to: PlaybackRequest(item: request.item, episode: episode), finished: false)
+        await switchEpisode(to: PlaybackRequest(item: request.item, episode: episode, libraryProviderID: request.libraryProviderID), finished: false)
     }
 
     /// How many dB louder Dolby soundtracks can play here: the headroom their mix leaves. Zero when
@@ -937,32 +1029,42 @@ final class PlaybackSession: Identifiable {
         guard let model, model.settings.playback.volumeBoostDB != dB else { return }
         model.settings.playback.volumeBoostDB = dB
         guard usesRemux, let remuxer, let asset = player.currentItem?.asset as? AVURLAsset else { return }
-        Task {
+        Task { [weak self] in
             await remuxer.setLoudnessBoost(dB)
+            guard let self, !self.isClosed else { return }
             // Segments already buffered carry the old level; a fresh item at the same moment refetches them.
-            let wasPlaying = isPlaying
-            let chosen = await Self.selectedOptionNames(player.currentItem)
-            recoverAt = currentTime
-            teardownObservers()
-            attach(AVURLAsset(url: asset.url))
-            if !wasPlaying { player.pause() }
+            let wasPlaying = self.isPlaying
+            let chosen = await Self.selectedOptionNames(self.player.currentItem)
+            // Another source or episode took over while the boost was applied; it loads with the new level itself.
+            guard !self.isClosed, self.player.currentItem?.asset === asset else { return }
+            self.recoverAt = self.currentTime
+            // The new item's automatic track choices aren't the viewer's.
+            self.readyAt = nil
+            self.teardownObservers()
+            self.attach(AVURLAsset(url: asset.url))
+            if !wasPlaying { self.player.pause() }
             // Keep the audio and subtitle tracks the viewer picked.
-            guard let item = player.currentItem else { return }
+            guard let item = self.player.currentItem else { return }
             for (characteristic, name) in chosen {
-                guard let group = try? await item.asset.loadMediaSelectionGroup(for: characteristic),
-                      let option = group.options.first(where: { $0.displayName == name }) else { continue }
-                item.select(option, in: group)
+                guard let group = try? await item.asset.loadMediaSelectionGroup(for: characteristic), item === self.player.currentItem else { continue }
+                if let name {
+                    if let option = group.options.first(where: { $0.title == name }) { item.select(option, in: group) }
+                } else if group.allowsEmptySelection {
+                    // Subtitles were off: the new item mustn't pick some on by itself.
+                    item.select(nil, in: group)
+                }
             }
         }
     }
 
-    private static func selectedOptionNames(_ item: AVPlayerItem?) async -> [(AVMediaCharacteristic, String)] {
+    /// The rendition names of what's selected (nil when a group has nothing on). Names, not `displayName`:
+    /// an HLS stream's several English soundtracks all display as "English".
+    private static func selectedOptionNames(_ item: AVPlayerItem?) async -> [(AVMediaCharacteristic, String?)] {
         guard let item else { return [] }
-        var names: [(AVMediaCharacteristic, String)] = []
+        var names: [(AVMediaCharacteristic, String?)] = []
         for characteristic in [AVMediaCharacteristic.audible, .legible] {
-            if let group = try? await item.asset.loadMediaSelectionGroup(for: characteristic),
-               let option = item.currentMediaSelection.selectedMediaOption(in: group) {
-                names.append((characteristic, option.displayName))
+            if let group = try? await item.asset.loadMediaSelectionGroup(for: characteristic) {
+                names.append((characteristic, item.currentMediaSelection.selectedMediaOption(in: group)?.title))
             }
         }
         return names
@@ -976,18 +1078,28 @@ final class PlaybackSession: Identifiable {
         source = next
         remuxCompatible = false
         recoveries = 0
+        keptTracks = nil
         show(notice: "Switching to \(next.providerName)…")
         load(next)
     }
 
     /// Records this episode and moves to `next` on a source like the current one, or back to the picker.
     private func switchEpisode(to next: PlaybackRequest, finished: Bool) async {
-        guard let model else { return }
+        guard let model, !switchingEpisode, !isClosed else { return }
+        switchingEpisode = true
+        defer { switchingEpisode = false }
+        var next = next
+        // Up Next and the episode list build their requests from the show alone.
+        next.libraryProviderID = next.libraryProviderID ?? request.libraryProviderID
         countdownTask?.cancel()
         countdownTask = nil
         upNextCountdown = nil
         await finishCurrent(completed: finished)
+        guard !isClosed else { return }
         if let source = await model.matchingSource(for: next, like: source) {
+            // The viewer left while a source was being found.
+            guard !isClosed else { return }
+            extrasTask?.cancel()
             request = next
             self.source = source
             alternatives = []
@@ -997,15 +1109,21 @@ final class PlaybackSession: Identifiable {
             didStart = false
             skippedSegments = []
             segments = []
+            activeSegment = nil
+            // Nothing of the last episode carries over: its subtitle and its timing belong to its own file.
             subtitle = nil
-            subtitleText = nil
+            subtitleTrack = nil
+            subtitleOffset = model.settings.subtitles.defaultOffsetSeconds
+            resumePrompt = nil
+            resumeAt = nil
+            keptTracks = nil
             currentTime = 0
             playedLongEnough = false
             recoverAt = nil
             recoveries = 0
             duration = 0
             load(source)
-            Task { await loadExtras() }
+            extrasTask = Task { [weak self] in await self?.loadExtras() }
         } else {
             close()
             model.sourcePickerRequest = next
@@ -1071,21 +1189,41 @@ final class PlaybackSession: Identifiable {
 
     // MARK: Subtitles
 
-    func selectSubtitle(_ track: SubtitleTrackInfo?) async {
+    /// `automatic` is Flow's own choice from the rules; otherwise the viewer's.
+    func selectSubtitle(_ track: SubtitleTrackInfo?, automatic: Bool = false) async {
         guard let model else { return }
+        if !automatic { subtitleChosenByViewer = true }
         guard let track else {
-            subtitle = nil; subtitleTrack = nil; subtitleText = nil
+            subtitle = nil; subtitleTrack = nil
             if selectedBitmapTrack == nil { remember { $0.subtitleLanguage = nil; $0.subtitlesOff = true } }
             return
         }
         remember { $0.subtitleLanguage = LanguageName.bcp47(track.language); $0.subtitlesOff = false }
         let provider = model.subtitleProviders().first { $0.name == track.provider }
+        let loading = request
         do {
-            subtitle = try await provider?.download(track)
+            guard let document = try await provider?.download(track) else { return }
+            // The viewer moved to another episode, or left, while it downloaded.
+            guard !isClosed, request == loading else { return }
+            subtitle = document
             subtitleTrack = track
+            // A delay worked out for the last file doesn't fit this one.
+            subtitleOffset = model.settings.subtitles.defaultOffsetSeconds
+            await turnOffStreamSubtitles()
         } catch {
             model.showToast("Couldn't load subtitles: \(error.localizedDescription)")
         }
+    }
+
+    /// Only one kind of subtitle shows at a time: a downloaded one replaces the stream's own and the disc's pictures.
+    private func turnOffStreamSubtitles() async {
+        if selectedBitmapTrack != nil { showBitmapSubtitle(nil) }
+        guard let item = player.currentItem, let group = try? await item.asset.loadMediaSelectionGroup(for: .legible),
+              item === player.currentItem, group.allowsEmptySelection,
+              item.currentMediaSelection.selectedMediaOption(in: group) != nil else { return }
+        item.select(nil, in: group)
+        // The options panel reads the selection again.
+        itemGeneration += 1
     }
 
     // MARK: Subtitle auto-sync
@@ -1157,6 +1295,9 @@ final class PlaybackSession: Identifiable {
     }
 
     private func didFinish() async {
+        // The countdown or a skipped credits segment is already moving on to the next episode (the stream
+        // can end while it looks for a source); a second switch would record this episode twice.
+        guard !isClosed, !switchingEpisode else { return }
         // An item that ends without ever really playing (bad seek, broken stream) is an error,
         // not a finished viewing — never mark it watched.
         guard didStart, currentTime > 5 else {
@@ -1194,6 +1335,8 @@ final class PlaybackSession: Identifiable {
 
     /// Stops playback, records progress, and dismisses the player.
     func stop() {
+        guard !isClosed, !isStopping else { return }
+        isStopping = true
         let wasPlaying = didStart
         player.pause()
         Task {
@@ -1204,8 +1347,11 @@ final class PlaybackSession: Identifiable {
 
     private func close(_ caller: String = #function) {
         ScreenshotTour.log("PlaybackSession.close from \(caller) phase=\(phase)")
+        isClosed = true
         countdownTask?.cancel()
         loadTask?.cancel()
+        recoveryTask?.cancel()
+        extrasTask?.cancel()
         trackTask?.cancel()
         noticeTask?.cancel()
         sleepTask?.cancel()
@@ -1234,7 +1380,16 @@ final class PlaybackSession: Identifiable {
 
     /// Reloads the stream, continuing from the current position if playback had started.
     func retry() {
-        if didStart, currentTime > 1 { recoverAt = currentTime }
+        guard !isClosed else { return }
+        if didStart, currentTime > 1 {
+            recoverAt = currentTime
+            // Reloading the same stream mustn't undo the audio and subtitle the viewer picked.
+            if tracksApplied, let item = player.currentItem, audibleGroup != nil || legibleGroup != nil {
+                keptTracks = KeptTracks(audio: audibleGroup.flatMap { item.currentMediaSelection.selectedMediaOption(in: $0) }?.title,
+                                        legible: legibleGroup.flatMap { item.currentMediaSelection.selectedMediaOption(in: $0) }?.title,
+                                        bitmap: selectedBitmapTrack)
+            }
+        }
         load(source)
     }
 
@@ -1276,7 +1431,10 @@ final class PlaybackSession: Identifiable {
     }
 
     func seek(by seconds: Double) {
-        let target = max(0, min(duration > 0 ? duration : .greatestFiniteMagnitude, currentTime + seconds))
+        // A skip tapped again before the first one lands starts from where that was heading.
+        let base = pendingSeek.flatMap { Date().timeIntervalSince($0.at) < 2 ? $0.target : nil } ?? currentTime
+        let target = max(0, min(duration > 0 ? duration : .greatestFiniteMagnitude, base + seconds))
+        pendingSeek = (target, Date())
         player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
     }
 }

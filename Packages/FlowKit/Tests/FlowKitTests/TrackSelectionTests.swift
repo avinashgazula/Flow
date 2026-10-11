@@ -70,6 +70,20 @@ final class TrackSelectionTests: XCTestCase {
         XCTAssertFalse(TrackSelection.matches("und", "und"))
     }
 
+    func testNorwegianAndFilipinoVariantsMatchSettingsCodes() {
+        // Settings says "no"; Apple and most releases tag Bokmål.
+        XCTAssertTrue(TrackSelection.matches("nb", "no"))
+        XCTAssertTrue(TrackSelection.matches("nb-NO", "no"))
+        XCTAssertTrue(TrackSelection.matches("nob", "no"))
+        XCTAssertTrue(TrackSelection.matches("nor", "nb"))
+        XCTAssertTrue(TrackSelection.matches("fil", "tl"))
+        // A three-letter code with a region still names its language.
+        XCTAssertTrue(TrackSelection.matches("eng-US", "en"))
+        XCTAssertFalse(TrackSelection.matches("nb", "sv"))
+        let tracks = [TrackSelection.AudioTrack(id: 0, language: "en", isDefault: true), TrackSelection.AudioTrack(id: 1, language: "nb")]
+        XCTAssertEqual(decide(audio: tracks) { p, _ in p.preferredAudioLanguage = "no" }.audio, 1)
+    }
+
     func testAnimeAudio() {
         let japanese = decide(anime: true) { p, _ in p.preferredAudioLanguage = "en"; p.animeAudio = .sub }
         XCTAssertEqual(japanese.audio, 1)
