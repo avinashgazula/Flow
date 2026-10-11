@@ -243,24 +243,12 @@ struct ContinueWatchingCard: View {
                 ZStack(alignment: .bottomLeading) {
                     RemoteImage(url: item.smallBackdropURL ?? item.tmdbPosterURL, maxPixel: Platform.isTV ? 1000 : 700, fallbackTitle: item.title)
                         .frame(width: width, height: width * 9 / 16)
-                    LinearGradient(colors: [.clear, .black.opacity(0.7)], startPoint: .center, endPoint: .bottom)
-                    VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                        HStack(alignment: .lastTextBaseline) {
-                            if let ep = entry.episode {
-                                Text(ep.code)
-                                    .font(.system(size: 12 * Theme.scale, weight: .bold).monospacedDigit())
-                            }
-                            Spacer()
-                            if let badge = badgeText {
-                                Text(badge)
-                                    .font(.system(.caption2, weight: .semibold))
-                                    .padding(.horizontal, 8).padding(.vertical, 3)
-                                    .background(.black.opacity(0.5), in: Capsule())
-                            }
-                        }
-                        if let p = entry.progress { ProgressCapsule(value: p.percent / 100) }
+                    // Only what reads at a glance sits on the picture: how far in. The rest is in the line below.
+                    if let p = entry.progress {
+                        LinearGradient(colors: [.clear, .black.opacity(0.55)], startPoint: .center, endPoint: .bottom)
+                        ProgressCapsule(value: p.percent / 100)
+                            .padding(Theme.Space.s)
                     }
-                    .padding(Theme.Space.s)
                     if let remaining = episodesRemaining {
                         Text("\(remaining) Remaining")
                             .font(.system(.caption2, weight: .semibold))
@@ -269,12 +257,6 @@ struct ContinueWatchingCard: View {
                             .padding(Theme.Space.s)
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                     }
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 15 * Theme.scale, weight: .bold))
-                        .frame(width: 38 * Theme.scale, height: 38 * Theme.scale)
-                        .flowGlass(Circle())
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .opacity(0.95)
                 }
                 .frame(width: width, height: width * 9 / 16)
                 .clipShape(shape)
@@ -315,10 +297,17 @@ struct ContinueWatchingCard: View {
         return remaining > 0 ? remaining : nil
     }
 
+    /// "S3 E7 · 18m left", "S4 E1 · Up Next", "1h 12m left", or the year and genre of a film not yet started.
     private var subtitle: String {
-        if entry.episode != nil { return entry.isNextUp ? "Next episode" : "Resume episode" }
-        let year = model.settings.general.showContinueWatchingReleaseDate ? item.year.map(String.init) : nil
-        return [year, item.genres.first?.name].compactMap { $0 }.joined(separator: " · ")
+        var parts: [String] = []
+        if let ep = entry.episode { parts.append("S\(ep.season) E\(ep.episode)") }
+        if let badge = badgeText {
+            parts.append(badge)
+        } else if entry.episode == nil {
+            if model.settings.general.showContinueWatchingReleaseDate, let year = item.year { parts.append(String(year)) }
+            if let genre = item.genres.first?.name { parts.append(genre) }
+        }
+        return parts.joined(separator: " · ")
     }
 }
 
