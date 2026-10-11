@@ -11,7 +11,7 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
 - **Home**: a hero (a card carousel or full-bleed, from one or two sources) with logo art, Continue Watching with Up Next and episodes-remaining counts, Upcoming episodes and premieres, Streaming Services and Genres folders, "Because You Watched…" recommendations, your media servers' own library rows, and shelves you can configure, reorder, and copy or paste as JSON (trending, popular, TMDb Discover queries, Trakt and MDBList lists, media-server libraries).
 - **Explore**: Movies and TV grids with filters for genre, year, release window, rating, language and streaming service.
 - **Library**: Watchlist, Watch History, Favourites, Downloads, followed Sports teams, and **Upcoming**, a day-by-day calendar of new episodes and releases from the shows and films you follow.
-- **Live TV**: channel groups, favourites, and a timeline guide with a live "now" line, fed by XMLTV or Xtream.
+- **Live TV**: channel groups, favourites, and a timeline guide with a live "now" line and programme details, fed by XMLTV or Xtream. Swipe (or press the arrow keys on a Mac) to change channels without leaving the player, with now-and-next and a progress bar for what's on.
 - **Search**: movies, shows and people, with a top-result card, genre browsing, results from your media servers and recent searches.
 - **Detail pages**: ratings from IMDb, Rotten Tomatoes, Popcornmeter, Metacritic, TMDb, Letterboxd and Trakt. Cast, trailers, seasons and episodes (TVDB numbering by default), Shuffle, Rewatch, buttons for watched, favourite, watchlist and download, Where to Watch (streaming, rental and purchase options from JustWatch via TMDb), an About section (status, country, budget, revenue, production companies), reviews from TMDb and Trakt with spoiler tags, a Request button for Seerr, Overseerr or Jellyseerr when a title isn't on your servers, optional episode-spoiler blurring, and adjustable text size.
 - **Source picker**: gathers results from every provider in parallel. Categories and providers are ordered, there are optional sort rules, filters and a result cap, and the add-on text and badges are parsed.
@@ -27,7 +27,7 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
   - Every audio track, text subtitles and chapters come through, plus Blu-ray and DVD picture subtitles (PGS and VobSub), which Flow draws itself.
   - Scrubbing previews on Apple TV, iPhone and iPad.
   - Each file's index is cached, so reopening it is quick.
-- **Sync**: Trakt or Simkl device sign-in, iCloud key-value sync, and Share/Import Setup by file, link or QR code.
+- **Sync**: Trakt or Simkl device sign-in, iCloud key-value sync (removals sync too, so something taken off a list stays off on every device), and Share/Import Setup by file, link or QR code.
 - **System**: a Continue Watching widget on iPhone and iPad, an Apple TV Top Shelf (Continue Watching with progress, and your Watchlist), Spotlight indexing, Handoff, `flow://` deep links, and Shortcuts/Siri actions for Continue Watching, Upcoming and Search. The widget and Top Shelf read a snapshot shared through the `group.<bundle id>` App Group, so enable App Groups for your team when you sign the app.
 - **Demo mode**: "Explore with Sample Data" fills every screen with real TMDb artwork and Apple's sample streams, no keys required.
 
