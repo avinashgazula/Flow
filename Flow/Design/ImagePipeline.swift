@@ -143,6 +143,8 @@ struct RemoteImage: View {
     var maxPixel: Int = 720
     /// When set, a typographic poster is drawn if the image is missing or fails.
     var fallbackTitle: String?
+    /// Tried when `url` fails, e.g. the plain poster behind an enhanced one.
+    var fallbackURL: URL?
 
     @State private var image: CGImage?
     @State private var failed = false
@@ -180,7 +182,10 @@ struct RemoteImage: View {
         }
         image = nil
         failed = false
-        let loaded = await ImagePipeline.shared.image(url, maxPixel: maxPixel)
+        var loaded = await ImagePipeline.shared.image(url, maxPixel: maxPixel)
+        if loaded == nil, !Task.isCancelled, let fallbackURL, fallbackURL != url {
+            loaded = await ImagePipeline.shared.image(fallbackURL, maxPixel: maxPixel)
+        }
         guard !Task.isCancelled else { return }
         withAnimation(Theme.Motion.fade) {
             image = loaded

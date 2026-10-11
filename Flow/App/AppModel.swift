@@ -106,6 +106,11 @@ final class AppModel {
 
     var selectedTab: AppTab
     var sourcePickerRequest: PlaybackRequest?
+    /// Sources found when a detail page opened (Prefetch on Detail View), for the picker to start from.
+    @ObservationIgnored var prefetchedSources = SourcePrefetchCache()
+    @ObservationIgnored var prefetchTasks: [String: Task<Void, Never>] = [:]
+    /// The custom rating icons for `settings.metadata.ratingIconPackURL`, once fetched.
+    var ratingIconPack: RatingIconPack?
     var activePlayback: PlaybackSession?
     var showSettings = false
     /// A flow://setup link waiting for the user to confirm the import.
@@ -319,6 +324,7 @@ final class AppModel {
             simkl = nil
         }
         mdblist = credentials.mdblistAPIKey?.nonEmpty.map { MDBListClient(apiKey: $0, http: http) }
+        PosterEnhancer.rpdbKey = settings.metadata.posterEnhancement == .rpdb ? credentials.rpdbAPIKey?.nonEmpty : nil
         mediaServers = settings.mediaServers.servers.filter(\.enabled).map(makeServerClient)
         vodProviderCache = [:]
 
@@ -331,6 +337,19 @@ final class AppModel {
         case .jellyfin, .emby: return JellyfinClient(config: config, deviceID: deviceID, deviceName: Platform.deviceName, http: http)
         case .plex: return PlexClient(config: config, clientIdentifier: deviceID, http: http)
         }
+    }
+
+    /// Fetches the custom rating icons (kept for a day). Without a URL, or if the file is unusable, the built-in badges stay.
+    func loadRatingIconPack() async {
+        guard let url = settings.metadata.ratingIconPackURL else { ratingIconPack = nil; return }
+        let http = self.http
+        let data = try? await cache.cached("rating-icons:\(url.absoluteString)", maxAge: 24 * 3600) { () async throws -> Data in
+            let (data, _) = try await http.data(HTTPRequest(url: url))
+            _ = try RatingIconPack.decode(data)
+            return data
+        }
+        guard url == settings.metadata.ratingIconPackURL else { return }
+        ratingIconPack = data.flatMap { try? RatingIconPack.decode($0) }
     }
 
     var tracker: TrackingService {

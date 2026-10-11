@@ -36,8 +36,22 @@ struct LogoOrTitle: View {
     }
 }
 
+/// Swaps TMDb posters for ratings-on-poster art. The model sets the key when Poster Enhancement or the RPDB key changes.
+enum PosterEnhancer {
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var key: String?
+
+    static var rpdbKey: String? {
+        get { lock.withLock { key } }
+        set { lock.withLock { key = newValue } }
+    }
+}
+
 extension MediaItem {
-    var posterURL: URL? { TMDBImage.url(posterPath, size: .poster) }
+    /// RPDB's poster when Poster Enhancement is on, otherwise TMDb's.
+    var posterURL: URL? { RatingPosterDB.posterURL(apiKey: PosterEnhancer.rpdbKey, item: self) ?? tmdbPosterURL }
+    /// What `RemoteImage` falls back to when the enhanced poster won't load.
+    var tmdbPosterURL: URL? { TMDBImage.url(posterPath, size: .poster) }
     var backdropURL: URL? { TMDBImage.url(backdropPath, size: .backdropLarge) }
     var smallBackdropURL: URL? { TMDBImage.url(backdropPath, size: .backdrop) }
 }

@@ -194,7 +194,7 @@ struct DownloadsView: View {
                     }
                 } label: {
                     HStack(spacing: 12) {
-                        RemoteImage(url: item.request.item.posterURL)
+                        RemoteImage(url: item.request.item.posterURL, fallbackURL: item.request.item.tmdbPosterURL)
                             .frame(width: 50, height: 75)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                         VStack(alignment: .leading, spacing: 4) {

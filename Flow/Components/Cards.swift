@@ -75,7 +75,7 @@ struct PosterArtwork: View {
     var body: some View {
         Color.clear
             .aspectRatio(2 / 3, contentMode: .fit)
-            .overlay(RemoteImage(url: item.posterURL, maxPixel: Platform.isTV ? 600 : 420, fallbackTitle: item.title))
+            .overlay(RemoteImage(url: item.posterURL, maxPixel: Platform.isTV ? 600 : 420, fallbackTitle: item.title, fallbackURL: item.tmdbPosterURL))
             .clipShape(shape)
             .hairline(shape)
             .overlay(alignment: .bottom) { progressBar }

@@ -85,7 +85,7 @@ struct DetailView: View {
                 .frame(maxWidth: wide ? 520 : 330, alignment: wide ? .leading : .center)
             MetadataLine(item: current, certification: current.certification, showRating: false)
             if !ratings.isEmpty || current.voteAverage != nil {
-                RatingsRow(ratings: ratings.isEmpty ? Ratings(tmdb: current.voteAverage) : ratings, centered: !wide)
+                RatingsRow(ratings: ratings.isEmpty ? Ratings(tmdb: current.voteAverage) : ratings, item: current, centered: !wide)
             }
             actions
             if let overview = current.overview, !overview.isEmpty {
@@ -373,6 +373,7 @@ struct DetailView: View {
         do {
             let loaded = try await catalog.details(item.type, id: id)
             withAnimation(Theme.Motion.fade) { detail = loaded }
+            Task { await model.prefetchSources(for: loaded.item) }
             if let key = loaded.item.key, loaded.item.type == .show {
                 model.completedShowThresholds[key] = AppModel.airedEpisodes(loaded).count
                 rewatching = await model.isRewatching(loaded.item)
@@ -398,33 +399,99 @@ struct DetailView: View {
     }
 }
 
-/// IMDb · Rotten Tomatoes · Popcornmeter · Metacritic · TMDb · Letterboxd · Trakt
+/// The scores chosen in Settings → Metadata → Ratings Shown, in that order.
 struct RatingsRow: View {
     let ratings: Ratings
+    /// The title, so a score can open its site's page when Tap a Rating is on.
+    var item: MediaItem?
     var centered = false
+    @Environment(AppModel.self) private var model
+
+    private var metadata: MetadataSettings { model.settings.metadata }
+    /// Only while a pack URL is set, so clearing the field brings the built-in badges straight back.
+    private var iconPack: RatingIconPack? { metadata.ratingIconPackURL == nil ? nil : model.ratingIconPack }
 
     var body: some View {
         // One line when it fits; otherwise a second line, never a badge cut off at the screen's edge.
         WrappingRow(spacing: 14 * Theme.scale, lineSpacing: 10 * Theme.scale, centered: centered) {
-            badges
+            ForEach(metadata.ratingsShown) { source in
+                chip(source)
+            }
         }
         .font(.system(.subheadline, weight: .semibold).monospacedDigit())
         .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+        .task(id: metadata.ratingIconPackURL) { await model.loadRatingIconPack() }
     }
 
     @ViewBuilder
-    private var badges: some View {
-            if let imdb = ratings.imdb { badge("IMDb", String(format: "%.1f", imdb), fill: Color(red: 0.96, green: 0.77, blue: 0.09), dark: true) }
-            if let rt = ratings.rottenTomatoes {
-                score(symbol: rt >= 60 ? "circle.fill" : "drop.fill", color: rt >= 60 ? Color(red: 0.98, green: 0.2, blue: 0.1) : Color(red: 0.4, green: 0.75, blue: 0.2), "\(rt)%")
+    private func chip(_ source: RatingSource) -> some View {
+        if let value = text(for: source) {
+            if let link = reviewsURL(for: source) {
+                Button { model.openExternally(link) } label: { content(source, value) }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens \(source.title)")
+            } else {
+                content(source, value)
             }
-            if let popcorn = ratings.popcorn { score(symbol: "popcorn.fill", color: Color(red: 0.98, green: 0.65, blue: 0.2), "\(popcorn)%") }
-            if let mc = ratings.metacritic {
-                badge("MC", "\(mc)", fill: mc >= 61 ? Color(red: 0.4, green: 0.8, blue: 0.2) : mc >= 40 ? Color(red: 1, green: 0.8, blue: 0.2) : Color(red: 1, green: 0.25, blue: 0.25), dark: true)
+        }
+    }
+
+    /// Nil when the source has no score for this title (MyAnimeList never does: Flow has no score source for it).
+    private func text(for source: RatingSource) -> String? {
+        switch source {
+        case .imdb: return ratings.imdb.map { String(format: "%.1f", $0) }
+        case .tomatometer: return ratings.rottenTomatoes.map { "\($0)%" }
+        case .popcornmeter: return ratings.popcorn.map { "\($0)%" }
+        case .metacritic: return ratings.metacritic.map { "\($0)" }
+        case .tmdb: return ratings.tmdb.flatMap { $0 > 0 ? String(format: "%.1f", $0) : nil }
+        case .letterboxd: return ratings.letterboxd.map { String(format: "%.1f", $0) }
+        case .trakt: return ratings.trakt.map { "\($0)%" }
+        case .mal: return nil
+        }
+    }
+
+    /// Apple TV can't open web pages.
+    private func reviewsURL(for source: RatingSource) -> URL? {
+        #if os(tvOS)
+        return nil
+        #else
+        guard metadata.tapRatingOpensReviews, let item else { return nil }
+        return RatingLinks.url(for: source, item: item)
+        #endif
+    }
+
+    @ViewBuilder
+    private func content(_ source: RatingSource, _ value: String) -> some View {
+        if let icon = iconPack?[source] {
+            HStack(spacing: 5) {
+                RemoteImage(url: icon, contentMode: .fit, maxPixel: 96)
+                    .frame(width: 24 * Theme.scale, height: 16 * Theme.scale)
+                Text(value)
             }
-            if let tmdb = ratings.tmdb, tmdb > 0 { badge("TMDB", String(format: "%.1f", tmdb), fill: Color(red: 0.05, green: 0.75, blue: 0.75), dark: true) }
-            if let lb = ratings.letterboxd { badge("LB", String(format: "%.1f", lb), fill: .white.opacity(0.18), dark: false) }
-            if let trakt = ratings.trakt { badge("Trakt", "\(trakt)%", fill: .white.opacity(0.18), dark: false) }
+            .fixedSize()
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(source.title) \(value)")
+        } else {
+            builtIn(source, value)
+        }
+    }
+
+    @ViewBuilder
+    private func builtIn(_ source: RatingSource, _ value: String) -> some View {
+        switch source {
+        case .imdb: badge("IMDb", value, fill: Color(red: 0.96, green: 0.77, blue: 0.09), dark: true)
+        case .tomatometer:
+            let rt = ratings.rottenTomatoes ?? 0
+            score(symbol: rt >= 60 ? "circle.fill" : "drop.fill", color: rt >= 60 ? Color(red: 0.98, green: 0.2, blue: 0.1) : Color(red: 0.4, green: 0.75, blue: 0.2), value)
+        case .popcornmeter: score(symbol: "popcorn.fill", color: Color(red: 0.98, green: 0.65, blue: 0.2), value)
+        case .metacritic:
+            let mc = ratings.metacritic ?? 0
+            badge("MC", value, fill: mc >= 61 ? Color(red: 0.4, green: 0.8, blue: 0.2) : mc >= 40 ? Color(red: 1, green: 0.8, blue: 0.2) : Color(red: 1, green: 0.25, blue: 0.25), dark: true)
+        case .tmdb: badge("TMDB", value, fill: Color(red: 0.05, green: 0.75, blue: 0.75), dark: true)
+        case .letterboxd: badge("LB", value, fill: .white.opacity(0.18), dark: false)
+        case .trakt: badge("Trakt", value, fill: .white.opacity(0.18), dark: false)
+        case .mal: badge("MAL", value, fill: .white.opacity(0.18), dark: false)
+        }
     }
 
     private func badge(_ label: String, _ value: String, fill: Color, dark: Bool) -> some View {

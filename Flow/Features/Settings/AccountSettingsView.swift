@@ -283,6 +283,11 @@ struct APIKeysView: View {
                 TextField("Base URL", text: $model.settings.account.introDBBaseURL).autocorrectionDisabled()
             } header: { Text("IntroDB") } footer: { Text("Intro, recap and credits timestamps for the Skip button.") }
 
+            Section {
+                OptionalTextField(title: "RPDB API Key", text: $model.credentials.rpdbAPIKey, secure: true)
+                Link("Get a key at ratingposterdb.com", destination: URL(string: "https://ratingposterdb.com")!)
+            } header: { Text("RatingPosterDB") } footer: { Text("Posters with ratings drawn on, for Poster Enhancement in Metadata settings.") }
+
             Section("Subtitle Sources") {
                 OptionalTextField(title: "OpenSubtitles API Key", text: $model.credentials.openSubtitlesAPIKey, secure: true)
                 OptionalTextField(title: "OpenSubtitles Username (optional)", text: $model.credentials.openSubtitlesUsername)

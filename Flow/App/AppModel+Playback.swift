@@ -73,6 +73,15 @@ extension AppModel {
 
     /// Opens the source picker for a movie or episode. Shows resolve to their Next Up episode.
     func play(_ item: MediaItem, episode: Episode? = nil) async {
+        guard let request = await playbackRequest(for: item, episode: episode) else {
+            showToast("No episodes available yet.")
+            return
+        }
+        sourcePickerRequest = request
+    }
+
+    /// The request Play would open the picker with, nil for a show with nothing aired to play.
+    private func playbackRequest(for item: MediaItem, episode: Episode?) async -> PlaybackRequest? {
         var resolved = item
         if resolved.ids.imdb == nil || (item.type == .show && resolved.ids.tvdb == nil), let catalog, let id = item.ids.tmdb {
             if let ids = try? await catalog.tmdb.externalIDs(item.type, id: id) { resolved.ids = resolved.ids.merged(with: ids) }
@@ -81,11 +90,28 @@ extension AppModel {
         if item.type == .show, target == nil {
             target = await nextEpisodeToPlay(for: resolved)
         }
-        guard item.type == .movie || target != nil else {
-            showToast("No episodes available yet.")
-            return
+        guard item.type == .movie || target != nil else { return nil }
+        return PlaybackRequest(item: resolved, episode: target)
+    }
+
+    // MARK: Prefetch
+
+    /// With Prefetch on Detail View on, starts collecting sources for what Play would open (the film, or the show's
+    /// next episode) when a detail page opens, so the picker starts with results. Returns once the search is under way.
+    func prefetchSources(for item: MediaItem) async {
+        guard settings.metadata.prefetchOnDetail, !sourceProviders().isEmpty,
+              let request = await playbackRequest(for: item, episode: nil),
+              prefetchedSources.sources(for: request) == nil, prefetchTasks[request.id] == nil else { return }
+        let providers = sourceProviders()
+        let timeout = settings.sources.timeoutSeconds
+        let task = Task { [weak self] in
+            let found = await SourceAggregator.collect(providers, request: request, timeout: timeout)
+            guard let self else { return }
+            // An empty result isn't worth showing as "ready"; the picker searches itself.
+            if !found.isEmpty { self.prefetchedSources.store(found, for: request) }
+            self.prefetchTasks[request.id] = nil
         }
-        sourcePickerRequest = PlaybackRequest(item: resolved, episode: target)
+        prefetchTasks[request.id] = task
     }
 
     func shufflePlay(_ show: MediaItem) async {

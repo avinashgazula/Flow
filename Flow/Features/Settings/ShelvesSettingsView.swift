@@ -234,7 +234,7 @@ private struct DiscoverPreview: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(items.prefix(12)) { item in
-                    RemoteImage(url: item.posterURL).frame(width: 60, height: 90).clipShape(RoundedRectangle(cornerRadius: 6))
+                    RemoteImage(url: item.posterURL, fallbackURL: item.tmdbPosterURL).frame(width: 60, height: 90).clipShape(RoundedRectangle(cornerRadius: 6))
                 }
             }
         }

@@ -100,7 +100,7 @@ struct SourcePickerView: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
-            RemoteImage(url: request.item.posterURL, maxPixel: 300, fallbackTitle: request.item.title)
+            RemoteImage(url: request.item.posterURL, maxPixel: 300, fallbackTitle: request.item.title, fallbackURL: request.item.tmdbPosterURL)
                 .frame(width: 64 * Theme.scale, height: 96 * Theme.scale)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .hairline(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -162,7 +162,10 @@ struct SourcePickerView: View {
     }
 
     private func gather() async {
-        raw = []
+        // The first search starts from what the detail page already found, then refreshes; Search Again starts clean.
+        let prefetched = reloadToken == 0 ? model.prefetchedSources.sources(for: request) : nil
+        raw = prefetched ?? []
+        var fresh: [StreamSource] = []
         failures = [:]
         finished = false
         let providers = model.sourceProviders()
@@ -171,12 +174,14 @@ struct SourcePickerView: View {
             case .loading(let id, let name): pending[id] = name
             case .loaded(let id, let sources):
                 pending[id] = nil
-                raw += sources
+                if prefetched == nil { raw += sources } else { fresh += sources }
                 maybeAutoPlay()
             case .failed(let id, _, let error):
                 pending[id] = nil
                 failures[id] = error
             case .finished:
+                // Keep the prefetched list if the refresh came back empty only because providers failed.
+                if prefetched != nil, !fresh.isEmpty || failures.isEmpty { raw = fresh }
                 finished = true
                 maybeAutoPlay(final: true)
             }

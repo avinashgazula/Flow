@@ -381,6 +381,39 @@ struct MetadataSettingsView: View {
             } footer: {
                 Text("Needed for the TVDB episode source. Without it Flow falls back to TMDb ordering.")
             }
+            Section {
+                Toggle("Prefetch on Detail View", isOn: $model.settings.metadata.prefetchOnDetail)
+            } header: {
+                Text("Performance")
+            } footer: {
+                Text("Loads sources in the background when you open a detail page so tapping Play is instant. Turn off to save bandwidth on slow connections; Play then fetches sources on demand.")
+            }
+            Section {
+                Picker("Poster Enhancement", selection: $model.settings.metadata.posterEnhancement) {
+                    ForEach(PosterEnhancement.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                OptionalTextField(title: "RPDB API Key", text: $model.credentials.rpdbAPIKey, secure: true)
+            } header: {
+                Text("Poster Enhancement")
+            } footer: {
+                Text("Draws ratings onto poster art across every shelf, from RatingPosterDB (needs your RPDB key). Applies to newly loaded posters.")
+            }
+            Section {
+                NavigationLink("Ratings Shown") { RatingsShownView() }
+                Toggle("Tap a Rating to Open Its Reviews", isOn: $model.settings.metadata.tapRatingOpensReviews)
+            } header: {
+                Text("Ratings")
+            } footer: {
+                Text("Ratings Shown picks which scores appear on detail pages and in what order. With Tap a Rating on, each score opens that site's page for the title, in its app if you have it installed.")
+            }
+            Section {
+                RatingIconPackField(url: $model.settings.metadata.ratingIconPackURL)
+            } header: {
+                Text("Rating Icons")
+            } footer: {
+                Text("Custom icons for the ratings row on detail pages: a URL to a JSON array of {\"name\", \"url\"}. Names: imdb, tomatometer, popcornmeter, metacritic, tmdb, letterboxd, trakt, mal.")
+            }
         }
     }
 
@@ -393,4 +426,100 @@ struct MetadataSettingsView: View {
     ]
 
     static let regions = ["US", "CA", "GB", "IE", "AU", "NZ", "IN", "DE", "FR", "ES", "IT", "NL", "SE", "NO", "DK", "FI", "BR", "MX", "JP", "KR"]
+}
+
+/// Tick a score to show it, drag to reorder (always in edit mode on iPhone and iPad); Apple TV and the Mac also get Move Up / Move Down.
+struct RatingsShownView: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let shown = model.settings.metadata.ratingsShown
+        // Hidden scores sit below the shown ones, so a drag only ever reorders what's on screen.
+        let ordered = shown + RatingSource.allCases.filter { !shown.contains($0) }
+        List {
+            Section {
+                ForEach(ordered) { source in
+                    row(source, shown: shown)
+                }
+                .onMove { from, to in
+                    var moved = ordered
+                    moved.move(fromOffsets: from, toOffset: to)
+                    model.settings.metadata.ratingsShown = moved.filter { shown.contains($0) }
+                }
+            } footer: {
+                Text("Scores with no value for a title are left out. MyAnimeList has no score source yet.")
+            }
+            Section {
+                Button("Reset to Default") { model.settings.metadata.ratingsShown = RatingSource.allCases }
+                    .disabled(shown == RatingSource.allCases)
+            }
+        }
+        .navigationTitle("Ratings Shown")
+        #if os(iOS)
+        .environment(\.editMode, .constant(.active))
+        #endif
+    }
+
+    private func row(_ source: RatingSource, shown: [RatingSource]) -> some View {
+        let isShown = shown.contains(source)
+        return Button { toggle(source) } label: {
+            HStack {
+                Text(source.title)
+                Spacer()
+                if isShown { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isShown ? .isSelected : [])
+        #if !os(iOS)
+        .contextMenu {
+            Button("Move Up", systemImage: "arrow.up") { move(source, by: -1, in: shown) }
+                .disabled(shown.first == source || !isShown)
+            Button("Move Down", systemImage: "arrow.down") { move(source, by: 1, in: shown) }
+                .disabled(shown.last == source || !isShown)
+        }
+        #endif
+    }
+
+    private func toggle(_ source: RatingSource) {
+        if model.settings.metadata.ratingsShown.contains(source) {
+            model.settings.metadata.ratingsShown.removeAll { $0 == source }
+        } else {
+            model.settings.metadata.ratingsShown.append(source)
+        }
+    }
+
+    #if !os(iOS)
+    private func move(_ source: RatingSource, by offset: Int, in shown: [RatingSource]) {
+        guard let index = shown.firstIndex(of: source), shown.indices.contains(index + offset) else { return }
+        var moved = shown
+        moved.swapAt(index, index + offset)
+        model.settings.metadata.ratingsShown = moved
+    }
+    #endif
+}
+
+/// The icon pack URL as a text field. Edits are kept as typed and only applied once they parse, so a stray space doesn't clear the field.
+struct RatingIconPackField: View {
+    @Binding var url: URL?
+    @State private var text = ""
+
+    var body: some View {
+        TextField("Icon pack JSON URL (optional)", text: $text)
+            .autocorrectionDisabled()
+            #if os(iOS)
+            .textInputAutocapitalization(.never)
+            .keyboardType(.URL)
+            #endif
+            .onAppear { text = url?.absoluteString ?? "" }
+            .onChange(of: text) { _, new in
+                let trimmed = new.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty {
+                    url = nil
+                } else if let parsed = URL(string: trimmed), parsed.scheme != nil {
+                    url = parsed
+                }
+            }
+    }
 }
