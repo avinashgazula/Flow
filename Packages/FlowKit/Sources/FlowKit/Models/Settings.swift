@@ -854,6 +854,8 @@ public struct PlaybackSettings: Codable, Hashable, Sendable {
     public var convertDolbyVisionProfile7 = true
     /// A progress bar on the loading screen.
     public var showLoadingProgress = true
+    /// X-Ray (cast, who's in the scene, scenes) opens beside the picture whenever playback is paused.
+    public var xrayWhenPaused = true
     public init() {}
 }
 

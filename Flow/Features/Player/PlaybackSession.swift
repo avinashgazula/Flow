@@ -51,6 +51,8 @@ final class PlaybackSession: Identifiable {
     var chapters: [PlayerChapter] = []
     /// The technical details panel (iPhone, iPad and Mac; Apple TV shows them in its info panel).
     var showsInfo = false
+    /// The X-Ray panel beside the picture (iPhone, iPad, Mac); Apple TV has it as a tab in its info panel.
+    var showsXRay = false
     @ObservationIgnored private var audibleGroup: AVMediaSelectionGroup?
     @ObservationIgnored private var chapterSegments: [SkipSegment] = []
     /// True when an MKV is being repackaged on the device for AVPlayer.

@@ -157,6 +157,23 @@ public struct TMDBClient: Sendable {
         return dto.episodes.map { $0.episode(showID: showID) }
     }
 
+    /// Who's in one episode: the regular cast first, then that episode's guest stars.
+    public func episodeCredits(showID: Int, season: Int, episode: Int) async throws -> [CastMember] {
+        struct DTO: Decodable {
+            var cast: [TMDBDetailDTO.CastDTO]?
+            var guestStars: [TMDBDetailDTO.CastDTO]?
+            enum CodingKeys: String, CodingKey { case cast, guestStars = "guest_stars" }
+        }
+        let dto = try await get(DTO.self, "/tv/\(showID)/season/\(season)/episode/\(episode)/credits")
+        let regulars = (dto.cast ?? []).sorted { ($0.order ?? 999) < ($1.order ?? 999) }
+        let guests = (dto.guestStars ?? []).sorted { ($0.order ?? 999) < ($1.order ?? 999) }
+        var seen = Set<Int>()
+        return (regulars + guests).enumerated().compactMap { index, member in
+            guard seen.insert(member.id).inserted else { return nil }
+            return CastMember(id: member.id, name: member.name, role: member.character ?? "", profilePath: member.profilePath, order: index)
+        }
+    }
+
     public func person(_ id: Int) async throws -> Person {
         let dto = try await get(TMDBPersonDTO.self, "/person/\(id)", ["append_to_response": "combined_credits"])
         return dto.person

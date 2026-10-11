@@ -182,6 +182,15 @@ struct PlaybackSettingsView: View {
             Section("Loading Screen") {
                 Toggle("Show Progress Bar", isOn: $model.settings.playback.showLoadingProgress)
             }
+            #if !os(tvOS)
+            Section {
+                Toggle("Show X-Ray When Paused", isOn: $model.settings.playback.xrayWhenPaused)
+            } header: {
+                Text("X-Ray")
+            } footer: {
+                Text("X-Ray shows the cast and crew, jumps to scenes, and names who's in the scene from the last few minutes of dialogue: from the subtitles on screen, or a file fetched for X-Ray from your subtitle services. Open it any time with the X-Ray button.")
+            }
+            #endif
             Section {
                 Toggle("Auto-Play Next Episode", isOn: $model.settings.playback.autoPlayNextEpisode)
                 Picker("Countdown", selection: $model.settings.playback.nextEpisodeCountdownSeconds) {

@@ -19,6 +19,16 @@ struct PlayerView: View {
             SubtitleLayer(session: session, settings: model.settings.subtitles)
             #endif
             #if !os(tvOS)
+            if session.showsXRay, session.phase == .playing {
+                XRayPanel(session: session) { session.showsXRay = false }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.top, Platform.isPhone ? 64 : 76)
+                    .padding(.bottom, Platform.isPhone ? 76 : 110)
+                    // Clear of the Dynamic Island, which sits on a landscape iPhone's leading edge.
+                    .padding(.leading, Platform.isPhone ? 64 : 20)
+                    .transition(.opacity.combined(with: .move(edge: .leading)))
+                    .zIndex(4)
+            }
             if session.showsInfo, session.phase == .playing {
                 PlaybackInfoPanel(session: session)
                     .onTapGesture { session.showsInfo = false }
@@ -69,6 +79,10 @@ struct PlayerView: View {
         .animation(Theme.Motion.gentle, value: session.notice)
         .animation(Theme.Motion.gentle, value: session.showsSuggestions)
         .animation(Theme.Motion.snappy, value: session.showsInfo)
+        .animation(Theme.Motion.gentle, value: session.showsXRay)
+        // One panel on the leading side at a time.
+        .onChange(of: session.showsXRay) { _, shows in if shows { session.showsInfo = false } }
+        .onChange(of: session.showsInfo) { _, shows in if shows { session.showsXRay = false } }
         .sheet(isPresented: $showSubtitles) {
             SubtitlePickerView(session: session).environment(model)
         }
@@ -114,7 +128,7 @@ struct PlayerView: View {
         #if os(iOS)
         IOSPlayerControls(session: session, showSubtitles: $showSubtitles)
         #elseif os(tvOS)
-        TVPlayerController(session: session, subtitleSettings: model.settings.subtitles) { showSubtitles = true }
+        TVPlayerController(session: session, model: model, subtitleSettings: model.settings.subtitles) { showSubtitles = true }
             .ignoresSafeArea()
         #else
         MacPlayerView(player: session.player)
@@ -156,6 +170,9 @@ struct PlayerView: View {
                         .flowGlass(Circle(), interactive: true)
                     }
                     MacPlayerMenu(session: session)
+                    CircleButton(systemImage: "person.crop.rectangle.stack") { session.showsXRay.toggle() }
+                        .accessibilityLabel("X-Ray")
+                        .help("X-Ray")
                     CircleButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle") { session.showsInfo.toggle() }
                     CircleButton(systemImage: "magnifyingglass") { showSubtitles = true }
                     CircleButton(systemImage: "xmark") { session.stop() }
@@ -776,6 +793,8 @@ struct IOSPlayerControls: View {
     @State private var fill = false
     @State private var pip: AVPictureInPictureController?
     @State private var isPlaying = true
+    /// X-Ray opened itself on pause, so it closes itself on play.
+    @State private var xrayFromPause = false
     @State private var audioOptions: [AVMediaSelectionOption] = []
     @State private var legibleOptions: [AVMediaSelectionOption] = []
     @State private var audioGroup: AVMediaSelectionGroup?
@@ -872,6 +891,16 @@ struct IOSPlayerControls: View {
         .onReceive(NotificationCenter.default.publisher(for: AVPlayer.rateDidChangeNotification, object: session.player)) { _ in
             isPlaying = session.player.rate > 0
         }
+        .onChange(of: isPlaying) { _, playing in
+            if playing {
+                if xrayFromPause { session.showsXRay = false }
+                xrayFromPause = false
+            } else if model.settings.playback.xrayWhenPaused, session.phase == .playing, scrubbing == nil,
+                      !session.showsXRay, !session.showsInfo, !ScreenshotTour.isRequested {
+                xrayFromPause = true
+                session.showsXRay = true
+            }
+        }
     }
 
     private var controls: some View {
@@ -903,6 +932,11 @@ struct IOSPlayerControls: View {
                             RoutePicker()
                                 .frame(width: 40, height: 40)
                                 .flowGlass(Circle())
+                            CircleButton(systemImage: "person.crop.rectangle.stack", size: 40) {
+                                xrayFromPause = false
+                                session.showsXRay.toggle()
+                            }
+                            .accessibilityLabel("X-Ray")
                             CircleButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle", size: 40) { session.showsInfo.toggle() }
                                 .accessibilityLabel("Playback Info")
                             PlayerOptionsButtons(showsEpisodes: hasEpisodes, episodes: toggleEpisodes, options: toggleOptions)
@@ -925,9 +959,9 @@ struct IOSPlayerControls: View {
                         }
                     }
                 }
-                // A landscape iPhone has no room for both: while the info card is up it takes the middle.
-                .opacity(Platform.isPhone && session.showsInfo ? 0 : 1)
-                .allowsHitTesting(!(Platform.isPhone && session.showsInfo))
+                // A landscape iPhone has no room for both: with a panel open on the left, the buttons move right.
+                .offset(x: Platform.isPhone && (session.showsInfo || session.showsXRay) ? 170 : 0)
+                .animation(Theme.Motion.gentle, value: session.showsInfo || session.showsXRay)
 
                 Spacer()
 

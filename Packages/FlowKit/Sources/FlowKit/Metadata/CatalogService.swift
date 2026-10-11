@@ -120,6 +120,13 @@ public actor CatalogService {
         return results.compactMap { $0 }
     }
 
+    public func episodeCredits(showID: Int, season: Int, episode: Int) async throws -> [CastMember] {
+        let client = tmdb
+        return try await cache.cached("episode-credits:\(showID):\(season):\(episode):\(lang)", maxAge: detailMaxAge) {
+            try await client.episodeCredits(showID: showID, season: season, episode: episode)
+        }
+    }
+
     public func details(_ type: MediaType, id: Int) async throws -> MediaDetail {
         let client = tmdb
         return try await cache.cached("detail:\(type.rawValue):\(id):\(lang)", maxAge: detailMaxAge) {

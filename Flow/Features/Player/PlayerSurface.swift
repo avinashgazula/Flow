@@ -47,6 +47,7 @@ struct RoutePicker: UIViewRepresentable {
 /// Flow adds skip buttons as contextual actions and a subtitle-search menu item.
 struct TVPlayerController: UIViewControllerRepresentable {
     let session: PlaybackSession
+    let model: AppModel
     let subtitleSettings: SubtitleSettings
     var onSubtitleSearch: () -> Void
 
@@ -72,7 +73,12 @@ struct TVPlayerController: UIViewControllerRepresentable {
         details.title = "Details"
         details.view.backgroundColor = .clear
         details.preferredContentSize = CGSize(width: 0, height: 360)
-        controller.customInfoViewControllers = [details]
+        // X-Ray first: the cast, with whoever the dialogue names leading.
+        let xray = UIHostingController(rootView: XRayTVPanel(session: session, model: model))
+        xray.title = "X-Ray"
+        xray.view.backgroundColor = .clear
+        xray.preferredContentSize = CGSize(width: 0, height: 400)
+        controller.customInfoViewControllers = [xray, details]
         return controller
     }
 

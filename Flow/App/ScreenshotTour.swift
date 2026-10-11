@@ -75,6 +75,7 @@ enum ScreenshotTour {
                 },
                 Step(name: "player-advanced") { m in m.activePlayback?.tourPanel = "advanced" },
                 Step(name: "player-panels-closed") { m in m.activePlayback?.tourPanel = nil },
+                Step(name: "player-xray") { m in m.activePlayback?.showsXRay = true },
             ], at: index)
         }
         #endif
