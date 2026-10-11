@@ -55,6 +55,12 @@ final class PlaybackSession: Identifiable {
     var showsXRay = false
     /// Shazam for the song that's playing, and the songs found so far.
     let songs = SongRecognizer()
+    /// Several episodes have played back to back untouched: asks before starting another.
+    private(set) var asksStillWatching = false
+    @ObservationIgnored private var unattendedEpisodes = 0
+    @ObservationIgnored private var replayTask: Task<Void, Never>?
+    /// True while "What did they say?" has subtitles on, so the choice isn't remembered as the viewer's.
+    @ObservationIgnored private var replayingWithSubtitles = false
     @ObservationIgnored private var audibleGroup: AVMediaSelectionGroup?
     @ObservationIgnored private var chapterSegments: [SkipSegment] = []
     /// True when an MKV is being repackaged on the device for AVPlayer.
@@ -411,7 +417,7 @@ final class PlaybackSession: Identifiable {
     /// Track changes from any menu (Flow's, or the system player's on Apple TV and Mac). Ignores
     /// the automatic choices AVPlayer makes while the stream starts.
     private func mediaSelectionChanged(_ item: AVPlayerItem) {
-        guard didStart, let readyAt, Date().timeIntervalSince(readyAt) > 3, item === player.currentItem else { return }
+        guard didStart, let readyAt, Date().timeIntervalSince(readyAt) > 3, item === player.currentItem, !replayingWithSubtitles else { return }
         Task { [weak self] in
             let audible = try? await item.asset.loadMediaSelectionGroup(for: .audible)
             let legible = try? await item.asset.loadMediaSelectionGroup(for: .legible)
@@ -506,9 +512,18 @@ final class PlaybackSession: Identifiable {
         guard case .minutes(let minutes) = sleepTimer else { return }
         show(notice: "Flow will pause in \(minutes) minutes.")
         sleepTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(minutes) * 60 * 1_000_000_000)
+            // The last half minute fades out rather than cutting off mid-line.
+            let fade = 30.0
+            try? await Task.sleep(nanoseconds: UInt64((Double(minutes) * 60 - fade) * 1_000_000_000))
             guard !Task.isCancelled, let self else { return }
+            let volume = self.player.volume
+            for step in 1...30 {
+                try? await Task.sleep(nanoseconds: UInt64(fade / 30 * 1_000_000_000))
+                guard !Task.isCancelled else { self.player.volume = volume; return }
+                self.player.volume = volume * Float(30 - step) / 30
+            }
             self.player.pause()
+            self.player.volume = volume
             self.sleepTimer = nil
             self.show(notice: "Paused by the sleep timer.")
         }
@@ -639,6 +654,7 @@ final class PlaybackSession: Identifiable {
     }
 
     func seek(to seconds: Double) {
+        noteInteraction()
         player.seek(to: CMTime(seconds: max(0, seconds), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
@@ -882,6 +898,8 @@ final class PlaybackSession: Identifiable {
         case .paused:
             // Stopping pauses first and then reports its own stop; a pause report would only race it.
             guard didStart, phase == .playing, !isStopping else { return }
+            // Someone's there.
+            unattendedEpisodes = 0
             let request = self.request, percent = self.percent
             Task {
                 try? await model.tracker.scrobble(.pause, request: request, percent: percent)
@@ -1005,7 +1023,86 @@ final class PlaybackSession: Identifiable {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
             guard let self, !Task.isCancelled else { return }
-            await self.playUpNext()
+            await self.advanceAutomatically()
+        }
+    }
+
+    /// Moves on to the next episode by itself, unless enough have played untouched that someone may have nodded off.
+    private func advanceAutomatically() async {
+        let limit = model?.settings.playback.stillWatchingAfterEpisodes ?? 0
+        if limit > 0, unattendedEpisodes >= limit {
+            player.pause()
+            upNextCountdown = nil
+            asksStillWatching = true
+            return
+        }
+        unattendedEpisodes += 1
+        await playUpNext()
+    }
+
+    /// "Continue Watching" on the still-watching question.
+    func confirmStillWatching() {
+        asksStillWatching = false
+        unattendedEpisodes = 0
+        Task { await playUpNext() }
+    }
+
+    /// Anything the viewer does: a tap, a skip, a seek. Resets the count of episodes played untouched.
+    func noteInteraction() {
+        unattendedEpisodes = 0
+    }
+
+    // MARK: What did they say?
+
+    /// "What did they say?": ten seconds back, with subtitles on until the moment it was asked.
+    func replayWithSubtitles() {
+        noteInteraction()
+        let until = currentTime
+        seek(to: until - 10)
+        guard subtitle == nil, selectedBitmapTrack == nil, let item = player.currentItem else { return }
+        if let group = legibleGroup, item.currentMediaSelection.selectedMediaOption(in: group) == nil {
+            let preferred = model.map { TrackSelection.subtitleLanguages($0.settings.subtitles) } ?? []
+            let options = group.options.filter { !$0.hasMediaCharacteristic(.containsOnlyForcedSubtitles) }
+            let pick = options.first { option in
+                preferred.contains { option.extendedLanguageTag?.hasPrefix(LanguageName.bcp47($0)) == true }
+            } ?? options.first
+            guard let pick else {
+                show(notice: "This video has no subtitles to show.")
+                return
+            }
+            replayingWithSubtitles = true
+            item.select(pick, in: group)
+            revertReplay(at: until) { [weak self] in
+                guard let self, self.player.currentItem === item,
+                      item.currentMediaSelection.selectedMediaOption(in: group) == pick, group.allowsEmptySelection else { return }
+                item.select(nil, in: group)
+            }
+        } else if let first = bitmapTracks.first {
+            showBitmapSubtitle(first.id)
+            revertReplay(at: until) { [weak self] in
+                guard let self, self.selectedBitmapTrack == first.id else { return }
+                self.showBitmapSubtitle(nil)
+            }
+        } else if legibleGroup == nil {
+            show(notice: "This video has no subtitles to show.")
+        }
+    }
+
+    /// Turns the replay's subtitles off again once playback is a moment past where it was asked.
+    private func revertReplay(at time: Double, revert: @escaping () -> Void) {
+        replayTask?.cancel()
+        replayTask = Task { [weak self] in
+            // Twenty seconds at most, in case the viewer paused or jumped elsewhere.
+            for _ in 0..<80 {
+                try? await Task.sleep(nanoseconds: 250_000_000)
+                guard let self, !Task.isCancelled else { return }
+                if self.currentTime >= time + 1 { break }
+            }
+            guard let self, !Task.isCancelled else { return }
+            revert()
+            // The selection change is reported a beat later; let it pass before remembering again.
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            self.replayingWithSubtitles = false
         }
     }
 
@@ -1321,7 +1418,7 @@ final class PlaybackSession: Identifiable {
             return
         }
         if upNext != nil, model?.settings.playback.autoPlayNextEpisode == true {
-            await playUpNext()
+            await advanceAutomatically()
         } else if upNext == nil, !suggestions.isEmpty {
             // End on "Because You Watched" rather than dropping back to where the film was started.
             await finishCurrent(completed: true)
@@ -1450,10 +1547,12 @@ final class PlaybackSession: Identifiable {
 
     func togglePlay() {
         guard phase != .finished else { return }
+        noteInteraction()
         if isPlaying { player.pause() } else { player.play() }
     }
 
     func seek(by seconds: Double) {
+        noteInteraction()
         // A skip tapped again before the first one lands starts from where that was heading.
         let base = pendingSeek.flatMap { Date().timeIntervalSince($0.at) < 2 ? $0.target : nil } ?? currentTime
         let target = max(0, min(duration > 0 ? duration : .greatestFiniteMagnitude, base + seconds))

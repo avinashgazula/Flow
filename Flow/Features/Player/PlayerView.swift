@@ -50,6 +50,11 @@ struct PlayerView: View {
                     .transition(.opacity)
             }
             #endif
+            if session.asksStillWatching {
+                StillWatchingPrompt(session: session)
+                    .transition(.opacity)
+                    .zIndex(7)
+            }
             SongCard(recognizer: session.songs)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 .padding(.top, Platform.isTV ? 60 : (Platform.isPhone ? 64 : 76))
@@ -89,6 +94,7 @@ struct PlayerView: View {
         .animation(Theme.Motion.gentle, value: session.showsSuggestions)
         .animation(Theme.Motion.snappy, value: session.showsInfo)
         .animation(Theme.Motion.gentle, value: session.showsXRay)
+        .animation(Theme.Motion.gentle, value: session.asksStillWatching)
         // One panel on the leading side at a time.
         .onChange(of: session.showsXRay) { _, shows in if shows { session.showsInfo = false } }
         .onChange(of: session.showsInfo) { _, shows in if shows { session.showsXRay = false } }
@@ -804,6 +810,9 @@ struct IOSPlayerControls: View {
     @State private var isPlaying = true
     /// X-Ray opened itself on pause, so it closes itself on play.
     @State private var xrayFromPause = false
+    /// A finger held on the picture: double speed until it lifts.
+    @State private var boosting = false
+    @State private var heldBack = false
     @State private var audioOptions: [AVMediaSelectionOption] = []
     @State private var legibleOptions: [AVMediaSelectionOption] = []
     @State private var audioGroup: AVMediaSelectionGroup?
@@ -841,9 +850,32 @@ struct IOSPlayerControls: View {
                             withAnimation(Theme.Motion.snappy) { seekFlash = SeekFlash(forward: forward, seconds: abs(Int(step))) }
                         }
                         .onTapGesture { toggle() }
+                        // Hold for double speed, as long as the finger stays down.
+                        .onLongPressGesture(minimumDuration: 0.45, maximumDistance: 40) {
+                            guard session.player.rate > 0 else { return }
+                            session.noteInteraction()
+                            boosting = true
+                            session.player.rate = 2
+                        } onPressingChanged: { pressing in
+                            guard !pressing, boosting else { return }
+                            boosting = false
+                            session.player.rate = Float(speed)
+                        }
                 }
                 .ignoresSafeArea()
             }
+            .overlay(alignment: .top) {
+                if boosting {
+                    Label("2×", systemImage: "forward.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .flowGlass(Capsule())
+                        .padding(.top, 20)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .accessibilityLabel("Playing at double speed")
+                }
+            }
+            .animation(Theme.Motion.snappy, value: boosting)
             .gesture(MagnifyGesture().onEnded { value in fill = value.magnification > 1 })
 
             if let flash = seekFlash {
@@ -960,8 +992,17 @@ struct IOSPlayerControls: View {
                 GlassGroup(spacing: 28) {
                     HStack(spacing: 40) {
                         transportButton("gobackward.\(model.settings.playback.seekBackwardSeconds)", size: 60) {
+                            // The lift that ends a hold also reads as a tap: the replay has already gone back.
+                            if heldBack { heldBack = false; return }
                             seek(by: -Double(model.settings.playback.seekBackwardSeconds))
                         }
+                        // Held: "What did they say?" — back ten seconds with subtitles on.
+                        .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in
+                            heldBack = true
+                            session.replayWithSubtitles()
+                            scheduleHide()
+                        })
+                        .accessibilityAction(named: "What Did They Say?") { session.replayWithSubtitles() }
                         transportButton(isPlaying ? "pause.fill" : "play.fill", size: 84) { togglePlay() }
                         transportButton("goforward.\(model.settings.playback.seekForwardSeconds)", size: 60) {
                             seek(by: Double(model.settings.playback.seekForwardSeconds))
@@ -1059,6 +1100,7 @@ struct IOSPlayerControls: View {
     }
 
     private func toggle() {
+        session.noteInteraction()
         visible.toggle()
         if visible { scheduleHide() }
     }
@@ -1286,5 +1328,45 @@ struct BitmapSubtitleView: View {
         let scale = min(container.width / video.width, container.height / video.height)
         let size = CGSize(width: video.width * scale, height: video.height * scale)
         return CGRect(x: (container.width - size.width) / 2, y: (container.height - size.height) / 2, width: size.width, height: size.height)
+    }
+}
+
+/// After several episodes in a row with nobody touching anything: carry on, or call it a night.
+struct StillWatchingPrompt: View {
+    let session: PlaybackSession
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.72).ignoresSafeArea()
+            VStack(spacing: Theme.Space.m) {
+                Image(systemName: "moon.zzz.fill")
+                    .font(.system(size: 34 * Theme.scale, weight: .semibold))
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                Text("Are You Still Watching?").font(Theme.Typeface.title)
+                if let next = session.upNext?.episode {
+                    Text("Next: \(next.code) · \(next.title)")
+                        .font(Theme.Typeface.body)
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                        .lineLimit(1)
+                }
+                #if os(tvOS)
+                // Apple TV answers from the player's own button (Continue Watching), or Menu to stop.
+                Text("Press Menu to stop.").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary)
+                #else
+                VStack(spacing: Theme.Space.s) {
+                    Button { session.confirmStillWatching() } label: {
+                        Label("Continue Watching", systemImage: "play.fill").frame(minWidth: 220)
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
+                    Button("Stop") { session.stop() }.buttonStyle(GlassButtonStyle())
+                }
+                .padding(.top, Theme.Space.s)
+                #endif
+            }
+            .padding(Theme.Space.xl)
+        }
+        #if os(tvOS)
+        .allowsHitTesting(false)
+        #endif
     }
 }

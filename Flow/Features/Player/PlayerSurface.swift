@@ -84,7 +84,9 @@ struct TVPlayerController: UIViewControllerRepresentable {
 
     func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
         context.coordinator.subtitleHost?.rootView = SubtitleLayer(session: session, settings: subtitleSettings)
-        if let segment = session.activeSegment {
+        if session.asksStillWatching {
+            controller.contextualActions = [UIAction(title: "Continue Watching", image: UIImage(systemName: "play.fill")) { _ in session.confirmStillWatching() }]
+        } else if let segment = session.activeSegment {
             controller.contextualActions = [UIAction(title: segment.kind.buttonTitle, image: UIImage(systemName: "forward.end.fill")) { _ in session.skip(segment) }]
         } else if session.showsSuggestions, session.phase == .playing {
             controller.contextualActions = [UIAction(title: "Because You Watched", image: UIImage(systemName: "rectangle.stack")) { _ in session.endWithSuggestions() }]
@@ -106,6 +108,7 @@ struct TVPlayerController: UIViewControllerRepresentable {
             items.append(UIMenu(title: "Disc Subtitles", image: UIImage(systemName: "captions.bubble"), options: .singleSelection, children: choices))
         }
         items.append(search)
+        items.append(UIAction(title: "What Did They Say?", image: UIImage(systemName: "captions.bubble")) { _ in session.replayWithSubtitles() })
         items.append(UIAction(title: session.songs.isListening ? "Listening…" : "Identify Song", image: UIImage(systemName: "shazam.logo"),
                               attributes: session.songs.isListening ? .disabled : []) { _ in session.songs.identify(session) })
         if session.canAutoSync {

@@ -856,6 +856,9 @@ public struct PlaybackSettings: Codable, Hashable, Sendable {
     public var showLoadingProgress = true
     /// X-Ray (cast, who's in the scene, scenes) opens beside the picture whenever playback is paused.
     public var xrayWhenPaused = true
+    /// After this many episodes play one after another with nobody touching anything, Flow asks
+    /// before starting the next. Zero never asks.
+    public var stillWatchingAfterEpisodes = 3
     public init() {}
 }
 

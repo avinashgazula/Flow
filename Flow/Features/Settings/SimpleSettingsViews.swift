@@ -197,6 +197,10 @@ struct PlaybackSettingsView: View {
                     ForEach([5, 10, 15, 20, 30], id: \.self) { Text("\($0) seconds").tag($0) }
                 }
                 Toggle("Wait for the Episode to End", isOn: $model.settings.playback.upNextWaitsForEnd)
+                Picker("Ask If Still Watching", selection: $model.settings.playback.stillWatchingAfterEpisodes) {
+                    Text("Never").tag(0)
+                    ForEach([2, 3, 4, 5], id: \.self) { Text("After \($0) Episodes").tag($0) }
+                }
                 Toggle("Reuse Last Source For Show", isOn: $model.settings.playback.rememberLastSourcePerShow)
             } header: {
                 Text("Episodes")

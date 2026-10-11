@@ -35,6 +35,8 @@ struct MacPlayerMenu: View {
                     Button { setSpeed(rate) } label: { checked(rate == 1 ? "Normal" : String(format: "%gx", rate), speed == rate) }
                 }
             }
+            Button("What Did They Say?") { session.replayWithSubtitles() }
+                .keyboardShortcut("r", modifiers: [.command])
             Button(session.songs.isListening ? "Listening…" : "Identify Song") { session.songs.identify(session) }
                 .disabled(session.songs.isListening)
                 .keyboardShortcut("i", modifiers: [.command, .shift])
