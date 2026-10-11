@@ -56,12 +56,23 @@ struct SourcePickerView: View {
                                     .font(Theme.Typeface.micro).kerning(1.2)
                                     .foregroundStyle(Theme.Palette.textTertiary)
                             }
-                            ForEach(sources) { source in
-                                Button { choose(source) } label: {
-                                    SourceRow(source: source, appearance: model.settings.sources.appearance)
+                            ForEach(Self.byProvider(sources), id: \.first?.providerID) { group in
+                                // The provider's name once, over its sources, rather than as every row's title.
+                                if providerHeaders, let first = group.first {
+                                    HStack(spacing: 6) {
+                                        Text(first.providerName).font(.system(.subheadline, weight: .semibold))
+                                        Text("\(group.count)").font(.system(.subheadline).monospacedDigit()).foregroundStyle(Theme.Palette.textTertiary)
+                                    }
+                                    .padding(.top, Theme.Space.xs)
+                                    .accessibilityElement(children: .combine)
                                 }
-                                .buttonStyle(CardButtonStyle())
-                                .disabled(!source.isPlayable && !isExternal(source))
+                                ForEach(group) { source in
+                                    Button { choose(source) } label: {
+                                        SourceRow(source: source, appearance: model.settings.sources.appearance, providerShownAbove: providerHeaders)
+                                    }
+                                    .buttonStyle(CardButtonStyle())
+                                    .disabled(!source.isPlayable && !isExternal(source))
+                                }
                             }
                         }
                     }
@@ -134,6 +145,18 @@ struct SourcePickerView: View {
         return false
     }
 
+    /// With rows titled by provider (the default), the provider heads its group instead.
+    private var providerHeaders: Bool { model.settings.sources.appearance.titleDisplay == .provider }
+
+    /// Consecutive runs of one provider's sources, in ranked order.
+    static func byProvider(_ sources: [StreamSource]) -> [[StreamSource]] {
+        var groups: [[StreamSource]] = []
+        for source in sources {
+            if groups.last?.first?.providerID == source.providerID { groups[groups.count - 1].append(source) } else { groups.append([source]) }
+        }
+        return groups
+    }
+
     private func providerName(_ id: String) -> String {
         model.sourceProviders().first { $0.providerID == id }?.providerName ?? id
     }
@@ -187,6 +210,8 @@ struct SourcePickerView: View {
 struct SourceRow: View {
     let source: StreamSource
     let appearance: SourceAppearance
+    /// The provider's name heads the group, so the row leads with what tells its sources apart.
+    var providerShownAbove = false
 
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous) }
 
@@ -244,6 +269,10 @@ struct SourceRow: View {
 
     private var headline: String {
         switch appearance.titleDisplay {
+        case .provider where providerShownAbove:
+            let t = source.traits
+            let parts = [t.resolution == .unknown ? nil : t.resolution.label, t.quality == .unknown ? nil : t.quality.rawValue].compactMap { $0 }
+            return parts.isEmpty ? (source.filename ?? source.providerName) : parts.joined(separator: " ")
         case .provider: return source.providerName
         case .filename: return source.filename ?? source.providerName
         case .addonName: return source.title.components(separatedBy: "\n").first ?? source.providerName
@@ -259,7 +288,9 @@ struct SourceRow: View {
 
     private var parsedSummary: some View {
         let t = source.traits
-        let parts = [t.quality == .unknown ? nil : t.quality.rawValue, t.languages.isEmpty ? nil : t.languages.joined(separator: " · "), t.releaseGroup?.uppercased()].compactMap { $0 }
+        // When the headline already names the quality, the summary doesn't repeat it.
+        let quality = providerShownAbove && appearance.titleDisplay == .provider ? nil : (t.quality == .unknown ? nil : t.quality.rawValue)
+        let parts = [quality, t.languages.isEmpty ? nil : t.languages.joined(separator: " · "), t.releaseGroup?.uppercased()].compactMap { $0 }
         return VStack(alignment: .leading, spacing: 2) {
             if !parts.isEmpty {
                 Text(parts.joined(separator: " · ")).font(.system(.footnote)).foregroundStyle(Theme.Palette.textSecondary)
