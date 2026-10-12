@@ -210,9 +210,12 @@ struct DetailView: View {
                                 TitleShareLink(item: current) { Label("Share", systemImage: "square.and.arrow.up") }
                                 #endif
                             } label: {
-                                Label("More", systemImage: "ellipsis").labelStyle(DetailActionLabelStyle(active: false))
+                                Label("More", systemImage: "ellipsis").labelStyle(DetailActionLabelStyle(active: false, glass: false))
                             }
                             .buttonStyle(DetailActionButtonStyle())
+                            // iOS 27 stretches glass inside a menu's label over the whole label, title and all,
+                            // so the circle sits behind the menu instead.
+                            .background(alignment: .top) { DetailActionLabelStyle.circle }
                         }
                     }
                     #if !os(tvOS)
@@ -675,9 +678,18 @@ struct WhereToWatch: View {
 /// A detail page action: the symbol in a glass circle, its name in small type below.
 struct DetailActionLabelStyle: LabelStyle {
     let active: Bool
+    var glass = true
 
     func makeBody(configuration: Configuration) -> some View {
-        DetailActionLabel(icon: configuration.icon, title: configuration.title, active: active)
+        DetailActionLabel(icon: configuration.icon, title: configuration.title, active: active, glass: glass)
+    }
+
+    /// The glass circle on its own, for a label drawn with `glass: false`.
+    static var circle: some View {
+        Color.clear
+            .frame(width: 50 * Theme.scale, height: 50 * Theme.scale)
+            .flowGlass(Circle(), interactive: true)
+            .allowsHitTesting(false)
     }
 }
 
@@ -685,6 +697,7 @@ private struct DetailActionLabel<Icon: View, Title: View>: View {
     let icon: Icon
     let title: Title
     let active: Bool
+    let glass: Bool
     /// Apple TV shows focus the system way: the circle turns white.
     @Environment(\.isFocused) private var focused
 
@@ -696,7 +709,7 @@ private struct DetailActionLabel<Icon: View, Title: View>: View {
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: 50 * Theme.scale, height: 50 * Theme.scale)
                 .background { if focused { Circle().fill(.white) } }
-                .flowGlass(Circle(), interactive: true)
+                .modifier(ActionGlass(enabled: glass))
             title
                 .font(.system(size: 11 * Theme.scale, weight: .semibold))
                 .foregroundStyle(active || focused ? .white : Theme.Palette.textSecondary)
@@ -705,6 +718,14 @@ private struct DetailActionLabel<Icon: View, Title: View>: View {
         }
         .frame(minWidth: 64 * Theme.scale)
         .contentShape(Rectangle())
+    }
+}
+
+private struct ActionGlass: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled { content.flowGlass(Circle(), interactive: true) } else { content }
     }
 }
 
