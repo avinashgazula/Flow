@@ -103,22 +103,19 @@ struct FlowApp: App {
 extension AppModel {
     /// flow://setup?d=… imports a shared setup; flow://title/movie/603 opens a title.
     func handle(url: URL) {
-        guard url.scheme == SetupShare.urlScheme else { return }
-        if let key = SystemIntegration.key(from: url) {
-            if url.host == "play" { Task { await playTitle(key) } } else { open(key) }
-            return
-        }
-        switch url.host {
-        case "continue": Task { await resumeLatest() }
-        case "upcoming":
+        switch FlowLink(url: url) {
+        case .title(let key): open(key)
+        case .play(let key): Task { await playTitle(key) }
+        case .resume: Task { await resumeLatest() }
+        case .upcoming:
             activePlayback?.stop()
             selectedTab = .library
             paths[.library] = [.calendar]
-        case "search":
+        case .search(let query):
             selectedTab = .search
-            searchText = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "q" }?.value ?? ""
-        default:
-            pendingImport = url.absoluteString
+            searchText = query
+        case .setup(let link): pendingImport = link
+        case nil: break
         }
     }
 

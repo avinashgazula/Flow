@@ -20,13 +20,6 @@ enum SystemIntegration {
         URL(string: "\(SetupShare.urlScheme)://play/\(key.type.rawValue)/\(key.tmdbID)")!
     }
 
-    static func key(from url: URL) -> MediaKey? {
-        guard url.scheme == SetupShare.urlScheme, url.host == "title" || url.host == "play" else { return nil }
-        let parts = url.pathComponents.filter { $0 != "/" }
-        guard parts.count == 2, let type = MediaType(rawValue: parts[0]), let id = Int(parts[1]) else { return nil }
-        return MediaKey(type: type, tmdbID: id)
-    }
-
     /// Indexes the watchlist and Continue Watching so they're findable from Spotlight.
     static func index(_ items: [MediaItem]) {
         #if canImport(CoreSpotlight) && !os(tvOS)
@@ -62,7 +55,10 @@ extension AppModel {
     /// Opens a title's detail page on the Home stack.
     func open(_ key: MediaKey) {
         Task {
-            guard let catalog, let item = try? await catalog.item(key) else { return }
+            guard let catalog, let item = try? await catalog.item(key) else {
+                showToast("Couldn't open that title. Check your connection and try again.")
+                return
+            }
             activePlayback?.stop()
             sourcePickerRequest = nil
             selectedTab = .home
