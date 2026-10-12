@@ -20,6 +20,8 @@ struct DetailView: View {
     @State private var reviews: [Review] = []
     /// The logo has scrolled up under the navigation bar, so the bar shows the title instead.
     @State private var titleCollapsed = false
+    /// Where the navigation bar ends, so the title collapses once the logo has passed beneath it.
+    @State private var barBottom: CGFloat = 100
 
     private var general: GeneralSettings { model.settings.general }
     private var current: MediaItem { detail?.item ?? item }
@@ -47,6 +49,7 @@ struct DetailView: View {
         .background(AmbientBackground(url: current.smallBackdropURL ?? current.tmdbPosterURL))
         #if os(iOS)
         .ignoresSafeArea(edges: .top)
+        .background { Color.clear.onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { if $0 > 0 { barBottom = $0 } } }
         #elseif os(tvOS)
         .ignoresSafeArea(edges: [.top, .horizontal])
         #endif
@@ -92,7 +95,7 @@ struct DetailView: View {
                         alignment: wide ? .leading : .center)
                 .frame(maxWidth: wide ? 520 : 330, alignment: wide ? .leading : .center)
                 #if os(iOS)
-                .onGeometryChange(for: Bool.self) { $0.frame(in: .global).maxY < 100 } action: { collapsed in
+                .onGeometryChange(for: Bool.self) { [barBottom] in $0.size.height > 0 && $0.frame(in: .global).maxY < barBottom } action: { collapsed in
                     withAnimation(Theme.Motion.fade) { titleCollapsed = collapsed }
                 }
                 #endif

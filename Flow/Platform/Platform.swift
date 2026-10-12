@@ -323,11 +323,31 @@ extension View {
                         .accessibilityHidden(!collapsed)
                 }
             }
-            .toolbarBackground(collapsed ? .visible : .hidden, for: .navigationBar)
+            .collapsingBarBackground(collapsed)
         #else
         self
         #endif
     }
+
+    #if os(iOS)
+    /// On iOS 26 and later the bar has no background of its own; the system's scroll edge effect
+    /// blurs whatever runs under it, and pages that start under the bar show it even before
+    /// scrolling. Hold it back until the title collapses, and keep it soft like Apple's own apps.
+    @ViewBuilder
+    private func collapsingBarBackground(_ collapsed: Bool) -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            self.toolbarBackground(.hidden, for: .navigationBar)
+                .scrollEdgeEffectStyle(.soft, for: .top)
+                .scrollEdgeEffectHidden(!collapsed, for: .top)
+        } else {
+            self.toolbarBackground(collapsed ? .visible : .hidden, for: .navigationBar)
+        }
+        #else
+        self.toolbarBackground(collapsed ? .visible : .hidden, for: .navigationBar)
+        #endif
+    }
+    #endif
 
     /// Hides the navigation bar background so content can run under it (iOS only).
     @ViewBuilder
