@@ -635,7 +635,20 @@ struct MetadataLine: View {
     var showRating = true
 
     var body: some View {
-        HStack(spacing: 7) {
+        // Two genres when there's room, then one, then none: never "Science Fiction,…".
+        ViewThatFits(in: .horizontal) {
+            row(genres: 2)
+            row(genres: 1)
+            row(genres: 0)
+        }
+        .font(.system(.footnote, weight: .medium))
+        .foregroundStyle(.white.opacity(0.85))
+        .lineLimit(1)
+    }
+
+    private func row(genres count: Int) -> some View {
+        let genres = item.genres.prefix(count).map(\.name).joined(separator: ", ")
+        return HStack(spacing: 7) {
             if showRating, let vote = item.voteAverage, vote > 0 {
                 HStack(spacing: 3) {
                     Image(systemName: "star.fill").foregroundStyle(Theme.Palette.gold).imageScale(.small)
@@ -645,7 +658,7 @@ struct MetadataLine: View {
             }
             if let year = item.year { Text(String(year)); dot }
             if let runtime = item.runtimeMinutes, runtime > 0, !showType { Text(TimeFormat.runtime(runtime)); dot }
-            if !item.genreLine.isEmpty { Text(item.genreLine).lineLimit(1) }
+            if !genres.isEmpty { Text(genres) }
             if let certification, !certification.isEmpty {
                 Text(certification)
                     .font(.system(size: 11 * Theme.scale, weight: .bold))
@@ -659,9 +672,8 @@ struct MetadataLine: View {
                     .background(.white.opacity(0.14), in: Capsule())
             }
         }
-        .font(.system(.footnote, weight: .medium))
-        .foregroundStyle(.white.opacity(0.85))
-        .lineLimit(1)
+        // Measured at full width so ViewThatFits can tell; the last choice may still truncate if it must.
+        .fixedSize(horizontal: count > 0, vertical: false)
     }
 
     private var dot: some View { Text("·").foregroundStyle(Theme.Palette.textTertiary) }
