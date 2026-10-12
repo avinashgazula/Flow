@@ -588,7 +588,10 @@ private struct HeroPage: View {
             LinearGradient(stops: [.init(color: .clear, location: 0.35), .init(color: .black.opacity(0.55), location: 0.7), .init(color: .black, location: 1)],
                            startPoint: .top, endPoint: .bottom)
             if !Platform.isPhone {
-                LinearGradient(colors: [.black.opacity(0.75), .black.opacity(0.2), .clear], startPoint: .leading, endPoint: .trailing)
+                // Reaches across the text column, so the overview stays readable over bright skies.
+                LinearGradient(stops: [.init(color: .black.opacity(0.75), location: 0), .init(color: .black.opacity(0.45), location: 0.4),
+                                       .init(color: .clear, location: 0.75)],
+                               startPoint: .leading, endPoint: .trailing)
             }
             if !card {
                 // Keeps the status bar legible over bright posters.

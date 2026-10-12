@@ -79,7 +79,10 @@ struct DetailView: View {
                         .offset(y: y < 0 ? -y * 0.4 : 0)
                 }
             if wide {
-                LinearGradient(colors: [.black.opacity(0.7), .clear], startPoint: .leading, endPoint: .center)
+                // Reaches across the text column, so ratings stay readable over bright skies.
+                LinearGradient(stops: [.init(color: .black.opacity(0.75), location: 0), .init(color: .black.opacity(0.45), location: 0.4),
+                                       .init(color: .clear, location: 0.75)],
+                               startPoint: .leading, endPoint: .trailing)
                     .allowsHitTesting(false)
             }
             headerContent
