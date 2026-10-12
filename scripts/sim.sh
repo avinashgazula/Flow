@@ -6,7 +6,7 @@
 #   scripts/sim.sh run  [ios|ipad|tvos] [--real] [-- extra launch args]
 #                                             build, install, launch (sample data unless --real)
 #   scripts/sim.sh launch [platform] [--real] relaunch without building
-#   scripts/sim.sh shot <name> [platform]     screenshot to shots/local/<platform>/<name>.png
+#   scripts/sim.sh shot [platform] <name>     screenshot to shots/local/<platform>/<name>.png
 #   scripts/sim.sh open <url> [platform]      open a flow:// link (flow://title/movie/693134, flow://search?q=dune)
 #   scripts/sim.sh logs [platform]            stream the app's log
 #   scripts/sim.sh reset [platform]           uninstall, for a fresh first launch
@@ -25,8 +25,10 @@ case "${1:-}" in ios|ipad|tvos|macos) platform=$1; shift ;; esac
 
 real=false
 extra=()
+# The platform can also come later (`shot home ipad`, `open <url> ipad`), but not after `--`.
 while [ $# -gt 0 ]; do
   case "$1" in
+    ios|ipad|tvos|macos) platform=$1 ;;
     --real) real=true ;;
     --) shift; extra=("$@"); break ;;
     *) extra+=("$1") ;;
