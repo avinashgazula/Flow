@@ -268,6 +268,9 @@ Redesigned in October 2026 as a plain table: no Best Match card, no sparkles or 
   - Long-press a live one for Watch Now or Details.
   - Rows load lazily with thousands of channels. Try a big M3U.
 - **Player:**
+  - Turns to landscape on iPhone like films do (Auto Rotate), and back to portrait on Close.
+  - Close sits under the system player's AirPlay button; the now-and-next card sits above the
+    scrubber and left of the play buttons.
   - Swipe up and down (i, P) or ↑/↓ (M) to change channel.
   - The now-and-next card.
   - The error screen offers Next Channel.
@@ -403,6 +406,19 @@ Commits on `claude/build-flow-app` describe each fix; `git log` is the full reco
   plain connection errors.
 - `Theme.Palette.overPicture` tints glass that floats over video without a scrim.
 - A `player-still-watching` tour step on every platform.
+
+**Automated player and UI checks** (run these after any player change)
+- `scripts/player-check.sh ios|ipad|tvos|macos` (debug, sample data): every sample stream through
+  start, time, seek, skip back, pause, 2×, every audio and subtitle track, the MKV remux, chapters and
+  PGS, then switching source, Skip Intro, fallback from a broken source, the error screen's wording,
+  Up Next moving on, Ask Before Resuming and the panels. 75 checks, PASS/FAIL with evidence, and a
+  screenshot of each screen in `shots/player-check/<platform>/`. All four platforms passed 75/75 on
+  2026-10-12. `FLOW_CHECK_ONLY=episodes,resume` runs a subset.
+- `scripts/ui-test.sh` (iPhone or iPad simulator via SIM_UDID): XCUITest with real taps, for screens
+  the simulator tools can't drive reliably. Covers the Live TV player: Close, channel buttons, tapping
+  the picture, and landscape on iPhone. Not run by CI.
+- Simulator tool taps are not trustworthy inside UIKit-presented covers or on rotated screens; if a
+  tap "does nothing", confirm with a UI test before changing code.
 
 **Design changes to keep in mind**
 - iPhone has its own tab bar (`Flow/App/FlowTabBar.swift`): a dark glass capsule of icons where the

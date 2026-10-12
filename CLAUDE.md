@@ -47,6 +47,8 @@ scripts/sim.sh shot ios home      # screenshot → shots/local/ios/home.png (pla
 scripts/sim.sh open "flow://title/movie/693134" ios   # deep link (Dune: Part Two in the sample data)
 scripts/sim.sh logs ios           # app log;  reset = uninstall for a fresh first launch
 scripts/sim.sh run ios --real -- -FlowOffline YES   # every request fails as if offline (debug builds)
+scripts/player-check.sh ios       # every sample stream and player scenario, PASS/FAIL (also ipad, tvos, macos)
+scripts/ui-test.sh                # XCUITest real taps (Live TV player); SIM_UDID picks iPhone or iPad
 scripts/sim.sh tour ios|ipad|tvos|macos   # the whole screenshot tour, as CI runs it → shots/tour/
 cd Packages/FlowKit && swift test # unit tests (fast; run after any FlowKit change)
 xcodegen generate                 # after adding/removing files or editing project.yml (sim.sh does it when needed)
