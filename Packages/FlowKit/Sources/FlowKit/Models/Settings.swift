@@ -709,6 +709,10 @@ public struct SourceSettings: Codable, Hashable, Sendable {
     public var preferPlayableAudio = true
     /// A title opened from a library in the Library tab lists only that library's sources.
     public var playFromLibraryOnly = false
+    /// The picker offers the source a title was last played from first (Best Match, and auto-play).
+    public var rememberLastSource = true
+    /// By title key ("movie:603", "show:1399").
+    public var lastSources: [String: LastSource] = [:]
     public init() {}
 }
 

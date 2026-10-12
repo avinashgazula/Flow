@@ -59,10 +59,13 @@ struct SourcesSettingsView: View {
                 NavigationLink(value: Route.settings(.addons)) {
                     LabeledContent("Stream Add-ons", value: "\(model.settings.sources.addons.count)")
                 }
+                Toggle("Remember Last Source", isOn: $model.settings.sources.rememberLastSource)
                 Toggle("Auto-Play Best Source", isOn: $model.settings.sources.autoPlayFirstSource)
                 Picker("Provider Timeout", selection: $model.settings.sources.timeoutSeconds) {
                     ForEach([5.0, 10, 15, 20, 30], id: \.self) { Text("\(Int($0)) seconds").tag($0) }
                 }
+            } footer: {
+                Text("Sources are listed in the order your add-ons and servers give them. With Remember Last Source on, a title you've played before offers the source you used first, and the next episode of a show comes from the same release when it can.")
             }
 
             if model.settings.sources.useCustomOrdering {

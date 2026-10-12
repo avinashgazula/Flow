@@ -20,9 +20,15 @@ struct SourcePickerView: View {
                           preferredAudioLanguage: model.settings.playback.preferredAudioLanguage)
     }
 
-    /// The source auto-play would start: the first playable one in ranked order. Only called out when there is a choice to make.
+    /// The source auto-play would start: the one this title was last played from when it's still
+    /// offered, else the first playable one in the providers' order. Only called out when there is a
+    /// choice to make.
     private func bestMatch(in list: [StreamSource]) -> StreamSource? {
-        list.count > 1 ? list.first(where: \.isPlayable) : nil
+        list.count > 1 ? preferred(in: list) : nil
+    }
+
+    private func preferred(in list: [StreamSource]) -> StreamSource? {
+        model.lastSource(for: request, in: list) ?? list.first(where: \.isPlayable)
     }
 
     private func grouped(_ list: [StreamSource]) -> [(SourceCategory, [StreamSource])] {
@@ -57,7 +63,8 @@ struct SourcePickerView: View {
                         .padding(.top, Theme.Space.xl)
                     }
                     if let best {
-                        BestMatchCard(source: best, appearance: model.settings.sources.appearance, forDownload: forDownload) { choose(best) }
+                        BestMatchCard(source: best, appearance: model.settings.sources.appearance, forDownload: forDownload,
+                                      lastPlayed: model.lastSource(for: request, in: list)?.id == best.id) { choose(best) }
                             .contextMenu { sourceMenu(best) }
                     }
                     ForEach(groups, id: \.0) { category, sources in
@@ -252,7 +259,7 @@ struct SourcePickerView: View {
     /// With "auto-play first source" on, start as soon as every provider answered.
     private func maybeAutoPlay(final: Bool = false) {
         guard final, !forDownload, !autoPlayed, model.settings.sources.autoPlayFirstSource,
-              let first = ranked.first(where: \.isPlayable) else { return }
+              let first = preferred(in: ranked) else { return }
         autoPlayed = true
         choose(first)
     }
@@ -280,6 +287,8 @@ struct BestMatchCard: View {
     let source: StreamSource
     let appearance: SourceAppearance
     var forDownload = false
+    /// The title was last played from this source, which is why it leads.
+    var lastPlayed = false
     let action: () -> Void
 
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous) }
@@ -290,8 +299,8 @@ struct BestMatchCard: View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                    Text("Best Match".uppercased()).kerning(1.2)
+                    Image(systemName: lastPlayed ? "clock.arrow.circlepath" : "sparkles")
+                    Text((lastPlayed ? "Last Played" : "Best Match").uppercased()).kerning(1.2)
                 }
                 .font(Theme.Typeface.micro)
                 .foregroundStyle(Theme.Palette.gold)

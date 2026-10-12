@@ -58,6 +58,8 @@ public enum SetupShare {
         var s = settings
         s.sync.lastCloudSync = nil
         s.sync.lastTrackerSync = nil
+        // What was watched from where is this viewer's history, not part of a setup someone else may get.
+        s.sources.lastSources = [:]
         guard !includeSecrets else { return s }
         s.mediaServers.servers = s.mediaServers.servers.map { var c = $0; c.accessToken = nil; c.userID = nil; return c }
         s.mediaServers.seerr?.apiKey = ""
@@ -121,6 +123,7 @@ public enum SetupShare {
             return c
         }
         s.sync = settings.sync
+        s.sources.lastSources = settings.sources.lastSources
         s.mediaServers.migrateHomeRows()
         var creds = credentials
         if let incoming = bundle.credentials {

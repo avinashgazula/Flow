@@ -189,6 +189,21 @@ extension AppModel {
     }
 
     /// Finds a source for the next episode that matches the current one (same binge group or provider/quality).
+    /// The source this title was last played from, as it appears in `list` now; nil with nothing to go on.
+    func lastSource(for request: PlaybackRequest, in list: [StreamSource]) -> StreamSource? {
+        guard settings.sources.rememberLastSource, let key = request.item.key?.description else { return nil }
+        return settings.sources.lastSources[key]?.match(in: list)
+    }
+
+    /// Remembers the source a title started playing from (for a show, the release its episodes come
+    /// from). A downloaded file isn't a choice of stream, so it leaves the memory alone.
+    func rememberSource(_ source: StreamSource, for request: PlaybackRequest) {
+        guard settings.sources.rememberLastSource, source.providerID != "downloads", let key = request.item.key?.description else { return }
+        var all = settings.sources.lastSources
+        all[key] = LastSource(source)
+        settings.sources.lastSources = LastSource.pruned(all)
+    }
+
     func matchingSource(for request: PlaybackRequest, like previous: StreamSource) async -> StreamSource? {
         let providers = sourceProviders().filter { $0.providerID == previous.providerID }
         let found = await SourceAggregator.collect(providers.isEmpty ? sourceProviders() : providers, request: request, timeout: settings.sources.timeoutSeconds)

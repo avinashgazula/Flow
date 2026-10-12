@@ -84,7 +84,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .mediaServers: return "jellyfin emby plex server badge artwork"
         case .webDAV: return "webdav nas share files"
         case .liveTV: return "iptv m3u xtream epg channels guide"
-        case .sources: return "addons aiostreams order sort filter cap resolution hdr sdr dolby vision audio language timeout library only debrid quality size prefetch"
+        case .sources: return "addons aiostreams order sort filter cap resolution hdr sdr dolby vision audio language timeout library only debrid quality size prefetch remember last source best match"
         case .dataStorage: return "icloud sync push pull cache storage clear downloads export tracking"
         case .shareSetup: return "export qr share backup"
         case .importSetup: return "import restore qr"

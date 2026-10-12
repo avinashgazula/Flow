@@ -896,6 +896,7 @@ final class PlaybackSession: Identifiable {
             if case .connecting = phase { phase = .playing }
             if !didStart {
                 didStart = true
+                model.rememberSource(source, for: request)
                 Task {
                     try? await model.tracker.scrobble(.start, request: request, percent: percent)
                     await report(.started)
