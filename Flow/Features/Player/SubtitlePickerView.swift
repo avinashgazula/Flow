@@ -29,8 +29,10 @@ struct SubtitlePickerView: View {
                         Text("Offset")
                         Spacer()
                         Button { session.subtitleOffset -= 0.25 } label: { Image(systemName: "minus.circle") }
+                            .accessibilityLabel("Earlier by a Quarter Second")
                         Text(String(format: "%+.2fs", session.subtitleOffset)).monospacedDigit().frame(minWidth: 70)
                         Button { session.subtitleOffset += 0.25 } label: { Image(systemName: "plus.circle") }
+                            .accessibilityLabel("Later by a Quarter Second")
                     }
                     .buttonStyle(.borderless)
                 }

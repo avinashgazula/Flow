@@ -340,7 +340,7 @@ struct LivePlayerView: View {
             #if !os(tvOS)
             if showsInfo {
                 VStack(alignment: .leading) {
-                    CircleButton(systemImage: "xmark") { dismiss() }
+                    CircleButton(systemImage: "xmark", label: "Close") { dismiss() }
                         .accessibilityLabel("Close")
                     Spacer()
                     LiveInfoCard(channel: current, epg: epg, canZap: lineup.count > 1,
@@ -480,9 +480,9 @@ struct LiveInfoCard: View {
                 }
                 if canZap {
                     VStack(spacing: 8) {
-                        CircleButton(systemImage: "chevron.up", size: 36, action: previous)
+                        CircleButton(systemImage: "chevron.up", label: "Previous Channel", size: 36, action: previous)
                             .accessibilityLabel("Previous Channel")
-                        CircleButton(systemImage: "chevron.down", size: 36, action: next)
+                        CircleButton(systemImage: "chevron.down", label: "Next Channel", size: 36, action: next)
                             .accessibilityLabel("Next Channel")
                     }
                 }

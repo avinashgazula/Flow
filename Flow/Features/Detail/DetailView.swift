@@ -565,9 +565,10 @@ struct RatingsRow: View {
             }
             .fixedSize()
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(source.title) \(value)")
+            .accessibilityLabel(source.spokenScore(value))
         } else {
             builtIn(source, value)
+                .accessibilityLabel(source.spokenScore(value))
         }
     }
 

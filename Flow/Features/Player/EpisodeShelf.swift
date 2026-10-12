@@ -33,7 +33,7 @@ struct EpisodeShelf: View {
             HStack {
                 Text(seasonTitle).font(Theme.Typeface.headline)
                 Spacer()
-                CircleButton(systemImage: "xmark", size: 32) { close() }
+                CircleButton(systemImage: "xmark", label: "Close Episodes", size: 32) { close() }
                     .accessibilityLabel("Close episodes")
             }
             .padding(.horizontal, 20)

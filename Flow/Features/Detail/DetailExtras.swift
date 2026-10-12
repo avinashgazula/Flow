@@ -162,6 +162,8 @@ private struct ReviewByline: View {
                 .font(.system(.subheadline, weight: .bold))
                 .frame(width: 36 * Theme.scale, height: 36 * Theme.scale)
                 .background(Theme.Palette.surfaceStrong, in: Circle())
+                // The author's name follows; their initial on its own says nothing.
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(review.author).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
                 Text(meta).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary).lineLimit(1)
@@ -174,6 +176,7 @@ private struct ReviewByline: View {
                         .foregroundStyle(Theme.Palette.gold)
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(Theme.Palette.surfaceStrong, in: Capsule())
+                        .accessibilityLabel("Rated \(rating) out of 10")
                 }
                 if review.spoiler {
                     Text("Spoilers")

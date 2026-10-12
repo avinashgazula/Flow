@@ -189,12 +189,10 @@ struct PlayerView: View {
                         .flowGlass(Circle(), interactive: true)
                     }
                     MacPlayerMenu(session: session)
-                    CircleButton(systemImage: "person.crop.rectangle.stack") { session.showsXRay.toggle() }
-                        .accessibilityLabel("X-Ray")
-                        .help("X-Ray")
-                    CircleButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle") { session.showsInfo.toggle() }
-                    CircleButton(systemImage: "magnifyingglass") { showSubtitles = true }
-                    CircleButton(systemImage: "xmark") { session.stop() }
+                    CircleButton(systemImage: "person.crop.rectangle.stack", label: "X-Ray") { session.showsXRay.toggle() }
+                    CircleButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle", label: "Playback Info") { session.showsInfo.toggle() }
+                    CircleButton(systemImage: "magnifyingglass", label: "Search Subtitles") { showSubtitles = true }
+                    CircleButton(systemImage: "xmark", label: "Close Player") { session.stop() }
                 }
                 .padding(16)
             }
@@ -278,7 +276,7 @@ struct ConnectingView: View {
                     #if os(macOS)
                     Spacer()
                     #endif
-                    CircleButton(systemImage: "xmark") { session.stop() }
+                    CircleButton(systemImage: "xmark", label: "Close Player") { session.stop() }
                     #if !os(macOS)
                     Spacer()
                     #endif
@@ -633,6 +631,8 @@ struct UpNextCard: View {
 
 struct CircleButton: View {
     let systemImage: String
+    /// What VoiceOver says, and the Mac's tooltip: an icon alone reads as its symbol's name.
+    let label: String
     var size: CGFloat = 44
     let action: () -> Void
 
@@ -646,6 +646,10 @@ struct CircleButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        #if os(macOS)
+        .help(label)
+        #endif
     }
 }
 
@@ -958,7 +962,7 @@ struct IOSPlayerControls: View {
                 .allowsHitTesting(false)
             VStack {
                 HStack(spacing: 14) {
-                    CircleButton(systemImage: "xmark") { session.stop() }
+                    CircleButton(systemImage: "xmark", label: "Close Player") { session.stop() }
                     VStack(alignment: .leading, spacing: 2) {
                         Text(session.title).font(.system(size: 16, weight: .semibold)).lineLimit(2).minimumScaleFactor(0.8)
                         if let line = session.subtitleLine {
@@ -975,18 +979,16 @@ struct IOSPlayerControls: View {
                     GlassGroup(spacing: 8) {
                         HStack(spacing: 8) {
                             if let pip {
-                                CircleButton(systemImage: "pip.enter", size: 40) { pip.startPictureInPicture() }
+                                CircleButton(systemImage: "pip.enter", label: "Picture in Picture", size: 40) { pip.startPictureInPicture() }
                             }
                             RoutePicker()
                                 .frame(width: 40, height: 40)
                                 .flowGlass(Circle())
-                            CircleButton(systemImage: "person.crop.rectangle.stack", size: 40) {
+                            CircleButton(systemImage: "person.crop.rectangle.stack", label: "X-Ray", size: 40) {
                                 xrayFromPause = false
                                 session.showsXRay.toggle()
                             }
-                            .accessibilityLabel("X-Ray")
-                            CircleButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle", size: 40) { session.showsInfo.toggle() }
-                                .accessibilityLabel("Playback Info")
+                            CircleButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle", label: "Playback Info", size: 40) { session.showsInfo.toggle() }
                             PlayerOptionsButtons(showsEpisodes: hasEpisodes, episodes: toggleEpisodes, options: toggleOptions)
                         }
                     }
@@ -998,7 +1000,7 @@ struct IOSPlayerControls: View {
 
                 GlassGroup(spacing: 28) {
                     HStack(spacing: 40) {
-                        transportButton("gobackward.\(model.settings.playback.seekBackwardSeconds)", size: 60) {
+                        transportButton("gobackward.\(model.settings.playback.seekBackwardSeconds)", label: "Back \(model.settings.playback.seekBackwardSeconds) Seconds", size: 60) {
                             // The lift that ends a hold also reads as a tap: the replay has already gone back.
                             if heldBack { heldBack = false; return }
                             seek(by: -Double(model.settings.playback.seekBackwardSeconds))
@@ -1015,8 +1017,8 @@ struct IOSPlayerControls: View {
                             DispatchQueue.main.async { heldBack = false }
                         })
                         .accessibilityAction(named: "What Did They Say?") { session.replayWithSubtitles() }
-                        transportButton(isPlaying ? "pause.fill" : "play.fill", size: 84) { togglePlay() }
-                        transportButton("goforward.\(model.settings.playback.seekForwardSeconds)", size: 60) {
+                        transportButton(isPlaying ? "pause.fill" : "play.fill", label: isPlaying ? "Pause" : "Play", size: 84) { togglePlay() }
+                        transportButton("goforward.\(model.settings.playback.seekForwardSeconds)", label: "Forward \(model.settings.playback.seekForwardSeconds) Seconds", size: 60) {
                             seek(by: Double(model.settings.playback.seekForwardSeconds))
                         }
                     }
@@ -1060,7 +1062,7 @@ struct IOSPlayerControls: View {
         }
     }
 
-    private func transportButton(_ symbol: String, size: CGFloat, action: @escaping () -> Void) -> some View {
+    private func transportButton(_ symbol: String, label: String, size: CGFloat, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: size * 0.4, weight: .semibold))
@@ -1070,6 +1072,7 @@ struct IOSPlayerControls: View {
                 .flowGlass(Circle(), interactive: true)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     private var buffered: Double {

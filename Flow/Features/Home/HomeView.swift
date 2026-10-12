@@ -70,6 +70,7 @@ struct HomeView: View {
             if !model.settingsInTab {
                 ToolbarItem(placement: .automatic) {
                     Button { model.showSettings = true } label: { Image(systemName: "gearshape.fill") }
+                        .accessibilityLabel("Settings")
                 }
             }
         }

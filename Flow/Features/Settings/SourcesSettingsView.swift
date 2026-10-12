@@ -157,8 +157,8 @@ struct SourcesSettingsView: View {
     #if os(tvOS)
     private func moveButtons(_ category: SourceCategory) -> some View {
         HStack {
-            Button { if let i = model.settings.sources.categoryOrder.firstIndex(of: category), i > 0 { model.settings.sources.categoryOrder.move(fromOffsets: [i], toOffset: i - 1) } } label: { Image(systemName: "chevron.up") }
-            Button { if let i = model.settings.sources.categoryOrder.firstIndex(of: category), i < model.settings.sources.categoryOrder.count - 1 { model.settings.sources.categoryOrder.move(fromOffsets: [i], toOffset: i + 2) } } label: { Image(systemName: "chevron.down") }
+            Button { if let i = model.settings.sources.categoryOrder.firstIndex(of: category), i > 0 { model.settings.sources.categoryOrder.move(fromOffsets: [i], toOffset: i - 1) } } label: { Image(systemName: "chevron.up") }.accessibilityLabel("Move \(category.displayName) Up")
+            Button { if let i = model.settings.sources.categoryOrder.firstIndex(of: category), i < model.settings.sources.categoryOrder.count - 1 { model.settings.sources.categoryOrder.move(fromOffsets: [i], toOffset: i + 2) } } label: { Image(systemName: "chevron.down") }.accessibilityLabel("Move \(category.displayName) Down")
         }
     }
     #endif

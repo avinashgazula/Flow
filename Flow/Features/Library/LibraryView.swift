@@ -37,6 +37,7 @@ struct LibraryView: View {
             ToolbarItem(placement: .primaryAction) {
                 if model.isSyncing { ProgressView() } else {
                     Button { Task { await model.refreshLibrary(force: true) } } label: { Image(systemName: "arrow.clockwise") }
+                        .accessibilityLabel("Refresh Library")
                 }
             }
         }

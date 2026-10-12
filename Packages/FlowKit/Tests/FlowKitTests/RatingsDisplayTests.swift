@@ -75,3 +75,14 @@ final class RatingsDisplayTests: XCTestCase {
         XCTAssertNil(cache.sources(for: other, now: start))
     }
 }
+
+final class SpokenScoreTests: XCTestCase {
+    func testScoresNameTheSiteAndScale() {
+        XCTAssertEqual(RatingSource.imdb.spokenScore("8.4"), "IMDb, 8.4 out of 10")
+        XCTAssertEqual(RatingSource.metacritic.spokenScore("78"), "Metacritic, 78 out of 100")
+        XCTAssertEqual(RatingSource.letterboxd.spokenScore("4.1"), "Letterboxd, 4.1 out of 5")
+        XCTAssertEqual(RatingSource.tomatometer.spokenScore("90%"), "Rotten Tomatoes critics, 90 percent")
+        XCTAssertEqual(RatingSource.popcornmeter.spokenScore("88%"), "Rotten Tomatoes audience, 88 percent")
+        XCTAssertEqual(RatingSource.trakt.spokenScore("82%"), "Trakt, 82 percent")
+    }
+}

@@ -1036,6 +1036,20 @@ public enum RatingSource: String, Codable, Hashable, Sendable, CaseIterable, Ide
         case .mal: return "MyAnimeList"
         }
     }
+
+    /// What VoiceOver says for a score shown as `value` ("8.4", "90%"): the site and its scale, so
+    /// "MC 78" is heard as "Metacritic, 78 out of 100".
+    public func spokenScore(_ value: String) -> String {
+        let number = value.replacingOccurrences(of: "%", with: "")
+        switch self {
+        case .imdb, .tmdb: return "\(title), \(number) out of 10"
+        case .letterboxd: return "\(title), \(number) out of 5"
+        case .metacritic: return "\(title), \(number) out of 100"
+        case .tomatometer: return "Rotten Tomatoes critics, \(number) percent"
+        case .popcornmeter: return "Rotten Tomatoes audience, \(number) percent"
+        case .trakt, .mal: return "\(title), \(number) percent"
+        }
+    }
 }
 
 /// Posters with ratings drawn on them.
