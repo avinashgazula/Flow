@@ -176,9 +176,7 @@ enum QRCode {
 /// Default keys baked in at build time through Config/*.xcconfig → Info.plist.
 enum BundleKeys {
     static func value(_ key: String) -> String? {
-        guard let raw = Bundle.main.object(forInfoDictionaryKey: key) as? String else { return nil }
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        return trimmed.isEmpty || trimmed.hasPrefix("$(") ? nil : trimmed
+        ConfiguredKey.usable(Bundle.main.object(forInfoDictionaryKey: key) as? String)
     }
 
     static var tmdb: String? { value("FlowTMDBAPIKey") }

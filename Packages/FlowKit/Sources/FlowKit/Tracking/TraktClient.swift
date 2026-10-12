@@ -58,7 +58,13 @@ public actor TraktClient: TrackingService, ListService {
         struct Response: Decodable { var device_code: String; var user_code: String; var verification_url: String; var expires_in: Double; var interval: Double }
         var r = try HTTPRequest(.post, base + "/oauth/device/code", headers: ["Content-Type": "application/json"])
         try r.setJSONBody(Body(client_id: clientID))
-        let response = try await http.json(Response.self, r)
+        let response: Response
+        do {
+            response = try await http.json(Response.self, r)
+        } catch FlowError.unauthorized {
+            // Nobody is signed in yet: a refusal here is about the app's client ID, not a session.
+            throw FlowError.unsupported("Trakt didn't accept this app's client ID. Check the Trakt Client ID in Settings → Account → API Keys.")
+        }
         return DeviceCode(deviceCode: response.device_code, userCode: response.user_code, verificationURL: URL(string: response.verification_url) ?? URL(string: "https://trakt.tv/activate")!, expiresIn: response.expires_in, interval: response.interval)
     }
 

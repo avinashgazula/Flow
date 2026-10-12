@@ -44,7 +44,9 @@ struct AccountSettingsView: View {
                         }
                     }
                 } else if model.traktClientID == nil {
-                    Text("Add a Trakt client ID in API Keys to sign in.").foregroundStyle(.secondary)
+                    NavigationLink(value: Route.settings(.apiKeys)) {
+                        Text("Add a Trakt Client ID in API Keys to sign in.").foregroundStyle(.secondary)
+                    }
                 } else {
                     Button("Sign In to Trakt") { signIn = .trakt }
                 }
@@ -59,7 +61,9 @@ struct AccountSettingsView: View {
                         dropDestinations(.simkl)
                     }
                 } else if model.simklClientID == nil {
-                    Text("Add a Simkl client ID in API Keys to sign in.").foregroundStyle(.secondary)
+                    NavigationLink(value: Route.settings(.apiKeys)) {
+                        Text("Add a Simkl Client ID in API Keys to sign in.").foregroundStyle(.secondary)
+                    }
                 } else {
                     Button("Sign In to Simkl") { signIn = .simkl }
                 }
