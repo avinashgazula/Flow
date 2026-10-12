@@ -29,6 +29,8 @@ struct GuideView: View {
                     channelsColumn
                     ScrollView(.horizontal, showsIndicators: false) {
                         ZStack(alignment: .topLeading) {
+                            // Behind the programmes: it shows through their glass without crossing out titles and times.
+                            nowLine(context.date, start: start)
                             // Lazy: a few thousand channels would otherwise each look up their schedule every minute.
                             LazyVStack(alignment: .leading, spacing: 0) {
                                 timeHeader(start: start)
@@ -37,7 +39,6 @@ struct GuideView: View {
                                         .frame(height: rowHeight)
                                 }
                             }
-                            nowLine(context.date, start: start)
                         }
                         .frame(width: timelineWidth, alignment: .leading)
                     }
