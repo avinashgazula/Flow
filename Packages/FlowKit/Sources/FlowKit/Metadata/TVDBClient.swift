@@ -158,12 +158,12 @@ public enum AirDateFormatting {
     /// Formats an air date either in the viewer's time zone or in UTC (the source's day).
     /// A bare day (TMDb's "2026-10-21", midnight UTC) has no time to convert, so it always reads
     /// as that day; moving it into the viewer's zone would show the evening before across the Americas.
-    public static func string(for date: Date, localTimeZone: Bool, includeTime: Bool = false) -> String {
+    public static func string(for date: Date, localTimeZone: Bool, includeTime: Bool = false, viewerTimeZone: TimeZone = .current) -> String {
         let bare = isBareDay(date)
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = includeTime && !bare ? .short : .none
-        formatter.timeZone = localTimeZone && !bare ? .current : TimeZone(identifier: "UTC")
+        formatter.timeZone = localTimeZone && !bare ? viewerTimeZone : TimeZone(identifier: "UTC")
         return formatter.string(from: date)
     }
 

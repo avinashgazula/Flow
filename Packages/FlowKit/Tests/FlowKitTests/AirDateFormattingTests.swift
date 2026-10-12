@@ -14,23 +14,19 @@ final class AirDateFormattingTests: XCTestCase {
         XCTAssertFalse(AirDateFormatting.isBareDay(utc("2026-10-21T00:00:30Z")))
     }
 
+    private let newYork = TimeZone(identifier: "America/New_York")!
+
     func testABareDayKeepsItsDayInTheViewersZone() {
         // In New York midnight UTC is the evening before; the label must still say the 21st.
-        let original = NSTimeZone.default
-        NSTimeZone.default = TimeZone(identifier: "America/New_York")!
-        defer { NSTimeZone.default = original }
-        let label = AirDateFormatting.string(for: utc("2026-10-21T00:00:00Z"), localTimeZone: true)
+        let label = AirDateFormatting.string(for: utc("2026-10-21T00:00:00Z"), localTimeZone: true, viewerTimeZone: newYork)
         XCTAssertTrue(label.contains("21"), label)
     }
 
     func testARealAirTimeFollowsTheViewersZone() {
-        let original = NSTimeZone.default
-        NSTimeZone.default = TimeZone(identifier: "America/New_York")!
-        defer { NSTimeZone.default = original }
         // 01:00 UTC on the 22nd is 9 pm on the 21st in New York.
-        let local = AirDateFormatting.string(for: utc("2026-10-22T01:00:00Z"), localTimeZone: true)
+        let local = AirDateFormatting.string(for: utc("2026-10-22T01:00:00Z"), localTimeZone: true, viewerTimeZone: newYork)
         XCTAssertTrue(local.contains("21"), local)
-        let source = AirDateFormatting.string(for: utc("2026-10-22T01:00:00Z"), localTimeZone: false)
+        let source = AirDateFormatting.string(for: utc("2026-10-22T01:00:00Z"), localTimeZone: false, viewerTimeZone: newYork)
         XCTAssertTrue(source.contains("22"), source)
     }
 
