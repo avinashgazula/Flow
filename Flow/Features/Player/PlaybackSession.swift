@@ -58,6 +58,9 @@ final class PlaybackSession: Identifiable {
     /// Several episodes have played back to back untouched: asks before starting another.
     private(set) var asksStillWatching = false
     @ObservationIgnored private var stillWatching = StillWatching()
+    /// Downloaded episodes that just finished, handed to Smart Downloads once the player has let go of
+    /// their files: the countdown moves on during the credits, still reading from the file.
+    @ObservationIgnored private var finishedDownloads: [PlaybackRequest] = []
     @ObservationIgnored private var replayTask: Task<Void, Never>?
     /// True while "What did they say?" has subtitles on, so the choice isn't remembered as the viewer's.
     @ObservationIgnored private var replayingWithSubtitles = false
@@ -228,6 +231,7 @@ final class PlaybackSession: Identifiable {
         teardownObservers()
         releaseRemux()
         player.replaceCurrentItem(with: nil)
+        releaseFinishedDownloads()
         usesRemux = false
         chapters = []
         chapterSegments = []
@@ -1438,7 +1442,7 @@ final class PlaybackSession: Identifiable {
         try? await model.tracker.scrobble(.stop, request: request, percent: pct)
         await report(.stopped)
         await model.recordPlayback(request: request, position: position, duration: duration, finished: completed)
-        if completed, request.episode != nil { Task { await model.downloadedEpisodeFinished(request) } }
+        if completed, request.episode != nil { finishedDownloads.append(request) }
         didStart = false
     }
 
@@ -1473,7 +1477,16 @@ final class PlaybackSession: Identifiable {
         teardownObservers()
         releaseRemux()
         stopBitmapSubtitles()
+        releaseFinishedDownloads()
         if model?.activePlayback?.id == id { model?.activePlayback = nil }
+    }
+
+    /// Smart Downloads may delete these files, so only once nothing plays from them any more.
+    private func releaseFinishedDownloads() {
+        guard let model, !finishedDownloads.isEmpty else { return }
+        let finished = finishedDownloads
+        finishedDownloads = []
+        Task { for request in finished { await model.downloadedEpisodeFinished(request) } }
     }
 
     private func teardownObservers() {
