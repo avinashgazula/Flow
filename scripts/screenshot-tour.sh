@@ -76,6 +76,8 @@ if [ "$platform" != "tvos" ]; then
   xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
 fi
 xcrun simctl install "$udid" "dd/Build/Products/$products/Flow.app"
+# A local Config/Secrets.xcconfig can override the bundle identifier, so read the one that was built.
+bundle_id=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "dd/Build/Products/$products/Flow.app/Info.plist" 2>/dev/null || echo "$bundle_id")
 SIMCTL_CHILD_FLOW_TOUR_FILE="$tour_file" SIMCTL_CHILD_FLOW_TOUR_DWELL=5 \
   xcrun simctl launch "$udid" "$bundle_id" -FlowDemo YES -FlowTour YES
 capture_loop 'xcrun simctl io "$udid" screenshot "$file"'
