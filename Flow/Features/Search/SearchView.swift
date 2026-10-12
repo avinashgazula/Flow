@@ -9,8 +9,14 @@ struct SearchView: View {
     @State private var error: String?
     @State private var recents: [String] = []
 
-    private var movies: [MediaItem] { results.compactMap { if case .media(let m) = $0, m.type == .movie { return m }; return nil } }
-    private var shows: [MediaItem] { results.compactMap { if case .media(let m) = $0, m.type == .show { return m }; return nil } }
+    /// The rows leave out the top result, which the card above already shows.
+    private var movies: [MediaItem] { media(.movie) }
+    private var shows: [MediaItem] { media(.show) }
+
+    private func media(_ type: MediaType) -> [MediaItem] {
+        let top = topResult?.id
+        return results.compactMap { if case .media(let m) = $0, m.type == type, m.id != top { return m }; return nil }
+    }
     private var people: [Person] { results.compactMap { if case .person(let p) = $0 { return p }; return nil } }
 
     private var text: String { model.searchText }
