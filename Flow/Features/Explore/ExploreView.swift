@@ -72,6 +72,7 @@ struct ExploreView: View {
                 Button { showFilters = true } label: {
                     Image(systemName: isFiltered ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                 }
+                .accessibilityLabel(isFiltered ? "Filters, On" : "Filters")
             }
         }
         .sheet(isPresented: $showFilters) {

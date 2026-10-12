@@ -405,6 +405,8 @@ struct DetailView: View {
                 .artworkShadow(0.5)
             }
             .buttonStyle(CardButtonStyle())
+            .accessibilityLabel("Play \(video.name)")
+            .accessibilityHint("Opens in YouTube")
             .padding(.horizontal, Theme.Space.gutter)
         }
     }

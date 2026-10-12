@@ -110,6 +110,7 @@ private struct PagingArrows<ID: Hashable>: ViewModifier {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(symbol == "chevron.left" ? "Previous Page" : "Next Page")
         .transition(.opacity)
     }
 

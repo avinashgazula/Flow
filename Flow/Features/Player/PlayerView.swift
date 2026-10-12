@@ -169,6 +169,8 @@ struct PlayerView: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Circle())
                         .flowGlass(Circle(), interactive: true)
+                        .accessibilityLabel("Chapters")
+                        .help("Chapters")
                     }
                     if !session.bitmapTracks.isEmpty {
                         Menu {
@@ -187,6 +189,8 @@ struct PlayerView: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Circle())
                         .flowGlass(Circle(), interactive: true)
+                        .accessibilityLabel("Disc Subtitles")
+                        .help("Disc Subtitles")
                     }
                     MacPlayerMenu(session: session)
                     CircleButton(systemImage: "person.crop.rectangle.stack", label: "X-Ray") { session.showsXRay.toggle() }
