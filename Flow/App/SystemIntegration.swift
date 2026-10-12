@@ -59,11 +59,16 @@ extension AppModel {
                 showToast("Couldn't open that title. Check your connection and try again.")
                 return
             }
-            activePlayback?.stop()
-            sourcePickerRequest = nil
-            selectedTab = .home
-            paths[.home] = [.detail(item)]
+            open(item)
         }
+    }
+
+    /// Shows a title's page on the Home stack, closing the player and any source picker first.
+    func open(_ item: MediaItem) {
+        activePlayback?.stop()
+        sourcePickerRequest = nil
+        selectedTab = .home
+        paths[.home] = [.detail(item)]
     }
 
     func refreshSpotlight() async {

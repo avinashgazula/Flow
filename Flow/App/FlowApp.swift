@@ -127,8 +127,12 @@ extension AppModel {
 
     /// From a widget or the Top Shelf: open the title, then play it (resuming if there's progress).
     func playTitle(_ key: MediaKey) async {
-        guard let catalog, let item = try? await catalog.item(key) else { return }
-        open(key)
+        guard let catalog, let item = try? await catalog.item(key) else {
+            showToast("Couldn't open that title. Check your connection and try again.")
+            return
+        }
+        // Navigating here, not through open(key), so its own load can't land after play and close the picker.
+        open(item)
         await play(item)
     }
 
