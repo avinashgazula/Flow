@@ -121,6 +121,8 @@ final class AppModel {
     var settingsInTab = false
     /// A flow://setup link waiting for the user to confirm the import.
     var pendingImport: String?
+    /// When Search last added to Recent, so a search still being typed replaces its own entry.
+    @ObservationIgnored var lastSearchRemembered: Date?
     /// Navigation stacks per tab, so the app (and the screenshot tour) can drive navigation.
     var paths: [AppTab: [Route]] = [:]
     var settingsPath: [Route] = []

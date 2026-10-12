@@ -305,20 +305,11 @@ extension AppModel {
 
     var recentSearches: [String] {
         get { UserDefaults.standard.stringArray(forKey: "flow.recentSearches") ?? [] }
-        set { UserDefaults.standard.set(Array(newValue.prefix(12)), forKey: "flow.recentSearches") }
+        set { UserDefaults.standard.set(Array(newValue.prefix(RecentSearches.limit)), forKey: "flow.recentSearches") }
     }
 
     func rememberSearch(_ text: String) {
-        let t = text.trimmingCharacters(in: .whitespaces)
-        guard !t.isEmpty else { return }
-        var list = recentSearches.filter { $0.caseInsensitiveCompare(t) != .orderedSame }
-        // Searches run as you type, so "the dark" followed by "the dark knight" is one search, not two:
-        // the newest replaces the one it grew out of (or was trimmed back from).
-        if let head = list.first {
-            let a = head.lowercased(), b = t.lowercased()
-            if a.hasPrefix(b) || b.hasPrefix(a) { list.removeFirst() }
-        }
-        list.insert(t, at: 0)
-        recentSearches = Array(list.prefix(20))
+        recentSearches = RecentSearches.adding(text, to: recentSearches, lastAdded: lastSearchRemembered)
+        lastSearchRemembered = Date()
     }
 }
