@@ -302,8 +302,9 @@ recent options (Volume Boost, Dolby Vision, X-Ray, Still Watching, Smart Downloa
   - Memory while paging the hero and long grids (ImagePipeline caching).
   - First launch time.
   - Remux start time for a large MKV.
-- **Offline and slow networks:** Settings → Developer → Network Link Conditioner on a device, or
-  turn the Mac's network off. Cached pages should still render, and errors should read clearly.
+- **Offline and slow networks:** `scripts/sim.sh run ios --real -- -FlowOffline YES` makes every
+  request fail as if there were no connection (debug builds). On a device, Settings → Developer →
+  Network Link Conditioner. Cached pages should still render, and errors should read clearly.
 - **Words:**
   - Every message in plain sentences, with no jargon.
   - Errors say what to do next.
