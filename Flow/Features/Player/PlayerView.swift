@@ -222,16 +222,22 @@ struct ConnectingView: View {
                 }
                 Spacer()
                 if let position = session.resumePrompt {
+                    // One width for both, each on one line: Apple TV wrapped "Resume from 3:20" in two.
                     VStack(spacing: Theme.Space.s) {
                         Button { session.answerResume(true) } label: {
                             Label("Resume from \(TimeFormat.clock(position))", systemImage: "play.fill")
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(PrimaryButtonStyle())
                         Button { session.answerResume(false) } label: {
                             Label("Start from the Beginning", systemImage: "arrow.counterclockwise")
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(GlassButtonStyle())
                     }
+                    .frame(width: 330 * Theme.scale)
                     .padding(.bottom, Theme.Space.xxl)
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 } else {

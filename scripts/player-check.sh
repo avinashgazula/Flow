@@ -23,7 +23,10 @@ else
   scripts/sim.sh run "$platform" >/dev/null
   udid=${SIM_UDID:-$(scripts/sim.sh devices | awk -v p="$platform" '$1==p {print $2}')}
   bundle=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "build/dd/Build/Products/$([ "$platform" = tvos ] && echo Debug-appletvsimulator || echo Debug-iphonesimulator)/Flow.app/Info.plist")
-  SIMCTL_CHILD_FLOW_CHECK_FILE="$log" SIMCTL_CHILD_FLOW_CHECK_ONLY="${FLOW_CHECK_ONLY:-}" xcrun simctl launch --terminate-running-process "$udid" "$bundle" -FlowDemo YES -FlowPlayerCheck YES >/dev/null
+  # Quit the launch sim.sh made first: relaunching straight over it leaves Apple TV on its home screen.
+  xcrun simctl terminate "$udid" "$bundle" 2>/dev/null || true
+  sleep 2
+  SIMCTL_CHILD_FLOW_CHECK_FILE="$log" SIMCTL_CHILD_FLOW_CHECK_ONLY="${FLOW_CHECK_ONLY:-}" xcrun simctl launch "$udid" "$bundle" -FlowDemo YES -FlowPlayerCheck YES >/dev/null
   capture() { xcrun simctl io "$udid" screenshot "$1" >/dev/null 2>&1 || true; }
 fi
 
