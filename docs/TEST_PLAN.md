@@ -11,7 +11,7 @@ Work one area at a time:
 1. **Build and launch.** `scripts/sim.sh run ios` (then `ipad`, `tvos`, `mac`). Use sample data
    unless the area needs real sources.
 2. **Walk it.** Go through the checks below for that area. Screenshot each state
-   (`scripts/sim.sh shot <area>-<state> <platform>`) and Read the image. Watch `scripts/sim.sh logs`
+   (`scripts/sim.sh shot <platform> <area>-<state>`) and Read the image. Watch `scripts/sim.sh logs`
    for errors.
 3. **Write down findings** before fixing anything. For each one, record:
    - what happens and what should happen
@@ -106,17 +106,29 @@ Platforms: **i** iPhone, **P** iPad, **M** Mac, **T** Apple TV. Unmarked means a
 
 ### Source picker
 
-- A **Best Match** card when there are 2+ sources, with one Play (or Download) button. On T,
-  focusing it must not cover the badges or spill outside the card.
-- **Rows:**
-  - The quality block (4K is tinted), "WEB-DL · 3.98 GB", languages, then badges in two tiers:
-    DV/HDR/Atmos/lossless coloured, the rest quiet.
-  - The whole row is the button, with a chevron and no play circles.
+Redesigned in October 2026 as a plain table: no Best Match card, no sparkles or gold, no boxed rows.
+
+- **Order:** sources stay in the order the add-on or server gives them (AIOStreams' own sort).
+  Custom ordering only applies when Settings → Sources → Use Custom Source Ordering is on.
+- **Play button** at the top when there are 2+ sources, with one caption saying what it starts:
+  "4K · Dolby Vision · Atmos · 18.20 GB · AIOStreams". It starts the source the title was **last
+  played** from when that's still offered ("Last played · …"), else the first playable one.
+  Remember Last Source (Settings → Sources) turns that off. Auto-Play starts the same source.
+- **Rows:** one grouped surface per provider, under "AIOStreams 5", with hairlines between rows.
+  - The resolution sits in a left-aligned column on the release type's baseline; the size is
+    right-aligned in tabular digits.
+  - Dolby Vision, HDR and premium audio are small outlined badges; codecs and channels are plain words.
+  - Under them, languages and release group, then only the exceptions: "Last played", "Not cached",
+    "Needs a debrid-enabled add-on". "Cached" is the norm and isn't shown.
+  - Pressing highlights the row like a table cell (i, P). The Mac highlights on hover. On T each row
+    is its own surface and turns white with dark text when focused.
   - Filenames only appear when Settings → Source Appearance asks for them; otherwise "Copy File Name" is in the menu.
-- **Grouping:** provider grouping, category headings, More Sources.
-- **States:** loading shimmer, No Sources, and providers that fail or time out.
-- **Settings respected:** sort rules, filters, result cap, resolution cap (and on cellular), HDR
-  preference, audio-language sort, Play From This Library Only, prefetch on detail.
+- **States:** placeholder rows while searching, "Searching AIOStreams…" under the title, No Sources,
+  and a line per failed or timed-out provider under the list.
+- **Largest text sizes:** the resolution column folds into the title ("1080p · WEB-DL · 3.98 GB").
+- **Settings respected:** Source Appearance (title, badges pack, size, compact, add-on formatting),
+  filters, result cap, resolution cap (and on cellular), HDR preference, audio-language sort, Play
+  From This Library Only, prefetch on detail.
 - **Close and refresh** are glass circles (i, P, M). Back dismisses on T.
 
 ### Player: iPhone and iPad
@@ -312,20 +324,26 @@ recent options (Volume Boost, Dolby Vision, X-Ray, Still Watching, Smart Downloa
 
 ## Not yet seen on a device (start here)
 
-Built with care and checked by code review and CI screenshots, but never exercised for real:
+Built with care and checked by code review and CI screenshots. Status after the October 2026
+simulator sessions (see "Session handover" below):
 
 1. Shazam matching: the MKV soundtrack path, the direct-file path and the microphone path, plus
-   the error wording.
-2. X-Ray In This Scene with real subtitles, the person sheet, and the Apple TV X-Ray tab.
+   the error wording. *Open: needs ShazamKit enabled on the App ID.*
+2. X-Ray In This Scene with real subtitles, the person sheet, and the Apple TV X-Ray tab. *Open.*
 3. Are You Still Watching?, the sleep-timer fade, What Did They Say? and hold-for-2×.
-4. The collapsing navigation title on the detail page.
-5. Ratings reaching Trakt and Simkl. Ratings syncing over iCloud.
-6. Add to Calendar, both the permission flow and the events created.
-7. Smart Downloads, especially the deletion timing during auto-advance.
-8. The Stats page with real Trakt history.
-9. The Apple TV Settings tab, and "Open Settings" buttons landing on it.
-10. Share on a `ShareLink` styled as a detail action, especially on Mac. Check it looks like the
-    other actions.
+   *Seen and fixed except the sleep-timer fade, which hasn't been watched to the end.*
+4. The collapsing navigation title on the detail page. *Seen and fixed.*
+5. Ratings reaching Trakt and Simkl. Ratings syncing over iCloud. *Open: Config/Secrets.xcconfig
+   still has placeholder Trakt and Simkl keys.*
+6. Add to Calendar, both the permission flow and the events created. *Seen: allow, deny and the
+   event itself all correct.*
+7. Smart Downloads, especially the deletion timing during auto-advance. *Fixed in code (deletion
+   waits until the player lets go of the file); not yet seen running.*
+8. The Stats page with real Trakt history. *Open: needs Trakt keys.*
+9. The Apple TV Settings tab, and "Open Settings" buttons landing on it. *Seen; the blank tab in
+   the tour was the tour's own fault and is fixed.*
+10. Share on a `ShareLink` styled as a detail action, especially on Mac. *Seen on iPhone (now with
+    the poster in the sheet); Mac only in CI screenshots.*
 
 ## Ideas worth building next
 
@@ -343,3 +361,50 @@ Smaller:
 - Calendar events that update when air dates change.
 
 Judge any idea by whether it makes Flow simpler to use, not just bigger.
+
+## Session handover
+
+What the October 2026 sessions learned about working here, so the next one can start straight away.
+Commits on `claude/build-flow-app` describe each fix; `git log` is the full record.
+
+**Driving the simulators**
+- `scripts/sim.sh shot <platform> <name>`: the platform comes first.
+- Taps: the built-in iOS Simulator control tool is the most reliable. Its coordinates are portrait
+  points even when the player has turned the screen to landscape. Attach it to the right device first.
+- AXe: `axe describe-ui --udid <udid>` reads the accessibility tree and is the way to check
+  VoiceOver labels. It can time out just after a simulator boots; try again a minute later.
+- Apple TV: use the tvOS 26.5 Apple TV 4K simulator, as the tour does. On the tvOS 27 simulator Flow
+  launches in the background, and `sim.sh` picks the newest runtime, so run it as
+  `SIM_UDID=<the 26.5 Apple TV's udid> scripts/sim.sh run tvos` (`xcrun simctl list devices` shows it). The Simulator app can't be scripted here, so there are no remote presses:
+  reach Apple TV screens through deep links and ScreenshotTour steps.
+- Mac: `screencapture` fails from Claude's shell even with Screen Recording allowed, so the local Mac
+  tour captures nothing. Use CI's Mac screenshots (`git show origin/ci-screenshots:macos/<file>`).
+- The player hides its controls after 4 s, which is faster than a tool round trip. To test a gesture on
+  them, temporarily lengthen `scheduleHide()` in PlayerView.swift, and don't commit it.
+- Offline: `scripts/sim.sh run ios --real -- -FlowOffline YES` (debug builds) fails every request as
+  if there were no connection.
+- Sample data doesn't save settings, so anything remembered (last source, recents) lasts one launch.
+
+**Keys**
+- Config/Secrets.xcconfig has real TMDB and TVDB keys. Its Trakt, Simkl and bundle-id lines are still
+  the example placeholders, which Flow now treats as no key. Trakt and Simkl testing waits on real keys.
+- The local bundle id is `com.yourname.flow`; the tour script reads whichever was built.
+
+**Added in these sessions** (all with FlowKit tests where there's logic)
+- `FlowLink` parses every `flow://` link (tv works like show; unknown links are ignored).
+- `LastSource` remembers the source a title was played from (description only, never the link; left
+  out of shared setups).
+- `StillWatching` counts unattended episodes; a pause in an episode's last seconds doesn't reset it.
+- `AirDateFormatting` keeps a bare TMDB air date on its own day in every time zone.
+- `ReviewText` cleans TMDB and Trakt reviews (entities, tags, Markdown).
+- `RecentSearches`, `ConfiguredKey`, `RatingSource.spokenScore`, and `FlowError.from(URLError)` for
+  plain connection errors.
+- `Theme.Palette.overPicture` tints glass that floats over video without a scrim.
+- A `player-still-watching` tour step on every platform.
+
+**Still open**
+- Trakt and Simkl sign-in, ratings sync and Stats with real history (keys).
+- Shazam on a device (ShazamKit on the App ID), X-Ray In This Scene with real subtitles.
+- The sleep-timer fade watched to the end; Smart Downloads seen running.
+- Not yet reviewed closely: Sports, the person page in depth, performance in Instruments.
+

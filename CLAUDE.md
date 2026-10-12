@@ -8,7 +8,8 @@ the device. It hosts no content. README.md lists every feature.
 The job on this Mac: **build it, run it in the simulators, look at it, and make it better.** You can
 see the app here, unlike on CI. Use that: check every change on screen before calling it done.
 `docs/TEST_PLAN.md` is the full test-and-improve playbook. Start there for any "test" or
-"improve" request.
+"improve" request, and read its **Session handover** section first: it says what earlier sessions
+fixed, what's still open, and which simulator tricks work on this Mac.
 
 ## Layout
 
@@ -42,9 +43,10 @@ Key types: `AppModel` (observable app state, services, navigation `paths[tab]`),
 scripts/sim.sh run ios            # build + install + launch on an iPhone simulator, with sample data
 scripts/sim.sh run ipad|tvos      # same for iPad / Apple TV;  --real uses real data and your keys
 scripts/sim.sh mac                # build + run the Mac app
-scripts/sim.sh shot home ios      # screenshot → shots/local/ios/home.png (then Read it to look at it)
+scripts/sim.sh shot ios home      # screenshot → shots/local/ios/home.png (platform first; then Read it)
 scripts/sim.sh open "flow://title/movie/693134" ios   # deep link (Dune: Part Two in the sample data)
 scripts/sim.sh logs ios           # app log;  reset = uninstall for a fresh first launch
+scripts/sim.sh run ios --real -- -FlowOffline YES   # every request fails as if offline (debug builds)
 scripts/sim.sh tour ios|ipad|tvos|macos   # the whole screenshot tour, as CI runs it → shots/tour/
 cd Packages/FlowKit && swift test # unit tests (fast; run after any FlowKit change)
 xcodegen generate                 # after adding/removing files or editing project.yml (sim.sh does it when needed)
@@ -76,7 +78,9 @@ and 26.3, so code must compile on both: wrap iOS 26-only symbols in `#if compile
     That's often easier than tapping.
   - Steps can set `model.paths`, `selectedTab`, `activePlayback?.tourPanel`, and the like.
   - The tour writes each step to `$FLOW_TOUR_FILE`, which the script waits on.
-- **Interacting:** `simctl` can't tap. Use any of:
+- **Interacting:** `simctl` can't tap. On this Mac the built-in iOS Simulator control tool taps most
+  reliably (portrait coordinates even in landscape), `axe describe-ui` reads VoiceOver labels, and
+  Apple TV is reached through deep links and tour steps (use the tvOS 26.5 simulator). Use any of:
   - **XcodeBuildMCP** (`claude mcp add XcodeBuildMCP -- npx -y xcodebuildmcp@latest`): build, run, screenshot, tap,
     swipe, type and read the accessibility tree.
   - The **AXe** CLI (`brew install cameroncooke/axe/axe`, then `axe describe-ui`, `axe tap`, `axe swipe`; check
@@ -101,6 +105,9 @@ and 26.3, so code must compile on both: wrap iOS 26-only symbols in `#if compile
   `sheetDismissButton`, `sheetDoneButton` and `sheetSaveButton`, which put Save under the form on tvOS.
 - **Logic goes in FlowKit with a unit test** whenever it can: parsing, ranking, matching, dates,
   sync merges. The app layer can't be unit-tested on Linux CI, so keep it thin.
+- **Words on screen:** plain sentences, Title Case for titles and toggles, sentence case for footers.
+  Spell services the way they brand themselves ("TMDB"). Errors say what to do next.
+- **Icon-only buttons** need a spoken label. `CircleButton` takes one as a required argument.
 - **Settings** are `Codable` structs in FlowKit `Models/Settings.swift`. A new field needs a default
   so old saved settings still decode, because `SettingsCodec` fills missing keys from defaults. Then
   add it to the settings UI and to Settings search keywords (`SettingsPage.keywords`).
