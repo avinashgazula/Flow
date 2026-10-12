@@ -304,7 +304,7 @@ struct BestMatchCard: View {
                 }
                 .font(Theme.Typeface.micro)
                 .foregroundStyle(Theme.Palette.gold)
-                HStack(spacing: Theme.Space.m) {
+                SourceRowLayout(spacing: Theme.Space.m) {
                     ResolutionBlock(source: source, growth: 1.2)
                     VStack(alignment: .leading, spacing: 4) {
                         SourcePrimaryLine(title: summary.title, size: summary.size, font: .system(.title3, weight: .bold))
@@ -356,7 +356,7 @@ struct SourceRow: View {
     private var summary: SourceSummary { SourceSummary(source: source, appearance: appearance, providerShownElsewhere: providerShownAbove) }
 
     var body: some View {
-        HStack(alignment: appearance.showRawText ? .top : .center, spacing: Theme.Space.m) {
+        SourceRowLayout(alignment: appearance.showRawText ? .top : .center, spacing: Theme.Space.m) {
             ResolutionBlock(source: source, growth: appearance.compact ? 0.85 : 1)
             VStack(alignment: .leading, spacing: appearance.compact ? 2 : 4) {
                 SourcePrimaryLine(title: summary.title, size: summary.size, font: Theme.Typeface.headline)
@@ -482,13 +482,16 @@ private struct SourcePrimaryLine: View {
     let size: String?
     let font: Font
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        HStack(spacing: 6) {
+        // Size goes under the title at accessibility text sizes, so neither is cut to "…".
+        (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 6))) {
             if let title {
-                Text(title).lineLimit(1).truncationMode(.middle)
+                Text(title).lineLimit(typeSize.isAccessibilitySize ? 3 : 1).truncationMode(.middle)
             }
             if let size {
-                Text(title == nil ? size : "· \(size)")
+                Text(title == nil || typeSize.isAccessibilitySize ? size : "· \(size)")
                     .monospacedDigit()
                     .foregroundStyle(Theme.Palette.textSecondary)
                     .layoutPriority(1)
@@ -498,11 +501,29 @@ private struct SourcePrimaryLine: View {
     }
 }
 
+/// The resolution block beside the source's details, or above them at accessibility text sizes,
+/// where side by side leaves the details a letter per line.
+private struct SourceRowLayout<Content: View>: View {
+    var alignment: VerticalAlignment = .center
+    let spacing: CGFloat
+    @ViewBuilder var content: Content
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.s))
+            : AnyLayout(HStackLayout(alignment: alignment, spacing: spacing))
+        layout { content }
+    }
+}
+
 /// The resolution as a rounded square: 4K and above carry a faint gold, the rest stay quiet.
 private struct ResolutionBlock: View {
     let source: StreamSource
     var growth: CGFloat = 1
-    @ScaledMetric(relativeTo: .headline) private var side: CGFloat = 52 * Theme.scale
+    @ScaledMetric(relativeTo: .headline) private var scaledSide: CGFloat = 52 * Theme.scale
+    /// Grows with the text, but only so far: past that it's a badge, not a billboard.
+    private var side: CGFloat { min(scaledSide, 76 * Theme.scale) }
 
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous) }
     private var emphasised: Bool { source.traits.resolution >= .uhd1440 }
@@ -523,6 +544,8 @@ private struct ResolutionBlock: View {
         .frame(width: side * growth, height: side * growth)
         .background(emphasised ? Theme.Palette.gold.opacity(0.14) : Theme.Palette.surfaceStrong, in: shape)
         .overlay(shape.strokeBorder(emphasised ? Theme.Palette.gold.opacity(0.35) : Theme.Palette.hairline, lineWidth: 1))
+        // Its size is capped, so its label is too, to stay whole ("1080p", not "10…").
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .accessibilityHidden(true)
     }
 }
@@ -573,7 +596,9 @@ private struct SourceBadgeRow: View {
 
 /// A row-shaped stand-in while the first providers answer.
 private struct SourceRowPlaceholder: View {
-    @ScaledMetric(relativeTo: .headline) private var side: CGFloat = 52 * Theme.scale
+    @ScaledMetric(relativeTo: .headline) private var scaledSide: CGFloat = 52 * Theme.scale
+    /// Grows with the text, but only so far: past that it's a badge, not a billboard.
+    private var side: CGFloat { min(scaledSide, 76 * Theme.scale) }
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)

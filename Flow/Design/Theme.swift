@@ -138,6 +138,9 @@ struct PrimaryButtonStyle: ButtonStyle {
         configuration.label
             .font(Theme.Typeface.headline)
             .foregroundStyle(.black)
+            // Wraps between words at large text sizes, never inside one ("Pla / y").
+            .multilineTextAlignment(.center)
+            .minimumScaleFactor(0.7)
             .padding(.horizontal, Theme.Space.l)
             .frame(minHeight: 52 * Theme.scale)
             .background(Color.white, in: Capsule())

@@ -575,6 +575,9 @@ private struct HeroPage: View {
             }
             .padding(.horizontal, card ? Theme.Space.m : Theme.Space.gutter)
             .padding(.bottom, card ? Theme.Space.l : (Platform.isPhone ? 44 : Theme.Space.xxl))
+            // The artwork has a fixed height, so text over it grows only so far; everything it
+            // says is also on the detail page, which follows the full size.
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         }
         .frame(height: height)
     }

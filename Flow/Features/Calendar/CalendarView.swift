@@ -198,6 +198,8 @@ private struct DayStrip: View {
             .padding(.vertical, Platform.isTV ? 24 : 0)
         }
         .scrollClipDisabled()
+        // Fixed-size day chips: their text grows only as far as it fits. VoiceOver reads the full date.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 }
 
@@ -247,6 +249,7 @@ private struct CalendarCard: View {
     @Environment(AppModel.self) private var model
 
     private var width: CGFloat { Platform.landscapeWidth }
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Group {
@@ -278,12 +281,14 @@ private struct CalendarCard: View {
                     }
                 }
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(entry.item.title).font(Theme.Typeface.headline).lineLimit(1)
-                    Spacer(minLength: 0)
+                // At accessibility text sizes the day moves under the title and lines wrap, rather than "Th…  Frid…".
+                let large = typeSize.isAccessibilitySize
+                (large ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 6))) {
+                    Text(entry.item.title).font(Theme.Typeface.headline).lineLimit(large ? 3 : 1)
+                    if !large { Spacer(minLength: 0) }
                     if let dateLabel { Text(dateLabel).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary) }
                 }
-                Text(subtitle(for: entry)).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+                Text(subtitle(for: entry)).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary).lineLimit(large ? 3 : 1)
                 CalendarBadge(entry: entry)
             }
             .frame(width: width, alignment: .leading)
