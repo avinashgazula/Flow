@@ -40,15 +40,19 @@ struct SourcePickerView: View {
     var body: some View {
         let list = ranked
         let best = bestMatch(in: list)
-        let groups = grouped(list.filter { $0.id != best?.id })
+        let lastPlayedID = model.lastSource(for: request, in: list)?.id
+        let groups = grouped(list)
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     header(count: list.count)
-                    providerStatus
+                    if let best {
+                        PlayChoice(source: best, forDownload: forDownload, lastPlayed: lastPlayedID == best.id) { choose(best) }
+                            .contextMenu { sourceMenu(best) }
+                    }
                     if list.isEmpty && !finished {
-                        VStack(spacing: Theme.Space.s) {
-                            ForEach(0..<3, id: \.self) { _ in SourceRowPlaceholder() }
+                        SourceList {
+                            ForEach(0..<3, id: \.self) { index in SourceRowPlaceholder(showsDivider: index > 0) }
                         }
                         .shimmering()
                         .accessibilityHidden(true)
@@ -62,44 +66,18 @@ struct SourcePickerView: View {
                         }
                         .padding(.top, Theme.Space.xl)
                     }
-                    if let best {
-                        BestMatchCard(source: best, appearance: model.settings.sources.appearance, forDownload: forDownload,
-                                      lastPlayed: model.lastSource(for: request, in: list)?.id == best.id) { choose(best) }
-                            .contextMenu { sourceMenu(best) }
-                    }
                     ForEach(groups, id: \.0) { category, sources in
-                        VStack(alignment: .leading, spacing: Theme.Space.s) {
-                            if groups.count > 1 {
-                                Text(category.displayName.uppercased())
-                                    .font(Theme.Typeface.micro).kerning(1.2)
-                                    .foregroundStyle(Theme.Palette.textTertiary)
-                            } else if best != nil {
-                                Text("More Sources".uppercased())
-                                    .font(Theme.Typeface.micro).kerning(1.2)
-                                    .foregroundStyle(Theme.Palette.textTertiary)
-                            }
+                        if providerHeaders {
                             // By position: the demotions can leave one provider's sources in two separate runs.
                             ForEach(Array(Self.byProvider(sources).enumerated()), id: \.offset) { _, group in
-                                // The provider's name once, over its sources, rather than as every row's title.
-                                if providerHeaders, let first = group.first {
-                                    HStack(spacing: 6) {
-                                        Text(first.providerName).font(.system(.subheadline, weight: .semibold))
-                                        Text("\(group.count)").font(.system(.subheadline).monospacedDigit()).foregroundStyle(Theme.Palette.textTertiary)
-                                    }
-                                    .padding(.top, Theme.Space.xs)
-                                    .accessibilityElement(children: .combine)
-                                }
-                                ForEach(group) { source in
-                                    Button { choose(source) } label: {
-                                        SourceRow(source: source, appearance: model.settings.sources.appearance, providerShownAbove: providerHeaders)
-                                    }
-                                    .buttonStyle(SourceRowButtonStyle())
-                                    .disabled(!source.isActionable)
-                                    .contextMenu { sourceMenu(source) }
-                                }
+                                section(title: group.first?.providerName ?? category.displayName, count: group.count,
+                                        note: groups.count > 1 ? category.displayName : nil, sources: group, lastPlayedID: lastPlayedID)
                             }
+                        } else {
+                            section(title: category.displayName, count: sources.count, note: nil, sources: sources, lastPlayedID: lastPlayedID)
                         }
                     }
+                    failureNotes
                 }
                 .padding(.horizontal, Theme.Space.gutter)
                 .padding(.bottom, Theme.Space.xxl)
@@ -115,6 +93,32 @@ struct SourcePickerView: View {
         #if os(macOS)
         .frame(minWidth: 560, minHeight: 640)
         #endif
+    }
+
+    /// A provider's sources under its name, as one grouped list in the order the provider gave them.
+    private func section(title: String, count: Int, note: String?, sources: [StreamSource], lastPlayedID: String?) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(title).font(Theme.Typeface.headline)
+                Text("\(count)").font(.system(.subheadline).monospacedDigit()).foregroundStyle(Theme.Palette.textTertiary)
+                Spacer(minLength: 0)
+                if let note { Text(note).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary) }
+            }
+            .padding(.horizontal, Platform.isTV ? 0 : Theme.Space.xs)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+            SourceList {
+                ForEach(Array(sources.enumerated()), id: \.element.id) { index, source in
+                    Button { choose(source) } label: {
+                        SourceRow(source: source, appearance: model.settings.sources.appearance, providerShownAbove: providerHeaders,
+                                  lastPlayed: source.id == lastPlayedID, showsDivider: index > 0)
+                    }
+                    .buttonStyle(SourceRowButtonStyle())
+                    .disabled(!source.isActionable)
+                    .contextMenu { sourceMenu(source) }
+                }
+            }
+        }
     }
 
     /// Glass circles over the artwork instead of a navigation bar: search again at the leading edge, close at the trailing one.
@@ -146,38 +150,53 @@ struct SourcePickerView: View {
                 .frame(width: 64 * Theme.scale, height: 96 * Theme.scale)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .hairline(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(request.item.title).font(Theme.Typeface.title).displayTracking().lineLimit(2)
                 if let ep = request.episode {
                     Text("\(ep.code) · \(ep.title)").font(Theme.Typeface.body).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
                 }
-                Text(finished ? "\(count) source\(count == 1 ? "" : "s")" : "Finding sources…")
-                    .font(Theme.Typeface.caption)
-                    .foregroundStyle(Theme.Palette.textTertiary)
-                    .contentTransition(.numericText())
+                status(count: count)
             }
             Spacer(minLength: 0)
         }
     }
 
+    /// "Searching AIOStreams…" while providers answer, then the count.
     @ViewBuilder
-    private var providerStatus: some View {
-        if !pending.isEmpty || !failures.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Space.xs) {
-                    ForEach(pending.sorted { $0.value < $1.value }, id: \.key) { _, name in
-                        HStack(spacing: 6) { ProgressView().scaleEffect(0.6); Text(name) }
-                            .statusChip()
-                    }
-                    ForEach(failures.sorted { $0.key < $1.key }, id: \.key) { id, error in
-                        Label(providerName(id), systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                            .statusChip()
-                            .help(error)
+    private func status(count: Int) -> some View {
+        let searching = pending.values.sorted()
+        if !finished, !searching.isEmpty {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.mini)
+                Text("Searching \(ListFormatter.localizedString(byJoining: searching))…").lineLimit(1)
+            }
+            .font(Theme.Typeface.caption)
+            .foregroundStyle(Theme.Palette.textTertiary)
+        } else {
+            Text(finished ? "\(count) source\(count == 1 ? "" : "s")" : "Finding sources…")
+                .font(Theme.Typeface.caption)
+                .foregroundStyle(Theme.Palette.textTertiary)
+                .contentTransition(.numericText())
+        }
+    }
+
+    /// Providers that failed or timed out, in a line each under the list, where they don't push the sources down.
+    @ViewBuilder
+    private var failureNotes: some View {
+        if !failures.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(failures.sorted { $0.key < $1.key }, id: \.key) { id, error in
+                    Label {
+                        Text("\(providerName(id)): \(error)")
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                     }
                 }
             }
-            .scrollClipDisabled()
+            .font(Theme.Typeface.caption)
+            .foregroundStyle(Theme.Palette.textSecondary)
+            .padding(.horizontal, Platform.isTV ? 0 : Theme.Space.xs)
         }
     }
 
@@ -282,124 +301,274 @@ struct SourcePickerView: View {
     }
 }
 
-/// The source Flow ranks first, larger than a row, with the one button most people want.
-struct BestMatchCard: View {
+/// The one action most people want, saying exactly what it will start: "4K · Dolby Vision · Atmos ·
+/// 18.20 GB · AIOStreams". The same source is also in the list below, in its place.
+private struct PlayChoice: View {
     let source: StreamSource
-    let appearance: SourceAppearance
     var forDownload = false
-    /// The title was last played from this source, which is why it leads.
+    /// The title was last played from this source, which is why it's the one offered.
     var lastPlayed = false
     let action: () -> Void
 
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous) }
-    private var summary: SourceSummary { SourceSummary(source: source, appearance: appearance, providerShownElsewhere: true) }
     private var verb: String { forDownload ? "Download" : "Play" }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack(spacing: 6) {
-                    Image(systemName: lastPlayed ? "clock.arrow.circlepath" : "sparkles")
-                    Text((lastPlayed ? "Last Played" : "Best Match").uppercased()).kerning(1.2)
-                }
-                .font(Theme.Typeface.micro)
-                .foregroundStyle(Theme.Palette.gold)
-                SourceRowLayout(spacing: Theme.Space.m) {
-                    ResolutionBlock(source: source, growth: 1.2)
-                    VStack(alignment: .leading, spacing: 4) {
-                        SourcePrimaryLine(title: summary.title, size: summary.size, font: .system(.title3, weight: .bold))
-                        if let subtitle {
-                            Text(subtitle)
-                                .font(Theme.Typeface.body)
-                                .foregroundStyle(Theme.Palette.textSecondary)
-                                .lineLimit(2)
-                        }
-                    }
-                    Spacer(minLength: 0)
-                }
-                SourceBadgeRow(source: source, appearance: appearance)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture(perform: action)
-            // The button below speaks for the whole card.
-            .accessibilityHidden(true)
-            Button(action: action) {
-                Label(verb, systemImage: forDownload ? "arrow.down.to.line" : "play.fill")
-                    // Full width, except on Apple TV, where a full-width button grows past the card when focused.
-                    .frame(maxWidth: Platform.isTV ? nil : .infinity)
-                    .frame(minWidth: Platform.isTV ? 360 : nil)
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            // Room for the focus lift, which would otherwise cover the badges above.
-            .padding(.top, Platform.isTV ? Theme.Space.s : 0)
-            .accessibilityLabel("\(verb) best match, \(summary.accessibilityLabel)")
-        }
-        .padding(Theme.Space.m)
-        .background(LinearGradient(colors: [Theme.Palette.gold.opacity(0.16), Color.white.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing), in: shape)
-        .overlay(shape.strokeBorder(Theme.Palette.gold.opacity(0.28), lineWidth: 1))
+    private var description: String {
+        let formats = (source.traits.hdr.map { PremiumBadge.display($0) }
+            + [source.traits.audioCodec].compactMap { $0 }.filter(PremiumBadge.isPremium).map { PremiumBadge.display($0) })
+        let parts = [source.resolutionLabel] + formats + [source.sizeLabel, source.providerName]
+        return parts.compactMap { $0 }.joined(separator: " · ")
     }
 
-    /// The card isn't under a provider's heading, so the provider's name leads.
-    private var subtitle: String? {
-        let parts = [source.providerName, summary.detail].compactMap { $0 }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    var body: some View {
+        VStack(spacing: Theme.Space.s) {
+            Button(action: action) {
+                Label(verb, systemImage: forDownload ? "arrow.down.to.line" : "play.fill")
+                    // Full width, except on Apple TV, where a full-width button grows past the screen's edge when focused.
+                    .frame(maxWidth: Platform.isTV ? nil : .infinity)
+                    .frame(minWidth: Platform.isTV ? 420 : nil)
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .accessibilityLabel("\(verb), \(lastPlayed ? "last played, " : "")\(description)")
+            Group {
+                if lastPlayed {
+                    Text("\(Image(systemName: "clock.arrow.circlepath")) Last played · \(description)")
+                } else {
+                    Text(description)
+                }
+            }
+            .font(Theme.Typeface.caption)
+            .foregroundStyle(Theme.Palette.textSecondary)
+            .multilineTextAlignment(.center)
+            .accessibilityHidden(true)
+        }
+        .frame(maxWidth: .infinity)
+        // Room for Apple TV's focus lift.
+        .padding(.vertical, Platform.isTV ? Theme.Space.s : 0)
     }
 }
 
+/// Rows grouped the way iOS groups a table: one rounded surface, hairlines between rows. Apple TV
+/// keeps each row separate, since a focused row lifts out of its neighbours.
+private struct SourceList<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        #if os(tvOS)
+        VStack(spacing: Theme.Space.s) { content }
+        #else
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous)
+        VStack(spacing: 0) { content }
+            .background(Theme.Palette.surface, in: shape)
+            .clipShape(shape)
+            .hairline(shape)
+        #endif
+    }
+}
+
+/// One source as a line of a table: the resolution in its own column on the release's baseline, the
+/// size right-aligned in tabular digits, then the formats and languages beneath. Premium formats get a
+/// small outlined badge; codecs stay plain words; only the exceptions (not cached, needs debrid) are flagged.
 struct SourceRow: View {
     let source: StreamSource
     let appearance: SourceAppearance
     /// The provider's name heads the group, so the row leads with what tells its sources apart.
     var providerShownAbove = false
+    var lastPlayed = false
+    /// A hairline above this row, from the text column across, when it follows another in a list.
+    var showsDivider = false
 
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous) }
+    @Environment(\.isFocused) private var focused
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.displayScale) private var displayScale
+    @State private var hovering = false
+    @ScaledMetric(relativeTo: .headline) private var scaledColumn: CGFloat = 54
+
     private var summary: SourceSummary { SourceSummary(source: source, appearance: appearance, providerShownElsewhere: providerShownAbove) }
+    /// The resolution column; past a point it stops growing and its label shrinks to fit.
+    private var column: CGFloat { min(scaledColumn, 76) * Theme.scale }
+    /// At accessibility text sizes the column would squeeze the rest, so the resolution joins the title.
+    private var columnShown: Bool { !typeSize.isAccessibilitySize }
+    private var vertical: CGFloat { appearance.compact ? Theme.Space.s : 14 * Theme.scale }
+
+    // Apple TV draws focus the system way, white with dark text.
+    private var primary: Color { focused ? .black : .white }
+    private var secondary: Color { focused ? .black.opacity(0.62) : Theme.Palette.textSecondary }
+    private var tertiary: Color { focused ? .black.opacity(0.45) : Theme.Palette.textTertiary }
 
     var body: some View {
-        SourceRowLayout(alignment: appearance.showRawText ? .top : .center, spacing: Theme.Space.m) {
-            ResolutionBlock(source: source, growth: appearance.compact ? 0.85 : 1)
-            VStack(alignment: .leading, spacing: appearance.compact ? 2 : 4) {
-                SourcePrimaryLine(title: summary.title, size: summary.size, font: Theme.Typeface.headline)
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+            if columnShown {
+                Text(source.resolutionLabel ?? "–")
+                    .font(.system(.headline, design: .rounded, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(resolutionColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .frame(width: column, alignment: .leading)
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            }
+            VStack(alignment: .leading, spacing: appearance.compact ? 3 : 5) {
+                titleLine
                 if appearance.showRawText {
                     let lines = summary.rawLines
                     if !lines.isEmpty {
                         Text(lines.joined(separator: "\n"))
                             .font(.system(.footnote))
-                            .foregroundStyle(Theme.Palette.textSecondary)
+                            .foregroundStyle(secondary)
                             .lineLimit(appearance.compact ? 3 : 8)
                             .multilineTextAlignment(.leading)
                     }
-                } else if let detail = summary.detail {
-                    Text(detail)
-                        .font(Theme.Typeface.body)
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                        .lineLimit(1)
+                } else {
+                    SourceFormatLine(source: source, pack: appearance.badgePack, focused: focused)
                 }
-                SourceBadgeRow(source: source, appearance: appearance)
-                    .padding(.top, appearance.compact ? 0 : 2)
-                if !source.isPlayable, case .torrent = source.location {
-                    Label("Needs a debrid-enabled add-on", systemImage: "exclamationmark.circle").font(Theme.Typeface.caption).foregroundStyle(.orange)
-                }
-            }
-            Spacer(minLength: 0)
-            if source.isActionable {
-                Image(systemName: "chevron.right")
-                    .font(.system(.footnote, weight: .semibold))
-                    .foregroundStyle(Theme.Palette.textTertiary)
+                metaLine
             }
         }
         .padding(.horizontal, Theme.Space.m)
-        .padding(.vertical, appearance.compact ? Theme.Space.s : Theme.Space.m)
-        .background(Theme.Palette.surface, in: shape)
-        .hairline(shape)
-        .contentShape(shape)
-        .opacity(source.isActionable ? 1 : 0.55)
+        .padding(.vertical, vertical)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background { rowBackground }
+        .overlay(alignment: .top) {
+            if showsDivider && !Platform.isTV {
+                Rectangle()
+                    .fill(Theme.Palette.hairline)
+                    .frame(height: 1 / max(displayScale, 1))
+                    .padding(.leading, Theme.Space.m + (columnShown ? column + Theme.Space.m : 0))
+            }
+        }
+        .contentShape(Rectangle())
+        .opacity(source.isActionable ? 1 : 0.5)
+        #if os(macOS)
+        .onHover { hovering = $0 }
+        #endif
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(summary.accessibilityLabel)
+        .accessibilityLabel((lastPlayed ? "Last played, " : "") + summary.accessibilityLabel)
+    }
+
+    /// "WEB-DL                 18.20 GB": the title gives way (truncates) before the size does.
+    private var titleLine: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+            Text(title)
+                .font(Theme.Typeface.headline)
+                .foregroundStyle(primary)
+                .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
+                .truncationMode(.middle)
+            Spacer(minLength: Theme.Space.s)
+            if let size = summary.size, !typeSize.isAccessibilitySize {
+                Text(size).font(.system(.subheadline).monospacedDigit()).foregroundStyle(secondary).layoutPriority(1)
+            }
+        }
+    }
+
+    private var title: String {
+        let text = summary.title ?? source.filename ?? source.providerName
+        guard !columnShown, let resolution = source.resolutionLabel else { return text }
+        let withSize = typeSize.isAccessibilitySize ? [summary.size].compactMap { $0 } : []
+        return ([resolution, text] + withSize).joined(separator: " · ")
+    }
+
+    /// Languages and release group, then whatever needs saying about this one in particular.
+    @ViewBuilder
+    private var metaLine: some View {
+        let words = appearance.showRawText ? nil : summary.detail
+        let notCached = source.traits.isCached == false && source.category == .addons
+        let needsDebrid: Bool = { if !source.isPlayable, case .torrent = source.location { return true }; return false }()
+        if words != nil || lastPlayed || notCached || needsDebrid {
+            WrappingRow(spacing: 10 * Theme.scale, lineSpacing: 4) {
+                if let words { Text(words).foregroundStyle(tertiary).lineLimit(1) }
+                if lastPlayed { Label("Last played", systemImage: "clock.arrow.circlepath").foregroundStyle(secondary) }
+                if notCached { Label("Not cached", systemImage: "hourglass").foregroundStyle(.orange) }
+                if needsDebrid { Label("Needs a debrid-enabled add-on", systemImage: "exclamationmark.circle").foregroundStyle(.orange) }
+            }
+            .font(Theme.Typeface.caption)
+            .labelStyle(TightLabelStyle())
+        }
+    }
+
+    private var resolutionColor: Color {
+        if focused { return .black }
+        switch source.traits.resolution {
+        case .uhd4k, .uhd1440, .hd1080: return .white
+        case .unknown: return Theme.Palette.textTertiary
+        default: return Theme.Palette.textSecondary
+        }
+    }
+
+    @ViewBuilder
+    private var rowBackground: some View {
+        #if os(tvOS)
+        RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+            .fill(focused ? Color.white : Theme.Palette.surface)
+        #else
+        if hovering { Color.white.opacity(0.05) }
+        #endif
     }
 }
 
-// MARK: - Pieces shared by the rows and the Best Match card
+/// Icon and words a few points apart; the system's spacing is made for list rows, not captions.
+private struct TightLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) {
+            configuration.icon.imageScale(.small)
+            configuration.title
+        }
+    }
+}
+
+/// "[DOLBY VISION] [ATMOS] HEVC · 5.1": outlined badges for the formats that change what you see and
+/// hear, plain words for the rest. Follows Settings → Source Appearance → Badges.
+private struct SourceFormatLine: View {
+    let source: StreamSource
+    let pack: BadgePack
+    var focused = false
+
+    private var traits: StreamTraits { source.traits }
+
+    private var premium: [String] {
+        let all = traits.hdr + [traits.audioCodec].compactMap { $0 }.filter(PremiumBadge.isPremium)
+        return pack == .minimal ? Array(all.prefix(2)) : all
+    }
+
+    private var plain: String? {
+        guard pack != .minimal else { return nil }
+        let words = [traits.videoCodec, traits.audioCodec.flatMap { PremiumBadge.isPremium($0) ? nil : $0 }, traits.audioChannels].compactMap { $0 }
+        return words.isEmpty ? nil : words.joined(separator: " · ")
+    }
+
+    var body: some View {
+        if pack != .none, !premium.isEmpty || plain != nil {
+            WrappingRow(spacing: 6 * Theme.scale, lineSpacing: 5 * Theme.scale) {
+                ForEach(premium, id: \.self) { badge($0) }
+                if let plain {
+                    Text(plain)
+                        .font(.system(.caption).monospacedDigit())
+                        .foregroundStyle(focused ? .black.opacity(0.62) : Theme.Palette.textSecondary)
+                        .padding(.leading, premium.isEmpty ? 0 : 2)
+                }
+            }
+        }
+    }
+
+    private func badge(_ name: String) -> some View {
+        let tint = tint(for: name)
+        return Text(PremiumBadge.display(name).uppercased())
+            .font(.system(size: 9.5 * Theme.scale, weight: .bold))
+            .kerning(0.4)
+            .foregroundStyle(tint)
+            .padding(.horizontal, 5 * Theme.scale)
+            .padding(.vertical, 2.5 * Theme.scale)
+            .overlay(RoundedRectangle(cornerRadius: 4 * Theme.scale, style: .continuous).strokeBorder(tint.opacity(0.55), lineWidth: 1))
+            .fixedSize()
+    }
+
+    /// Colored tells picture formats from sound formats by a faint tint; the others stay white.
+    private func tint(for name: String) -> Color {
+        if focused { return .black.opacity(0.75) }
+        guard pack == .colored else { return .white.opacity(0.85) }
+        return PremiumBadge.hdr[name] != nil ? Color(red: 0.78, green: 0.7, blue: 1.0) : Color(red: 0.6, green: 0.88, blue: 0.9)
+    }
+}
+
+// MARK: - Pieces shared by the rows and the Play button
 
 private extension StreamSource {
     /// Opens outside Flow (a link): nothing to stream, but the row still does something when picked.
@@ -472,164 +641,51 @@ private enum PremiumBadge {
     static let hdr: [String: String] = ["DV": "Dolby Vision", "HDR10+": "HDR10 Plus", "HDR": "HDR", "HLG": "HLG"]
     static let audio: [String: String] = ["Atmos": "Atmos", "TrueHD Atmos": "TrueHD Atmos", "TrueHD": "TrueHD", "DTS-HD MA": "DTS-HD Master Audio", "DTS:X": "DTS X"]
 
+    /// How a badge reads on screen: "DV" is spelled out, the rest are already familiar.
+    static func display(_ badge: String) -> String { badge == "DV" ? "Dolby Vision" : badge }
     static func isPremium(_ badge: String) -> Bool { spoken(badge) != nil }
     static func spoken(_ badge: String) -> String? { hdr[badge] ?? audio[badge] }
 }
 
-/// "WEB-DL · 3.98 GB": the title gives way (truncates) before the size does.
-private struct SourcePrimaryLine: View {
-    let title: String?
-    let size: String?
-    let font: Font
-
-    @Environment(\.dynamicTypeSize) private var typeSize
-
-    var body: some View {
-        // Size goes under the title at accessibility text sizes, so neither is cut to "…".
-        (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 6))) {
-            if let title {
-                Text(title).lineLimit(typeSize.isAccessibilitySize ? 3 : 1).truncationMode(.middle)
-            }
-            if let size {
-                Text(title == nil || typeSize.isAccessibilitySize ? size : "· \(size)")
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.Palette.textSecondary)
-                    .layoutPriority(1)
-            }
-        }
-        .font(font)
-    }
-}
-
-/// The resolution block beside the source's details, or above them at accessibility text sizes,
-/// where side by side leaves the details a letter per line.
-private struct SourceRowLayout<Content: View>: View {
-    var alignment: VerticalAlignment = .center
-    let spacing: CGFloat
-    @ViewBuilder var content: Content
-    @Environment(\.dynamicTypeSize) private var typeSize
-
-    var body: some View {
-        let layout = typeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Space.s))
-            : AnyLayout(HStackLayout(alignment: alignment, spacing: spacing))
-        layout { content }
-    }
-}
-
-/// The resolution as a rounded square: 4K and above carry a faint gold, the rest stay quiet.
-private struct ResolutionBlock: View {
-    let source: StreamSource
-    var growth: CGFloat = 1
-    @ScaledMetric(relativeTo: .headline) private var scaledSide: CGFloat = 52 * Theme.scale
-    /// Grows with the text, but only so far: past that it's a badge, not a billboard.
-    private var side: CGFloat { min(scaledSide, 76 * Theme.scale) }
-
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous) }
-    private var emphasised: Bool { source.traits.resolution >= .uhd1440 }
-
-    var body: some View {
-        Group {
-            if let label = source.resolutionLabel {
-                Text(label)
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .minimumScaleFactor(0.7)
-                    .lineLimit(1)
-                    .padding(.horizontal, 4)
-            } else {
-                Image(systemName: "film").font(.system(.subheadline, weight: .semibold))
-            }
-        }
-        .foregroundStyle(emphasised ? Theme.Palette.gold : source.traits.resolution >= .hd1080 ? Color.white : Theme.Palette.textSecondary)
-        .frame(width: side * growth, height: side * growth)
-        .background(emphasised ? Theme.Palette.gold.opacity(0.14) : Theme.Palette.surfaceStrong, in: shape)
-        .overlay(shape.strokeBorder(emphasised ? Theme.Palette.gold.opacity(0.35) : Theme.Palette.hairline, lineWidth: 1))
-        // Its size is capped, so its label is too, to stay whole ("1080p", not "10…").
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-        .accessibilityHidden(true)
-    }
-}
-
-/// Two tiers: Dolby Vision, HDR and the premium audio formats keep their colour; codecs, channel counts and "Cached" stay quiet.
-private struct SourceBadgeRow: View {
-    let source: StreamSource
-    let appearance: SourceAppearance
-
-    private var badges: [String] {
-        guard appearance.badgePack != .none else { return [] }
-        var out = source.traits.badges
-        // The resolution block already leads with it.
-        if source.traits.resolution != .unknown, !out.isEmpty { out.removeFirst() }
-        out = out.filter(PremiumBadge.isPremium) + out.filter { !PremiumBadge.isPremium($0) }
-        if appearance.badgePack == .minimal { out = Array(out.prefix(2)) }
-        if source.traits.isCached == true && source.category == .addons { out.append("Cached") }
-        return out
-    }
-
-    var body: some View {
-        let shown = badges
-        if !shown.isEmpty {
-            WrappingRow(spacing: 6 * Theme.scale, lineSpacing: 6 * Theme.scale) {
-                ForEach(shown, id: \.self) { badge in chip(badge) }
-            }
-        }
-    }
-
-    private func chip(_ badge: String) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 5 * Theme.scale, style: .continuous)
-        let premium = PremiumBadge.isPremium(badge)
-        return Text(badge)
-            .font(premium ? Theme.Typeface.micro : .system(.caption2, weight: .semibold))
-            .padding(.horizontal, 7 * Theme.scale).padding(.vertical, 3 * Theme.scale)
-            .foregroundStyle(premium ? Color.white : Theme.Palette.textSecondary)
-            .background(premium ? premiumFill(badge) : Color.white.opacity(0.05), in: shape)
-            .overlay { if !premium { shape.strokeBorder(Theme.Palette.hairline, lineWidth: 1) } }
-    }
-
-    private func premiumFill(_ badge: String) -> Color {
-        guard appearance.badgePack == .colored else { return Color.white.opacity(0.2) }
-        return PremiumBadge.hdr[badge] != nil
-            ? Color(red: 0.62, green: 0.4, blue: 0.95).opacity(0.85)
-            : Color(red: 0.15, green: 0.65, blue: 0.7).opacity(0.8)
-    }
-}
-
 /// A row-shaped stand-in while the first providers answer.
 private struct SourceRowPlaceholder: View {
-    @ScaledMetric(relativeTo: .headline) private var scaledSide: CGFloat = 52 * Theme.scale
-    /// Grows with the text, but only so far: past that it's a badge, not a billboard.
-    private var side: CGFloat { min(scaledSide, 76 * Theme.scale) }
+    var showsDivider = false
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-        HStack(spacing: Theme.Space.m) {
-            RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
-                .fill(Theme.Palette.surfaceStrong)
-                .frame(width: side, height: side)
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            Capsule().fill(Theme.Palette.surfaceStrong).frame(width: 40 * Theme.scale, height: 14 * Theme.scale)
+                .frame(width: 54 * Theme.scale, alignment: .leading)
             VStack(alignment: .leading, spacing: 8 * Theme.scale) {
-                Capsule().fill(Theme.Palette.surfaceStrong).frame(width: 150 * Theme.scale, height: 12 * Theme.scale)
-                Capsule().fill(Theme.Palette.surface).frame(width: 96 * Theme.scale, height: 10 * Theme.scale)
-                HStack(spacing: 6 * Theme.scale) {
-                    Capsule().fill(Theme.Palette.surface).frame(width: 34 * Theme.scale, height: 16 * Theme.scale)
-                    Capsule().fill(Theme.Palette.surface).frame(width: 42 * Theme.scale, height: 16 * Theme.scale)
+                HStack {
+                    Capsule().fill(Theme.Palette.surfaceStrong).frame(width: 90 * Theme.scale, height: 14 * Theme.scale)
+                    Spacer()
+                    Capsule().fill(Theme.Palette.surface).frame(width: 56 * Theme.scale, height: 12 * Theme.scale)
                 }
+                Capsule().fill(Theme.Palette.surface).frame(width: 140 * Theme.scale, height: 10 * Theme.scale)
+                Capsule().fill(Theme.Palette.surface).frame(width: 70 * Theme.scale, height: 10 * Theme.scale)
             }
-            Spacer(minLength: 0)
         }
-        .padding(Theme.Space.m)
-        .background(Theme.Palette.surface, in: shape)
-        .hairline(shape)
+        .padding(.horizontal, Theme.Space.m)
+        .padding(.vertical, 14 * Theme.scale)
+        #if os(tvOS)
+        .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        #endif
+        .overlay(alignment: .top) {
+            if showsDivider && !Platform.isTV {
+                Rectangle().fill(Theme.Palette.hairline).frame(height: 1 / max(displayScale, 1))
+                    .padding(.leading, Theme.Space.m * 2 + 54 * Theme.scale)
+            }
+        }
     }
 }
 
-/// Rows are wide, so they press and focus more gently than poster cards do.
+/// Pressing a row highlights it like a table cell; Apple TV lifts the focused row a little.
 private struct SourceRowButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .background(configuration.isPressed && !Platform.isTV ? Color.white.opacity(0.09) : .clear)
             .modifier(SourceRowFocus())
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .brightness(configuration.isPressed ? -0.04 : 0)
-            .animation(Theme.Motion.snappy, value: configuration.isPressed)
     }
 }
 
@@ -640,22 +696,11 @@ private struct SourceRowFocus: ViewModifier {
     func body(content: Content) -> some View {
         #if os(tvOS)
         content
-            .scaleEffect(focused ? 1.03 : 1)
-            .shadow(color: .black.opacity(focused ? 0.5 : 0), radius: 24, y: 14)
-            .brightness(focused ? 0.06 : 0)
+            .scaleEffect(focused ? 1.02 : 1)
+            .shadow(color: .black.opacity(focused ? 0.45 : 0), radius: 22, y: 12)
             .animation(Theme.Motion.snappy, value: focused)
         #else
         content
         #endif
-    }
-}
-
-private extension View {
-    func statusChip() -> some View {
-        font(Theme.Typeface.caption)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Theme.Palette.surface, in: Capsule())
-            .overlay(Capsule().strokeBorder(Theme.Palette.hairline))
     }
 }

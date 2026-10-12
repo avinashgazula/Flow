@@ -215,10 +215,11 @@ struct SourceAppearanceView: View {
                 Toggle("Show File Size", isOn: $model.settings.sources.appearance.showSize)
                 Toggle("Compact Rows", isOn: $model.settings.sources.appearance.compact)
             } footer: {
-                Text("Add-on formatting shows each add-on's own text (emoji and all). Turn it off for a clean summary parsed from the release name.")
+                Text("Add-on formatting shows each add-on's own text (emoji and all). Turn it off for a clean summary parsed from the release name. Badges marks Dolby Vision, HDR and premium audio: Colored tints picture and sound formats apart, Monochrome keeps them white, Minimal shows at most two, None hides them.")
             }
             Section("Preview") {
                 SourceRow(source: Self.sample, appearance: model.settings.sources.appearance)
+                    .listRowInsets(EdgeInsets())
             }
         }
     }
