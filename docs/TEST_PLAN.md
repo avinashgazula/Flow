@@ -77,6 +77,8 @@ Platforms: **i** iPhone, **P** iPad, **M** Mac, **T** Apple TV. Unmarked means a
 - **Mac:** hovering a row shows paging arrows.
 - **Apple TV:** Settings is the last tab, and no gear floats over the hero.
 - **Pull to refresh** (i, P).
+- **Tab bar (i):** Flow's own capsule. The current tab is a white pill with its name and slides
+  between tabs; tapping it again returns to the tab's start; VoiceOver names every tab.
 
 ### Detail page
 
@@ -401,6 +403,16 @@ Commits on `claude/build-flow-app` describe each fix; `git log` is the full reco
   plain connection errors.
 - `Theme.Palette.overPicture` tints glass that floats over video without a scrim.
 - A `player-still-watching` tour step on every platform.
+
+**Design changes to keep in mind**
+- iPhone has its own tab bar (`Flow/App/FlowTabBar.swift`): a dark glass capsule of icons where the
+  current tab grows into a white pill with its name. The system `TabView` still holds the tabs (its
+  bar is hidden on iPhone), so each tab keeps its place. Search's field sits under its title on iPhone.
+  iPad keeps the system top bar; Mac and Apple TV are unchanged. Don't bring back the stock bar: the
+  owner asked for Flow to look like itself rather than the app it was modelled on.
+- Lists of choices are grouped tables (`Flow/Components/GroupedTable.swift`): one surface, hairlines,
+  table-cell highlight, white focused rows on Apple TV. The source picker, Live TV and Sports use it.
+- A title's page ends with one About table (essentials always; the rest with Settings → General → About).
 
 **Still open**
 - Trakt and Simkl sign-in, ratings sync and Stats with real history (keys).
