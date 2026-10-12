@@ -156,11 +156,34 @@ public struct EpisodeProvider: Sendable {
 
 public enum AirDateFormatting {
     /// Formats an air date either in the viewer's time zone or in UTC (the source's day).
+    /// A bare day (TMDb's "2026-10-21", midnight UTC) has no time to convert, so it always reads
+    /// as that day; moving it into the viewer's zone would show the evening before across the Americas.
     public static func string(for date: Date, localTimeZone: Bool, includeTime: Bool = false) -> String {
+        let bare = isBareDay(date)
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
-        formatter.timeStyle = includeTime ? .short : .none
-        formatter.timeZone = localTimeZone ? .current : TimeZone(identifier: "UTC")
+        formatter.timeStyle = includeTime && !bare ? .short : .none
+        formatter.timeZone = localTimeZone && !bare ? .current : TimeZone(identifier: "UTC")
         return formatter.string(from: date)
+    }
+
+    /// True for a date with no time of day: midnight UTC, the way TMDb gives air dates. Trakt's
+    /// first_aired carries a real moment.
+    public static func isBareDay(_ date: Date) -> Bool {
+        utcCalendar.dateComponents([.hour, .minute, .second], from: date) == DateComponents(hour: 0, minute: 0, second: 0)
+    }
+
+    /// A bare day as the same calendar day at midnight in `calendar`'s time zone, so an all-day
+    /// event or a day heading never slips to the day before. Nil for a date with a time in it.
+    public static func localDay(fromBareDay date: Date, in calendar: Calendar = .current) -> Date? {
+        guard isBareDay(date) else { return nil }
+        let parts = utcCalendar.dateComponents([.year, .month, .day], from: date)
+        return calendar.date(from: DateComponents(year: parts.year, month: parts.month, day: parts.day))
+    }
+
+    private static var utcCalendar: Calendar {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC") ?? .current
+        return utc
     }
 }

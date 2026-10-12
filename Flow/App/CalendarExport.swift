@@ -29,20 +29,11 @@ enum CalendarExport {
             notes = item.overview?.nonEmpty
             url = item.tmdbWebURL
         }
-        if let day = bareDay(date) {
+        // A bare TMDb air date becomes an all-day event on that day; Trakt's first_aired is a real moment.
+        if let day = AirDateFormatting.localDay(fromBareDay: date) {
             return Event(title: title, start: day, end: day, isAllDay: true, notes: notes, url: url)
         }
         return Event(title: title, start: date, end: date.addingTimeInterval(3600), isAllDay: false, notes: notes, url: url)
-    }
-
-    /// Air dates from TMDb are a bare day (midnight UTC); a date with a time in it (Trakt's first_aired) is a real moment.
-    /// A bare day becomes that same day at local midnight, so an all-day event never slips to the evening before.
-    private static func bareDay(_ date: Date) -> Date? {
-        var utc = Calendar(identifier: .gregorian)
-        utc.timeZone = TimeZone(identifier: "UTC") ?? .current
-        let parts = utc.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
-        guard parts.hour == 0, parts.minute == 0, parts.second == 0 else { return nil }
-        return Calendar.current.date(from: DateComponents(year: parts.year, month: parts.month, day: parts.day))
     }
 
     private enum Outcome { case added, denied, failed }
