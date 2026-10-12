@@ -314,10 +314,6 @@ struct DetailView: View {
         if general.showWhereToWatch, let availability = detail.availability, !availability.isEmpty {
             WhereToWatch(availability: availability)
         }
-        if general.showAboutSection {
-            let about = AboutSection(detail: detail)
-            if !about.isEmpty { about }
-        }
         if general.showReviews, !reviews.isEmpty {
             ReviewsSection(reviews: reviews, textSize: general.detailTextSize)
         }
@@ -350,7 +346,9 @@ struct DetailView: View {
                 PosterRow(items: detail.similar, context: "similar-\(current.id)")
             }
         }
-        infoSection(detail)
+        let about = AboutSection(detail: detail, essentialsOnly: !general.showAboutSection,
+                                 airDatesInLocalTimeZone: model.settings.metadata.airDatesInLocalTimeZone)
+        if !about.isEmpty { about }
     }
 
     private func collectionCard(_ collection: MediaCollection) -> some View {
@@ -401,57 +399,31 @@ struct DetailView: View {
             Button {
                 if let url = video.youtubeURL { model.openExternally(url) }
             } label: {
-                ZStack {
-                    RemoteImage(url: video.thumbnailURL, maxPixel: 900, fallbackTitle: video.name)
-                    Color.black.opacity(0.15)
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 22 * Theme.scale, weight: .bold))
-                        .frame(width: 60 * Theme.scale, height: 60 * Theme.scale)
-                        .flowGlass(Circle())
+                // The name goes under the picture, not on it: trailer thumbnails carry their own lettering.
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    ZStack {
+                        RemoteImage(url: video.thumbnailURL, maxPixel: 900, fallbackTitle: video.name)
+                        Color.black.opacity(0.15)
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 22 * Theme.scale, weight: .bold))
+                            .frame(width: 60 * Theme.scale, height: 60 * Theme.scale)
+                            .flowGlass(Circle())
+                    }
+                    .frame(width: Platform.landscapeWidth * 1.5, height: Platform.landscapeWidth * 1.5 * 9 / 16)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                    .hairline(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                    .artworkShadow(0.5)
+                    HStack(spacing: 6) {
+                        Text(video.name).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+                        Text("YouTube").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary)
+                    }
+                    .frame(width: Platform.landscapeWidth * 1.5, alignment: .leading)
                 }
-                .frame(width: Platform.landscapeWidth * 1.5, height: Platform.landscapeWidth * 1.5 * 9 / 16)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-                .hairline(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-                .overlay(alignment: .bottomLeading) {
-                    Text(video.name).font(Theme.Typeface.caption).padding(Theme.Space.s).shadow(radius: 4)
-                }
-                .artworkShadow(0.5)
             }
             .buttonStyle(CardButtonStyle())
             .accessibilityLabel("Play \(video.name)")
             .accessibilityHint("Opens in YouTube")
             .padding(.horizontal, Theme.Space.gutter)
-        }
-    }
-
-    private func infoSection(_ detail: MediaDetail) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Text("Information").font(Theme.Typeface.sectionTitle).displayTracking()
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150 * Theme.scale), spacing: Theme.Space.l, alignment: .topLeading)], alignment: .leading, spacing: Theme.Space.m) {
-                if let date = detail.item.releaseDate {
-                    info(detail.item.type == .movie ? "Released" : "First Aired", AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))
-                }
-                if let runtime = detail.item.runtimeMinutes, runtime > 0 { info("Runtime", TimeFormat.runtime(runtime)) }
-                // About already lists these.
-                if !general.showAboutSection, let status = detail.item.status { info("Status", status) }
-                if let seasons = detail.numberOfSeasons { info("Seasons", String(seasons)) }
-                if !general.showAboutSection, !detail.networks.isEmpty { info("Network", detail.networks.joined(separator: ", ")) }
-                let directors = detail.crew.filter { $0.role == "Director" || $0.role == "Creator" }.map(\.name)
-                if !directors.isEmpty { info(detail.item.type == .movie ? "Director" : "Created By", directors.joined(separator: ", ")) }
-                if !general.showAboutSection, let lang = detail.item.originalLanguage { info("Language", Locale.current.localizedString(forLanguageCode: lang) ?? lang) }
-                if let certification = detail.item.certification { info("Rated", certification) }
-            }
-        }
-        .padding(Theme.Space.l)
-        .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
-        .hairline(RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
-        .padding(.horizontal, Theme.Space.gutter)
-    }
-
-    private func info(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label.uppercased()).font(Theme.Typeface.micro).kerning(0.8).foregroundStyle(Theme.Palette.textTertiary)
-            Text(value).font(Theme.Typeface.body).foregroundStyle(.white.opacity(0.9))
         }
     }
 

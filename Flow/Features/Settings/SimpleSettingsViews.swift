@@ -61,7 +61,7 @@ struct GeneralSettingsView: View {
             } header: {
                 Text("Detail Views")
             } footer: {
-                Text("About shows status, country and production companies. Where to Watch shows streaming, rent and buy availability (JustWatch via TMDB). Reviews shows TMDB and Trakt reviews. Episode Spoilers off blurs the stills of aired episodes you haven't watched. Specials Season adds season 0 to a show's seasons.")
+                Text("About always lists the release date, runtime, director and rating at the foot of the page; this adds status, language, country, budget, revenue and production companies. Where to Watch shows streaming, rent and buy availability (JustWatch via TMDB). Reviews shows TMDB and Trakt reviews. Episode Spoilers off blurs the stills of aired episodes you haven't watched. Specials Season adds season 0 to a show's seasons.")
             }
             Section {
                 Picker("Content Shelf Length", selection: $model.settings.general.contentShelfLength) {

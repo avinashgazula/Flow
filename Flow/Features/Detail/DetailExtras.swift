@@ -35,11 +35,26 @@ extension AppModel {
 }
 
 /// Status, language, country, money and the companies behind a title, as a grouped list.
+/// Everything factual about a title in one table at the foot of its page: the essentials (release,
+/// runtime, seasons, director, rating) always, the rest (status, language, country, money, companies,
+/// network) when Settings → General → About is on.
 struct AboutSection: View {
     let detail: MediaDetail
+    var essentialsOnly = false
+    var airDatesInLocalTimeZone = true
 
     private var rows: [(label: String, value: String)] {
         var rows: [(label: String, value: String)] = []
+        let item = detail.item
+        if let date = item.releaseDate {
+            rows.append((item.type == .movie ? "Released" : "First Aired", AirDateFormatting.string(for: date, localTimeZone: airDatesInLocalTimeZone)))
+        }
+        if let runtime = item.runtimeMinutes, runtime > 0 { rows.append(("Runtime", TimeFormat.runtime(runtime))) }
+        if let seasons = detail.numberOfSeasons { rows.append(("Seasons", String(seasons))) }
+        let directors = detail.crew.filter { $0.role == "Director" || $0.role == "Creator" }.map(\.name)
+        if !directors.isEmpty { rows.append((item.type == .movie ? (directors.count > 1 ? "Directors" : "Director") : "Created By", directors.joined(separator: ", "))) }
+        if let certification = item.certification, !certification.isEmpty { rows.append(("Rated", certification)) }
+        guard !essentialsOnly else { return rows }
         if let status = detail.item.status, !status.isEmpty { rows.append(("Status", Self.statusLabel(status))) }
         if let lang = detail.item.originalLanguage, !lang.isEmpty {
             rows.append(("Original Language", Locale.current.localizedString(forLanguageCode: lang) ?? lang))
