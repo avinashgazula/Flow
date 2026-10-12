@@ -204,21 +204,34 @@ struct DetailView: View {
                             action("shuffle", title: "Shuffle", active: false) { Task { await model.shufflePlay(current) } }
                             action("arrow.counterclockwise", title: rewatching ? "End Rewatch" : "Rewatch", active: rewatching) { toggleRewatch() }
                         } else {
-                            Menu {
-                                Button { Task { await model.shufflePlay(current) } } label: { Label("Shuffle Play", systemImage: "shuffle") }
-                                Button { toggleRewatch() } label: {
-                                    Label(rewatching ? "End Rewatch" : "Rewatch", systemImage: "arrow.counterclockwise")
+                            // The menu's label is only the circle: iOS 27 spreads glass over a menu's whole label, and
+                            // iOS 26 draws a glass group over anything that isn't part of the glass itself.
+                            VStack(spacing: 6 * Theme.scale) {
+                                Menu {
+                                    Button { Task { await model.shufflePlay(current) } } label: { Label("Shuffle Play", systemImage: "shuffle") }
+                                    Button { toggleRewatch() } label: {
+                                        Label(rewatching ? "End Rewatch" : "Rewatch", systemImage: "arrow.counterclockwise")
+                                    }
+                                    #if !os(tvOS)
+                                    TitleShareLink(item: current) { Label("Share", systemImage: "square.and.arrow.up") }
+                                    #endif
+                                } label: {
+                                    Image(systemName: "ellipsis")
+                                        .font(.system(size: 19 * Theme.scale, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 50 * Theme.scale, height: 50 * Theme.scale)
+                                        .flowGlass(Circle(), interactive: true)
                                 }
-                                #if !os(tvOS)
-                                TitleShareLink(item: current) { Label("Share", systemImage: "square.and.arrow.up") }
-                                #endif
-                            } label: {
-                                Label("More", systemImage: "ellipsis").labelStyle(DetailActionLabelStyle(active: false, glass: false))
+                                .buttonStyle(DetailActionButtonStyle())
+                                .accessibilityLabel("More")
+                                Text("More")
+                                    .font(.system(size: 11 * Theme.scale, weight: .semibold))
+                                    .foregroundStyle(Theme.Palette.textSecondary)
+                                    .lineLimit(1)
+                                    .fixedSize()
+                                    .accessibilityHidden(true)
                             }
-                            .buttonStyle(DetailActionButtonStyle())
-                            // iOS 27 stretches glass inside a menu's label over the whole label, title and all,
-                            // so the circle sits behind the menu instead.
-                            .background(alignment: .top) { DetailActionLabelStyle.circle }
+                            .frame(minWidth: 64 * Theme.scale)
                         }
                     }
                     #if !os(tvOS)
@@ -684,18 +697,9 @@ struct WhereToWatch: View {
 /// A detail page action: the symbol in a glass circle, its name in small type below.
 struct DetailActionLabelStyle: LabelStyle {
     let active: Bool
-    var glass = true
 
     func makeBody(configuration: Configuration) -> some View {
-        DetailActionLabel(icon: configuration.icon, title: configuration.title, active: active, glass: glass)
-    }
-
-    /// The glass circle on its own, for a label drawn with `glass: false`.
-    static var circle: some View {
-        Color.clear
-            .frame(width: 50 * Theme.scale, height: 50 * Theme.scale)
-            .flowGlass(Circle(), interactive: true)
-            .allowsHitTesting(false)
+        DetailActionLabel(icon: configuration.icon, title: configuration.title, active: active)
     }
 }
 
@@ -703,7 +707,6 @@ private struct DetailActionLabel<Icon: View, Title: View>: View {
     let icon: Icon
     let title: Title
     let active: Bool
-    let glass: Bool
     /// Apple TV shows focus the system way: the circle turns white.
     @Environment(\.isFocused) private var focused
 
@@ -715,7 +718,7 @@ private struct DetailActionLabel<Icon: View, Title: View>: View {
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: 50 * Theme.scale, height: 50 * Theme.scale)
                 .background { if focused { Circle().fill(.white) } }
-                .modifier(ActionGlass(enabled: glass))
+                .flowGlass(Circle(), interactive: true)
             title
                 .font(.system(size: 11 * Theme.scale, weight: .semibold))
                 .foregroundStyle(active || focused ? .white : Theme.Palette.textSecondary)
@@ -724,14 +727,6 @@ private struct DetailActionLabel<Icon: View, Title: View>: View {
         }
         .frame(minWidth: 64 * Theme.scale)
         .contentShape(Rectangle())
-    }
-}
-
-private struct ActionGlass: ViewModifier {
-    let enabled: Bool
-
-    func body(content: Content) -> some View {
-        if enabled { content.flowGlass(Circle(), interactive: true) } else { content }
     }
 }
 
