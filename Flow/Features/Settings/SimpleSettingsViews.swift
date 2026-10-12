@@ -100,11 +100,11 @@ struct GeneralSettingsView: View {
             Section {
                 Toggle("Show Release Year", isOn: $model.settings.general.showReleaseYear)
                 Toggle("Show Titles Under Posters", isOn: $model.settings.general.showPosterTitles)
-                Toggle("Show Episodes Remaining", isOn: $model.settings.general.showEpisodesRemaining)
+                Toggle("Show Episodes Left", isOn: $model.settings.general.showEpisodesRemaining)
             } header: {
                 Text("Posters")
             } footer: {
-                Text("The year appears under the title, or alone when titles are hidden. Episodes remaining adds watched/aired counts such as 3/10 to series posters and \"6 Remaining\" to Continue Watching cards.")
+                Text("The year appears under the title, or alone when titles are hidden. Show Episodes Left adds watched/aired counts such as 3/10 to series posters and \"6 episodes left\" to Continue Watching cards.")
             }
             Section {
                 Picker("Text Size", selection: $model.settings.general.detailTextSize) {

@@ -250,7 +250,8 @@ struct ContinueWatchingCard: View {
                             .padding(Theme.Space.s)
                     }
                     if let remaining = episodesRemaining {
-                        Text("\(remaining) Remaining")
+                        // Says what's left: "44 Remaining" read as minutes as easily as episodes.
+                        Text(remaining == 1 ? "1 episode left" : "\(remaining) episodes left")
                             .font(.system(.caption2, weight: .semibold))
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             .background(.black.opacity(0.5), in: Capsule())
