@@ -112,10 +112,19 @@ struct TabShell: View {
                 ForEach(model.settings.general.orderedTabs) { tab in
                     Tab(tab.title, systemImage: tab.systemImage, value: tab, role: tab == .search ? .search : nil) {
                         stack(for: tab)
+                            #if os(iOS)
+                            // iPhone draws its own bar (FlowTabBar); the TabView still keeps each tab's place.
+                            .toolbar(Platform.isPhone ? .hidden : .automatic, for: .tabBar)
+                            #endif
                     }
                 }
             }
             .modifier(ModernTabChrome())
+            #if os(iOS)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if Platform.isPhone { FlowTabBar() }
+            }
+            #endif
             #endif
         } else {
             TabView(selection: $model.selectedTab) {
@@ -177,7 +186,7 @@ private struct ModernTabChrome: ViewModifier {
     @ViewBuilder
     private func minimize(_ view: some View) -> some View {
         #if compiler(>=6.2)
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, *), !Platform.isPhone {
             view.tabBarMinimizeBehavior(.onScrollDown)
         } else {
             view
