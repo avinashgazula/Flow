@@ -163,7 +163,12 @@ final class AppModel {
             cloud = CloudSync(store: InMemoryKeyValueStore())
             #endif
             cache = ResponseCache(store: .caches("FlowResponses"))
+            #if DEBUG
+            http = UserDefaults.standard.bool(forKey: "FlowOffline")
+                ? HTTPClient(transport: OfflineTransport(), userAgent: "Flow/1.0") : HTTPClient(userAgent: "Flow/1.0")
+            #else
             http = HTTPClient(userAgent: "Flow/1.0")
+            #endif
             var loaded = AppSettings()
             if let data = store.loadData("settings") {
                 if let decoded = try? SettingsCodec.decode(AppSettings.self, from: data, defaults: AppSettings()) {

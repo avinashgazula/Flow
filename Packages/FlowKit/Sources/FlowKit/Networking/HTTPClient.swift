@@ -20,6 +20,8 @@ public enum FlowError: Error, LocalizedError, Equatable, Sendable {
     case cancelled
     case timedOut
     case pending
+    /// No connection, or the server couldn't be reached.
+    case offline(String)
 
     public var errorDescription: String? {
         switch self {
@@ -32,8 +34,9 @@ public enum FlowError: Error, LocalizedError, Equatable, Sendable {
         case .rateLimited: return "Too many requests. Try again in a moment."
         case .unsupported(let detail): return detail
         case .cancelled: return "Cancelled."
-        case .timedOut: return "The request timed out."
+        case .timedOut: return "That took too long to answer. Check your connection and try again."
         case .pending: return "Waiting for authorization."
+        case .offline(let message): return message
         }
     }
 }
@@ -104,9 +107,36 @@ public struct URLSessionTransport: HTTPTransport {
             switch error.code {
             case .cancelled: throw FlowError.cancelled
             case .timedOut: throw FlowError.timedOut
-            default: throw error
+            default: throw FlowError.from(error)
             }
         }
+    }
+}
+
+extension FlowError {
+    /// URLSession's errors in words a viewer can act on ("NSURLErrorDomain error -1009" says nothing).
+    public static func from(_ error: URLError) -> Error {
+        switch error.code {
+        case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed, .internationalRoamingOff:
+            return FlowError.offline("You're offline. Check your connection and try again.")
+        case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
+            let host = error.failingURL?.host.map { " \($0)" } ?? ""
+            return FlowError.offline("Couldn't reach\(host). Check your connection, or try again in a moment.")
+        case .secureConnectionFailed, .serverCertificateUntrusted, .serverCertificateHasBadDate, .serverCertificateNotYetValid, .serverCertificateHasUnknownRoot:
+            return FlowError.offline("Couldn't make a secure connection. If you're on public Wi-Fi, sign in to it first.")
+        case .cancelled: return FlowError.cancelled
+        case .timedOut: return FlowError.timedOut
+        default: return error
+        }
+    }
+}
+
+/// Fails every request as a device with no connection would, for seeing how screens behave
+/// offline without turning off the Mac's network (the `-FlowOffline YES` launch argument).
+public struct OfflineTransport: HTTPTransport {
+    public init() {}
+    public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        throw URLError(.notConnectedToInternet)
     }
 }
 
@@ -126,7 +156,12 @@ public struct HTTPClient: Sendable {
         if urlRequest.value(forHTTPHeaderField: "User-Agent") == nil {
             urlRequest.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         }
-        let (data, response) = try await transport.send(urlRequest)
+        let data: Data, response: HTTPURLResponse
+        do {
+            (data, response) = try await transport.send(urlRequest)
+        } catch let error as URLError {
+            throw FlowError.from(error)
+        }
         guard acceptStatus.contains(response.statusCode) else {
             switch response.statusCode {
             case 401, 403: throw FlowError.unauthorized
