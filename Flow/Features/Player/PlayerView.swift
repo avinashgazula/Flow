@@ -358,7 +358,7 @@ struct PlayerNotice: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
             .frame(maxWidth: 520 * Theme.scale)
-            .flowGlass(Capsule())
+            .flowGlass(Capsule(), tint: Theme.Palette.overPicture)
             .padding(.horizontal, 24)
             .allowsHitTesting(false)
     }
@@ -552,7 +552,7 @@ struct SkipAndUpNextOverlay: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
                         .contentShape(Capsule())
-                        .flowGlass(Capsule(), interactive: true)
+                        .flowGlass(Capsule(), interactive: true, tint: Theme.Palette.overPicture)
                     }
                     .buttonStyle(.plain)
                     .transition(.scale(scale: 0.9).combined(with: .opacity))
@@ -869,7 +869,7 @@ struct IOSPlayerControls: View {
                     Label("2×", systemImage: "forward.fill")
                         .font(.system(size: 14, weight: .bold))
                         .padding(.horizontal, 14).padding(.vertical, 8)
-                        .flowGlass(Capsule())
+                        .flowGlass(Capsule(), tint: Theme.Palette.overPicture)
                         .padding(.top, 20)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                         .accessibilityLabel("Playing at double speed")
