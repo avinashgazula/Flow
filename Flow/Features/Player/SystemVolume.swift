@@ -77,7 +77,7 @@ struct VolumePill: View {
         .foregroundStyle(.white)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .flowGlass(Capsule())
+        .flowGlass(Capsule(), tint: Theme.Palette.overPicture)
         .background(VolumeViewHost(volume: volume).frame(width: 0, height: 0))
         .accessibilityElement(children: .contain)
     }

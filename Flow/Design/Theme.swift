@@ -36,8 +36,8 @@ enum Theme {
         static let textSecondary = Color.white.opacity(0.62)
         static let textTertiary = Color.white.opacity(0.38)
         static let gold = Color(red: 0.96, green: 0.80, blue: 0.42)
-        /// Tint for glass floating over video with no scrim behind it, so its white text still
-        /// reads on a bright picture.
+        /// Tint for glass floating over video (notices, Skip Intro, Up Next, the info, options, X-Ray,
+        /// episode, song and volume panels), so white and grey text still read on a bright picture.
         static let overPicture = Color.black.opacity(0.4)
     }
 

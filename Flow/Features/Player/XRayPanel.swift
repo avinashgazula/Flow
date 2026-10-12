@@ -97,7 +97,7 @@ struct XRayPanel: View {
         }
         .frame(width: Platform.isPhone ? 300 : 360)
         .frame(maxHeight: .infinity, alignment: .top)
-        .flowGlass(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .flowGlass(RoundedRectangle(cornerRadius: 22, style: .continuous), tint: Theme.Palette.overPicture)
         .environment(\.colorScheme, .dark)
         .task(id: session.request.id) { await reload() }
         .task(id: session.request.id) { await follow() }

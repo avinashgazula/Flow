@@ -54,7 +54,7 @@ struct EpisodeShelf: View {
         }
         .padding(.vertical, 16)
         .foregroundStyle(.white)
-        .flowGlass(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .flowGlass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: Theme.Palette.overPicture)
         .shadow(color: .black.opacity(0.28), radius: 24, y: 8)
         .accessibilityAction(.escape) { close() }
     }

@@ -247,7 +247,7 @@ struct SongCard: View {
         .font(.system(size: 14 * Theme.scale, weight: .semibold))
         .padding(.horizontal, 16 * Theme.scale).padding(.vertical, 10 * Theme.scale)
         .frame(maxWidth: 360 * Theme.scale)
-        .flowGlass(Capsule())
+        .flowGlass(Capsule(), tint: Theme.Palette.overPicture)
         .onTapGesture { recognizer.dismiss() }
     }
 
@@ -284,7 +284,7 @@ struct SongCard: View {
         }
         .padding(12 * Theme.scale)
         .frame(width: 340 * Theme.scale)
-        .flowGlass(RoundedRectangle(cornerRadius: 20 * Theme.scale, style: .continuous))
+        .flowGlass(RoundedRectangle(cornerRadius: 20 * Theme.scale, style: .continuous), tint: Theme.Palette.overPicture)
         .overlay(alignment: .topTrailing) {
             #if !os(tvOS)
             Button { recognizer.dismiss() } label: {

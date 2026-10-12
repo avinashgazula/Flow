@@ -538,7 +538,10 @@ struct SkipAndUpNextOverlay: View {
             Spacer()
             HStack {
                 Spacer()
-                if let countdown = session.upNextCountdown, let next = session.upNext {
+                // An open options or episodes panel takes this corner; nothing floats over it.
+                if session.panelOpen {
+                    EmptyView()
+                } else if let countdown = session.upNextCountdown, let next = session.upNext {
                     UpNextCard(next: next, countdown: countdown, total: model.settings.playback.nextEpisodeCountdownSeconds,
                                play: { Task { await session.playUpNext() } },
                                cancel: { session.cancelUpNext() })
@@ -568,6 +571,7 @@ struct SkipAndUpNextOverlay: View {
             .padding(.bottom, Platform.isPhone ? 96 : 120)
         }
         .animation(Theme.Motion.gentle, value: session.activeSegment)
+        .animation(Theme.Motion.gentle, value: session.panelOpen)
         .animation(Theme.Motion.gentle, value: session.upNextCountdown)
         .animation(Theme.Motion.gentle, value: session.showsSuggestions)
     }
@@ -609,7 +613,7 @@ struct UpNextCard: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("UP NEXT · \(countdown)s")
                     .font(Theme.Typeface.micro).kerning(1)
-                    .foregroundStyle(Theme.Palette.textTertiary)
+                    .foregroundStyle(Theme.Palette.textSecondary)
                     .contentTransition(.numericText(countsDown: true))
                 Text(next.episode?.title ?? next.item.title)
                     .font(.system(.subheadline, weight: .semibold))
@@ -629,7 +633,8 @@ struct UpNextCard: View {
         }
         .padding(10)
         .padding(.trailing, 6)
-        .flowGlass(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        // It sits on the picture with no scrim; clear glass let its grey text vanish into a bright frame.
+        .flowGlass(RoundedRectangle(cornerRadius: 22, style: .continuous), tint: Theme.Palette.overPicture)
     }
 }
 
@@ -919,6 +924,7 @@ struct IOSPlayerControls: View {
         .onAppear { scheduleHide() }
         // The controls stay up while a panel or the sheet is open, then go back to timing out.
         .onChange(of: overlayOpen) { _, open in
+            session.panelOpen = showsOptions || showsEpisodes
             if open { hideTask?.cancel(); visible = true } else { scheduleHide() }
         }
         .sheet(isPresented: $showsAdvanced) {
@@ -1282,7 +1288,7 @@ struct PlaybackInfoPanel: View {
         let enabled: Bool
         func body(content: Content) -> some View {
             if enabled {
-                content.flowGlass(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                content.flowGlass(RoundedRectangle(cornerRadius: 18, style: .continuous), tint: Theme.Palette.overPicture)
             } else {
                 content
             }
