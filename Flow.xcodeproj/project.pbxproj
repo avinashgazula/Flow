@@ -81,6 +81,7 @@
 		54B629CBC83538B2FD02FCBC /* SourcesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D51B71E64A3FAEEAB5B463B /* SourcesSettingsView.swift */; };
 		54BC477E4D4B547FA5581505 /* SourcesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D51B71E64A3FAEEAB5B463B /* SourcesSettingsView.swift */; };
 		55E41FD74BA1D5217865038F /* SystemVolume.swift in Sources */ = {isa = PBXBuildFile; fileRef = 946540BCA40626E77468111F /* SystemVolume.swift */; };
+		56D597854960FAD929AB2E89 /* PlayerCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DC3B9744AFF87B99DBFCBA2 /* PlayerCheck.swift */; };
 		57F136C4AA06B525A33DF7ED /* DownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9ED31EC7E6444B795906246 /* DownloadManager.swift */; };
 		5BE5F0C39DEEB2DA53800C49 /* ShelvesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E5BC060EB6D6E2ABFE2898 /* ShelvesSettingsView.swift */; };
 		5D2F0EF48A710F2C9BD03A73 /* SubtitleAutoSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD737624EF9765468432FC9 /* SubtitleAutoSync.swift */; };
@@ -149,6 +150,7 @@
 		A569B7E2A24F289614CBE5BB /* AppModel+Snapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B1E42308B468C5EABF03CD /* AppModel+Snapshot.swift */; };
 		A728FD080ECECA23B173849C /* EpisodeShelf.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88BEF739F9A9682C799EE4A /* EpisodeShelf.swift */; };
 		A76B0550ACC271E00C8FE83E /* LiveTVView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11A5725FE1CA04C7ABACBFB /* LiveTVView.swift */; };
+		A7FD41F1847B34F2FCF0D526 /* PlayerCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DC3B9744AFF87B99DBFCBA2 /* PlayerCheck.swift */; };
 		AA477BE2EE59661B6A743F94 /* ImagePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98C8F5D695E36798C8EC974D /* ImagePipeline.swift */; };
 		AD050743EC5FB6645D57A171 /* ProvidersSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED3F6045FC0AD7F92F090118 /* ProvidersSettingsViews.swift */; };
 		AD78565CF8F3E82D88A04CCC /* SourcePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A84A9F87CCE0A8F9E094FF1 /* SourcePickerView.swift */; };
@@ -190,6 +192,7 @@
 		D9974BD1EC592ACF61DEECC0 /* SourcePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A84A9F87CCE0A8F9E094FF1 /* SourcePickerView.swift */; };
 		DA4C91593007356DC88903C5 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBA393B9CEE6890CBADEE423 /* NowPlaying.swift */; };
 		DAF96B8B5651091388BBAF82 /* Shelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E4B0A67CC21E053989BB58A /* Shelves.swift */; };
+		DBD344A900A9E81B71311114 /* PlayerCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DC3B9744AFF87B99DBFCBA2 /* PlayerCheck.swift */; };
 		DEC14EA578DC92CC1530DCE3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6C97AD56B95F80525C774907 /* Assets.xcassets */; };
 		DF79733F916AA319E3D08D93 /* MacPlayerMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC7C9912B10C36929B230EA7 /* MacPlayerMenu.swift */; };
 		E197E9DC8878B85BF83BFA21 /* FlowKit in Frameworks */ = {isa = PBXBuildFile; productRef = 260CFC46D33868BB12C131B0 /* FlowKit */; };
@@ -301,6 +304,7 @@
 		498CAC90811BCFFFDFD3B1D3 /* FlowTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowTabBar.swift; sourceTree = "<group>"; };
 		4AB914167C0E60D7E61706B6 /* Flow-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Flow-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4D9B65C32FD3DCF62AB118C7 /* RequestButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestButton.swift; sourceTree = "<group>"; };
+		4DC3B9744AFF87B99DBFCBA2 /* PlayerCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerCheck.swift; sourceTree = "<group>"; };
 		4EC0099DE944D4031131AE4D /* PlayerSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerSurface.swift; sourceTree = "<group>"; };
 		5289F6C0111AC96F58A5B8A9 /* Cards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cards.swift; sourceTree = "<group>"; };
 		57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowSnapshot.swift; sourceTree = "<group>"; };
@@ -559,6 +563,7 @@
 				498CAC90811BCFFFDFD3B1D3 /* FlowTabBar.swift */,
 				27A6255A7C16EB8875FE0467 /* Intents.swift */,
 				65DCE0A945164A80E0C29891 /* NotificationScheduler.swift */,
+				4DC3B9744AFF87B99DBFCBA2 /* PlayerCheck.swift */,
 				03878E23BB21C51D27637323 /* RootView.swift */,
 				EE2CE055DCDAD495019235C4 /* ScreenshotTour.swift */,
 				3B3B66222812A0C035066700 /* SystemIntegration.swift */,
@@ -938,6 +943,7 @@
 				4EB11207A3EEECE1D5C439CE /* PersonView.swift in Sources */,
 				93FB6214934E715C1BCD5A67 /* Platform.swift in Sources */,
 				EF4BB56602791FCBB1A78513 /* PlaybackSession.swift in Sources */,
+				56D597854960FAD929AB2E89 /* PlayerCheck.swift in Sources */,
 				E6DA218CFBF3742797A1BCC1 /* PlayerOptionsPanel.swift in Sources */,
 				4EC1E8052F23AA548C2BF133 /* PlayerSurface.swift in Sources */,
 				D2E6E062AE9FD4CF3ADF16D0 /* PlayerView.swift in Sources */,
@@ -1013,6 +1019,7 @@
 				606EBDF08B80ECA673799CF3 /* PersonView.swift in Sources */,
 				26373EF208DA8C7E889F1EE2 /* Platform.swift in Sources */,
 				A1186A0FB9C97EB95E0667FF /* PlaybackSession.swift in Sources */,
+				A7FD41F1847B34F2FCF0D526 /* PlayerCheck.swift in Sources */,
 				AFACAC6A0C6F3E439A6C9EB6 /* PlayerOptionsPanel.swift in Sources */,
 				8A11EB9306190794CF20FFBE /* PlayerSurface.swift in Sources */,
 				3B888582C9530FD7091DF714 /* PlayerView.swift in Sources */,
@@ -1088,6 +1095,7 @@
 				D7238BBEC40F070902A57934 /* PersonView.swift in Sources */,
 				090E0F3ED9D5D8C4371D79FE /* Platform.swift in Sources */,
 				82665FEDC0DC4B2227B53EDE /* PlaybackSession.swift in Sources */,
+				DBD344A900A9E81B71311114 /* PlayerCheck.swift in Sources */,
 				24D3ABB53650A225DBD77CD7 /* PlayerOptionsPanel.swift in Sources */,
 				4903144538955A0D95EA0F21 /* PlayerSurface.swift in Sources */,
 				3A8C96F16161DAFA0841443E /* PlayerView.swift in Sources */,

@@ -52,6 +52,9 @@ struct FlowApp: App {
                 .onReceive(NotificationCenter.default.publisher(for: IntentInbox.arrived)) { _ in IntentInbox.drain(into: model) }
                 .task(id: ObjectIdentifier(model)) {
                     if ScreenshotTour.isRequested { await ScreenshotTour.run(model) }
+                    #if DEBUG
+                    if PlayerCheck.isRequested { await PlayerCheck.run(model) }
+                    #endif
                 }
                 .onReceive(NotificationCenter.default.publisher(for: .flowModeChanged)) { _ in model = AppModel() }
                 .onContinueUserActivity(SystemIntegration.titleActivity) { activity in
