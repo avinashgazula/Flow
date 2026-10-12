@@ -588,7 +588,7 @@ struct TMDBReviewsDTO: Decodable {
         enum CodingKeys: String, CodingKey { case id, author, content, authorDetails = "author_details", createdAt = "created_at" }
 
         var review: Review? {
-            let text = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            let text = ReviewText.clean(content)
             guard !text.isEmpty else { return nil }
             return Review(id: "tmdb:\(id)", source: .tmdb, author: author?.nilIfEmpty ?? "Anonymous", text: text,
                           rating: authorDetails?.rating.map { Int($0.rounded()) }, date: createdAt.flatMap(FlowDate.parse))

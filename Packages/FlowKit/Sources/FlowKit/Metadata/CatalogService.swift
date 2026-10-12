@@ -149,7 +149,12 @@ public actor CatalogService {
                 try await trakt.comments(item.type, id: slug)
             }) ?? []
         }
-        return Review.merged(tmdbReviews, traktReviews)
+        // Cleaned here too: reviews cached before cleaning existed still carry "&amp;" and Markdown.
+        return Review.merged(tmdbReviews, traktReviews).map { review in
+            var review = review
+            review.text = ReviewText.clean(review.text)
+            return review
+        }
     }
 
     /// A film's release dates per country, cached: Upcoming dates digital and theatrical releases from them.

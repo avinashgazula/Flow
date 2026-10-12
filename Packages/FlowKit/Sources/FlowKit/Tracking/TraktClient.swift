@@ -365,7 +365,7 @@ public actor TraktClient: TrackingService, ListService {
         }
         let comments = try await get([DTO].self, "/\(type.traktPath)/\(id)/comments/likes", query: ["limit": "10"], auth: false)
         return comments.compactMap { c in
-            let text = c.comment.trimmingCharacters(in: .whitespacesAndNewlines)
+            let text = ReviewText.clean(c.comment)
             guard !text.isEmpty else { return nil }
             return Review(id: "trakt:\(c.id)", source: .trakt, author: c.user?.username ?? "Anonymous", text: text,
                           rating: (c.user_stats?.rating ?? c.user_rating).map { Int($0.rounded()) }, date: c.created_at.flatMap(FlowDate.parse), spoiler: c.spoiler ?? false)

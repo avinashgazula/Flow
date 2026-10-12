@@ -33,6 +33,57 @@ public struct Review: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
+/// Review text as people wrote it: TMDb and Trakt pass on HTML entities, tags and Markdown
+/// ("&amp;", "<em>", "**great**", "[link](https://…)"), which read as noise in plain text.
+public enum ReviewText {
+    public static func clean(_ raw: String) -> String {
+        var text = raw
+            .replacingOccurrences(of: #"<br\s*/?>"#, with: "\n", options: [.regularExpression, .caseInsensitive])
+            .replacingOccurrences(of: #"</?[A-Za-z][^>]*>"#, with: "", options: .regularExpression)
+            // [words](https://…) keeps the words.
+            .replacingOccurrences(of: #"\[([^\]]+)\]\((https?://[^)\s]+)\)"#, with: "$1", options: .regularExpression)
+            // **bold**, __bold__, *italic*, _italic_ keep their words.
+            .replacingOccurrences(of: #"(\*\*|__)(\S(?:.*?\S)?)\1"#, with: "$2", options: .regularExpression)
+            .replacingOccurrences(of: #"(?<![\w*])\*(\S(?:[^*]*?\S)?)\*(?![\w*])"#, with: "$1", options: .regularExpression)
+            .replacingOccurrences(of: #"(?<!\w)_(\S(?:[^_]*?\S)?)_(?!\w)"#, with: "$1", options: .regularExpression)
+        text = decodeEntities(text)
+        // Paragraph breaks at most one blank line apart.
+        text = text.replacingOccurrences(of: #"\n{3,}"#, with: "\n\n", options: .regularExpression)
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func decodeEntities(_ text: String) -> String {
+        guard text.contains("&") else { return text }
+        let named = ["amp": "&", "lt": "<", "gt": ">", "quot": "\"", "apos": "'", "nbsp": " ",
+                     "hellip": "…", "mdash": "—", "ndash": "–", "rsquo": "’", "lsquo": "‘", "rdquo": "”", "ldquo": "“"]
+        var result = ""
+        var rest = Substring(text)
+        while let amp = rest.firstIndex(of: "&") {
+            result += rest[..<amp]
+            let after = rest[rest.index(after: amp)...]
+            if let semi = after.prefix(10).firstIndex(of: ";") {
+                let name = String(after[..<semi])
+                var decoded: String?
+                if name.hasPrefix("#x") || name.hasPrefix("#X") {
+                    decoded = UInt32(name.dropFirst(2), radix: 16).flatMap(Unicode.Scalar.init).map { String(Character($0)) }
+                } else if name.hasPrefix("#") {
+                    decoded = UInt32(name.dropFirst()).flatMap(Unicode.Scalar.init).map { String(Character($0)) }
+                } else {
+                    decoded = named[name.lowercased()]
+                }
+                if let decoded {
+                    result += decoded
+                    rest = after[after.index(after: semi)...]
+                    continue
+                }
+            }
+            result += "&"
+            rest = after
+        }
+        return result + rest
+    }
+}
+
 /// Dollar amounts the way a film's page prints them: "$80M", "$120.4M".
 public enum CompactMoney {
     public static func string(_ dollars: Int) -> String {
