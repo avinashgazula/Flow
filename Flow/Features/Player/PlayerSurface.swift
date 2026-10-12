@@ -108,7 +108,8 @@ struct TVPlayerController: UIViewControllerRepresentable {
             items.append(UIMenu(title: "Disc Subtitles", image: UIImage(systemName: "captions.bubble"), options: .singleSelection, children: choices))
         }
         items.append(search)
-        items.append(UIAction(title: "What Did They Say?", image: UIImage(systemName: "captions.bubble")) { _ in session.replayWithSubtitles() })
+        // Disc Subtitles already has the captions bubble; this one goes back ten seconds.
+        items.append(UIAction(title: "What Did They Say?", image: UIImage(systemName: "gobackward.10")) { _ in session.replayWithSubtitles() })
         items.append(UIAction(title: session.songs.isListening ? "Listening…" : "Identify Song", image: UIImage(systemName: "shazam.logo"),
                               attributes: session.songs.isListening ? .disabled : []) { _ in session.songs.identify(session) })
         if session.canAutoSync {
