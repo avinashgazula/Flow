@@ -51,7 +51,15 @@ enum ScreenshotTour {
                     log("no bundled MKV sample")
                 }
             },
+            Step(name: "player-still-watching") { m in
+                #if os(iOS)
+                m.activePlayback?.tourPanel = nil
+                #endif
+                m.activePlayback?.showsXRay = false
+                m.activePlayback?.tourAskStillWatching(true)
+            },
             Step(name: "player-suggestions") { m in
+                m.activePlayback?.tourAskStillWatching(false)
                 // Where the film ends: "Because You Watched".
                 log("suggestions: \(m.activePlayback?.suggestions.count ?? -1) phase=\(String(describing: m.activePlayback?.phase))")
                 m.activePlayback?.endWithSuggestions()
@@ -65,7 +73,7 @@ enum ScreenshotTour {
         ]
         #if os(iOS)
         // The player's options panel and Advanced Options, over the MKV sample.
-        if let index = steps.firstIndex(where: { $0.name == "player-suggestions" }) {
+        if let index = steps.firstIndex(where: { $0.name == "player-still-watching" }) {
             steps.insert(contentsOf: [
                 Step(name: "player-options") { m in
                     m.activePlayback?.tourScrubPreview = nil

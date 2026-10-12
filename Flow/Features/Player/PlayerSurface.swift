@@ -43,6 +43,23 @@ struct RoutePicker: UIViewRepresentable {
 #endif
 
 #if os(tvOS)
+/// What Flow draws in the system player's content overlay, beneath its transport bar and info
+/// panel: subtitles, and the still-watching question (answered with the player's own button).
+struct TVContentOverlay: View {
+    let session: PlaybackSession
+    let settings: SubtitleSettings
+
+    var body: some View {
+        ZStack {
+            SubtitleLayer(session: session, settings: settings)
+            if session.asksStillWatching {
+                StillWatchingPrompt(session: session).transition(.opacity)
+            }
+        }
+        .animation(Theme.Motion.gentle, value: session.asksStillWatching)
+    }
+}
+
 /// The system player on tvOS: Siri Remote scrubbing, info panel, audio/subtitle menus.
 /// Flow adds skip buttons as contextual actions and a subtitle-search menu item.
 struct TVPlayerController: UIViewControllerRepresentable {
@@ -57,7 +74,7 @@ struct TVPlayerController: UIViewControllerRepresentable {
         controller.delegate = context.coordinator
         controller.appliesPreferredDisplayCriteriaAutomatically = true
         // Flow's own subtitles go in the content overlay, which sits beneath the transport bar and info panel.
-        let host = UIHostingController(rootView: SubtitleLayer(session: session, settings: subtitleSettings))
+        let host = UIHostingController(rootView: TVContentOverlay(session: session, settings: subtitleSettings))
         host.view.backgroundColor = .clear
         host.view.isUserInteractionEnabled = false
         if let overlay = controller.contentOverlayView {
@@ -83,15 +100,16 @@ struct TVPlayerController: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
-        context.coordinator.subtitleHost?.rootView = SubtitleLayer(session: session, settings: subtitleSettings)
+        context.coordinator.subtitleHost?.rootView = TVContentOverlay(session: session, settings: subtitleSettings)
+        // The player cuts these buttons off at about fourteen characters, so their titles stay short.
         if session.asksStillWatching {
-            controller.contextualActions = [UIAction(title: "Continue Watching", image: UIImage(systemName: "play.fill")) { _ in session.confirmStillWatching() }]
+            controller.contextualActions = [UIAction(title: "Keep Watching", image: UIImage(systemName: "play.fill")) { _ in session.confirmStillWatching() }]
         } else if let segment = session.activeSegment {
             controller.contextualActions = [UIAction(title: segment.kind.buttonTitle, image: UIImage(systemName: "forward.end.fill")) { _ in session.skip(segment) }]
         } else if session.showsSuggestions, session.phase == .playing {
-            controller.contextualActions = [UIAction(title: "Because You Watched", image: UIImage(systemName: "rectangle.stack")) { _ in session.endWithSuggestions() }]
+            controller.contextualActions = [UIAction(title: "More Like This", image: UIImage(systemName: "rectangle.stack")) { _ in session.endWithSuggestions() }]
         } else if let countdown = session.upNextCountdown {
-            controller.contextualActions = [UIAction(title: "Next Episode in \(countdown)", image: UIImage(systemName: "forward.fill")) { _ in
+            controller.contextualActions = [UIAction(title: "Up Next in \(countdown)", image: UIImage(systemName: "forward.fill")) { _ in
                 Task { await session.playUpNext() }
             }]
         } else {
@@ -124,7 +142,7 @@ struct TVPlayerController: UIViewControllerRepresentable {
 
     final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
         let session: PlaybackSession
-        var subtitleHost: UIHostingController<SubtitleLayer>?
+        var subtitleHost: UIHostingController<TVContentOverlay>?
         init(session: PlaybackSession) { self.session = session }
 
         func playerViewControllerShouldDismiss(_ playerViewController: AVPlayerViewController) -> Bool {

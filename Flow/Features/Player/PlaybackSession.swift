@@ -57,7 +57,7 @@ final class PlaybackSession: Identifiable {
     let songs = SongRecognizer()
     /// Several episodes have played back to back untouched: asks before starting another.
     private(set) var asksStillWatching = false
-    @ObservationIgnored private var unattendedEpisodes = 0
+    @ObservationIgnored private var stillWatching = StillWatching()
     @ObservationIgnored private var replayTask: Task<Void, Never>?
     /// True while "What did they say?" has subtitles on, so the choice isn't remembered as the viewer's.
     @ObservationIgnored private var replayingWithSubtitles = false
@@ -85,6 +85,8 @@ final class PlaybackSession: Identifiable {
     /// Set by the screenshot tour to open a player panel: "options" or "advanced".
     var tourPanel: String?
     #endif
+    /// Lets the screenshot tour show "Are You Still Watching?" without sitting through episodes.
+    func tourAskStillWatching(_ ask: Bool) { asksStillWatching = ask }
 
     @ObservationIgnored private weak var model: AppModel?
     @ObservationIgnored private var resumeAt: Double?
@@ -898,8 +900,8 @@ final class PlaybackSession: Identifiable {
         case .paused:
             // Stopping pauses first and then reports its own stop; a pause report would only race it.
             guard didStart, phase == .playing, !isStopping else { return }
-            // Someone's there.
-            unattendedEpisodes = 0
+            // Someone's there, unless it's the episode ending or the still-watching question itself.
+            if !asksStillWatching { stillWatching.notePause(at: currentTime, duration: duration) }
             let request = self.request, percent = self.percent
             Task {
                 try? await model.tracker.scrobble(.pause, request: request, percent: percent)
@@ -1029,27 +1031,26 @@ final class PlaybackSession: Identifiable {
 
     /// Moves on to the next episode by itself, unless enough have played untouched that someone may have nodded off.
     private func advanceAutomatically() async {
-        let limit = model?.settings.playback.stillWatchingAfterEpisodes ?? 0
-        if limit > 0, unattendedEpisodes >= limit {
-            player.pause()
-            upNextCountdown = nil
+        if stillWatching.shouldAsk(limit: model?.settings.playback.stillWatchingAfterEpisodes ?? 0) {
             asksStillWatching = true
+            upNextCountdown = nil
+            player.pause()
             return
         }
-        unattendedEpisodes += 1
+        stillWatching.noteAutomaticAdvance()
         await playUpNext()
     }
 
     /// "Continue Watching" on the still-watching question.
     func confirmStillWatching() {
         asksStillWatching = false
-        unattendedEpisodes = 0
+        stillWatching.noteInteraction()
         Task { await playUpNext() }
     }
 
     /// Anything the viewer does: a tap, a skip, a seek. Resets the count of episodes played untouched.
     func noteInteraction() {
-        unattendedEpisodes = 0
+        stillWatching.noteInteraction()
     }
 
     // MARK: What did they say?
@@ -1060,22 +1061,23 @@ final class PlaybackSession: Identifiable {
         let until = currentTime
         seek(to: until - 10)
         guard subtitle == nil, selectedBitmapTrack == nil, let item = player.currentItem else { return }
-        if let group = legibleGroup, item.currentMediaSelection.selectedMediaOption(in: group) == nil {
-            let preferred = model.map { TrackSelection.subtitleLanguages($0.settings.subtitles) } ?? []
-            let options = group.options.filter { !$0.hasMediaCharacteristic(.containsOnlyForcedSubtitles) }
-            let pick = options.first { option in
-                preferred.contains { option.extendedLanguageTag?.hasPrefix(LanguageName.bcp47($0)) == true }
-            } ?? options.first
-            guard let pick else {
-                show(notice: "This video has no subtitles to show.")
-                return
-            }
+        // Forced subtitles (signs, foreign lines) don't count as subtitles being on; full ones do,
+        // and then the seek alone is enough. Without this, disc subtitles were added on top.
+        let current = legibleGroup.flatMap { item.currentMediaSelection.selectedMediaOption(in: $0) }
+        if let current, !current.hasMediaCharacteristic(.containsOnlyForcedSubtitles) { return }
+        let preferred = model.map { TrackSelection.subtitleLanguages($0.settings.subtitles) } ?? []
+        let options = legibleGroup?.options.filter { !$0.hasMediaCharacteristic(.containsOnlyForcedSubtitles) } ?? []
+        let pick = options.first { option in
+            preferred.contains { option.extendedLanguageTag?.hasPrefix(LanguageName.bcp47($0)) == true }
+        } ?? options.first
+        if let group = legibleGroup, let pick {
             replayingWithSubtitles = true
             item.select(pick, in: group)
             revertReplay(at: until) { [weak self] in
                 guard let self, self.player.currentItem === item,
-                      item.currentMediaSelection.selectedMediaOption(in: group) == pick, group.allowsEmptySelection else { return }
-                item.select(nil, in: group)
+                      item.currentMediaSelection.selectedMediaOption(in: group) == pick,
+                      current != nil || group.allowsEmptySelection else { return }
+                item.select(current, in: group)
             }
         } else if let first = bitmapTracks.first {
             showBitmapSubtitle(first.id)
@@ -1083,7 +1085,7 @@ final class PlaybackSession: Identifiable {
                 guard let self, self.selectedBitmapTrack == first.id else { return }
                 self.showBitmapSubtitle(nil)
             }
-        } else if legibleGroup == nil {
+        } else {
             show(notice: "This video has no subtitles to show.")
         }
     }

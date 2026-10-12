@@ -50,11 +50,15 @@ struct PlayerView: View {
                     .transition(.opacity)
             }
             #endif
+            #if !os(tvOS)
+            // On Apple TV it sits in the player's content overlay instead, beneath the transport bar
+            // and its Continue Watching button (TVPlayerController).
             if session.asksStillWatching {
                 StillWatchingPrompt(session: session)
                     .transition(.opacity)
                     .zIndex(7)
             }
+            #endif
             SongCard(recognizer: session.songs)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 .padding(.top, Platform.isTV ? 60 : (Platform.isPhone ? 64 : 76))
@@ -892,7 +896,8 @@ struct IOSPlayerControls: View {
 
             SubtitleLayer(session: session, settings: model.settings.subtitles, lifted: visible)
 
-            if visible {
+            // The still-watching question stands alone: nothing else of the player shows through it.
+            if visible, !session.asksStillWatching {
                 controls.transition(.opacity)
             }
 
@@ -1003,6 +1008,11 @@ struct IOSPlayerControls: View {
                             heldBack = true
                             session.replayWithSubtitles()
                             scheduleHide()
+                        })
+                        // A finger that slides off before lifting sends no tap, so clear the flag on the lift
+                        // itself (a turn later, after any tap from the same lift), or the next tap is lost.
+                        .simultaneousGesture(DragGesture(minimumDistance: 0).onEnded { _ in
+                            DispatchQueue.main.async { heldBack = false }
                         })
                         .accessibilityAction(named: "What Did They Say?") { session.replayWithSubtitles() }
                         transportButton(isPlaying ? "pause.fill" : "play.fill", size: 84) { togglePlay() }
@@ -1282,17 +1292,20 @@ struct SubtitleLayer: View {
 
     var body: some View {
         ZStack {
-            if let subtitle = session.subtitle {
-                // Its own clock, a tenth of a second: the session's half-second tick would show lines late.
-                TimelineView(.periodic(from: .now, by: 0.1)) { _ in
-                    let now = session.player.currentTime().seconds
-                    let time = now.isFinite ? now : session.currentTime
-                    SubtitleOverlay(text: subtitle.text(at: time, offset: session.subtitleOffset), settings: settings,
-                                    cues: settings.keepASSStyling ? subtitle.cues(at: time, offset: session.subtitleOffset) : [])
+            // Hidden under the still-watching question, which stands alone.
+            if !session.asksStillWatching {
+                if let subtitle = session.subtitle {
+                    // Its own clock, a tenth of a second: the session's half-second tick would show lines late.
+                    TimelineView(.periodic(from: .now, by: 0.1)) { _ in
+                        let now = session.player.currentTime().seconds
+                        let time = now.isFinite ? now : session.currentTime
+                        SubtitleOverlay(text: subtitle.text(at: time, offset: session.subtitleOffset), settings: settings,
+                                        cues: settings.keepASSStyling ? subtitle.cues(at: time, offset: session.subtitleOffset) : [])
+                    }
                 }
-            }
-            if let bitmap = session.bitmapSubtitle {
-                BitmapSubtitleView(overlay: bitmap)
+                if let bitmap = session.bitmapSubtitle {
+                    BitmapSubtitleView(overlay: bitmap)
+                }
             }
         }
         .offset(y: lifted ? -72 : 0)
@@ -1352,8 +1365,9 @@ struct StillWatchingPrompt: View {
                         .lineLimit(1)
                 }
                 #if os(tvOS)
-                // Apple TV answers from the player's own button (Continue Watching), or Menu to stop.
-                Text("Press Menu to stop.").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary)
+                // Apple TV answers from the player's own button (Keep Watching), or Menu to stop.
+                Text("Choose Keep Watching, or press Menu to stop.")
+                    .font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary)
                 #else
                 VStack(spacing: Theme.Space.s) {
                     Button { session.confirmStillWatching() } label: {

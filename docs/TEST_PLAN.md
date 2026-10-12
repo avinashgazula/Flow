@@ -183,8 +183,10 @@ Platforms: **i** iPhone, **P** iPad, **M** Mac, **T** Apple TV. Unmarked means a
 - The system player with Flow's subtitle layer, and info panel tabs **X-Ray** (faces in a row,
   In This Scene first) and **Details**. *The X-Ray tab has never been seen.*
 - **Transport bar menu:** Disc Subtitles, Search Subtitles, What Did They Say?, Identify Song,
-  Auto-sync. Skip segments, Because You Watched and Next Episode appear as contextual buttons.
-- **Still watching:** shows as a dimmed prompt with a "Continue Watching" contextual button. Menu stops.
+  Auto-sync. Skip segments, More Like This and Up Next appear as contextual buttons (tvOS cuts
+  their titles off at about fourteen characters).
+- **Still watching:** shows as a dimmed prompt beneath the transport bar, with a "Keep Watching"
+  contextual button. Menu stops. Subtitles hide while it's up.
 - **Shazam:** the card appears top right without stealing focus.
 - **Live TV:**
   - The transport bar has Previous Channel, Next Channel and a Channels list.
