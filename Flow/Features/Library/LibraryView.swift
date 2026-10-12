@@ -8,26 +8,7 @@ struct LibraryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
-                // Two equal columns on iPhone so no tile is clipped; a scrolling row where there's room.
-                if Platform.isPhone {
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.s), GridItem(.flexible())], spacing: Theme.Space.s) {
-                        tiles
-                    }
-                    .padding(.horizontal, Platform.horizontalPadding)
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 14) {
-                            tiles
-                            #if os(tvOS)
-                            ActionChip(title: model.isSyncing ? "Syncing…" : "Sync", systemImage: "arrow.clockwise") {
-                                Task { await model.refreshLibrary(force: true) }
-                            }
-                            .disabled(model.isSyncing)
-                            #endif
-                        }
-                        .padding(.horizontal, Platform.horizontalPadding)
-                    }
-                }
+                tileArea
 
                 ContinueWatchingShelf(title: "Continue Watching")
                 LibraryKeysShelf(title: "Watchlist", keys: model.watchlistKeys, route: .library(.watchlist))
@@ -61,14 +42,71 @@ struct LibraryView: View {
         }
     }
 
-    @ViewBuilder private var tiles: some View {
+    private struct Tile: Identifiable {
+        let title: String
+        let subtitle: String
+        let systemImage: String
+        let route: Route
+        let tint: Color
+        var id: String { title }
+    }
+
+    private var tileItems: [Tile] {
+        let teams = model.settings.sports.followedTeams.count
+        var items: [Tile] = []
         if Platform.supportsDownloads {
-            LibraryTile(title: "Downloads", subtitle: downloadCount > 0 ? "\(downloadCount) saved" : "Watch offline", systemImage: "arrow.down.circle.fill", route: .downloads, tint: .blue)
+            items.append(Tile(title: "Downloads", subtitle: downloadCount > 0 ? "\(downloadCount) saved" : "Watch offline", systemImage: "arrow.down.circle.fill", route: .downloads, tint: .blue))
         }
-        LibraryTile(title: "Upcoming", subtitle: "New episodes", systemImage: "calendar", route: .calendar, tint: .pink)
-        LibraryTile(title: "Sports", subtitle: model.settings.sports.followedTeams.isEmpty ? "Follow your teams" : model.settings.sports.followedTeams.count == 1 ? "1 team followed" : "\(model.settings.sports.followedTeams.count) teams followed", systemImage: "sportscourt.fill", route: .sports, tint: .green)
-        LibraryTile(title: "History", subtitle: model.history.count == 1 ? "1 play" : "\(model.history.count) plays", systemImage: "clock.fill", route: .library(.history), tint: .orange)
-        LibraryTile(title: "Stats", subtitle: "Your watching", systemImage: "chart.bar.fill", route: .stats, tint: .teal)
+        items += [
+            Tile(title: "Upcoming", subtitle: "New episodes", systemImage: "calendar", route: .calendar, tint: .pink),
+            Tile(title: "Sports", subtitle: teams == 0 ? "Follow your teams" : teams == 1 ? "1 team followed" : "\(teams) teams followed", systemImage: "sportscourt.fill", route: .sports, tint: .green),
+            Tile(title: "History", subtitle: model.history.count == 1 ? "1 play" : "\(model.history.count) plays", systemImage: "clock.fill", route: .library(.history), tint: .orange),
+            Tile(title: "Stats", subtitle: "Your watching", systemImage: "chart.bar.fill", route: .stats, tint: .teal),
+        ]
+        return items
+    }
+
+    private func tile(_ item: Tile, stacked: Bool) -> some View {
+        LibraryTile(title: item.title, subtitle: item.subtitle, systemImage: item.systemImage, route: item.route, tint: item.tint, stacked: stacked)
+    }
+
+    @ViewBuilder private var tileArea: some View {
+        let items = tileItems
+        #if os(tvOS)
+        // A row: focus moves along it, and it scrolls to whatever is focused.
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 14) {
+                ForEach(items) { tile($0, stacked: false) }
+                ActionChip(title: model.isSyncing ? "Syncing…" : "Sync", systemImage: "arrow.clockwise") {
+                    Task { await model.refreshLibrary(force: true) }
+                }
+                .disabled(model.isSyncing)
+            }
+            .padding(.horizontal, Platform.horizontalPadding)
+        }
+        #else
+        if Platform.isPhone {
+            // Two equal columns so nothing is clipped; an odd one out takes the whole last row
+            // rather than leaving a hole beside it.
+            let paired = items.count.isMultiple(of: 2) ? items : Array(items.dropLast())
+            VStack(spacing: Theme.Space.s) {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.s), GridItem(.flexible())], spacing: Theme.Space.s) {
+                    ForEach(paired) { tile($0, stacked: true) }
+                }
+                if paired.count < items.count, let last = items.last {
+                    tile(last, stacked: false)
+                }
+            }
+            .padding(.horizontal, Platform.horizontalPadding)
+        } else {
+            // As many across as fit, all of them visible: a scrolling row hid the last ones off the edge.
+            // Stacked (icon above the words), so five fit across a big iPad without cutting labels short.
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 175), spacing: 14)], spacing: 14) {
+                ForEach(items) { tile($0, stacked: true) }
+            }
+            .padding(.horizontal, Platform.horizontalPadding)
+        }
+        #endif
     }
 
     private var uniqueHistoryKeys: [MediaKey] {
@@ -106,7 +144,8 @@ struct LibraryTile: View {
                         Spacer(minLength: 0)
                         chevron
                     }
-                    .frame(width: Platform.isTV ? 460 : 230, alignment: .leading)
+                    .frame(width: Platform.isTV ? 460 : nil, alignment: .leading)
+                    .frame(maxWidth: Platform.isTV ? nil : .infinity, alignment: .leading)
                 }
             }
             .padding(Theme.Space.m)
