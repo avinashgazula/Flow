@@ -241,6 +241,19 @@ targets:
       properties:
         com.apple.security.application-groups: [group.$(FLOW_BUNDLE_ID)]
 
+  FlowUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: Flow-iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(FLOW_BUNDLE_ID).uitests
+        PRODUCT_NAME: FlowUITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Flow-iOS
+
 schemes:
   Flow-iOS:
     build:
@@ -250,6 +263,7 @@ schemes:
       config: Debug
     test:
       config: Debug
+      targets: [FlowUITests]
   Flow-macOS:
     build:
       targets:
