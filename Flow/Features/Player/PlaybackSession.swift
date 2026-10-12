@@ -53,6 +53,8 @@ final class PlaybackSession: Identifiable {
     var showsInfo = false
     /// The X-Ray panel beside the picture (iPhone, iPad, Mac); Apple TV has it as a tab in its info panel.
     var showsXRay = false
+    /// The options or episodes panel is open (iPhone and iPad), so nothing else should float over it.
+    var panelOpen = false
     /// Shazam for the song that's playing, and the songs found so far.
     let songs = SongRecognizer()
     /// Several episodes have played back to back untouched: asks before starting another.
@@ -1030,7 +1032,10 @@ final class PlaybackSession: Identifiable {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
             guard let self, !Task.isCancelled else { return }
-            await self.advanceAutomatically()
+            // Let go of this task before moving on: switching episodes cancels the countdown, and
+            // cancelling the task it's running in would cancel the search for the next episode's source.
+            self.countdownTask = nil
+            await Task { await self.advanceAutomatically() }.value
         }
     }
 
@@ -1192,7 +1197,10 @@ final class PlaybackSession: Identifiable {
         remuxCompatible = false
         recoveries = 0
         keptTracks = nil
-        show(notice: "Switching to \(next.providerName)…")
+        // "1080p BluRay" tells one AIOStreams source from another; the provider's name alone doesn't.
+        let release = [next.traits.resolution == .unknown ? nil : next.traits.resolution.label,
+                       next.traits.quality == .unknown ? nil : next.traits.quality.rawValue].compactMap { $0 }.joined(separator: " ")
+        show(notice: "Switching to \(release.isEmpty ? next.providerName : release)…")
         load(next)
     }
 
@@ -1535,9 +1543,21 @@ final class PlaybackSession: Identifiable {
             return "You're offline. Check your connection and try again."
         case (NSURLErrorDomain, NSURLErrorTimedOut, _), (_, _, NSURLErrorTimedOut):
             return "The server took too long to answer."
+        case (NSURLErrorDomain, NSURLErrorCannotFindHost, _), (_, _, NSURLErrorCannotFindHost),
+             (NSURLErrorDomain, NSURLErrorCannotConnectToHost, _), (_, _, NSURLErrorCannotConnectToHost),
+             (NSURLErrorDomain, NSURLErrorDNSLookupFailed, _), (_, _, NSURLErrorDNSLookupFailed):
+            return "Couldn't reach this source's server. It may be down, or its address may have changed."
+        case (NSURLErrorDomain, NSURLErrorNetworkConnectionLost, _), (_, _, NSURLErrorNetworkConnectionLost):
+            return "The connection dropped. Check your connection and try again."
+        case (NSURLErrorDomain, NSURLErrorSecureConnectionFailed, _), (_, _, NSURLErrorSecureConnectionFailed),
+             (NSURLErrorDomain, NSURLErrorServerCertificateUntrusted, _), (_, _, NSURLErrorServerCertificateUntrusted):
+            return "Couldn't make a secure connection to this source. If you're on public Wi-Fi, sign in to it first."
+        // CoreMedia reports an HLS server's refusal as -12660 (HTTP 403) and a missing stream as -12938 (HTTP 404).
+        case (_, -12660, _), (_, _, -12660), (_, _, 403), (_, _, 401):
+            return "The source refused the stream. Its link may have expired; searching again usually finds a fresh one."
         case (AVFoundationErrorDomain, AVError.Code.fileFormatNotRecognized.rawValue, _), (AVFoundationErrorDomain, AVError.Code.decoderNotFound.rawValue, _):
             return "This video's format isn't supported on Apple devices."
-        case (AVFoundationErrorDomain, AVError.Code.contentIsUnavailable.rawValue, _), (_, _, 404):
+        case (AVFoundationErrorDomain, AVError.Code.contentIsUnavailable.rawValue, _), (_, _, 404), (_, -12938, _), (_, _, -12938):
             return "This stream isn't available any more."
         default:
             return error.localizedDescription
