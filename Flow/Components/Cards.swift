@@ -372,14 +372,27 @@ extension MediaItem {
 }
 
 #if !os(tvOS)
-/// The system share sheet for a title: its TMDb page, with "Dune: Part Two (2024)" as the message.
+/// The system share sheet for a title: its TMDb page, with "Dune: Part Two (2024)" as the message
+/// and the poster in the sheet's header (the app icon until it has loaded).
 struct TitleShareLink<Content: View>: View {
     let item: MediaItem
     @ViewBuilder var label: () -> Content
+    @State private var poster: CGImage?
 
     var body: some View {
         if let url = item.tmdbWebURL {
-            ShareLink(item: url, subject: Text(item.title), message: Text(message), preview: SharePreview(item.title), label: label)
+            Group {
+                if let poster {
+                    ShareLink(item: url, subject: Text(item.title), message: Text(message),
+                              preview: SharePreview(item.title, image: Image(decorative: poster, scale: 1)), label: label)
+                } else {
+                    ShareLink(item: url, subject: Text(item.title), message: Text(message), preview: SharePreview(item.title), label: label)
+                }
+            }
+            .task(id: item.id) {
+                guard let posterURL = item.tmdbPosterURL else { return }
+                poster = await ImagePipeline.shared.image(posterURL, maxPixel: 300)
+            }
         }
     }
 
