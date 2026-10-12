@@ -81,7 +81,13 @@ enum ScreenshotTour {
         #endif
         #if !os(macOS)
         steps += [
-            Step(name: "settings") { m in m.selectedTab = .home; m.showSettings = true },
+            Step(name: "settings") { m in
+                // Apple TV's Settings is a tab: switching to Home in the same moment leaves it blank.
+                #if !os(tvOS)
+                m.selectedTab = .home
+                #endif
+                m.showSettings = true
+            },
             Step(name: "settings-metadata") { m in m.settingsPath = [.settings(.metadata)] },
             Step(name: "settings-sources") { m in m.settingsPath = [.settings(.sources)] },
             Step(name: "settings-general") { m in m.settingsPath = [.settings(.general)] },
