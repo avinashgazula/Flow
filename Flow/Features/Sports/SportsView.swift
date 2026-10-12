@@ -66,7 +66,7 @@ struct SportsView: View {
                 .switchTint(model.settings.general.accent)
                 .environment(model)
         }
-        .liveChannelCover($playing, epg: live.epg)
+        .liveChannelCover($playing, epg: live.epg, autoRotate: model.settings.playback.autoRotate)
         .task(id: model.settings.sports.followedTeams.map(\.id)) { await load() }
     }
 
@@ -170,7 +170,7 @@ struct GameChannelsView: View {
             .task(id: model.settings.liveTV.providers) {
                 await live.load(providers: model.settings.liveTV.providers, refreshHours: model.settings.liveTV.epgRefreshHours, http: model.http)
             }
-            .liveChannelCover($playing, epg: live.epg)
+            .liveChannelCover($playing, epg: live.epg, autoRotate: model.settings.playback.autoRotate)
         }
         #if os(macOS)
         .frame(minWidth: 480, minHeight: 420)
@@ -181,9 +181,11 @@ struct GameChannelsView: View {
 extension View {
     /// The live player over this screen: a sheet on the Mac, full screen elsewhere.
     @ViewBuilder
-    func liveChannelCover(_ channel: Binding<Channel?>, epg: EPG) -> some View {
+    func liveChannelCover(_ channel: Binding<Channel?>, epg: EPG, autoRotate: Bool = true) -> some View {
         #if os(macOS)
         sheet(item: channel) { LivePlayerView(channel: $0, epg: epg).frame(minWidth: 800, minHeight: 450) }
+        #elseif os(iOS)
+        rotatingCover(item: channel, startsInLandscape: autoRotate) { LivePlayerView(channel: $0, epg: epg, onClose: $1) }
         #else
         fullScreenCover(item: channel) { LivePlayerView(channel: $0, epg: epg) }
         #endif

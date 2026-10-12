@@ -136,8 +136,15 @@ struct LiveTVView: View {
         }
         #if os(macOS)
         .sheet(item: $playing) { channel in LivePlayerView(channel: channel, epg: store.epg, lineup: visible, onTune: recordRecent).frame(minWidth: 800, minHeight: 450) }
+        #elseif os(iOS)
+        // Turns to landscape like films and episodes do (Settings → Playback → Auto Rotate).
+        .rotatingCover(item: $playing, startsInLandscape: model.settings.playback.autoRotate) { channel, close in
+            LivePlayerView(channel: channel, epg: store.epg, lineup: visible, onTune: recordRecent, onClose: close)
+        }
         #else
-        .fullScreenCover(item: $playing) { channel in LivePlayerView(channel: channel, epg: store.epg, lineup: visible, onTune: recordRecent) }
+        .fullScreenCover(item: $playing) { channel in
+            LivePlayerView(channel: channel, epg: store.epg, lineup: visible, onTune: recordRecent)
+        }
         #endif
     }
 
@@ -329,7 +336,15 @@ struct LivePlayerView: View {
     var lineup: [Channel] = []
     /// Told about each channel tuned to, so Recents follow zapping too.
     var onTune: (Channel) -> Void = { _ in }
-    @Environment(\.dismiss) private var dismiss
+    /// How a cover presented by UIKit (`rotatingCover`) closes; SwiftUI's dismiss can't reach it.
+    var onClose: (() -> Void)?
+    @Environment(\.dismiss) private var dismissEnvironment
+    #if os(iOS)
+    @Environment(\.verticalSizeClass) private var verticalSize
+    private var compactHeight: Bool { verticalSize == .compact }
+    #else
+    private let compactHeight = false
+    #endif
     @State private var player = AVPlayer()
     @State private var state: LoadState = .connecting
     @State private var attempt = 0
@@ -343,6 +358,10 @@ struct LivePlayerView: View {
     }
 
     private var current: Channel { tuned ?? channel }
+
+    private func dismiss() {
+        if let onClose { onClose() } else { dismissEnvironment() }
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -365,14 +384,20 @@ struct LivePlayerView: View {
             }
             #if !os(tvOS)
             if showsInfo {
+                // Clear of the system player's own controls: its AirPlay and volume along the top and its
+                // scrubber along the bottom. Close sits under the top row, the card over the scrubber.
                 VStack(alignment: .leading) {
                     CircleButton(systemImage: "xmark", label: "Close") { dismiss() }
-                        .accessibilityLabel("Close")
+                        .padding(.top, 52)
                     Spacer()
                     LiveInfoCard(channel: current, epg: epg, canZap: lineup.count > 1,
                                  previous: { zap(by: -1) }, next: { zap(by: 1) })
+                        .padding(.bottom, 64)
+                        // Landscape iPhone is short: smaller, so it ends above the scrubber and left of the play buttons.
+                        .scaleEffect(compactHeight ? 0.82 : 1, anchor: .bottomLeading)
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
                 .transition(.opacity)
             }
             #endif
@@ -514,8 +539,10 @@ struct LiveInfoCard: View {
                 }
             }
             .padding(16)
-            .frame(maxWidth: 520, alignment: .leading)
-            .flowGlass(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            // As wide as what it says, up to a limit, so it doesn't spread over the system's play buttons.
+            .frame(maxWidth: 440, alignment: .leading)
+            .fixedSize(horizontal: true, vertical: false)
+            .flowGlass(RoundedRectangle(cornerRadius: 22, style: .continuous), tint: Theme.Palette.overPicture)
         }
     }
 }
