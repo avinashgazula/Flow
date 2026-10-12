@@ -1,0 +1,110 @@
+name: Release
+
+# Builds Flow for iPhone and iPad, Apple TV and the Mac, and attaches the apps to a GitHub release.
+# Runs when a version tag (v1.2.0, v1.2.0-beta.1) is pushed, or by hand for an existing tag.
+#
+# The apps are unsigned: there's no Apple Developer account in CI. Install the IPAs with a
+# sideloading tool that signs them with your own Apple ID (AltStore, SideStore, Sideloadly), or
+# sign them yourself. Built without Config/Secrets.xcconfig, so no API keys are inside: enter your
+# TMDB key at first launch.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and release (e.g. v1.0.0-beta.1)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: iOS, scheme: Flow-iOS, destination: "generic/platform=iOS", products: Release-iphoneos, asset: Flow-iOS.ipa }
+          - { name: tvOS, scheme: Flow-tvOS, destination: "generic/platform=tvOS", products: Release-appletvos, asset: Flow-tvOS.ipa }
+          - { name: macOS, scheme: Flow-macOS, destination: "generic/platform=macOS", products: Release, asset: Flow-macOS.zip }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - run: sudo xcode-select -s /Applications/Xcode_26.3.app
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build
+        run: |
+          version="${{ github.event.inputs.tag || github.ref_name }}"
+          version="${version#v}"
+          xcodebuild build \
+            -project Flow.xcodeproj \
+            -scheme "${{ matrix.scheme }}" \
+            -destination "${{ matrix.destination }}" \
+            -configuration Release \
+            -derivedDataPath build/release \
+            MARKETING_VERSION="${version%%-*}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            > build.log 2>&1 || { grep -E "error:" build.log | sort -u | head -80; exit 1; }
+      - name: Package
+        run: |
+          app="build/release/Build/Products/${{ matrix.products }}/Flow.app"
+          test -d "$app"
+          mkdir -p dist
+          if [ "${{ matrix.name }}" = macOS ]; then
+            # Ad-hoc signed so it runs on Apple silicon; still unnotarised, so open it with right-click → Open.
+            codesign --force --deep --sign - "$app"
+            ditto -c -k --keepParent "$app" "dist/${{ matrix.asset }}"
+          else
+            mkdir -p Payload
+            cp -R "$app" Payload/
+            zip -qry "dist/${{ matrix.asset }}" Payload
+          fi
+          ls -l dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          cat > notes.md <<'EOF'
+          ### Installing
+
+          These builds are **unsigned**.
+
+          - **iPhone and iPad:** install `Flow-iOS.ipa` with AltStore, SideStore or Sideloadly, which sign it with your own Apple ID.
+          - **Apple TV:** install `Flow-tvOS.ipa` with Sideloadly, or sign it yourself and install it with Xcode.
+          - **Mac:** unzip `Flow-macOS.zip`, move Flow to Applications, then right-click it and choose Open the first time.
+
+          No API keys are built in: Flow asks for your free TMDB key at first launch, or try it with **Explore with Sample Data**.
+          EOF
+          prerelease=""
+          case "$tag" in *-*) prerelease="--prerelease" ;; esac
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" dist/* --title "Flow ${tag#v}" --notes-file notes.md --generate-notes $prerelease
+          fi

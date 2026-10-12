@@ -390,6 +390,12 @@ Commits on `claude/build-flow-app` describe each fix; `git log` is the full reco
   if there were no connection.
 - Sample data doesn't save settings, so anything remembered (last source, recents) lasts one launch.
 
+**Releases**
+- Pushing a tag like `v1.0.0` or `v1.0.0-beta.1` runs `.github/workflows/release.yml`, which builds
+  unsigned `Flow-iOS.ipa`, `Flow-tvOS.ipa` and `Flow-macOS.zip` on GitHub (so no local API keys get
+  baked in) and attaches them to a GitHub release. A tag with a hyphen is marked as a pre-release.
+  Never build release IPAs locally: they'd carry the keys in Config/Secrets.xcconfig.
+
 **Keys**
 - Config/Secrets.xcconfig has real TMDB and TVDB keys. Its Trakt, Simkl and bundle-id lines are still
   the example placeholders, which Flow now treats as no key. Trakt and Simkl testing waits on real keys.
