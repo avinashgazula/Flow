@@ -170,12 +170,13 @@ struct LiveTVView: View {
                     .transition(.opacity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: Platform.isTV ? 16 : 8) {
-                        ForEach(visible) { channel in
+                    GroupedTable {
+                        ForEach(Array(visible.enumerated()), id: \.element.id) { index, channel in
                             Button { play(channel) } label: {
-                                ChannelRow(channel: channel, epg: store.epg, isFavourite: model.settings.liveTV.favouriteChannelIDs.contains(channel.id))
+                                ChannelRow(channel: channel, epg: store.epg, isFavourite: model.settings.liveTV.favouriteChannelIDs.contains(channel.id),
+                                           showsDivider: index > 0)
                             }
-                            .buttonStyle(CardButtonStyle())
+                            .buttonStyle(TableRowButtonStyle())
                             .contextMenu {
                                 Button {
                                     toggleFavourite(channel)
@@ -232,58 +233,83 @@ struct LiveTVView: View {
     }
 }
 
+/// A channel as a row of a `GroupedTable`: its logo, number and name, what's on with the time left and a
+/// hairline of progress, then what's next.
 struct ChannelRow: View {
     let channel: Channel
     let epg: EPG
     let isFavourite: Bool
+    /// A hairline above this row, when it follows another in the table.
+    var showsDivider = false
+    @Environment(\.isFocused) private var focused
+
+    private var logoWidth: CGFloat { Platform.isTV ? 120 : 56 }
+    private var primary: Color { focused ? .black : .white }
+    private var secondary: Color { focused ? .black.opacity(0.62) : Theme.Palette.textSecondary }
+    private var tertiary: Color { focused ? .black.opacity(0.45) : Theme.Palette.textTertiary }
 
     var body: some View {
         let (now, next) = epg.nowAndNext(for: channel.epgID)
-        return HStack(spacing: 14) {
+        return HStack(alignment: .center, spacing: Theme.Space.m) {
             logo
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    if let number = channel.number { Text("\(number)").font(.caption.monospacedDigit()).foregroundStyle(.secondary) }
-                    Text(channel.name).font(.headline).lineLimit(1)
-                    if isFavourite { Image(systemName: "star.fill").font(.caption).foregroundStyle(.yellow) }
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    if let number = channel.number {
+                        Text("\(number)").font(.system(.caption).monospacedDigit()).foregroundStyle(tertiary)
+                    }
+                    Text(channel.name).font(Theme.Typeface.headline).foregroundStyle(primary).lineLimit(1)
+                    if isFavourite {
+                        Image(systemName: "star.fill").font(.caption2).foregroundStyle(focused ? .black : Theme.Palette.gold)
+                            .accessibilityLabel("Favourite")
+                    }
                 }
                 if let now {
-                    Text(now.title).font(.subheadline).lineLimit(1)
-                    // Only the bar re-renders on each tick; the row (and its nowAndNext lookup) doesn't.
+                    // Only the time and the bar re-render on each tick; the row (and its nowAndNext lookup) doesn't.
                     TimelineView(.periodic(from: .now, by: 30)) { context in
-                        ProgressView(value: now.progress(at: context.date)).tint(.white.opacity(0.8))
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                                Text(now.title).font(Theme.Typeface.body).foregroundStyle(primary.opacity(0.9)).lineLimit(1)
+                                Spacer(minLength: Theme.Space.s)
+                                Text(TimeFormat.remaining(max(0, now.end.timeIntervalSince(context.date))))
+                                    .font(.system(.caption).monospacedDigit()).foregroundStyle(tertiary)
+                            }
+                            ProgressCapsule(value: now.progress(at: context.date), height: 2)
+                                .opacity(focused ? 0.5 : 1)
+                        }
                     }
                     if let next {
-                        Text("Next: \(next.start.formatted(date: .omitted, time: .shortened)) \(next.title)")
-                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        Text("Next \(next.start.formatted(date: .omitted, time: .shortened)) · \(next.title)")
+                            .font(Theme.Typeface.caption).foregroundStyle(tertiary).lineLimit(1)
                     }
                 } else {
-                    Text(channel.group).font(.caption).foregroundStyle(.secondary)
+                    Text(channel.group).font(Theme.Typeface.caption).foregroundStyle(tertiary)
                 }
             }
-            Spacer(minLength: 0)
         }
-        .padding(10)
-        .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, Theme.Space.m)
+        .padding(.vertical, 12 * Theme.scale)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .tvRowSurface(focused: focused)
+        .tableDivider(showsDivider, inset: Theme.Space.m * 2 + logoWidth)
     }
 
     private var logo: some View {
-        let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
-        let width: CGFloat = Platform.isTV ? 120 : 64
-        let height: CGFloat = Platform.isTV ? 72 : 40
+        let shape = RoundedRectangle(cornerRadius: 8 * Theme.scale, style: .continuous)
+        let height = logoWidth * 0.62
         return Group {
             if channel.logoURL != nil {
                 RemoteImage(url: channel.logoURL, contentMode: .fit, maxPixel: 300)
-                    .frame(width: width, height: height)
-                    .padding(6)
+                    .padding(5)
+                    .frame(width: logoWidth, height: height)
                     .background(Theme.Palette.surfaceStrong)
             } else {
-                Monogram(name: channel.name, fontSize: 18 * Theme.scale, condensed: true)
-                    .frame(width: width + 12, height: height + 12)
+                Monogram(name: channel.name, fontSize: 15 * Theme.scale, condensed: true)
+                    .frame(width: logoWidth, height: height)
             }
         }
         .clipShape(shape)
         .overlay(shape.strokeBorder(Theme.Palette.hairline))
+        .accessibilityHidden(true)
     }
 }
 

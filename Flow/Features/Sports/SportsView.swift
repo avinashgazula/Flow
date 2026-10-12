@@ -146,12 +146,13 @@ struct GameChannelsView: View {
                     }
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: Platform.isTV ? 16 : 8) {
-                            ForEach(matches) { match in
+                        GroupedTable {
+                            ForEach(Array(matches.enumerated()), id: \.element.id) { index, match in
                                 Button { playing = match.channel } label: {
-                                    ChannelRow(channel: match.channel, epg: live.epg, isFavourite: model.settings.liveTV.favouriteChannelIDs.contains(match.channel.id))
+                                    ChannelRow(channel: match.channel, epg: live.epg, isFavourite: model.settings.liveTV.favouriteChannelIDs.contains(match.channel.id),
+                                               showsDivider: index > 0)
                                 }
-                                .buttonStyle(CardButtonStyle())
+                                .buttonStyle(TableRowButtonStyle())
                             }
                         }
                         .padding(.horizontal, Theme.Space.gutter)

@@ -51,7 +51,7 @@ struct SourcePickerView: View {
                             .contextMenu { sourceMenu(best) }
                     }
                     if list.isEmpty && !finished {
-                        SourceList {
+                        GroupedTable {
                             ForEach(0..<3, id: \.self) { index in SourceRowPlaceholder(showsDivider: index > 0) }
                         }
                         .shimmering()
@@ -107,13 +107,13 @@ struct SourcePickerView: View {
             .padding(.horizontal, Platform.isTV ? 0 : Theme.Space.xs)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
-            SourceList {
+            GroupedTable {
                 ForEach(Array(sources.enumerated()), id: \.element.id) { index, source in
                     Button { choose(source) } label: {
                         SourceRow(source: source, appearance: model.settings.sources.appearance, providerShownAbove: providerHeaders,
                                   lastPlayed: source.id == lastPlayedID, showsDivider: index > 0)
                     }
-                    .buttonStyle(SourceRowButtonStyle())
+                    .buttonStyle(TableRowButtonStyle())
                     .disabled(!source.isActionable)
                     .contextMenu { sourceMenu(source) }
                 }
@@ -347,24 +347,6 @@ private struct PlayChoice: View {
     }
 }
 
-/// Rows grouped the way iOS groups a table: one rounded surface, hairlines between rows. Apple TV
-/// keeps each row separate, since a focused row lifts out of its neighbours.
-private struct SourceList<Content: View>: View {
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        #if os(tvOS)
-        VStack(spacing: Theme.Space.s) { content }
-        #else
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous)
-        VStack(spacing: 0) { content }
-            .background(Theme.Palette.surface, in: shape)
-            .clipShape(shape)
-            .hairline(shape)
-        #endif
-    }
-}
-
 /// One source as a line of a table: the resolution in its own column on the release's baseline, the
 /// size right-aligned in tabular digits, then the formats and languages beneath. Premium formats get a
 /// small outlined badge; codecs stay plain words; only the exceptions (not cached, needs debrid) are flagged.
@@ -379,8 +361,6 @@ struct SourceRow: View {
 
     @Environment(\.isFocused) private var focused
     @Environment(\.dynamicTypeSize) private var typeSize
-    @Environment(\.displayScale) private var displayScale
-    @State private var hovering = false
     @ScaledMetric(relativeTo: .headline) private var scaledColumn: CGFloat = 54
 
     private var summary: SourceSummary { SourceSummary(source: source, appearance: appearance, providerShownElsewhere: providerShownAbove) }
@@ -426,20 +406,10 @@ struct SourceRow: View {
         .padding(.horizontal, Theme.Space.m)
         .padding(.vertical, vertical)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background { rowBackground }
-        .overlay(alignment: .top) {
-            if showsDivider && !Platform.isTV {
-                Rectangle()
-                    .fill(Theme.Palette.hairline)
-                    .frame(height: 1 / max(displayScale, 1))
-                    .padding(.leading, Theme.Space.m + (columnShown ? column + Theme.Space.m : 0))
-            }
-        }
+        .tvRowSurface(focused: focused)
+        .tableDivider(showsDivider, inset: Theme.Space.m + (columnShown ? column + Theme.Space.m : 0))
         .contentShape(Rectangle())
         .opacity(source.isActionable ? 1 : 0.5)
-        #if os(macOS)
-        .onHover { hovering = $0 }
-        #endif
         .accessibilityElement(children: .ignore)
         .accessibilityLabel((lastPlayed ? "Last played, " : "") + summary.accessibilityLabel)
     }
@@ -491,16 +461,6 @@ struct SourceRow: View {
         case .unknown: return Theme.Palette.textTertiary
         default: return Theme.Palette.textSecondary
         }
-    }
-
-    @ViewBuilder
-    private var rowBackground: some View {
-        #if os(tvOS)
-        RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-            .fill(focused ? Color.white : Theme.Palette.surface)
-        #else
-        if hovering { Color.white.opacity(0.05) }
-        #endif
     }
 }
 
@@ -650,7 +610,6 @@ private enum PremiumBadge {
 /// A row-shaped stand-in while the first providers answer.
 private struct SourceRowPlaceholder: View {
     var showsDivider = false
-    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
@@ -668,39 +627,7 @@ private struct SourceRowPlaceholder: View {
         }
         .padding(.horizontal, Theme.Space.m)
         .padding(.vertical, 14 * Theme.scale)
-        #if os(tvOS)
-        .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-        #endif
-        .overlay(alignment: .top) {
-            if showsDivider && !Platform.isTV {
-                Rectangle().fill(Theme.Palette.hairline).frame(height: 1 / max(displayScale, 1))
-                    .padding(.leading, Theme.Space.m * 2 + 54 * Theme.scale)
-            }
-        }
-    }
-}
-
-/// Pressing a row highlights it like a table cell; Apple TV lifts the focused row a little.
-private struct SourceRowButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(configuration.isPressed && !Platform.isTV ? Color.white.opacity(0.09) : .clear)
-            .modifier(SourceRowFocus())
-    }
-}
-
-/// tvOS focus effect for a full-width row: a small lift and a shadow. No-op elsewhere.
-private struct SourceRowFocus: ViewModifier {
-    @Environment(\.isFocused) private var focused
-
-    func body(content: Content) -> some View {
-        #if os(tvOS)
-        content
-            .scaleEffect(focused ? 1.02 : 1)
-            .shadow(color: .black.opacity(focused ? 0.45 : 0), radius: 22, y: 12)
-            .animation(Theme.Motion.snappy, value: focused)
-        #else
-        content
-        #endif
+        .tvRowSurface(focused: false)
+        .tableDivider(showsDivider, inset: Theme.Space.m * 2 + 54 * Theme.scale)
     }
 }
