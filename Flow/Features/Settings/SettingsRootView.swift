@@ -249,7 +249,7 @@ struct AboutView: View {
                 .padding()
             }
             Section("Data Providers") {
-                Text("Metadata and images from TMDb. This product uses the TMDB API but is not endorsed or certified by TMDB.")
+                Text("Metadata and images from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.")
                 Text("Episode data from TheTVDB. Ratings via MDBList. Sports data from TheSportsDB.")
             }
             .font(.footnote)

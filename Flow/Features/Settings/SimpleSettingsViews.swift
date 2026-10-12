@@ -384,18 +384,18 @@ struct MetadataSettingsView: View {
                 Picker("Episode Source", selection: $model.settings.metadata.episodeSource) {
                     ForEach(EpisodeSource.allCases) { Text($0.title).tag($0) }
                 }
-                Toggle("Air dates in my time zone", isOn: $model.settings.metadata.airDatesInLocalTimeZone)
+                Toggle("Air Dates in My Time Zone", isOn: $model.settings.metadata.airDatesInLocalTimeZone)
             } header: {
                 Text("Episode Data")
             } footer: {
-                Text("Sets where season/episode numbering, episode titles, and air dates come from. TVDB matches the numbering most stream sources use, so multi-part premieres and other ordering edge cases line up correctly. Trakt and TMDB use their own ordering. Posters and episode stills always come from TMDB. Takes effect on the next show you open.")
+                Text("Sets where season/episode numbering, episode titles, and air dates come from. TVDB matches the numbering most stream sources use, so multi-part premieres and other ordering edge cases line up correctly. Trakt and TMDB use their own ordering. Posters and episode stills always come from TMDB. Takes effect on the next show you open.\n\nAir Dates in My Time Zone shows episodes with a known air time at that time where you are. An air date without a time is always shown as that day.")
             }
             Section {
                 Toggle("Show Unreleased Titles", isOn: $model.settings.metadata.showUnreleasedTitles)
             } header: {
                 Text("Availability")
             } footer: {
-                Text("Switch this off and Flow uses TMDb release dates to drop titles you can't play yet — a film with only a cinema release, or one that hasn't opened at all — from home shelves, the hero, Show All, Discover and the trending rows.\n\nRows that exist to show what's coming are left alone: watchlists, Continue Watching, Upcoming, Now Playing, Anticipated, calendars, and any Discover shelf you pointed at future dates. Search still finds everything, so you can add a title before it's out.")
+                Text("Switch this off and Flow uses TMDB release dates to drop titles you can't play yet — a film with only a cinema release, or one that hasn't opened at all — from home shelves, the hero, Show All, Discover and the trending rows.\n\nRows that exist to show what's coming are left alone: watchlists, Continue Watching, Upcoming, Now Playing, Anticipated, calendars, and any Discover shelf you pointed at future dates. Search still finds everything, so you can add a title before it's out.")
             }
             Section("Source") {
                 Picker("Primary Source", selection: $model.settings.metadata.primarySource) {
@@ -403,7 +403,7 @@ struct MetadataSettingsView: View {
                 }
             }
             Section {
-                Picker("TMDb Language", selection: $model.settings.metadata.language) {
+                Picker("TMDB Language", selection: $model.settings.metadata.language) {
                     ForEach(Self.languages, id: \.0) { Text($0.1).tag($0.0) }
                 }
                 Picker("Region", selection: $model.settings.metadata.region) {
@@ -413,20 +413,20 @@ struct MetadataSettingsView: View {
             } header: {
                 Text("Language")
             } footer: {
-                Text("Changes the language for titles, descriptions, and other metadata from TMDb. Region sets certifications and streaming providers.")
+                Text("Changes the language for titles, descriptions, and other metadata from TMDB. Region sets certifications and streaming providers.")
             }
             Section {
-                OptionalTextField(title: "TMDb API Key", text: $model.credentials.tmdbAPIKey, secure: true, prompt: BundleKeys.tmdb == nil ? "v3 key or v4 read token" : "Using built-in key")
+                OptionalTextField(title: "TMDB API Key", text: $model.credentials.tmdbAPIKey, secure: true, prompt: BundleKeys.tmdb == nil ? "v3 key or v4 read token" : "Using built-in key")
                 Link("Get a free key at themoviedb.org", destination: URL(string: "https://www.themoviedb.org/settings/api")!)
             } header: {
-                Text("TMDb API Key")
+                Text("TMDB API Key")
             }
             Section {
                 OptionalTextField(title: "TVDB API Key", text: $model.credentials.tvdbAPIKey, secure: true, prompt: BundleKeys.tvdb == nil ? "v4 project key" : "Using built-in key")
             } header: {
                 Text("TVDB API Key")
             } footer: {
-                Text("Needed for the TVDB episode source. Without it Flow falls back to TMDb ordering.")
+                Text("Needed for the TVDB episode source. Without it Flow falls back to TMDB ordering.")
             }
             Section {
                 Toggle("Prefetch on Detail View", isOn: $model.settings.metadata.prefetchOnDetail)

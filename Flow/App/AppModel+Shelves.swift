@@ -9,7 +9,7 @@ extension AppModel {
     }
 
     func requireCatalog() throws -> CatalogService {
-        guard let catalog else { throw FlowError.missingCredential("TMDb API key") }
+        guard let catalog else { throw FlowError.missingCredential("TMDB API key") }
         return catalog
     }
 

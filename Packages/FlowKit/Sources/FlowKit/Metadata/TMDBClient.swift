@@ -60,7 +60,7 @@ public struct TMDBClient: Sendable {
     }
 
     func get<T: Decodable>(_ type: T.Type, _ path: String, _ query: [String: String?] = [:]) async throws -> T {
-        guard !credential.isEmpty else { throw FlowError.missingCredential("TMDb API key") }
+        guard !credential.isEmpty else { throw FlowError.missingCredential("TMDB API key") }
         return try await http.json(T.self, request(path, query))
     }
 

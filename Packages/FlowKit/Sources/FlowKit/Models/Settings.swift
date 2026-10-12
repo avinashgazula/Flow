@@ -1017,7 +1017,7 @@ public enum EpisodeSource: String, Codable, Hashable, Sendable, CaseIterable, Id
 public enum PrimaryMetadataSource: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
     case tmdb, trakt
     public var id: String { rawValue }
-    public var title: String { self == .tmdb ? "TMDb" : "Trakt" }
+    public var title: String { self == .tmdb ? "TMDB" : "Trakt" }
 }
 
 /// Ratings shown on detail pages, in order.

@@ -61,7 +61,7 @@ struct MediaServersSettingsView: View {
             Section {
                 Toggle("Use Server Artwork", isOn: $model.settings.mediaServers.useServerArtwork)
             } footer: {
-                Text("Uses posters and backdrops from your media server for titles in its library. Everything else — and all text details — still comes from TMDb.")
+                Text("Uses posters and backdrops from your media server for titles in its library. Everything else — and all text details — still comes from TMDB.")
             }
             Section {
                 Toggle("Track Only With Your Tracking Service", isOn: $model.settings.mediaServers.trackOnlyWithTracker)

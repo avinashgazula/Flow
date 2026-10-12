@@ -780,9 +780,9 @@ struct MissingKeyView: View {
     @Environment(AppModel.self) private var model
     var body: some View {
         ContentUnavailableView {
-            Label("Add a TMDb API key", systemImage: "key.fill")
+            Label("Add a TMDB API key", systemImage: "key.fill")
         } description: {
-            Text("Flow uses TMDb for posters, details and discovery. Add your free key in Settings → Metadata.")
+            Text("Flow uses TMDB for posters, details and discovery. Add your free key in Settings → Metadata.")
         } actions: {
             Button("Open Settings") { model.showSettings = true }.buttonStyle(.borderedProminent)
         }

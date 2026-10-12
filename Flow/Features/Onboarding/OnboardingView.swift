@@ -62,7 +62,7 @@ struct OnboardingView: View {
 
     private var card: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Label("Connect TMDb", systemImage: "film.stack")
+            Label("Connect TMDB", systemImage: "film.stack")
                 .font(Theme.Typeface.headline)
             Text("Flow uses The Movie Database for posters, details and discovery. A free key takes a minute at themoviedb.org → Settings → API.")
                 .font(Theme.Typeface.caption)
