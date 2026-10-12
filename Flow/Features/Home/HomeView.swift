@@ -58,12 +58,27 @@ struct HomeView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            #if !os(tvOS)
+            #if os(macOS)
             settingsButton.padding(.trailing, Theme.Space.gutter).padding(.top, Theme.Space.xs)
+            #elseif os(iOS)
+            if Platform.isPhone {
+                settingsButton.padding(.trailing, Theme.Space.gutter).padding(.top, Theme.Space.xs)
+            }
             #endif
         }
         #if os(iOS)
-        .toolbar(.hidden, for: .navigationBar)
+        // iPad: in the bar, level with the floating tab bar, as Library's button is. Floating
+        // below it, the gear landed on the corner of the next hero card.
+        .toolbar {
+            if !Platform.isPhone {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { model.showSettings = true } label: { Image(systemName: "gearshape.fill") }
+                        .accessibilityLabel("Settings")
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar(Platform.isPhone ? .hidden : .automatic, for: .navigationBar)
         #elseif os(tvOS)
         .toolbar {
             // tvOS 17 has no Settings tab.
