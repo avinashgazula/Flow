@@ -8,7 +8,7 @@ import UIKit
 
 #if os(iOS)
 /// Switches between the bundled app icons. Icons can't be loaded as images, so the tiles use
-/// the previews in the asset catalog (regenerate both with scripts/make-light-icon.py).
+/// the previews in the asset catalog (regenerate both with scripts/make-icons.py).
 @MainActor
 enum AppIconSwitcher {
     /// The alternate icon's name in the asset catalog; the dark icon is the primary one.
