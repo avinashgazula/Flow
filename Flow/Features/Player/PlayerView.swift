@@ -22,10 +22,10 @@ struct PlayerView: View {
             if session.showsXRay, session.phase == .playing {
                 XRayPanel(session: session) { session.showsXRay = false }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(.top, Platform.isPhone ? 64 : 76)
-                    .padding(.bottom, Platform.isPhone ? 76 : 110)
-                    // Clear of the Dynamic Island, which sits on a landscape iPhone's leading edge.
-                    .padding(.leading, Platform.isPhone ? 64 : 20)
+                    // Between the top buttons and the title row; the safe area keeps it off the Dynamic Island.
+                    .padding(.top, Platform.isPhone ? 62 : 76)
+                    .padding(.bottom, Platform.isPhone ? 96 : 110)
+                    .padding(.leading, Platform.isPhone ? 16 : 28)
                     .transition(.opacity.combined(with: .move(edge: .leading)))
                     .zIndex(4)
             }
@@ -33,9 +33,8 @@ struct PlayerView: View {
                 PlaybackInfoPanel(session: session)
                     .onTapGesture { session.showsInfo = false }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(.top, Platform.isPhone ? 64 : 76)
-                    // Clear of the Dynamic Island, which sits on a landscape iPhone's leading edge.
-                    .padding(.leading, Platform.isPhone ? 64 : 20)
+                    .padding(.top, Platform.isPhone ? 62 : 76)
+                    .padding(.leading, Platform.isPhone ? 16 : 28)
                     .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .topLeading)))
                     .zIndex(4)
             }
@@ -61,8 +60,8 @@ struct PlayerView: View {
             #endif
             SongCard(recognizer: session.songs)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .padding(.top, Platform.isTV ? 60 : (Platform.isPhone ? 64 : 76))
-                .padding(.trailing, Platform.isTV ? 80 : (Platform.isPhone ? 64 : 20))
+                .padding(.top, Platform.isTV ? 60 : (Platform.isPhone ? 62 : 76))
+                .padding(.trailing, Platform.isTV ? 80 : (Platform.isPhone ? 16 : 28))
                 #if os(tvOS)
                 // Above the system player, never in the way of its focus.
                 .allowsHitTesting(false)
@@ -205,20 +204,43 @@ struct PlayerView: View {
 }
 
 /// "CONNECTING… 15%" — the title's logo over its own artwork glow, until the first frame plays.
+/// While the stream starts: the title's own backdrop, dimmed, its logo, and a slim line for progress.
+/// Nothing shouts; it's the opening of a film, not a loading screen.
 struct ConnectingView: View {
     let session: PlaybackSession
     let progress: Double
     @State private var slow = false
+    @State private var drift = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var backdrop: URL? {
+        let item = session.request.item
+        return TMDBImage.url(item.backdropPath, size: .original) ?? item.smallBackdropURL ?? item.tmdbPosterURL
+    }
 
     var body: some View {
         ZStack {
-            AmbientBackground(url: session.request.item.smallBackdropURL ?? session.request.item.tmdbPosterURL, intensity: 0.8)
-            VStack(spacing: Theme.Space.l) {
+            Color.black.ignoresSafeArea()
+            RemoteImage(url: backdrop, maxPixel: Platform.isTV ? 1920 : 1280)
+                // A slow push in, like a camera settling on the first shot.
+                .scaleEffect(drift ? 1.06 : 1)
+                .animation(reduceMotion ? nil : .easeOut(duration: 24), value: drift)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .ignoresSafeArea()
+                .opacity(0.42)
+                .accessibilityHidden(true)
+            LinearGradient(colors: [.black.opacity(0.35), .clear, .black.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+            VStack(spacing: Theme.Space.m) {
                 Spacer()
-                LogoOrTitle(logoPath: session.logoPath, title: session.title, maxHeight: Platform.isTV ? 220 : 120)
-                    .frame(maxWidth: Platform.isTV ? 900 : 440)
+                LogoOrTitle(logoPath: session.logoPath, title: session.title, maxHeight: Platform.isTV ? 200 : 104)
+                    .frame(maxWidth: Platform.isTV ? 820 : 380)
                 if let line = session.subtitleLine {
-                    Text(line).font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.textSecondary)
+                    Text(line).font(Theme.Typeface.body).foregroundStyle(Theme.Palette.textSecondary)
+                }
+                if session.resumePrompt == nil {
+                    loadingLine.padding(.top, Theme.Space.s)
                 }
                 Spacer()
                 if let position = session.resumePrompt {
@@ -241,9 +263,8 @@ struct ConnectingView: View {
                     .padding(.bottom, Theme.Space.xxl)
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 } else {
-                VStack(spacing: Theme.Space.s) {
-                    if slow {
-                        VStack(spacing: Theme.Space.xs) {
+                    VStack(spacing: Theme.Space.s) {
+                        if slow {
                             Text("This is taking longer than usual.")
                                 .font(Theme.Typeface.caption)
                                 .foregroundStyle(Theme.Palette.textSecondary)
@@ -252,29 +273,12 @@ struct ConnectingView: View {
                                     .buttonStyle(GlassButtonStyle())
                             }
                         }
-                        .padding(.bottom, Theme.Space.m)
-                        .transition(.opacity)
+                        Text("From \(session.source.providerName)")
+                            .font(Theme.Typeface.caption)
+                            .foregroundStyle(Theme.Palette.textTertiary)
                     }
-                    if session.showsLoadingProgress {
-                        ProgressCapsule(value: progress, height: 3)
-                            .animation(Theme.Motion.gentle, value: progress)
-                    }
-                    HStack {
-                        Text("CONNECTING").kerning(2.4)
-                        if session.showsLoadingProgress {
-                            Spacer()
-                            Text("\(Int(progress * 100))%").monospacedDigit().contentTransition(.numericText())
-                        }
-                    }
-                    .font(Theme.Typeface.micro)
-                    .foregroundStyle(Theme.Palette.textSecondary)
-                    Text(session.source.providerName.uppercased())
-                        .font(.system(size: 9 * Theme.scale, weight: .semibold))
-                        .kerning(1.5)
-                        .foregroundStyle(Theme.Palette.textTertiary)
-                }
-                .frame(maxWidth: Platform.isTV ? 1000 : 480)
-                .padding(.bottom, Theme.Space.xxl)
+                    .padding(.bottom, Theme.Space.xl)
+                    .transition(.opacity)
                 }
             }
             .padding(.horizontal, Theme.Space.xl)
@@ -293,10 +297,11 @@ struct ConnectingView: View {
                 }
                 Spacer()
             }
-            .padding(20)
+            .padding(Platform.isPhone ? 16 : 20)
             #endif
         }
         .transition(.opacity)
+        .onAppear { drift = true }
         .task {
             try? await Task.sleep(nanoseconds: 15_000_000_000)
             slow = true
@@ -304,6 +309,25 @@ struct ConnectingView: View {
         #if os(tvOS)
         .onExitCommand { session.stop() }
         #endif
+    }
+
+    /// A short hairline that fills as the stream buffers, or a small spinner when progress isn't shown.
+    @ViewBuilder
+    private var loadingLine: some View {
+        if session.showsLoadingProgress {
+            ZStack(alignment: .leading) {
+                Capsule().fill(.white.opacity(0.18))
+                Capsule().fill(.white.opacity(0.9))
+                    .frame(width: max(6, 160 * Theme.scale * min(1, max(0, progress))))
+                    .animation(Theme.Motion.gentle, value: progress)
+            }
+            .frame(width: 160 * Theme.scale, height: 3)
+            .accessibilityElement()
+            .accessibilityLabel("Loading")
+            .accessibilityValue("\(Int(progress * 100)) percent")
+        } else {
+            ProgressView().tint(.white).accessibilityLabel("Loading")
+        }
     }
 }
 
@@ -845,6 +869,7 @@ struct IOSPlayerControls: View {
     @State private var legibleChoice: AVMediaSelectionOption?
     @State private var showsOptions = false
     @State private var showsEpisodes = false
+    @State private var showsChapters = false
     @State private var showsAdvanced = false
     @State private var seekFlash: SeekFlash?
     @State private var preview: CGImage?
@@ -914,6 +939,8 @@ struct IOSPlayerControls: View {
             }
 
             SubtitleLayer(session: session, settings: model.settings.subtitles, lifted: visible)
+                // Picture subtitles are placed on the video, which fills the screen.
+                .ignoresSafeArea()
 
             // The still-watching question stands alone: nothing else of the player shows through it.
             if visible, !session.asksStillWatching {
@@ -930,7 +957,7 @@ struct IOSPlayerControls: View {
         .onAppear { scheduleHide() }
         // The controls stay up while a panel or the sheet is open, then go back to timing out.
         .onChange(of: overlayOpen) { _, open in
-            session.panelOpen = showsOptions || showsEpisodes
+            session.panelOpen = showsOptions || showsEpisodes || showsChapters
             if open { hideTask?.cancel(); visible = true } else { scheduleHide() }
         }
         .sheet(isPresented: $showsAdvanced) {
@@ -971,51 +998,41 @@ struct IOSPlayerControls: View {
         }
     }
 
+    /// Laid out like Apple's own players: what you leave by top left, sound top right, the title and
+    /// scrubber along the bottom with the panels' buttons at its end, the transport in the middle.
     private var controls: some View {
         ZStack {
-            LinearGradient(colors: [.black.opacity(0.65), .clear, .clear, .black.opacity(0.75)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(stops: [.init(color: .black.opacity(0.55), location: 0), .init(color: .clear, location: 0.22),
+                                   .init(color: .clear, location: 0.55), .init(color: .black.opacity(0.8), location: 1)],
+                           startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
-            VStack {
-                HStack(spacing: 14) {
-                    CircleButton(systemImage: "xmark", label: "Close Player") { session.stop() }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(session.title).font(.system(size: 16, weight: .semibold)).lineLimit(2).minimumScaleFactor(0.8)
-                        if let line = session.subtitleLine {
-                            Text(line).font(.system(.caption, weight: .medium)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+            VStack(spacing: 0) {
+                HStack(alignment: .center) {
+                    PlayerCluster {
+                        ClusterButton(systemImage: "xmark", label: "Close Player") { session.stop() }
+                        if let pip {
+                            ClusterButton(systemImage: "pip.enter", label: "Picture in Picture") { pip.startPictureInPicture() }
                         }
+                        ClusterButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle", label: "Playback Info") { session.showsInfo.toggle() }
+                        RoutePicker()
+                            .frame(width: 44, height: 44)
+                            .accessibilityLabel("AirPlay")
                     }
-                    Spacer()
-                    // iPhone in portrait has no room beside the title; landscape and iPad do.
+                    Spacer(minLength: 12)
+                    // iPhone in portrait has no room for it; the side buttons do the job there.
                     if !Platform.isPhone || verticalSizeClass == .compact {
                         VolumePill(volume: volume) { editing in
                             if editing { hideTask?.cancel() } else { scheduleHide() }
                         }
                     }
-                    GlassGroup(spacing: 8) {
-                        HStack(spacing: 8) {
-                            if let pip {
-                                CircleButton(systemImage: "pip.enter", label: "Picture in Picture", size: 40) { pip.startPictureInPicture() }
-                            }
-                            RoutePicker()
-                                .frame(width: 40, height: 40)
-                                .flowGlass(Circle())
-                            CircleButton(systemImage: "person.crop.rectangle.stack", label: "X-Ray", size: 40) {
-                                xrayFromPause = false
-                                session.showsXRay.toggle()
-                            }
-                            CircleButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle", label: "Playback Info", size: 40) { session.showsInfo.toggle() }
-                            PlayerOptionsButtons(showsEpisodes: hasEpisodes, episodes: toggleEpisodes, options: toggleOptions)
-                        }
-                    }
                 }
-                .padding(.horizontal, 20)
                 .padding(.top, 8)
 
                 Spacer()
 
                 GlassGroup(spacing: 28) {
-                    HStack(spacing: 40) {
+                    HStack(spacing: Platform.isPhone ? 36 : 48) {
                         transportButton("gobackward.\(model.settings.playback.seekBackwardSeconds)", label: "Back \(model.settings.playback.seekBackwardSeconds) Seconds", size: 60) {
                             // The lift that ends a hold also reads as a tap: the replay has already gone back.
                             if heldBack { heldBack = false; return }
@@ -1040,25 +1057,60 @@ struct IOSPlayerControls: View {
                     }
                 }
                 // A landscape iPhone has no room for both: with a panel open on the left, the buttons move right.
-                .offset(x: Platform.isPhone && (session.showsInfo || session.showsXRay) ? 170 : 0)
+                .offset(x: Platform.isPhone && (session.showsInfo || session.showsXRay) ? 150 : 0)
                 .animation(Theme.Motion.gentle, value: session.showsInfo || session.showsXRay)
+                .opacity(showsChapters ? 0 : 1)
 
                 Spacer()
 
-                Scrubber(current: session.currentTime, duration: session.duration, buffered: buffered,
+                if showsChapters {
+                    ChapterStrip(session: session) { withAnimation(Theme.Motion.snappy) { showsChapters = false } }
+                        .padding(.bottom, 14)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+
+                HStack(alignment: .bottom, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(session.title)
+                            .font(.system(size: Platform.isPhone ? 17 : 20, weight: .semibold))
+                            .lineLimit(1)
+                        if let line = session.subtitleLine {
+                            Text(line)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(Theme.Palette.textSecondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    .shadow(color: .black.opacity(0.5), radius: 6)
+                    Spacer(minLength: 8)
+                    PlayerCluster {
+                        if hasEpisodes || !session.chapters.isEmpty {
+                            ClusterButton(systemImage: "square.grid.2x2", label: hasEpisodes ? "Episodes" : "Chapters",
+                                          active: showsEpisodes || showsChapters, action: toggleBrowse)
+                        }
+                        ClusterButton(systemImage: "person.crop.rectangle.stack", label: "X-Ray", active: session.showsXRay) {
+                            xrayFromPause = false
+                            session.showsXRay.toggle()
+                        }
+                        ClusterButton(systemImage: "gearshape.fill", label: "Options", active: showsOptions, action: toggleOptions)
+                    }
+                }
+
+                Scrubber(current: session.displayTime, duration: session.duration, buffered: buffered,
                          preview: preview, previewTime: previewTime,
                          segments: session.segments, chapters: session.chapters.map(\.start),
                          onScrub: { value in
                              scrubbing = value
                              if value != nil { hideTask?.cancel() } else { scheduleHide() }
                              updatePreview(value)
+                             // Without preview pictures, the picture itself follows the finger.
+                             if let value, session.scrubPreviewer == nil { session.previewSeek(to: value) }
                          },
-                         onCommit: { target in
-                             session.player.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
-                         })
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 14)
+                         onCommit: { target in session.seek(to: target) })
+                    .padding(.top, 12)
+                    .padding(.bottom, 4)
             }
+            .padding(.horizontal, Platform.isPhone ? 16 : 28)
         }
     }
 
@@ -1112,21 +1164,23 @@ struct IOSPlayerControls: View {
     }
 
     private var hasEpisodes: Bool { session.request.episode != nil && !session.seasonEpisodes.isEmpty }
-    private var overlayOpen: Bool { showsOptions || showsEpisodes || showsAdvanced }
+    private var overlayOpen: Bool { showsOptions || showsEpisodes || showsChapters || showsAdvanced }
 
     private func toggleOptions() {
         audioChoice = selected(in: audioGroup)
         legibleChoice = selected(in: legibleGroup)
         withAnimation(Theme.Motion.snappy) {
             showsEpisodes = false
+            showsChapters = false
             showsOptions.toggle()
         }
     }
 
-    private func toggleEpisodes() {
+    /// The grid button: a show's episodes, or a film's chapters.
+    private func toggleBrowse() {
         withAnimation(Theme.Motion.snappy) {
             showsOptions = false
-            showsEpisodes.toggle()
+            if hasEpisodes { showsEpisodes.toggle() } else { showsChapters.toggle() }
         }
     }
 

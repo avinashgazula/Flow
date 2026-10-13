@@ -17,7 +17,12 @@ struct RootView: View {
             if let session = model.activePlayback {
                 // The player is a layer, not a modal, so it never races sheet dismissals.
                 PlayerView(session: session)
+                    #if os(iOS)
+                    // The picture runs edge to edge on its own; the controls keep clear of the Dynamic Island and home indicator.
+                    .ignoresSafeArea(.keyboard)
+                    #else
                     .ignoresSafeArea()
+                    #endif
                     .transition(.opacity.combined(with: .scale(scale: 1.02)))
                     .zIndex(20)
             }

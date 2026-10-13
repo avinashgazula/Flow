@@ -33,30 +33,134 @@ struct PlayerMediaOptions {
     }
 }
 
-/// Episodes and options joined in one glass capsule, so the two entry points read as a pair.
-struct PlayerOptionsButtons: View {
-    let showsEpisodes: Bool
-    let episodes: () -> Void
-    let options: () -> Void
+/// A row of player buttons on one glass capsule: close, picture in picture, info and AirPlay at the
+/// top; episodes or chapters, X-Ray and options at the bottom.
+///
+/// The glass isn't interactive: interactive glass answers touches itself, and on iOS 26 it can take
+/// the first tap meant for a button inside it, which is why options sometimes needed a second tap.
+struct PlayerCluster<Content: View>: View {
+    @ViewBuilder let content: Content
 
     var body: some View {
-        HStack(spacing: 0) {
-            if showsEpisodes { button("square.grid.2x2", label: "Episodes", action: episodes) }
-            button("gearshape.fill", label: "Options", action: options)
+        HStack(spacing: 2) { content }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .flowGlass(Capsule(), tint: Theme.Palette.overPicture)
+    }
+}
+
+struct ClusterButton: View {
+    let systemImage: String
+    let label: String
+    /// Lit while its panel is open.
+    var active = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background { if active { Circle().fill(.white.opacity(0.2)) } }
+                .contentShape(Circle())
         }
-        .flowGlass(Capsule(), interactive: true)
+        .buttonStyle(ClusterButtonStyle())
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(active ? .isSelected : [])
+    }
+}
+
+private struct ClusterButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background { if configuration.isPressed { Circle().fill(.white.opacity(0.18)) } }
+            .scaleEffect(configuration.isPressed ? 0.92 : 1)
+            .animation(Theme.Motion.snappy, value: configuration.isPressed)
+    }
+}
+
+/// A film's chapters as a row of pictures above the scrubber, the current one marked, each a tap
+/// from its start.
+struct ChapterStrip: View {
+    let session: PlaybackSession
+    let close: () -> Void
+
+    private var cardWidth: CGFloat { Platform.isPhone ? 168 : 220 }
+    private var current: PlayerChapter? { session.chapters.last { $0.start <= session.displayTime + 0.5 } }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 12) {
+                    ForEach(Array(session.chapters.enumerated()), id: \.element.id) { index, chapter in
+                        Button {
+                            session.seek(toChapter: chapter)
+                            close()
+                        } label: {
+                            card(chapter, number: index + 1, isCurrent: chapter == current)
+                        }
+                        .buttonStyle(CardButtonStyle())
+                        .id(chapter.id)
+                        .accessibilityLabel("Chapter \(index + 1), \(chapter.title), \(TimeFormat.clock(chapter.start))")
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+            .scrollClipDisabled()
+            .onAppear { if let current { proxy.scrollTo(current.id, anchor: .center) } }
+        }
     }
 
-    private func button(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 44, height: 40)
-                .contentShape(Rectangle())
+    private func card(_ chapter: PlayerChapter, number: Int, isCurrent: Bool) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        return VStack(alignment: .leading, spacing: 6) {
+            ChapterThumbnail(session: session, time: chapter.start)
+                .frame(width: cardWidth, height: cardWidth * 9 / 16)
+                .clipShape(shape)
+                .overlay(shape.strokeBorder(isCurrent ? Color.white : Color.white.opacity(0.15), lineWidth: isCurrent ? 2.5 : 1))
+                .overlay(alignment: .topLeading) {
+                    if isCurrent {
+                        Text("Now")
+                            .font(.system(size: 12, weight: .bold))
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(.black.opacity(0.6), in: Capsule())
+                            .padding(8)
+                    }
+                }
+            HStack(spacing: 6) {
+                Text("\(number)").foregroundStyle(Theme.Palette.textTertiary).monospacedDigit()
+                Text(chapter.title.isEmpty ? "Chapter \(number)" : chapter.title).lineLimit(1)
+            }
+            .font(.system(size: 14, weight: .semibold))
+            Text(TimeFormat.clock(chapter.start))
+                .font(.system(size: 12, weight: .medium).monospacedDigit())
+                .foregroundStyle(Theme.Palette.textSecondary)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
+        .frame(width: cardWidth, alignment: .leading)
+        .foregroundStyle(.white)
+    }
+}
+
+/// The frame at a chapter's start, for MKVs Flow remuxes; a quiet plate otherwise.
+private struct ChapterThumbnail: View {
+    let session: PlaybackSession
+    let time: Double
+    @State private var image: CGImage?
+
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.white.opacity(0.08))
+            if let image {
+                Image(decorative: image, scale: 1).resizable().aspectRatio(contentMode: .fill)
+                    .transition(.opacity)
+            }
+        }
+        // A second in, past the black frame many chapters open on.
+        .task(id: time) {
+            guard let previewer = session.scrubPreviewer, let found = await previewer.image(at: time + 1) else { return }
+            withAnimation(Theme.Motion.fade) { image = found }
+        }
     }
 }
 
@@ -89,26 +193,28 @@ struct PlayerOptionsPanel: View {
     @State private var page = Page.root
     @State private var listHeight: CGFloat = 0
 
-    /// Below the top bar and its gap.
-    private let topInset: CGFloat = 56
+    /// Clear of the top buttons.
+    private let topInset: CGFloat = 60
+    /// Just above the bottom row (title, scrubber and the button that opened it).
+    private var bottomInset: CGFloat { Platform.isPhone ? 92 : 104 }
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack(alignment: .topTrailing) {
+            ZStack(alignment: .bottomTrailing) {
                 if isPresented {
                     // Tapping anywhere outside the card closes it.
                     Color.clear
                         .contentShape(Rectangle())
                         .onTapGesture { close() }
                         .accessibilityHidden(true)
-                    card(maxHeight: max(160, proxy.size.height - topInset - 8))
-                        .frame(width: min(340, proxy.size.width - 40))
-                        .padding(.top, topInset)
-                        .padding(.trailing, 20)
-                        .transition(.scale(scale: 0.94, anchor: .topTrailing).combined(with: .opacity))
+                    card(maxHeight: max(160, proxy.size.height - topInset - bottomInset))
+                        .frame(width: min(Platform.isPhone ? 360 : 400, proxy.size.width - 32))
+                        .padding(.bottom, bottomInset)
+                        .padding(.trailing, Platform.isPhone ? 16 : 28)
+                        .transition(.scale(scale: 0.94, anchor: .bottomTrailing).combined(with: .opacity))
                 }
             }
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topTrailing)
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottomTrailing)
         }
         .allowsHitTesting(isPresented)
         .animation(Theme.Motion.snappy, value: isPresented)
@@ -224,21 +330,22 @@ struct PlayerOptionsPanel: View {
 
     private var rootItems: [PanelItem] {
         var rows: [PanelItem] = []
+        // Each row names what's chosen, so the panel reads as a summary of how the film is playing.
         if !media.audio.isEmpty {
-            rows.append(PanelItem(id: "audio", icon: "waveform", title: "Audio", value: media.audioSelection?.title ?? "Default", chevron: true) { go(.audio) })
+            rows.append(PanelItem(id: "audio", icon: "music.note", title: media.audioSelection?.title ?? "Audio", chevron: true) { go(.audio) })
         }
-        rows.append(PanelItem(id: "subtitles", icon: subtitlesAreOff ? "captions.bubble" : "captions.bubble.fill", title: "Subtitles", value: subtitleSummary, chevron: true) { go(.subtitles) })
+        rows.append(PanelItem(id: "subtitles", icon: subtitlesAreOff ? "captions.bubble" : "captions.bubble.fill", title: subtitlesAreOff ? "Subtitles Off" : subtitleSummary, chevron: true) { go(.subtitles) })
         if session.sources.count > 1 {
             let resolution = session.source.traits.resolution
-            let value = resolution == .unknown ? session.source.providerName : "\(session.source.providerName) · \(resolution.label)"
-            rows.append(PanelItem(id: "source", icon: "square.stack.3d.up", title: "Source", value: value, chevron: true) { go(.source) })
+            let title = resolution == .unknown ? session.source.providerName : "\(session.source.providerName) · \(resolution.label)"
+            rows.append(PanelItem(id: "source", icon: "square.stack.3d.up", title: title, chevron: true) { go(.source) })
         }
-        rows.append(PanelItem(id: "speed", icon: "speedometer", title: "Speed", value: PlaybackSpeed.label(media.speed), chevron: true) { go(.speed) })
-        rows.append(PanelItem(id: "sleep", icon: session.sleepTimer == nil ? "moon.zzz" : "moon.zzz.fill", title: "Sleep Timer", value: session.sleepTimer?.title ?? "Off", chevron: true) { go(.sleep) })
+        rows.append(PanelItem(id: "speed", icon: "gauge.with.dots.needle.67percent", title: "Speed · \(PlaybackSpeed.label(media.speed))", chevron: true) { go(.speed) })
+        rows.append(PanelItem(id: "sleep", icon: session.sleepTimer == nil ? "moon.zzz" : "moon.zzz.fill", title: "Sleep Timer · \(session.sleepTimer?.title ?? "Off")", chevron: true) { go(.sleep) })
         if !session.chapters.isEmpty {
-            rows.append(PanelItem(id: "chapters", icon: "list.bullet", title: "Chapters", value: "\(session.chapters.count)", chevron: true) { go(.chapters) })
+            rows.append(PanelItem(id: "chapters", icon: "list.bullet", title: "Chapters · \(session.chapters.count)", chevron: true) { go(.chapters) })
         }
-        rows.append(PanelItem(id: "zoom", icon: fill ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right", title: "Zoom", value: fill ? "Fill" : "Fit") {
+        rows.append(PanelItem(id: "zoom", icon: fill ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right", title: "Zoom · \(fill ? "Fill" : "Fit")") {
             withAnimation(Theme.Motion.snappy) { fill.toggle() }
         })
         rows.append(PanelItem(id: "replay", icon: "captions.bubble", title: "What Did They Say?") {

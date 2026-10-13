@@ -658,13 +658,40 @@ final class PlaybackSession: Identifiable {
     }
 
     func seek(toChapter chapter: PlayerChapter) {
-        seek(to: chapter.start)
+        seek(to: chapter.start, exact: true)
     }
 
-    func seek(to seconds: Double) {
+    /// Where a seek is heading until it lands. The clock and scrubber show it straight away, rather
+    /// than the old time until the stream has caught up.
+    private(set) var seekTarget: Double?
+    /// The time to show: a seek's target while it's on its way, otherwise the playhead.
+    var displayTime: Double { seekTarget ?? currentTime }
+
+    /// Seeks to `seconds`. By default it lands on the keyframe at or just before the target, which is
+    /// far quicker than decoding forward to the exact frame and never skips past the moment asked for;
+    /// `exact` is for chapters and resume points, where the frame matters.
+    func seek(to seconds: Double, exact: Bool = false) {
         noteInteraction()
-        player.seek(to: CMTime(seconds: max(0, seconds), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+        let target = max(0, duration > 0 ? min(seconds, duration) : seconds)
+        seekTarget = target
+        let before = exact ? CMTime.zero : CMTime(seconds: 3, preferredTimescale: 600)
+        player.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: before, toleranceAfter: .zero) { [weak self] finished in
+            Task { @MainActor in
+                guard let self, self.seekTarget == target else { return }
+                if finished { self.currentTime = target }
+                self.seekTarget = nil
+            }
+        }
     }
+
+    /// A quick look while the finger drags along the scrubber, for streams without preview pictures:
+    /// the nearest keyframe, at most a few times a second.
+    func previewSeek(to seconds: Double) {
+        guard Date().timeIntervalSince(lastPreviewSeek) > 0.25 else { return }
+        lastPreviewSeek = Date()
+        player.seek(to: CMTime(seconds: max(0, seconds), preferredTimescale: 600), toleranceBefore: .positiveInfinity, toleranceAfter: .positiveInfinity)
+    }
+    @ObservationIgnored private var lastPreviewSeek = Date.distantPast
 
     private func applyMetadata(to item: AVPlayerItem) {
         #if os(iOS) || os(tvOS)
@@ -1594,7 +1621,7 @@ final class PlaybackSession: Identifiable {
         let base = pendingSeek.flatMap { Date().timeIntervalSince($0.at) < 2 ? $0.target : nil } ?? currentTime
         let target = max(0, min(duration > 0 ? duration : .greatestFiniteMagnitude, base + seconds))
         pendingSeek = (target, Date())
-        player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
+        seek(to: target)
     }
 }
 

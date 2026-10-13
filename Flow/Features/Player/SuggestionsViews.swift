@@ -97,7 +97,7 @@ struct SuggestionsEndScreen: View {
                 .buttonStyle(.plain)
                 .focused($focused, equals: "done")
             }
-            .padding(.horizontal, Platform.isTV ? 90 : Platform.isPhone ? 64 : 48)
+            .padding(.horizontal, Platform.isTV ? 90 : Platform.isPhone ? 20 : 48)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
         .onAppear { focused = session.suggestions.first?.id }
