@@ -67,7 +67,9 @@ public actor TraktClient: TrackingService, ListService {
         guard !clientID.isEmpty else { throw FlowError.missingCredential("Trakt client ID") }
         let code = try TraktOAuth.authorizationCode(from: callback, expectedState: expectedState)
         var r = try HTTPRequest(.post, base + "/oauth/token", headers: ["Content-Type": "application/json"])
-        try r.setJSONBody(TraktOAuth.CodeExchangeBody(code: code, client_id: clientID, client_secret: clientSecret, code_verifier: pkce.verifier))
+        // The verifier is the proof here. A secret left over from an older Trakt app would make a
+        // PKCE-only app answer invalid_client, so none is sent.
+        try r.setJSONBody(TraktOAuth.CodeExchangeBody(code: code, client_id: clientID, client_secret: nil, code_verifier: pkce.verifier))
         let t: OAuthToken
         do {
             let (data, _) = try await http.data(r)
