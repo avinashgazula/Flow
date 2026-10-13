@@ -30,7 +30,7 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
   - Every audio track, text subtitles and chapters come through, plus Blu-ray and DVD picture subtitles (PGS and VobSub), which Flow draws itself.
   - Scrubbing previews on Apple TV, iPhone and iPad.
   - Each file's index is cached, so reopening it is quick.
-- **Sync**: Trakt or Simkl device sign-in, iCloud key-value sync (removals sync too, so something taken off a list stays off on every device), and Share/Import Setup by file, link or QR code.
+- **Sync**: Trakt sign-in (PKCE on iPhone, iPad and Mac, a device code on Apple TV; no client secret needed) or Simkl device sign-in, iCloud key-value sync (removals sync too, so something taken off a list stays off on every device), and Share/Import Setup by file, link or QR code.
 - **System**: a Continue Watching widget on iPhone and iPad, an Apple TV Top Shelf (Continue Watching with progress, and your Watchlist), Spotlight indexing, Handoff, `flow://` deep links, and Shortcuts/Siri actions for Continue Watching, Upcoming and Search. The widget and Top Shelf read a snapshot shared through the `group.<bundle id>` App Group, so enable App Groups for your team when you sign the app.
 - **Demo mode**: "Explore with Sample Data" fills every screen with real TMDb artwork and Apple's sample streams, no keys required.
 
@@ -63,7 +63,7 @@ iCloud sync uses the iCloud key-value store entitlement, which needs a paid deve
 
 | Service | What it enables | Where to set it |
 |---|---|---|
-| Trakt / Simkl | Tracking, watchlist, scrobbling, lists | Settings → Account (needs your own OAuth client ID) |
+| Trakt / Simkl | Tracking, watchlist, scrobbling, lists | Settings → Account (needs your own OAuth client ID; Trakt needs no secret, just the redirect URI `flow://trakt-callback` on its app) |
 | TVDB | TVDB episode ordering | Settings → Metadata |
 | MDBList | Ratings row, list shelves, optional tracking | Settings → Account → API Keys |
 | IntroDB / PublicMetaDB | Skip segments, tracking | Settings → Account → API Keys |

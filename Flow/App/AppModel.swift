@@ -309,6 +309,7 @@ final class AppModel {
     var tmdbKey: String? { credentials.tmdbAPIKey?.nonEmpty ?? BundleKeys.tmdb }
     var tvdbKey: String? { credentials.tvdbAPIKey?.nonEmpty ?? BundleKeys.tvdb }
     var traktClientID: String? { credentials.traktClientID?.nonEmpty ?? BundleKeys.traktClientID }
+    /// Optional: Trakt no longer issues one. Kept so apps and sign-ins made with a secret keep refreshing.
     var traktClientSecret: String? { credentials.traktClientSecret?.nonEmpty ?? BundleKeys.traktClientSecret }
     var simklClientID: String? { credentials.simklClientID?.nonEmpty ?? BundleKeys.simklClientID }
     var needsOnboarding: Bool { tmdbKey == nil }
@@ -334,7 +335,7 @@ final class AppModel {
         }
 
         if let id = traktClientID {
-            trakt = TraktClient(clientID: id, clientSecret: traktClientSecret ?? "", token: credentials.traktToken, http: http) { [weak self] token in
+            trakt = TraktClient(clientID: id, clientSecret: traktClientSecret, token: credentials.traktToken, http: http) { [weak self] token in
                 Task { @MainActor in self?.credentials.traktToken = token }
             }
         } else {

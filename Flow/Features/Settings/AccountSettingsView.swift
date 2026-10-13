@@ -1,9 +1,17 @@
 import SwiftUI
 import FlowKit
+#if !os(tvOS)
+import AuthenticationServices
+#endif
 
 struct AccountSettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var signIn: SignInService?
+    #if !os(tvOS)
+    @Environment(\.webAuthenticationSession) private var webAuthenticationSession
+    #endif
+    @State private var traktSigningIn = false
+    @State private var traktError: String?
 
     enum SignInService: String, Identifiable { case trakt, simkl; var id: String { rawValue } }
 
@@ -32,7 +40,7 @@ struct AccountSettingsView: View {
                 Text("Only one of these can track at a time — choosing another moves your tracking to it. This Device needs no account and is the default.")
             }
 
-            Section("Trakt") {
+            Section {
                 if model.credentials.traktToken != nil {
                     accountRow(name: model.settings.account.tracker == .trakt ? model.profile?.username : nil, service: "Trakt", tracker: .trakt)
                     Button("Sign Out", role: .destructive) {
@@ -48,7 +56,29 @@ struct AccountSettingsView: View {
                         Text("Add a Trakt Client ID in API Keys to sign in.").foregroundStyle(.secondary)
                     }
                 } else {
+                    #if os(tvOS)
                     Button("Sign In to Trakt") { signIn = .trakt }
+                    #else
+                    Button {
+                        Task { await signInToTrakt() }
+                    } label: {
+                        HStack {
+                            Text("Sign In to Trakt")
+                            if traktSigningIn { Spacer(); ProgressView() }
+                        }
+                    }
+                    .disabled(traktSigningIn)
+                    #endif
+                }
+            } header: {
+                Text("Trakt")
+            } footer: {
+                if let traktError {
+                    Text(traktError).foregroundStyle(.red)
+                } else if Platform.isTV, model.credentials.traktToken == nil, model.traktClientID != nil {
+                    // Apple TV signs in with a code. Credentials sync through iCloud Keychain, so a sign-in
+                    // made on another device usually shows up here without any code at all.
+                    Text("Already signed in to Trakt on your iPhone, iPad or Mac? iCloud Keychain brings that sign-in to Apple TV.")
                 }
             }
 
@@ -194,6 +224,32 @@ struct AccountSettingsView: View {
         if model.settings.account.favouritesDestination == destination { model.settings.account.favouritesDestination = .local }
     }
 
+    #if !os(tvOS)
+    /// Trakt signs apps in with PKCE: a web sheet returns a code, and the secret verifier made here
+    /// stands in for the client secret Trakt no longer issues.
+    private func signInToTrakt() async {
+        guard let trakt = model.trakt else { return }
+        traktSigningIn = true
+        traktError = nil
+        defer { traktSigningIn = false }
+        do {
+            let pkce = PKCE.generate()
+            let state = TraktOAuth.makeState()
+            let callback = try await webAuthenticationSession.authenticate(using: trakt.authorizeURL(pkce: pkce, state: state), callbackURLScheme: TraktOAuth.callbackScheme)
+            let token = try await trakt.signIn(callback: callback, expectedState: state, pkce: pkce)
+            model.credentials.traktToken = token
+            model.settings.account.tracker = .trakt
+            model.settings.account.watchlistDestination = .trakt
+            await model.refreshLibrary(force: true)
+        } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
+            // Closing the sheet isn't a failure worth a message.
+        } catch FlowError.cancelled {
+        } catch {
+            traktError = error.localizedDescription
+        }
+    }
+    #endif
+
     private func select(_ kind: TrackerKind) {
         model.settings.account.tracker = kind
         // Lists follow the tracker unless the user picked something else.
@@ -203,7 +259,8 @@ struct AccountSettingsView: View {
     }
 }
 
-/// Trakt / Simkl device-code sign-in: shows the code, a QR to the activation page, and polls.
+/// Device-code sign-in: shows the code, a QR to the activation page, and polls. Simkl everywhere, Trakt on Apple TV,
+/// which has no web sign-in sheet (iPhone, iPad and Mac sign in to Trakt with PKCE instead).
 struct DeviceSignInView: View {
     let service: AccountSettingsView.SignInService
     @Environment(AppModel.self) private var model
@@ -311,12 +368,11 @@ struct APIKeysView: View {
 
             Section {
                 OptionalTextField(title: "Trakt Client ID", text: $model.credentials.traktClientID, prompt: BundleKeys.traktClientID == nil ? "Client ID" : "Using built-in app")
-                OptionalTextField(title: "Trakt Client Secret", text: $model.credentials.traktClientSecret, secure: true)
                 OptionalTextField(title: "Simkl Client ID", text: $model.credentials.simklClientID, prompt: BundleKeys.simklClientID == nil ? "Client ID" : "Using built-in app")
             } header: {
                 Text("OAuth Apps")
             } footer: {
-                Text("Create an app at trakt.tv/oauth/applications (redirect URI urn:ietf:wg:oauth:2.0:oob) or simkl.com/settings/developer.")
+                Text("Create an app at trakt.tv/oauth/applications with the redirect URI \(TraktOAuth.redirectURI). Trakt no longer issues a client secret, and Flow doesn't need one. Or create a Simkl app at simkl.com/settings/developer.")
             }
 
             Section {

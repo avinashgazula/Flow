@@ -1,20 +1,23 @@
 import Foundation
 
-/// Trakt API v2: device sign-in, sync, scrobbling, lists, catalogue and ratings.
+/// Trakt API v2: sign-in (PKCE, or a device code on Apple TV), sync, scrobbling, lists, catalogue and ratings.
 public actor TraktClient: TrackingService, ListService {
     public nonisolated let kind: TrackerKind = .trakt
     public nonisolated let destination: ListDestination = .trakt
 
     public nonisolated let clientID: String
-    private let clientSecret: String
+    /// Nil for apps Trakt registered after it dropped client secrets. Sent only when there is one.
+    private let clientSecret: String?
     private var token: OAuthToken?
+    /// Refresh tokens are single use, so overlapping requests must share one refresh rather than race to spend it.
+    private var refreshTask: Task<OAuthToken, Error>?
     private let http: HTTPClient
     private let onTokenChange: @Sendable (OAuthToken?) -> Void
     private let base = "https://api.trakt.tv"
 
-    public init(clientID: String, clientSecret: String, token: OAuthToken?, http: HTTPClient = HTTPClient(), onTokenChange: @escaping @Sendable (OAuthToken?) -> Void = { _ in }) {
+    public init(clientID: String, clientSecret: String? = nil, token: OAuthToken?, http: HTTPClient = HTTPClient(), onTokenChange: @escaping @Sendable (OAuthToken?) -> Void = { _ in }) {
         self.clientID = clientID
-        self.clientSecret = clientSecret
+        self.clientSecret = TraktOAuth.normalized(secret: clientSecret)
         self.token = token
         self.http = http
         self.onTokenChange = onTokenChange
@@ -51,7 +54,34 @@ public actor TraktClient: TrackingService, ListService {
         try await http.send(r)
     }
 
-    // MARK: Device sign-in
+    // MARK: Sign-in
+
+    /// The page to open for PKCE sign-in. Keep the `PKCE` and `state` for `signIn(callback:...)`.
+    public nonisolated func authorizeURL(pkce: PKCE, state: String) -> URL {
+        TraktOAuth.authorizeURL(clientID: clientID, pkce: pkce, state: state)
+    }
+
+    /// Finishes PKCE sign-in: checks the callback's `state`, then trades the code for tokens. The verifier
+    /// is what proves this app made the request, so no client secret is needed.
+    public func signIn(callback: URL, expectedState: String, pkce: PKCE) async throws -> OAuthToken {
+        guard !clientID.isEmpty else { throw FlowError.missingCredential("Trakt client ID") }
+        let code = try TraktOAuth.authorizationCode(from: callback, expectedState: expectedState)
+        var r = try HTTPRequest(.post, base + "/oauth/token", headers: ["Content-Type": "application/json"])
+        try r.setJSONBody(TraktOAuth.CodeExchangeBody(code: code, client_id: clientID, client_secret: clientSecret, code_verifier: pkce.verifier))
+        let t: OAuthToken
+        do {
+            let (data, _) = try await http.data(r)
+            t = try Self.decodeToken(data, redirectURI: TraktOAuth.redirectURI)
+        } catch FlowError.unauthorized, FlowError.http(status: 400, _) {
+            // Nearly always a Redirect URI that doesn't match what the Trakt app lists.
+            throw FlowError.unsupported("Trakt didn't accept the sign-in. Check the Client ID, and that the app's Redirect URI in Trakt is exactly \(TraktOAuth.redirectURI).")
+        }
+        token = t
+        onTokenChange(t)
+        return t
+    }
+
+    // MARK: Device sign-in (Apple TV, which has no web sign-in sheet)
 
     public func startDeviceAuth() async throws -> DeviceCode {
         struct Body: Encodable { var client_id: String }
@@ -70,13 +100,12 @@ public actor TraktClient: TrackingService, ListService {
 
     /// Polls until the user approves the code. Throws `FlowError.timedOut` when the code expires.
     public func pollDeviceToken(_ code: DeviceCode) async throws -> OAuthToken {
-        struct Body: Encodable { var code: String; var client_id: String; var client_secret: String }
         let deadline = Date().addingTimeInterval(code.expiresIn)
         var interval = max(code.interval, 1)
         while Date() < deadline {
             try Task.checkCancellation()
             var r = try HTTPRequest(.post, base + "/oauth/device/token", headers: ["Content-Type": "application/json"])
-            try r.setJSONBody(Body(code: code.deviceCode, client_id: clientID, client_secret: clientSecret))
+            try r.setJSONBody(TraktOAuth.DeviceTokenBody(code: code.deviceCode, client_id: clientID, client_secret: clientSecret))
             let (data, response) = try await http.data(r, acceptStatus: 200..<600)
             switch response.statusCode {
             case 200:
@@ -95,28 +124,36 @@ public actor TraktClient: TrackingService, ListService {
     }
 
     private func refresh(_ current: OAuthToken) async throws -> OAuthToken {
-        struct Body: Encodable { var refresh_token: String; var client_id: String; var client_secret: String; var redirect_uri = "urn:ietf:wg:oauth:2.0:oob"; var grant_type = "refresh_token" }
+        if let refreshTask { return try await refreshTask.value }
+        let task = Task { try await self.performRefresh(current) }
+        refreshTask = task
+        defer { refreshTask = nil }
+        return try await task.value
+    }
+
+    /// No client secret is needed when the app has none: the refresh token itself is the proof.
+    private func performRefresh(_ current: OAuthToken) async throws -> OAuthToken {
+        let redirect = TraktOAuth.refreshRedirectURI(for: current, hasSecret: clientSecret != nil)
         var r = try HTTPRequest(.post, base + "/oauth/token", headers: ["Content-Type": "application/json"])
-        try r.setJSONBody(Body(refresh_token: current.refreshToken ?? "", client_id: clientID, client_secret: clientSecret))
+        try r.setJSONBody(TraktOAuth.RefreshBody(refresh_token: current.refreshToken ?? "", client_id: clientID, client_secret: clientSecret, redirect_uri: redirect))
         let (data, _) = try await http.data(r)
-        let t = try Self.decodeToken(data)
+        let t = try Self.decodeToken(data, redirectURI: redirect)
         token = t
         onTokenChange(t)
         return t
     }
 
-    static func decodeToken(_ data: Data) throws -> OAuthToken {
+    static func decodeToken(_ data: Data, redirectURI: String? = nil) throws -> OAuthToken {
         struct Response: Decodable { var access_token: String; var refresh_token: String?; var expires_in: Double?; var created_at: Double? }
         let r = try JSONDecoder().decode(Response.self, from: data)
         let created = r.created_at.map { Date(timeIntervalSince1970: $0) } ?? Date()
-        return OAuthToken(accessToken: r.access_token, refreshToken: r.refresh_token, expiresAt: r.expires_in.map { created.addingTimeInterval($0) })
+        return OAuthToken(accessToken: r.access_token, refreshToken: r.refresh_token, expiresAt: r.expires_in.map { created.addingTimeInterval($0) }, redirectURI: redirectURI)
     }
 
     public func signOut() async {
         if let token {
-            struct Body: Encodable { var token: String; var client_id: String; var client_secret: String }
             if var r = try? HTTPRequest(.post, base + "/oauth/revoke", headers: ["Content-Type": "application/json"]) {
-                try? r.setJSONBody(Body(token: token.accessToken, client_id: clientID, client_secret: clientSecret))
+                try? r.setJSONBody(TraktOAuth.RevokeBody(token: token.accessToken, client_id: clientID, client_secret: clientSecret))
                 _ = try? await http.data(r)
             }
         }

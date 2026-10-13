@@ -5,6 +5,7 @@
 FLOW_BUNDLE_ID = com.example.flow
 FLOW_TMDB_API_KEY =
 FLOW_TRAKT_CLIENT_ID =
+// Optional, and only for older Trakt apps: new ones have no secret.
 FLOW_TRAKT_CLIENT_SECRET =
 FLOW_SIMKL_CLIENT_ID =
 FLOW_TVDB_API_KEY =

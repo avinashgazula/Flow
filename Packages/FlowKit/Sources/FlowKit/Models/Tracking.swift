@@ -151,11 +151,15 @@ public struct OAuthToken: Codable, Hashable, Sendable {
     public var accessToken: String
     public var refreshToken: String?
     public var expiresAt: Date?
+    /// The redirect URI the token was issued against, for services that want it repeated on refresh.
+    /// Tokens saved before this was recorded decode it as nil.
+    public var redirectURI: String?
 
-    public init(accessToken: String, refreshToken: String? = nil, expiresAt: Date? = nil) {
+    public init(accessToken: String, refreshToken: String? = nil, expiresAt: Date? = nil, redirectURI: String? = nil) {
         self.accessToken = accessToken
         self.refreshToken = refreshToken
         self.expiresAt = expiresAt
+        self.redirectURI = redirectURI
     }
 
     public var isExpired: Bool {
