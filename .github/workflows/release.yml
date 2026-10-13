@@ -2,7 +2,8 @@ name: Release
 
 # Builds Flow for iPhone and iPad, Apple TV and the Mac, and attaches the apps to a GitHub release.
 # Runs when a version tag (v1.2.0, v1.2.0-beta.1) is pushed, or by hand: for an existing tag, or for a
-# new one at the commit given, which the release then creates.
+# new one at the commit given, which the release then creates. Sessions that can't push tags can
+# instead write the new tag into .github/release-tag on main or a claude/ branch.
 #
 # The apps are unsigned: there's no Apple Developer account in CI. Install the IPAs with a
 # sideloading tool that signs them with your own Apple ID (AltStore, SideStore, Sideloadly), or
@@ -11,6 +12,8 @@ name: Release
 on:
   push:
     tags: ["v*"]
+    branches: [main, "claude/**"]
+    paths: [.github/release-tag]
   workflow_dispatch:
     inputs:
       tag:
@@ -37,7 +40,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.ref || github.event.inputs.tag || github.ref }}
+          ref: ${{ github.event.inputs.ref || github.event.inputs.tag || github.sha }}
+      - name: Tag
+        id: tag
+        run: |
+          tag="${{ github.event.inputs.tag }}"
+          [ -z "$tag" ] && [ "${{ github.ref_type }}" = tag ] && tag="${{ github.ref_name }}"
+          [ -z "$tag" ] && tag=$(tr -d '[:space:]' < .github/release-tag)
+          case "$tag" in v*) ;; *) echo "Not a version tag: '$tag'" >&2; exit 1 ;; esac
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - run: sudo xcode-select -s /Applications/Xcode_26.3.app
       - name: Generate project
         run: |
@@ -45,7 +56,7 @@ jobs:
           xcodegen generate
       - name: Build
         run: |
-          version="${{ github.event.inputs.tag || github.ref_name }}"
+          version="${{ steps.tag.outputs.tag }}"
           version="${version#v}"
           xcodebuild build \
             -project Flow.xcodeproj \
@@ -84,7 +95,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.ref || github.event.inputs.tag || github.ref }}
+          ref: ${{ github.event.inputs.ref || github.event.inputs.tag || github.sha }}
+      - name: Tag
+        id: tag
+        run: |
+          tag="${{ github.event.inputs.tag }}"
+          [ -z "$tag" ] && [ "${{ github.ref_type }}" = tag ] && tag="${{ github.ref_name }}"
+          [ -z "$tag" ] && tag=$(tr -d '[:space:]' < .github/release-tag)
+          case "$tag" in v*) ;; *) echo "Not a version tag: '$tag'" >&2; exit 1 ;; esac
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -93,7 +112,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          tag="${{ steps.tag.outputs.tag }}"
           cat > notes.md <<'EOF'
           ### Installing
 
