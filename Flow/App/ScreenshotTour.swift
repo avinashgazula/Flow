@@ -77,6 +77,12 @@ enum ScreenshotTour {
             steps.insert(contentsOf: [
                 Step(name: "player-options") { m in
                     m.activePlayback?.tourScrubPreview = nil
+                    // A slow runner can still be remuxing; pausing before the picture starts would
+                    // leave the panels over the connecting screen.
+                    for _ in 0..<60 {
+                        guard let phase = m.activePlayback?.phase, case .connecting = phase else { break }
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                    }
                     // Held still: the sample is short, and would otherwise end under the panels.
                     m.activePlayback?.player.pause()
                     m.activePlayback?.tourPanel = "options"

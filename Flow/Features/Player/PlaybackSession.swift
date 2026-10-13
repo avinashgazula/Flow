@@ -857,7 +857,7 @@ final class PlaybackSession: Identifiable {
                 self.legibleGroup = legible
             }
             if readyAt == nil { readyAt = Date() }
-            if case .connecting = phase { phase = .connecting(0.7) }
+            if case .connecting(let p) = phase { phase = .connecting(max(p, 0.7)) }
             let seconds = item.duration.seconds
             if seconds.isFinite { duration = seconds }
             if let recoverAt {
