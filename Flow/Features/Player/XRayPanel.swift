@@ -68,6 +68,17 @@ struct XRayPanel: View {
     @Environment(AppModel.self) private var model
     @State private var store: XRayStore?
     @State private var selected: CastMember?
+    @State private var tab = Tab.cast
+    /// Once someone picks a tab, X-Ray stops choosing for them.
+    @State private var choseTab = false
+
+    /// Like Prime Video's X-Ray: who's in the scene, everyone in the film, its music, and its scenes.
+    private enum Tab: String, CaseIterable, Identifiable {
+        case scene = "In Scene", cast = "Cast", music = "Music", scenes = "Scenes"
+        var id: String { rawValue }
+    }
+
+    private var tabs: [Tab] { Tab.allCases.filter { $0 != .scenes || !session.chapters.isEmpty } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -85,13 +96,18 @@ struct XRayPanel: View {
                 .accessibilityLabel("Close X-Ray")
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
+            tabBar
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 18) {
+                LazyVStack(alignment: .leading, spacing: 12) {
                     if let store { content(store) } else { ProgressView().frame(maxWidth: .infinity).padding(.top, 40) }
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(.vertical, 8)
+                .id(tab)
             }
             .scrollIndicators(.hidden)
         }
@@ -110,98 +126,120 @@ struct XRayPanel: View {
         }
     }
 
+    private var tabBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(tabs) { option in
+                    Button {
+                        choseTab = true
+                        withAnimation(Theme.Motion.snappy) { tab = option }
+                    } label: {
+                        Text(option.rawValue)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(tab == option ? Color.black : .white)
+                            .padding(.horizontal, 12).padding(.vertical, 7)
+                            .background(tab == option ? Color.white : Color.white.opacity(0.12), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(tab == option ? .isSelected : [])
+                }
+            }
+        }
+        .onChange(of: store?.inScene.isEmpty) { _, empty in
+            // Opens on whoever's in the scene once X-Ray knows, unless a tab has been picked.
+            if empty == false, !choseTab { withAnimation(Theme.Motion.snappy) { tab = .scene } }
+        }
+    }
+
     @ViewBuilder
     private func content(_ store: XRayStore) -> some View {
-        let sceneIDs = Set(store.inScene.map(\.id))
-        if !store.inScene.isEmpty {
-            section("In This Scene", note: "Named in the last few minutes of dialogue") {
+        switch tab {
+        case .scene:
+            if !store.inScene.isEmpty {
+                note("Named in the last few minutes of dialogue")
                 ForEach(store.inScene) { member in row(member) }
+            } else if store.isLoaded && !store.readsDialogue {
+                note("Turn on subtitles, or add a subtitle service in Settings, and X-Ray shows who's in each scene.")
+            } else {
+                note("No one's been named in the last few minutes.")
             }
-        }
-        if !store.cast.isEmpty {
-            section(store.inScene.isEmpty ? "Cast" : "Full Cast") {
-                ForEach(store.cast.filter { !sceneIDs.contains($0.id) }.prefix(40)) { member in row(member) }
+        case .cast:
+            if store.cast.isEmpty {
+                note(store.isLoaded ? "No cast listed for this title." : "Loading…")
             }
-        } else if store.isLoaded {
-            Text("No cast listed for this title.")
-                .font(Theme.Typeface.caption)
-                .foregroundStyle(Theme.Palette.textSecondary)
-        }
-        if !store.crew.isEmpty {
-            section("Crew") {
+            ForEach(store.cast) { member in row(member) }
+            if !store.crew.isEmpty {
+                Text("CREW").font(Theme.Typeface.micro).kerning(1).foregroundStyle(Theme.Palette.textSecondary).padding(.top, 8)
                 ForEach(store.crew) { member in row(member) }
             }
+        case .music:
+            music
+        case .scenes:
+            ForEach(Array(session.chapters.enumerated()), id: \.element.id) { index, chapter in
+                Button { session.seek(toChapter: chapter) } label: {
+                    HStack(spacing: 12) {
+                        Text(TimeFormat.clock(chapter.start))
+                            .font(.system(.caption, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                            .frame(width: 58, alignment: .leading)
+                        Text(chapter.title.isEmpty ? "Chapter \(index + 1)" : chapter.title)
+                            .font(.system(.subheadline, weight: .medium))
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
         }
-        section("Music") {
-            Button { session.songs.identify(session) } label: {
+    }
+
+    @ViewBuilder
+    private var music: some View {
+        Button { session.songs.identify(session) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "shazam.logo.fill")
+                    .font(.system(size: 20))
+                    .symbolEffect(.variableColor.iterative, isActive: session.songs.isListening)
+                    .frame(width: 44, height: 44)
+                    .background(Color.blue.opacity(0.85), in: Circle())
+                Text(session.songs.isListening ? "Listening…" : "Identify Song")
+                    .font(.system(.subheadline, weight: .semibold))
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(session.songs.isListening)
+        if session.songs.found.isEmpty {
+            note("Songs Shazam names while you watch are kept here, each a tap from where it played.")
+        }
+        ForEach(session.songs.found) { song in
+            Button { session.seek(to: song.at) } label: {
                 HStack(spacing: 12) {
-                    Image(systemName: "shazam.logo.fill")
-                        .font(.system(size: 20))
-                        .symbolEffect(.variableColor.iterative, isActive: session.songs.isListening)
+                    RemoteImage(url: song.item.artworkURL, maxPixel: 200, fallbackTitle: song.title)
                         .frame(width: 44, height: 44)
-                        .background(Color.blue.opacity(0.85), in: Circle())
-                    Text(session.songs.isListening ? "Listening…" : "Identify Song")
-                        .font(.system(.subheadline, weight: .semibold))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(song.title).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
+                        Text([song.artist, TimeFormat.clock(song.at)].filter { !$0.isEmpty }.joined(separator: " · "))
+                            .font(.system(.caption)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+                    }
                     Spacer(minLength: 0)
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(session.songs.isListening)
-            ForEach(session.songs.found) { song in
-                Button { session.seek(to: song.at) } label: {
-                    HStack(spacing: 12) {
-                        RemoteImage(url: song.item.artworkURL, maxPixel: 200, fallbackTitle: song.title)
-                            .frame(width: 44, height: 44)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(song.title).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
-                            Text([song.artist, TimeFormat.clock(song.at)].filter { !$0.isEmpty }.joined(separator: " · "))
-                                .font(.system(.caption)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint("Goes back to where it played")
-            }
-        }
-        if !session.chapters.isEmpty {
-            section("Scenes") {
-                ForEach(session.chapters) { chapter in
-                    Button { session.seek(toChapter: chapter) } label: {
-                        HStack(spacing: 12) {
-                            Text(TimeFormat.clock(chapter.start))
-                                .font(.system(.caption, weight: .semibold).monospacedDigit())
-                                .foregroundStyle(Theme.Palette.textSecondary)
-                                .frame(width: 58, alignment: .leading)
-                            Text(chapter.title.isEmpty ? "Chapter" : chapter.title)
-                                .font(.system(.subheadline, weight: .medium))
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        if store.isLoaded && !store.readsDialogue && !store.cast.isEmpty {
-            Text("Turn on subtitles, or add a subtitle service in Settings, and X-Ray shows who's in each scene.")
-                .font(Theme.Typeface.caption)
-                .foregroundStyle(Theme.Palette.textTertiary)
+            .accessibilityHint("Goes back to where it played")
         }
     }
 
-    private func section<Content: View>(_ title: String, note: String? = nil, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title.uppercased()).font(Theme.Typeface.micro).kerning(1).foregroundStyle(Theme.Palette.textSecondary)
-                if let note { Text(note).font(.system(.caption2)).foregroundStyle(Theme.Palette.textTertiary) }
-            }
-            content()
-        }
+    private func note(_ text: String) -> some View {
+        Text(text)
+            .font(Theme.Typeface.caption)
+            .foregroundStyle(Theme.Palette.textTertiary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func row(_ member: CastMember) -> some View {

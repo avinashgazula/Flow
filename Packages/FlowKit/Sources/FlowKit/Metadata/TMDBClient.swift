@@ -525,7 +525,8 @@ struct TMDBDetailDTO: Decodable {
         )
         item.textlessPosterPath = TMDBImagesDTO.bestTextless(images?.posters ?? [])
         let creditSource = aggregateCredits ?? credits
-        let cast = (creditSource?.cast ?? []).prefix(40).map {
+        // Everyone, not just the top billing: X-Ray lists the whole cast.
+        let cast = (creditSource?.cast ?? []).prefix(200).map {
             CastMember(id: $0.id, name: $0.name, role: $0.character ?? $0.roles?.first?.character ?? "", profilePath: $0.profilePath, order: $0.order ?? 999)
         }
         let crew = (credits?.crew ?? creditSource?.crew ?? []).filter {
