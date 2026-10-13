@@ -3,16 +3,17 @@ import FlowKit
 
 struct LibraryView: View {
     @Environment(AppModel.self) private var model
-    private var downloadCount: Int { DownloadManager.shared.items.filter { $0.state == .finished }.count }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 tileArea
+                // Reads the downloads and the lists itself, so this page doesn't redraw with every download tick.
+                LibraryEmptyState()
 
                 ContinueWatchingShelf(title: "Continue Watching")
                 LibraryKeysShelf(title: "Watchlist", keys: model.watchlistKeys, route: .library(.watchlist))
-                LibraryKeysShelf(title: "Watch History", keys: uniqueHistoryKeys, route: .library(.history))
+                LibraryKeysShelf(title: "Watch History", keys: model.watchedKeys, route: .library(.history))
                 LibraryKeysShelf(title: "Favourites", keys: model.favouriteKeys, route: .library(.favourites))
 
                 ForEach(model.settings.shelves.filter { shelf in
@@ -22,11 +23,6 @@ struct LibraryView: View {
                     }
                 }) { shelf in
                     ShelfView(shelf: shelf, inLibraryTab: true)
-                }
-
-                if model.watchlistKeys.isEmpty && model.history.isEmpty && model.favouriteKeys.isEmpty && !model.isSyncing {
-                    ContentUnavailableView("Your Library Is Empty", systemImage: "books.vertical",
-                                           description: Text("Add titles to your watchlist, or connect Trakt, Simkl or MDBList in Settings → Account."))
                 }
             }
             .padding(.vertical)
@@ -56,19 +52,30 @@ struct LibraryView: View {
         let teams = model.settings.sports.followedTeams.count
         var items: [Tile] = []
         if Platform.supportsDownloads {
-            items.append(Tile(title: "Downloads", subtitle: downloadCount > 0 ? "\(downloadCount) saved" : "Watch offline", systemImage: "arrow.down.circle.fill", route: .downloads, tint: .blue))
+            // The subtitle (how many are saved) is filled in by `DownloadsTile`.
+            items.append(Tile(title: "Downloads", subtitle: "Watch offline", systemImage: "arrow.down.circle.fill", route: .downloads, tint: .blue))
         }
         items += [
             Tile(title: "Upcoming", subtitle: "New episodes", systemImage: "calendar", route: .calendar, tint: .pink),
             Tile(title: "Sports", subtitle: teams == 0 ? "Follow your teams" : teams == 1 ? "1 team followed" : "\(teams) teams followed", systemImage: "sportscourt.fill", route: .sports, tint: .green),
-            Tile(title: "History", subtitle: model.history.count == 1 ? "1 play" : "\(model.history.count) plays", systemImage: "clock.fill", route: .library(.history), tint: .orange),
+            Tile(title: "History", subtitle: Self.historySubtitle(model.watchedKeys.count), systemImage: "clock.fill", route: .library(.history), tint: .orange),
             Tile(title: "Stats", subtitle: "Your watching", systemImage: "chart.bar.fill", route: .stats, tint: .teal),
         ]
         return items
     }
 
+    /// Counts titles, which is what the History list holds; before anything is known it says what the page is.
+    private static func historySubtitle(_ count: Int) -> String {
+        count == 0 ? "Watched titles" : count == 1 ? "1 title" : "\(count.formatted()) titles"
+    }
+
+    @ViewBuilder
     private func tile(_ item: Tile, stacked: Bool) -> some View {
-        LibraryTile(title: item.title, subtitle: item.subtitle, systemImage: item.systemImage, route: item.route, tint: item.tint, stacked: stacked)
+        if item.route == .downloads {
+            DownloadsTile(stacked: stacked)
+        } else {
+            LibraryTile(title: item.title, subtitle: item.subtitle, systemImage: item.systemImage, route: item.route, tint: item.tint, stacked: stacked)
+        }
     }
 
     @ViewBuilder private var tileArea: some View {
@@ -109,10 +116,36 @@ struct LibraryView: View {
         }
         #endif
     }
+}
 
-    private var uniqueHistoryKeys: [MediaKey] {
-        var seen = Set<MediaKey>()
-        return model.history.map(\.key).filter { seen.insert($0).inserted }
+/// The Downloads tile. The manager reports progress many times a second while something downloads,
+/// so only this small view watches it, not the whole Library page.
+private struct DownloadsTile: View {
+    let stacked: Bool
+
+    var body: some View {
+        let saved = DownloadManager.shared.items.filter { $0.state == .finished }.count
+        LibraryTile(title: "Downloads", subtitle: saved > 0 ? "\(saved) saved" : "Watch offline", systemImage: "arrow.down.circle.fill",
+                    route: .downloads, tint: .blue, stacked: stacked)
+    }
+}
+
+/// Shown only when there is genuinely nothing to show: no resume points, lists, history or saved downloads.
+private struct LibraryEmptyState: View {
+    @Environment(AppModel.self) private var model
+
+    private var isEmpty: Bool {
+        guard model.continueWatching.isEmpty, model.watchlistKeys.isEmpty, model.favouriteKeys.isEmpty,
+              model.watchedKeys.isEmpty, !model.isSyncing else { return false }
+        return !Platform.supportsDownloads || DownloadManager.shared.items.isEmpty
+    }
+
+    var body: some View {
+        if isEmpty {
+            ContentUnavailableView("Your Library Is Empty", systemImage: "books.vertical",
+                                   description: Text("Add titles to your watchlist, or connect Trakt, Simkl or MDBList in Settings → Account."))
+                .padding(.top, Theme.Space.l)
+        }
     }
 }
 
@@ -198,7 +231,7 @@ struct LibraryKeysShelf: View {
         .task(id: keys) {
             let loaded = await model.hydrate(Array(keys.prefix(20)))
             // Cancelled (the keys changed or the tab went away): the result is partial, and a newer task is coming.
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, loaded != items else { return }
             withAnimation(Theme.Motion.fade) { items = loaded }
         }
     }
@@ -234,12 +267,23 @@ struct LibraryListView: View {
         }
         .navigationTitle(list.title)
         .task(id: model.contentVersion) {
+            let keys = self.keys
+            // The first screenful appears as soon as it's ready; the rest fills in behind it. Waiting for
+            // all 300 meant one slow lookup held up the whole page.
+            if items.isEmpty {
+                let first = await model.hydrate(Array(keys.prefix(Self.firstBatch)), limit: Self.firstBatch)
+                guard !Task.isCancelled else { return }
+                items = first
+                loading = false
+            }
             let loaded = await model.hydrate(keys, limit: 300)
             guard !Task.isCancelled else { return }
-            items = loaded
+            if loaded != items { items = loaded }
             loading = false
         }
     }
+
+    private static let firstBatch = 24
 
     private var filtered: [MediaItem] { filter.map { t in items.filter { $0.type == t } } ?? items }
 
@@ -248,9 +292,7 @@ struct LibraryListView: View {
         case .watchlist: return model.watchlistKeys
         case .favourites: return model.favouriteKeys
         case .continueWatching: return model.continueWatching.map(\.key)
-        case .history:
-            var seen = Set<MediaKey>()
-            return model.history.map(\.key).filter { seen.insert($0).inserted }
+        case .history: return model.watchedKeys
         }
     }
 }

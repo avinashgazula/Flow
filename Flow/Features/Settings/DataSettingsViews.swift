@@ -309,7 +309,7 @@ struct ImportSetupView: View {
                 }
                 Section {
                     Button("Import and Replace My Setup") { apply(bundle) }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(PrimaryButtonStyle())
                 } footer: {
                     Text("Keys, tokens and passwords already on this device are kept unless the import includes new ones.")
                 }

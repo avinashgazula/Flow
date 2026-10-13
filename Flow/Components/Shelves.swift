@@ -353,6 +353,8 @@ struct ContinueWatchingShelf: View {
                 let hydrated = await model.hydrate(entries.map(\.key))
                 var map = items
                 for item in hydrated { if let key = item.key { map[key] = item } }
+                // Coming back to the page re-runs this; unchanged titles shouldn't redraw the row.
+                guard map != items else { return }
                 withAnimation(Theme.Motion.fade) { items = map }
             }
         }
@@ -623,9 +625,13 @@ private struct HeroActions: View {
                 }
                 .buttonStyle(GlassButtonStyle(circle: true))
                 .accessibilityLabel(model.isWatchlisted(item) ? "Remove from Watchlist" : "Add to Watchlist")
+                #if os(tvOS)
+                // The card's image isn't focusable here, so this is the remote's way to the detail page.
+                // Everywhere else tapping the card opens it.
                 Button { model.navigate(to: .detail(item)) } label: { Image(systemName: "info") }
                     .buttonStyle(GlassButtonStyle(circle: true))
                     .accessibilityLabel("Details")
+                #endif
             }
         }
     }
@@ -785,7 +791,7 @@ struct MissingKeyView: View {
         } description: {
             Text("Flow uses TMDB for posters, details and discovery. Add your free key in Settings → Metadata.")
         } actions: {
-            Button("Open Settings") { model.showSettings = true }.buttonStyle(.borderedProminent)
+            Button("Open Settings") { model.showSettings = true }.buttonStyle(PrimaryButtonStyle())
         }
     }
 }

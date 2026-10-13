@@ -4,7 +4,6 @@ import FlowKit
 struct SearchView: View {
     @Environment(AppModel.self) private var model
     @State private var results: [SearchResult] = []
-    @State private var serverResults: [MediaItem] = []
     @State private var searching = false
     @State private var error: String?
     @State private var recents: [String] = []
@@ -25,7 +24,7 @@ struct SearchView: View {
     private var topResult: MediaItem? {
         let query = text.trimmingCharacters(in: .whitespaces).lowercased()
         let first = results.lazy.compactMap { if case .media(let m) = $0 { return m }; return nil }.first
-        guard let first, query.count >= 3, first.backdropPath != nil,
+        guard let first, query.count >= 3, first.posterPath != nil,
               first.title.lowercased().hasPrefix(query) || first.title.lowercased().contains(" \(query)") else { return nil }
         return first
     }
@@ -36,21 +35,15 @@ struct SearchView: View {
             LazyVStack(alignment: .leading, spacing: 28) {
                 if text.trimmingCharacters(in: .whitespaces).count < 2 {
                     idleContent
-                } else if searching && results.isEmpty && serverResults.isEmpty {
+                } else if searching && results.isEmpty {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
                 } else if let error {
                     ContentUnavailableView("Search Failed", systemImage: "exclamationmark.triangle", description: Text(error))
-                } else if results.isEmpty && serverResults.isEmpty {
+                } else if results.isEmpty {
                     ContentUnavailableView.search(text: text)
                 } else {
                     if let top = topResult {
                         TopResultCard(item: top).padding(.horizontal, Theme.Space.gutter)
-                    }
-                    if !serverResults.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            SectionHeader<Route>("Media Servers")
-                            PosterRow(items: serverResults)
-                        }
                     }
                     if !movies.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
@@ -138,7 +131,7 @@ struct SearchView: View {
 
     private func runSearch() async {
         let query = text.trimmingCharacters(in: .whitespaces)
-        guard query.count >= 2 else { results = []; serverResults = []; return }
+        guard query.count >= 2 else { results = []; return }
         // Debounce typing.
         try? await Task.sleep(nanoseconds: 350_000_000)
         guard !Task.isCancelled else { return }
@@ -149,8 +142,7 @@ struct SearchView: View {
         do {
             let found = try await model.search(query)
             guard !Task.isCancelled else { return }
-            results = found.results
-            serverResults = found.server
+            results = found
             error = nil
             model.rememberSearch(query)
         } catch is CancellationError {
@@ -227,34 +219,98 @@ struct BrowseGrid: View {
     }
 }
 
-/// The best match, given room: backdrop, title and the essentials, like the Apple TV app's top hit.
+/// The best match, given room: poster beside the essentials and a way to play, like the Apple TV app's top hit.
 struct TopResultCard: View {
     let item: MediaItem
     @Environment(AppModel.self) private var model
 
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous) }
+    private var zoomID: String { "top-\(item.id)" }
+
+    private var posterWidth: CGFloat {
+        #if os(tvOS)
+        260
+        #elseif os(macOS)
+        150
+        #else
+        Platform.isPhone ? 110 : 150
+        #endif
+    }
 
     var body: some View {
-        NavigationLink(value: Route.detail(item, zoom: "top-\(item.id)")) {
-            ZStack(alignment: .bottomLeading) {
-                Color.clear
-                    .aspectRatio(16 / 9, contentMode: .fit)
-                    .overlay(RemoteImage(url: item.backdropURL, maxPixel: 1400, fallbackTitle: item.title))
-                LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .center, endPoint: .bottom)
-                VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                    Text("TOP RESULT").font(Theme.Typeface.micro).kerning(1.2).foregroundStyle(Theme.Palette.textSecondary)
-                    Text(item.title).font(Theme.Typeface.title).displayTracking().lineLimit(2).multilineTextAlignment(.leading)
-                    MetadataLine(item: item, showType: true)
-                }
-                .padding(Theme.Space.m)
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            NavigationLink(value: Route.detail(item, zoom: zoomID, library: nil)) {
+                PosterArtwork(item: item).frame(width: posterWidth).zoomSource(zoomID)
             }
-            .frame(maxWidth: Platform.isTV ? 1000 : 640)
-            .clipShape(shape)
-            .hairline(shape)
-            .artworkShadow(0.5)
+            .buttonStyle(CardButtonStyle())
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                text
+                actions
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .buttonStyle(CardButtonStyle())
-        .zoomSource("top-\(item.id)")
+        .frame(maxWidth: Platform.isTV ? 1000 : 640, alignment: .leading)
         .contextMenu { MediaContextMenu(item: item) }
+    }
+
+    /// Tapping the words opens the detail page too. On tvOS the poster is the one way in: a second
+    /// focus stop on the text would only slow the remote down.
+    @ViewBuilder
+    private var text: some View {
+        #if os(tvOS)
+        details
+        #else
+        NavigationLink(value: Route.detail(item, zoom: zoomID, library: nil)) { details }
+            .buttonStyle(.plain)
+        #endif
+    }
+
+    private var details: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(item.title)
+                .font(Theme.Typeface.title).displayTracking()
+                .lineLimit(2).multilineTextAlignment(.leading)
+            if !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(Theme.Typeface.caption)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .lineLimit(1)
+            }
+            if let overview = item.overview, !overview.isEmpty {
+                Text(overview)
+                    .font(Theme.Typeface.body)
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .lineLimit(3).multilineTextAlignment(.leading)
+                    .padding(.top, Theme.Space.xxs)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private var actions: some View {
+        GlassGroup(spacing: 8) {
+            HStack(spacing: Theme.Space.xs) {
+                Button { Task { await model.play(item) } } label: {
+                    Label("Play", systemImage: "play.fill").labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(PrimaryButtonStyle(compact: true))
+                Button { Task { await model.toggleWatchlist(item) } } label: {
+                    Image(systemName: model.isWatchlisted(item) ? "checkmark" : "plus")
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .buttonStyle(GlassButtonStyle(circle: true, compact: true))
+                .accessibilityLabel(model.isWatchlisted(item) ? "Remove from Watchlist" : "Add to Watchlist")
+            }
+        }
+    }
+
+    /// "2024 · Science Fiction · 2h 46m", or "Series" in place of a runtime for shows.
+    private var subtitle: String {
+        var parts: [String] = []
+        if let year = item.year { parts.append(String(year)) }
+        if let genre = item.genres.first?.name { parts.append(genre) }
+        if item.type == .show { parts.append("Series") }
+        else if let runtime = item.runtimeMinutes, runtime > 0 { parts.append(TimeFormat.runtime(runtime)) }
+        return parts.joined(separator: " · ")
     }
 }

@@ -134,15 +134,18 @@ struct GlassGroup<Content: View>: View {
 
 /// Primary call-to-action: a bright pill that reads first on any artwork.
 struct PrimaryButtonStyle: ButtonStyle {
+    /// A smaller pill for use inside cards, where the full-size one would dominate.
+    var compact = false
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(Theme.Typeface.headline)
+            .font(compact ? .system(.subheadline, weight: .semibold) : Theme.Typeface.headline)
             .foregroundStyle(.black)
             // Wraps between words at large text sizes, never inside one ("Pla / y").
             .multilineTextAlignment(.center)
             .minimumScaleFactor(0.7)
-            .padding(.horizontal, Theme.Space.l)
-            .frame(minHeight: 52 * Theme.scale)
+            .padding(.horizontal, compact ? Theme.Space.m : Theme.Space.l)
+            .frame(minHeight: (compact ? 40 : 52) * Theme.scale)
             .background(Color.white, in: Capsule())
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .opacity(configuration.isPressed ? 0.88 : 1)
@@ -154,12 +157,15 @@ struct PrimaryButtonStyle: ButtonStyle {
 /// Secondary controls: glass circles and capsules.
 struct GlassButtonStyle: ButtonStyle {
     var circle = false
+    /// Matches `PrimaryButtonStyle(compact:)`, so the two sit level in a card.
+    var compact = false
 
     func makeBody(configuration: Configuration) -> some View {
+        let size = (compact ? 40 : 52) * Theme.scale
         let label = configuration.label
-            .font(.system(size: 17 * Theme.scale, weight: .semibold))
+            .font(.system(size: (compact ? 15 : 17) * Theme.scale, weight: .semibold))
             .foregroundStyle(.white)
-            .frame(minWidth: 52 * Theme.scale, minHeight: 52 * Theme.scale)
+            .frame(minWidth: size, minHeight: size)
             .padding(.horizontal, circle ? 0 : Theme.Space.m)
             .contentShape(Capsule())
         return Group {

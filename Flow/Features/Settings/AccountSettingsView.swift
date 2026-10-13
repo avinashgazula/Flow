@@ -227,7 +227,7 @@ struct DeviceSignInView: View {
                     #if !os(tvOS)
                     HStack {
                         Button("Copy Code") { Platform.copyToPasteboard(code.userCode) }
-                        Link("Open Page", destination: code.verificationURL).buttonStyle(.borderedProminent)
+                        Link("Open Page", destination: code.verificationURL).buttonStyle(PrimaryButtonStyle(compact: true))
                     }
                     #endif
                     ProgressView("Waiting for approval…")

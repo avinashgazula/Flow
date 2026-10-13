@@ -104,7 +104,7 @@ struct LiveTVView: View {
                 } description: {
                     Text("Add an M3U playlist or Xtream Codes login to watch live channels.")
                 } actions: {
-                    NavigationLink("Add Provider", value: Route.settings(.liveTV)).buttonStyle(.borderedProminent)
+                    NavigationLink("Add Provider", value: Route.settings(.liveTV)).buttonStyle(PrimaryButtonStyle())
                 }
             } else if store.loading && store.channels.isEmpty {
                 ProgressView("Loading channels…")

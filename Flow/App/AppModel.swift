@@ -94,6 +94,9 @@ final class AppModel {
     var progress: [PlaybackProgress] = []
     var continueWatching: [ContinueWatchingBuilder.Entry] = []
     var history: [HistoryEntry] = []
+    /// Every watched title, newest first, for the History tile and list. Kept here, rebuilt when the
+    /// watched state changes, so views never sort thousands of keys while they draw.
+    var watchedKeys: [MediaKey] = []
     var serverKeys: Set<MediaKey> = []
     /// Aired-episode counts per show, learned from detail pages, for the poster "watched" check.
     var completedShowThresholds: [MediaKey: Int] = [:]

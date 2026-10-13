@@ -32,8 +32,7 @@ extension AppModel {
             case .favourites:
                 result = single(await hydrate(favouriteKeys))
             case .recentlyWatched:
-                var seen = Set<MediaKey>()
-                result = single(await hydrate(history.map(\.key).filter { seen.insert($0).inserted }))
+                result = single(await hydrate(watchedKeys))
             case .trendingMovies: result = try await catalog.trending(.movie, page: page)
             case .trendingShows: result = try await catalog.trending(.show, page: page)
             case .popularMovies: result = try await catalog.list(.popular, type: .movie, page: page)
@@ -274,22 +273,10 @@ extension AppModel {
         return ((try? await server.libraries()) ?? []).map { ServerLibrary(server: server.config, library: $0) }
     }
 
-    /// Multi-search plus media-server results.
-    func search(_ text: String) async throws -> (results: [SearchResult], server: [MediaItem]) {
+    /// Multi-search across titles and people, narrowed to the servers' content when that's switched on.
+    func search(_ text: String) async throws -> [SearchResult] {
         let catalog = try requireCatalog()
-        async let tmdbResults = catalog.search(text)
-        var serverItems: [MediaItem] = []
-        if settings.mediaServers.searchServers {
-            let servers = mediaServers
-            let found = await withTaskGroup(of: [MediaServerItem].self) { group in
-                for server in servers { group.addTask { (try? await server.search(text)) ?? [] } }
-                var all: [MediaServerItem] = []
-                for await chunk in group { all += chunk }
-                return all
-            }
-            serverItems = await displayItems(for: found)
-        }
-        var results = try await tmdbResults
+        var results = try await catalog.search(text)
         if settings.mediaServers.onlyShowServerContent && !settings.mediaServers.servers.isEmpty {
             var kept: [SearchResult] = []
             for r in results {
@@ -298,7 +285,7 @@ extension AppModel {
             }
             results = kept
         }
-        return (results, serverItems)
+        return results
     }
 
     // MARK: Recent searches

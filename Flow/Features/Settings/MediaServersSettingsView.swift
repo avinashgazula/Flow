@@ -54,11 +54,6 @@ struct MediaServersSettingsView: View {
                 Text("Hides every movie and show that isn't in your media server library — across Home, Search, and Discover. Live TV channels are unaffected.")
             }
             Section {
-                Toggle("Search Media Servers", isOn: $model.settings.mediaServers.searchServers)
-            } footer: {
-                Text("Includes your media server libraries in search results. Turn this off and searching stops asking your servers entirely — the Media Servers row disappears and no requests are sent to them.")
-            }
-            Section {
                 Toggle("Use Server Artwork", isOn: $model.settings.mediaServers.useServerArtwork)
             } footer: {
                 Text("Uses posters and backdrops from your media server for titles in its library. Everything else — and all text details — still comes from TMDB.")

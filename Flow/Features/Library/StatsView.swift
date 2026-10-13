@@ -8,6 +8,8 @@ struct StatsView: View {
     private static let historyLimit = 2000
     /// Titles to look up for runtimes and genres, most recent first. Anything beyond uses default runtimes.
     private static let hydrateLimit = 300
+    /// Titles looked up for the first, quick pass.
+    private static let quickHydrateLimit = 40
 
     @Environment(AppModel.self) private var model
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -49,12 +51,21 @@ struct StatsView: View {
     // MARK: Loading
 
     private func load() async {
+        // The history the library already synced paints first, from a handful of lookups. The full pull
+        // (up to 2000 plays over the network, then 300 title lookups) refines it a moment later, instead
+        // of the page sitting on a placeholder until all of that finishes.
+        if entries.isEmpty, !model.history.isEmpty {
+            await show(model.history, hydrating: Self.quickHydrateLimit)
+        }
         let fetched = (try? await model.tracker.history(limit: Self.historyLimit)) ?? []
-        let history = fetched.isEmpty ? model.history : fetched
+        await show(fetched.isEmpty ? model.history : fetched, hydrating: Self.hydrateLimit)
+    }
+
+    private func show(_ history: [HistoryEntry], hydrating limit: Int) async {
         guard !Task.isCancelled else { return }
         var seen = Set<MediaKey>()
         let keys = history.map(\.key).filter { seen.insert($0).inserted }
-        let hydrated = await model.hydrate(keys, limit: Self.hydrateLimit)
+        let hydrated = await model.hydrate(keys, limit: limit)
         // Cancelled (the library refreshed or the page went away): partial, and a newer task is coming.
         guard !Task.isCancelled else { return }
         entries = history

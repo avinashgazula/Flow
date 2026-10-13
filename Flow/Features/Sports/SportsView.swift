@@ -23,7 +23,7 @@ struct SportsView: View {
                 } description: {
                     Text("Follow teams to see their upcoming fixtures and results here.")
                 } actions: {
-                    Button("Find Teams") { showSearch = true }.buttonStyle(.borderedProminent)
+                    Button("Find Teams") { showSearch = true }.buttonStyle(PrimaryButtonStyle())
                 }
             }
             ForEach(model.settings.sports.followedTeams) { team in

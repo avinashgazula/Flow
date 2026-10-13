@@ -49,6 +49,7 @@ extension AppModel {
         if let movies = take(await moviesResult) { watchedMovies = movies }
         if let shows = take(await showsResult) { showStates = Dictionary(shows.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a }) }
         if let h = take(await historyResult) { history = h }
+        refreshWatchedKeys()
         profile = (try? await profileResult.get()) ?? nil
         if settings.account.watchlistDestination == .mediaServer {
             watchlistKeys = await mediaServerFavouriteKeys()
@@ -66,6 +67,10 @@ extension AppModel {
         contentVersion += 1
         if !isDemo { await refreshSpotlight() }
         await publishSnapshot()
+    }
+
+    func refreshWatchedKeys() {
+        watchedKeys = WatchedTitles.keys(history: history, movies: watchedMovies, shows: showStates)
     }
 
     /// Remembers a rejected update so Settings → Account can show it; the next successful update or sync clears it.
@@ -248,6 +253,7 @@ extension AppModel {
             state.lastWatchedAt = Date()
             showStates[key] = state
         }
+        refreshWatchedKeys()
         Platform.haptic()
         do {
             if watched {
@@ -319,6 +325,7 @@ extension AppModel {
         history = []
         watchedMovies = []
         showStates = [:]
+        watchedKeys = []
         watchlistKeys = []
         favouriteKeys = []
         continueWatching = []

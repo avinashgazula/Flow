@@ -501,7 +501,6 @@ public struct MediaServerSettings: Codable, Hashable, Sendable {
     public var servers: [MediaServerConfig] = []
     public var showBadgeOnPosters = true
     public var onlyShowServerContent = false
-    public var searchServers = true
     public var useServerArtwork = false
     /// Ignore the servers' own watched state, resume points and Continue Watching, and stop reporting
     /// playback to them: progress comes only from the tracking service.
