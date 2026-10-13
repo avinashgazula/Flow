@@ -91,7 +91,7 @@ struct SuggestionsEndScreen: View {
                         .font(.system(.subheadline, weight: .semibold))
                         .padding(.horizontal, 20)
                         .padding(.vertical, 11)
-                        .flowGlass(Capsule(), interactive: true)
+                        .flowGlass(Capsule())
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)

@@ -591,7 +591,7 @@ struct SkipAndUpNextOverlay: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
                         .contentShape(Capsule())
-                        .flowGlass(Capsule(), interactive: true, tint: Theme.Palette.overPicture)
+                        .flowGlass(Capsule(), tint: Theme.Palette.overPicture)
                     }
                     .buttonStyle(.plain)
                     .transition(.scale(scale: 0.9).combined(with: .opacity))
@@ -681,7 +681,7 @@ struct CircleButton: View {
                 .font(.system(size: size * 0.38, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(width: size, height: size)
-                .flowGlass(Circle(), interactive: true)
+                .flowGlass(Circle())
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -1137,7 +1137,7 @@ struct IOSPlayerControls: View {
                 .foregroundStyle(.white)
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: size, height: size)
-                .flowGlass(Circle(), interactive: true)
+                .flowGlass(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
