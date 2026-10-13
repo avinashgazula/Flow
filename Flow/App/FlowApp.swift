@@ -9,6 +9,9 @@ extension Notification.Name {
 
 @main
 struct FlowApp: App {
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(FlowAppDelegate.self) private var appDelegate
+    #endif
     @State private var model = AppModel()
     @Environment(\.scenePhase) private var scenePhase
 

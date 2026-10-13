@@ -1244,15 +1244,40 @@ enum TimeFormat {
 
 #if os(iOS)
 /// iPhone plays video in landscape, then hands the device back the way it was.
+/// Turns an iPhone to landscape for the player and back afterwards.
+///
+/// Asking for landscape alone isn't enough: while the app still allows portrait, iOS turns back to
+/// match how the phone is held, then forward again as the request lands, so the picture flips a few
+/// times. The app's allowed orientations (FlowAppDelegate) narrow to landscape first, and widen
+/// again only when the player closes.
 enum OrientationLock {
+    /// What the app allows right now; FlowAppDelegate hands this to iOS.
+    static var allowed: UIInterfaceOrientationMask = .allButUpsideDown
+
     static func landscape() {
-        guard Platform.isPhone, let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else { return }
-        scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscape)) { _ in }
+        guard Platform.isPhone, allowed != .landscape else { return }
+        apply(allowed: .landscape, request: .landscape)
     }
 
     static func restore() {
-        guard Platform.isPhone, let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else { return }
-        scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait)) { _ in }
+        guard Platform.isPhone, allowed != .allButUpsideDown else { return }
+        apply(allowed: .allButUpsideDown, request: .portrait)
+    }
+
+    private static func apply(allowed mask: UIInterfaceOrientationMask, request: UIInterfaceOrientationMask) {
+        allowed = mask
+        guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else { return }
+        for window in scene.windows {
+            window.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+        }
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: request)) { _ in }
+    }
+}
+
+/// Only here to tell iOS which orientations the app allows at the moment (see OrientationLock).
+final class FlowAppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        Platform.isPhone ? OrientationLock.allowed : .all
     }
 }
 #endif

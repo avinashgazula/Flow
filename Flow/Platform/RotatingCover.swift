@@ -50,9 +50,9 @@ private struct RotatingCoverPresenter<Item: Identifiable, Cover: View>: UIViewCo
                 guard coordinator.presented === cover else { return }
                 (host.view.window?.rootViewController?.topmostPresented ?? host).present(cover, animated: true) {
                     // Asked once the cover is on screen and deciding orientations; asked any earlier, iOS keeps portrait.
-                    guard landscape, Platform.isPhone, let scene = cover.view.window?.windowScene else { return }
+                    guard landscape else { return }
                     cover.setNeedsUpdateOfSupportedInterfaceOrientations()
-                    scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscape)) { _ in }
+                    OrientationLock.landscape()
                 }
             }
         } else if let presented = coordinator.presented {
