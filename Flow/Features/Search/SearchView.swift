@@ -82,13 +82,7 @@ struct SearchView: View {
             .padding(.vertical)
         }
         .navigationTitle("Search")
-        #if os(iOS)
-        // iPhone has its own tab bar, so the field sits under the title, always showing, rather than in a system tab bar.
-        .searchable(text: $model.searchText, placement: Platform.isPhone ? .navigationBarDrawer(displayMode: .always) : .automatic,
-                    prompt: "Movies, shows, and people")
-        #else
         .searchable(text: $model.searchText, prompt: "Movies, shows, and people")
-        #endif
         .onSubmit(of: .search) { model.rememberSearch(text); recents = model.recentSearches }
         .task(id: text) { await runSearch() }
         .onAppear { recents = model.recentSearches }

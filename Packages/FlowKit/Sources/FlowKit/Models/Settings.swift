@@ -48,7 +48,7 @@ public enum AppTab: String, Codable, Hashable, Sendable, CaseIterable, Identifia
     public var systemImage: String {
         switch self {
         case .home: return "house.fill"
-        case .explore: return "binoculars.fill"
+        case .explore: return "square.grid.2x2.fill"
         case .library: return "books.vertical.fill"
         case .liveTV: return "tv.and.mediabox.fill"
         case .search: return "magnifyingglass"
