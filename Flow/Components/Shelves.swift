@@ -547,11 +547,12 @@ private struct HeroPage: View {
 
     private var page: some View {
         ZStack(alignment: Platform.isPhone ? .bottom : .bottomLeading) {
-            Button { model.navigate(to: .detail(item)) } label: {
+            Button { model.navigate(to: .detail(item, zoom: "hero-\(item.id)")) } label: {
                 RemoteImage(url: artworkURL, maxPixel: Platform.isPhone ? 900 : 1920, fallbackTitle: item.title)
                     .frame(height: height)
                     .frame(maxWidth: .infinity)
                     .clipped()
+                    .zoomSource("hero-\(item.id)")
             }
             .buttonStyle(.plain)
             #if os(tvOS)

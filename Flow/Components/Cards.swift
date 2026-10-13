@@ -230,13 +230,14 @@ struct ContinueWatchingCard: View {
 
     private var width: CGFloat { Platform.landscapeWidth }
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous) }
+    private var zoomID: String { "continue-\(item.id)" }
 
     var body: some View {
         Button {
             if model.settings.playback.skipDetailsOnContinueWatching {
                 Task { await model.play(item, episode: nil) }
             } else {
-                model.navigate(to: .detail(item))
+                model.navigate(to: .detail(item, zoom: zoomID))
             }
         } label: {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
@@ -260,6 +261,7 @@ struct ContinueWatchingCard: View {
                     }
                 }
                 .frame(width: width, height: width * 9 / 16)
+                .zoomSource(zoomID)
                 .clipShape(shape)
                 .hairline(shape)
                 .artworkShadow(0.5)

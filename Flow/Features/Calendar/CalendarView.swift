@@ -208,9 +208,9 @@ private struct CalendarRow: View {
     let entry: CalendarEntry
 
     var body: some View {
-        NavigationLink(value: Route.detail(entry.item)) {
+        NavigationLink(value: Route.detail(entry.item, zoom: "calendar-\(entry.id)")) {
             HStack(spacing: Theme.Space.s) {
-                CalendarStill(entry: entry, width: 128)
+                CalendarStill(entry: entry, width: 128).zoomSource("calendar-\(entry.id)")
                 VStack(alignment: .leading, spacing: 3) {
                     Text(entry.item.title).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
                     Text(subtitle(for: entry))

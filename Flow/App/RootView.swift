@@ -148,8 +148,10 @@ struct TabShell: View {
     #endif
 
     func stack(for tab: AppTab) -> some View {
-        NavigationStack(path: model.path(for: tab)) {
-            ZoomNamespaceProvider {
+        // The namespace wraps the stack, not its root: pages pushed onto a stack take its environment,
+        // so a namespace set inside never reached the detail page and the zoom had nothing to grow from.
+        ZoomNamespaceProvider {
+            NavigationStack(path: model.path(for: tab)) {
                 screen(for: tab)
                     .flowDestinations()
             }
