@@ -196,7 +196,7 @@ struct PlayerOptionsPanel: View {
     /// Clear of the top buttons.
     private let topInset: CGFloat = 60
     /// Just above the bottom row (title, scrubber and the button that opened it).
-    private var bottomInset: CGFloat { Platform.isPhone ? 92 : 104 }
+    private var bottomInset: CGFloat { Platform.isPhone ? 118 : 120 }
 
     var body: some View {
         GeometryReader { proxy in

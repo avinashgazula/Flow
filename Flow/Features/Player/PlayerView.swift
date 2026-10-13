@@ -24,7 +24,7 @@ struct PlayerView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     // Between the top buttons and the title row; the safe area keeps it off the Dynamic Island.
                     .padding(.top, Platform.isPhone ? 62 : 76)
-                    .padding(.bottom, Platform.isPhone ? 96 : 110)
+                    .padding(.bottom, Platform.isPhone ? 118 : 120)
                     .padding(.leading, Platform.isPhone ? 16 : 28)
                     .transition(.opacity.combined(with: .move(edge: .leading)))
                     .zIndex(4)
@@ -1137,7 +1137,7 @@ struct IOSPlayerControls: View {
                 .foregroundStyle(.white)
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: size, height: size)
-                .flowGlass(Circle())
+                .flowGlass(Circle(), tint: Theme.Palette.overPicture)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

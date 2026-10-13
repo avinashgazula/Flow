@@ -38,7 +38,7 @@ enum Theme {
         static let gold = Color(red: 0.96, green: 0.80, blue: 0.42)
         /// Tint for glass floating over video (notices, Skip Intro, Up Next, the info, options, X-Ray,
         /// episode, song and volume panels), so white and grey text still read on a bright picture.
-        static let overPicture = Color.black.opacity(0.4)
+        static let overPicture = Color.black.opacity(0.5)
     }
 
     enum Motion {
