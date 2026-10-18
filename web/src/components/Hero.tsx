@@ -36,7 +36,7 @@ export function Hero({ items }: { items: MediaItem[] }) {
     }
   }, [first])
 
-  if (!slides.length) return <div className={s.hero} aria-hidden />
+  if (!slides.length) return <Still />
   return (
     <section
       className={s.hero}
@@ -118,6 +118,40 @@ function Slide({ item, active, mounted, priority }: { item: MediaItem; active: b
           <button className="btn btn-glass btn-circle" onClick={() => library.toggleWatchlist(item)} aria-pressed={inWatchlist} aria-label={inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}>
             <Icon name={inWatchlist ? 'check' : 'plus'} size={20} strokeWidth={2.4} />
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** While the catalogue is still being restored, the picture from last time: the same one the page's
+ *  HTML painted before any script ran (index.html), so the hand-over shows no gap. */
+function Still() {
+  const [still] = useState<{ path: string; d?: string; m?: string } | null>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('flow.lcp') ?? 'null')
+    } catch {
+      return null
+    }
+  })
+  if (!still?.d || still.path !== location.pathname) return <div className={s.hero} aria-hidden />
+  return (
+    <div className={s.hero} aria-hidden>
+      <div className={s.slide} data-active="">
+        <div className={s.art}>
+          <picture>
+            <source media="(max-width: 720px)" srcSet={still.m} sizes="100vw" />
+            <img
+              srcSet={still.d}
+              sizes="100vw"
+              alt=""
+              fetchPriority="high"
+              ref={(img) => {
+                if (img?.complete && img.naturalWidth) img.setAttribute('data-loaded', '')
+              }}
+              onLoad={(e) => e.currentTarget.setAttribute('data-loaded', '')}
+            />
+          </picture>
         </div>
       </div>
     </div>
