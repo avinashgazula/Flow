@@ -12,7 +12,7 @@ import { SourcePicker } from '../sources/SourcePicker'
 import { ConnectingView, ErrorView } from './ConnectingView'
 import { Controls } from './Controls'
 import { PlayerController, usePlayer } from './controller'
-import { attachSource, type Engine } from './engine'
+import { attachSource, warmEngines, type Engine } from './engine'
 import { mediaErrorMessage, PlaybackError } from './errors'
 import { episodeLine } from './format'
 import { Buffering, FeedbackFlash, SubtitleOverlay, TapLayer } from './Overlays'
@@ -74,6 +74,8 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
   const current: Episode | undefined = seasonEpisodes?.find((e) => e.number === episode)
   const next = epRef ? nextEpisode(epRef, seasonEpisodes, nextSeasonEpisodes) : undefined
   const autoplayNext = useSettings((st) => st.autoplayNext)
+
+  useEffect(warmEngines, [])
 
   // Read once: progress changes every ten seconds while playing, and nothing here should follow it.
   const [saved] = useState(() => libraryStore.get().progress[key])

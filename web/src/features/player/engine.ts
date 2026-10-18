@@ -133,6 +133,13 @@ function bandwidthEstimate(): number {
   return downlink ? downlink * 1_000_000 * 0.8 : 5_000_000
 }
 
+/** Starts downloading the engines a pick is likely to need while the viewer is still choosing, so
+ *  the connecting screen doesn't wait on code: hls.js where the browser has no HLS of its own. */
+export function warmEngines() {
+  const probe = document.createElement('video')
+  if (!probe.canPlayType(hlsMime)) void import('hls.js')
+}
+
 async function attachHls(video: HTMLVideoElement, source: Source, options: AttachOptions): Promise<Engine> {
   const { default: Hls } = await import('hls.js')
   if (options.signal.aborted) throw new DOMException('Aborted', 'AbortError')

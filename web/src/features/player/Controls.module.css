@@ -35,9 +35,12 @@
 }
 
 .glass, .cluster, .round, .panel, .shelf, .upNext, .tip {
+  /* Barely saturated: the site's glass boosts colour, which over a bright picture turns the
+     controls the colour of the scene and costs contrast. */
+  --player-blur: saturate(110%) blur(24px);
   background-color: var(--over-picture);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--player-blur);
+  backdrop-filter: var(--player-blur);
   box-shadow: inset 0 0 0 1px var(--hairline);
 }
 
@@ -328,8 +331,8 @@
   padding: 5px 10px;
   border-radius: 999px;
   background: var(--over-picture);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: saturate(110%) blur(24px);
+  backdrop-filter: saturate(110%) blur(24px);
   font: 600 var(--text-micro) / 1 var(--font);
 }
 .episodeName { font: 600 14px / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
