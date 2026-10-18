@@ -1,0 +1,141 @@
+:global(.page).screen { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+/* Shelves bring their own gutter and run to the window's edges. */
+.bleed { margin: 0 calc(-1 * var(--gutter)); }
+
+/* Tiles, after LibraryTile: a tinted icon, the list and its count. System colours, as on the apps. */
+.blue { --tint: rgb(10 132 255); }
+.teal { --tint: rgb(64 200 224); }
+.pink { --tint: rgb(255 55 95); }
+.orange { --tint: rgb(255 159 10); }
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.tile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  min-width: 0;
+  padding: var(--space-m);
+  border-radius: var(--radius-tile);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition: transform var(--dur-snappy) var(--ease-snappy), background-color var(--dur-fade) ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.tile:hover { background: var(--surface-strong); }
+.tile:active { transform: scale(0.97); }
+.tileIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 16%, transparent);
+}
+.tileText { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.tileTitle { font: 600 var(--text-headline) / 1.2 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tileCount { font-size: var(--text-caption); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tileChevron { flex: none; color: var(--text-tertiary); }
+.narrow { display: none; }
+
+/* Continue Watching, with its remove button over the artwork. */
+.continue { position: relative; flex: none; }
+.remove.remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  opacity: 0;
+  transition: opacity var(--dur-fade) ease, transform var(--dur-snappy) var(--ease-snappy);
+}
+.continue:hover .remove, .continue:focus-within .remove, .remove:focus-visible { opacity: 1; }
+/* No hover on touch screens: the button is always there. */
+@media (hover: none) { .remove.remove { opacity: 1; } }
+
+.continueGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-l) var(--space-m); }
+.continueGrid .continue > a { width: 100%; max-width: none; }
+
+/* History */
+.recent { margin-top: var(--section); padding: 0 var(--gutter); max-width: 900px; content-visibility: auto; contain-intrinsic-size: auto 500px; }
+.sectionHeader { margin-bottom: 2px; }
+.sectionTitle { display: inline-flex; align-items: center; gap: 4px; font: 700 var(--text-section) / 1.2 var(--font-display); letter-spacing: -0.01em; }
+.sectionTitle svg { color: var(--text-tertiary); transition: transform var(--dur-snappy) var(--ease-snappy), color var(--dur-fade); }
+.sectionTitle:hover svg { color: var(--text); transform: translateX(2px); }
+.recentRow { height: 84px; }
+
+.dayHeading {
+  display: flex;
+  align-items: flex-end;
+  height: 56px;
+  padding-bottom: 10px;
+  font: 600 var(--text-caption) / 1 var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.historyColumn { max-width: 900px; }
+.historyList { position: relative; max-width: 900px; contain: layout style; }
+.historySlot { position: absolute; top: 0; left: 0; width: 100%; }
+
+.historyItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-m);
+  height: 100%;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hairline);
+  -webkit-tap-highlight-color: transparent;
+}
+.historyArt { flex: none; width: 120px; aspect-ratio: 16 / 9; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--hairline); }
+.historyItem:hover .historyTitle { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--text-tertiary); }
+.historyItem:focus-visible { outline: none; }
+.historyItem:focus-visible .historyArt { outline: 3px solid #fff; outline-offset: 2px; }
+.historyText { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.historyTitle { font: 600 15px / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.historyMeta { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.historyTime { flex: none; font-size: var(--text-caption); color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+
+/* One list */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 0 var(--space-xs) -4px;
+  font: 600 15px / 1 var(--font);
+  color: var(--text-secondary);
+}
+.back:hover { color: var(--text); }
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-s);
+  margin-bottom: var(--space-l);
+}
+.toolbarEnd { display: inline-flex; align-items: center; gap: var(--space-s); font-size: 14px; }
+
+@media (max-width: 900px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-s); }
+}
+@media (max-width: 720px) {
+  .tile { flex-wrap: wrap; position: relative; padding: 14px; }
+  .tileText { flex-basis: 100%; }
+  .wide { display: none; }
+  .narrow { display: inline; }
+  .tileChevron { position: absolute; top: 28px; right: 14px; }
+  .historyArt { width: 96px; }
+  .historyItem { gap: var(--space-s); }
+  .continueGrid { grid-template-columns: 1fr; }
+  .toolbar > :first-child { flex: 1 1 100%; }
+  .toolbarEnd { flex: 1 1 100%; justify-content: space-between; }
+  .toolbarEnd:has(> :only-child) { justify-content: flex-end; }
+}

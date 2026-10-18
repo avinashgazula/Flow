@@ -1,4 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { ExploreScreen } from '../features/explore/ExploreScreen'
+import { parseSort } from '../features/explore/source'
 import type { MediaType } from '../lib/tmdb/types'
 
 export interface ExploreSearch {
@@ -13,9 +15,10 @@ export const Route = createFileRoute('/explore')({
     sort: typeof search.sort === 'string' ? search.sort : undefined,
     genre: search.genre !== undefined ? Number(search.genre) || undefined : undefined,
   }),
-  component: () => (
-    <div className="page">
-      <h1 className="page-title">Explore</h1>
-    </div>
-  ),
+  component: Explore,
 })
+
+function Explore() {
+  const search = Route.useSearch()
+  return <ExploreScreen type={search.type ?? 'movie'} sort={parseSort(search.sort)} genre={search.genre} />
+}

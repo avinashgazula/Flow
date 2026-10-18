@@ -1,0 +1,28 @@
+.grid {
+  position: relative;
+  width: 100%;
+  contain: layout style;
+}
+
+.row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: grid;
+  align-items: start;
+  will-change: transform;
+}
+
+/* The shared card sizes itself for shelves; in a grid it fills its column instead. */
+.cell > a { width: 100%; max-width: none; }
+
+.ghost { display: flex; flex-direction: column; gap: 8px; }
+.ghostArt, .ghostLine {
+  background: linear-gradient(90deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.05));
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+.ghostArt { aspect-ratio: 2 / 3; border-radius: var(--radius-poster); }
+.ghostLine { width: 70%; height: 12px; margin: 3px 2px 0; border-radius: 6px; }
+@keyframes shimmer { to { background-position: -200% 0; } }

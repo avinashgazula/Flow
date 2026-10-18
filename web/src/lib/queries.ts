@@ -31,6 +31,15 @@ export const q = {
       getNextPageParam: (last) => (last.page < last.totalPages ? last.page + 1 : undefined),
     }),
 
+  /** Trending this week or one of TMDB's fixed lists, page by page, for Explore's endless grid. */
+  listInfinite: (type: MediaType, list: 'trending' | Parameters<typeof api.list>[1]) =>
+    infiniteQueryOptions({
+      queryKey: [...scope(), 'list-infinite', type, list],
+      queryFn: ({ pageParam }) => (list === 'trending' ? api.trending(type, 'week', pageParam) : api.list(type, list, pageParam)).then(seed),
+      initialPageParam: 1,
+      getNextPageParam: (last) => (last.page < last.totalPages ? last.page + 1 : undefined),
+    }),
+
   genres: (type: MediaType) => queryOptions({ queryKey: [...scope(), 'genres', type], queryFn: () => api.genres(type), staleTime: 7 * day }),
 
   search: (text: string) =>

@@ -8,7 +8,8 @@ export type ImageKind = 'poster' | 'backdrop' | 'profile' | 'still' | 'logo'
 const widths: Record<ImageKind, number[]> = {
   poster: [154, 185, 342, 500, 780],
   backdrop: [300, 780, 1280],
-  profile: [185, 632],
+  // Profiles come in w185 and h632; w632 doesn't exist (400). w342 and w500 are served for every kind.
+  profile: [185, 342, 500],
   still: [185, 300],
   logo: [185, 300, 500],
 }

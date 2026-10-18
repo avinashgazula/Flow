@@ -1,0 +1,44 @@
+:global(.page).screen { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+.titleRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-m); }
+.titleRow :global(.page-title) { margin-bottom: var(--space-m); }
+.sortMenu { display: none; margin-bottom: var(--space-m); }
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-m);
+  margin-bottom: var(--space-m);
+}
+.types { min-width: 240px; }
+
+.chips {
+  display: flex;
+  gap: var(--space-xs);
+  margin: 0 calc(-1 * var(--gutter)) var(--space-l);
+  padding: 2px var(--gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  scroll-padding: 0 var(--gutter);
+}
+.chips::-webkit-scrollbar { display: none; }
+.chips > * { flex: none; }
+
+.results { min-height: 60vh; }
+
+.more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-m);
+  padding: var(--space-l) 0;
+}
+
+/* Phones: the type picker takes the width, and the sort becomes a menu beside the title. */
+@media (max-width: 720px) {
+  .sortMenu { display: inline-flex; }
+  .sorts { display: none; }
+  .types { flex: 1; }
+}
