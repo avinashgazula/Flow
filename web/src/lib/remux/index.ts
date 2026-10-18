@@ -159,12 +159,12 @@ class Session implements RemuxSession {
     if (!this.destroyed) this.worker.postMessage(message)
   }
 
-  private fail(message: string) {
+  private fail(message: string, blocked = false) {
     if (this.destroyed) return
     if (this.failure) {
       const reject = this.failure
       this.failure = null
-      reject(new Error(message))
+      reject(blocked ? new BlockedError(message) : new Error(message))
     } else {
       for (const listener of this.errorListeners) listener(message)
     }
@@ -235,7 +235,7 @@ class Session implements RemuxSession {
         this.headerReceived(parseHeader(message.json))
         return
       case 'error':
-        this.fail(message.message)
+        this.fail(message.message, message.blocked)
         return
       case 'cues':
         this.takeCues(message.cues)
@@ -464,6 +464,15 @@ class Session implements RemuxSession {
     this.sink.destroy()
     this.cues.clear()
     this.errorListeners.clear()
+  }
+}
+
+/** The file's host answers but sends no CORS headers, so a page can't read the bytes the remuxer
+ *  needs. The browser's own player isn't bound by that, and may still play the file directly. */
+export class BlockedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'BlockedError'
   }
 }
 

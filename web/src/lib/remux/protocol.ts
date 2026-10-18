@@ -60,4 +60,5 @@ export type FromWorker =
   | { type: 'cues'; cues: RawCue[] }
   /** The file has been read to its end. */
   | { type: 'done'; epoch: number }
-  | { type: 'error'; message: string }
+  /** `blocked`: the host answers but doesn't let web pages read its files (no CORS headers). */
+  | { type: 'error'; message: string; blocked?: boolean }

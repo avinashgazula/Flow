@@ -261,7 +261,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
       const code = el.error?.code
       if (!code || code === 1 || !el.currentSrc) return
       if (controller.engine?.recover()) return
-      fail(new PlaybackError(mediaErrorMessage(code, latest.current.source ?? undefined), `MediaError ${code}${el.error?.message ? `: ${el.error.message}` : ''}`))
+      fail(new PlaybackError(controller.engine?.failureMessage ?? mediaErrorMessage(code, latest.current.source ?? undefined), `MediaError ${code}${el.error?.message ? `: ${el.error.message}` : ''}`))
     }
     const events: [string, EventListener][] = [
       ['loadstart', loadstart],

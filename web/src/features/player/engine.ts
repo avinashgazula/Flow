@@ -30,6 +30,9 @@ export interface Engine {
   duration(): number
   /** One more go after a decode error. False once that has been tried. */
   recover(): boolean
+  /** What to tell the viewer if the element fails, when this engine knows more than the error code
+   *  (a file Flow could only hand to the browser's own player). */
+  failureMessage?: string
   destroy(): void
 }
 
@@ -244,7 +247,21 @@ async function attachHls(video: HTMLVideoElement, source: Source, options: Attac
 
 // MARK: Matroska
 
-async function attachRemux(video: HTMLVideoElement, source: Source, { startAt, signal }: AttachOptions): Promise<Engine> {
+/** The browser's own player for a file whose host won't let Flow read it (most debrid download
+ *  servers send no CORS headers). Chrome and Edge open Matroska themselves when they know the codecs
+ *  (H.264, HEVC with hardware support, AAC, Opus, FLAC), though without a choice of audio track. */
+function playBlockedFile(video: HTMLVideoElement, source: Source, options: AttachOptions): Engine {
+  video.removeAttribute('src')
+  video.load()
+  return {
+    ...attachNative(video, source, options),
+    failureMessage:
+      'This file’s host doesn’t let web pages stream from it, and this browser can’t play the file directly. In AIOStreams, turn on a stream proxy (MediaFlow Proxy or StremThru) so Flow can stream it, pick another source, or watch it in the Flow app.',
+  }
+}
+
+async function attachRemux(video: HTMLVideoElement, source: Source, options: AttachOptions): Promise<Engine> {
+  const { startAt, signal } = options
   const { attachMatroska, remuxSupported } = await import('../../lib/remux')
   if (!remuxSupported()) throw new PlaybackError('This browser can’t play MKV files. On iPhone, update to iOS 17.1 or later, or pick another source.')
   let session
@@ -252,6 +269,7 @@ async function attachRemux(video: HTMLVideoElement, source: Source, { startAt, s
     session = await attachMatroska(video, source.url, { headers: source.headers, startAt, signal })
   } catch (error) {
     if ((error as Error).name === 'AbortError') throw error
+    if ((error as Error).name === 'BlockedError') return playBlockedFile(video, source, options)
     const message = (error as Error).message || 'This file couldn’t be opened.'
     throw new PlaybackError(/source/i.test(message) ? message : `${message.replace(/\.?$/, '.')} Pick another source.`, 'remux')
   }

@@ -45,6 +45,23 @@ class HttpError extends Error {
   }
 }
 
+/** Posts a failure. fetch() hides why it failed, so a TypeError gets one more question: a host that
+ *  answers a no-cors request is up, it just doesn't let web pages read its files (no CORS headers,
+ *  as with most debrid download servers). That needs a different fix from a dropped connection. */
+async function report(error: unknown) {
+  if (error instanceof TypeError && !(error instanceof HttpError)) {
+    const reachable = await fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' }).then(
+      () => true,
+      () => false,
+    )
+    if (reachable) {
+      post({ type: 'error', blocked: true, message: 'This file’s host doesn’t let web pages stream from it.' })
+      return
+    }
+  }
+  post({ type: 'error', message: friendly(error) })
+}
+
 function friendly(error: unknown): string {
   if (error instanceof HttpError) {
     if (error.status === 401 || error.status === 403) return 'The server refused the request. Check the sign-in for this source.'
@@ -294,7 +311,7 @@ async function begin(epoch: number, at: number, floor = 0, resetInits = false) {
     produced = at
     await stream(offset, epoch, ctl.signal)
   })().catch((error) => {
-    if (!ctl.signal.aborted) post({ type: 'error', message: friendly(error) })
+    if (!ctl.signal.aborted) void report(error)
   })
   run = { ctl, done: task }
 }
@@ -353,5 +370,5 @@ ctx.onmessage = (event: MessageEvent<ToWorker>) => {
           break
       }
     })
-    .catch((error) => post({ type: 'error', message: friendly(error) }))
+    .catch((error) => void report(error))
 }
