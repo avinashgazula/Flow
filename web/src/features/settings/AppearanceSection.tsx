@@ -31,7 +31,8 @@ export function AppearanceSection() {
             {/* The sample sets itself in this card's font, whatever the page is set in. */}
             <span className={s.sample} data-font={f.value} aria-hidden="true">
               <span className={s.sampleTitle}>Dune: Part Two</span>
-              <span className={s.sampleText}>The quick brown fox jumps over the lazy dog · 0123456789</span>
+              {/* The no-break space keeps the dot with the sentence when the digits wrap. */}
+              <span className={s.sampleText}>The quick brown fox jumps over the lazy dog&nbsp;· 0123456789</span>
             </span>
             <span className={s.faceText}>
               <span id={`face-${f.value}-name`} className={s.faceName}>
