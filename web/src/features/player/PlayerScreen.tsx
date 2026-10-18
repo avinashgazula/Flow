@@ -16,7 +16,6 @@ import { attachSource, warmEngines, type Engine } from './engine'
 import { mediaErrorMessage, PlaybackError } from './errors'
 import { episodeLine } from './format'
 import { Buffering, FeedbackFlash, SubtitleOverlay, TapLayer } from './Overlays'
-import { sampleSources } from './sample'
 import { lastSources, matchSource, nextEpisode, nextSource, resumePosition } from './session'
 import { UpNext } from './UpNext'
 import s from './Player.module.css'
@@ -175,7 +174,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
     const abort = new AbortController()
     const remembered = lastSources.get(key)
     const sameEpisode = !epRef || (remembered?.episode?.season === epRef.season && remembered.episode.episode === epRef.episode)
-    const direct = sourceId ? [remembered?.source, ...sampleSources()].find((x) => x?.id === sourceId) : sameEpisode ? remembered?.source : undefined
+    const direct = sourceId ? (remembered?.source.id === sourceId ? remembered.source : undefined) : sameEpisode ? remembered?.source : undefined
     if (direct) {
       start(direct)
       return () => abort.abort()
@@ -188,13 +187,6 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
         if (abort.signal.aborted) return
         const list = full ? await findSources(requestFor(full, type, epRef), { signal: abort.signal }).catch(() => []) : []
         if (abort.signal.aborted) return
-        if (list.length === 0 && demo) {
-          // Placeholder until sample data has sources of its own (see sample.ts).
-          const samples = sampleSources()
-          setSources(samples)
-          start((remembered && matchSource(remembered.source, samples)) ?? samples[0]!)
-          return
-        }
         setSources(list)
         const found = sourceId ? list.find((x) => x.id === sourceId) : remembered ? matchSource(remembered.source, list) : undefined
         if (found) {
