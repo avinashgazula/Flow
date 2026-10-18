@@ -1,0 +1,6 @@
+.home { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.shelves { position: relative; margin-top: -56px; z-index: 1; }
+@media (max-width: 720px) {
+  .home { padding-top: var(--nav-height); }
+  .shelves { margin-top: 0; }
+}

@@ -1,0 +1,63 @@
+/* Flow's design tokens, mirrored from Flow/Design/Theme.swift: one black canvas, one accent, and the
+   artwork provides the colour. */
+:root {
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-s: 12px;
+  --space-m: 16px;
+  --space-l: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  --gutter: clamp(16px, 4vw, 56px);
+  --section: 36px;
+
+  --radius-poster: 12px;
+  --radius-card: 16px;
+  --radius-tile: 20px;
+  --radius-hero: 30px;
+  --radius-control: 14px;
+
+  --canvas: #000;
+  --elevated: #121212;
+  --surface: rgb(255 255 255 / 0.07);
+  --surface-strong: rgb(255 255 255 / 0.12);
+  --hairline: rgb(255 255 255 / 0.09);
+  --text: #fff;
+  --text-secondary: rgb(255 255 255 / 0.62);
+  --text-tertiary: rgb(255 255 255 / 0.38);
+  --gold: rgb(245 204 107);
+  --over-picture: rgb(0 0 0 / 0.5);
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
+  /* SF is a variable font on Apple devices: font-stretch narrows it to the condensed artwork-title cut. */
+  --font-condensed: -apple-system, BlinkMacSystemFont, "Inter Tight", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+
+  --text-display: clamp(28px, 3.2vw, 40px);
+  --text-title: clamp(20px, 2vw, 24px);
+  --text-section: clamp(18px, 1.6vw, 21px);
+  --text-headline: 16px;
+  --text-body: 15px;
+  --text-caption: 12px;
+  --text-micro: 11px;
+
+  /* Springs approximated as curves: snappy for taps, gentle for movement. */
+  --ease-snappy: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-gentle: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-snappy: 0.32s;
+  --dur-gentle: 0.55s;
+  --dur-fade: 0.28s;
+
+  --shadow-artwork: 0 8px 28px rgb(0 0 0 / 0.45);
+  --glass: rgb(30 30 34 / 0.55);
+  --glass-blur: saturate(180%) blur(24px);
+  --nav-height: 64px;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --radius-hero: 22px;
+    --section: 28px;
+    --nav-height: 56px;
+  }
+}

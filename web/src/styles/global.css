@@ -1,0 +1,127 @@
+@import './tokens.css';
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--canvas);
+  color: var(--text);
+  font: 400 var(--text-body) / 1.4 var(--font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+}
+
+img { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+input, select, textarea { font: inherit; color: inherit; }
+h1, h2, h3, h4, p { margin: 0; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+::selection { background: rgb(255 255 255 / 0.25); }
+
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.page {
+  padding: calc(var(--nav-height) + var(--space-l)) var(--gutter) calc(var(--space-xxl) + env(safe-area-inset-bottom));
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+.page-title {
+  font: 700 var(--text-display) / 1.1 var(--font-display);
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-l);
+}
+
+/* Buttons, after PrimaryButtonStyle, GlassButtonStyle and CircleButton. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 22px;
+  border-radius: 999px;
+  font: 600 var(--text-headline) / 1 var(--font);
+  white-space: nowrap;
+  transition: transform var(--dur-snappy) var(--ease-snappy), background-color var(--dur-fade) ease, opacity var(--dur-fade) ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.btn:active { transform: scale(0.96); }
+.btn svg { width: 18px; height: 18px; flex: none; }
+.btn-primary { background: #fff; color: #000; }
+.btn-primary:hover { background: rgb(255 255 255 / 0.88); }
+.btn-glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.btn-glass:hover { background: rgb(60 60 66 / 0.6); }
+.btn-compact { height: 36px; padding: 0 16px; font-size: 14px; }
+.btn-circle { width: 46px; padding: 0; }
+.btn-circle.btn-compact { width: 36px; }
+.btn[disabled] { opacity: 0.4; pointer-events: none; }
+
+.field {
+  width: 100%;
+  height: 46px;
+  padding: 0 16px;
+  border-radius: var(--radius-control);
+  border: 0;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition: box-shadow var(--dur-fade) ease, background-color var(--dur-fade) ease;
+}
+.field:focus { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.4); background: var(--surface-strong); }
+.field::placeholder { color: var(--text-tertiary); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: 600 14px / 1 var(--font);
+  white-space: nowrap;
+  transition: background-color var(--dur-fade) ease, color var(--dur-fade) ease;
+}
+.chip:hover { color: var(--text); background: var(--surface-strong); }
+.chip[aria-pressed='true'], .chip[aria-current='page'] { background: #fff; color: #000; }
+
+.muted { color: var(--text-secondary); }
+.faint { color: var(--text-tertiary); }
+
+/* The poster or backdrop a title grows out of, for the View Transitions zoom. */
+::view-transition-group(*) { animation-duration: 0.42s; animation-timing-function: var(--ease-gentle); }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.22s; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
