@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { fixedCapabilities } from './capabilities'
+import { fixedCapabilities, type Capabilities } from './capabilities'
+import { mapMediaSource } from './jellyfin'
 import { parseStream } from './parser'
-import { buildSource, containerOf, dedupe, engineFor, rankSources, resolutionScore } from './rank'
+import { audioCarriers, buildSource, containerOf, dedupe, engineFor, hasPlayableAudio, rankSources, resolutionScore, undecodableAudio, unsupportedReason } from './rank'
 import type { Source } from './types'
 
 const chrome = fixedCapabilities({})
@@ -85,15 +86,110 @@ describe('rankSources', () => {
     expect(ids(rankSources(list, { preferredQuality: '1080p' }, chrome))).toEqual(['b', 'a', 'c'])
   })
 
-  it('demotes Dolby audio where there’s no Dolby decoder', () => {
-    const list = [source('ddp', '1080p WEB-DL x264 DDP5.1'), source('aac', '1080p WEB-DL x264 AAC')]
-    expect(ids(rankSources(list, { preferredQuality: '1080p' }, chrome))).toEqual(['aac', 'ddp'])
-    expect(ids(rankSources(list, { preferredQuality: '1080p' }, safari))).toEqual(['ddp', 'aac'])
+  it('puts Dolby audio last where there’s no Dolby decoder', () => {
+    // Sources are built, and so judged, for the browser that will play them.
+    const list = (caps: Capabilities) => [source('ddp', '1080p WEB-DL x264 DDP5.1', undefined, {}, caps), source('aac', '1080p WEB-DL x264 AAC', undefined, {}, caps)]
+    expect(ids(rankSources(list(chrome), { preferredQuality: '1080p' }, chrome))).toEqual(['aac', 'ddp'])
+    expect(list(chrome)[0]!.unsupported).toBe('Dolby Digital Plus audio can’t play in this browser')
+    expect(ids(rankSources(list(safari), { preferredQuality: '1080p' }, safari))).toEqual(['ddp', 'aac'])
   })
 
   it('lists the same URL once', () => {
     const a = source('a', '1080p', 'https://cdn.example/same.mp4')
     const b = { ...source('b', '1080p', 'https://cdn.example/same.mp4'), provider: 'torrentio' }
     expect(ids(dedupe([a, b, source('c', '720p')]))).toEqual(['a', 'c'])
+  })
+})
+
+// Real names from Trellis, whose MediaStreams are empty: the name is all Flow has to go on.
+const trellis = {
+  atmosTrueHD: '✨ 4K 🎫  BLURAY REMUX 🔆 DV • HDR10 • IMAX  🔊 Atmos • TrueHD •',
+  dtsHdDDP: '✨ 4K 🎫  BLURAY REMUX 🔆 DV • HDR10 • IMAX  🔊 DTS-HD MA • DD+',
+  dtsHdDTS: '✨ 4K 🎫  BLURAY REMUX 🔆 DV • HDR10 • IMAX  🔊 DTS-HD MA • DTS',
+  dtsHdDTSSize: '✨ 4K 🎫  BLURAY 🔆 HDR10  🔊 DTS-HD MA • DTS 📦 98.8 GB',
+  dtsHd: '✨ 4K 🎫  BLURAY 🔆 HDR10  🔊 DTS-HD MA 📦 53.4 GB  🌎 English📝 En',
+}
+const unnamed = 'Oppenheimer (2023) IMAX 2160p 4K Hybrid UHD HDR10 DV Blu-ray REMUX Dual Audio [Hindi + English] ESub ~ RemuxDoc.mkv'
+// A Chrome that, like Chrome 155 on Windows, decodes no Dolby audio, and a Safari that decodes it.
+const chromeLike = fixedCapabilities({ video: ['H264', 'HEVC', 'VP9', 'AV1'], audio: ['AAC', 'Opus', 'FLAC', 'MP3'], hdr: true })
+const safariLike = fixedCapabilities({ nativeHLS: true, video: ['H264', 'HEVC'], audio: ['AAC', 'DD', 'DD+', 'FLAC', 'MP3'], hdr: true })
+
+describe('sources whose audio this browser can’t play', () => {
+  const mkv = (name: string, caps: Capabilities, extra: Partial<Parameters<typeof buildSource>[0]> = {}) =>
+    source('t', name, 'https://trellis.test/Videos/1/stream', { filename: 'Oppenheimer.2023.2160p.REMUX.mkv', container: 'mkv', ...extra }, caps)
+
+  it('flags every Trellis name in Chrome, saying which audio it is', () => {
+    expect(mkv(trellis.atmosTrueHD, chromeLike).unsupported).toBe('TrueHD Atmos audio can’t play in a browser')
+    expect(mkv(trellis.dtsHdDTS, chromeLike).unsupported).toBe('DTS-HD MA audio can’t play in a browser')
+    expect(mkv(trellis.dtsHdDTSSize, chromeLike).unsupported).toBe('DTS-HD MA audio can’t play in a browser')
+    expect(mkv(trellis.dtsHd, chromeLike).unsupported).toBe('DTS-HD MA audio can’t play in a browser')
+    // DD+ is the second format and Chrome can't decode it either.
+    expect(mkv(trellis.dtsHdDDP, chromeLike).unsupported).toBe('DTS-HD MA and Dolby Digital Plus audio can’t play in this browser')
+  })
+
+  it('lets DD+ and DD follow the browser', () => {
+    // Safari decodes E-AC-3, so the DD+ track carries the file.
+    expect(mkv(trellis.dtsHdDDP, safariLike).unsupported).toBeUndefined()
+    expect(mkv('1080p WEB-DL DD+ 5.1 x264', chromeLike).unsupported).toBe('Dolby Digital Plus audio can’t play in this browser')
+    expect(mkv('1080p WEB-DL DD+ 5.1 x264', safariLike).unsupported).toBeUndefined()
+    expect(mkv('1080p BluRay DD5.1 x264', chromeLike).unsupported).toBe('Dolby Digital audio can’t play in this browser')
+    expect(mkv('1080p BluRay DD5.1 x264', safariLike).unsupported).toBeUndefined()
+    // TrueHD and DTS play nowhere, Safari included.
+    expect(mkv(trellis.atmosTrueHD, safariLike).unsupported).toBe('TrueHD Atmos audio can’t play in a browser')
+    expect(mkv(trellis.dtsHd, safariLike).unsupported).toBe('DTS-HD MA audio can’t play in a browser')
+  })
+
+  it('treats a source with no detectable audio as playable', () => {
+    expect(mkv(unnamed, chromeLike).unsupported).toBeUndefined()
+    expect(mkv('2160p REMUX HEVC', safariLike).unsupported).toBeUndefined()
+    expect(hasPlayableAudio([], chromeLike)).toBe(false)
+    expect(undecodableAudio([], chromeLike)).toEqual([])
+  })
+
+  it('never counts Atmos as a format of its own', () => {
+    // Even a browser that claims to play "Atmos" doesn't make TrueHD playable.
+    const claimsAtmos: Capabilities = { ...safariLike, audio: (c) => c === 'Atmos' || safariLike.audio(c) }
+    expect(unsupportedReason({ engine: 'native', audio: ['TrueHD Atmos'] }, claimsAtmos)).toBeDefined()
+    expect(unsupportedReason({ engine: 'native', audio: ['Atmos', 'TrueHD'] }, claimsAtmos)).toBeDefined()
+    expect(audioCarriers(['Atmos', 'TrueHD'])).toEqual(['TrueHD'])
+    expect(audioCarriers(['TrueHD Atmos', 'TrueHD'])).toEqual(['TrueHD'])
+    // Alone it's the streaming flavour, E-AC-3, which the browser decides.
+    expect(audioCarriers(['Atmos'])).toEqual(['DD+'])
+    expect(unsupportedReason({ engine: 'native', audio: ['Atmos'] }, chromeLike)).toBe('Dolby Digital Plus audio can’t play in this browser')
+    expect(unsupportedReason({ engine: 'native', audio: ['Atmos'] }, safariLike)).toBeUndefined()
+    expect(chromeLike.audio('Atmos')).toBe(false)
+    expect(fixedCapabilities({ audio: ['Atmos', 'AAC'] }).audio('Atmos')).toBe(false)
+    // A playable track beside it still carries the file.
+    expect(unsupportedReason({ engine: 'native', audio: ['TrueHD Atmos', 'AAC'] }, chromeLike)).toBeUndefined()
+  })
+
+  it('leaves server transcodes alone', () => {
+    expect(mkv(trellis.atmosTrueHD, chromeLike, { transcoded: true, url: 'https://jf.test/master.m3u8' }).unsupported).toBeUndefined()
+  })
+
+  it('treats a Jellyfin source with no media streams the same, going by its name', () => {
+    const config = { id: 'jellyfin:trellis:u', kind: 'jellyfin', name: 'Trellis', url: 'https://trellis.test', token: 't', userId: 'u', enabled: true } as const
+    const map = (Name: string, caps: Capabilities, extra = {}) => mapMediaSource(config, 'item', { Id: 'ms', Name, Container: 'mkv', MediaStreams: [], ...extra }, 0, 0, caps)
+    expect(map(trellis.atmosTrueHD, chromeLike).unsupported).toBe('TrueHD Atmos audio can’t play in a browser')
+    expect(map(trellis.dtsHd, chromeLike).unsupported).toBe('DTS-HD MA audio can’t play in a browser')
+    expect(map(trellis.dtsHdDDP, chromeLike).unsupported).toBe('DTS-HD MA and Dolby Digital Plus audio can’t play in this browser')
+    expect(map(trellis.dtsHdDDP, safariLike).unsupported).toBeUndefined()
+    expect(map(unnamed, chromeLike).unsupported).toBeUndefined()
+    // A link the server only passes on (debrid through an add-on) is judged the same way.
+    expect(map(trellis.dtsHd, chromeLike, { IsRemote: true, Path: 'https://addon.test/play/abc.mkv' }).unsupported).toBe('DTS-HD MA audio can’t play in a browser')
+    expect(map(trellis.dtsHd, chromeLike, { IsRemote: true, Path: 'https://addon.test/play/abc.mkv' }).audio).toEqual(['DTS-HD MA'])
+  })
+
+  it('ranks them last in Chrome, whatever their quality', () => {
+    const list = [
+      mkv(trellis.atmosTrueHD, chromeLike, { id: 'truehd' }),
+      source('ddp', '1080p WEB-DL DD+ x264', 'https://x.test/b.mkv', {}, chromeLike),
+      source('aac', '720p WEBRip AAC x264', 'https://x.test/c.mkv', {}, chromeLike),
+      source('quiet', unnamed, 'https://x.test/d.mkv', {}, chromeLike),
+    ]
+    const ranked = rankSources(list, { preferredQuality: '2160p' }, chromeLike)
+    expect(ids(ranked).slice(0, 2).sort()).toEqual(['aac', 'quiet'])
+    expect(ids(ranked).slice(2).sort()).toEqual(['ddp', 'truehd'])
+    expect(ranked.slice(2).every((s) => s.score! < 0)).toBe(true)
   })
 })

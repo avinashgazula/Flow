@@ -26,7 +26,6 @@ const audioTypes: Record<string, string[]> = {
   AAC: ['audio/mp4; codecs="mp4a.40.2"'],
   DD: ['audio/mp4; codecs="ac-3"'],
   'DD+': ['audio/mp4; codecs="ec-3"'],
-  Atmos: ['audio/mp4; codecs="ec-3"'],
   FLAC: ['audio/mp4; codecs="flac"'],
   Opus: ['audio/mp4; codecs="opus"', 'audio/webm; codecs="opus"'],
   MP3: ['audio/mpeg', 'audio/mp4; codecs="mp4a.6B"'],
@@ -34,6 +33,10 @@ const audioTypes: Record<string, string[]> = {
 
 /** No browser decodes these, whatever it says about itself. */
 export const losslessCinemaAudio = (codec: string) => /^(dts|truehd)/i.test(codec)
+
+/** Atmos is object metadata carried on TrueHD or E-AC-3, never a codec of its own, so it can't
+ *  be played (or refused) by itself: the carrier decides. */
+const decodes = (codec: string, listed: (codec: string) => boolean) => !/atmos/i.test(codec) && !losslessCinemaAudio(codec) && listed(codec)
 
 const cache = new Map<string, boolean>()
 
@@ -65,7 +68,7 @@ export function browserCapabilities(): Capabilities {
     nativeHLS: hasDocument && document.createElement('video').canPlayType('application/vnd.apple.mpegurl') !== '',
     hdr: typeof matchMedia === 'function' && matchMedia('(dynamic-range: high)').matches,
     video: (codec) => (videoTypes[codec] ?? []).some(canPlayType),
-    audio: (codec) => !losslessCinemaAudio(codec) && (audioTypes[codec] ?? []).some(canPlayType),
+    audio: (codec) => decodes(codec, (c) => (audioTypes[c] ?? []).some(canPlayType)),
   }
   return detected
 }
@@ -79,6 +82,6 @@ export function fixedCapabilities(c: { mse?: boolean; nativeHLS?: boolean; hdr?:
     nativeHLS: c.nativeHLS ?? false,
     hdr: c.hdr ?? false,
     video: (codec) => video.has(codec),
-    audio: (codec) => !losslessCinemaAudio(codec) && audio.has(codec),
+    audio: (codec) => decodes(codec, (c) => audio.has(c)),
   }
 }

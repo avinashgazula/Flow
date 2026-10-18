@@ -66,10 +66,28 @@ export function engineFor(container: string | undefined, caps: Capabilities, nee
   return 'native'
 }
 
-/** Audio codecs with Atmos folded into the codec that carries it. */
-function carriers(audio: string[]): string[] {
-  return audio.map((a) => (a === 'Atmos' ? 'DD+' : a === 'TrueHD Atmos' ? 'TrueHD' : a))
+/** The codecs an audio list is really carried by. Atmos is object metadata, not a codec: it rides
+ *  on TrueHD or E-AC-3. Beside a named codec it adds nothing; alone it means the streaming
+ *  flavour, E-AC-3. */
+export function audioCarriers(audio: string[]): string[] {
+  const named = audio.filter((a) => a !== 'Atmos').map((a) => (a === 'TrueHD Atmos' ? 'TrueHD' : a))
+  return [...new Set(named.length === 0 && audio.includes('Atmos') ? ['DD+'] : named)]
 }
+
+/** The audio formats in the list this browser can't decode. Empty when the list is empty too:
+ *  a source that doesn't say what its audio is gets the benefit of the doubt. */
+export function undecodableAudio(audio: string[], caps: Capabilities): string[] {
+  const carriers = audioCarriers(audio)
+  if (carriers.some((a) => !losslessCinemaAudio(a) && caps.audio(a))) return []
+  return carriers
+}
+
+/** True when the list names an audio format and this browser decodes at least one of them. */
+export const hasPlayableAudio = (audio: string[] | undefined, caps: Capabilities): boolean => !!audio && audioCarriers(audio).length > 0 && undecodableAudio(audio, caps).length === 0
+
+const audioLabels: Record<string, string> = { DD: 'Dolby Digital', 'DD+': 'Dolby Digital Plus' }
+/** "TrueHD", "Dolby Digital Plus": a codec as a viewer would say it. */
+export const audioLabel = (codec: string) => audioLabels[codec] ?? codec
 
 /** Why this browser can't play the source, or undefined when it can. */
 export function unsupportedReason(input: { container?: string; engine: PlaybackEngine; videoCodec?: string; audio: string[]; headers?: Record<string, string>; transcoded?: boolean }, caps: Capabilities): string | undefined {
@@ -79,9 +97,16 @@ export function unsupportedReason(input: { container?: string; engine: PlaybackE
   if (engine === 'hls' && !caps.mse) return 'This browser can’t play HLS streams'
   if (engine === 'native' && container !== 'm3u8' && input.headers && Object.keys(input.headers).length > 0) return 'Needs request headers a browser can’t send'
   if (input.transcoded) return undefined
-  // No browser decodes DTS or TrueHD, so that's the reason to give before anything browser-specific.
-  const audio = carriers(input.audio)
-  if (audio.length > 0 && audio.every(losslessCinemaAudio)) return `${input.audio[0]} audio can’t play in a browser`
+  // Without sound the film is no use, and neither the remuxer nor the browser's own player can
+  // convert audio, so a file whose every audio format is undecodable here is unplayable.
+  const mute = undecodableAudio(input.audio, caps)
+  if (mute.length > 0) {
+    // As written in the release ("TrueHD Atmos"), when that's what was undecodable.
+    const named = mute.map((c) => input.audio.find((a) => a === c || (c === 'TrueHD' && a === 'TrueHD Atmos')) ?? c)
+    const names = named.slice(0, 2).map(audioLabel).join(' and ')
+    // DTS and TrueHD play nowhere; Dolby Digital depends on the browser.
+    return `${names} audio can’t play in ${mute.every(losslessCinemaAudio) ? 'a' : 'this'} browser`
+  }
   const video = input.videoCodec
   if (video === 'XviD') return 'XviD video can’t play in a browser'
   if (video && !caps.video(video)) return `${video === 'H264' ? 'H.264' : video} video can’t play in this browser`
@@ -190,9 +215,6 @@ export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilitie
   // HDR only helps on a screen that shows it; elsewhere the browser tone-maps it, so SDR goes first.
   const hdrRank = s.hdr?.includes('DV') ? 3 : s.hdr?.includes('HDR10+') ? 2 : s.hdr?.length ? 1 : 0
   score += caps.hdr ? hdrRank * 60 : hdrRank ? -40 : 0
-  // Plays, but maybe without sound: Dolby audio in a browser that has no Dolby decoder.
-  const audio = carriers(s.audio ?? [])
-  if (audio.length && !audio.some((a) => caps.audio(a))) score -= 450
   if (s.sizeBytes) {
     const mb = s.sizeBytes / 1_048_576
     const episode = prefs.kind === 'show'

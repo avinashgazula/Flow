@@ -117,8 +117,9 @@ function allAudioCodecs(s: string): string[] {
   if (test(String.raw`\bdts-?hd(\.| )?ma\b`, s)) out.push('DTS-HD MA')
   else if (test(String.raw`\bdts-?x\b`, s)) out.push('DTS:X')
   else if (test(String.raw`\bdts\b`, s)) out.push('DTS')
-  if (test(String.raw`(\bddp|\bdd\+|\be-?ac-?3\b|\beac3\b)`, s)) out.push('DD+')
-  if (test(String.raw`\b(dd|ac-?3|dolby digital)\b`, s)) out.push('DD')
+  if (test(String.raw`(\bddp|\bdd\+|\be-?ac-?3\b|\beac3\b|\bdolby digital plus)`, s)) out.push('DD+')
+  // "DD+", "DDP" and "E-AC-3" are Dolby Digital Plus, not Dolby Digital as well; "DD5.1" is plain DD.
+  if (test(String.raw`(\bdd(?![+p])(?=\d|\b)|\b(?<!e-?)ac-?3\b|\bdolby digital(?! plus))`, s)) out.push('DD')
   if (test(String.raw`\baac\b`, s)) out.push('AAC')
   if (test(String.raw`\bflac\b`, s)) out.push('FLAC')
   if (test(String.raw`\bopus\b`, s)) out.push('Opus')

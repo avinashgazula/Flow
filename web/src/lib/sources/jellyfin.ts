@@ -333,6 +333,8 @@ export function mapMediaSource(config: ServerConfig, itemId: string, ms: MediaSo
 
   const container = (ms.Container ?? '').split(',')[0]!.trim().toLowerCase() || undefined
   const videoOK = !traits.videoCodec || caps.video(traits.videoCodec)
+  // Servers that report no MediaStreams (Trellis) leave this open on purpose: buildSource judges the
+  // audio the name spells out, and a direct link they can't transcode is better than a dead HLS one.
   const audioOK = audioNames.length === 0 || audioNames.some((a) => caps.audio(a))
   const directOK = config.kind === 'emby' || ms.SupportsDirectPlay !== false || ms.SupportsDirectStream !== false
   const browserContainer = container === 'mp4' || container === 'm4v' || container === 'mov' || container === 'webm'

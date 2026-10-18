@@ -102,3 +102,47 @@ describe('isUnsafeFileName', () => {
     expect(isUnsafeFileName('Mr. Robot')).toBe(false)
   })
 })
+
+// What Trellis (a Jellyfin-compatible server in front of AIOStreams) calls its sources: the only
+// thing Flow has, as its MediaStreams are empty.
+const trellis = [
+  '✨ 4K 🎫  BLURAY REMUX 🔆 DV • HDR10 • IMAX  🔊 Atmos • TrueHD •',
+  '✨ 4K 🎫  BLURAY REMUX 🔆 DV • HDR10 • IMAX  🔊 DTS-HD MA • DD+',
+  '✨ 4K 🎫  BLURAY REMUX 🔆 DV • HDR10 • IMAX  🔊 DTS-HD MA • DTS',
+  '✨ 4K 🎫  BLURAY 🔆 HDR10  🔊 DTS-HD MA • DTS 📦 98.8 GB',
+  '✨ 4K 🎫  BLURAY 🔆 HDR10  🔊 DTS-HD MA 📦 53.4 GB  🌎 English📝 En',
+]
+
+describe('audio formats in Trellis names', () => {
+  it('reads each name’s audio, with Atmos folded into TrueHD', () => {
+    expect(parseStream(trellis[0]).audioCodecs).toEqual(['TrueHD'])
+    expect(parseStream(trellis[0]).audioCodec).toBe('TrueHD Atmos')
+    expect(parseStream(trellis[1]).audioCodecs).toEqual(['DTS-HD MA', 'DD+'])
+    expect(parseStream(trellis[2]).audioCodecs).toEqual(['DTS-HD MA'])
+    expect(parseStream(trellis[3]).audioCodecs).toEqual(['DTS-HD MA'])
+    expect(parseStream(trellis[4]).audioCodecs).toEqual(['DTS-HD MA'])
+    expect(parseStream(trellis[3]).sizeBytes).toBeGreaterThan(98 * 1_073_741_824)
+  })
+
+  it('reads the file names behind them', () => {
+    const remux = parseStream('Oppenheimer.2023.2160p.IMAX.HYBRID.UHD.REMUX.DV.HDR10+.TrueHD.7.1.Atmos-SChIZ0iD.mkv')
+    expect(remux.audioCodec).toBe('TrueHD Atmos')
+    expect(remux.audioChannels).toBe('7.1')
+    // No audio format named: unknown, which is not the same as none.
+    const dual = parseStream('Oppenheimer (2023) IMAX 2160p 4K Hybrid UHD HDR10 DV Blu-ray REMUX Dual Audio [Hindi + English] ESub ~ RemuxDoc.mkv')
+    expect(dual.audioCodecs).toEqual([])
+    expect(dual.audioCodec).toBeUndefined()
+  })
+
+  it('tells Dolby Digital from Dolby Digital Plus', () => {
+    expect(parseStream('1080p WEB-DL DD+ 5.1').audioCodecs).toEqual(['DD+'])
+    expect(parseStream('1080p WEB-DL DDP5.1 Atmos').audioCodecs).toEqual(['DD+'])
+    expect(parseStream('1080p WEB-DL E-AC-3').audioCodecs).toEqual(['DD+'])
+    expect(parseStream('1080p WEB-DL EAC3 5.1').audioCodecs).toEqual(['DD+'])
+    expect(parseStream('1080p WEB-DL Dolby Digital Plus').audioCodecs).toEqual(['DD+'])
+    expect(parseStream('1080p BluRay DD5.1').audioCodecs).toEqual(['DD'])
+    expect(parseStream('1080p BluRay AC3 5.1').audioCodecs).toEqual(['DD'])
+    expect(parseStream('1080p BluRay Dolby Digital 5.1').audioCodecs).toEqual(['DD'])
+    expect(parseStream('1080p BluRay DTS • AC-3').audioCodecs).toEqual(['DTS', 'DD'])
+  })
+})
