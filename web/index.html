@@ -13,6 +13,22 @@
     <!-- The two hosts every first screen needs: open their connections while the script downloads. -->
     <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
     <link rel="preconnect" href="https://api.themoviedb.org" crossorigin />
+    <script>
+      // The hero image is the largest thing on Home. Its address from the last visit is known before
+      // any script loads, so the download starts now, alongside the app's code, not after it.
+      try {
+        var h = JSON.parse(localStorage.getItem('flow.lcp') || 'null')
+        if (h && h.path === location.pathname) {
+          var l = document.createElement('link')
+          l.rel = 'preload'
+          l.as = 'image'
+          l.fetchPriority = 'high'
+          l.imageSrcset = matchMedia('(max-width: 720px)').matches ? h.m : h.d
+          l.imageSizes = '100vw'
+          document.head.appendChild(l)
+        }
+      } catch (e) {}
+    </script>
     <style>
       /* Painted before any CSS file arrives, so the first frame is already Flow's black canvas. */
       html, body { background: #000; color: #fff; margin: 0; }

@@ -26,6 +26,16 @@ export function Hero({ items }: { items: MediaItem[] }) {
     return () => clearInterval(timer)
   }, [paused, slides.length])
 
+  const first = slides[0]
+  useEffect(() => {
+    if (!first) return
+    try {
+      localStorage.setItem('flow.lcp', JSON.stringify({ path: location.pathname, d: srcSet(first.backdrop, 'backdrop'), m: srcSet(first.poster, 'poster') }))
+    } catch {
+      // Only a head start for the next visit.
+    }
+  }, [first])
+
   if (!slides.length) return <div className={s.hero} aria-hidden />
   return (
     <section
