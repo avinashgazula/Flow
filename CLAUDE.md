@@ -28,6 +28,7 @@ Packages/FlowKit/     everything testable without UI: models, TMDb/Trakt/Simkl/s
                       subtitles, X-Ray matching, sync, stats. Pure Swift, also builds on Linux.
 Packages/FlowDecoders FFmpeg DTS/TrueHD decoders (built by scripts/build-ffmpeg-decoders.sh)
 Widgets/, TopShelf/   widget and Apple TV Top Shelf extensions
+web/                  Flow for the web: Vite + React + TanStack; see web/README.md (npm run dev, ?demo for sample data)
 project.yml           XcodeGen spec. Flow.xcodeproj is generated from it and committed.
 scripts/sim.sh        simulator helper (below); scripts/screenshot-tour.sh is CI's screenshot tour
 ```

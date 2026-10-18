@@ -6,6 +6,8 @@ Flow puts your movies, shows and live TV in one place. It doesn't host any conte
 
 See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
 
+**On the web:** [media.gazula.dev](https://media.gazula.dev) runs Flow in any modern browser: Home, title pages, Explore, Search, Library, add-ons, Jellyfin/Emby/Plex and the player, including MKV files remuxed in the browser by a Rust/WebAssembly worker. It lives in [`web/`](web/README.md).
+
 ## Highlights
 
 - **Home**: a hero (a card carousel or full-bleed, from one or two sources) with logo art, Continue Watching with Up Next and episodes-remaining counts, Upcoming episodes and premieres, Streaming Services and Genres folders, "Because You Watched…" recommendations, your media servers' own library rows, and shelves you can configure, reorder, and copy or paste as JSON (trending, popular, TMDb Discover queries, Trakt and MDBList lists, media-server libraries).
@@ -37,6 +39,7 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
 ## Project layout
 
 ```
+web/               Flow for the web (React, TanStack Router and Query, a Rust/WASM Matroska remuxer)
 Packages/FlowKit   Platform-independent core: models, API clients, parsers, ranking, sync (unit-tested, builds on Linux too)
 Flow/              SwiftUI app shared by the iOS, macOS and tvOS targets
 Widgets/           WidgetKit extension (iOS): Continue Watching
