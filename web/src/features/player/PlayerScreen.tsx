@@ -3,7 +3,8 @@ import { useNavigate, useRouter } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { q } from '../../lib/queries'
 import { queryClient } from '../../lib/queryClient'
-import { findSources, type PlaybackRequest, type Source } from '../../lib/sources'
+import { browserCapabilities, findSources, type PlaybackRequest, type Source } from '../../lib/sources'
+import { hasPlayableAudio } from '../../lib/sources/rank'
 import { library, libraryStore, mediaKey, type EpisodeRef } from '../../lib/store/library'
 import { settingsStore, useSettings } from '../../lib/store/settings'
 import { imageURL } from '../../lib/tmdb/images'
@@ -15,6 +16,7 @@ import { PlayerController, usePlayer } from './controller'
 import { attachSource, warmEngines, type Engine } from './engine'
 import { mediaErrorMessage, PlaybackError } from './errors'
 import { episodeLine } from './format'
+import { NoSoundNotice } from './NoSound'
 import { Buffering, FeedbackFlash, SubtitleOverlay, TapLayer } from './Overlays'
 import { lastSources, matchSource, nextEpisode, nextSource, resumePosition } from './session'
 import { UpNext } from './UpNext'
@@ -94,6 +96,8 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
   const [resumeAt, setResumeAt] = useState<number | null>(null)
   const [picker, setPicker] = useState(false)
   const [connectingShown, setConnectingShown] = useState(true)
+  // The file is playing through the browser's own player because its host blocks web pages.
+  const [blocked, setBlocked] = useState(false)
 
   const tried = useRef(new Set<string>())
   const startAt = useRef<number | undefined>(undefined)
@@ -150,10 +154,22 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
     else setPicker(true)
   }
 
+  // From a file that plays without sound: the best source left that this browser can decode, and
+  // none that is marked unsupported, since another silent file would only be the same problem. The
+  // picker opens when there isn't one.
+  const tryWithSound = () => {
+    const { sources: list, source: cur } = latest.current
+    const caps = browserCapabilities()
+    const candidate = nextSource(list, cur ?? undefined, tried.current, { playableOnly: true, best: true, prefer: (x) => hasPlayableAudio(x.audio, caps) })
+    if (candidate) start(candidate, controller.currentTime())
+    else setPicker(true)
+  }
+
   const fail = (err: PlaybackError) => {
     if (!started.current) {
-      // Nothing has played yet: move on to the next source quietly, as the apps do.
-      const candidate = nextSource(latest.current.sources, latest.current.source ?? undefined, tried.current)
+      // Nothing has played yet: move on to the next source quietly, as the apps do. Sources marked
+      // unsupported are left for the viewer to choose: they'd only fail the same way, or play silent.
+      const candidate = nextSource(latest.current.sources, latest.current.source ?? undefined, tried.current, { playableOnly: true })
       if (candidate) {
         start(candidate, startAt.current)
         return
@@ -287,12 +303,14 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
     const abort = new AbortController()
     let engine: Engine | null = null
     started.current = false
+    setBlocked(false)
     const onFatal = (err: PlaybackError) => !abort.signal.aborted && fail(err)
     attachSource(el, source, { startAt: startAt.current, signal: abort.signal, onTracks: controller.refreshTracks, onFatal })
       .then((e) => {
         if (abort.signal.aborted) return e.destroy()
         engine = e
         controller.setEngine(e, source)
+        setBlocked(e.fallback === 'blocked')
       })
       .catch((err: Error) => {
         if (abort.signal.aborted || err.name === 'AbortError') return
@@ -500,6 +518,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
             onMoreSources={() => setPicker(true)}
             episodes={epRef ? { season: epRef.season, current: epRef.episode, list: seasonEpisodes, onPick: playEpisode, fallbackStill: item?.backdrop } : undefined}
           />
+          {blocked && <NoSoundNotice key={`${source?.id}#${attempt}`} controller={controller} source={source} onSilent={() => lastSources.forget(key)} onTryAnother={tryWithSound} />}
           {next && <UpNext key={next.id} controller={controller} next={next} autoplay={autoplayNext} fallbackStill={item?.backdrop} onPlay={() => playEpisode(next)} />}
           <FeedbackFlash controller={controller} />
         </>

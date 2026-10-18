@@ -33,6 +33,10 @@ export interface Engine {
   /** What to tell the viewer if the element fails, when this engine knows more than the error code
    *  (a file Flow could only hand to the browser's own player). */
   failureMessage?: string
+  /** Set when the file is playing through the browser's own player because its host blocks web
+   *  pages. Flow sees none of the bytes then, so it can't pick or convert audio, and a codec the
+   *  browser can't decode plays as silence. */
+  readonly fallback?: 'blocked'
   destroy(): void
 }
 
@@ -255,6 +259,7 @@ function playBlockedFile(video: HTMLVideoElement, source: Source, options: Attac
   video.load()
   return {
     ...attachNative(video, source, options),
+    fallback: 'blocked',
     failureMessage:
       'This file’s host doesn’t let web pages stream from it, and this browser can’t play the file directly. In AIOStreams, turn on a stream proxy (MediaFlow Proxy or StremThru) so Flow can stream it, pick another source, or watch it in the Flow app.',
   }

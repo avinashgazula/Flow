@@ -43,11 +43,24 @@ export function nextEpisode(current: EpisodeRef, season: Episode[] | undefined, 
   return first && aired(first) ? first : undefined
 }
 
-/** The next untried source after `current` in the list, for Try Another Source and fail-over. */
-export function nextSource(list: Source[], current: Source | undefined, tried: ReadonlySet<string>): Source | undefined {
-  const start = current ? list.findIndex((s) => s.id === current.id) : -1
-  const ordered = [...list.slice(start + 1), ...list.slice(0, Math.max(0, start))]
-  return ordered.find((s) => !tried.has(s.id) && !s.unsupported) ?? ordered.find((s) => !tried.has(s.id))
+export interface NextSourceOptions {
+  /** Never return a source marked unsupported: for a viewer who is leaving one that has no sound,
+   *  or a fail-over that should find something that works rather than something that can't. */
+  playableOnly?: boolean
+  /** Start from the top of the list (the best remaining source) instead of just after `current`. */
+  best?: boolean
+  /** Sources this answers true for come first, so a known-good audio track beats an unknown one. */
+  prefer?: (source: Source) => boolean
+}
+
+/** The next untried source after `current` in the list, for Try Another Source and fail-over.
+ *  Sources marked unsupported come last, and only when `playableOnly` isn't set. */
+export function nextSource(list: Source[], current: Source | undefined, tried: ReadonlySet<string>, options: NextSourceOptions = {}): Source | undefined {
+  const start = options.best || !current ? -1 : list.findIndex((s) => s.id === current.id)
+  const ordered = [...list.slice(start + 1), ...list.slice(0, Math.max(0, start))].filter((s) => !tried.has(s.id))
+  const playable = ordered.filter((s) => !s.unsupported)
+  const preferred = options.prefer ? playable.filter(options.prefer) : []
+  return preferred[0] ?? playable[0] ?? (options.playableOnly ? undefined : ordered[0])
 }
 
 // MARK: Memory

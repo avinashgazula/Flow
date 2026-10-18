@@ -400,6 +400,35 @@
 }
 .upNextCancel:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 
+/* No Sound in This Browser: under the title row, so neither the controls nor the subtitles are
+   behind it, and denser than the other glass so its words hold up over a bright picture. */
+.noSound {
+  position: absolute;
+  z-index: 4;
+  top: calc(var(--inset-top) + 12px + 46px + 10px);
+  left: calc(var(--inset-left) + var(--edge));
+  width: min(420px, calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--edge)));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 14px;
+  border-radius: 22px;
+  background-color: rgb(12 12 14 / 0.8);
+  animation: noSound var(--dur-gentle) var(--ease-gentle);
+}
+@keyframes noSound { from { opacity: 0; translate: 0 -8px; } }
+.noSoundTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 var(--text-headline) / 1.25 var(--font);
+}
+.noSoundTitle svg { flex: none; }
+.noSoundText { font: 400 13px / 1.45 var(--font); color: rgb(255 255 255 / 0.9); }
+.noSoundActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.noSoundActions .btn { padding: 0 14px; }
+.noSoundHint { font: 400 var(--text-caption) / 1.45 var(--font); color: var(--text-secondary); }
+
 /* Phones and short windows: tighter, and the transport shrinks to fit a landscape iPhone. */
 @media (max-width: 720px), (max-height: 500px) {
   .controls { --bottom-band: 112px; }
@@ -414,6 +443,12 @@
   .play { width: 68px; height: 68px; }
   .play svg { width: 28px; height: 28px; }
   .upNext { --bottom-band: 112px; padding: 8px 12px 8px 8px; gap: 10px; }
+  /* A landscape phone's transport sits in the middle: keep to the left of it, and leave the hint out. */
+  .noSound { top: calc(var(--inset-top) + 8px + 46px + 6px); width: min(272px, 38%); gap: 6px; padding: 10px 12px; border-radius: 18px; }
+  .noSoundTitle { font-size: 14px; }
+  .noSoundText { font-size: 12px; line-height: 1.4; }
+  .noSoundHint { display: none; }
+  .noSoundActions { margin-top: 2px; }
   .upNextStill { width: 96px; }
   .upNextText { width: 140px; }
   /* A panel is as tall as the picture here, so the transport steps aside rather than sit behind it. */

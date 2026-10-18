@@ -57,4 +57,19 @@ describe('nextSource', () => {
     expect(nextSource(list, list[3], new Set(['a', 'b', 'd']))?.id).toBe('c')
     expect(nextSource(list, list[3], new Set(['a', 'b', 'c', 'd']))).toBeUndefined()
   })
+
+  it('can refuse unsupported sources outright, as fail-over does', () => {
+    const list = [src('a'), src('b', { unsupported: 'No' } as Partial<Source>), src('c', { unsupported: 'No' } as Partial<Source>)]
+    expect(nextSource(list, list[0], new Set(['a']))?.id).toBe('b')
+    expect(nextSource(list, list[0], new Set(['a']), { playableOnly: true })).toBeUndefined()
+  })
+
+  it('can start from the best source left and prefer a known-good audio track', () => {
+    const list = [src('a'), src('b', { unsupported: 'TrueHD' } as Partial<Source>), src('c'), src('d', { audio: ['AAC'] })]
+    // Not "after the current one": c is ranked above d, but d is known to have playable sound.
+    expect(nextSource(list, list[2], new Set(['a', 'c']), { best: true, playableOnly: true })?.id).toBe('d')
+    expect(nextSource(list, list[3], new Set(['a', 'd']), { best: true, playableOnly: true })?.id).toBe('c')
+    expect(nextSource(list, list[0], new Set(['a']), { best: true, playableOnly: true, prefer: (x) => x.id === 'd' })?.id).toBe('d')
+    expect(nextSource(list, list[0], new Set(['a']), { best: true, playableOnly: true })?.id).toBe('c')
+  })
 })
