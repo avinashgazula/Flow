@@ -26,7 +26,8 @@ npm test             # unit tests (Vitest)
 - **Rust → WebAssembly** (`crates/`) for the work that's actually heavy in a browser: demuxing
   Matroska and remuxing it to fragmented MP4 for Media Source Extensions, in a Web Worker.
 - **CSS Modules + tokens** (`src/styles/tokens.css`, mirrored from `Flow/Design/Theme.swift`). No
-  CSS-in-JS runtime, no web fonts: the system font is SF on Apple devices.
+  CSS-in-JS runtime. The default typeface is the system's (SF on Apple devices); Settings →
+  Appearance offers Inter, Geist, Manrope and Ioskeley Mono, and only the chosen one downloads.
 
 | Path | What's there |
 | --- | --- |
