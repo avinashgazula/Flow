@@ -12,6 +12,10 @@ on:
 permissions:
   contents: write
 
+env:
+  # The custom domain Pages serves the site on. Leave empty to serve from <owner>.github.io/<repo>/.
+  PAGES_DOMAIN: media.gazula.dev
+
 concurrency:
   group: web-${{ github.ref }}
   cancel-in-progress: true
@@ -39,10 +43,8 @@ jobs:
         if: hashFiles('web/crates/*/Cargo.toml') != ''
         run: for crate in crates/*/; do (cd "$crate" && cargo test --release); done
       - name: Build
-        # Served from https://<owner>.github.io/<repo>/ on Pages.
-        run: npx vite build
-        env:
-          FLOW_BASE: /${{ github.event.repository.name }}/
+        # At the domain's root on a custom domain, otherwise under /<repo>/ on github.io.
+        run: FLOW_BASE="${PAGES_DOMAIN:+/}" FLOW_BASE="${FLOW_BASE:-/${{ github.event.repository.name }}/}" npx vite build
       - name: Bundle budget
         run: npm run budget
       - uses: actions/upload-artifact@v4
@@ -71,9 +73,12 @@ jobs:
           # Deep links (a title page, a search) load the app, which routes them itself.
           cp index.html 404.html
           touch .nojekyll
+          # Pages takes its custom domain from this file in the published branch.
+          if [ -n "$PAGES_DOMAIN" ]; then echo "$PAGES_DOMAIN" > CNAME; fi
           git init -q
           git checkout -q -b gh-pages
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "Flow for the web at ${GITHUB_SHA::7}"
           git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
-          echo "Published. Pages serves it at https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/ once Pages is set to deploy from the gh-pages branch." >> "$GITHUB_STEP_SUMMARY"
+          site="${PAGES_DOMAIN:-${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}}"
+          echo "Published. Pages serves it at https://${site}/ once Pages is set to deploy from the gh-pages branch." >> "$GITHUB_STEP_SUMMARY"
