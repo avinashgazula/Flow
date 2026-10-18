@@ -424,7 +424,7 @@
   font: 600 var(--text-headline) / 1.25 var(--font);
 }
 .noSoundTitle svg { flex: none; }
-.noSoundText { font: 400 13px / 1.45 var(--font); color: rgb(255 255 255 / 0.9); }
+.noSoundText { font: 400 13px / 1.45 var(--font); color: rgb(255 255 255 / 0.9); text-wrap: pretty; }
 .noSoundActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .noSoundActions .btn { padding: 0 14px; }
 .noSoundHint { font: 400 var(--text-caption) / 1.45 var(--font); color: var(--text-secondary); }
@@ -432,6 +432,10 @@
 /* Phones and short windows: tighter, and the transport shrinks to fit a landscape iPhone. */
 @media (max-width: 720px), (max-height: 500px) {
   .controls { --bottom-band: 112px; }
+  .noSound { padding: 12px 14px; }
+  .noSoundActions { display: grid; grid-template-columns: 1fr 1fr; }
+  .noSoundActions .btn { padding: 0 8px; font-size: 13px; }
+  .noSoundHint { font-size: var(--text-micro); }
   .title { font-size: 17px; }
   .transport { gap: 36px; }
   .clusterButton { width: 40px; height: 40px; }
@@ -448,7 +452,8 @@
   .noSoundTitle { font-size: 14px; }
   .noSoundText { font-size: 12px; line-height: 1.4; }
   .noSoundHint { display: none; }
-  .noSoundActions { margin-top: 2px; }
+  .noSoundActions { display: grid; grid-template-columns: none; justify-items: start; gap: 6px; margin-top: 2px; }
+  .noSoundActions .btn { height: 32px; }
   .upNextStill { width: 96px; }
   .upNextText { width: 140px; }
   /* A panel is as tall as the picture here, so the transport steps aside rather than sit behind it. */
