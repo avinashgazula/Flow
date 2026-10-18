@@ -1,3 +1,4 @@
+import type { AddonManifest } from '../sources/types'
 import { createStore, useStore } from './createStore'
 
 export interface AddonConfig {
@@ -5,6 +6,8 @@ export interface AddonConfig {
   url: string
   name: string
   enabled: boolean
+  /** The manifest as it was when installed: logo, types and which ids it serves. */
+  manifest?: AddonManifest
 }
 
 export interface ServerConfig {
@@ -16,6 +19,10 @@ export interface ServerConfig {
   token: string
   userId?: string
   enabled: boolean
+  /** The account signed in, shown under the server's name. */
+  username?: string
+  /** Plex's machine identifier, so a server found again on a new address isn't added twice. */
+  machineId?: string
 }
 
 export interface Settings {
@@ -33,6 +40,8 @@ export interface Settings {
   subtitleLanguages: string[]
   autoplayNext: boolean
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
+  /** The picker offers the source a title was last played from first. */
+  rememberLastSource: boolean
 }
 
 const browserLanguage = typeof navigator === 'undefined' ? 'en-US' : navigator.language || 'en-US'
@@ -49,6 +58,7 @@ export const defaultSettings: Settings = {
   subtitleLanguages: [browserLanguage.slice(0, 2)],
   autoplayNext: true,
   preferredQuality: '1080p',
+  rememberLastSource: true,
 }
 
 export const settingsStore = createStore<Settings>('settings', defaultSettings)

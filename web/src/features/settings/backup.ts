@@ -1,0 +1,90 @@
+import { lastSourceStore } from '../../lib/sources/lastSource'
+import { defaultSettings, settingsStore, type Settings } from '../../lib/store/settings'
+import { libraryStore, type Library } from '../../lib/store/library'
+
+/* Export and import of everything Flow keeps in this browser, as one JSON file. */
+
+export const backupFormat = 'flow-web-backup'
+
+export interface Backup {
+  format: typeof backupFormat
+  version: 1
+  exportedAt: string
+  settings: Partial<Settings>
+  library: Partial<Library>
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+
+/** The settings' keys that import accepts, with the type each must have. Anything else in the file is ignored. */
+const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
+  tmdbKey: (v) => typeof v === 'string',
+  demo: (v) => typeof v === 'boolean',
+  onboarded: (v) => typeof v === 'boolean',
+  language: (v) => typeof v === 'string' && v.length > 0,
+  region: (v) => typeof v === 'string' && v.length > 0,
+  includeAdult: (v) => typeof v === 'boolean',
+  addons: (v) => Array.isArray(v) && v.every((a) => isObject(a) && typeof a.url === 'string' && typeof a.name === 'string' && typeof a.enabled === 'boolean'),
+  servers: (v) => Array.isArray(v) && v.every((s) => isObject(s) && typeof s.id === 'string' && typeof s.url === 'string' && typeof s.token === 'string' && ['jellyfin', 'emby', 'plex'].includes(s.kind as string)),
+  subtitleLanguages: (v) => Array.isArray(v) && v.every((x) => typeof x === 'string'),
+  autoplayNext: (v) => typeof v === 'boolean',
+  preferredQuality: (v) => ['2160p', '1080p', '720p', 'any'].includes(v as string),
+  rememberLastSource: (v) => typeof v === 'boolean',
+}
+
+const libraryTypes: { [K in keyof Library]: (v: unknown) => boolean } = {
+  progress: isObject,
+  watchlist: Array.isArray,
+  favourites: Array.isArray,
+  history: Array.isArray,
+  watchedEpisodes: isObject,
+}
+
+export function createBackup(settings: Settings, library: Library, now = new Date()): Backup {
+  return { format: backupFormat, version: 1, exportedAt: now.toISOString(), settings, library }
+}
+
+/** Reads a backup file's text. Returns what it can use, and the keys it had to skip, or an error
+ *  that says what to try instead. */
+export function parseBackup(text: string): { ok: true; settings: Partial<Settings>; library: Partial<Library>; skipped: string[] } | { ok: false; error: string } {
+  let data: unknown
+  try {
+    data = JSON.parse(text)
+  } catch {
+    return { ok: false, error: 'That file isn’t valid JSON. Choose a backup exported from Flow.' }
+  }
+  if (!isObject(data) || data.format !== backupFormat) return { ok: false, error: 'That doesn’t look like a Flow backup. Choose a file exported from Flow’s Settings.' }
+  if (typeof data.version === 'number' && data.version > 1) return { ok: false, error: 'That backup is from a newer version of Flow. Update Flow, then try again.' }
+
+  const skipped: string[] = []
+  const settings: Record<string, unknown> = {}
+  const library: Record<string, unknown> = {}
+  if (isObject(data.settings)) {
+    for (const [key, valid] of Object.entries(settingTypes)) {
+      if (!(key in data.settings)) continue
+      if (valid(data.settings[key])) settings[key] = data.settings[key]
+      else skipped.push(key)
+    }
+  }
+  if (isObject(data.library)) {
+    for (const [key, valid] of Object.entries(libraryTypes)) {
+      if (!(key in data.library)) continue
+      if (valid(data.library[key])) library[key] = data.library[key]
+      else skipped.push(key)
+    }
+  }
+  if (Object.keys(settings).length === 0 && Object.keys(library).length === 0) return { ok: false, error: 'That backup is empty. Choose a file exported from Flow’s Settings.' }
+  return { ok: true, settings: settings as Partial<Settings>, library: library as Partial<Library>, skipped }
+}
+
+export function applyBackup(parsed: { settings: Partial<Settings>; library: Partial<Library> }) {
+  if (Object.keys(parsed.settings).length) settingsStore.set(parsed.settings)
+  if (Object.keys(parsed.library).length) libraryStore.set(parsed.library)
+}
+
+/** Back to a fresh install: settings, library and remembered sources. The caller clears the query cache. */
+export function resetEverything() {
+  settingsStore.set({ ...defaultSettings })
+  libraryStore.set({ progress: {}, watchlist: [], favourites: [], history: [], watchedEpisodes: {} })
+  lastSourceStore.set({ byTitle: {} })
+}

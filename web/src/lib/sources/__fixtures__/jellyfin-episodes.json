@@ -1,0 +1,7 @@
+{
+  "Items": [
+    { "Id": "ep-1-1", "Name": "Pilot", "Type": "Episode", "ParentIndexNumber": 1, "IndexNumber": 1 },
+    { "Id": "ep-0-2", "Name": "Special", "Type": "Episode", "ParentIndexNumber": 0, "IndexNumber": 2 },
+    { "Id": "ep-1-2", "Name": "The Second", "Type": "Episode", "ParentIndexNumber": 1, "IndexNumber": 2 }
+  ]
+}

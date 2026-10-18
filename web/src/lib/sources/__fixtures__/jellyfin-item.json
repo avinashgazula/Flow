@@ -1,0 +1,50 @@
+{
+  "Id": "f5c7",
+  "Name": "Dune: Part Two",
+  "Type": "Movie",
+  "UserData": { "PlaybackPositionTicks": 38000000000, "Played": false },
+  "MediaSources": [
+    {
+      "Id": "ms-mkv",
+      "Name": "Dune Part Two 2160p",
+      "Container": "mkv",
+      "Size": 19541180416,
+      "Path": "/media/movies/Dune Part Two (2024)/Dune.Part.Two.2024.2160p.UHD.BluRay.REMUX.DV.HDR10.HEVC.TrueHD.Atmos.7.1-FGT.mkv",
+      "SupportsDirectPlay": true,
+      "SupportsDirectStream": true,
+      "SupportsTranscoding": true,
+      "Protocol": "File",
+      "MediaStreams": [
+        { "Type": "Video", "Codec": "hevc", "Height": 2160, "VideoRange": "HDR", "VideoRangeType": "DOVIWithHDR10", "DisplayTitle": "4K Dolby Vision HEVC" },
+        { "Type": "Audio", "Codec": "truehd", "Channels": 8, "Language": "eng", "IsDefault": true, "DisplayTitle": "English TrueHD 7.1" },
+        { "Type": "Audio", "Codec": "ac3", "Channels": 6, "Language": "spa", "DisplayTitle": "Spanish Dolby Digital 5.1" },
+        { "Type": "Subtitle", "Codec": "subrip", "Language": "eng", "Index": 3, "IsTextSubtitleStream": true, "DisplayTitle": "English (SRT)" },
+        { "Type": "Subtitle", "Codec": "PGSSUB", "Language": "eng", "Index": 4, "IsTextSubtitleStream": false }
+      ]
+    },
+    {
+      "Id": "ms-mp4",
+      "Name": "Dune Part Two 1080p",
+      "Container": "mov,mp4,m4a,3gp,3g2,mj2",
+      "Size": 4831838208,
+      "Path": "/media/movies/Dune Part Two (2024)/Dune.Part.Two.2024.1080p.WEB-DL.mp4",
+      "SupportsDirectPlay": true,
+      "Protocol": "File",
+      "MediaStreams": [
+        { "Type": "Video", "Codec": "h264", "Height": 1080, "VideoRange": "SDR", "VideoRangeType": "SDR" },
+        { "Type": "Audio", "Codec": "aac", "Channels": 2, "Language": "eng", "IsDefault": true }
+      ]
+    },
+    {
+      "Id": "ms-mkv-h264",
+      "Container": "mkv",
+      "Path": "/media/movies/Dune Part Two (2024)/Dune.Part.Two.2024.720p.mkv",
+      "Protocol": "File",
+      "MediaStreams": [
+        { "Type": "Video", "Codec": "h264", "Height": 720 },
+        { "Type": "Audio", "Codec": "dts", "Channels": 6, "IsDefault": true },
+        { "Type": "Audio", "Codec": "aac", "Channels": 2 }
+      ]
+    }
+  ]
+}

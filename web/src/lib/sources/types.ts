@@ -55,4 +55,40 @@ export interface Source {
   subtitles?: ExternalSubtitle[]
   /** Resume position the server remembers, in seconds (Jellyfin/Plex). */
   serverPosition?: number
+  /** The add-on or server's id (manifest URL or server id), for "play the same source as last time". */
+  providerId?: string
+  /** Release type parsed from the name: "WEB-DL", "BluRay", "REMUX"… */
+  quality?: ReleaseQuality
+  /** The file's own name when known; often the best clue to its container. */
+  filename?: string
+  /** Release group, e.g. "FLUX". */
+  releaseGroup?: string
+  /** Audio languages named in the release ("English", "Multi"). */
+  languages?: string[]
+  /** "5.1", "7.1"… */
+  audioChannels?: string
+  seeders?: number
+  /** Debrid cache state when the add-on says (true: instant, false: has to download first). */
+  cached?: boolean
+  /** Add-ons group a show's releases so the next episode can come from the same one. */
+  bingeGroup?: string
+  /** The add-on's own multi-line text, kept for the picker's secondary line. */
+  detail?: string
+  /** Stremio's hint that the stream isn't ready for a web player as it is (often an odd container). */
+  notWebReady?: boolean
+}
+
+export type ReleaseQuality = 'CAM' | 'TS' | 'TC' | 'SCR' | 'HDTV' | 'WEBRip' | 'WEB-DL' | 'BluRay' | 'REMUX'
+
+/** What a Stremio add-on's manifest says about itself; kept with its settings so the list can show it
+ *  and so add-ons that don't serve a type or id prefix aren't asked. */
+export interface AddonManifest {
+  id: string
+  name: string
+  version?: string
+  description?: string
+  logo?: string
+  types?: string[]
+  idPrefixes?: string[]
+  resources: (string | { name: string; types?: string[]; idPrefixes?: string[] })[]
 }

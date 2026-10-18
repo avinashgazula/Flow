@@ -1,0 +1,7 @@
+{
+  "Items": [
+    { "Id": "a1", "Name": "Dune: Part Two (Fan Edit)", "Type": "Movie", "ProductionYear": 2024, "ProviderIds": { "Imdb": "tt0000001" } },
+    { "Id": "f5c7", "Name": "Dune: Part Two", "Type": "Movie", "ProductionYear": 2024, "ProviderIds": { "Tmdb": "693134", "Imdb": "tt15239678" } }
+  ],
+  "TotalRecordCount": 2
+}

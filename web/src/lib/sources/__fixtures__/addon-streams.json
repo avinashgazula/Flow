@@ -1,0 +1,22 @@
+{
+  "streams": [
+    {
+      "name": "AIOStreams\n1080p",
+      "description": "🧿 1080p\nWEB-DL\n🔊 AAC\n📦 3.98 GB\n🌎 English",
+      "url": "https://cdn.example/resolve/realdebrid/abc/1",
+      "behaviorHints": { "filename": "Show.S01E02.1080p.WEB-DL.AAC.H264.mkv", "videoSize": 4273492541, "bingeGroup": "aio|1080p", "notWebReady": true },
+      "subtitles": [{ "url": "https://subs.example/en.vtt", "lang": "eng", "id": "1" }]
+    },
+    {
+      "name": "AIOStreams\n4K",
+      "description": "Show.S01E02.2160p.WEB-DL.DV.HDR10.DDP5.1.Atmos.HEVC-FLUX.mp4\n💾 9.1 GB 👤 210",
+      "url": "https://cdn.example/stream/2.mp4",
+      "behaviorHints": { "bingeGroup": "aio|2160p|DV", "proxyHeaders": { "request": { "Referer": "https://cdn.example/" } } }
+    },
+    { "name": "Torrentio\n4K", "title": "Show.S01E02.2160p.mkv\n👤 512", "infoHash": "0123456789abcdef0123456789abcdef01234567", "fileIdx": 1 },
+    { "name": "Torrentio\n1080p", "title": "Show.S01E02.1080p.mkv", "infoHash": "fedcba9876543210fedcba9876543210fedcba98" },
+    { "name": "Trailer", "ytId": "dQw4w9WgXcQ" },
+    { "name": "Fake", "title": "Show.S01E02.1080p.mkv.exe", "url": "https://cdn.example/fake.exe" },
+    { "name": "Empty" }
+  ]
+}

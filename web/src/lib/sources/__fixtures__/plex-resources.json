@@ -1,0 +1,15 @@
+[
+  {
+    "name": "Living Room",
+    "clientIdentifier": "abc123machine",
+    "provides": "server",
+    "accessToken": "server-token",
+    "connections": [
+      { "protocol": "http", "uri": "http://192.168.1.20:32400", "local": true, "relay": false },
+      { "protocol": "https", "uri": "https://203-0-113-5.abc123.plex.direct:32400", "local": false, "relay": false },
+      { "protocol": "https", "uri": "https://192-168-1-20.abc123.plex.direct:32400", "local": true, "relay": false },
+      { "protocol": "https", "uri": "https://relay.abc123.plex.direct:8443", "local": false, "relay": true }
+    ]
+  },
+  { "name": "iPhone", "clientIdentifier": "phone1", "provides": "client,player", "connections": [] }
+]

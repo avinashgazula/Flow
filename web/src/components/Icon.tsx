@@ -40,6 +40,11 @@ const paths = {
   download: 'M12 4v11M7.5 11 12 15.5 16.5 11M5 20h14',
   bookmark: 'M7 3.5h10a1 1 0 0 1 1 1V20l-6-4.2L6 20V4.5a1 1 0 0 1 1-1z',
   sparkles: 'M12 3.5 13.6 9l5.4 1.6-5.4 1.6L12 17.5l-1.6-5.3L5 10.6 10.4 9zM18.5 15.5l.7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7z',
+  refresh: 'M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4.5V8.5h-4',
+  warning: 'M12 4.2 20.8 19.5H3.2zM12 10v4.2M12 16.9v.1',
+  chevronUp: 'M5.5 14.5 12 8l6.5 6.5',
+  upload: 'M12 15V4M7.5 8.5 12 4l4.5 4.5M5 20h14',
+  copy: 'M9 9h10.5v10.5H9zM15 9V4.5H4.5V15H9',
 } as const
 
 export type IconName = keyof typeof paths
