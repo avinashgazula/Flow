@@ -39,7 +39,9 @@ export function PosterGrid({ items, pending = false, hasMore = false, onNearEnd,
   })
 
   // Every row is the same height, so a new width only needs the cached positions thrown away.
-  useLayoutEffect(() => virtualizer.measure(), [virtualizer, layout.rowHeight])
+  useLayoutEffect(() => {
+    virtualizer.measure()
+  }, [virtualizer, layout.rowHeight])
 
   const virtualRows = virtualizer.getVirtualItems()
   const lastRow = virtualRows[virtualRows.length - 1]?.index ?? -1

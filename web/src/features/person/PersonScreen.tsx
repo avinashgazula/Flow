@@ -21,7 +21,9 @@ const filters = [
  *  everything they've been in. */
 export function PersonScreen({ id }: { id: number }) {
   const { data: person, isError, error, refetch, isRefetching } = useQuery(q.person(id))
-  useEffect(() => window.scrollTo(0, 0), [id])
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [id])
 
   if (!person) {
     if (isError)

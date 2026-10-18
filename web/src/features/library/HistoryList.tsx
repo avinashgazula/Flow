@@ -30,7 +30,9 @@ export function HistoryList({ rows }: { rows: Row[] }) {
     },
   })
   // Filtering changes which row sits at each index, and so the heights.
-  useLayoutEffect(() => virtualizer.measure(), [virtualizer, rows])
+  useLayoutEffect(() => {
+    virtualizer.measure()
+  }, [virtualizer, rows])
 
   return (
     <div ref={ref} className={s.historyList} style={{ height: virtualizer.getTotalSize() }}>

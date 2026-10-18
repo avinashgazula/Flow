@@ -24,7 +24,9 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   const isFavourite = useLibrary((l) => l.favourites.some((e) => e.key === key))
   const watched = useLibrary((l) => l.history.some((e) => e.key === key && !e.episode))
 
-  useEffect(() => window.scrollTo(0, 0), [])
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
 
   const play = (episode?: { season: number; episode: number }) => {
     const target = episode ?? (type === 'show' ? (progress?.episode ?? { season: d?.seasons[0]?.number ?? 1, episode: 1 }) : undefined)

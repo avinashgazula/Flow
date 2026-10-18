@@ -21,7 +21,9 @@ const filters = [
 /** Library: what you're watching, saving and have watched. The overview shows a little of each list;
  *  a tile or "See All" opens the whole list (`?list=`), with filters for the long ones. */
 export function LibraryScreen({ list, type, sort }: { list?: LibraryList; type?: MediaType; sort: ListSort }) {
-  useEffect(() => window.scrollTo(0, 0), [list])
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [list])
   return <div className={`page ${s.screen}`}>{list ? <FullList list={list} type={type} sort={sort} /> : <Overview />}</div>
 }
 
