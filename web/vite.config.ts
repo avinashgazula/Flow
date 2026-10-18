@@ -13,8 +13,15 @@ export default defineConfig({
     // The React Compiler memoises components and hooks, so scrolling shelves never re-renders the page.
     babel({ presets: [reactCompilerPreset()] }),
   ],
+  define: {
+    // Shown in error details, so a report says which build it came from.
+    'import.meta.env.VITE_BUILD': JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? 'local'),
+  },
   build: {
     target: 'es2022',
+    // Published maps let the browser's developer tools show real names in a stack trace. The source
+    // is public anyway, and maps load only when the tools are open.
+    sourcemap: true,
     cssMinify: true,
     reportCompressedSize: true,
   },

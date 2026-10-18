@@ -107,17 +107,28 @@ function statusError(url: string, status: number): SourceError {
   return new SourceError(`${host} answered ${status}.`, status)
 }
 
+/** A random UUID. `crypto.randomUUID` only exists on secure (https) pages, so a page reached over
+ *  plain http builds one from `getRandomValues`, which works everywhere. */
+export function uuid(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  const b = crypto.getRandomValues(new Uint8Array(16))
+  b[6] = (b[6]! & 0x0f) | 0x40
+  b[8] = (b[8]! & 0x3f) | 0x80
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('')
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+}
+
 /** One id per browser, sent to Jellyfin and Plex so they list Flow as one device. */
 export function deviceId(): string {
   const key = 'flow.deviceId'
   try {
     const saved = localStorage.getItem(key)
     if (saved) return saved
-    const id = crypto.randomUUID()
+    const id = uuid()
     localStorage.setItem(key, id)
     return id
   } catch {
-    return (memoryId ??= typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Math.random()).slice(2))
+    return (memoryId ??= uuid())
   }
 }
 let memoryId: string | undefined

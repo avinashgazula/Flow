@@ -4,7 +4,7 @@
 
 import type { ServerConfig } from '../store/settings'
 import type { Capabilities } from './capabilities'
-import { deviceId, deviceName, request, requestJSON, SourceError } from './http'
+import { deviceId, deviceName, request, requestJSON, SourceError, uuid } from './http'
 import { bestMatch, type ServerCandidate } from './match'
 import { parseStream, type ResolutionClass } from './parser'
 import { buildSource } from './rank'
@@ -250,7 +250,7 @@ export function mapMetadata(config: ServerConfig, full: Metadata, caps: Capabili
         directStream: '1',
         directStreamAudio: '1',
         fastSeek: '1',
-        session: crypto.randomUUID(),
+        session: uuid(),
         'X-Plex-Client-Identifier': deviceId(),
         'X-Plex-Platform': 'Chrome',
         'X-Plex-Product': 'Flow',

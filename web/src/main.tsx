@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { routeTree } from './routeTree.gen'
+import { ErrorScreen } from './components/ErrorScreen'
 import { cacheBuster, persister, queryClient } from './lib/queryClient'
 import { settingsStore } from './lib/store/settings'
 import { libraryStore } from './lib/store/library'
@@ -18,6 +19,7 @@ export const router = createRouter({
   // TanStack Query owns freshness; the router just asks it on every preload.
   defaultPreloadStaleTime: 0,
   scrollRestoration: true,
+  defaultErrorComponent: ErrorScreen,
   defaultStructuralSharing: true,
 })
 
@@ -26,6 +28,16 @@ declare module '@tanstack/react-router' {
     router: typeof router
   }
 }
+
+// A page opened before a deploy asks for code chunks that no longer exist: load the new build once
+// rather than showing an error.
+window.addEventListener('vite:preloadError', (event) => {
+  if (sessionStorage.getItem('flow.reloadedForDeploy')) return
+  sessionStorage.setItem('flow.reloadedForDeploy', '1')
+  event.preventDefault()
+  location.reload()
+})
+window.addEventListener('load', () => setTimeout(() => sessionStorage.removeItem('flow.reloadedForDeploy'), 10_000))
 
 // Sample data comes with a lived-in library, as on the other platforms.
 if (settingsStore.get().demo && Object.keys(libraryStore.get().progress).length === 0 && libraryStore.get().watchlist.length === 0) {

@@ -197,7 +197,6 @@
 }
 .connectingTitle {
   font: 800 clamp(34px, 4.6vw, 64px) / 0.98 var(--font-condensed);
-  font-stretch: 75%;
   letter-spacing: -0.025em;
   text-wrap: balance;
   text-shadow: 0 2px 30px rgb(0 0 0 / 0.5);

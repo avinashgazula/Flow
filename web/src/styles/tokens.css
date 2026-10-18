@@ -28,10 +28,11 @@
   --gold: rgb(245 204 107);
   --over-picture: rgb(0 0 0 / 0.5);
 
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
-  /* SF is a variable font on Apple devices: font-stretch narrows it to the condensed artwork-title cut. */
-  --font-condensed: -apple-system, BlinkMacSystemFont, "Inter Tight", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  /* Ioskeley Mono (SIL OFL, public/fonts/OFL.txt), subset to the characters Flow shows. The fallbacks
+     are monospaced too, so the swap when it arrives barely moves anything. */
+  --font: "Ioskeley Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-display: var(--font);
+  --font-condensed: "Ioskeley Mono Condensed", "Ioskeley Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   --text-display: clamp(28px, 3.2vw, 40px);
   --text-title: clamp(20px, 2vw, 24px);

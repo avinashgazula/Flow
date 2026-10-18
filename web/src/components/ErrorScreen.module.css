@@ -1,0 +1,41 @@
+.screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--nav-height) + 24px) var(--gutter) 120px;
+}
+.card {
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+.icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--gold);
+}
+.title { font: 700 var(--text-title) / 1.2 var(--font-display); }
+.lede { color: var(--text-secondary); line-height: 1.5; }
+.actions { display: flex; gap: 12px; margin-top: 6px; }
+.details { width: 100%; margin-top: 12px; text-align: left; }
+.details summary { cursor: pointer; color: var(--text-tertiary); font-size: 13px; text-align: center; }
+.details pre {
+  margin: 12px 0;
+  padding: 14px;
+  max-height: 280px;
+  overflow: auto;
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  font: 12px / 1.5 var(--font);
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}

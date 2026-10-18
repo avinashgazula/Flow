@@ -4,7 +4,7 @@
 
 import type { ServerConfig } from '../store/settings'
 import type { Capabilities } from './capabilities'
-import { deviceId, deviceName, requestJSON, SourceError } from './http'
+import { deviceId, deviceName, requestJSON, SourceError, uuid } from './http'
 import { bestMatch, type ServerCandidate } from './match'
 import { isUnsafeFileName, parseStream, titleAndYear, type ResolutionClass } from './parser'
 import { buildSource } from './rank'
@@ -408,7 +408,7 @@ function streamURL(config: ServerConfig, path: string, query: Record<string, str
   return `${config.url}/${path}?${params}`
 }
 
-const playSessionId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID().replace(/-/g, '') : String(Date.now()))
+const playSessionId = () => uuid().replace(/-/g, '')
 
 let names: Intl.DisplayNames | undefined
 function languageName(code: string): string {
