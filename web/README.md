@@ -48,6 +48,16 @@ npm test             # unit tests (Vitest)
 - State that changes often (playback time) lives in refs or the DOM, not in React state that
   re-renders a screen.
 
+## Matroska
+
+Browsers can't play `.mkv`, so `src/lib/remux` does it: a Rust crate (`crates/flow-remux`, 120 KB of
+WebAssembly) demuxes Matroska in a Web Worker, fed by range requests (header, seek index, then
+clusters a few MB at a time), and remuxes it to fragmented MP4 for Media Source Extensions. The page
+only sees `attachMatroska(video, url)`; nothing loads until an MKV is played. The built wasm and its
+JS glue are committed in `src/lib/remux/pkg/`, so the site builds without Rust. After changing the
+crate, run `npm run wasm` (needs Rust with the `wasm32-unknown-unknown` target and `wasm-bindgen-cli`
+0.2.129) and `cargo test` in `crates/flow-remux`.
+
 ## Sample data
 
 `?demo` in the address, or **Explore with Sample Data** on the welcome screen, fills every screen

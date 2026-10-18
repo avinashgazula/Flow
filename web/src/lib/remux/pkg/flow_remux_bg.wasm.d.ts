@@ -1,0 +1,35 @@
+/* tslint:disable */
+/* eslint-disable */
+export const memory: WebAssembly.Memory;
+export const __wbg_remuxer_free: (a: number, b: number) => void;
+export const remuxer_codecString: (a: number, b: number) => void;
+export const remuxer_cueCount: (a: number) => number;
+export const remuxer_cuesBytes: (a: number, b: number) => void;
+export const remuxer_cuesFeed: (a: number, b: number, c: number, d: number, e: number) => void;
+export const remuxer_cuesNeed: (a: number, b: number) => void;
+export const remuxer_delay: (a: number) => number;
+export const remuxer_finish: (a: number) => void;
+export const remuxer_firstCluster: (a: number) => number;
+export const remuxer_fragmentEnd: (a: number) => number;
+export const remuxer_fragmentKey: (a: number) => number;
+export const remuxer_fragmentKind: (a: number) => number;
+export const remuxer_fragmentStart: (a: number) => number;
+export const remuxer_headerError: (a: number, b: number) => void;
+export const remuxer_headerFeed: (a: number, b: number, c: number, d: number) => void;
+export const remuxer_headerJson: (a: number, b: number) => void;
+export const remuxer_headerNeed: (a: number, b: number) => void;
+export const remuxer_initSegment: (a: number, b: number, c: number) => void;
+export const remuxer_loadCues: (a: number, b: number, c: number) => number;
+export const remuxer_new: (a: number) => number;
+export const remuxer_nextFragment: (a: number, b: number) => void;
+export const remuxer_position: (a: number) => number;
+export const remuxer_push: (a: number, b: number, c: number) => void;
+export const remuxer_reset: (a: number, b: number, c: number) => void;
+export const remuxer_seekTarget: (a: number, b: number, c: number) => void;
+export const remuxer_select: (a: number, b: number, c: number) => void;
+export const remuxer_setVideoFloor: (a: number, b: number) => void;
+export const remuxer_takeCues: (a: number, b: number) => void;
+export const remuxer_timingKnown: (a: number) => number;
+export const __wbindgen_add_to_stack_pointer: (a: number) => number;
+export const __wbindgen_export: (a: number, b: number, c: number) => void;
+export const __wbindgen_export2: (a: number, b: number) => number;

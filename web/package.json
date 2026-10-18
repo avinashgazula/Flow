@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc",
     "test": "vitest run",
-    "budget": "node scripts/check-budget.mjs"
+    "budget": "node scripts/check-budget.mjs",
+    "wasm": "sh crates/flow-remux/build-wasm.sh"
   },
   "dependencies": {
     "@tanstack/query-async-storage-persister": "^5.104.4",

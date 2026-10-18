@@ -1,0 +1,23 @@
+[package]
+name = "flow-remux"
+version = "0.1.0"
+edition = "2021"
+description = "Matroska demuxer and fragmented-MP4 muxer for Media Source Extensions, compiled to WebAssembly"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Pinned to the CLI that generates the JS glue (wasm-bindgen 0.2.129): the two must match exactly.
+wasm-bindgen = { version = "=0.2.129", default-features = false, features = ["std"] }
+
+[profile.release]
+# Measured on a 76 MB H.264/AAC file in Node: opt-level z, s and 3 all remux at about 1 GB/s (memory
+# copies dominate), so the smallest binary wins: 120 KB for z, 134 KB for s, 165 KB for 3.
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
