@@ -11,11 +11,28 @@
     <link rel="apple-touch-icon" href="%BASE_URL%icon-192.png" />
     <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
     <!-- The two hosts every first screen needs: open their connections while the script downloads. -->
-    <!-- The two weights the first screen sets most of its text in. -->
-    <link rel="preload" href="%BASE_URL%fonts/ioskeley-mono-regular.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="%BASE_URL%fonts/ioskeley-mono-semibold.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
     <link rel="preconnect" href="https://api.themoviedb.org" crossorigin />
+    <script>
+      // The typeface is a setting. Setting it on <html> now means the first paint is already in the
+      // chosen font, and the preload starts its download with the page's code. System is the device's
+      // own font: nothing to preload. Keep the names in step with Settings['font'].
+      try {
+        var files = { inter: 'inter-latin-wght-normal', geist: 'geist-latin-wght-normal', manrope: 'manrope-latin-wght-normal', ioskeley: 'ioskeley-mono-regular' }
+        var font = (JSON.parse(localStorage.getItem('flow.settings.v1') || 'null') || {}).font
+        if (!files.hasOwnProperty(font)) font = 'system'
+        document.documentElement.dataset.font = font
+        if (font !== 'system') {
+          var p = document.createElement('link')
+          p.rel = 'preload'
+          p.as = 'font'
+          p.type = 'font/woff2'
+          p.crossOrigin = ''
+          p.href = '%BASE_URL%fonts/' + files[font] + '.woff2'
+          document.head.appendChild(p)
+        }
+      } catch (e) {}
+    </script>
     <script>
       // The hero image is the largest thing on Home. Its address from the last visit is known before
       // any script loads, so the download starts now, alongside the app's code, not after it.

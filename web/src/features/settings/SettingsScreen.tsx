@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { AboutSection } from './AboutSection'
 import { AddonsSection } from './AddonsSection'
+import { AppearanceSection } from './AppearanceSection'
 import { CatalogueSection } from './CatalogueSection'
 import { DataSection } from './DataSection'
 import { PlaybackSection } from './PlaybackSection'
@@ -8,6 +9,7 @@ import { ServersSection } from './ServersSection'
 import s from './SettingsScreen.module.css'
 
 const sections: { id: string; title: string; body: ReactNode }[] = [
+  { id: 'appearance', title: 'Appearance', body: <AppearanceSection /> },
   { id: 'catalogue', title: 'Catalogue', body: <CatalogueSection /> },
   { id: 'addons', title: 'Stream Add-ons', body: <AddonsSection /> },
   { id: 'servers', title: 'Media Servers', body: <ServersSection /> },

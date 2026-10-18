@@ -25,6 +25,10 @@ export interface ServerConfig {
   machineId?: string
 }
 
+/** The typefaces Settings offers. The ids are also the keys in index.html's pre-paint script and the
+ *  `[data-font]` rules in styles/tokens.css. */
+export type FontChoice = 'system' | 'inter' | 'geist' | 'manrope' | 'ioskeley'
+
 export interface Settings {
   /** TMDB v3 API key or v4 read-access token. */
   tmdbKey: string
@@ -42,6 +46,8 @@ export interface Settings {
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
   /** The picker offers the source a title was last played from first. */
   rememberLastSource: boolean
+  /** The typeface the whole site is set in; System is the device's own and downloads nothing. */
+  font: FontChoice
 }
 
 const browserLanguage = typeof navigator === 'undefined' ? 'en-US' : navigator.language || 'en-US'
@@ -59,6 +65,7 @@ export const defaultSettings: Settings = {
   autoplayNext: true,
   preferredQuality: '1080p',
   rememberLastSource: true,
+  font: 'system',
 }
 
 export const settingsStore = createStore<Settings>('settings', defaultSettings)

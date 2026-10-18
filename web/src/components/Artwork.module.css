@@ -19,6 +19,7 @@
   padding: 12px;
   text-align: center;
   font: 800 15px / 1.15 var(--font-condensed);
+  font-stretch: var(--stretch-condensed);
   color: var(--text-secondary);
   letter-spacing: -0.01em;
 }

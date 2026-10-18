@@ -1,49 +1,5 @@
 @import './tokens.css';
-
-@font-face {
-  font-family: "Ioskeley Mono";
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-  src: url("/fonts/ioskeley-mono-regular.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Ioskeley Mono";
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-  src: url("/fonts/ioskeley-mono-medium.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Ioskeley Mono";
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-  src: url("/fonts/ioskeley-mono-semibold.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Ioskeley Mono";
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-  src: url("/fonts/ioskeley-mono-bold.woff2") format("woff2");
-}
-/* Heavier text (800) uses Bold; artwork titles use the semi-condensed cut. */
-@font-face {
-  font-family: "Ioskeley Mono";
-  font-weight: 800 900;
-  font-style: normal;
-  font-display: swap;
-  src: url("/fonts/ioskeley-mono-bold.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Ioskeley Mono Condensed";
-  font-weight: 700 900;
-  font-style: normal;
-  font-display: swap;
-  src: url("/fonts/ioskeley-mono-condensed-extrabold.woff2") format("woff2");
-}
-
+@import './fonts.css';
 
 *, *::before, *::after { box-sizing: border-box; }
 

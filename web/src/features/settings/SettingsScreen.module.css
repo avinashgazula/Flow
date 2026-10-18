@@ -197,6 +197,48 @@ img.logo { padding: 4px; }
 }
 .codeValue { font: 700 32px / 1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.18em; color: var(--text); }
 
+/* Typeface cards: a sample in the card's own font above its name. The chosen card carries a white ring
+   and a check, so it doesn't rest on colour alone. */
+.faces { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: var(--space-s); }
+.face {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+  padding: var(--space-m);
+  border-radius: var(--radius-tile);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  cursor: pointer;
+  transition: background-color var(--dur-fade) ease, box-shadow var(--dur-fade) ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.face:hover { background: var(--surface-strong); }
+.face[data-selected] { background: var(--surface-strong); box-shadow: inset 0 0 0 2px #fff; }
+.face:has(:focus-visible) { outline: 2px solid #fff; outline-offset: 3px; }
+.sample { display: flex; flex-direction: column; gap: 6px; flex: 1; padding-right: 22px; color: var(--text); }
+.sampleTitle { font: 800 26px / 1.05 var(--font-condensed); font-stretch: var(--stretch-condensed); letter-spacing: -0.02em; }
+.sampleText { font: 400 13px / 1.4 var(--font); color: var(--text-secondary); text-wrap: pretty; }
+.faceText { display: flex; flex-direction: column; gap: 2px; padding-top: var(--space-s); border-top: 1px solid var(--hairline); }
+.faceName { font: 600 var(--text-headline) / 1.3 var(--font); }
+.faceDetail { font-size: 13px; line-height: 1.35; color: var(--text-secondary); text-wrap: pretty; }
+.faceCheck {
+  position: absolute;
+  top: var(--space-m);
+  right: var(--space-m);
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  color: #000;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity var(--dur-fade) ease, transform var(--dur-snappy) var(--ease-snappy);
+}
+.face[data-selected] .faceCheck { opacity: 1; transform: none; }
+
 .choice {
   display: flex;
   align-items: center;

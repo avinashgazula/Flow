@@ -28,12 +28,6 @@
   --gold: rgb(245 204 107);
   --over-picture: rgb(0 0 0 / 0.5);
 
-  /* Ioskeley Mono (SIL OFL, public/fonts/OFL.txt), subset to the characters Flow shows. The fallbacks
-     are monospaced too, so the swap when it arrives barely moves anything. */
-  --font: "Ioskeley Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --font-display: var(--font);
-  --font-condensed: "Ioskeley Mono Condensed", "Ioskeley Mono", ui-monospace, "SF Mono", Menlo, monospace;
-
   --text-display: clamp(28px, 3.2vw, 40px);
   --text-title: clamp(20px, 2vw, 24px);
   --text-section: clamp(18px, 1.6vw, 21px);
@@ -61,4 +55,44 @@
     --section: 28px;
     --nav-height: 56px;
   }
+}
+
+/* The typeface. System (the default) is the device's own font; the others are chosen in Settings >
+   Appearance and set on <html data-font> before first paint (index.html) and on change (main.tsx).
+   The rule matches any element, so Settings can preview a face inside its card. Each web font lists a
+   metric-matched stand-in (fonts.css) ahead of the system stack, so the swap barely moves anything.
+   --stretch-condensed is for artwork titles: SF is a variable font, so 75% asks for its condensed
+   width on Apple devices; other fonts have no such cut and ignore it. It sits after each `font:`
+   shorthand, which would reset it. */
+:root,
+[data-font='system'] {
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-display: var(--font);
+  --font-condensed: var(--font);
+  --stretch-condensed: 75%;
+}
+[data-font='inter'] {
+  --font: "Inter Variable", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-display: var(--font);
+  --font-condensed: var(--font);
+  --stretch-condensed: 100%;
+}
+[data-font='geist'] {
+  --font: "Geist Variable", "Geist Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-display: var(--font);
+  --font-condensed: var(--font);
+  --stretch-condensed: 100%;
+}
+[data-font='manrope'] {
+  --font: "Manrope Variable", "Manrope Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-display: var(--font);
+  --font-condensed: var(--font);
+  --stretch-condensed: 100%;
+}
+/* Ioskeley Mono (SIL OFL). The fallbacks are monospaced too. */
+[data-font='ioskeley'] {
+  --font: "Ioskeley Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-display: var(--font);
+  --font-condensed: "Ioskeley Mono Condensed", "Ioskeley Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --stretch-condensed: 100%;
 }

@@ -1,6 +1,7 @@
 import { lastSourceStore } from '../../lib/sources/lastSource'
 import { defaultSettings, settingsStore, type Settings } from '../../lib/store/settings'
 import { libraryStore, type Library } from '../../lib/store/library'
+import { typefaces } from './options'
 
 /* Export and import of everything Flow keeps in this browser, as one JSON file. */
 
@@ -30,6 +31,7 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   autoplayNext: (v) => typeof v === 'boolean',
   preferredQuality: (v) => ['2160p', '1080p', '720p', 'any'].includes(v as string),
   rememberLastSource: (v) => typeof v === 'boolean',
+  font: (v) => typefaces.some((f) => f.value === v),
 }
 
 const libraryTypes: { [K in keyof Library]: (v: unknown) => boolean } = {

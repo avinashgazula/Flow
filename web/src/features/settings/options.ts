@@ -1,3 +1,5 @@
+import type { FontChoice } from '../../lib/store/settings'
+
 /* The choices the pickers offer. TMDB takes any ISO language-region pair; these are the common ones,
    and a saved value that isn't listed is added so it never silently changes. */
 
@@ -30,3 +32,12 @@ export const subtitleChoices: { value: string; label: string }[] = [
 export function withCurrent(list: { value: string; label: string }[], current: string) {
   return list.some((o) => o.value === current) ? list : [{ value: current, label: current }, ...list]
 }
+
+/** The typefaces Appearance offers, in the order shown. The sample text is set in each one. */
+export const typefaces: { value: FontChoice; label: string; detail: string }[] = [
+  { value: 'system', label: 'System', detail: 'SF Pro on Apple devices, Segoe on Windows. Nothing to download.' },
+  { value: 'inter', label: 'Inter', detail: 'Clean and neutral, made for screens.' },
+  { value: 'geist', label: 'Geist', detail: 'Precise and modern.' },
+  { value: 'manrope', label: 'Manrope', detail: 'Rounded and friendly.' },
+  { value: 'ioskeley', label: 'Ioskeley Mono', detail: 'Monospaced, with character.' },
+]

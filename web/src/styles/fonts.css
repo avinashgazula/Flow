@@ -1,0 +1,131 @@
+/* The typefaces Settings > Appearance offers. Declaring a face downloads nothing: the browser fetches a
+   file only when text on the page is set in it, and tokens.css points --font at one family per choice
+   (html[data-font]). So a visitor downloads the one font they chose, and System downloads none.
+   Licences and sources: public/fonts/README.txt. Only the Latin subsets are hosted. */
+
+@font-face {
+  font-family: "Inter Variable";
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist Variable";
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/geist-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Manrope Variable";
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/manrope-latin-wght-normal.woff2") format("woff2");
+}
+
+/* Ioskeley Mono (SIL OFL), subset to the characters Flow shows. Heavier text (800) uses Bold; artwork
+   titles use the semi-condensed cut. */
+@font-face {
+  font-family: "Ioskeley Mono";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/ioskeley-mono-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Ioskeley Mono";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/ioskeley-mono-medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Ioskeley Mono";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/ioskeley-mono-semibold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Ioskeley Mono";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/ioskeley-mono-bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Ioskeley Mono";
+  font-weight: 800 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/ioskeley-mono-bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Ioskeley Mono Condensed";
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/ioskeley-mono-condensed-extrabold.woff2") format("woff2");
+}
+
+/* Stand-ins for the web fonts while they load: Arial, scaled and re-spaced so its lines are as wide
+   and as tall as the real font's. They're local() faces, so they cost no download, and where Arial
+   isn't installed the rest of the stack takes over. Numbers: average advance of the lowercase
+   alphabet weighted by English letter frequency against Arial's, and the font's own ascent and
+   descent divided by that scale. */
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial");
+  font-weight: 100 599;
+  size-adjust: 107.3%;
+  ascent-override: 90.3%;
+  descent-override: 22.5%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial Bold"), local("Arial-BoldMT");
+  font-weight: 600 900;
+  size-adjust: 107.3%;
+  ascent-override: 90.3%;
+  descent-override: 22.5%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Geist Fallback";
+  src: local("Arial");
+  font-weight: 100 599;
+  size-adjust: 105.5%;
+  ascent-override: 95.3%;
+  descent-override: 28%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Geist Fallback";
+  src: local("Arial Bold"), local("Arial-BoldMT");
+  font-weight: 600 900;
+  size-adjust: 105.5%;
+  ascent-override: 95.3%;
+  descent-override: 28%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Manrope Fallback";
+  src: local("Arial");
+  font-weight: 100 599;
+  size-adjust: 103.6%;
+  ascent-override: 102.9%;
+  descent-override: 29%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Manrope Fallback";
+  src: local("Arial Bold"), local("Arial-BoldMT");
+  font-weight: 600 900;
+  size-adjust: 103.6%;
+  ascent-override: 102.9%;
+  descent-override: 29%;
+  line-gap-override: 0%;
+}

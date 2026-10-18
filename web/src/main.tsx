@@ -29,6 +29,14 @@ declare module '@tanstack/react-router' {
   }
 }
 
+// The typeface is an attribute on <html>: index.html sets it before first paint, and a change in
+// Settings (here or in another tab) follows at once.
+const applyFont = () => {
+  document.documentElement.dataset.font = settingsStore.get().font
+}
+applyFont()
+settingsStore.subscribe(applyFont)
+
 // A page opened before a deploy asks for code chunks that no longer exist: load the new build once
 // rather than showing an error.
 window.addEventListener('vite:preloadError', (event) => {
