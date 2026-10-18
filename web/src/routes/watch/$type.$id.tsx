@@ -1,4 +1,5 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
+import { Player } from '../../features/player/Player'
 import { mediaTypeFromPath } from '../../lib/tmdb/types'
 
 export interface WatchSearch {
@@ -22,9 +23,11 @@ export const Route = createFileRoute('/watch/$type/$id')({
     },
     stringify: (p) => ({ type: p.type, id: String(p.id) }),
   },
-  component: () => (
-    <div className="page">
-      <h1 className="page-title">Sources</h1>
-    </div>
-  ),
+  component: WatchRoute,
 })
+
+function WatchRoute() {
+  const { type, id } = Route.useParams()
+  const { season, episode, source } = Route.useSearch()
+  return <Player type={type} id={id} season={season} episode={episode} source={source} />
+}

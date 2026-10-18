@@ -1,0 +1,423 @@
+/* The player's chrome, after IOSPlayerControls: glass capsules and circles tinted for sitting on a
+   picture, a scrim only where the controls are, and nothing that takes a click it can't use. */
+
+.controls {
+  /* Room the bottom row and scrubber take, so panels, Up Next and subtitles sit just above it. */
+  --bottom-band: 128px;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: calc(var(--inset-top) + 12px) calc(var(--inset-right) + var(--edge)) calc(var(--inset-bottom) + 6px) calc(var(--inset-left) + var(--edge));
+  /* The layer itself lets every tap through to the picture; only real controls take them. */
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.22s ease, visibility 0s linear 0.22s;
+}
+.controls[data-visible] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.18s ease, visibility 0s;
+}
+.controls[data-visible] .interactive { pointer-events: auto; }
+.scrim[data-visible] { opacity: 1; transition-duration: 0.18s; }
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+  background: linear-gradient(180deg, rgb(0 0 0 / 0.55) 0%, transparent 22%, transparent 55%, rgb(0 0 0 / 0.8) 100%);
+}
+
+.glass, .cluster, .round, .panel, .shelf, .upNext, .tip {
+  background-color: var(--over-picture);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+.cluster {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-radius: 999px;
+}
+.clusterButton {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  color: #fff;
+  transition: background-color var(--dur-fade) ease, transform var(--dur-snappy) var(--ease-snappy);
+}
+.clusterButton:hover { background: rgb(255 255 255 / 0.12); }
+.clusterButton:active { transform: scale(0.92); background: rgb(255 255 255 / 0.18); }
+.clusterButton[aria-pressed='true'] { background: rgb(255 255 255 / 0.22); }
+
+.volume { padding-right: 16px; }
+.percent {
+  width: 44px;
+  text-align: right;
+  font: 600 14px / 1 var(--font);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 150px;
+  height: 30px;
+  margin: 0 0 0 10px;
+  background: transparent;
+  cursor: pointer;
+}
+.slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #fff calc(var(--level) * 100%), rgb(255 255 255 / 0.22) 0);
+}
+.slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #fff calc(var(--level) * 100%), rgb(255 255 255 / 0.22) 0);
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 36px;
+  height: 24px;
+  margin-top: -9px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+}
+.slider::-moz-range-thumb {
+  width: 36px;
+  height: 24px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+}
+.slider:focus-visible { outline: none; }
+.slider:focus-visible::-webkit-slider-thumb { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* The transport, in the middle. */
+.transport {
+  align-self: center;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 48px;
+}
+.round {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  transition: transform var(--dur-snappy) var(--ease-snappy), background-color var(--dur-fade) ease;
+}
+.round:hover { background-color: rgb(40 40 44 / 0.62); }
+.round:active { transform: scale(0.92); }
+.skip { width: 60px; height: 60px; }
+.play { width: 84px; height: 84px; }
+.play svg { width: 34px; height: 34px; }
+
+/* The title, the panel buttons and the scrubber, along the bottom. */
+.bottom { display: flex; flex-direction: column; }
+.bottomRow { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.titles { min-width: 0; text-shadow: 0 1px 8px rgb(0 0 0 / 0.5); }
+.title {
+  font: 600 20px / 1.2 var(--font-display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.line {
+  margin-top: 3px;
+  font: 500 13px / 1.25 var(--font);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scrubber { margin-top: 10px; }
+.track {
+  position: relative;
+  height: 24px;
+  cursor: pointer;
+  touch-action: none;
+}
+.track:focus-visible { outline: none; }
+.track:focus-visible .rail { height: 8px; }
+.rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 4px;
+  background: rgb(255 255 255 / 0.22);
+  overflow: hidden;
+  transition: height var(--dur-snappy) var(--ease-snappy);
+}
+.track:hover .rail, .track[data-dragging] .rail { height: 8px; }
+.buffered, .played {
+  position: absolute;
+  inset: 0;
+  transform: scaleX(0);
+  transform-origin: left;
+  will-change: transform;
+}
+.buffered { background: rgb(255 255 255 / 0.32); }
+.played { background: #fff; }
+.tip {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 4px);
+  padding: 5px 9px;
+  border-radius: 8px;
+  font: 600 12px / 1 var(--font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.tip[data-on] { opacity: 1; }
+.times {
+  display: flex;
+  justify-content: space-between;
+  font: 600 12px / 1 var(--font);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* Options and Subtitles & Audio: one card above the buttons that open it. */
+.panel {
+  position: absolute;
+  right: calc(var(--inset-right) + var(--edge));
+  bottom: calc(var(--inset-bottom) + var(--bottom-band));
+  width: min(380px, calc(100% - 32px));
+  max-height: calc(100% - var(--inset-top) - var(--inset-bottom) - var(--bottom-band) - 72px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--hairline), 0 12px 40px rgb(0 0 0 / 0.3);
+  transform-origin: bottom right;
+  animation: panel var(--dur-snappy) var(--ease-snappy);
+}
+@keyframes panel { from { opacity: 0; transform: scale(0.94); } }
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px 12px;
+  font: 600 var(--text-headline) / 1.2 var(--font);
+  box-shadow: inset 0 -1px var(--hairline);
+  text-align: left;
+}
+.panelScroll { overflow-y: auto; padding: 6px 0; overscroll-behavior: contain; scrollbar-width: thin; }
+.groupTitle {
+  padding: 12px 16px 4px;
+  font: 600 var(--text-micro) / 1 var(--font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.row {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px 16px;
+  text-align: left;
+  color: #fff;
+  transition: background-color 0.15s ease;
+}
+.row:hover { background: var(--surface); }
+.row:active { background: var(--surface-strong); }
+.row:disabled { opacity: 0.45; cursor: default; }
+.row + .row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 0;
+  height: 1px;
+  background: var(--hairline);
+}
+.row:has(.rowIcon) + .row::before { left: 50px; }
+.rowIcon { width: 22px; display: grid; place-items: center; flex: none; }
+.rowText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rowTitle { font: 400 var(--text-body) / 1.3 var(--font); overflow-wrap: anywhere; }
+.rowTitle[data-checked] { font-weight: 600; }
+.rowDetail {
+  font: 400 var(--text-caption) / 1.3 var(--font);
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.rowValue { color: var(--text-secondary); font-size: var(--text-body); }
+.chevron { color: var(--text-tertiary); display: grid; }
+
+/* The season's episodes, over the scrubber. */
+.shelf {
+  position: absolute;
+  left: calc(var(--inset-left) + var(--edge));
+  right: calc(var(--inset-right) + var(--edge));
+  bottom: calc(var(--inset-bottom) + var(--bottom-band));
+  padding: 14px 0 16px;
+  border-radius: 26px;
+  box-shadow: inset 0 0 0 1px var(--hairline), 0 12px 40px rgb(0 0 0 / 0.3);
+  animation: shelf var(--dur-snappy) var(--ease-snappy);
+}
+@keyframes shelf { from { opacity: 0; transform: translateY(16px); } }
+.shelfHeader { display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 20px; }
+.shelfHeader h2 { font: 600 var(--text-headline) / 1.2 var(--font); }
+.shelfRow {
+  display: flex;
+  gap: 14px;
+  padding: 10px 20px 2px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding: 0 20px;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.shelfRow::-webkit-scrollbar { display: none; }
+.shelfRow > li { flex: none; width: 200px; scroll-snap-align: start; }
+.shelfGhost { height: 150px; border-radius: 12px; background: var(--surface); }
+.episodeCard { width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left; color: #fff; }
+.episodeCard:disabled { opacity: 0.45; cursor: default; }
+.episodeStill {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform var(--dur-snappy) var(--ease-snappy);
+}
+.episodeCard:hover .episodeStill { transform: scale(1.03); }
+.episodeCard[aria-current] .episodeStill { box-shadow: 0 0 0 2.5px #fff; overflow: visible; }
+.episodeCard[aria-current] .episodeStill > :first-child { border-radius: 12px; }
+.fill { position: absolute; inset: 0; width: 100%; height: 100%; }
+.nowPlaying {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--over-picture);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  font: 600 var(--text-micro) / 1 var(--font);
+}
+.episodeName { font: 600 14px / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.episodeMeta { font: 400 var(--text-caption) / 1.2 var(--font); color: var(--text-secondary); min-height: 1.2em; }
+
+/* Up Next: bottom right, above the scrubber while the controls show. */
+.upNext {
+  /* Up Next sits beside Controls, not inside it, so it needs the band's height of its own. */
+  --bottom-band: 128px;
+  position: absolute;
+  z-index: 4;
+  right: calc(var(--inset-right) + var(--edge));
+  bottom: calc(var(--inset-bottom) + 36px);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px 10px 10px;
+  border-radius: 22px;
+  transition: transform var(--dur-gentle) var(--ease-gentle);
+  animation: upNext var(--dur-gentle) var(--ease-gentle);
+}
+.upNext[data-lifted] { transform: translateY(calc(-1 * (var(--bottom-band) - 36px + 6px))); }
+@keyframes upNext { from { opacity: 0; translate: 24px 0; } }
+.upNextStill {
+  position: relative;
+  width: 136px;
+  aspect-ratio: 16 / 9;
+  flex: none;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform var(--dur-snappy) var(--ease-snappy);
+}
+.upNextStill:hover { transform: scale(1.03); }
+.upNextStill:active { transform: scale(0.97); }
+.upNextRing {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.28);
+}
+.upNextRing > * { grid-area: 1 / 1; }
+.upNextRing circle { transition: stroke-dashoffset 1s linear; }
+.upNextText { width: 168px; display: flex; flex-direction: column; gap: 3px; }
+.upNextLabel {
+  font: 600 var(--text-micro) / 1.2 var(--font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.upNextName {
+  font: 600 15px / 1.25 var(--font);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.upNextMeta { font: 400 var(--text-caption) / 1.25 var(--font); color: var(--text-secondary); }
+.upNextCancel {
+  align-self: flex-start;
+  margin-top: 4px;
+  font: 600 var(--text-caption) / 1 var(--font);
+  color: rgb(255 255 255 / 0.85);
+}
+.upNextCancel:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Phones and short windows: tighter, and the transport shrinks to fit a landscape iPhone. */
+@media (max-width: 720px), (max-height: 500px) {
+  .controls { --bottom-band: 112px; }
+  .title { font-size: 17px; }
+  .transport { gap: 36px; }
+  .clusterButton { width: 40px; height: 40px; }
+  .slider { width: 110px; }
+}
+@media (max-height: 500px) {
+  .controls { padding-top: calc(var(--inset-top) + 8px); }
+  .skip { width: 52px; height: 52px; }
+  .play { width: 68px; height: 68px; }
+  .play svg { width: 28px; height: 28px; }
+  .upNext { --bottom-band: 112px; padding: 8px 12px 8px 8px; gap: 10px; }
+  .upNextStill { width: 96px; }
+  .upNextText { width: 140px; }
+  /* A panel is as tall as the picture here, so the transport steps aside rather than sit behind it. */
+  .controls[data-panel] .transport { visibility: hidden; }
+}
+/* An iPhone held upright has no room for the volume capsule; its side buttons do the job. */
+@media (max-width: 520px) and (orientation: portrait) {
+  .volume { display: none; }
+  .transport { gap: 28px; }
+}

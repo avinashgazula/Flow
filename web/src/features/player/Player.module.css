@@ -1,0 +1,290 @@
+/* The watch page fills the viewport, picture edge to edge. Controls keep clear of the notch and
+   home indicator through the safe-area insets, which every layer reads from these variables. */
+.root {
+  --inset-top: env(safe-area-inset-top, 0px);
+  --inset-right: env(safe-area-inset-right, 0px);
+  --inset-bottom: env(safe-area-inset-bottom, 0px);
+  --inset-left: env(safe-area-inset-left, 0px);
+  --edge: 28px;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  height: 100dvh;
+  overflow: hidden;
+  background: #000;
+  color: var(--text);
+  isolation: isolate;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.root[data-idle] { cursor: none; }
+@media (max-width: 720px), (max-height: 500px) {
+  .root { --edge: 16px; }
+}
+
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.tapLayer { position: absolute; inset: 0; z-index: 1; }
+
+/* Subtitles: large, white and quietly shadowed, above the picture and below the controls. */
+.subtitles {
+  position: absolute;
+  z-index: 2;
+  left: calc(var(--inset-left) + 6%);
+  right: calc(var(--inset-right) + 6%);
+  bottom: calc(var(--inset-bottom) + max(5.5vh, 28px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12em;
+  text-align: center;
+  pointer-events: none;
+  font: 600 clamp(19px, 2.4vw + 0.6vh, 46px) / 1.22 var(--font);
+  letter-spacing: 0.005em;
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.95), 0 0 6px rgb(0 0 0 / 0.55), 0 2px 14px rgb(0 0 0 / 0.35);
+  text-wrap: balance;
+  transition: transform var(--dur-snappy) var(--ease-snappy);
+}
+.subtitles[data-lifted] { transform: translateY(calc(-1 * var(--lift, 96px))); }
+.subtitleLine { max-width: 100%; }
+.subtitleLine b { font-weight: 800; }
+@media (max-height: 500px) {
+  .subtitles { --lift: 78px; font-size: clamp(17px, 2vw + 1vh, 28px); bottom: calc(var(--inset-bottom) + 16px); }
+}
+
+/* Keyboard feedback: a disc in the middle that's gone in half a second. */
+.feedback {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: feedback 0.6s var(--ease-gentle) forwards;
+}
+.feedbackDisc {
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--over-picture);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.feedbackText {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--over-picture);
+  font: 600 14px / 1.2 var(--font);
+  font-variant-numeric: tabular-nums;
+}
+@keyframes feedback {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.86); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.06); }
+}
+
+/* A double-tap skip, at the side that was tapped. */
+.sideFlash {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  width: 150px;
+  height: 150px;
+  margin-top: -75px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.06) 70%, transparent);
+  font: 600 13px / 1 var(--font);
+  pointer-events: none;
+  animation: side 0.65s ease forwards;
+}
+.sideFlash[data-side='left'] { left: calc(var(--inset-left) + 7%); }
+.sideFlash[data-side='right'] { right: calc(var(--inset-right) + 7%); }
+@keyframes side {
+  0% { opacity: 0; transform: scale(0.9); }
+  20%, 70% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; }
+}
+
+.spinner {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  border: 3px solid rgb(255 255 255 / 0.22);
+  border-top-color: #fff;
+  pointer-events: none;
+  animation: spin 0.8s linear infinite, appear 0.3s 0.4s both;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes appear { from { opacity: 0; } }
+
+/* Connecting */
+.connecting {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: #000;
+  overflow: hidden;
+  transition: opacity 0.4s ease;
+}
+.connecting[data-leaving] { opacity: 0; pointer-events: none; }
+.connectingArt {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform-origin: 50% 40%;
+  transition: opacity 0.6s ease;
+  /* A slow push in, like a camera settling on the first shot. Reduced motion stills it (global rule). */
+  animation: drift 24s ease-out forwards;
+}
+.connectingArt[data-loaded] { opacity: 0.42; }
+@keyframes drift { to { transform: scale(1.06); } }
+@media (prefers-reduced-motion: reduce) {
+  .connectingArt { animation: none; }
+}
+.connectingShade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(0 0 0 / 0.35) 0%, transparent 38%, transparent 55%, rgb(0 0 0 / 0.85) 100%);
+}
+.connectingBody {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(var(--inset-top) + 72px) calc(var(--inset-right) + var(--space-xl)) calc(var(--inset-bottom) + var(--space-xl)) calc(var(--inset-left) + var(--space-xl));
+  text-align: center;
+}
+.connectingCentre {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-m);
+  max-width: min(620px, 100%);
+}
+.connectingTitle {
+  font: 800 clamp(34px, 4.6vw, 64px) / 0.98 var(--font-condensed);
+  font-stretch: 75%;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  text-shadow: 0 2px 30px rgb(0 0 0 / 0.5);
+}
+.connectingLogo { max-width: min(380px, 80vw); max-height: 104px; object-fit: contain; filter: drop-shadow(0 4px 20px rgb(0 0 0 / 0.5)); }
+.connectingLine { font: 500 var(--text-body) / 1.3 var(--font); color: var(--text-secondary); }
+.hairline, .hairlineIdle {
+  position: relative;
+  width: 160px;
+  height: 3px;
+  margin-top: var(--space-s);
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.18);
+  overflow: hidden;
+}
+.hairline span {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(255 255 255 / 0.9);
+  transform-origin: left;
+  transition: transform var(--dur-gentle) var(--ease-gentle);
+}
+.hairlineIdle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: rgb(255 255 255 / 0.75);
+  animation: idle 1.4s var(--ease-gentle) infinite;
+}
+@keyframes idle {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+.connectingFoot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-s);
+  min-height: 24px;
+}
+.slow { font: 500 var(--text-caption) / 1.3 var(--font); color: var(--text-secondary); animation: appear var(--dur-gentle) ease; }
+.from { font: 500 var(--text-caption) / 1.3 var(--font); color: var(--text-tertiary); }
+.resume {
+  width: min(330px, 100%);
+  display: grid;
+  gap: var(--space-s);
+  margin-bottom: var(--space-l);
+  animation: rise var(--dur-gentle) var(--ease-gentle);
+}
+@keyframes rise { from { opacity: 0; transform: scale(0.96); } }
+.connectingClose {
+  position: absolute;
+  top: calc(var(--inset-top) + 16px);
+  left: calc(var(--inset-left) + var(--edge));
+}
+@media (max-height: 500px) {
+  .connectingBody { padding-top: calc(var(--inset-top) + 24px); }
+  .connectingTitle { font-size: clamp(28px, 4vw, 44px); }
+  .resume { margin-bottom: 0; }
+}
+
+/* Couldn't play */
+.error {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-m);
+  padding: calc(var(--inset-top) + var(--space-xl)) calc(var(--inset-right) + var(--space-xl)) calc(var(--inset-bottom) + var(--space-xl)) calc(var(--inset-left) + var(--space-xl));
+  background: rgb(0 0 0 / 0.92);
+  text-align: center;
+  animation: appear var(--dur-fade) ease;
+}
+.errorIcon { color: var(--gold); }
+.errorTitle { font: 700 var(--text-title) / 1.2 var(--font-display); }
+.errorMessage { max-width: 460px; color: var(--text-secondary); font-size: var(--text-body); line-height: 1.45; text-wrap: pretty; }
+.errorActions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-s); margin-top: var(--space-xs); }
+.errorDetail {
+  margin-top: var(--space-xs);
+  font: 500 var(--text-micro) / 1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-tertiary);
+  -webkit-user-select: text;
+  user-select: text;
+}
