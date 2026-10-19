@@ -1,5 +1,7 @@
 node_modules
 dist
+# Downloads and build trees of npm run audio-wasm.
+/build
 crates/*/target
 *.local
 *.tsbuildinfo

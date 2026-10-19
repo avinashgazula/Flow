@@ -10,7 +10,8 @@
     "typecheck": "tsc",
     "test": "vitest run",
     "budget": "node scripts/check-budget.mjs",
-    "wasm": "sh crates/flow-remux/build-wasm.sh"
+    "wasm": "sh crates/flow-remux/build-wasm.sh",
+    "audio-wasm": "bash scripts/build-audio-decoders.sh"
   },
   "dependencies": {
     "@tanstack/query-async-storage-persister": "^5.104.4",
