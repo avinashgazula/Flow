@@ -8,10 +8,14 @@
 //!    describes the tracks.
 //! 2. The seek index (often at the end of the file): `cuesNeed()` → fetch → `cuesFeed()`, or
 //!    `loadCues(cached)`. Streaming doesn't wait for it; seeking does.
-//! 3. `select(videoTrack, audioTrack)`, then `push(bytes)` the clusters from `firstCluster()` (or from
+//! 3. `select(videoTrack, audioTrack, raw)` (`raw` lets a track with a header `decode` of "ac3", "eac3",
+//!    "dts" or "truehd" through as undecoded payloads, fragment kind 2, for the worker to convert), then `push(bytes)` the clusters from `firstCluster()` (or from
 //!    `seekTarget(t)` after `reset()`), draining `nextFragment()` and `takeCues()` after each push.
 //!    `initSegment(track)` is ready once the first fragment is (it may need a real audio frame).
 //! 4. `finish()` at the end of the file sends what's held back.
+//!
+//! `OpusMuxer` is separate: it wraps Opus packets the worker encoded in a fragmented MP4 (`init()`, then
+//! `fragment()` per batch), for the audio SourceBuffer when a track was converted.
 
 use wasm_bindgen::prelude::*;
 
@@ -20,6 +24,7 @@ mod ebml;
 mod inflate;
 mod matroska;
 mod mp4;
+mod opus_mux;
 pub mod remuxer;
 mod subtitle;
 
@@ -100,8 +105,11 @@ impl Remuxer {
         self.core.reader.header.cues.len() as u32
     }
 
-    pub fn select(&mut self, video: u32, audio: u32) {
-        self.core.select(video, audio);
+    /// Picks the tracks to remux (0 for none). With `raw`, an audio track whose header `decode` isn't
+    /// empty is selectable even though browsers can't play it, and its frames come out of
+    /// `nextFragment()` as kind 2 instead of being muxed.
+    pub fn select(&mut self, video: u32, audio: u32, raw: bool) {
+        self.core.select_with(video, audio, raw);
     }
 
     /// [byte offset, media time of the keyframe there, 1 if the offset is a cluster's start].
@@ -137,7 +145,7 @@ impl Remuxer {
     }
 
     /// The track's init segment, or undefined until the frame it's configured from has been read.
-    /// `codecString()` then holds its codec string.
+    /// `codecString()` then holds its codec string. Always undefined for a raw track.
     #[wasm_bindgen(js_name = initSegment)]
     pub fn init_segment(&mut self, track: u32) -> Option<Vec<u8>> {
         let (bytes, codec) = self.core.init_segment(track)?;
@@ -151,7 +159,9 @@ impl Remuxer {
     }
 
     /// The next moof+mdat, or undefined. `fragmentKind()` (0 video, 1 audio), `fragmentStart()` and
-    /// `fragmentEnd()` (media seconds) and `fragmentKey()` describe it.
+    /// `fragmentEnd()` (media seconds) and `fragmentKey()` describe it. Kind 2 is raw audio (see
+    /// `select`): the bytes are the payloads back to back, `fragmentSizes()` and `fragmentTimes()` split
+    /// them, and start and end are the first and last payload's time.
     #[wasm_bindgen(js_name = nextFragment)]
     pub fn next_fragment(&mut self) -> Option<Vec<u8>> {
         let mut fragment = self.core.next_fragment()?;
@@ -179,6 +189,18 @@ impl Remuxer {
     #[wasm_bindgen(js_name = fragmentKey)]
     pub fn fragment_key(&self) -> bool {
         self.fragment.as_ref().is_some_and(|f| f.key)
+    }
+
+    /// Kind 2 only: the length in bytes of each payload in the fragment.
+    #[wasm_bindgen(js_name = fragmentSizes)]
+    pub fn fragment_sizes(&self) -> Vec<u32> {
+        self.fragment.as_ref().map_or_else(Vec::new, |f| f.sizes.clone())
+    }
+
+    /// Kind 2 only: each payload's media time in seconds, on the same timeline as every fragment.
+    #[wasm_bindgen(js_name = fragmentTimes)]
+    pub fn fragment_times(&self) -> Vec<f64> {
+        self.fragment.as_ref().map_or_else(Vec::new, |f| f.times.clone())
     }
 
     /// Text subtitle cues read since the last call, as JSON [{track, start, end, text}], or undefined.

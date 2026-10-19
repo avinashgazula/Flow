@@ -77,6 +77,21 @@ pub fn codec_of(t: &Track) -> (Codec, &'static str) {
     }
 }
 
+/// Which in-browser decoder a track needs when the browser can't play it: "ac3", "eac3", "dts" or
+/// "truehd", else "" (also for encrypted or compressed tracks, whose frames can't be read).
+pub fn decode_of(t: &Track) -> &'static str {
+    if t.kind != AUDIO || t.encrypted || t.compressed_unsupported {
+        return "";
+    }
+    match t.codec_id.as_str() {
+        "A_AC3" => "ac3",
+        "A_EAC3" => "eac3",
+        "A_TRUEHD" | "A_MLP" => "truehd",
+        id if id.starts_with("A_DTS") => "dts",
+        _ => "",
+    }
+}
+
 /// Codecs whose MP4 configuration comes from a real frame rather than the Matroska header.
 pub fn needs_first_frame(codec: Codec) -> bool {
     matches!(codec, Codec::Ac3 | Codec::Eac3 | Codec::Vp9)

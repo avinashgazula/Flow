@@ -26,15 +26,21 @@ const MAX_ELEMENT: u64 = 64 * 1024 * 1024;
 
 pub const KIND_VIDEO: u8 = 0;
 pub const KIND_AUDIO: u8 = 1;
+/// Undecoded audio payloads for the worker to convert (see `Core::select`), not an MP4 fragment.
+pub const KIND_RAW: u8 = 2;
 
 pub struct Fragment {
     pub kind: u8,
+    /// A moof+mdat, or for `KIND_RAW` the payloads back to back.
     pub data: Vec<u8>,
     /// Media time, seconds.
     pub start: f64,
     pub end: f64,
     /// Starts on a keyframe, so everything before this fragment can be removed without touching it.
     pub key: bool,
+    /// `KIND_RAW` only: each payload's length and media time (seconds).
+    pub sizes: Vec<u32>,
+    pub times: Vec<f64>,
 }
 
 struct VideoFrame {
@@ -60,6 +66,8 @@ struct Selected {
     track: u32,
     codec: Codec,
     output: Option<Output>,
+    /// The frames leave undecoded as `KIND_RAW`, because the browser can't play the codec.
+    raw: bool,
 }
 
 pub struct TextCue {
@@ -98,6 +106,8 @@ pub struct Core {
 
     audio_pending: Vec<AudioFrame>,
     audio_next: Option<i64>,
+    /// Frames of a raw audio track waiting to leave, with their file times.
+    raw_pending: Vec<AudioFrame>,
 
     fragments: VecDeque<Fragment>,
     sequence: u32,
@@ -127,6 +137,7 @@ impl Core {
             video_floor: 0.0,
             audio_pending: Vec::new(),
             audio_next: None,
+            raw_pending: Vec::new(),
             fragments: VecDeque::new(),
             sequence: 0,
             cues: Vec::new(),
@@ -202,6 +213,7 @@ impl Core {
                 AUDIO => {
                     j.field_num("channels", t.channels as f64);
                     j.field_num("sampleRate", t.sample_rate);
+                    j.field_str("decode", codecs::decode_of(t));
                 }
                 SUBTITLE => j.field_str("subtitleKind", if matches!(codec, Codec::Text(_)) { "text" } else { "image" }),
                 _ => {}
@@ -252,23 +264,35 @@ impl Core {
 
     /// Chooses the video and audio tracks to remux (0 for none).
     pub fn select(&mut self, video: u32, audio: u32) {
-        let pick = |core: &Core, track: u32, kind: u8| -> Option<Selected> {
+        self.select_with(video, audio, false);
+    }
+
+    /// `select`, and with `raw` an audio track the browser can't play but the worker can decode
+    /// (`decode_of`) is selectable too: its frames then leave as `KIND_RAW` payloads, not muxed.
+    pub fn select_with(&mut self, video: u32, audio: u32, raw: bool) {
+        let pick = |core: &Core, track: u32, kind: u8, raw: bool| -> Option<Selected> {
             let t = core.reader.header.track(track).filter(|t| t.kind == kind)?;
             let codec = core.codec(track);
+            if raw && kind == AUDIO && !codecs::decode_of(t).is_empty() {
+                return Some(Selected { track: t.number, codec, output: None, raw: true });
+            }
             if codec == Codec::Unsupported {
                 return None;
             }
-            Some(Selected { track: t.number, codec, output: None })
+            Some(Selected { track: t.number, codec, output: None, raw: false })
         };
         let changed_video = self.video.as_ref().map(|s| s.track) != Some(video).filter(|&v| v != 0);
         if changed_video {
-            self.video = pick(self, video, VIDEO);
+            self.video = pick(self, video, VIDEO, false);
             self.default_duration = self.video.as_ref().and_then(|v| self.reader.header.track(v.track)?.default_duration).filter(|&d| d > 0);
         }
-        if self.audio.as_ref().map(|s| s.track) != Some(audio) {
-            self.audio = pick(self, audio, AUDIO);
+        let wanted = pick(self, audio, AUDIO, raw);
+        // Changing the track, or only whether it's raw, starts the audio over.
+        if self.audio.as_ref().map(|s| (s.track, s.raw)) != wanted.as_ref().map(|s| (s.track, s.raw)) || self.audio.is_none() {
+            self.audio = wanted;
             self.audio_pending.clear();
             self.audio_next = None;
+            self.raw_pending.clear();
         }
         if self.video.is_none() {
             self.delay_known = true;
@@ -290,6 +314,7 @@ impl Core {
         self.video_floor = 0.0;
         self.audio_pending.clear();
         self.audio_next = None;
+        self.raw_pending.clear();
         self.fragments.clear();
     }
 
@@ -589,7 +614,7 @@ impl Core {
             self.sequence += 1;
             let base = ticks(sorted[from]).max(0) as u64;
             let data = mp4::fragment(self.sequence, base, &samples, &payload, true);
-            self.fragments.push_back(Fragment { kind: KIND_VIDEO, data, start, end, key: samples[0].sync });
+            self.fragments.push_back(Fragment { kind: KIND_VIDEO, data, start, end, key: samples[0].sync, sizes: Vec::new(), times: Vec::new() });
             self.video_fragments += 1;
         }
         self.flush_audio();
@@ -597,7 +622,51 @@ impl Core {
 
     // MARK: Audio
 
+    /// Queues a raw track's frames as they are, one payload per frame (Matroska lacing undone, header
+    /// stripping already restored by the block parser). A laced block has one timestamp, so its frames
+    /// are spaced by the track's frame duration, else by the block's duration shared out, else they
+    /// share the block's time. The decoder's own parser finds frame boundaries inside each payload.
+    fn raw_block(&mut self, block: Block) {
+        let count = block.frames.len().max(1) as i64;
+        let spacing = match self.audio.as_ref().and_then(|a| self.reader.header.track(a.track)).and_then(|t| t.default_duration) {
+            Some(d) if d > 0 => d,
+            _ => block.duration.filter(|&d| d > 0).map_or(0, |d| d / count),
+        };
+        for (i, data) in block.frames.into_iter().enumerate() {
+            self.raw_pending.push(AudioFrame { time: block.time + spacing * i as i64, data });
+        }
+        // Without a picture, payloads leave about once a second, like audio.
+        if self.video.is_none() {
+            if let (Some(first), Some(last)) = (self.raw_pending.first(), self.raw_pending.last()) {
+                if last.time - first.time >= 1_000_000_000 {
+                    self.flush_raw();
+                }
+            }
+        }
+    }
+
+    /// Sends the queued raw payloads as one `KIND_RAW` fragment, once the timeline's delay is known.
+    fn flush_raw(&mut self) {
+        if self.raw_pending.is_empty() || !self.delay_known {
+            return;
+        }
+        let delay = self.delay;
+        let seconds = |t: i64| (t.max(0) + delay) as f64 / 1e9;
+        let times: Vec<f64> = self.raw_pending.iter().map(|f| seconds(f.time)).collect();
+        let sizes: Vec<u32> = self.raw_pending.iter().map(|f| f.data.len().min(u32::MAX as usize) as u32).collect();
+        let mut data = Vec::with_capacity(sizes.iter().map(|&s| s as usize).sum());
+        for frame in &mut self.raw_pending {
+            data.append(&mut frame.data);
+        }
+        self.raw_pending.clear();
+        let (start, end) = (times[0], times[times.len() - 1]);
+        self.fragments.push_back(Fragment { kind: KIND_RAW, data, start, end, key: true, sizes, times });
+    }
+
     fn audio_block(&mut self, block: Block) {
+        if self.audio.as_ref().is_some_and(|a| a.raw) {
+            return self.raw_block(block);
+        }
         let is_ac3 = self.audio.as_ref().is_some_and(|a| a.codec == Codec::Ac3);
         for frame in block.frames {
             if is_ac3 {
@@ -619,6 +688,7 @@ impl Core {
     }
 
     fn flush_audio(&mut self) {
+        self.flush_raw();
         if self.audio_pending.is_empty() || !self.delay_known {
             return;
         }
@@ -664,7 +734,7 @@ impl Core {
         self.audio_next = Some(base + total);
         self.sequence += 1;
         let data = mp4::fragment(self.sequence, base.max(0) as u64, &samples, &payload, false);
-        self.fragments.push_back(Fragment { kind: KIND_AUDIO, data, start: base as f64 / rate as f64, end: (base + total) as f64 / rate as f64, key: true });
+        self.fragments.push_back(Fragment { kind: KIND_AUDIO, data, start: base as f64 / rate as f64, end: (base + total) as f64 / rate as f64, key: true, sizes: Vec::new(), times: Vec::new() });
     }
 
     // MARK: Output
@@ -676,6 +746,10 @@ impl Core {
     /// The init segment for a track and its final codec string. None until the frame it needs
     /// (AC-3, E-AC-3, VP9) has been read.
     pub fn init_segment(&self, track: u32) -> Option<(Vec<u8>, String)> {
+        // A raw track is decoded by the worker, so it has nothing to initialise.
+        if self.audio.as_ref().is_some_and(|a| a.raw && a.track == track) {
+            return None;
+        }
         let t = self.reader.header.track(track)?;
         let first = self.first_frames.iter().find(|(n, _)| *n == track).map(|(_, f)| f.as_slice());
         let out = codecs::output(t, first)?;
