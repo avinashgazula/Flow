@@ -35,8 +35,8 @@ function StreamProxy() {
       title="Stream Proxy"
       footer={
         <>
-          Most debrid download servers don’t let web pages read their files, so Flow can’t pick or convert their audio. A stream proxy you run fetches the file for Flow. Put <code>{'{url}'}</code> where the file’s
-          address goes, like <code>https://proxy.example.com/?url={'{url}'}</code>. Without it, Flow adds <code>url=</code> and the address to the end. MediaFlow Proxy works too:{' '}
+          Most debrid download servers don’t let web pages read their files, so Flow can’t pick or convert their audio. A stream proxy you run fetches such files for Flow. Put <code>{'{url}'}</code> where the
+          file’s address goes, like <code>https://proxy.example.com/?url={'{url}'}</code>. MediaFlow Proxy works too:{' '}
           <code>https://mediaflow.example.com/proxy/stream?d={'{url}'}&amp;api_password=…</code>. Flow includes a Cloudflare Worker you can deploy yourself:{' '}
           {proxyGuide ? (
             <a href={proxyGuide} target="_blank" rel="noreferrer">
@@ -45,7 +45,7 @@ function StreamProxy() {
           ) : (
             <>see web/proxy in Flow’s source</>
           )}
-          . Everything Flow plays through it passes through your proxy.
+          .
         </>
       }
     >
