@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { type AudioCodec, type AudioDecoders, loadAudioDecoders } from './decoder'
 
 /* These decode real streams made by FFmpeg's encoders (fixtures/README.txt): a 440 Hz tone on front
@@ -306,5 +306,69 @@ describe('the loader', () => {
 
   it('rejects when the bytes are not WebAssembly', async () => {
     await expect(loadAudioDecoders(new Uint8Array([1, 2, 3, 4]))).rejects.toThrow()
+  })
+})
+
+describe('the WASI stubs', () => {
+  /* A hand-assembled module that asks its host for what a rebuilt flow-audio.wasm might: it imports
+     args_sizes_get, proc_exit and an unknown fd_write. fa_open returns 42 plus whatever sits at address 16,
+     which starts as -1, so it returns 42 only if the stub wrote the zero count there; fa_close calls proc_exit. */
+  const str = (text: string) => [text.length, ...Array.from(text, (c) => c.charCodeAt(0))]
+  const section = (id: number, ...body: number[]) => [id, body.length, ...body]
+  const wasi = str('wasi_snapshot_preview1')
+  const fakeModule = new Uint8Array([
+    0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+    ...section(1, 2, 0x60, 2, 0x7f, 0x7f, 1, 0x7f, 0x60, 1, 0x7f, 0), // (i32, i32) -> i32 and (i32) -> ()
+    ...section(2, 3, ...wasi, ...str('args_sizes_get'), 0, 0, ...wasi, ...str('proc_exit'), 0, 1, ...wasi, ...str('fd_write'), 0, 0),
+    ...section(3, 2, 0, 1),
+    ...section(5, 1, 0, 1),
+    ...section(7, 3, ...str('memory'), 2, 0, ...str('fa_open'), 0, 3, ...str('fa_close'), 0, 4),
+    ...section(10, 2, 17, 0, 0x41, 16, 0x41, 20, 0x10, 0, 0x1a, 0x41, 16, 0x28, 2, 0, 0x41, 42, 0x6a, 0x0b, 6, 0, 0x20, 0, 0x10, 1, 0x0b),
+    ...section(11, 1, 0, 0x41, 16, 0x0b, 4, 0xff, 0xff, 0xff, 0xff),
+  ])
+
+  it('gives every declared import a stub, answers the cheap ones and refuses the rest', async () => {
+    const fake = await loadAudioDecoders(fakeModule)
+    const stream = fake.open('ac3') // would throw if fa_open returned 0 or the imports didn't link
+    // proc_exit is the one stub that must not return: the module has said it cannot continue.
+    expect(() => stream.close()).toThrow(/exit 42/)
+  })
+})
+
+describe('loading by URL', () => {
+  // A fresh copy of the module each time, because it keeps the compiled module of the default file.
+  const fresh = async () => {
+    vi.resetModules()
+    return (await import('./decoder')).loadAudioDecoders
+  }
+  const respond = (type: string | null, status = 200) => () =>
+    Promise.resolve(new Response(new Uint8Array(wasm), { status, headers: type ? { 'content-type': type } : {} }))
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('fetches the default file once, streaming it, and shares it between callers', async () => {
+    const serve = respond('application/wasm')
+    const fetchSpy = vi.fn((_input: RequestInfo | URL) => serve())
+    vi.stubGlobal('fetch', fetchSpy)
+    const load = await fresh()
+    const [a, b] = await Promise.all([load(), load()])
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(String(fetchSpy.mock.calls[0]![0])).toMatch(/pkg\/flow-audio\.wasm$/)
+    a.open('ac3').close()
+    b.open('truehd').close()
+  })
+
+  it('still works when the server sends the wrong content type', async () => {
+    vi.stubGlobal('fetch', respond('application/octet-stream'))
+    const load = await fresh()
+    ;(await load(new URL('https://example.test/flow-audio.wasm'))).open('eac3').close()
+  })
+
+  it('reports a failed download, and tries again next time', async () => {
+    let ok = false
+    vi.stubGlobal('fetch', () => respond(ok ? 'application/wasm' : null, ok ? 200 : 404)())
+    const load = await fresh()
+    await expect(load()).rejects.toThrow(/404/)
+    ok = true
+    ;(await load()).open('dts').close()
   })
 })

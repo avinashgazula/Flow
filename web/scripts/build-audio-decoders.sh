@@ -45,10 +45,11 @@ fetch() {
 
 # A clang that can target wasm32: $CLANG, then Homebrew's llvm, then whatever is on the PATH.
 find_clang() {
-  local c
-  for c in "${CLANG:-}" "$(brew --prefix llvm 2>/dev/null)/bin/clang" clang clang-18 clang-19 clang-20; do
+  local c brewed=""
+  if command -v brew >/dev/null 2>&1; then brewed=$(brew --prefix llvm 2>/dev/null || true); fi
+  for c in "${CLANG:-}" "${brewed:+$brewed/bin/clang}" clang clang-18 clang-19 clang-20; do
     [ -n "$c" ] && command -v "$c" >/dev/null 2>&1 || continue
-    if "$c" --print-targets 2>/dev/null | grep -q wasm32; then command -v "$c"; return; fi
+    case $("$c" --print-targets 2>/dev/null || true) in *wasm32*) command -v "$c"; return ;; esac
   done
   echo "No clang with the wasm32 target found. Install LLVM (apt install clang lld, or brew install llvm lld) or set CLANG." >&2
   exit 1
@@ -56,7 +57,7 @@ find_clang() {
 CC=$(find_clang)
 LLVM_BIN=$(dirname "$CC")
 # Homebrew keeps lld in its own prefix, so look there too.
-for d in "$(brew --prefix lld 2>/dev/null)/bin"; do [ -d "$d" ] && PATH=$d:$PATH; done
+if command -v brew >/dev/null 2>&1 && [ -d "$(brew --prefix lld 2>/dev/null)/bin" ]; then PATH=$(brew --prefix lld)/bin:$PATH; fi
 PATH=$LLVM_BIN:$PATH
 
 tool() { # tool <name>: the LLVM tool next to clang, or on the PATH, unversioned or with clang's version suffix
