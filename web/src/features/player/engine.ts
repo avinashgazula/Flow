@@ -318,7 +318,7 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
     audio: () => ({
       tracks: remux.audioTracks.map((t) => ({
         id: String(t.id),
-        label: trackLabel({ name: t.label, language: t.language, channels: t.channels }),
+        label: trackLabel({ name: t.label, language: t.language }),
         language: t.language,
         unavailable: t.playable ? undefined : `${t.codec} can’t play in this browser`,
         note: t.converted ? 'Converted to stereo' : undefined,
