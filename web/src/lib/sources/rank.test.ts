@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { fixedCapabilities, type Capabilities } from './capabilities'
 import { mapMediaSource } from './jellyfin'
 import { parseStream } from './parser'
+import { settingsStore } from '../store/settings'
+import { forgetBlocked, rememberBlocked } from './proxy'
 import { audioCarriers, buildSource, containerOf, dedupe, engineFor, hasPlayableAudio, rankSources, resolutionScore, undecodableAudio, unsupportedReason } from './rank'
 import type { Source } from './types'
 
@@ -191,5 +193,106 @@ describe('sources whose audio this browser can’t play', () => {
     expect(ids(ranked).slice(0, 2).sort()).toEqual(['aac', 'quiet'])
     expect(ids(ranked).slice(2).sort()).toEqual(['ddp', 'truehd'])
     expect(ranked.slice(2).every((s) => s.score! < 0)).toBe(true)
+  })
+})
+
+describe('sources whose audio this browser can convert', () => {
+  // The same browsers, once they can turn undecodable audio into Opus.
+  const converting = fixedCapabilities({ video: ['H264', 'HEVC', 'VP9', 'AV1'], audio: ['AAC', 'Opus', 'FLAC', 'MP3'], hdr: true, convertAudio: true })
+  const convertingSafari = fixedCapabilities({ nativeHLS: true, video: ['H264', 'HEVC'], audio: ['AAC', 'DD', 'DD+', 'FLAC', 'MP3'], hdr: true, convertAudio: true })
+  const proxy = 'https://proxy.example.com/?url={url}'
+  const mkv = (name: string, caps: Capabilities, url = 'https://trellis.test/Videos/1/stream', extra: Partial<Parameters<typeof buildSource>[0]> = {}) =>
+    source('t', name, url, { filename: 'Oppenheimer.2023.2160p.REMUX.mkv', container: 'mkv', ...extra }, caps)
+
+  beforeEach(() => {
+    settingsStore.set({ streamProxy: '' })
+    forgetBlocked()
+  })
+
+  it('stays playable, and says its audio is converted', () => {
+    const atmos = mkv(trellis.atmosTrueHD, converting)
+    expect(atmos.unsupported).toBeUndefined()
+    expect(atmos.engine).toBe('remux')
+    expect(atmos.convertsAudio).toBe(true)
+    expect(atmos.note).toBe('TrueHD Atmos audio converted for this browser')
+    expect(mkv(trellis.dtsHd, converting).note).toBe('DTS-HD MA audio converted for this browser')
+    expect(mkv(trellis.dtsHdDDP, converting).note).toBe('DTS-HD MA and Dolby Digital Plus audio converted for this browser')
+    // Safari decodes Dolby Digital itself, but TrueHD and DTS go through the same conversion.
+    expect(mkv(trellis.atmosTrueHD, convertingSafari).note).toBe('TrueHD Atmos audio converted for this browser')
+    expect(mkv(trellis.dtsHdDDP, convertingSafari).note).toBeUndefined()
+  })
+
+  it('says nothing for audio that plays as it is, or isn’t named', () => {
+    for (const s of [mkv('1080p WEB-DL AAC x264', converting), mkv(unnamed, converting), mkv('720p DTS AAC x264', converting)]) {
+      expect(s.unsupported).toBeUndefined()
+      expect(s.note).toBeUndefined()
+      expect(s.convertsAudio).toBeUndefined()
+    }
+  })
+
+  it('needs a browser that can convert', () => {
+    expect(mkv(trellis.atmosTrueHD, chromeLike).unsupported).toBe('TrueHD Atmos audio can’t play in a browser')
+    expect(mkv(trellis.atmosTrueHD, chromeLike).note).toBeUndefined()
+  })
+
+  it('needs a file Flow can read: not one on a host that blocks web pages, unless a proxy is set', () => {
+    const debrid = 'https://42-4.download.real-debrid.com/d/ABC/Oppenheimer.mkv'
+    expect(mkv(trellis.dtsHd, converting, debrid).unsupported).toBe('DTS-HD MA audio can’t play in a browser')
+    settingsStore.set({ streamProxy: proxy })
+    expect(mkv(trellis.dtsHd, converting, debrid).unsupported).toBeUndefined()
+    expect(mkv(trellis.dtsHd, converting, debrid).note).toBe('DTS-HD MA audio converted for this browser')
+
+    settingsStore.set({ streamProxy: '' })
+    const addon = 'https://aio.example.com/playback/abc/Oppenheimer.mkv'
+    expect(mkv(trellis.dtsHd, converting, addon).unsupported).toBeUndefined()
+    // Once the add-on's origin has been seen blocked, its files aren't readable either.
+    rememberBlocked(addon)
+    expect(mkv(trellis.dtsHd, converting, addon).unsupported).toBe('DTS-HD MA audio can’t play in a browser')
+    settingsStore.set({ streamProxy: proxy })
+    expect(mkv(trellis.dtsHd, converting, addon).unsupported).toBeUndefined()
+  })
+
+  it('only converts Matroska, or a link that doesn’t say what it is', () => {
+    const mp4 = source('mp4', '2160p TrueHD Atmos', 'https://cdn.example.com/a.mp4', {}, converting)
+    expect(mp4.unsupported).toBe('TrueHD Atmos audio can’t play in a browser')
+    const opaque = source('opaque', '2160p REMUX TrueHD Atmos', 'https://aio.example.com/resolve/abc123', {}, converting)
+    expect(opaque.unsupported).toBeUndefined()
+    // Only the remuxer converts, so a link of unknown type goes there.
+    expect(opaque.engine).toBe('remux')
+    expect(opaque.note).toBe('TrueHD Atmos audio converted for this browser')
+    // An unknown link with audio that plays is left to the browser.
+    expect(source('opaque-aac', '1080p AAC', 'https://aio.example.com/resolve/abc124', {}, converting).engine).toBe('native')
+  })
+
+  it('leaves transcodes and unplayable pictures alone', () => {
+    const transcode = mkv(trellis.atmosTrueHD, converting, 'https://jf.test/master.m3u8', { transcoded: true })
+    expect(transcode.unsupported).toBeUndefined()
+    expect(transcode.note).toBeUndefined()
+    expect(transcode.engine).not.toBe('remux')
+    const noHEVC = fixedCapabilities({ video: ['H264'], audio: ['AAC'], convertAudio: true })
+    expect(source('hevc', '2160p HEVC TrueHD', 'https://x.test/a.mkv', {}, noHEVC).unsupported).toBe('HEVC video can’t play in this browser')
+  })
+
+  it('ranks below the same file with audio that plays as it is, but above what can’t play at all', () => {
+    const list = [
+      mkv(trellis.atmosTrueHD, converting, 'https://x.test/truehd.mkv', { id: 'truehd' }),
+      source('aac', '2160p BluRay REMUX AAC HEVC', 'https://x.test/aac.mkv', {}, converting),
+      source('avi', '2160p XviD', 'https://x.test/c.avi', {}, converting),
+    ]
+    const ranked = rankSources(list, { preferredQuality: '2160p' }, converting)
+    expect(ids(ranked)).toEqual(['aac', 'truehd', 'avi'])
+    expect(ranked[1]!.score!).toBeGreaterThan(0)
+    expect(ranked[2]!.score!).toBeLessThan(0)
+  })
+
+  it('beats equal sources by cache state and seeders only when audio is the sole difference', () => {
+    const native = source('native', '2160p WEB-DL AAC x264 [RD+] 👤 900', 'https://x.test/a.mkv', {}, converting)
+    const converted = source('converted', '2160p WEB-DL TrueHD x264 [RD+] 👤 900', 'https://x.test/b.mkv', {}, converting)
+    const [first, second] = rankSources([converted, native], { preferredQuality: '2160p' }, converting)
+    expect(first!.id).toBe('native')
+    expect(first!.score! - second!.score!).toBe(200)
+    // A better resolution is still worth the conversion.
+    const lower = source('lower', '720p WEB-DL AAC x264 [RD+] 👤 900', 'https://x.test/c.mkv', {}, converting)
+    expect(ids(rankSources([lower, converted], { preferredQuality: '2160p' }, converting))).toEqual(['converted', 'lower'])
   })
 })

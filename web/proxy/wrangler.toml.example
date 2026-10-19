@@ -1,0 +1,18 @@
+# Copy this to wrangler.toml, change the values, then run `npx wrangler deploy`. See README.md.
+name = "flow-stream-proxy"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# The addresses Flow is served from, comma-separated, with no trailing slash. Only these pages can
+# read the proxy's answers. Add http://localhost:5173 while you develop.
+ALLOWED_ORIGINS = "https://flow.example.com"
+
+# The hosts the proxy may fetch from, comma-separated. A leading *. matches any subdomain.
+# Put your add-on's host (the play link) and the host it redirects to (your debrid service).
+ALLOWED_HOSTS = "aiostreams.example.com,*.real-debrid.com"
+
+# Optional. Hosts that are fine as the target of a redirect but not as a first request.
+# ALLOWED_REDIRECT_HOSTS = "*.cdn.example.net"
+
+# The access token is a secret, so it isn't set here. Run `npx wrangler secret put TOKEN`.

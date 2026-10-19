@@ -40,4 +40,21 @@ describe('settings backup', () => {
     const r = parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { autoplayNext: true, servers: [{ id: 'x', kind: 'kodi', url: 'u', token: 't' }] } }))
     expect(r.ok && r.skipped).toEqual(['servers'])
   })
+
+  it('keeps a stream proxy address, and an empty one', () => {
+    const parse = (streamProxy: unknown) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { autoplayNext: true, streamProxy } }))
+    for (const good of ['https://proxy.example.com/?url={url}', 'https://proxy.example.com/', '']) {
+      const r = parse(good)
+      expect(r.ok && r.settings.streamProxy).toBe(good)
+    }
+    expect(defaultSettings.streamProxy).toBe('')
+  })
+
+  it('skips a stream proxy that isn’t an address Flow can call', () => {
+    for (const bad of [7, null, 'proxy.example.com', 'javascript:alert(1)', 'http://proxy.example.com/?url={url}']) {
+      const r = parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { autoplayNext: true, streamProxy: bad } }))
+      expect(r.ok && r.skipped).toEqual(['streamProxy'])
+      expect(r.ok && 'streamProxy' in r.settings).toBe(false)
+    }
+  })
 })

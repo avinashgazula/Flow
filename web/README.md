@@ -38,6 +38,7 @@ npm test             # unit tests (Vitest)
 | `src/lib/store/` | Settings and library (watchlist, progress, history) in localStorage. |
 | `src/lib/sources/` | Stream add-ons, Jellyfin/Emby and Plex, and source ranking. |
 | `src/features/player/` | The player. |
+| `proxy/` | The stream proxy: a Cloudflare Worker that makes blocked file hosts readable. |
 
 ## Rules for speed
 
@@ -69,6 +70,11 @@ from `src/lib/tmdb/demo.ts` with no key. The same catalogue as the apps' Demo mo
 - **Mixed content:** a page served over HTTPS can't reach an `http://` server. Use HTTPS for your
   Jellyfin/Emby/Plex server, or run Flow locally (`npm run preview`) to reach one on your network.
 - **CORS:** TMDB, Stremio add-ons, Jellyfin, Emby and Plex all allow browser requests. Some IPTV
-  playlists and file hosts don't, and those can't be read from a web page.
+  playlists and file hosts don't (most debrid download servers send no CORS headers), and those can't
+  be read from a web page. Settings → Playback has a **Stream Proxy** field: a proxy you run fetches
+  such files for Flow and adds the headers. `proxy/` holds a Cloudflare Worker for it
+  (`proxy/README.md`), and MediaFlow Proxy works too. Flow uses it only for hosts that need it.
 - **Codecs:** browsers can't decode DTS or TrueHD audio. Flow picks another audio track, or
-  another source, when one is all a file has.
+  another source, when one is all a file has. Where the browser can encode Opus (WebCodecs), Flow can
+  convert such audio instead, but only for a file it can read: not one behind a host that blocks web
+  pages and no stream proxy.

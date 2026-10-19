@@ -3,3 +3,5 @@ dist
 crates/*/target
 *.local
 *.tsbuildinfo
+proxy/wrangler.toml
+.wrangler
