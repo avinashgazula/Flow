@@ -321,7 +321,8 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
         label: trackLabel({ name: t.label, language: t.language }),
         language: t.language,
         unavailable: t.playable ? undefined : `${t.codec} can’t play in this browser`,
-        note: t.converted ? 'Converted to stereo' : undefined,
+        // Surround is mixed down; a track that was stereo already is only converted.
+        note: t.converted ? ((t.channels ?? 0) > 2 ? 'Converted to stereo' : 'Converted') : undefined,
       })),
       selected: String(remux.audioId ?? ''),
     }),
