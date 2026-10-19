@@ -83,7 +83,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
     if (blocked) {
       return {
         title,
-        rows: [{ id: 'browser', title: 'Chosen by the Browser', detail: listed && `The file lists ${listed}`, checked: true, disabled: true, plain: true, action: noop }],
+        rows: [{ id: 'browser', title: 'Chosen by the Browser', detail: listed && `The source lists ${listed}`, checked: true, disabled: true, plain: true, action: noop }],
         footer: proxy ? (
           'Your stream proxy couldn’t open this file, so the browser plays it and picks the audio itself.'
         ) : (
