@@ -20,6 +20,16 @@ describe('pickAudio', () => {
     expect(pickAudio(audio, { languages: ['original', 'en'], original: 'en' })?.id).toBe('0')
   })
 
+  it('prefers a track that plays as it is over a converted one in the same language', () => {
+    const tracks = [
+      { id: 'dd', label: 'English · Dolby Digital 5.1', language: 'eng', converted: true },
+      { id: 'aac', label: 'English · Stereo', language: 'eng' },
+    ]
+    expect(pickAudio(tracks, { languages: ['en'] })?.id).toBe('aac')
+    // Only converted tracks in the language: the first of them still wins over another language.
+    expect(pickAudio([tracks[0]!, { id: 'fr', label: 'French', language: 'fre' }], { languages: ['en'] })?.id).toBe('dd')
+  })
+
   it('goes to the second choice when the first isn’t in the file', () => {
     expect(pickAudio(audio, { languages: ['ja', 'hi', 'en'] })?.id).toBe('3')
     // Original isn't known for this title, so it's skipped rather than guessed.

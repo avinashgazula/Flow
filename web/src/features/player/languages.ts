@@ -13,6 +13,8 @@ export interface TrackInfo {
   language?: string
   /** Why it can't be chosen (a DTS track in a browser that can't decode it). */
   unavailable?: string
+  /** Plays only by being converted (TrueHD, DTS, Dolby Digital where the browser has no decoder). */
+  converted?: boolean
 }
 
 export interface LanguagePreferences {
@@ -55,7 +57,9 @@ export function pickAudio(tracks: TrackInfo[], o: { languages: string[]; origina
   const wanted = [o.choice?.audio, ...resolveAudioLanguages(o.languages, o.original)]
   for (const language of wanted) {
     if (!language) continue
-    const hit = usable.find((t) => sameLanguage(trackLanguage(t), language))
+    // In the same language, a track the browser plays as it is beats one that has to be converted.
+    const hits = usable.filter((t) => sameLanguage(trackLanguage(t), language))
+    const hit = hits.find((t) => !t.converted) ?? hits[0]
     if (hit) return hit
   }
   return undefined

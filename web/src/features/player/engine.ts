@@ -17,6 +17,8 @@ export interface Track {
   unavailable?: string
   /** A word on how it plays, shown under its name (audio the player converts to something this browser plays). */
   note?: string
+  /** Plays only by being converted, so a track in the same language that plays as it is comes first. */
+  converted?: boolean
 }
 
 export interface Engine {
@@ -323,6 +325,7 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
         unavailable: t.playable ? undefined : `${t.codec} can’t play in this browser`,
         // Surround is mixed down; a track that was stereo already is only converted.
         note: t.converted ? ((t.channels ?? 0) > 2 ? 'Converted to stereo' : 'Converted') : undefined,
+        converted: t.converted || undefined,
       })),
       selected: String(remux.audioId ?? ''),
     }),
