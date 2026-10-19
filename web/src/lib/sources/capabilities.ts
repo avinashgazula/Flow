@@ -73,8 +73,9 @@ export function browserCapabilities(): Capabilities {
     nativeHLS: hasDocument && document.createElement('video').canPlayType('application/vnd.apple.mpegurl') !== '',
     hdr: typeof matchMedia === 'function' && matchMedia('(dynamic-range: high)').matches,
     // Asked each time: startup refines the first answer once the encoder has said what it takes.
+    // Off until the player's conversion pipeline ships, so no source is offered on its strength yet.
     get convertAudio() {
-      return canConvertAudio()
+      return false && canConvertAudio()
     },
     video: (codec) => (videoTypes[codec] ?? []).some(canPlayType),
     audio: (codec) => decodes(codec, (c) => (audioTypes[c] ?? []).some(canPlayType)),
