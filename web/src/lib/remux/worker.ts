@@ -353,7 +353,7 @@ ctx.onmessage = (event: MessageEvent<ToWorker>) => {
         case 'start':
           videoTrack = message.video
           audioTrack = message.audio
-          remuxer!.select(message.video, message.audio)
+          remuxer!.select(message.video, message.audio, false)
           playhead = message.at
           await begin(message.epoch, message.at, 0, true)
           break
@@ -364,7 +364,7 @@ ctx.onmessage = (event: MessageEvent<ToWorker>) => {
           break
         case 'audio':
           audioTrack = message.track
-          remuxer!.select(videoTrack, message.track)
+          remuxer!.select(videoTrack, message.track, false)
           sent.audio = false
           await begin(message.epoch, message.at, message.floor)
           break

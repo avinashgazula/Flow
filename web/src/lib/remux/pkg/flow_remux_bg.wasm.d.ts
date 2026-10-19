@@ -1,7 +1,12 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export const __wbg_opusmuxer_free: (a: number, b: number) => void;
 export const __wbg_remuxer_free: (a: number, b: number) => void;
+export const opusmuxer_codec: (a: number, b: number) => void;
+export const opusmuxer_fragment: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
+export const opusmuxer_init: (a: number, b: number) => void;
+export const opusmuxer_new: (a: number, b: number) => number;
 export const remuxer_codecString: (a: number, b: number) => void;
 export const remuxer_cueCount: (a: number) => number;
 export const remuxer_cuesBytes: (a: number, b: number) => void;
@@ -13,7 +18,9 @@ export const remuxer_firstCluster: (a: number) => number;
 export const remuxer_fragmentEnd: (a: number) => number;
 export const remuxer_fragmentKey: (a: number) => number;
 export const remuxer_fragmentKind: (a: number) => number;
+export const remuxer_fragmentSizes: (a: number, b: number) => void;
 export const remuxer_fragmentStart: (a: number) => number;
+export const remuxer_fragmentTimes: (a: number, b: number) => void;
 export const remuxer_headerError: (a: number, b: number) => void;
 export const remuxer_headerFeed: (a: number, b: number, c: number, d: number) => void;
 export const remuxer_headerJson: (a: number, b: number) => void;
@@ -26,7 +33,7 @@ export const remuxer_position: (a: number) => number;
 export const remuxer_push: (a: number, b: number, c: number) => void;
 export const remuxer_reset: (a: number, b: number, c: number) => void;
 export const remuxer_seekTarget: (a: number, b: number, c: number) => void;
-export const remuxer_select: (a: number, b: number, c: number) => void;
+export const remuxer_select: (a: number, b: number, c: number, d: number) => void;
 export const remuxer_setVideoFloor: (a: number, b: number) => void;
 export const remuxer_takeCues: (a: number, b: number) => void;
 export const remuxer_timingKnown: (a: number) => number;

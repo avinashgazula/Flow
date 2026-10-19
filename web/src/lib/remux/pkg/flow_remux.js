@@ -1,5 +1,97 @@
 /* @ts-self-types="./flow_remux.d.ts" */
 
+export class OpusMuxer {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        OpusMuxerFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_opusmuxer_free(ptr, 0);
+    }
+    /**
+     * The codec string for `addSourceBuffer`.
+     * @returns {string}
+     */
+    codec() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.opusmuxer_codec(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * One moof+mdat. `base_time` is the first packet's time in 48 kHz ticks, `data` holds the packets
+     * back to back, and `sizes` and `durations` (ticks, usually 960) give each one's length and length
+     * in time. A packet that `data` doesn't fully hold, and any after it, is left out.
+     * @param {number} base_time
+     * @param {Uint8Array} data
+     * @param {Uint32Array} sizes
+     * @param {Uint32Array} durations
+     * @returns {Uint8Array}
+     */
+    fragment(base_time, data, sizes, durations) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passArray32ToWasm0(sizes, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            const ptr2 = passArray32ToWasm0(durations, wasm.__wbindgen_export2);
+            const len2 = WASM_VECTOR_LEN;
+            wasm.opusmuxer_fragment(retptr, this.__wbg_ptr, base_time, ptr0, len0, ptr1, len1, ptr2, len2);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v4 = getArrayU8FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export(r0, r1 * 1, 1);
+            return v4;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * ftyp + moov for one audio track (id 1) at 48 kHz, with no samples: they arrive as fragments.
+     * @returns {Uint8Array}
+     */
+    init() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.opusmuxer_init(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v1 = getArrayU8FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export(r0, r1 * 1, 1);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * `pre_skip` is the encoder's lookahead in 48 kHz samples, which players trim from the start.
+     * Channels run from 1 to 8.
+     * @param {number} channels
+     * @param {number} pre_skip
+     */
+    constructor(channels, pre_skip) {
+        const ret = wasm.opusmuxer_new(channels, pre_skip);
+        this.__wbg_ptr = ret;
+        OpusMuxerFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+}
+if (Symbol.dispose) OpusMuxer.prototype[Symbol.dispose] = OpusMuxer.prototype.free;
+
 export class Remuxer {
     __destroy_into_raw() {
         const ptr = this.__wbg_ptr;
@@ -132,11 +224,45 @@ export class Remuxer {
         return ret;
     }
     /**
+     * Kind 2 only: the length in bytes of each payload in the fragment.
+     * @returns {Uint32Array}
+     */
+    fragmentSizes() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.remuxer_fragmentSizes(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v1 = getArrayU32FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export(r0, r1 * 4, 4);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * @returns {number}
      */
     fragmentStart() {
         const ret = wasm.remuxer_fragmentStart(this.__wbg_ptr);
         return ret;
+    }
+    /**
+     * Kind 2 only: each payload's media time in seconds, on the same timeline as every fragment.
+     * @returns {Float64Array}
+     */
+    fragmentTimes() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.remuxer_fragmentTimes(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v1 = getArrayF64FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export(r0, r1 * 8, 8);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
     }
     /**
      * Why the file can't be played, in words for the viewer.
@@ -205,7 +331,7 @@ export class Remuxer {
     }
     /**
      * The track's init segment, or undefined until the frame it's configured from has been read.
-     * `codecString()` then holds its codec string.
+     * `codecString()` then holds its codec string. Always undefined for a raw track.
      * @param {number} track
      * @returns {Uint8Array | undefined}
      */
@@ -248,7 +374,9 @@ export class Remuxer {
     }
     /**
      * The next moof+mdat, or undefined. `fragmentKind()` (0 video, 1 audio), `fragmentStart()` and
-     * `fragmentEnd()` (media seconds) and `fragmentKey()` describe it.
+     * `fragmentEnd()` (media seconds) and `fragmentKey()` describe it. Kind 2 is raw audio (see
+     * `select`): the bytes are the payloads back to back, `fragmentSizes()` and `fragmentTimes()` split
+     * them, and start and end are the first and last payload's time.
      * @returns {Uint8Array | undefined}
      */
     nextFragment() {
@@ -309,11 +437,15 @@ export class Remuxer {
         }
     }
     /**
+     * Picks the tracks to remux (0 for none). With `raw`, an audio track whose header `decode` isn't
+     * empty is selectable even though browsers can't play it, and its frames come out of
+     * `nextFragment()` as kind 2 instead of being muxed.
      * @param {number} video
      * @param {number} audio
+     * @param {boolean} raw
      */
-    select(video, audio) {
-        wasm.remuxer_select(this.__wbg_ptr, video, audio);
+    select(video, audio, raw) {
+        wasm.remuxer_select(this.__wbg_ptr, video, audio, raw);
     }
     /**
      * Drops video fragments that end before `seconds`, while audio is rebuilt under a picture
@@ -365,6 +497,9 @@ function __wbg_get_imports() {
     };
 }
 
+const OpusMuxerFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_opusmuxer_free(ptr, 1));
 const RemuxerFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_remuxer_free(ptr, 1));
@@ -372,6 +507,11 @@ const RemuxerFinalization = (typeof FinalizationRegistry === 'undefined')
 function getArrayF64FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
+}
+
+function getArrayU32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
 }
 
 function getArrayU8FromWasm0(ptr, len) {
@@ -399,12 +539,27 @@ function getStringFromWasm0(ptr, len) {
     return decodeText(ptr >>> 0, len);
 }
 
+let cachedUint32ArrayMemory0 = null;
+function getUint32ArrayMemory0() {
+    if (cachedUint32ArrayMemory0 === null || cachedUint32ArrayMemory0.byteLength === 0) {
+        cachedUint32ArrayMemory0 = new Uint32Array(wasm.memory.buffer);
+    }
+    return cachedUint32ArrayMemory0;
+}
+
 let cachedUint8ArrayMemory0 = null;
 function getUint8ArrayMemory0() {
     if (cachedUint8ArrayMemory0 === null || cachedUint8ArrayMemory0.byteLength === 0) {
         cachedUint8ArrayMemory0 = new Uint8Array(wasm.memory.buffer);
     }
     return cachedUint8ArrayMemory0;
+}
+
+function passArray32ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 4, 4) >>> 0;
+    getUint32ArrayMemory0().set(arg, ptr / 4);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
 }
 
 function passArray8ToWasm0(arg, malloc) {
@@ -437,6 +592,7 @@ function __wbg_finalize_init(instance, module) {
     wasmModule = module;
     cachedDataViewMemory0 = null;
     cachedFloat64ArrayMemory0 = null;
+    cachedUint32ArrayMemory0 = null;
     cachedUint8ArrayMemory0 = null;
     return wasm;
 }

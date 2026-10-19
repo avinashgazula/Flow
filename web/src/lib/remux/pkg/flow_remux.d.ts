@@ -1,6 +1,30 @@
 /* tslint:disable */
 /* eslint-disable */
 
+export class OpusMuxer {
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * The codec string for `addSourceBuffer`.
+     */
+    codec(): string;
+    /**
+     * One moof+mdat. `base_time` is the first packet's time in 48 kHz ticks, `data` holds the packets
+     * back to back, and `sizes` and `durations` (ticks, usually 960) give each one's length and length
+     * in time. A packet that `data` doesn't fully hold, and any after it, is left out.
+     */
+    fragment(base_time: number, data: Uint8Array, sizes: Uint32Array, durations: Uint32Array): Uint8Array;
+    /**
+     * ftyp + moov for one audio track (id 1) at 48 kHz, with no samples: they arrive as fragments.
+     */
+    init(): Uint8Array;
+    /**
+     * `pre_skip` is the encoder's lookahead in 48 kHz samples, which players trim from the start.
+     * Channels run from 1 to 8.
+     */
+    constructor(channels: number, pre_skip: number);
+}
+
 export class Remuxer {
     free(): void;
     [Symbol.dispose](): void;
@@ -27,7 +51,15 @@ export class Remuxer {
      */
     fragmentKey(): boolean;
     fragmentKind(): number;
+    /**
+     * Kind 2 only: the length in bytes of each payload in the fragment.
+     */
+    fragmentSizes(): Uint32Array;
     fragmentStart(): number;
+    /**
+     * Kind 2 only: each payload's media time in seconds, on the same timeline as every fragment.
+     */
+    fragmentTimes(): Float64Array;
     /**
      * Why the file can't be played, in words for the viewer.
      */
@@ -40,7 +72,7 @@ export class Remuxer {
     headerNeed(): Float64Array;
     /**
      * The track's init segment, or undefined until the frame it's configured from has been read.
-     * `codecString()` then holds its codec string.
+     * `codecString()` then holds its codec string. Always undefined for a raw track.
      */
     initSegment(track: number): Uint8Array | undefined;
     /**
@@ -53,7 +85,9 @@ export class Remuxer {
     constructor(length: number);
     /**
      * The next moof+mdat, or undefined. `fragmentKind()` (0 video, 1 audio), `fragmentStart()` and
-     * `fragmentEnd()` (media seconds) and `fragmentKey()` describe it.
+     * `fragmentEnd()` (media seconds) and `fragmentKey()` describe it. Kind 2 is raw audio (see
+     * `select`): the bytes are the payloads back to back, `fragmentSizes()` and `fragmentTimes()` split
+     * them, and start and end are the first and last payload's time.
      */
     nextFragment(): Uint8Array | undefined;
     /**
@@ -66,7 +100,12 @@ export class Remuxer {
      * [byte offset, media time of the keyframe there, 1 if the offset is a cluster's start].
      */
     seekTarget(seconds: number): Float64Array;
-    select(video: number, audio: number): void;
+    /**
+     * Picks the tracks to remux (0 for none). With `raw`, an audio track whose header `decode` isn't
+     * empty is selectable even though browsers can't play it, and its frames come out of
+     * `nextFragment()` as kind 2 instead of being muxed.
+     */
+    select(video: number, audio: number, raw: boolean): void;
     /**
      * Drops video fragments that end before `seconds`, while audio is rebuilt under a picture
      * that's already buffered.
@@ -83,7 +122,12 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly __wbg_opusmuxer_free: (a: number, b: number) => void;
     readonly __wbg_remuxer_free: (a: number, b: number) => void;
+    readonly opusmuxer_codec: (a: number, b: number) => void;
+    readonly opusmuxer_fragment: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
+    readonly opusmuxer_init: (a: number, b: number) => void;
+    readonly opusmuxer_new: (a: number, b: number) => number;
     readonly remuxer_codecString: (a: number, b: number) => void;
     readonly remuxer_cueCount: (a: number) => number;
     readonly remuxer_cuesBytes: (a: number, b: number) => void;
@@ -95,7 +139,9 @@ export interface InitOutput {
     readonly remuxer_fragmentEnd: (a: number) => number;
     readonly remuxer_fragmentKey: (a: number) => number;
     readonly remuxer_fragmentKind: (a: number) => number;
+    readonly remuxer_fragmentSizes: (a: number, b: number) => void;
     readonly remuxer_fragmentStart: (a: number) => number;
+    readonly remuxer_fragmentTimes: (a: number, b: number) => void;
     readonly remuxer_headerError: (a: number, b: number) => void;
     readonly remuxer_headerFeed: (a: number, b: number, c: number, d: number) => void;
     readonly remuxer_headerJson: (a: number, b: number) => void;
@@ -108,7 +154,7 @@ export interface InitOutput {
     readonly remuxer_push: (a: number, b: number, c: number) => void;
     readonly remuxer_reset: (a: number, b: number, c: number) => void;
     readonly remuxer_seekTarget: (a: number, b: number, c: number) => void;
-    readonly remuxer_select: (a: number, b: number, c: number) => void;
+    readonly remuxer_select: (a: number, b: number, c: number, d: number) => void;
     readonly remuxer_setVideoFloor: (a: number, b: number) => void;
     readonly remuxer_takeCues: (a: number, b: number) => void;
     readonly remuxer_timingKnown: (a: number) => number;

@@ -16,6 +16,8 @@ export interface HeaderTrack {
   forced: boolean
   commentary: boolean
   hearingImpaired: boolean
+  /** Audio only: which in-browser decoder can play a track browsers can't ('' when none applies). */
+  decode?: 'ac3' | 'eac3' | 'dts' | 'truehd' | ''
   width?: number
   height?: number
   frameRate?: number
