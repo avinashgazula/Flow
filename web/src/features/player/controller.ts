@@ -5,9 +5,10 @@
 
 import { useSyncExternalStore } from 'react'
 import type { Source } from '../../lib/sources'
+import { settingsStore } from '../../lib/store/settings'
 import { ownTracks, type Engine, type Track } from './engine'
-import { languageName } from './format'
-import { prefs } from './session'
+import { pickAudio, pickSubtitle, releaseLanguage, trackLanguage } from './languages'
+import { prefs, titleChoices } from './session'
 import { parseSubtitles } from './subtitles'
 
 export type Panel = 'options' | 'tracks' | 'episodes' | null
@@ -30,6 +31,9 @@ export interface PlayerState {
   rate: number
   audio: Track[]
   audioId?: string
+  /** The file plays in the browser's own player because its host blocks web pages: Flow can't see
+   *  or pick its audio. */
+  blocked: boolean
   subtitles: Track[]
   subtitleId: string | null
   /** The track whose cues the overlay draws. */
@@ -67,8 +71,6 @@ type WebKitVideo = HTMLVideoElement & {
 type WebKitElement = HTMLElement & { webkitRequestFullscreen?: () => void }
 type WebKitDocument = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void }
 
-const sameLanguage = (a?: string, b?: string) => !!a && !!b && (a.toLowerCase() === b.toLowerCase() || (languageName(a) ?? a) === (languageName(b) ?? b))
-
 export class PlayerController {
   video: HTMLVideoElement | null = null
   root: HTMLElement | null = null
@@ -86,6 +88,7 @@ export class PlayerController {
     volume: 1,
     rate: 1,
     audio: [],
+    blocked: false,
     subtitles: [],
     subtitleId: null,
     subtitleTrack: null,
@@ -105,7 +108,13 @@ export class PlayerController {
   private subtitleToken = 0
   private lastSubtitle: string | null = null
   private external = new Map<string, TextTrack>()
-  private applied = { audio: false, subtitles: false }
+  /** The audio choice has been made for this stream. Subtitles aren't: they follow the audio, so
+   *  they're worked out again whenever the tracks change, until the viewer picks by hand. */
+  private applied = { audio: false }
+  private manual = { audio: false, subtitles: false }
+  /** The title the stream belongs to (a show counts once), for remembering picks, and its original
+   *  language, for "Original Language" in Settings. */
+  private context: { key?: string; original?: string } = {}
 
   get = () => this.state
   subscribe = (listener: () => void) => {
@@ -185,12 +194,24 @@ export class PlayerController {
   setEngine(engine: Engine | null, source: Source | null) {
     this.engine = engine
     this.source = source
-    this.applied = { audio: false, subtitles: false }
+    this.applied = { audio: false }
+    this.manual = { audio: false, subtitles: false }
     for (const track of this.external.values()) track.mode = 'disabled'
     this.external.clear()
     this.subtitleToken++
-    this.set({ audio: [], audioId: undefined, subtitles: [], subtitleId: null, subtitleTrack: null })
+    this.set({ audio: [], audioId: undefined, blocked: engine?.fallback === 'blocked', subtitles: [], subtitleId: null, subtitleTrack: null })
     if (engine) this.refreshTracks()
+  }
+
+  /** Which title is playing. The original language can arrive after the tracks do (the details are
+   *  still loading), so the choice is made again then, unless the viewer has already picked. */
+  setContext(key: string, original?: string) {
+    const late = original !== this.context.original
+    this.context = { key, original }
+    if (late && this.engine && !this.manual.audio) {
+      this.applied = { audio: false }
+      this.applyPreferences()
+    }
   }
 
   refreshTracks = () => {
@@ -203,22 +224,25 @@ export class PlayerController {
     this.applyPreferences()
   }
 
-  /** The audio language and subtitles the viewer chose last time, once this stream's tracks are known. */
+  /** Audio and subtitles for the start: the viewer's pick for this title if there is one, else
+   *  Settings → Playback (see languages.ts). Runs as tracks appear, since some engines list them late. */
   private applyPreferences() {
-    const saved = prefs.get()
     const { audio, audioId, subtitles } = this.state
-    if (!this.applied.audio && audio.length > 1) {
+    const settings = settingsStore.get()
+    const choice = this.context.key ? titleChoices.get(this.context.key) : undefined
+    let heard = audio.find((t) => t.id === audioId)
+    if (!this.applied.audio && !this.manual.audio && audio.length > 0) {
       this.applied.audio = true
-      const current = audio.find((t) => t.id === audioId)
-      const wanted = saved.audioLanguage && !sameLanguage(current?.language, saved.audioLanguage) ? audio.find((t) => !t.unavailable && sameLanguage(t.language, saved.audioLanguage)) : undefined
-      if (wanted) void this.selectAudio(wanted.id, false)
+      const wanted = pickAudio(audio, { languages: settings.audioLanguages, original: this.context.original, choice })
+      if (wanted && wanted.id !== audioId) {
+        void this.selectAudio(wanted.id, false)
+        heard = wanted
+      }
     }
-    if (!this.applied.subtitles && subtitles.length > 0) {
-      this.applied.subtitles = true
-      const lang = saved.subtitleLanguage
-      const wanted = lang ? subtitles.find((t) => !t.unavailable && (sameLanguage(t.language, lang) || t.label === lang)) : undefined
-      if (wanted) void this.selectSubtitle(wanted.id, false)
-    }
+    if (this.manual.subtitles || subtitles.length === 0) return
+    const audioLanguage = (heard && trackLanguage(heard)) ?? releaseLanguage(this.source?.languages)
+    const pick = pickSubtitle(subtitles, { audioLanguage, preferences: settings, choice })
+    if ((pick?.id ?? null) !== this.state.subtitleId) void this.selectSubtitle(pick?.id ?? null, false)
   }
 
   // MARK: Transport
@@ -302,7 +326,13 @@ export class PlayerController {
     await this.engine?.selectAudio(id)
     const track = this.state.audio.find((t) => t.id === id)
     this.set({ audioId: id })
-    if (remember && track?.language) prefs.set({ audioLanguage: track.language })
+    if (remember) {
+      this.manual.audio = true
+      const language = track && trackLanguage(track)
+      if (this.context.key && language) titleChoices.set(this.context.key, { audio: language })
+    }
+    // Subtitles follow what's heard (Foreign Audio Only), unless they were chosen by hand too.
+    this.applyPreferences()
   }
 
   async selectSubtitle(id: string | null, remember = true) {
@@ -311,7 +341,10 @@ export class PlayerController {
     if (previous && ownTracks.has(previous)) previous.mode = 'disabled'
     const info = id ? this.state.subtitles.find((t) => t.id === id) : undefined
     this.set({ subtitleId: id, subtitleTrack: null })
-    if (remember) prefs.set({ subtitleLanguage: id ? (info?.language ?? info?.label ?? null) : null })
+    if (remember) {
+      this.manual.subtitles = true
+      if (this.context.key) titleChoices.set(this.context.key, { subtitle: id ? info && trackLanguage(info) : null })
+    }
     if (!id) {
       await this.engine?.selectSubtitle(null)
       return
@@ -337,7 +370,7 @@ export class PlayerController {
     this.set({ subtitleTrack: track })
   }
 
-  /** C: subtitles off, or back on with the last ones chosen (else ones in the viewer's language). */
+  /** C: subtitles off, or back on with the last ones chosen (else ones in the viewer's languages). */
   toggleSubtitles() {
     const { subtitleId, subtitles } = this.state
     if (subtitleId) {
@@ -345,8 +378,9 @@ export class PlayerController {
       this.flash('subtitles', 'Subtitles Off')
       return
     }
-    const lang = prefs.get().subtitleLanguage ?? navigator.language
-    const pick = subtitles.find((t) => t.id === this.lastSubtitle) ?? subtitles.find((t) => !t.unavailable && sameLanguage(t.language?.split('-')[0], lang.split('-')[0])) ?? subtitles.find((t) => !t.unavailable)
+    const { subtitleLanguages } = settingsStore.get()
+    const mine = pickSubtitle(subtitles, { preferences: { subtitleLanguages: subtitleLanguages.length ? subtitleLanguages : [navigator.language], subtitleMode: 'always' } })
+    const pick = subtitles.find((t) => t.id === this.lastSubtitle) ?? mine ?? subtitles.find((t) => !t.unavailable)
     if (!pick) {
       this.flash('subtitles', 'No Subtitles')
       return

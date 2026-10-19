@@ -6,6 +6,7 @@
    debrid cache state and seeders. Anything this browser can't play at all sinks to the bottom with
    its reason, rather than vanishing. */
 
+import { languageName } from '../language'
 import type { Capabilities } from './capabilities'
 import { losslessCinemaAudio } from './capabilities'
 import { isCinemaCapture, releaseQualities, type ParsedQuality, type ResolutionClass, type StreamTraits } from './parser'
@@ -210,6 +211,9 @@ export interface RankPreferences {
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
   /** Episodes are smaller than films; size sanity scales with it. */
   kind?: 'movie' | 'show'
+  /** The viewer's first audio language as a code ("en"), already resolved against the title's
+   *  original language. Sources that say they carry it are lifted a little. */
+  audioLanguage?: string
 }
 
 const resolutionOrder: (Source['resolution'] | undefined)[] = ['SD', '720p', '1080p', '1440p', '2160p']
@@ -232,6 +236,16 @@ export function resolutionScore(r: Source['resolution'], preferred: RankPreferen
 
 const minimumBytes: Record<string, number> = { SD: 200, '480p': 200, '720p': 400, '1080p': 700, '1440p': 1000, '2160p': 1500 }
 
+/** A nudge for a release that names the viewer's audio language, well short of a resolution step
+ *  (1000). "Multi" releases usually carry it, but say so less surely. Releases that name no language
+ *  get nothing: most are in the language of the title and can't be told apart. */
+export function audioLanguageScore(languages: string[] | undefined, audioLanguage: string | undefined): number {
+  const name = languageName(audioLanguage)?.toLowerCase()
+  if (!languages?.length || !name) return 0
+  if (languages.some((l) => l.toLowerCase() === name)) return 100
+  return languages.includes('Multi') ? 50 : 0
+}
+
 export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilities): number {
   if (s.unsupported) return -1_000_000 + resolutionScore(s.resolution, prefs.preferredQuality) * 10
   let score = resolutionScore(s.resolution, prefs.preferredQuality) * 1000
@@ -252,6 +266,7 @@ export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilitie
   // Converting costs the browser some work and the start a moment: the same file with sound that
   // plays as it is comes first, but a better picture is still worth the conversion.
   if (s.convertsAudio) score -= 200
+  score += audioLanguageScore(s.languages, prefs.audioLanguage)
   if (s.cached === true) score += 80
   if (s.cached === false) score -= 400
   if (s.seeders !== undefined) score += Math.min(60, Math.log10(s.seeders + 1) * 20)

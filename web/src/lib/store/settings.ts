@@ -29,6 +29,10 @@ export interface ServerConfig {
  *  `[data-font]` rules in styles/tokens.css. */
 export type FontChoice = 'system' | 'inter' | 'geist' | 'manrope' | 'ioskeley'
 
+/** When subtitles turn on by themselves: never, only when the audio isn't in the viewer's own
+ *  language (the first subtitle language), or for every title. */
+export type SubtitleMode = 'off' | 'foreign' | 'always'
+
 export interface Settings {
   /** TMDB v3 API key or v4 read-access token. */
   tmdbKey: string
@@ -40,8 +44,12 @@ export interface Settings {
   includeAdult: boolean
   addons: AddonConfig[]
   servers: ServerConfig[]
-  /** Subtitle language codes in order of preference. */
+  /** Audio languages in order of preference: two-letter codes, and 'original' for the language the
+   *  title was made in (TMDB's original language). */
+  audioLanguages: string[]
+  /** Subtitle language codes in order of preference. The first is "my language" for `subtitleMode`. */
   subtitleLanguages: string[]
+  subtitleMode: SubtitleMode
   autoplayNext: boolean
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
   /** The picker offers the source a title was last played from first. */
@@ -64,7 +72,9 @@ export const defaultSettings: Settings = {
   includeAdult: false,
   addons: [],
   servers: [],
-  subtitleLanguages: [browserLanguage.slice(0, 2)],
+  audioLanguages: ['original', browserLanguage.slice(0, 2).toLowerCase()],
+  subtitleLanguages: [browserLanguage.slice(0, 2).toLowerCase()],
+  subtitleMode: 'foreign',
   autoplayNext: true,
   preferredQuality: '1080p',
   rememberLastSource: true,

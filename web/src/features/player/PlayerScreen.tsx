@@ -36,6 +36,7 @@ const cardOf = (d: MediaItem): MediaItem => ({
   backdrop: d.backdrop,
   rating: d.rating,
   genres: d.genres,
+  originalLanguage: d.originalLanguage,
 })
 
 const requestFor = (d: MediaDetail, type: MediaType, episode?: EpisodeRef): PlaybackRequest => ({
@@ -85,6 +86,12 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
   const line = epRef ? episodeLine(epRef.season, epRef.episode, current?.name) : item?.year ? String(item.year) : undefined
 
   const [controller] = useState(() => new PlayerController())
+  // A show is one title for remembered audio and subtitle picks, and its original language is what
+  // "Original Language" in Settings means. A layout effect, so it's set before any engine starts.
+  const originalLanguage = item?.originalLanguage
+  useLayoutEffect(() => {
+    controller.setContext(key, originalLanguage)
+  }, [controller, key, originalLanguage])
   const fit = usePlayer(controller, (st) => st.fit)
   const video = useRef<HTMLVideoElement>(null)
   const [phase, setPhase] = useState<Phase>('finding')

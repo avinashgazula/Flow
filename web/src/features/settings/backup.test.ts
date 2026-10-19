@@ -57,4 +57,18 @@ describe('settings backup', () => {
       expect(r.ok && 'streamProxy' in r.settings).toBe(false)
     }
   })
+
+  it('keeps audio and subtitle choices, and skips ones that make no sense', () => {
+    const parse = (settings: unknown) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings }))
+    const good = parse({ audioLanguages: ['original', 'fr'], subtitleLanguages: ['en'], subtitleMode: 'always' })
+    expect(good.ok && good.settings).toEqual({ audioLanguages: ['original', 'fr'], subtitleLanguages: ['en'], subtitleMode: 'always' })
+    const bad = parse({ autoplayNext: true, audioLanguages: ['en', 3], subtitleMode: 'sometimes' })
+    expect(bad.ok && bad.skipped.sort()).toEqual(['audioLanguages', 'subtitleMode'])
+  })
+
+  it('defaults to the title’s original language, then the browser’s, and foreign audio only', () => {
+    expect(defaultSettings.audioLanguages[0]).toBe('original')
+    expect(defaultSettings.audioLanguages[1]).toBe(defaultSettings.subtitleLanguages[0])
+    expect(defaultSettings.subtitleMode).toBe('foreign')
+  })
 })

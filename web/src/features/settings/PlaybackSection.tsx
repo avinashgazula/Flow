@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { proxyProblem } from '../../lib/sources/proxy'
-import { settingsStore, useSettings, type Settings } from '../../lib/store/settings'
+import { settingsStore, useSettings, type Settings, type SubtitleMode } from '../../lib/store/settings'
 import { Group, Note, Row, Select, Switch } from './controls'
-import { subtitleChoices, withCurrent } from './options'
+import { audioChoices, subtitleChoices, withCurrent } from './options'
 import s from './SettingsScreen.module.css'
 
 const qualities: { value: Settings['preferredQuality']; label: string }[] = [
@@ -84,16 +84,28 @@ function StreamProxy() {
   )
 }
 
+const subtitleModes: { value: SubtitleMode; label: string }[] = [
+  { value: 'foreign', label: 'Foreign Audio Only' },
+  { value: 'always', label: 'Always' },
+  { value: 'off', label: 'Off' },
+]
+
 export function PlaybackSection() {
   const quality = useSettings((x) => x.preferredQuality)
+  const audioLanguages = useSettings((x) => x.audioLanguages)
   const subtitles = useSettings((x) => x.subtitleLanguages)
+  const subtitleMode = useSettings((x) => x.subtitleMode)
   const autoplay = useSettings((x) => x.autoplayNext)
   const remember = useSettings((x) => x.rememberLastSource)
+  const audioFirst = audioLanguages[0] ?? ''
+  const audioSecond = audioLanguages[1] ?? ''
   const first = subtitles[0] ?? ''
   const second = subtitles[1] ?? ''
 
   // The list is kept without gaps: choosing none for the first language drops the second too.
   const setSubtitles = (a: string, b: string) => settingsStore.set({ subtitleLanguages: [a, b].filter((x, i, all) => x && all.indexOf(x) === i) })
+  const setAudio = (a: string, b: string) => settingsStore.set({ audioLanguages: [a, b].filter((x, i, all) => x && all.indexOf(x) === i) })
+  const audioOptions = (current: string, none: string) => [{ value: '', label: none }, ...(current ? withCurrent(audioChoices, current) : audioChoices)]
   const options = (current: string) => [{ value: '', label: 'None' }, ...(current ? withCurrent(subtitleChoices, current) : subtitleChoices)]
 
   return (
@@ -106,7 +118,18 @@ export function PlaybackSection() {
           <Switch label="Remember last source" checked={remember} onChange={(on) => settingsStore.set({ rememberLastSource: on })} />
         </Row>
       </Group>
-      <Group footer="Subtitles turn on by themselves when a title has one in these languages.">
+      <Group footer="Flow starts each title on the first of these it has, and never on commentary. Original Language is the one the title was made in. A track you choose in the player is remembered for that title or show.">
+        <Row label="Audio Language" htmlFor="audio-1">
+          <Select id="audio-1" label="Audio language" value={audioFirst} onChange={(v) => setAudio(v, v ? audioSecond : '')} options={audioOptions(audioFirst, 'Stream Default')} />
+        </Row>
+        <Row label="Second Choice" htmlFor="audio-2">
+          <Select id="audio-2" label="Second choice for audio" value={audioSecond} onChange={(v) => setAudio(audioFirst, v)} options={audioOptions(audioSecond, 'None')} disabled={!audioFirst} />
+        </Row>
+      </Group>
+      <Group footer="Foreign Audio Only turns subtitles on when the audio isn’t in your Subtitle Language. Always turns them on for every title that has them in your languages.">
+        <Row label="Show Subtitles" htmlFor="subtitle-mode">
+          <Select id="subtitle-mode" label="When to show subtitles" value={subtitleMode} onChange={(v) => settingsStore.set({ subtitleMode: v })} options={subtitleModes} />
+        </Row>
         <Row label="Subtitle Language" htmlFor="subtitle-1">
           <Select id="subtitle-1" label="Subtitle language" value={first} onChange={(v) => setSubtitles(v, v ? second : '')} options={options(first)} />
         </Row>

@@ -15,6 +15,8 @@ export interface MediaItem {
   backdrop?: string
   rating?: number
   genres: number[]
+  /** The language the title was made in (ISO 639-1, "ko"), for choosing audio. */
+  originalLanguage?: string
 }
 
 export interface CastMember {
@@ -77,7 +79,6 @@ export interface MediaDetail extends MediaItem {
   lastEpisode?: Episode
   networks: string[]
   voteCount?: number
-  originalLanguage?: string
   collection?: { id: number; name: string }
 }
 

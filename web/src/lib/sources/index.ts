@@ -1,3 +1,4 @@
+import { resolveAudioLanguages } from '../language'
 import { queryClient } from '../queryClient'
 import { q } from '../queries'
 import { settingsStore, type Settings } from '../store/settings'
@@ -88,7 +89,7 @@ export async function searchSources(
   const settings = settingsStore.get()
   const providers = options.providers ?? enabledProviders(settings)
   const caps = options.capabilities ?? browserCapabilities()
-  const prefs = { preferredQuality: settings.preferredQuality, kind: request.type }
+  const prefs = { preferredQuality: settings.preferredQuality, kind: request.type, audioLanguage: resolveAudioLanguages(settings.audioLanguages, request.item.originalLanguage)[0] }
   const states = new Map<string, ProviderState>(providers.map((p) => [p.id, { id: p.id, name: p.name, kind: p.kind, state: 'loading' }]))
   let found: Source[] = []
   let torrents = 0

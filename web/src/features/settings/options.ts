@@ -28,6 +28,9 @@ export const subtitleChoices: { value: string; label: string }[] = [
   ['vi', 'Vietnamese'], ['ja', 'Japanese'], ['ko', 'Korean'], ['zh', 'Chinese'],
 ].map(([value, label]) => ({ value: value!, label: label! }))
 
+/** Audio languages: the title's own first, then the same languages as subtitles. */
+export const audioChoices: { value: string; label: string }[] = [{ value: 'original', label: 'Original Language' }, ...subtitleChoices]
+
 /** The list with the current value present, so an unusual saved choice still shows. */
 export function withCurrent(list: { value: string; label: string }[], current: string) {
   return list.some((o) => o.value === current) ? list : [{ value: current, label: current }, ...list]

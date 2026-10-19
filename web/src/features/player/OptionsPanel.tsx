@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Icon, type IconName } from '../../components/Icon'
 import type { Source } from '../../lib/sources'
+import { useSettings } from '../../lib/store/settings'
 import { usePlayer, type PlayerController } from './controller'
 import { keepFocus } from './Controls'
 import { fileSize, speedLabel, speeds } from './format'
@@ -8,7 +10,7 @@ import s from './Controls.module.css'
 
 type Page = 'root' | 'tracks' | 'audio' | 'subtitles' | 'speed' | 'source'
 
-const titles: Record<Page, string> = { root: 'Options', tracks: 'Subtitles & Audio', audio: 'Audio', subtitles: 'Subtitles', speed: 'Speed', source: 'Source' }
+const titles: Record<Page, string> = { root: 'Options', tracks: 'Audio and Subtitles', audio: 'Audio', subtitles: 'Subtitles', speed: 'Speed', source: 'Source' }
 
 interface Row {
   id: string
@@ -19,8 +21,18 @@ interface Row {
   checked?: boolean
   chevron?: boolean
   disabled?: boolean
+  /** Information, not a choice: set out like a row, but at full strength. */
+  plain?: boolean
   action: () => void
 }
+
+interface Group {
+  title?: string
+  rows: Row[]
+  footer?: ReactNode
+}
+
+const noop = () => {}
 
 /** The player's options as one glass card above the button that opened it. Each row names what's
  *  chosen and opens a list inside the same card, as PlayerOptionsPanel does in the apps. */
@@ -37,26 +49,55 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   const audioId = usePlayer(controller, (st) => st.audioId)
   const subtitles = usePlayer(controller, (st) => st.subtitles)
   const subtitleId = usePlayer(controller, (st) => st.subtitleId)
+  const blocked = usePlayer(controller, (st) => st.blocked)
   const rate = usePlayer(controller, (st) => st.rate)
   const fit = usePlayer(controller, (st) => st.fit)
   const close = () => controller.setPanel(null)
   const back = () => setPage(start === 'tracks' && page !== 'root' ? 'tracks' : 'root')
 
+  const proxy = useSettings((st) => st.streamProxy) !== ''
   const currentAudio = audio.find((t) => t.id === audioId)
   const currentSubtitle = subtitles.find((t) => t.id === subtitleId)
 
-  const audioRows = (after: () => void): Row[] =>
-    audio.map((t) => ({
-      id: `a${t.id}`,
-      title: t.label,
-      detail: t.unavailable,
-      disabled: !!t.unavailable,
-      checked: t.id === audioId,
-      action: () => {
-        void controller.selectAudio(t.id)
-        after()
-      },
-    }))
+  // What the source says it carries ("English · Hindi"), for when the engine can't list tracks itself.
+  const listed = source?.languages?.length ? source.languages.join(' · ') : undefined
+  /** The audio choices, or an honest account of why there aren't any: the browser is picking the
+   *  track itself (a host that blocks web pages), or the stream carries one track and says so. */
+  const audioGroup = (after: () => void, title?: string): Group => {
+    if (audio.length > 0) {
+      return {
+        title,
+        rows: audio.map((t) => ({
+          id: `a${t.id}`,
+          title: t.label,
+          detail: t.unavailable,
+          disabled: !!t.unavailable,
+          checked: t.id === audioId,
+          action: () => {
+            void controller.selectAudio(t.id)
+            after()
+          },
+        })),
+      }
+    }
+    if (blocked) {
+      return {
+        title,
+        rows: [{ id: 'browser', title: 'Chosen by the Browser', detail: listed && `The file lists ${listed}`, checked: true, disabled: true, plain: true, action: noop }],
+        footer: proxy ? (
+          'Your stream proxy couldn’t open this file, so the browser plays it and picks the audio itself.'
+        ) : (
+          <>
+            A stream proxy, added in <Link to="/settings" hash="playback">Settings → Playback</Link>, lets Flow offer every audio track.
+          </>
+        ),
+      }
+    }
+    return {
+      title,
+      rows: [listed ? { id: 'listed', title: listed, detail: 'Listed by the source', disabled: true, plain: true, action: noop } : { id: 'default', title: 'Default', checked: true, disabled: true, plain: true, action: noop }],
+    }
+  }
   const subtitleRows = (after: () => void): Row[] => [
     {
       id: 'off',
@@ -80,11 +121,11 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
     })),
   ]
 
-  let groups: { title?: string; rows: Row[] }[]
+  let groups: Group[]
   switch (page) {
     case 'root': {
       const rows: Row[] = []
-      if (audio.length > 1) rows.push({ id: 'audio', icon: 'music', title: currentAudio?.label ?? 'Audio', chevron: true, action: () => setPage('audio') })
+      rows.push({ id: 'audio', icon: 'music', title: currentAudio?.label ?? audioGroup(noop).rows[0]!.title, chevron: true, action: () => setPage('audio') })
       rows.push({ id: 'subtitles', icon: 'subtitles', title: currentSubtitle ? currentSubtitle.label : 'Subtitles Off', chevron: true, action: () => setPage('subtitles') })
       rows.push({
         id: 'source',
@@ -104,10 +145,10 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
       break
     }
     case 'tracks':
-      groups = [...(audio.length > 1 ? [{ title: 'Audio', rows: audioRows(() => {}) }] : []), { title: 'Subtitles', rows: subtitleRows(close) }]
+      groups = [audioGroup(noop, 'Audio'), { title: 'Subtitles', rows: subtitleRows(close) }]
       break
     case 'audio':
-      groups = [{ rows: audioRows(back) }]
+      groups = [audioGroup(back)]
       break
     case 'subtitles':
       groups = [{ rows: subtitleRows(back) }]
@@ -151,7 +192,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
           <div key={g.title ?? i} role="group" aria-label={g.title}>
             {g.title && <p className={s.groupTitle}>{g.title}</p>}
             {g.rows.map((row) => (
-              <button key={row.id} className={s.row} onClick={row.action} onMouseDown={keepFocus} disabled={row.disabled} role={row.checked !== undefined ? 'menuitemradio' : 'menuitem'} aria-checked={row.checked}>
+              <button key={row.id} className={s.row} data-plain={row.plain ? '' : undefined} onClick={row.action} onMouseDown={keepFocus} disabled={row.disabled} role={row.checked !== undefined ? 'menuitemradio' : 'menuitem'} aria-checked={row.checked}>
                 {row.icon && (
                   <span className={s.rowIcon}>
                     <Icon name={row.icon} size={18} strokeWidth={2} />
@@ -172,6 +213,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
                 )}
               </button>
             ))}
+            {g.footer && <p className={s.groupFooter}>{g.footer}</p>}
           </div>
         ))}
       </div>

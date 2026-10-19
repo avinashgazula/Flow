@@ -207,7 +207,7 @@
   color: var(--text-secondary);
 }
 
-/* Options and Subtitles & Audio: one card above the buttons that open it. */
+/* Options and Audio and Subtitles: one card above the buttons that open it. */
 .panel {
   position: absolute;
   right: calc(var(--inset-right) + var(--edge));
@@ -255,6 +255,13 @@
 .row:hover { background: var(--surface); }
 .row:active { background: var(--surface-strong); }
 .row:disabled { opacity: 0.45; cursor: default; }
+.row[data-plain]:disabled { opacity: 1; }
+.groupFooter {
+  padding: 8px 16px 12px;
+  font: 400 var(--text-caption) / 1.4 var(--font);
+  color: var(--text-secondary);
+}
+.groupFooter a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
 .row + .row::before {
   content: '';
   position: absolute;

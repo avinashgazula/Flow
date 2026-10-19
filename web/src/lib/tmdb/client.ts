@@ -59,6 +59,7 @@ export function item(raw: any, fallbackType?: MediaType): MediaItem | undefined 
     backdrop: raw.backdrop_path ?? undefined,
     rating: raw.vote_average ? Math.round(raw.vote_average * 10) / 10 : undefined,
     genres: raw.genre_ids ?? raw.genres?.map((g: Genre) => g.id) ?? [],
+    originalLanguage: raw.original_language || undefined,
   }
 }
 
@@ -205,7 +206,6 @@ export const api = {
       lastEpisode: raw.last_episode_to_air ? episode(raw.last_episode_to_air) : undefined,
       networks: (raw.networks ?? []).map((n: any) => n.name),
       voteCount: raw.vote_count,
-      originalLanguage: raw.original_language,
       collection: raw.belongs_to_collection ? { id: raw.belongs_to_collection.id, name: raw.belongs_to_collection.name } : undefined,
     }
   },

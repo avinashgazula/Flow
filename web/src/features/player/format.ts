@@ -1,5 +1,9 @@
 /* Words and numbers the player shows, kept free of the DOM so they can be tested. */
 
+import { languageName } from '../../lib/language'
+
+export { languageName }
+
 /** "4:05", or "1:02:13" past the hour, as TimeFormat.clock does in the apps. */
 export function clock(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) seconds = 0
@@ -14,30 +18,6 @@ export function clock(seconds: number): string {
 export function episodeLine(season?: number, episode?: number, name?: string): string | undefined {
   if (season === undefined || episode === undefined) return undefined
   return name ? `S${season} E${episode} · ${name}` : `S${season} E${episode}`
-}
-
-const threeLetter: Record<string, string> = {
-  eng: 'en', fre: 'fr', fra: 'fr', ger: 'de', deu: 'de', spa: 'es', ita: 'it', por: 'pt', jpn: 'ja', kor: 'ko', chi: 'zh', zho: 'zh',
-  rus: 'ru', dut: 'nl', nld: 'nl', swe: 'sv', nor: 'no', dan: 'da', fin: 'fi', pol: 'pl', tur: 'tr', ara: 'ar', heb: 'he', hin: 'hi',
-  gre: 'el', ell: 'el', cze: 'cs', ces: 'cs', hun: 'hu', rum: 'ro', ron: 'ro', tha: 'th', vie: 'vi', ind: 'id', ukr: 'uk', cmn: 'zh',
-}
-
-let names: Intl.DisplayNames | undefined
-
-/** "English" for "en", "eng" or "en-US"; undefined for "und" and codes nobody knows. */
-export function languageName(code?: string): string | undefined {
-  if (!code) return undefined
-  const lower = code.toLowerCase()
-  if (lower === 'und' || lower === 'unk' || lower === 'mis') return undefined
-  const base = lower.split(/[-_]/)[0]!
-  const tag = threeLetter[base] ? code.replace(/^[a-z]{3}/i, threeLetter[base]!) : code
-  try {
-    names ??= new Intl.DisplayNames(['en'], { type: 'language' })
-    const name = names.of(tag)
-    return name && name.toLowerCase() !== tag.toLowerCase() ? name : undefined
-  } catch {
-    return undefined
-  }
 }
 
 export function channelsLabel(channels?: number | string): string | undefined {

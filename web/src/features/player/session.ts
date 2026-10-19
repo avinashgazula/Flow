@@ -4,6 +4,7 @@
 import type { Source } from '../../lib/sources'
 import type { EpisodeRef, Progress } from '../../lib/store/library'
 import type { Episode } from '../../lib/tmdb/types'
+import { mergeChoice, type TitleChoice, type TitleChoices } from './languages'
 
 /** Worth offering to resume: started, and not so near the end that resuming would finish it at
  *  once (a resume point from another cut can lie past this stream's end). As in the apps. */
@@ -112,19 +113,28 @@ export const lastSources = {
 export interface PlayerPrefs {
   volume: number
   muted: boolean
-  /** The subtitle language last chosen, or null for off. */
-  subtitleLanguage: string | null
-  audioLanguage?: string
   /** hls.js's last bandwidth estimate in bits per second, so the next stream starts at the right quality. */
   bandwidth?: number
 }
 
 const prefsKey = 'flow.player.prefs.v1'
-const defaultPrefs: PlayerPrefs = { volume: 1, muted: false, subtitleLanguage: null }
+const defaultPrefs: PlayerPrefs = { volume: 1, muted: false }
 
 export const prefs = {
   get: (): PlayerPrefs => read(prefsKey, defaultPrefs),
   set(patch: Partial<PlayerPrefs>) {
     write(prefsKey, { ...prefs.get(), ...patch })
+  },
+}
+
+const choicesKey = 'flow.player.titleChoices.v1'
+
+/** The audio and subtitle languages picked by hand in the player, per title (a show counts as one
+ *  title). Settings → Playback is the default for everything else, so a pick for one film never
+ *  carries over to the next; but within a show the choice sticks from episode to episode. */
+export const titleChoices = {
+  get: (key: string): TitleChoice | undefined => read<TitleChoices>(choicesKey, {})[key],
+  set(key: string, patch: TitleChoice) {
+    write(choicesKey, mergeChoice(read<TitleChoices>(choicesKey, {}), key, patch))
   },
 }

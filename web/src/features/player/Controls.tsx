@@ -61,7 +61,7 @@ export function Controls({ controller, title, line, onClose, sources, source, on
             </div>
             <Cluster {...hover}>
               {episodes && <ClusterButton icon="grid" label="Episodes" active={panel === 'episodes'} onClick={() => toggle('episodes')} />}
-              <ClusterButton icon="subtitles" label="Subtitles and Audio" active={panel === 'tracks'} onClick={() => toggle('tracks')} />
+              <ClusterButton icon="subtitles" label="Audio and Subtitles" active={panel === 'tracks'} onClick={() => toggle('tracks')} />
               <ClusterButton icon="settings" label="Options" active={panel === 'options'} onClick={() => toggle('options')} />
             </Cluster>
           </div>

@@ -4,7 +4,7 @@ import { mapMediaSource } from './jellyfin'
 import { parseStream } from './parser'
 import { settingsStore } from '../store/settings'
 import { forgetBlocked, rememberBlocked } from './proxy'
-import { audioCarriers, buildSource, containerOf, dedupe, engineFor, hasPlayableAudio, rankSources, resolutionScore, undecodableAudio, unsupportedReason } from './rank'
+import { audioCarriers, audioLanguageScore, buildSource, containerOf, dedupe, engineFor, hasPlayableAudio, rankSources, resolutionScore, undecodableAudio, unsupportedReason } from './rank'
 import type { Source } from './types'
 
 const chrome = fixedCapabilities({})
@@ -294,5 +294,36 @@ describe('sources whose audio this browser can convert', () => {
     // A better resolution is still worth the conversion.
     const lower = source('lower', '720p WEB-DL AAC x264 [RD+] 👤 900', 'https://x.test/c.mkv', {}, converting)
     expect(ids(rankSources([lower, converted], { preferredQuality: '2160p' }, converting))).toEqual(['converted', 'lower'])
+  })
+})
+
+describe('audio language in ranking', () => {
+  const prefs = { preferredQuality: '1080p' as const }
+  const english = source('en', '1080p WEB-DL x264 AAC\n🌎 English')
+  const hindi = source('hi', '1080p WEB-DL x264 AAC\n🌎 Hindi')
+  const multi = source('multi', '1080p WEB-DL x264 AAC\nMulti')
+  const plain = source('plain', '1080p WEB-DL x264 AAC')
+
+  it('lifts releases that name the viewer’s first audio language', () => {
+    expect(ids(rankSources([hindi, plain, english], { ...prefs, audioLanguage: 'en' }, chrome))).toEqual(['en', 'hi', 'plain'])
+    expect(ids(rankSources([english, plain, hindi], { ...prefs, audioLanguage: 'hi' }, chrome))).toEqual(['hi', 'en', 'plain'])
+  })
+
+  it('counts a multi-language release for less', () => {
+    expect(ids(rankSources([multi, english], { ...prefs, audioLanguage: 'en' }, chrome))).toEqual(['en', 'multi'])
+    expect(ids(rankSources([plain, multi], { ...prefs, audioLanguage: 'en' }, chrome))).toEqual(['multi', 'plain'])
+  })
+
+  it('does nothing without a language, and never outweighs a resolution step', () => {
+    expect(audioLanguageScore(['English'], undefined)).toBe(0)
+    expect(audioLanguageScore(undefined, 'en')).toBe(0)
+    expect(audioLanguageScore(['English', 'Hindi'], 'hi')).toBe(100)
+    const p720 = source('720', '720p WEB-DL x264 AAC\n🌎 English')
+    expect(ids(rankSources([p720, plain], { ...prefs, audioLanguage: 'en' }, chrome))).toEqual(['plain', '720'])
+  })
+
+  it('leaves a source this browser can’t play at the bottom', () => {
+    const dts = source('dts', '1080p BluRay DTS-HD MA 7.1 x264\n🌎 English', 'https://x.test/a.mkv')
+    expect(ids(rankSources([dts, hindi], { ...prefs, audioLanguage: 'en' }, chrome))).toEqual(['hi', 'dts'])
   })
 })
