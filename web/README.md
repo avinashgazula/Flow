@@ -60,6 +60,16 @@ JS glue are committed in `src/lib/remux/pkg/`, so the site builds without Rust. 
 crate, run `npm run wasm` (needs Rust with the `wasm32-unknown-unknown` target and `wasm-bindgen-cli`
 0.2.129) and `cargo test` in `crates/flow-remux`.
 
+**Audio conversion.** A track the browser can't play (TrueHD, DTS, and Dolby Digital where there's
+no decoder) is handed to `src/lib/remux/convert.ts` raw, as the worker reads it. FFmpeg's decoders,
+built to a 290 KB WebAssembly module (LGPL, `src/lib/audio/pkg/flow-audio.wasm`, rebuilt with
+`npm run audio-wasm`), turn it into stereo PCM; `AudioEncoder` makes Opus; `OpusMuxer` wraps the
+packets in fragmented MP4 about a second at a time. The module is fetched only when such a track is
+chosen, so nothing about it is in the first-load code. Sound is counted in samples from the first
+fragment after a start or seek and re-anchored when the file has a gap, so it stays with the
+picture. Tracks that play as they are are never converted, and a failure at any step (the module
+won't load, a decoder crashes, the encoder errors) drops the audio buffer so the picture plays on.
+
 ## Sample data
 
 `?demo` in the address, or **Explore with Sample Data** on the welcome screen, fills every screen
@@ -74,7 +84,11 @@ from `src/lib/tmdb/demo.ts` with no key. The same catalogue as the apps' Demo mo
   be read from a web page. Settings → Playback has a **Stream Proxy** field: a proxy you run fetches
   such files for Flow and adds the headers. `proxy/` holds a Cloudflare Worker for it
   (`proxy/README.md`), and MediaFlow Proxy works too. Flow uses it only for hosts that need it.
-- **Codecs:** browsers can't decode DTS or TrueHD audio. Flow picks another audio track, or
-  another source, when one is all a file has. Where the browser can encode Opus (WebCodecs), Flow can
-  convert such audio instead, but only for a file it can read: not one behind a host that blocks web
-  pages and no stream proxy.
+- **Codecs:** browsers can't decode DTS or TrueHD audio, and some have no Dolby Digital decoder
+  either (Chrome on Linux and Firefox). Flow plays another audio track when the file has one that
+  plays as it is. Otherwise it converts the sound: a Web Worker decodes it with FFmpeg's decoders
+  (WebAssembly) and WebCodecs' `AudioEncoder` makes stereo Opus of it, which the page plays. That
+  needs a browser that can encode Opus (Chrome, Edge, Firefox and Safari 26) and a file Flow can
+  read: not one behind a host that blocks web pages and no stream proxy. Converted sound is stereo
+  (5.1 and 7.1 are mixed down), and the audio menu says so. If the conversion fails, the picture
+  plays on without sound and the player says why.
