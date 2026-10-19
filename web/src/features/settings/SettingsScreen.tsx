@@ -23,6 +23,15 @@ const sections: { id: string; title: string; body: ReactNode }[] = [
 export function SettingsScreen() {
   const [current, setCurrent] = useState(sections[0]!.id)
 
+  // A link from elsewhere (the player's no-sound notice) names a section in the address.
+  useEffect(() => {
+    const id = location.hash.slice(1)
+    if (sections.some((x) => x.id === id)) {
+      document.getElementById(id)?.scrollIntoView({ block: 'start' })
+      setCurrent(id)
+    }
+  }, [])
+
   // The anchor for the section in view follows the scroll; observers don't run per frame.
   useEffect(() => {
     const visible = new Set<string>()

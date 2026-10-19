@@ -1,6 +1,8 @@
 /* What this browser can decode, asked once per type and remembered: codec support doesn't change
    while the page is open, and the picker asks for every row. */
 
+import { canConvertAudio } from '../audio/support'
+
 export type VideoCodecName = 'H264' | 'HEVC' | 'AV1' | 'VP9' | 'XviD'
 export type AudioCodecName = 'AAC' | 'DD' | 'DD+' | 'Atmos' | 'FLAC' | 'Opus' | 'MP3' | 'DTS' | 'DTS-HD MA' | 'DTS:X' | 'TrueHD' | 'TrueHD Atmos'
 
@@ -11,6 +13,9 @@ export interface Capabilities {
   nativeHLS: boolean
   /** An HDR-capable display. */
   hdr: boolean
+  /** This browser can turn audio it can't decode into Opus (src/lib/audio). It still needs a file
+   *  Flow can read, which is the source's business, not the browser's. */
+  convertAudio: boolean
   video(codec: string): boolean
   audio(codec: string): boolean
 }
@@ -67,6 +72,10 @@ export function browserCapabilities(): Capabilities {
     mse: !!(g.ManagedMediaSource || g.MediaSource),
     nativeHLS: hasDocument && document.createElement('video').canPlayType('application/vnd.apple.mpegurl') !== '',
     hdr: typeof matchMedia === 'function' && matchMedia('(dynamic-range: high)').matches,
+    // Asked each time: startup refines the first answer once the encoder has said what it takes.
+    get convertAudio() {
+      return canConvertAudio()
+    },
     video: (codec) => (videoTypes[codec] ?? []).some(canPlayType),
     audio: (codec) => decodes(codec, (c) => (audioTypes[c] ?? []).some(canPlayType)),
   }
@@ -74,13 +83,14 @@ export function browserCapabilities(): Capabilities {
 }
 
 /** A fixed set of capabilities, for tests and for reasoning about "a typical browser". */
-export function fixedCapabilities(c: { mse?: boolean; nativeHLS?: boolean; hdr?: boolean; video?: string[]; audio?: string[] }): Capabilities {
+export function fixedCapabilities(c: { mse?: boolean; nativeHLS?: boolean; hdr?: boolean; convertAudio?: boolean; video?: string[]; audio?: string[] }): Capabilities {
   const video = new Set(c.video ?? ['H264', 'VP9', 'AV1'])
   const audio = new Set(c.audio ?? ['AAC', 'FLAC', 'Opus', 'MP3'])
   return {
     mse: c.mse ?? true,
     nativeHLS: c.nativeHLS ?? false,
     hdr: c.hdr ?? false,
+    convertAudio: c.convertAudio ?? false,
     video: (codec) => video.has(codec),
     audio: (codec) => decodes(codec, (c) => audio.has(c)),
   }

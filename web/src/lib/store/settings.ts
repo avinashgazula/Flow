@@ -48,6 +48,9 @@ export interface Settings {
   rememberLastSource: boolean
   /** The typeface the whole site is set in; System is the device's own and downloads nothing. */
   font: FontChoice
+  /** Where files from hosts that block web pages are fetched through: a URL with `{url}` for the
+   *  encoded file address. Empty means no proxy. */
+  streamProxy: string
 }
 
 const browserLanguage = typeof navigator === 'undefined' ? 'en-US' : navigator.language || 'en-US'
@@ -66,6 +69,7 @@ export const defaultSettings: Settings = {
   preferredQuality: '1080p',
   rememberLastSource: true,
   font: 'system',
+  streamProxy: '',
 }
 
 export const settingsStore = createStore<Settings>('settings', defaultSettings)

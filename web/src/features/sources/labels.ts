@@ -45,5 +45,6 @@ export function spokenLabel(s: Source, lastPlayed: boolean): string {
   const parts = [[resolutionLabel(s), s.quality].filter(Boolean).join(' '), s.provider, sizeLabel(s), s.languages?.join(' and '), ...premiumBadges(s).map((b) => b.text)]
   if (s.cached) parts.push('Cached')
   if (s.unsupported) parts.push(s.unsupported)
+  else if (s.note) parts.push(s.note)
   return (lastPlayed ? 'Last played, ' : '') + parts.filter(Boolean).join(', ')
 }

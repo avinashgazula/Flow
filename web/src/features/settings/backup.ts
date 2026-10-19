@@ -1,4 +1,5 @@
 import { lastSourceStore } from '../../lib/sources/lastSource'
+import { proxyProblem } from '../../lib/sources/proxy'
 import { defaultSettings, settingsStore, type Settings } from '../../lib/store/settings'
 import { libraryStore, type Library } from '../../lib/store/library'
 import { typefaces } from './options'
@@ -32,6 +33,8 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   preferredQuality: (v) => ['2160p', '1080p', '720p', 'any'].includes(v as string),
   rememberLastSource: (v) => typeof v === 'boolean',
   font: (v) => typefaces.some((f) => f.value === v),
+  // Empty clears the proxy; anything else has to be an address Flow can call.
+  streamProxy: (v) => typeof v === 'string' && proxyProblem(v) === undefined,
 }
 
 const libraryTypes: { [K in keyof Library]: (v: unknown) => boolean } = {

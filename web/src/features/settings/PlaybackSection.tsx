@@ -1,6 +1,9 @@
+import { useState, type FormEvent } from 'react'
+import { proxyProblem } from '../../lib/sources/proxy'
 import { settingsStore, useSettings, type Settings } from '../../lib/store/settings'
-import { Group, Row, Select, Switch } from './controls'
+import { Group, Note, Row, Select, Switch } from './controls'
 import { subtitleChoices, withCurrent } from './options'
+import s from './SettingsScreen.module.css'
 
 const qualities: { value: Settings['preferredQuality']; label: string }[] = [
   { value: '2160p', label: '4K' },
@@ -8,6 +11,78 @@ const qualities: { value: Settings['preferredQuality']; label: string }[] = [
   { value: '720p', label: '720p' },
   { value: 'any', label: 'Best Available' },
 ]
+
+/** Where the proxy's own instructions live, when this build knows the repository it came from
+ *  (vite.config.ts reads it from CI); otherwise the footer just names the folder. */
+const proxyGuide = import.meta.env.VITE_PROXY_GUIDE as string | undefined
+
+/** The address of a proxy Flow fetches blocked files through. Saved on Save, so a half-typed
+ *  address never reaches playback. */
+function StreamProxy() {
+  const saved = useSettings((x) => x.streamProxy)
+  const [value, setValue] = useState(saved)
+  const [problem, setProblem] = useState<string>()
+
+  function submit(event: FormEvent) {
+    event.preventDefault()
+    const found = proxyProblem(value)
+    setProblem(found)
+    if (!found) settingsStore.set({ streamProxy: value.trim() })
+  }
+
+  return (
+    <Group
+      title="Stream Proxy"
+      footer={
+        <>
+          Most debrid download servers don’t let web pages read their files, so Flow can’t pick or convert their audio. A stream proxy you run fetches the file for Flow. Put <code>{'{url}'}</code> where the file’s
+          address goes, like <code>https://proxy.example.com/?url={'{url}'}</code>. Without it, Flow adds <code>url=</code> and the address to the end. MediaFlow Proxy works too:{' '}
+          <code>https://mediaflow.example.com/proxy/stream?d={'{url}'}&amp;api_password=…</code>. Flow includes a Cloudflare Worker you can deploy yourself:{' '}
+          {proxyGuide ? (
+            <a href={proxyGuide} target="_blank" rel="noreferrer">
+              read how in web/proxy
+            </a>
+          ) : (
+            <>see web/proxy in Flow’s source</>
+          )}
+          . Everything Flow plays through it passes through your proxy.
+        </>
+      }
+    >
+      <form className={s.inline} onSubmit={submit}>
+        <input
+          id="stream-proxy"
+          className="field"
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value)
+            setProblem(undefined)
+          }}
+          placeholder="https://proxy.example.com/?url={url}"
+          aria-label="Stream proxy address"
+          type="text"
+          inputMode="url"
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+        />
+        <button className="btn btn-primary btn-compact" type="submit" disabled={value.trim() === saved}>
+          Save
+        </button>
+      </form>
+      {problem && (
+        <div className={s.pad}>
+          <Note tone="error">{problem}</Note>
+        </div>
+      )}
+      {!problem && saved && value.trim() === saved && (
+        <div className={s.pad}>
+          <Note tone="ok">Flow uses this proxy for files from hosts that block web pages.</Note>
+        </div>
+      )}
+    </Group>
+  )
+}
 
 export function PlaybackSection() {
   const quality = useSettings((x) => x.preferredQuality)
@@ -44,6 +119,7 @@ export function PlaybackSection() {
           <Switch label="Autoplay next episode" checked={autoplay} onChange={(on) => settingsStore.set({ autoplayNext: on })} />
         </Row>
       </Group>
+      <StreamProxy />
     </>
   )
 }

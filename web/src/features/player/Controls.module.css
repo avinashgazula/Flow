@@ -428,6 +428,7 @@
 .noSoundActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .noSoundActions .btn { padding: 0 14px; }
 .noSoundHint { font: 400 var(--text-caption) / 1.45 var(--font); color: var(--text-secondary); }
+.noSoundHint a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
 
 /* Phones and short windows: tighter, and the transport shrinks to fit a landscape iPhone. */
 @media (max-width: 720px), (max-height: 500px) {

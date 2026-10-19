@@ -1,6 +1,8 @@
+import { Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { browserCapabilities, type Source } from '../../lib/sources'
+import { useSettings } from '../../lib/store/settings'
 import { keepFocus } from './Controls'
 import type { PlayerController } from './controller'
 import { audioVerdict, silentAudioNames } from './silence'
@@ -12,6 +14,9 @@ import s from './Controls.module.css'
 export function NoSoundNotice({ controller, source, onSilent, onTryAnother }: { controller: PlayerController; source: Source | null; onSilent: () => void; onTryAnother: () => void }) {
   const [silent, setSilent] = useState(false)
   const [dismissed, setDismissed] = useState(false)
+  // This notice only shows for the browser's own player, which the remuxer falls back to after the
+  // proxy (if there is one) was tried. So with a proxy set, the proxy is what didn't work.
+  const proxySet = useSettings((x) => x.streamProxy.trim() !== '')
 
   useEffect(() => {
     const video = controller.video
@@ -56,7 +61,33 @@ export function NoSoundNotice({ controller, source, onSilent, onTryAnother }: { 
           Keep Watching
         </button>
       </div>
-      <p className={s.noSoundHint}>A stream proxy in AIOStreams (MediaFlow Proxy or StremThru) lets Flow pick an audio track this browser can play, if the file has one.</p>
+      <p className={s.noSoundHint}>
+        {proxySet ? (
+          <>
+            Your stream proxy couldn’t reach this file. Check its address in{' '}
+            <Link to="/settings" hash="playback">
+              Settings → Playback
+            </Link>
+            .
+          </>
+        ) : browserCapabilities().convertAudio ? (
+          <>
+            Add a stream proxy in{' '}
+            <Link to="/settings" hash="playback">
+              Settings → Playback
+            </Link>{' '}
+            and Flow can convert this audio.
+          </>
+        ) : (
+          <>
+            A stream proxy, added in{' '}
+            <Link to="/settings" hash="playback">
+              Settings → Playback
+            </Link>
+            , lets Flow pick an audio track this browser can play, if the file has one.
+          </>
+        )}
+      </p>
     </aside>
   )
 }

@@ -50,6 +50,10 @@ export interface Source {
   container?: string
   /** True when this browser can't decode something in it (DTS, TrueHD), so it's ranked last. */
   unsupported?: string
+  /** True when the audio is one this browser can't decode and Flow converts it while playing. */
+  convertsAudio?: boolean
+  /** A short remark for the picker: "TrueHD audio converted for this browser". */
+  note?: string
   /** Higher is better; set by ranking. */
   score?: number
   subtitles?: ExternalSubtitle[]

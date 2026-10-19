@@ -323,10 +323,16 @@ function SourceRow({ source, active, lastPlayed, divider, onPick, onHover }: { s
           {source.cached === false && <span className={`${s.flag} ${s.warn}`}>Not cached</span>}
         </span>
         {showRelease && <span className={s.release}>{source.title}</span>}
-        {source.unsupported && (
+        {source.unsupported ? (
           <span className={s.unsupported}>
             <Icon name="warning" size={13} strokeWidth={2.2} /> {source.unsupported}
           </span>
+        ) : (
+          source.note && (
+            <span className={s.note}>
+              <Icon name="info" size={13} strokeWidth={2.2} /> {source.note}
+            </span>
+          )
         )}
       </span>
     </div>

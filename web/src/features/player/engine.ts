@@ -4,6 +4,7 @@
 
 import type { HlsConfig } from 'hls.js'
 import type { Source } from '../../lib/sources'
+import { needsProxy, proxied, rememberBlocked, streamProxy } from '../../lib/sources/proxy'
 import { hlsErrorMessage, PlaybackError } from './errors'
 import { trackLabel } from './format'
 import { prefs } from './session'
@@ -254,14 +255,15 @@ async function attachHls(video: HTMLVideoElement, source: Source, options: Attac
 /** The browser's own player for a file whose host won't let Flow read it (most debrid download
  *  servers send no CORS headers). Chrome and Edge open Matroska themselves when they know the codecs
  *  (H.264, HEVC with hardware support, AAC, Opus, FLAC), though without a choice of audio track. */
-function playBlockedFile(video: HTMLVideoElement, source: Source, options: AttachOptions): Engine {
+function playBlockedFile(video: HTMLVideoElement, source: Source, options: AttachOptions, proxyFailed: boolean): Engine {
   video.removeAttribute('src')
   video.load()
   return {
     ...attachNative(video, source, options),
     fallback: 'blocked',
-    failureMessage:
-      'This file’s host doesn’t let web pages stream from it, and this browser can’t play the file directly. In AIOStreams, turn on a stream proxy (MediaFlow Proxy or StremThru) so Flow can stream it, pick another source, or watch it in the Flow app.',
+    failureMessage: proxyFailed
+      ? 'This file’s host doesn’t let web pages stream from it, and your stream proxy didn’t answer. Check its address in Settings → Playback, pick another source, or watch it in the Flow app.'
+      : 'This file’s host doesn’t let web pages stream from it, and this browser can’t play the file directly. Add a stream proxy in Settings → Playback (or turn one on in AIOStreams), pick another source, or watch it in the Flow app.',
   }
 }
 
@@ -269,12 +271,34 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
   const { startAt, signal } = options
   const { attachMatroska, remuxSupported } = await import('../../lib/remux')
   if (!remuxSupported()) throw new PlaybackError('This browser can’t play MKV files. On iPhone, update to iOS 17.1 or later, or pick another source.')
+  // Through the stream proxy a host that sends no CORS headers can be read. An add-on's request
+  // headers are meant for the host, not the proxy, and the proxy forwards only Range, so a proxied
+  // attempt sends none.
+  const open = (viaProxy: boolean) => attachMatroska(video, viaProxy ? proxied(source.url) : source.url, { headers: viaProxy ? undefined : source.headers, startAt, signal })
+  const failedWith = (error: unknown, name: string) => (error as Error).name === name
+
   let session
+  // A host already known to need the proxy goes straight to it, so the first try isn't a wasted one.
+  let viaProxy = needsProxy(source.url)
   try {
-    session = await attachMatroska(video, source.url, { headers: source.headers, startAt, signal })
+    try {
+      session = await open(viaProxy)
+    } catch (error) {
+      if (!failedWith(error, 'BlockedError') || viaProxy) throw error
+      // Remembered by the address Flow was given (the add-on's play link), not where it redirects to:
+      // that is what the next source from the same add-on starts with.
+      rememberBlocked(source.url)
+      if (!streamProxy()) throw error
+      viaProxy = true
+      session = await open(true)
+    }
   } catch (error) {
-    if ((error as Error).name === 'AbortError') throw error
-    if ((error as Error).name === 'BlockedError') return playBlockedFile(video, source, options)
+    if (failedWith(error, 'AbortError')) throw error
+    // The proxy is only a way round a blocked host. If it was tried and the file still can't be
+    // read (blocked, unreachable, refused), the browser's own player gets the original address. A
+    // file the proxy did deliver but this browser can't play is a different problem, told as before.
+    if (viaProxy && !failedWith(error, 'UnplayableError')) return playBlockedFile(video, source, options, true)
+    if (failedWith(error, 'BlockedError')) return playBlockedFile(video, source, options, false)
     const message = (error as Error).message || 'This file couldn’t be opened.'
     throw new PlaybackError(/source/i.test(message) ? message : `${message.replace(/\.?$/, '.')} Pick another source.`, 'remux')
   }

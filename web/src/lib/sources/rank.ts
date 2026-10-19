@@ -9,6 +9,7 @@
 import type { Capabilities } from './capabilities'
 import { losslessCinemaAudio } from './capabilities'
 import { isCinemaCapture, releaseQualities, type ParsedQuality, type ResolutionClass, type StreamTraits } from './parser'
+import { isReadable } from './proxy'
 import type { PlaybackEngine, ReleaseQuality, Source, SourceOrigin } from './types'
 
 export interface BuildInput {
@@ -89,23 +90,39 @@ const audioLabels: Record<string, string> = { DD: 'Dolby Digital', 'DD+': 'Dolby
 /** "TrueHD", "Dolby Digital Plus": a codec as a viewer would say it. */
 export const audioLabel = (codec: string) => audioLabels[codec] ?? codec
 
+/** What the source's audio is called when it's undecodable here: "TrueHD Atmos", "DTS-HD MA and Dolby
+ *  Digital Plus". Empty when the audio plays. */
+function undecodableNames(audio: string[], caps: Capabilities): string {
+  const mute = undecodableAudio(audio, caps)
+  // As written in the release ("TrueHD Atmos"), when that's what was undecodable.
+  const named = mute.map((c) => audio.find((a) => a === c || (c === 'TrueHD' && a === 'TrueHD Atmos')) ?? c)
+  return named.slice(0, 2).map(audioLabel).join(' and ')
+}
+
+/** Whether conversion is what makes the file's audio play: the browser can convert, and Flow can
+ *  read the file, which conversion needs. Only the remuxer converts, so the container has to be
+ *  Matroska, or unknown (an opaque debrid link, which is Matroska whenever it carries TrueHD or DTS). */
+export function convertsAudio(input: { url?: string; container?: string; engine: PlaybackEngine; audio: string[]; transcoded?: boolean }, caps: Capabilities): boolean {
+  if (input.transcoded || !caps.convertAudio || undecodableAudio(input.audio, caps).length === 0) return false
+  if (input.engine !== 'remux' && input.container !== undefined) return false
+  return !input.url || isReadable(input.url)
+}
+
 /** Why this browser can't play the source, or undefined when it can. */
-export function unsupportedReason(input: { container?: string; engine: PlaybackEngine; videoCodec?: string; audio: string[]; headers?: Record<string, string>; transcoded?: boolean }, caps: Capabilities): string | undefined {
+export function unsupportedReason(input: { url?: string; container?: string; engine: PlaybackEngine; videoCodec?: string; audio: string[]; headers?: Record<string, string>; transcoded?: boolean }, caps: Capabilities): string | undefined {
   const { container, engine } = input
   if (container && unplayableContainers.has(container)) return `${container.toUpperCase()} files can’t play in a browser`
   if (engine === 'remux' && !caps.mse) return 'Matroska needs a newer browser: Safari 17.1 or later, Chrome, Edge or Firefox'
   if (engine === 'hls' && !caps.mse) return 'This browser can’t play HLS streams'
   if (engine === 'native' && container !== 'm3u8' && input.headers && Object.keys(input.headers).length > 0) return 'Needs request headers a browser can’t send'
   if (input.transcoded) return undefined
-  // Without sound the film is no use, and neither the remuxer nor the browser's own player can
-  // convert audio, so a file whose every audio format is undecodable here is unplayable.
+  // Without sound the film is no use. The remuxer can't play a format the browser can't decode, but
+  // it can convert one (see convertsAudio); otherwise a file whose every audio format is
+  // undecodable here is unplayable.
   const mute = undecodableAudio(input.audio, caps)
-  if (mute.length > 0) {
-    // As written in the release ("TrueHD Atmos"), when that's what was undecodable.
-    const named = mute.map((c) => input.audio.find((a) => a === c || (c === 'TrueHD' && a === 'TrueHD Atmos')) ?? c)
-    const names = named.slice(0, 2).map(audioLabel).join(' and ')
+  if (mute.length > 0 && !convertsAudio(input, caps)) {
     // DTS and TrueHD play nowhere; Dolby Digital depends on the browser.
-    return `${names} audio can’t play in ${mute.every(losslessCinemaAudio) ? 'a' : 'this'} browser`
+    return `${undecodableNames(input.audio, caps)} audio can’t play in ${mute.every(losslessCinemaAudio) ? 'a' : 'this'} browser`
   }
   const video = input.videoCodec
   if (video === 'XviD') return 'XviD video can’t play in a browser'
@@ -127,8 +144,12 @@ export function buildSource(input: BuildInput, caps: Capabilities): Source {
   const t = input.traits
   const container = containerOf(input.url, input.filename, input.container)
   const headers = input.headers && Object.keys(input.headers).length > 0 ? input.headers : undefined
-  const engine = input.transcoded ? engineFor('m3u8', caps, !!headers) : engineFor(container, caps, !!headers)
+  let engine = input.transcoded ? engineFor('m3u8', caps, !!headers) : engineFor(container, caps, !!headers)
   const audio = audioList(t)
+  const converts = convertsAudio({ url: input.url, container, engine, audio, transcoded: input.transcoded }, caps)
+  // A link that doesn't say what it is can only convert in the remuxer, so it goes there: the audio
+  // that needs converting is TrueHD or DTS, which only Matroska files carry in practice.
+  if (converts && engine === 'native' && container === undefined && !headers) engine = 'remux'
   const source: Source = {
     id: input.id,
     origin: input.origin,
@@ -160,8 +181,12 @@ export function buildSource(input: BuildInput, caps: Capabilities): Source {
   if (input.serverPosition && input.serverPosition > 0) source.serverPosition = input.serverPosition
   if (input.subtitles?.length) source.subtitles = input.subtitles
   if (input.notWebReady) source.notWebReady = true
-  const reason = unsupportedReason({ container: source.container, engine, videoCodec: t.videoCodec, audio, headers, transcoded: input.transcoded }, caps)
+  const reason = unsupportedReason({ url: input.url, container: source.container, engine, videoCodec: t.videoCodec, audio, headers, transcoded: input.transcoded }, caps)
   if (reason) source.unsupported = reason
+  else if (converts && engine === 'remux') {
+    source.convertsAudio = true
+    source.note = `${undecodableNames(audio, caps)} audio converted for this browser`
+  }
   return source
 }
 
@@ -224,6 +249,9 @@ export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilitie
   }
   // Stremio's own web player would need its streaming server for these; HLS and Matroska are handled here.
   if (s.notWebReady && s.engine === 'native') score -= 120
+  // Converting costs the browser some work and the start a moment: the same file with sound that
+  // plays as it is comes first, but a better picture is still worth the conversion.
+  if (s.convertsAudio) score -= 200
   if (s.cached === true) score += 80
   if (s.cached === false) score -= 400
   if (s.seeders !== undefined) score += Math.min(60, Math.log10(s.seeders + 1) * 20)
