@@ -42,11 +42,12 @@ export interface RawCue {
 
 export type ToWorker =
   | { type: 'open'; url: string; headers: Record<string, string> }
-  | { type: 'start'; epoch: number; video: number; audio: number; at: number }
+  /** `convert`: the audio track is one the browser can't play, to be decoded here and re-encoded as Opus. */
+  | { type: 'start'; epoch: number; video: number; audio: number; at: number; convert: boolean }
   /** Reads from the keyframe before `at`. */
   | { type: 'seek'; epoch: number; at: number }
   /** Rebuilds the audio from `at`; video before `floor` is already buffered and isn't sent again. */
-  | { type: 'audio'; epoch: number; track: number; at: number; floor: number }
+  | { type: 'audio'; epoch: number; track: number; at: number; floor: number; convert: boolean }
   | { type: 'playhead'; time: number }
   /** Pauses (true) or resumes reading, for ManagedMediaSource's streaming hints. */
   | { type: 'hold'; hold: boolean }
@@ -56,11 +57,16 @@ export type ToWorker =
 
 export type FromWorker =
   | { type: 'header'; json: string; length: number; ranges: boolean }
+  /** A converted audio track's init is kind 1 with codec 'opus'. */
   | { type: 'init'; epoch: number; kind: 0 | 1; codec: string; data: ArrayBuffer }
   /** `key`: the fragment starts on a keyframe, so the buffer before it can be trimmed safely. */
   | { type: 'fragment'; epoch: number; kind: 0 | 1; start: number; end: number; key: boolean; data: ArrayBuffer }
   | { type: 'cues'; cues: RawCue[] }
   /** The file has been read to its end. */
   | { type: 'done'; epoch: number }
-  /** `blocked`: the host answers but doesn't let web pages read its files (no CORS headers). */
-  | { type: 'error'; message: string; blocked?: boolean }
+  /** The audio couldn't be converted (the decoder didn't load or crashed, the encoder failed). The
+   *  video carries on, so the page drops the audio buffer and plays without sound rather than stall. */
+  | { type: 'audio-failed'; epoch: number; message: string }
+  /** `blocked`: the host answers but doesn't let web pages read its files (no CORS headers).
+   *  `notMatroska`: the file is something else (MP4, say), which the browser's own player may take. */
+  | { type: 'error'; message: string; blocked?: boolean; notMatroska?: boolean }

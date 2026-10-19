@@ -89,9 +89,13 @@ function subtitleLabel(t: HeaderTrack): string {
   return flags.length ? `${base} (${flags.join(', ')})` : base
 }
 
+/** What a converted track becomes: Opus in MP4, which `convert.ts` builds in the worker. */
+export const CONVERTED_MIME = 'audio/mp4; codecs="opus"'
+
 export interface Plan {
   /** Null when the file has no video (audio only). */
   video: { track: HeaderTrack; mime: string } | null
+  /** `converted` tracks play through the worker's decoder and Opus encoder instead of straight from the file. */
   audio: (RemuxAudioTrack & { mime: string | null })[]
   /** The audio track to start with, or null when the file has none. */
   defaultAudio: number | null
@@ -107,8 +111,10 @@ export class UnplayableError extends Error {
   }
 }
 
-/** Decides what this browser can play from the file's tracks. Throws when it can't play the picture or any of the sound. */
-export function plan(info: HeaderInfo, isSupported: (mime: string) => boolean): Plan {
+/** Decides what this browser can play from the file's tracks. A track it can't decode but the
+ *  worker can (`decode` is set) still plays when `convert` says Opus can be encoded here. Throws
+ *  when it can't play the picture or any of the sound. */
+export function plan(info: HeaderInfo, isSupported: (mime: string) => boolean, convert = false): Plan {
   const videos = info.tracks.filter((t) => t.type === 'video')
   let video: Plan['video'] = null
   if (videos.length) {
@@ -129,15 +135,20 @@ export function plan(info: HeaderInfo, isSupported: (mime: string) => boolean): 
   const audio = info.tracks
     .filter((t) => t.type === 'audio')
     .map((t) => {
-      const mime = t.supported ? supportedMime('audio', t.codec, isSupported) : null
-      return { id: t.id, label: audioLabel(t), language: t.language && t.language !== 'und' ? t.language : undefined, codec: t.codec || codecName(t.codecId), channels: t.channels, playable: mime !== null, default: t.default, commentary: t.commentary, mime }
+      const native = t.supported ? supportedMime('audio', t.codec, isSupported) : null
+      // Only a track the browser can't play itself is converted: one it can play never costs the CPU.
+      const converted = native === null && convert && !!t.decode
+      const mime = converted ? CONVERTED_MIME : native
+      return { id: t.id, label: audioLabel(t), language: t.language && t.language !== 'und' ? t.language : undefined, codec: t.codec || codecName(t.codecId), channels: t.channels, playable: mime !== null, converted, default: t.default, commentary: t.commentary, mime }
     })
   const playable = audio.filter((a) => a.playable)
   if (audio.length && !playable.length) {
     const names = [...new Set(info.tracks.filter((t) => t.type === 'audio').map((t) => codecName(t.codecId)))].join(' and ')
     throw new UnplayableError('audio', `This file only has ${names} sound, which browsers can’t play. Try another source.`)
   }
-  const chosen = playable.find((a) => a.default && !a.commentary) ?? playable.find((a) => !a.commentary) ?? playable.find((a) => a.default) ?? playable[0]
+  // What plays as it is comes first; converting is for when nothing else will do.
+  const best = (list: typeof audio) => list.find((a) => a.default && !a.commentary) ?? list.find((a) => !a.commentary) ?? list.find((a) => a.default) ?? list[0]
+  const chosen = best(playable.filter((a) => !a.converted)) ?? best(playable)
 
   const subtitles = info.tracks
     .filter((t) => t.type === 'subtitle')

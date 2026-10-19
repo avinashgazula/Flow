@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { HeaderInfo, HeaderTrack } from './protocol'
-import { mimeCandidates, plan, supportedMime, UnplayableError } from './tracks'
+import { CONVERTED_MIME, mimeCandidates, plan, supportedMime, UnplayableError } from './tracks'
 
 function track(partial: Partial<HeaderTrack> & Pick<HeaderTrack, 'id' | 'type'>): HeaderTrack {
   return { codecId: '', codec: '', supported: true, reason: '', language: 'eng', name: null, default: false, forced: false, commentary: false, hearingImpaired: false, ...partial }
@@ -73,5 +73,54 @@ describe('plan', () => {
       { id: 7, label: 'English (Forced)', language: 'eng', kind: 'text', default: false, forced: true },
       { id: 8, label: 'French', language: 'fra', kind: 'image', default: false, forced: false },
     ])
+  })
+})
+
+describe('plan with audio conversion', () => {
+  // A browser like Chromium on Linux: AAC plays, Dolby Digital doesn't.
+  const noDolby = (mime: string) => mime.includes('avc1') || mime.includes('mp4a.40.2')
+  const truehd = track({ id: 2, type: 'audio', codecId: 'A_TRUEHD', codec: '', supported: false, reason: 'TrueHD audio', default: true, channels: 8, decode: 'truehd' })
+  const dolby = track({ id: 4, type: 'audio', codecId: 'A_AC3', codec: 'ac-3', channels: 6, decode: 'ac3' })
+  const dtsDecodable = { ...dts, decode: 'dts' as const }
+
+  it('converts what the browser can’t play when conversion is available', () => {
+    const p = plan(header(video, truehd), noDolby, true)
+    expect(p.defaultAudio).toBe(2)
+    expect(p.audio).toEqual([expect.objectContaining({ id: 2, playable: true, converted: true, mime: CONVERTED_MIME })])
+  })
+
+  it('still refuses a file with only sound nobody can decode, or when conversion is off', () => {
+    expect(() => plan(header(video, truehd), noDolby, false)).toThrow(UnplayableError)
+    expect(() => plan(header(video, truehd), noDolby)).toThrow(/TrueHD/)
+    const unknown = track({ id: 2, type: 'audio', codecId: 'A_WMA', supported: false, default: true })
+    expect(() => plan(header(video, unknown), noDolby, true)).toThrow(UnplayableError)
+  })
+
+  it('treats Dolby Digital as convertible only where the browser lacks a decoder', () => {
+    const chromium = plan(header(video, dolby), noDolby, true)
+    expect(chromium.audio[0]).toMatchObject({ playable: true, converted: true })
+    const safari = plan(header(video, dolby), everything, true)
+    expect(safari.audio[0]).toMatchObject({ playable: true, converted: false })
+    expect(safari.audio[0]!.mime).toBe('audio/mp4; codecs="ac-3"')
+  })
+
+  it('starts with a track that plays as it is, even when a converted one is the default', () => {
+    const p = plan(header(video, truehd, aac), noDolby, true)
+    expect(p.defaultAudio).toBe(3)
+    expect(p.audio.map((a) => [a.id, a.converted])).toEqual([[2, true], [3, false]])
+  })
+
+  it('picks the best converted track by the usual rules when none plays as it is', () => {
+    const commentary = { ...dtsDecodable, id: 6, commentary: true, default: true, language: 'eng' }
+    const p = plan(header(video, commentary, dolby, dtsDecodable), noDolby, true)
+    // Not commentary; the default flag wins among the rest.
+    expect(p.defaultAudio).toBe(2)
+    expect(plan(header(video, commentary), noDolby, true).defaultAudio).toBe(6)
+  })
+
+  it('never converts a track the remuxer can’t hand to the decoder', () => {
+    const p = plan(header(video, dts, aac), noDolby, true)
+    expect(p.audio.map((a) => [a.id, a.playable, a.converted])).toEqual([[2, false, false], [3, true, false]])
+    expect(p.defaultAudio).toBe(3)
   })
 })

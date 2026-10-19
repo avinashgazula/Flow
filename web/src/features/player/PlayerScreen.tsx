@@ -105,6 +105,8 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
   const [connectingShown, setConnectingShown] = useState(true)
   // The file is playing through the browser's own player because its host blocks web pages.
   const [blocked, setBlocked] = useState(false)
+  /** The file's audio was being converted for this browser and that failed: the picture plays without sound. */
+  const [convertFailed, setConvertFailed] = useState(false)
 
   const tried = useRef(new Set<string>())
   const startAt = useRef<number | undefined>(undefined)
@@ -311,8 +313,14 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
     let engine: Engine | null = null
     started.current = false
     setBlocked(false)
+    setConvertFailed(false)
+    const onAudioFailed = () => {
+      if (abort.signal.aborted) return
+      controller.refreshTracks()
+      setConvertFailed(true)
+    }
     const onFatal = (err: PlaybackError) => !abort.signal.aborted && fail(err)
-    attachSource(el, source, { startAt: startAt.current, signal: abort.signal, onTracks: controller.refreshTracks, onFatal })
+    attachSource(el, source, { startAt: startAt.current, signal: abort.signal, onTracks: controller.refreshTracks, onFatal, onAudioFailed })
       .then((e) => {
         if (abort.signal.aborted) return e.destroy()
         engine = e
@@ -525,7 +533,9 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
             onMoreSources={() => setPicker(true)}
             episodes={epRef ? { season: epRef.season, current: epRef.episode, list: seasonEpisodes, onPick: playEpisode, fallbackStill: item?.backdrop } : undefined}
           />
-          {blocked && <NoSoundNotice key={`${source?.id}#${attempt}`} controller={controller} source={source} onSilent={() => lastSources.forget(key)} onTryAnother={tryWithSound} />}
+          {(blocked || convertFailed) && (
+            <NoSoundNotice key={`${source?.id}#${attempt}`} controller={controller} source={source} conversionFailed={convertFailed} onSilent={() => lastSources.forget(key)} onTryAnother={tryWithSound} />
+          )}
           {next && <UpNext key={next.id} controller={controller} next={next} autoplay={autoplayNext} fallbackStill={item?.backdrop} onPlay={() => playEpisode(next)} />}
           <FeedbackFlash controller={controller} />
         </>

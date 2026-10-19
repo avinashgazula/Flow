@@ -4,7 +4,9 @@
    clusters in range requests and posts fragmented-MP4 fragments for the main thread to append. */
 
 import init, { Remuxer } from './pkg/flow_remux.js'
-import type { FromWorker, RawCue, ToWorker } from './protocol'
+import type { AudioCodec } from '../audio/decoder'
+import type { AudioConverter } from './convert'
+import type { FromWorker, HeaderInfo, RawCue, ToWorker } from './protocol'
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope
 
@@ -27,6 +29,12 @@ let head = new Uint8Array(0)
 let videoTrack = 0
 let audioTrack = 0
 let sent = { video: false, audio: false }
+/** What each audio track needs to be decoded in the worker, from the header (absent: nothing the decoders take). */
+let decodes = new Map<number, AudioCodec>()
+/** The codec of the audio track being converted, or null while the audio plays as it is. */
+let convertCodec: AudioCodec | null = null
+/** Loaded the first time a track is converted: the decoder's WebAssembly comes with it. */
+let converter: AudioConverter | null = null
 let cuesReady: Promise<void> = Promise.resolve()
 
 let run: { ctl: AbortController; done: Promise<void> } | null = null
@@ -39,6 +47,10 @@ let wake: (() => void) | null = null
 
 const post = (message: FromWorker, transfer: Transferable[] = []) => ctx.postMessage(message, transfer)
 
+/** What the remuxer says about a file that isn't Matroska at all (an MP4, a web page the server sent instead). */
+const NOT_MATROSKA = "This isn't a Matroska file."
+class NotMatroskaError extends Error {}
+
 class HttpError extends Error {
   constructor(readonly status: number) {
     super(`The server answered ${status}`)
@@ -49,6 +61,10 @@ class HttpError extends Error {
  *  answers a no-cors request is up, it just doesn't let web pages read its files (no CORS headers,
  *  as with most debrid download servers). That needs a different fix from a dropped connection. */
 async function report(error: unknown) {
+  if (error instanceof NotMatroskaError) {
+    post({ type: 'error', message: error.message, notMatroska: true })
+    return
+  }
   if (error instanceof TypeError && !(error instanceof HttpError)) {
     const reachable = await fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' }).then(
       () => true,
@@ -142,7 +158,8 @@ async function open(message: Extract<ToWorker, { type: 'open' }>) {
     rem.headerFeed(need[0]!, await readRange(need[0]!, need[1]!))
   }
   const error = rem.headerError()
-  if (error) throw new Error(error)
+  if (error) throw error === NOT_MATROSKA ? new NotMatroskaError(error) : new Error(error)
+  for (const track of (JSON.parse(rem.headerJson()) as HeaderInfo).tracks) if (track.decode) decodes.set(track.id, track.decode)
 
   const bytesPerSecond = (() => {
     const info = JSON.parse(rem.headerJson()) as { duration: number | null }
@@ -181,17 +198,54 @@ function sendInits(epoch: number) {
   }
 }
 
-function drain(epoch: number) {
+async function drain(epoch: number) {
   const rem = remuxer!
   sendInits(epoch)
   for (let data = rem.nextFragment(); data; data = rem.nextFragment()) {
-    const kind = rem.fragmentKind() as 0 | 1
+    const kind = rem.fragmentKind()
     const end = rem.fragmentEnd()
-    post({ type: 'fragment', epoch, kind, start: rem.fragmentStart(), end, key: rem.fragmentKey(), data: data.buffer as ArrayBuffer }, [data.buffer as ArrayBuffer])
+    if (kind === 2) {
+      // Raw audio for the converter. With none working (it failed, or never loaded) the frames are dropped and the picture plays on.
+      if (converter?.working) await converter.feed(rem.fragmentStart(), data)
+      if (!videoTrack) produced = Math.max(produced, end)
+      continue
+    }
+    post({ type: 'fragment', epoch, kind: kind as 0 | 1, start: rem.fragmentStart(), end, key: rem.fragmentKey(), data: data.buffer as ArrayBuffer }, [data.buffer as ArrayBuffer])
     if (kind === (videoTrack ? 0 : 1)) produced = Math.max(produced, end)
   }
   const cues = rem.takeCues()
   if (cues) post({ type: 'cues', cues: JSON.parse(cues) as RawCue[] })
+}
+
+const converterHost = {
+  initNeeded: () => !sent.audio,
+  init(epoch: number, data: ArrayBuffer) {
+    sent.audio = true
+    post({ type: 'init', epoch, kind: 1, codec: 'opus', data }, [data])
+  },
+  fragment(epoch: number, start: number, end: number, data: ArrayBuffer) {
+    post({ type: 'fragment', epoch, kind: 1, start, end, key: true, data }, [data])
+    // Audio-only files are paced by their sound.
+    if (!videoTrack) produced = Math.max(produced, end)
+  },
+  failed(epoch: number, message: string) {
+    post({ type: 'audio-failed', epoch, message })
+  },
+}
+
+/** Opens the converter for the track about to play. A converter that can't be loaded is the same failure as one that crashes. */
+async function useConverter(epoch: number) {
+  if (!convertCodec) return
+  try {
+    if (!converter) {
+      const { AudioConverter } = await import('./convert')
+      converter = new AudioConverter(converterHost)
+    }
+  } catch (error) {
+    converter = null
+    return void post({ type: 'audio-failed', epoch, message: error instanceof Error ? error.message : String(error) })
+  }
+  void converter.use(convertCodec, epoch)
 }
 
 /** Backpressure: stops reading while enough is buffered ahead of the playhead. Reading less lets TCP slow the server down too. */
@@ -254,7 +308,7 @@ async function stream(from: number, epoch: number, signal: AbortSignal) {
           pos += value.length
           got += value.length
           failures = 0
-          drain(epoch)
+          await drain(epoch)
           // Ask for the next chunk before this one ends, so the server's round trip hides behind the last megabyte.
           if (!prefetched && bounded && end < length && pos - start > size / 2) {
             prefetched = true
@@ -281,16 +335,31 @@ async function stream(from: number, epoch: number, signal: AbortSignal) {
   dropNext()
   if (signal.aborted) return
   rem.finish()
-  drain(epoch)
+  await drain(epoch)
+  // The converted sound's last packets are still in the encoder: they go out before the stream is called done.
+  if (converter?.working) await converter.finish()
+  if (signal.aborted) return
   post({ type: 'done', epoch })
 }
 
-/** Stops whatever is reading and starts a new run; the previous one has fully stopped before the next touches the remuxer. */
-async function begin(epoch: number, at: number, floor = 0, resetInits = false) {
+/** Stops whatever is reading and starts a new run; the previous one has fully stopped before the next touches the remuxer.
+ *  `inits`: which init segments the page needs again (everything at the start, the audio's after a switch). `track`: the
+ *  audio track changed (or this is the start), so a converter is opened again, which also gives a failed one another go. */
+async function begin(epoch: number, at: number, floor = 0, inits: 'all' | 'audio' | null = null, track = false) {
   run?.ctl.abort()
   wake?.()
   await run?.done
   const rem = remuxer!
+  // Only now is nothing from the old run still posting, so its init can't be taken for the new one's.
+  if (inits === 'all') sent = { video: false, audio: false }
+  else if (inits === 'audio') sent.audio = false
+  if (convertCodec) {
+    if (track) await useConverter(epoch)
+    converter?.begin(epoch)
+  } else if (converter) {
+    // Back to a track that plays as it is: the encoder and decoder are let go.
+    converter.close()
+  }
   const ctl = new AbortController()
   ctl.signal.addEventListener('abort', () => wake?.(), { once: true })
   const task = (async () => {
@@ -307,7 +376,6 @@ async function begin(epoch: number, at: number, floor = 0, resetInits = false) {
     if (ctl.signal.aborted) return
     rem.reset(offset, aligned)
     if (floor > 0) rem.setVideoFloor(floor)
-    if (resetInits) sent = { video: false, audio: false }
     produced = at
     await stream(offset, epoch, ctl.signal)
   })().catch((error) => {
@@ -317,6 +385,13 @@ async function begin(epoch: number, at: number, floor = 0, resetInits = false) {
 }
 
 // MARK: Commands
+
+/** Points the remuxer at an audio track, raw when it is to be converted. A track the decoders can't take can't be converted. */
+function selectAudio(epoch: number, track: number, convert: boolean) {
+  convertCodec = convert ? (decodes.get(track) ?? null) : null
+  remuxer!.select(videoTrack, track, convertCodec !== null)
+  if (convert && !convertCodec) post({ type: 'audio-failed', epoch, message: 'This browser can’t convert that audio.' })
+}
 
 let chain: Promise<void> = Promise.resolve()
 
@@ -337,6 +412,7 @@ ctx.onmessage = (event: MessageEvent<ToWorker>) => {
     case 'destroy':
       run?.ctl.abort()
       wake?.()
+      converter?.close()
       try {
         remuxer?.free()
       } catch {}
@@ -353,9 +429,9 @@ ctx.onmessage = (event: MessageEvent<ToWorker>) => {
         case 'start':
           videoTrack = message.video
           audioTrack = message.audio
-          remuxer!.select(message.video, message.audio, false)
+          selectAudio(message.epoch, message.audio, message.convert)
           playhead = message.at
-          await begin(message.epoch, message.at, 0, true)
+          await begin(message.epoch, message.at, 0, 'all', true)
           break
         case 'seek':
           playhead = message.at
@@ -364,9 +440,8 @@ ctx.onmessage = (event: MessageEvent<ToWorker>) => {
           break
         case 'audio':
           audioTrack = message.track
-          remuxer!.select(videoTrack, message.track, false)
-          sent.audio = false
-          await begin(message.epoch, message.at, message.floor)
+          selectAudio(message.epoch, message.track, message.convert)
+          await begin(message.epoch, message.at, message.floor, 'audio', true)
           break
       }
     })

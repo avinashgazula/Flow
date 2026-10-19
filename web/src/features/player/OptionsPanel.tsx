@@ -70,7 +70,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
         rows: audio.map((t) => ({
           id: `a${t.id}`,
           title: t.label,
-          detail: t.unavailable,
+          detail: t.unavailable ?? t.note,
           disabled: !!t.unavailable,
           checked: t.id === audioId,
           action: () => {

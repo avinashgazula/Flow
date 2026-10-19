@@ -122,6 +122,22 @@ export class MseSink {
     if (slot.sb.buffered.length) await this.operate(slot, (sb) => sb.remove(0, Infinity)).catch(() => {})
   }
 
+  /** Takes a track's buffer away for good, so the other track plays on without it: a stream that
+   *  waits for sound that will never come stalls. Works whether or not the stream was ended. */
+  async remove(kind: BufferKind) {
+    const slot = this.slots[kind]
+    if (!slot) return
+    this.slots[kind] = null
+    slot.queue = []
+    while (slot.busy) await new Promise((r) => setTimeout(r, 10))
+    try {
+      if (this.source.readyState !== 'closed') this.source.removeSourceBuffer(slot.sb)
+    } catch {
+      // Already gone.
+    }
+    this.events.onChange()
+  }
+
   /** Points an emptied buffer at a new codec. Throws where the browser can't (older Safari), and `rebuild` takes over. */
   retype(kind: BufferKind, mime: string) {
     const slot = this.slots[kind]!

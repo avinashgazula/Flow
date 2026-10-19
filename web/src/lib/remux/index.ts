@@ -4,20 +4,24 @@
 
    const session = await attachMatroska(videoElement, url, { headers, startAt: 120, signal })
    videoElement.play()
-   session.audioTracks / session.subtitleTracks   what the file offers (DTS and TrueHD say playable: false)
+   session.audioTracks / session.subtitleTracks   what the file offers (`converted` tracks are decoded in a worker and re-encoded as Opus;
+                                                  DTS and TrueHD say playable: false where that isn't possible)
    await session.selectAudio(id)                  rebuilds the audio from the playhead, picture untouched
    const stop = session.onSubtitleCues(id, cues => …)   text cues arrive as the file is read (SRT, ASS, WebVTT)
    await session.seek(seconds)                    or just set video.currentTime: both are handled
    session.onError(message => …)                  mid-playback failures (the initial ones reject attachMatroska)
+   session.onAudioFailed(() => …)                 converting the audio failed: the picture plays on without sound
    session.destroy()
 
    attachMatroska resolves once the first picture is buffered. It rejects with an Error whose message
-   is fit to show (UnplayableError when this browser can't decode the picture or any of the sound).
+   is fit to show (UnplayableError when this browser can't decode the picture or any of the sound,
+   NotMatroskaError when the file is some other kind, which the browser's own player may take).
    Nothing from this folder loads until an MKV is played: the worker and its WebAssembly module are
    fetched by the first attachMatroska call. */
 
 import type { FromWorker, HeaderInfo, ToWorker } from './protocol'
 import { type BufferKind, isMediaSourceSupported, MseSink, typeSupported } from './mse'
+import { canConvertAudio } from '../audio/support'
 import { parseHeader, type Plan, plan as makePlan, UnplayableError } from './tracks'
 
 export { UnplayableError }
@@ -28,8 +32,10 @@ export interface RemuxAudioTrack {
   language?: string
   codec: string
   channels?: number
-  /** False when this browser can't decode it (DTS, TrueHD). */
+  /** False when this browser can't decode it (DTS, TrueHD) and can't convert it either. */
   playable: boolean
+  /** Plays after being decoded in WebAssembly and re-encoded as stereo Opus. */
+  converted: boolean
   default: boolean
 }
 
@@ -74,6 +80,10 @@ export interface RemuxSession {
   seek(seconds: number): Promise<void>
   /** Failures after playback began (the connection dropped for good, the browser refused data). */
   onError(listener: (message: string) => void): () => void
+  /** The converted audio gave out (the decoder or encoder failed). The picture carries on with no sound
+   *  and `audioId` is null; choosing a track that plays as it is brings the sound back. Called at once
+   *  when that has already happened. */
+  onAudioFailed(listener: () => void): () => void
   destroy(): void
 }
 
@@ -114,6 +124,8 @@ class Session implements RemuxSession {
   private destroyed = false
   private failure: ((error: Error) => void) | null = null
   private errorListeners = new Set<(message: string) => void>()
+  private audioFailedListeners = new Set<() => void>()
+  private audioFailed = false
   private waiters: { time: number; margin: number; resolve: () => void; timer: ReturnType<typeof setTimeout> }[] = []
 
   /** Inits seen for this epoch, until the buffers exist. */
@@ -159,12 +171,12 @@ class Session implements RemuxSession {
     if (!this.destroyed) this.worker.postMessage(message)
   }
 
-  private fail(message: string, blocked = false) {
+  private fail(message: string, kind: 'blocked' | 'notMatroska' | null = null) {
     if (this.destroyed) return
     if (this.failure) {
       const reject = this.failure
       this.failure = null
-      reject(blocked ? new BlockedError(message) : new Error(message))
+      reject(kind === 'blocked' ? new BlockedError(message) : kind === 'notMatroska' ? new NotMatroskaError(message) : new Error(message))
     } else {
       for (const listener of this.errorListeners) listener(message)
     }
@@ -197,7 +209,7 @@ class Session implements RemuxSession {
     const info = await Promise.race([header, failed])
     await Promise.race([opened, failed])
 
-    this.plan = makePlan(info, typeSupported)
+    this.plan = makePlan(info, typeSupported, canConvertAudio())
     this.declared = info.duration ?? 0
     this.audioTracks = this.plan.audio.map(({ mime: _mime, ...track }) => track)
     this.subtitleTracks = this.plan.subtitles
@@ -220,7 +232,7 @@ class Session implements RemuxSession {
       this.cleanups.push(() => video.removeEventListener(event, handler))
     }
 
-    this.send({ type: 'start', epoch: this.epoch, video: track?.id ?? 0, audio: this.audioId ?? 0, at })
+    this.send({ type: 'start', epoch: this.epoch, video: track?.id ?? 0, audio: this.audioId ?? 0, at, convert: this.isConverted(this.audioId) })
     await Promise.race([first, failed])
     this.failure = null
     return this
@@ -235,7 +247,7 @@ class Session implements RemuxSession {
         this.headerReceived(parseHeader(message.json))
         return
       case 'error':
-        this.fail(message.message, message.blocked)
+        this.fail(message.message, message.blocked ? 'blocked' : message.notMatroska ? 'notMatroska' : null)
         return
       case 'cues':
         this.takeCues(message.cues)
@@ -243,11 +255,17 @@ class Session implements RemuxSession {
     }
     if (message.epoch !== this.epoch) return
     switch (message.type) {
+      case 'audio-failed':
+        void this.dropAudio()
+        return
       case 'init':
+        // Sound that was given up on may still have a message or two on the way.
+        if (message.kind === 1 && this.audioId === null) return
         this.inits[message.kind] = { codec: message.codec, data: message.data }
         this.openBuffers()
         return
       case 'fragment': {
+        if (message.kind === 1 && this.audioId === null) return
         if (message.kind === 0 && message.key) this.sink.noteKeyframe(message.start)
         if (message.kind === this.primary) {
           this.began ??= message.start
@@ -263,6 +281,28 @@ class Session implements RemuxSession {
         this.finishIfComplete()
         return
     }
+  }
+
+  private isConverted(id: number | null): boolean {
+    return this.plan.audio.find((a) => a.id === id)?.converted ?? false
+  }
+
+  /** Plays on without sound. A buffer that audio was meant to fill would hold the picture back for ever (a
+   *  stream waits until every track has data), so it's removed, and nothing here waits for audio again. */
+  private async dropAudio() {
+    if (this.destroyed || this.audioId === null) return
+    this.audioId = null
+    this.audioFailed = true
+    this.ready[1] = false
+    this.inits[1] = null
+    this.held = this.held.filter((f) => f.kind !== 1)
+    await this.sink.remove(1)
+    if (this.destroyed) return
+    for (const listener of this.audioFailedListeners) listener()
+    // The picture may have been waiting on the audio's init to open the buffers at all.
+    if (!this.initialised) this.openBuffers()
+    else this.finishIfComplete()
+    this.changed()
   }
 
   private mimeFor(kind: BufferKind): string | null {
@@ -397,7 +437,7 @@ class Session implements RemuxSession {
     this.began = this.front = null
     this.restartAt = at
     this.eof = false
-    if (extra.audio) this.send({ type: 'audio', epoch: this.epoch, track: extra.audio.track, at, floor: extra.audio.floor })
+    if (extra.audio) this.send({ type: 'audio', epoch: this.epoch, track: extra.audio.track, at, floor: extra.audio.floor, convert: this.isConverted(extra.audio.track) })
     else this.send({ type: 'seek', epoch: this.epoch, at })
   }
 
@@ -430,6 +470,7 @@ class Session implements RemuxSession {
     const time = video.currentTime
     const floor = this.plan.video ? (this.sink.contiguousEnd(0, time) ?? 0) : 0
     this.audioId = id
+    this.audioFailed = false
     this.ready[1] = false
     this.inits[1] = null
     // The old sound goes with its buffer; the picture stays, so there's no flash or re-seek.
@@ -451,6 +492,12 @@ class Session implements RemuxSession {
     return () => this.errorListeners.delete(listener)
   }
 
+  onAudioFailed(listener: () => void): () => void {
+    this.audioFailedListeners.add(listener)
+    if (this.audioFailed) queueMicrotask(listener)
+    return () => this.audioFailedListeners.delete(listener)
+  }
+
   destroy() {
     if (this.destroyed) return
     this.destroyed = true
@@ -464,6 +511,7 @@ class Session implements RemuxSession {
     this.sink.destroy()
     this.cues.clear()
     this.errorListeners.clear()
+    this.audioFailedListeners.clear()
   }
 }
 
@@ -473,6 +521,14 @@ export class BlockedError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'BlockedError'
+  }
+}
+
+/** The file isn't Matroska at all (an MP4, say, or a page the server sent in its place). */
+export class NotMatroskaError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'NotMatroskaError'
   }
 }
 

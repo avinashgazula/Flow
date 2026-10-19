@@ -15,6 +15,8 @@ export interface Track {
   language?: string
   /** Why it can't be chosen (a DTS track in a browser that can't decode it). */
   unavailable?: string
+  /** A word on how it plays, shown under its name (audio the player converts to something this browser plays). */
+  note?: string
 }
 
 export interface Engine {
@@ -47,6 +49,8 @@ export interface AttachOptions {
   /** The track lists changed (a manifest parsed, an audio group switched). */
   onTracks: () => void
   onFatal: (error: PlaybackError) => void
+  /** Audio that was being converted to play in this browser gave out. The picture plays on without it. */
+  onAudioFailed: () => void
 }
 
 /** Text tracks the player added itself (external files, remuxed cues), so engines don't list them. */
@@ -294,6 +298,8 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
     }
   } catch (error) {
     if (failedWith(error, 'AbortError')) throw error
+    // Not Matroska after all (the link had no telling extension, and Flow guessed): the browser's own player takes it from here.
+    if (failedWith(error, 'NotMatroskaError')) return attachNative(video, source, options)
     // The proxy is only a way round a blocked host. If it was tried and the file still can't be
     // read (blocked, unreachable, refused), the browser's own player gets the original address. A
     // file the proxy did deliver but this browser can't play is a different problem, told as before.
@@ -303,6 +309,7 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
     throw new PlaybackError(/source/i.test(message) ? message : `${message.replace(/\.?$/, '.')} Pick another source.`, 'remux')
   }
   const remux = session
+  const stopWatching = remux.onAudioFailed(options.onAudioFailed)
   let unsubscribe: (() => void) | undefined
   let current: TextTrack | null = null
 
@@ -314,8 +321,9 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
         label: trackLabel({ name: t.label, language: t.language, channels: t.channels }),
         language: t.language,
         unavailable: t.playable ? undefined : `${t.codec} can’t play in this browser`,
+        note: t.converted ? 'Converted to stereo' : undefined,
       })),
-      selected: String(remux.audioTracks.find((t) => t.default && t.playable)?.id ?? remux.audioTracks.find((t) => t.playable)?.id ?? ''),
+      selected: String(remux.audioId ?? ''),
     }),
     selectAudio: (id) => remux.selectAudio(Number(id)),
     subtitles: () =>
@@ -352,6 +360,7 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
     duration: () => remux.duration || video.duration,
     recover: () => false,
     destroy() {
+      stopWatching()
       unsubscribe?.()
       if (current) current.mode = 'disabled'
       remux.destroy()
