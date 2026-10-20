@@ -4,7 +4,7 @@
 //
 //   GET or HEAD  /?url=<encoded https address>[&token=<TOKEN>]
 
-import { cleanSnippet, corsHeaders, downstreamHeaders, hopsHeader, hopsSummary, originAllowed, parseList, parseTarget, rangeFromStart, redirectStatuses, snippetWanted, streamStatuses, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
+import { cleanSnippet, corsHeaders, directHeader, downstreamHeaders, hopsHeader, hopsSummary, originAllowed, parseList, parseTarget, rangeFromStart, redirectStatuses, snippetWanted, streamStatuses, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
 
 /** Redirect hops followed before giving up: debrid links take one or two. */
 const maxRedirects = 5
@@ -105,6 +105,13 @@ async function answer(request, env, hops) {
     return text(upstream.status >= 400 ? upstream.status : 502, `The file’s host (${url.hostname}) answered ${upstream.status}.${said ? ` It said: “${said}”` : ''}`, cors, hops)
   }
   const passedOn = { ...cors, ...downstreamHeaders(upstream.headers), [hopsHeader]: hopsSummary(hops) }
+  // Offered only when the final host may be asked for directly, so ALLOWED_REDIRECT_HOSTS keeps
+  // meaning "only behind a redirect".
+  if (url !== target && targetAllowed(url, hosts)) {
+    const direct = new URL(request.url)
+    direct.searchParams.set('url', url.href)
+    passedOn[directHeader] = direct.href
+  }
   // A host (or a cache on the way) that answers a range from the start with the whole file would make
   // Flow think the file can't be read in pieces, so seeking would never work. The piece asked for is
   // the file's beginning, so the answer can be cut down to it here.

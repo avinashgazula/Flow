@@ -59,6 +59,10 @@ export function targetAllowed(url, { allowedHosts, redirectHosts = [] }, redirec
  *  and file ids). */
 export const hopsHeader = 'X-Flow-Proxy-Hops'
 
+/** Where a play link ended up, as a proxy address: later pieces of the file can go straight there
+ *  instead of through the redirect again (an add-on's play link may look the file up every time). */
+export const directHeader = 'X-Flow-Proxy-Direct'
+
 /** `media.example.com 302, files.example.com 403`: one entry per host asked, in order. A status is
  *  a number, or a word when there was no answer (`unreachable`, `not allowed`). */
 export function hopsSummary(hops) {
@@ -96,7 +100,7 @@ export function corsHeaders(origin, allowedOrigins) {
     'Access-Control-Allow-Origin': origin.trim().replace(/\/$/, ''),
     'Access-Control-Allow-Headers': 'Range',
     'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-    'Access-Control-Expose-Headers': `Content-Range, Content-Length, Accept-Ranges, Content-Type, ${hopsHeader}`,
+    'Access-Control-Expose-Headers': `Content-Range, Content-Length, Accept-Ranges, Content-Type, ${hopsHeader}, ${directHeader}`,
     'Access-Control-Max-Age': '86400',
   }
 }

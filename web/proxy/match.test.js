@@ -67,7 +67,7 @@ describe('CORS headers', () => {
     const h = corsHeaders('https://flow.example.com', allowed)
     expect(h['Access-Control-Allow-Origin']).toBe('https://flow.example.com')
     expect(h['Access-Control-Allow-Headers']).toBe('Range')
-    expect(h['Access-Control-Expose-Headers']).toBe('Content-Range, Content-Length, Accept-Ranges, Content-Type, X-Flow-Proxy-Hops')
+    expect(h['Access-Control-Expose-Headers']).toBe('Content-Range, Content-Length, Accept-Ranges, Content-Type, X-Flow-Proxy-Hops, X-Flow-Proxy-Direct')
     expect(h.Vary).toBe('Origin')
     expect(corsHeaders('http://localhost:5173/', allowed)['Access-Control-Allow-Origin']).toBe('http://localhost:5173')
   })

@@ -6,7 +6,7 @@
 import init, { Remuxer } from './pkg/flow_remux.js'
 import type { AudioCodec } from '../audio/decoder'
 import type { AudioConverter } from './convert'
-import { cleanDetail, DETAIL_BYTES, detailWanted, httpFailureMessage, networkFailureMessage, PROXY_HOPS_HEADER } from './failure'
+import { cleanDetail, DETAIL_BYTES, detailWanted, httpFailureMessage, networkFailureMessage, PROXY_DIRECT_HEADER, PROXY_HOPS_HEADER } from './failure'
 import type { FromWorker, HeaderInfo, RawCue, ToWorker } from './protocol'
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope
@@ -15,18 +15,24 @@ const ctx = self as unknown as DedicatedWorkerGlobalScope
 const HEAD_BYTES = 512 * 1024
 const FIRST_CHUNK = 1024 * 1024
 const CHUNK = 4 * 1024 * 1024
+/** Through the stream proxy every piece is a round trip to the Worker and on to the host, so pieces are bigger. */
+const PROXY_CHUNK = 16 * 1024 * 1024
 /** Seconds of media to keep buffered ahead of the playhead; lowered for very high bitrates and under memory pressure. */
 const AHEAD_MAX = 60
 const AHEAD_MIN = 8
 const AHEAD_BUDGET_BYTES = 96 * 1024 * 1024
 
 let url = ''
+/** The address Flow was given. `url` may move on from it to where its redirect led (see request()). */
+let given = ''
 let headers: Record<string, string> = {}
 /** The address is the stream proxy's, so a failure is the proxy's to explain. */
 let viaProxy = false
 let remuxer: Remuxer | null = null
 let length = 0
 let ranges = true
+/** What to say when a read further in is impossible: set by the answer that showed it. */
+let noSeek = 'This server can’t seek inside the file. Try another source.'
 let head = new Uint8Array(0)
 
 let videoTrack = 0
@@ -127,7 +133,17 @@ function friendly(error: unknown): string {
 async function request(start: number, end: number | null, signal?: AbortSignal): Promise<Response> {
   const h = new Headers(headers)
   h.set('Range', `bytes=${start}-${end ?? ''}`)
-  const res = await fetch(url, { headers: h, signal })
+  let res = await fetch(url, { headers: h, signal })
+  // The redirect's target can expire or be refused before the play link does: back to the play link once.
+  if (url !== given && res.status >= 400) {
+    res.body?.cancel().catch(() => {})
+    url = given
+    res = await fetch(url, { headers: h, signal })
+  }
+  // An add-on's play link can look the file up again on every request, which costs each piece a
+  // round trip or two before any bytes. The proxy says where the link led, and later pieces go there.
+  const direct = viaProxy ? res.headers.get(PROXY_DIRECT_HEADER) : null
+  if (direct && url === given && sameOrigin(direct, given)) url = direct
   if (res.status === 206) return res
   // A server that ignores Range sends the whole file with 200: usable only from the start.
   if (res.status === 200 && start === 0) {
@@ -139,7 +155,8 @@ async function request(start: number, end: number | null, signal?: AbortSignal):
     ranges = false
     // Through the stream proxy, which hosts answered says where the range was dropped.
     const hops = res.headers.get(PROXY_HOPS_HEADER)
-    throw new Error(`This server can’t seek inside the file. Try another source.${hops ? ` Hosts asked: ${hops}.` : ''}`)
+    noSeek = `This server can’t seek inside the file. Try another source.${hops ? ` Hosts asked: ${hops}.` : ''}`
+    throw new Error(noSeek)
   }
   const detail = await readDetail(res)
   res.body?.cancel().catch(() => {})
@@ -163,8 +180,17 @@ function totalLength(res: Response): number {
   return Number(res.headers.get('Content-Length') ?? 0)
 }
 
+const sameOrigin = (a: string, b: string) => {
+  try {
+    return new URL(a).origin === new URL(b).origin
+  } catch {
+    return false
+  }
+}
+
 async function open(message: Extract<ToWorker, { type: 'open' }>) {
   url = message.url
+  given = message.url
   headers = message.headers
   viaProxy = message.viaProxy
   await init()
@@ -313,7 +339,7 @@ async function stream(from: number, epoch: number, signal: AbortSignal) {
   let next: { start: number; response: Promise<Response> } | null = null
 
   const openChunk = (start: number, size: number) => {
-    if (!ranges && start > 0) return Promise.reject(new Error('This server can’t seek inside the file. Try another source.'))
+    if (!ranges && start > 0) return Promise.reject(new Error(noSeek))
     return request(start, bounded ? Math.min(start + size, length) - 1 : null, signal)
   }
   const dropNext = () => {
@@ -322,7 +348,7 @@ async function stream(from: number, epoch: number, signal: AbortSignal) {
   }
 
   while (!bounded || pos < length) {
-    const size = first ? FIRST_CHUNK : CHUNK
+    const size = first ? FIRST_CHUNK : viaProxy ? PROXY_CHUNK : CHUNK
     const start = pos
     try {
       let response: Promise<Response>
@@ -351,7 +377,7 @@ async function stream(from: number, epoch: number, signal: AbortSignal) {
           // Ask for the next chunk before this one ends, so the server's round trip hides behind the last megabyte.
           if (!prefetched && bounded && end < length && pos - start > size / 2) {
             prefetched = true
-            const response = openChunk(end, CHUNK)
+            const response = openChunk(end, viaProxy ? PROXY_CHUNK : CHUNK)
             response.catch(() => {})
             next = { start: end, response }
           }

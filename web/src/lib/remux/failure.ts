@@ -4,6 +4,8 @@
 /** The response header the stream proxy in web/proxy lists the hosts it asked in (hosts and
  *  statuses only), for the viewer to read off the screen. */
 export const PROXY_HOPS_HEADER = 'X-Flow-Proxy-Hops'
+/** The stream proxy's address for where a play link ended up (see web/proxy/match.js). */
+export const PROXY_DIRECT_HEADER = 'X-Flow-Proxy-Direct'
 
 /** How much of an error body is read: the proxy's reasons are a sentence or two. */
 export const DETAIL_BYTES = 2048

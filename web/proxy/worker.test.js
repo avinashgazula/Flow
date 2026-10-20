@@ -61,6 +61,26 @@ describe('the Worker', () => {
     expect(tries).toBe(2)
   })
 
+  it('says where a play link led, as a proxy address with the same token', async () => {
+    network(redirect('https://a1.files.example.net/d/f.mkv'), file())
+    const res = await ask('https://play.example.com/play/1', { headers: { ...page, Range: 'bytes=0-4' }, token: 's3cret', extra: { ...env, TOKEN: 's3cret' } })
+    const direct = new URL(res.headers.get('X-Flow-Proxy-Direct'))
+    expect(direct.origin).toBe('https://proxy.example.com')
+    expect(direct.searchParams.get('url')).toBe('https://a1.files.example.net/d/f.mkv')
+    expect(direct.searchParams.get('token')).toBe('s3cret')
+    expect(res.headers.get('Access-Control-Expose-Headers')).toContain('X-Flow-Proxy-Direct')
+  })
+
+  it('keeps a redirect-only host behind its redirect, and says nothing without a redirect', async () => {
+    network(redirect('https://cdn.example.org/f.mkv'), file())
+    const behind = await ask('https://play.example.com/play/1', { headers: { ...page, Range: 'bytes=0-4' }, extra: { ...env, ALLOWED_REDIRECT_HOSTS: 'cdn.example.org' } })
+    expect(behind.status).toBe(206)
+    expect(behind.headers.get('X-Flow-Proxy-Direct')).toBeNull()
+    network(file())
+    const plain = await ask('https://play.example.com/f.mkv', { headers: { ...page, Range: 'bytes=0-4' } })
+    expect(plain.headers.get('X-Flow-Proxy-Direct')).toBeNull()
+  })
+
   it('cuts a whole-file answer down to a range from the start, so the player can still seek', async () => {
     network(new Response('0123456789', { status: 200, headers: { 'Content-Length': '10', 'Content-Type': 'video/x-matroska' } }))
     const res = await ask('https://play.example.com/f.mkv', { headers: { ...page, Range: 'bytes=0-3' } })
