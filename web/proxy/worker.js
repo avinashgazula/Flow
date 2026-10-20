@@ -4,7 +4,7 @@
 //
 //   GET or HEAD  /?url=<encoded https address>[&token=<TOKEN>]
 
-import { cleanSnippet, corsHeaders, downstreamHeaders, hopsHeader, hopsSummary, originAllowed, parseList, parseTarget, redirectStatuses, snippetWanted, streamStatuses, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
+import { cleanSnippet, corsHeaders, downstreamHeaders, hopsHeader, hopsSummary, originAllowed, parseList, parseTarget, rangeFromStart, redirectStatuses, snippetWanted, streamStatuses, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
 
 /** Redirect hops followed before giving up: debrid links take one or two. */
 const maxRedirects = 5
@@ -77,7 +77,7 @@ async function answer(request, env, hops) {
   let upstream
   for (let hop = 0; ; hop++) {
     try {
-      upstream = await fetch(url, { method: request.method, headers, redirect: 'manual' })
+      upstream = await fetchUncached(url, { method: request.method, headers, redirect: 'manual' })
     } catch {
       hops.push({ host: url.hostname, status: 'unreachable' })
       return text(502, `Couldn’t reach ${url.hostname}.`, cors, hops)
@@ -104,9 +104,43 @@ async function answer(request, env, hops) {
     // (A 204 or 304 can't carry a body, and nothing here should have produced one.)
     return text(upstream.status >= 400 ? upstream.status : 502, `The file’s host (${url.hostname}) answered ${upstream.status}.${said ? ` It said: “${said}”` : ''}`, cors, hops)
   }
-  return new Response(request.method === 'HEAD' ? null : upstream.body, {
-    status: upstream.status,
-    headers: { ...cors, ...downstreamHeaders(upstream.headers), [hopsHeader]: hopsSummary(hops) },
+  const passedOn = { ...cors, ...downstreamHeaders(upstream.headers), [hopsHeader]: hopsSummary(hops) }
+  // A host (or a cache on the way) that answers a range from the start with the whole file would make
+  // Flow think the file can't be read in pieces, so seeking would never work. The piece asked for is
+  // the file's beginning, so the answer can be cut down to it here.
+  const total = Number(upstream.headers.get('Content-Length'))
+  const piece = upstream.status === 200 && request.method === 'GET' && Number.isFinite(total) && total > 0 ? rangeFromStart(headers.Range, total) : null
+  if (piece) {
+    return new Response(upstream.body?.pipeThrough(firstBytes(piece.length)), {
+      status: 206,
+      headers: { ...passedOn, 'Content-Length': String(piece.length), 'Content-Range': `bytes 0-${piece.length - 1}/${total}`, 'Accept-Ranges': 'bytes' },
+    })
+  }
+  return new Response(request.method === 'HEAD' ? null : upstream.body, { status: upstream.status, headers: passedOn })
+}
+
+/** fetch() that skips Cloudflare's own cache. Files with a video extension count as cacheable there,
+ *  and a cache in the way may answer a range request with the whole file. Older compatibility dates
+ *  don't know the `cache` option and throw, so then the request goes without it. */
+async function fetchUncached(url, init) {
+  try {
+    return await fetch(url, { ...init, cache: 'no-store' })
+  } catch (error) {
+    if (!/cache/i.test(String(error?.message))) throw error
+    return fetch(url, init)
+  }
+}
+
+/** Passes on the first `limit` bytes of a stream and stops there. */
+function firstBytes(limit) {
+  let sent = 0
+  return new TransformStream({
+    transform(chunk, controller) {
+      const take = Math.min(chunk.byteLength, limit - sent)
+      if (take > 0) controller.enqueue(take === chunk.byteLength ? chunk : chunk.subarray(0, take))
+      sent += take
+      if (sent >= limit) controller.terminate()
+    },
   })
 }
 

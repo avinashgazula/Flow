@@ -18,7 +18,7 @@ function network(...answers) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url, init) => {
-      calls.push({ url: String(url), headers: init.headers, method: init.method, redirect: init.redirect })
+      calls.push({ url: String(url), headers: init.headers, method: init.method, redirect: init.redirect, cache: init.cache })
       const next = answers.shift()
       return typeof next === 'function' ? next() : next
     }),
@@ -42,6 +42,41 @@ afterEach(() => {
 const hopsOf = (res) => res.headers.get('X-Flow-Proxy-Hops')
 
 describe('the Worker', () => {
+  it('skips Cloudflare’s cache, and still fetches where the cache option isn’t known', async () => {
+    const calls = network(file())
+    await ask('https://play.example.com/f.mkv', { headers: { ...page, Range: 'bytes=0-4' } })
+    expect(calls[0].cache).toBe('no-store')
+
+    let tries = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url, init) => {
+        tries++
+        if (init.cache) throw new TypeError("The 'cache' field on 'RequestInitializerDict' is not implemented.")
+        return file()
+      }),
+    )
+    const res = await ask('https://play.example.com/f.mkv', { headers: { ...page, Range: 'bytes=0-4' } })
+    expect(res.status).toBe(206)
+    expect(tries).toBe(2)
+  })
+
+  it('cuts a whole-file answer down to a range from the start, so the player can still seek', async () => {
+    network(new Response('0123456789', { status: 200, headers: { 'Content-Length': '10', 'Content-Type': 'video/x-matroska' } }))
+    const res = await ask('https://play.example.com/f.mkv', { headers: { ...page, Range: 'bytes=0-3' } })
+    expect(res.status).toBe(206)
+    expect(res.headers.get('Content-Range')).toBe('bytes 0-3/10')
+    expect(res.headers.get('Content-Length')).toBe('4')
+    expect(await res.text()).toBe('0123')
+  })
+
+  it('passes a whole-file answer on as it is when the range starts further in', async () => {
+    network(new Response('0123456789', { status: 200, headers: { 'Content-Length': '10' } }))
+    const res = await ask('https://play.example.com/f.mkv', { headers: { ...page, Range: 'bytes=5-9' } })
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('0123456789')
+  })
+
   it('answers a preflight for a listed page, and refuses any other', async () => {
     const ok = await worker.fetch(new Request('https://proxy.example.com/?url=x', { method: 'OPTIONS', headers: { ...page, 'Access-Control-Request-Headers': 'range' } }), env)
     expect(ok.status).toBe(204)

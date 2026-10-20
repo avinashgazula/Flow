@@ -143,3 +143,13 @@ export function tokenMatches(provided, secret) {
   for (let i = 0; i < b.length; i++) diff |= (a.charCodeAt(i) || 0) ^ b.charCodeAt(i)
   return diff === 0
 }
+
+/** For a single range that starts at the beginning (`bytes=0-1023`, or `bytes=0-`), how many bytes
+ *  it covers of a file of `total` bytes. Null for anything else: a range further in can't be cut from
+ *  an answer that starts at byte 0 without reading everything before it. */
+export function rangeFromStart(range, total) {
+  const m = /^bytes=0-(\d*)$/i.exec(String(range ?? '').trim())
+  if (!m || !(total > 0)) return null
+  const end = m[1] === '' ? total - 1 : Math.min(Number(m[1]), total - 1)
+  return { length: end + 1 }
+}

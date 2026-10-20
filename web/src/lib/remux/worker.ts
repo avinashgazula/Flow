@@ -137,7 +137,9 @@ async function request(start: number, end: number | null, signal?: AbortSignal):
   if (res.status === 200) {
     res.body?.cancel().catch(() => {})
     ranges = false
-    throw new Error('This server can’t seek inside the file. Try another source.')
+    // Through the stream proxy, which hosts answered says where the range was dropped.
+    const hops = res.headers.get(PROXY_HOPS_HEADER)
+    throw new Error(`This server can’t seek inside the file. Try another source.${hops ? ` Hosts asked: ${hops}.` : ''}`)
   }
   const detail = await readDetail(res)
   res.body?.cancel().catch(() => {})

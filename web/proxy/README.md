@@ -144,6 +144,10 @@ The same list goes to Flow in an `X-Flow-Proxy-Hops` header. What the messages m
 - **files.example.com isn’t in ALLOWED_HOSTS.** The address Flow asked for isn’t on the list.
 - **The token is missing or wrong.** The `token=` in Flow's Stream Proxy setting doesn’t match the
   Worker's `TOKEN` secret.
+- **This server can’t seek inside the file.** A host on the way sent the whole file when Flow asked
+  for a piece of it further in. The Worker skips Cloudflare's own cache (which treats video files as
+  cacheable and can do this) and cuts a whole-file answer down when the piece is the file's start,
+  so if this still shows, the host named last doesn't take ranges at all.
 - **This page isn’t allowed to use this proxy.** Add the address Flow is served from to
   `ALLOWED_ORIGINS`.
 - **The stream proxy didn’t answer.** Shown by Flow itself when nothing came back from the Worker at

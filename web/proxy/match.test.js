@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cleanSnippet, corsHeaders, downstreamHeaders, hopsSummary, hostMatches, originAllowed, parseList, parseTarget, snippetWanted, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
+import { cleanSnippet, corsHeaders, downstreamHeaders, hopsSummary, hostMatches, originAllowed, parseList, parseTarget, rangeFromStart, snippetWanted, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
 
 describe('parseList', () => {
   it('splits, trims and lower-cases', () => {
@@ -158,5 +158,20 @@ describe('cleanSnippet', () => {
     expect(cleanSnippet('')).toBe('')
     expect(cleanSnippet('<br><br>')).toBe('')
     expect(cleanSnippet(undefined)).toBe('')
+  })
+})
+
+describe('rangeFromStart', () => {
+  it('measures a single range from the first byte, capped at the file', () => {
+    expect(rangeFromStart('bytes=0-1023', 5000)).toEqual({ length: 1024 })
+    expect(rangeFromStart('bytes=0-', 5000)).toEqual({ length: 5000 })
+    expect(rangeFromStart('bytes=0-9999', 5000)).toEqual({ length: 5000 })
+  })
+
+  it('leaves anything else alone', () => {
+    expect(rangeFromStart('bytes=10-20', 5000)).toBeNull()
+    expect(rangeFromStart('bytes=0-1,5-9', 5000)).toBeNull()
+    expect(rangeFromStart(undefined, 5000)).toBeNull()
+    expect(rangeFromStart('bytes=0-10', 0)).toBeNull()
   })
 })
