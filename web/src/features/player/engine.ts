@@ -42,6 +42,9 @@ export interface Engine {
    *  pages. Flow sees none of the bytes then, so it can't pick or convert audio, and a codec the
    *  browser can't decode plays as silence. */
   readonly fallback?: 'blocked'
+  /** With `fallback`, when a stream proxy was tried and couldn't open the file: why, in words for the
+   *  viewer (which host refused it and what it said, or that the proxy didn't answer). */
+  readonly proxyError?: string
   destroy(): void
 }
 
@@ -261,14 +264,15 @@ async function attachHls(video: HTMLVideoElement, source: Source, options: Attac
 /** The browser's own player for a file whose host won't let Flow read it (most debrid download
  *  servers send no CORS headers). Chrome and Edge open Matroska themselves when they know the codecs
  *  (H.264, HEVC with hardware support, AAC, Opus, FLAC), though without a choice of audio track. */
-function playBlockedFile(video: HTMLVideoElement, source: Source, options: AttachOptions, proxyFailed: boolean): Engine {
+function playBlockedFile(video: HTMLVideoElement, source: Source, options: AttachOptions, proxyError?: string): Engine {
   video.removeAttribute('src')
   video.load()
   return {
     ...attachNative(video, source, options),
     fallback: 'blocked',
-    failureMessage: proxyFailed
-      ? 'This file’s host doesn’t let web pages stream from it, and your stream proxy didn’t answer. Check its address in Settings → Playback, pick another source, or watch it in the Flow app.'
+    proxyError,
+    failureMessage: proxyError
+      ? `This file’s host doesn’t let web pages stream from it, and your stream proxy couldn’t open it: ${/[.!?]$/.test(proxyError) ? proxyError : `${proxyError}.`} Check the proxy in Settings → Playback, pick another source, or watch it in the Flow app.`
       : 'This file’s host doesn’t let web pages stream from it, and this browser can’t play the file directly. Add a stream proxy in Settings → Playback (or turn one on in AIOStreams), pick another source, or watch it in the Flow app.',
   }
 }
@@ -280,7 +284,7 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
   // Through the stream proxy a host that sends no CORS headers can be read. An add-on's request
   // headers are meant for the host, not the proxy, and the proxy forwards only Range, so a proxied
   // attempt sends none.
-  const open = (viaProxy: boolean) => attachMatroska(video, viaProxy ? proxied(source.url) : source.url, { headers: viaProxy ? undefined : source.headers, startAt, signal })
+  const open = (viaProxy: boolean) => attachMatroska(video, viaProxy ? proxied(source.url) : source.url, { headers: viaProxy ? undefined : source.headers, viaProxy, startAt, signal })
   const failedWith = (error: unknown, name: string) => (error as Error).name === name
 
   let session
@@ -305,8 +309,14 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
     // The proxy is only a way round a blocked host. If it was tried and the file still can't be
     // read (blocked, unreachable, refused), the browser's own player gets the original address. A
     // file the proxy did deliver but this browser can't play is a different problem, told as before.
-    if (viaProxy && !failedWith(error, 'UnplayableError')) return playBlockedFile(video, source, options, true)
-    if (failedWith(error, 'BlockedError')) return playBlockedFile(video, source, options, false)
+    if (viaProxy && !failedWith(error, 'UnplayableError')) {
+      // The reason is kept (the worker words it from what the proxy answered) and shown on screen, so
+      // the person can read it off and tell us. The console has it too, with the error itself.
+      const reason = (error as Error).message || 'It gave no reason.'
+      console.warn(`Flow: the stream proxy couldn’t open this file. ${reason}`, error)
+      return playBlockedFile(video, source, options, reason)
+    }
+    if (failedWith(error, 'BlockedError')) return playBlockedFile(video, source, options)
     const message = (error as Error).message || 'This file couldn’t be opened.'
     throw new PlaybackError(/source/i.test(message) ? message : `${message.replace(/\.?$/, '.')} Pick another source.`, 'remux')
   }

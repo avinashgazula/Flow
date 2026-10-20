@@ -6,6 +6,7 @@
 import init, { Remuxer } from './pkg/flow_remux.js'
 import type { AudioCodec } from '../audio/decoder'
 import type { AudioConverter } from './convert'
+import { cleanDetail, DETAIL_BYTES, detailWanted, httpFailureMessage, networkFailureMessage, PROXY_HOPS_HEADER } from './failure'
 import type { FromWorker, HeaderInfo, RawCue, ToWorker } from './protocol'
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope
@@ -21,6 +22,8 @@ const AHEAD_BUDGET_BYTES = 96 * 1024 * 1024
 
 let url = ''
 let headers: Record<string, string> = {}
+/** The address is the stream proxy's, so a failure is the proxy's to explain. */
+let viaProxy = false
 let remuxer: Remuxer | null = null
 let length = 0
 let ranges = true
@@ -52,14 +55,46 @@ const NOT_MATROSKA = "This isn't a Matroska file."
 class NotMatroskaError extends Error {}
 
 class HttpError extends Error {
-  constructor(readonly status: number) {
+  constructor(
+    readonly status: number,
+    /** What the answer said, when it was short text (the proxy says which host refused and why). */
+    readonly detail?: string,
+    /** The hosts the proxy asked, with the status each gave. */
+    readonly hops?: string,
+  ) {
     super(`The server answered ${status}`)
+  }
+}
+
+/** The answer's own words, read from the start of a short text or JSON body and cleaned. */
+async function readDetail(res: Response): Promise<string | undefined> {
+  if (!res.body || !detailWanted(res.headers.get('Content-Type'))) return undefined
+  try {
+    const reader = res.body.getReader()
+    const parts: Uint8Array[] = []
+    let have = 0
+    while (have < DETAIL_BYTES) {
+      const { done, value } = await reader.read()
+      if (done) break
+      parts.push(value)
+      have += value.length
+    }
+    reader.cancel().catch(() => {})
+    const bytes = new Uint8Array(have)
+    let at = 0
+    for (const part of parts) (bytes.set(part, at), (at += part.length))
+    return cleanDetail(new TextDecoder().decode(bytes.subarray(0, DETAIL_BYTES)))
+  } catch {
+    return undefined
   }
 }
 
 /** Posts a failure. fetch() hides why it failed, so a TypeError gets one more question: a host that
  *  answers a no-cors request is up, it just doesn't let web pages read its files (no CORS headers,
- *  as with most debrid download servers). That needs a different fix from a dropped connection. */
+ *  as with most debrid download servers). That needs a different fix from a dropped connection.
+ *  When the address is the stream proxy's, the same question tells a proxy that isn't there from
+ *  one the browser won't let this page read (its ALLOWED_ORIGINS), and neither is `blocked`:
+ *  the proxy is what blocked would send the page to. */
 async function report(error: unknown) {
   if (error instanceof NotMatroskaError) {
     post({ type: 'error', message: error.message, notMatroska: true })
@@ -70,6 +105,10 @@ async function report(error: unknown) {
       () => true,
       () => false,
     )
+    if (viaProxy) {
+      post({ type: 'error', message: networkFailureMessage(true, reachable, ctx.location.origin) })
+      return
+    }
     if (reachable) {
       post({ type: 'error', blocked: true, message: 'This file’s host doesn’t let web pages stream from it.' })
       return
@@ -79,13 +118,9 @@ async function report(error: unknown) {
 }
 
 function friendly(error: unknown): string {
-  if (error instanceof HttpError) {
-    if (error.status === 401 || error.status === 403) return 'The server refused the request. Check the sign-in for this source.'
-    if (error.status === 404) return 'The server doesn’t have this file any more. Try another source.'
-    return `The server answered ${error.status}. Try again, or try another source.`
-  }
+  if (error instanceof HttpError) return httpFailureMessage(error, viaProxy)
   if (error instanceof WebAssembly.RuntimeError) return 'Flow couldn’t read this file. Try another source.'
-  if (error instanceof TypeError) return 'Couldn’t reach the server. Check the connection and try again.'
+  if (error instanceof TypeError) return networkFailureMessage(viaProxy, false)
   return error instanceof Error ? error.message : String(error)
 }
 
@@ -104,8 +139,9 @@ async function request(start: number, end: number | null, signal?: AbortSignal):
     ranges = false
     throw new Error('This server can’t seek inside the file. Try another source.')
   }
+  const detail = await readDetail(res)
   res.body?.cancel().catch(() => {})
-  throw new HttpError(res.status)
+  throw new HttpError(res.status, detail, res.headers.get(PROXY_HOPS_HEADER) ?? undefined)
 }
 
 /** Reads `[offset, offset+len)` fully (the header and index reads; the first bytes come from the prefetch). */
@@ -128,6 +164,7 @@ function totalLength(res: Response): number {
 async function open(message: Extract<ToWorker, { type: 'open' }>) {
   url = message.url
   headers = message.headers
+  viaProxy = message.viaProxy
   await init()
   const res = await request(0, HEAD_BYTES - 1)
   length = totalLength(res)

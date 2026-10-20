@@ -4,7 +4,7 @@ import { Icon } from '../../components/Icon'
 import { browserCapabilities, type Source } from '../../lib/sources'
 import { useSettings } from '../../lib/store/settings'
 import { keepFocus } from './Controls'
-import type { PlayerController } from './controller'
+import { type PlayerController, usePlayer } from './controller'
 import { audioVerdict, silentAudioNames } from './silence'
 import s from './Controls.module.css'
 
@@ -19,6 +19,8 @@ export function NoSoundNotice({ controller, source, conversionFailed = false, on
   // This notice only shows for the browser's own player, which the remuxer falls back to after the
   // proxy (if there is one) was tried. So with a proxy set, the proxy is what didn't work.
   const proxySet = useSettings((x) => x.streamProxy.trim() !== '')
+  // Why the proxy couldn't open the file, as the remuxer worded it: the host that refused and what it said.
+  const proxyError = usePlayer(controller, (st) => st.proxyError)
 
   useEffect(() => {
     if (conversionFailed) onSilent()
@@ -62,6 +64,11 @@ export function NoSoundNotice({ controller, source, conversionFailed = false, on
           ? `This file’s audio${names.length > 0 ? ` (${names.join(' and ')})` : ''} can’t play in a web browser, and Flow couldn’t convert it, so the picture is playing without sound.`
           : `This file’s audio${names.length > 0 ? ` (${names.join(' and ')})` : ''} can’t play in a web browser, and its host doesn’t let Flow convert it.`}
       </p>
+      {!conversionFailed && proxySet && proxyError && (
+        <p className={s.noSoundReason}>
+          <strong>Your stream proxy couldn’t open this file.</strong> {proxyError}
+        </p>
+      )}
       <div className={s.noSoundActions}>
         <button className="btn btn-primary btn-compact" onClick={onTryAnother} onMouseDown={keepFocus}>
           Try Another Source
@@ -74,7 +81,7 @@ export function NoSoundNotice({ controller, source, conversionFailed = false, on
         <p className={s.noSoundHint}>
           {proxySet ? (
             <>
-              Your stream proxy couldn’t reach this file. Check its address in{' '}
+              {proxyError ? 'Check the proxy in' : 'Your stream proxy couldn’t reach this file. Check its address in'}{' '}
               <Link to="/settings" hash="playback">
                 Settings → Playback
               </Link>

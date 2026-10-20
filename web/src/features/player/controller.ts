@@ -34,6 +34,8 @@ export interface PlayerState {
   /** The file plays in the browser's own player because its host blocks web pages: Flow can't see
    *  or pick its audio. */
   blocked: boolean
+  /** With `blocked`: why the stream proxy couldn't open the file, when one was tried. */
+  proxyError?: string
   subtitles: Track[]
   subtitleId: string | null
   /** The track whose cues the overlay draws. */
@@ -199,7 +201,7 @@ export class PlayerController {
     for (const track of this.external.values()) track.mode = 'disabled'
     this.external.clear()
     this.subtitleToken++
-    this.set({ audio: [], audioId: undefined, blocked: engine?.fallback === 'blocked', subtitles: [], subtitleId: null, subtitleTrack: null })
+    this.set({ audio: [], audioId: undefined, blocked: engine?.fallback === 'blocked', proxyError: engine?.proxyError, subtitles: [], subtitleId: null, subtitleTrack: null })
     if (engine) this.refreshTracks()
   }
 

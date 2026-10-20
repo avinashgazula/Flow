@@ -261,6 +261,16 @@
   font: 400 var(--text-caption) / 1.4 var(--font);
   color: var(--text-secondary);
 }
+.groupReason {
+  display: block;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-poster);
+  background: var(--surface);
+  color: var(--text);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
 .groupFooter a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
 .row + .row::before {
   content: '';
@@ -432,6 +442,16 @@
 }
 .noSoundTitle svg { flex: none; }
 .noSoundText { font: 400 13px / 1.45 var(--font); color: rgb(255 255 255 / 0.9); text-wrap: pretty; }
+.noSoundReason {
+  padding: 8px 10px;
+  border-radius: var(--radius-poster);
+  background: var(--surface-strong);
+  font: 400 var(--text-caption) / 1.45 var(--font);
+  color: rgb(255 255 255 / 0.9);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.noSoundReason strong { display: block; font-weight: 600; color: #fff; }
 .noSoundActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .noSoundActions .btn { padding: 0 14px; }
 .noSoundHint { font: 400 var(--text-caption) / 1.45 var(--font); color: var(--text-secondary); }

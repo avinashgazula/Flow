@@ -41,7 +41,8 @@ export interface RawCue {
 }
 
 export type ToWorker =
-  | { type: 'open'; url: string; headers: Record<string, string> }
+  /** `viaProxy`: the address is the stream proxy's, so a failure is worded as the proxy's. */
+  | { type: 'open'; url: string; headers: Record<string, string>; viaProxy: boolean }
   /** `convert`: the audio track is one the browser can't play, to be decoded here and re-encoded as Opus. */
   | { type: 'start'; epoch: number; video: number; audio: number; at: number; convert: boolean }
   /** Reads from the keyframe before `at`. */

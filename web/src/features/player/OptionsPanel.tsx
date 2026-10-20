@@ -50,6 +50,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   const subtitles = usePlayer(controller, (st) => st.subtitles)
   const subtitleId = usePlayer(controller, (st) => st.subtitleId)
   const blocked = usePlayer(controller, (st) => st.blocked)
+  const proxyError = usePlayer(controller, (st) => st.proxyError)
   const rate = usePlayer(controller, (st) => st.rate)
   const fit = usePlayer(controller, (st) => st.fit)
   const close = () => controller.setPanel(null)
@@ -85,7 +86,10 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
         title,
         rows: [{ id: 'browser', title: 'Chosen by the Browser', detail: listed && `The source lists ${listed}`, checked: true, disabled: true, plain: true, action: noop }],
         footer: proxy ? (
-          'Your stream proxy couldn’t open this file, so the browser plays it and picks the audio itself.'
+          <>
+            Your stream proxy couldn’t open this file, so the browser plays it and picks the audio itself.
+            {proxyError && <span className={s.groupReason}>{proxyError}</span>}
+          </>
         ) : (
           <>
             A stream proxy, added in <Link to="/settings" hash="playback">Settings → Playback</Link>, lets Flow offer every audio track.

@@ -89,6 +89,9 @@ export interface RemuxSession {
 
 export interface RemuxOptions {
   headers?: Record<string, string>
+  /** The address is the stream proxy's. A failure then says what the proxy answered (the host that
+   *  refused it, and why) or that it didn't answer, and is never `BlockedError`. */
+  viaProxy?: boolean
   startAt?: number
   signal?: AbortSignal
 }
@@ -203,7 +206,7 @@ class Session implements RemuxSession {
     this.cleanups.push(() => options.signal?.removeEventListener('abort', onAbort))
     if (options.signal?.aborted) throw new DOMException('Stopped', 'AbortError')
 
-    this.send({ type: 'open', url: this.url, headers: options.headers ?? {} })
+    this.send({ type: 'open', url: this.url, headers: options.headers ?? {}, viaProxy: options.viaProxy ?? false })
     const opened = this.sink.open()
     opened.catch((error: Error) => this.fail(error.message))
     const info = await Promise.race([header, failed])
