@@ -311,9 +311,10 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
     // file the proxy did deliver but this browser can't play is a different problem, told as before.
     if (viaProxy && !failedWith(error, 'UnplayableError')) {
       // The reason is kept (the worker words it from what the proxy answered) and shown on screen, so
-      // the person can read it off and tell us. The console has it too, with the error itself.
+      // the person can read it off and tell us. The console has it too (the message holds hosts and
+      // statuses only, never an address).
       const reason = (error as Error).message || 'It gave no reason.'
-      console.warn(`Flow: the stream proxy couldn’t open this file. ${reason}`, error)
+      console.warn(`Flow: the stream proxy couldn’t open this file. ${reason}`)
       return playBlockedFile(video, source, options, reason)
     }
     if (failedWith(error, 'BlockedError')) return playBlockedFile(video, source, options)
