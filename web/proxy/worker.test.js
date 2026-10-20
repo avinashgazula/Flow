@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import worker from './worker.js'
 
 const env = { ALLOWED_ORIGINS: 'https://flow.example.com', ALLOWED_HOSTS: 'play.example.com, *.files.example.net' }
@@ -30,7 +30,16 @@ const file = (status = 206, headers = {}) =>
   new Response('bytes', { status, headers: { 'Content-Range': 'bytes 0-4/100', 'Content-Length': '5', 'Accept-Ranges': 'bytes', 'Content-Type': 'video/x-matroska', 'Set-Cookie': 'a=b', ...headers } })
 const redirect = (to, status = 302) => new Response(null, { status, headers: { Location: to } })
 
-afterEach(() => vi.unstubAllGlobals())
+let log
+beforeEach(() => {
+  log = vi.spyOn(console, 'log').mockImplementation(() => {})
+})
+afterEach(() => {
+  vi.unstubAllGlobals()
+  log.mockRestore()
+})
+
+const hopsOf = (res) => res.headers.get('X-Flow-Proxy-Hops')
 
 describe('the Worker', () => {
   it('answers a preflight for a listed page, and refuses any other', async () => {
@@ -126,15 +135,83 @@ describe('the Worker', () => {
     expect((await ask('https://play.example.com/resolve/1')).status).toBe(502)
   })
 
-  it('passes on a status like 404 without the host’s page, and reports a host that can’t be reached', async () => {
-    network(new Response('<html>nope</html>', { status: 404 }))
+  it('passes on a status like 404 without the host’s page, and says which host answered', async () => {
+    network(new Response('<html>nope</html>', { status: 404, headers: { 'Content-Type': 'text/html' } }))
     const gone = await ask('https://play.example.com/f.mkv', { headers: page })
     expect(gone.status).toBe(404)
-    expect(await gone.text()).not.toContain('html')
+    const body = await gone.text()
+    expect(body).toBe('The file’s host (play.example.com) answered 404.\n')
     expect(gone.headers.get('Access-Control-Allow-Origin')).toBe('https://flow.example.com')
+    expect(hopsOf(gone)).toBe('play.example.com 404')
+  })
+
+  it('quotes a short text or JSON reason from the host, cleaned', async () => {
+    network(new Response('  IP address\n not allowed  ', { status: 403, headers: { 'Content-Type': 'text/plain' } }))
+    const banned = await ask('https://play.example.com/f.mkv', { headers: page })
+    expect(banned.status).toBe(403)
+    expect(await banned.text()).toBe('The file’s host (play.example.com) answered 403. It said: “IP address not allowed”\n')
+
+    network(new Response('{"error":"ip_banned","link":"https://play.example.com/d/x?token=secret"}', { status: 403, headers: { 'Content-Type': 'application/json' } }))
+    const json = await (await ask('https://play.example.com/f.mkv')).text()
+    expect(json).toContain('ip_banned')
+    expect(json).not.toContain('token=secret')
+    expect(json).not.toContain('/d/x')
+
+    network(new Response('x'.repeat(5000), { status: 503, headers: { 'Content-Type': 'text/plain' } }))
+    const long = await (await ask('https://play.example.com/f.mkv')).text()
+    expect(long.length).toBeLessThan(260)
+    expect(long).toContain('…')
+  })
+
+  it('names the host that can’t be reached, and the one that wasn’t listed', async () => {
     network(() => {
       throw new TypeError('fetch failed')
     })
-    expect((await ask('https://play.example.com/f.mkv')).status).toBe(502)
+    const down = await ask('https://play.example.com/f.mkv')
+    expect(down.status).toBe(502)
+    expect(await down.text()).toBe('Couldn’t reach play.example.com.\n')
+    expect(hopsOf(down)).toBe('play.example.com unreachable')
+
+    network()
+    const unlisted = await ask('https://elsewhere.example.org/f.mkv')
+    expect(await unlisted.text()).toBe('elsewhere.example.org isn’t in ALLOWED_HOSTS.\n')
+    expect(hopsOf(unlisted)).toBe('elsewhere.example.org not allowed')
+
+    const wrong = await ask('https://play.example.com/f.mkv', { extra: { ...env, TOKEN: 'abc' } })
+    expect(await wrong.text()).toBe('The token is missing or wrong.\n')
+    expect(hopsOf(wrong)).toBeNull()
+  })
+
+  it('lists every host asked, on a refused redirect and on a failure after one', async () => {
+    network(redirect('https://elsewhere.example.org/blob?token=secret'))
+    const refused = await ask('https://play.example.com/resolve/1?key=secret')
+    expect(await refused.text()).toBe('The file redirects to elsewhere.example.org, which isn’t in ALLOWED_HOSTS or ALLOWED_REDIRECT_HOSTS.\n')
+    expect(hopsOf(refused)).toBe('play.example.com 302, elsewhere.example.org not allowed')
+
+    network(redirect('https://store-1.files.example.net/blob'), new Response('Not permitted from this address', { status: 403, headers: { 'Content-Type': 'text/plain' } }))
+    const res = await ask('https://play.example.com/resolve/1', { headers: page })
+    expect(res.status).toBe(403)
+    expect(await res.text()).toBe('The file’s host (store-1.files.example.net) answered 403. It said: “Not permitted from this address”\n')
+    expect(hopsOf(res)).toBe('play.example.com 302, store-1.files.example.net 403')
+  })
+
+  it('adds the hops to a successful answer, and lets the page read them', async () => {
+    network(redirect('https://store-1.files.example.net/blob'), file())
+    const res = await ask('https://play.example.com/resolve/1', { headers: { ...page, Range: 'bytes=0-4' } })
+    expect(res.status).toBe(206)
+    expect(hopsOf(res)).toBe('play.example.com 302, store-1.files.example.net 206')
+    expect(res.headers.get('Access-Control-Expose-Headers')).toContain('X-Flow-Proxy-Hops')
+  })
+
+  it('logs one line a request with hosts and statuses, and no path, query or token', async () => {
+    network(redirect('https://store-1.files.example.net/blob?sig=secret'), file())
+    await ask('https://play.example.com/resolve/1?key=secret', { headers: { Range: 'bytes=0-4' }, token: 'tok' })
+    expect(log).toHaveBeenCalledTimes(1)
+    const line = log.mock.calls[0][0]
+    expect(line).toBe('GET bytes=0-4 -> 206 | play.example.com 302, store-1.files.example.net 206')
+    for (const secret of ['secret', 'tok', 'resolve', 'blob']) expect(line).not.toContain(secret)
+
+    await ask(undefined)
+    expect(log.mock.calls[1][0]).toBe('GET no range -> 400 | no hops')
   })
 })

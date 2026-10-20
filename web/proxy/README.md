@@ -108,7 +108,47 @@ stays in your browser (and in Flow's backup file, so keep that private if it hol
   authorisation.
 - Streams the answer straight through: the status (200, 206 or 416) and the `Content-Range`,
   `Content-Length`, `Accept-Ranges` and `Content-Type` headers. Other statuses, such as a 404, come
-  back with a short message instead of the host's page.
+  back with a short message instead of the host's page: which host answered with what, and the
+  first 160 characters of its reason when it gave one as plain text or JSON.
+- Adds `X-Flow-Proxy-Hops` (hosts and statuses only) to the answers it fetched, and logs one line a
+  request for `wrangler tail`.
+
+## When it doesn’t work
+
+If Flow says "Your stream proxy couldn’t open this file", the reason follows in the same place: in
+the audio panel and in the notice about the sound. It comes from the Worker, and it names the host
+that answered. To see the same thing from the Worker's side, run this in `web/proxy` and play the
+file again:
+
+```bash
+npx wrangler tail
+```
+
+Each request prints one line: the method, the range asked for, the status the Worker answered with,
+and the hosts it talked to, in order. It never prints a path or query string, since those hold
+tokens and file ids:
+
+```
+GET bytes=0-524287 -> 403 | media.example.com 302, files.example.com 403
+```
+
+The same list goes to Flow in an `X-Flow-Proxy-Hops` header. What the messages mean:
+
+- **The file’s host (files.example.com) answered 403.** The download host refused the Worker. If it
+  adds what it said, such as an address that isn’t allowed, that is its own reason. Some hosts
+  refuse the addresses Cloudflare's servers use. A 404 means the link has expired or the file is
+  gone, and a 503 is the host being busy, or turning the Worker away.
+- **Couldn’t reach files.example.com.** The Worker couldn’t connect to that host at all.
+- **The file redirects to cdn.example.net, which isn’t in ALLOWED_HOSTS or ALLOWED_REDIRECT_HOSTS.**
+  Add that host (`*.example.net` covers its subdomains) to one of the two lists and deploy again.
+- **files.example.com isn’t in ALLOWED_HOSTS.** The address Flow asked for isn’t on the list.
+- **The token is missing or wrong.** The `token=` in Flow's Stream Proxy setting doesn’t match the
+  Worker's `TOKEN` secret.
+- **This page isn’t allowed to use this proxy.** Add the address Flow is served from to
+  `ALLOWED_ORIGINS`.
+- **The stream proxy didn’t answer.** Shown by Flow itself when nothing came back from the Worker at
+  all: the address in Settings is wrong, the Worker isn’t deployed, or the browser refused the
+  request because `ALLOWED_ORIGINS` doesn’t list this page. `wrangler tail` shows no line for it.
 
 ## Limits
 

@@ -4,12 +4,17 @@
 //
 //   GET or HEAD  /?url=<encoded https address>[&token=<TOKEN>]
 
-import { corsHeaders, downstreamHeaders, originAllowed, parseList, parseTarget, redirectStatuses, streamStatuses, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
+import { cleanSnippet, corsHeaders, downstreamHeaders, hopsHeader, hopsSummary, originAllowed, parseList, parseTarget, redirectStatuses, snippetWanted, streamStatuses, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
 
 /** Redirect hops followed before giving up: debrid links take one or two. */
 const maxRedirects = 5
 
-const text = (status, message, cors) => new Response(`${message}\n`, { status, headers: { ...cors, 'Content-Type': 'text/plain; charset=utf-8' } })
+/** How much of a host's error answer is read to quote from it. */
+const snippetBytes = 2048
+
+/** An error answer. `hops` (who answered, and how) goes on it as a header, so Flow can show the reason. */
+const text = (status, message, cors, hops = []) =>
+  new Response(`${message}\n`, { status, headers: { ...cors, ...(hops.length ? { [hopsHeader]: hopsSummary(hops) } : {}), 'Content-Type': 'text/plain; charset=utf-8' } })
 
 /** A Location header against the address that sent it: it may be relative. */
 function resolve(location, base) {
@@ -20,55 +25,98 @@ function resolve(location, base) {
   }
 }
 
+/** What a host said with its error, when it said it in text or JSON: a few words, cleaned. Hosts
+ *  often give the reason there (an address that's banned, a link that expired). Empty otherwise. */
+async function quote(upstream) {
+  try {
+    if (!upstream.body || !snippetWanted(upstream.headers.get('Content-Type'))) return ''
+    const reader = upstream.body.getReader()
+    const parts = []
+    let have = 0
+    while (have < snippetBytes) {
+      const { done, value } = await reader.read()
+      if (done) break
+      parts.push(value)
+      have += value.length
+    }
+    reader.cancel().catch(() => {})
+    const bytes = new Uint8Array(have)
+    let at = 0
+    for (const part of parts) (bytes.set(part, at), (at += part.length))
+    return cleanSnippet(new TextDecoder().decode(bytes.subarray(0, snippetBytes)))
+  } catch {
+    return ''
+  }
+}
+
+async function answer(request, env, hops) {
+  const origin = request.headers.get('Origin')
+  const cors = corsHeaders(origin, parseList(env.ALLOWED_ORIGINS))
+
+  if (request.method === 'OPTIONS') {
+    // A preflight from a page that isn't listed gets no CORS headers, which is how it's refused.
+    return originAllowed(origin, parseList(env.ALLOWED_ORIGINS)) ? new Response(null, { status: 204, headers: cors }) : text(403, 'This page isn’t allowed to use this proxy. Add its address to ALLOWED_ORIGINS.', cors)
+  }
+  if (request.method !== 'GET' && request.method !== 'HEAD') return text(405, 'Use GET or HEAD.', { ...cors, Allow: 'GET, HEAD, OPTIONS' })
+
+  const params = new URL(request.url).searchParams
+  if (!tokenMatches(params.get('token'), env.TOKEN)) return text(401, 'The token is missing or wrong.', cors)
+
+  const target = parseTarget(params.get('url'))
+  if (!target) return text(400, 'Pass an https address as ?url=.', cors)
+  const hosts = { allowedHosts: parseList(env.ALLOWED_HOSTS), redirectHosts: parseList(env.ALLOWED_REDIRECT_HOSTS) }
+  if (!targetAllowed(target, hosts)) {
+    hops.push({ host: target.hostname, status: 'not allowed' })
+    return text(403, `${target.hostname} isn’t in ALLOWED_HOSTS.`, cors, hops)
+  }
+
+  // Redirects are followed here, one at a time, so each host is checked and not only the first:
+  // a play link on an allowed host can't send the proxy somewhere that isn't.
+  const headers = upstreamHeaders(request.headers)
+  let url = target
+  let upstream
+  for (let hop = 0; ; hop++) {
+    try {
+      upstream = await fetch(url, { method: request.method, headers, redirect: 'manual' })
+    } catch {
+      hops.push({ host: url.hostname, status: 'unreachable' })
+      return text(502, `Couldn’t reach ${url.hostname}.`, cors, hops)
+    }
+    hops.push({ host: url.hostname, status: upstream.status })
+    if (!redirectStatuses.has(upstream.status)) break
+    const location = upstream.headers.get('Location')
+    upstream.body?.cancel()
+    if (hop >= maxRedirects) return text(502, `The file redirected more than ${maxRedirects} times, and ${url.hostname} sent it on again.`, cors, hops)
+    const next = location ? parseTarget(resolve(location, url)) : null
+    if (!next) return text(502, `${url.hostname} redirected somewhere the proxy won’t go (an address that isn’t https on the standard port).`, cors, hops)
+    if (!targetAllowed(next, hosts, true)) {
+      hops.push({ host: next.hostname, status: 'not allowed' })
+      return text(403, `The file redirects to ${next.hostname}, which isn’t in ALLOWED_HOSTS or ALLOWED_REDIRECT_HOSTS.`, cors, hops)
+    }
+    url = next
+  }
+
+  if (!streamStatuses.has(upstream.status)) {
+    // The page needs the status (a file that's gone, a host that refused) and the host's own words
+    // when it gave some, but not its page.
+    const said = await quote(upstream)
+    upstream.body?.cancel().catch(() => {})
+    // (A 204 or 304 can't carry a body, and nothing here should have produced one.)
+    return text(upstream.status >= 400 ? upstream.status : 502, `The file’s host (${url.hostname}) answered ${upstream.status}.${said ? ` It said: “${said}”` : ''}`, cors, hops)
+  }
+  return new Response(request.method === 'HEAD' ? null : upstream.body, {
+    status: upstream.status,
+    headers: { ...cors, ...downstreamHeaders(upstream.headers), [hopsHeader]: hopsSummary(hops) },
+  })
+}
+
 export default {
   async fetch(request, env) {
-    const origin = request.headers.get('Origin')
-    const cors = corsHeaders(origin, parseList(env.ALLOWED_ORIGINS))
-
-    if (request.method === 'OPTIONS') {
-      // A preflight from a page that isn't listed gets no CORS headers, which is how it's refused.
-      return originAllowed(origin, parseList(env.ALLOWED_ORIGINS)) ? new Response(null, { status: 204, headers: cors }) : text(403, 'This page isn’t allowed to use this proxy.', cors)
-    }
-    if (request.method !== 'GET' && request.method !== 'HEAD') return text(405, 'Use GET or HEAD.', { ...cors, Allow: 'GET, HEAD, OPTIONS' })
-
-    const params = new URL(request.url).searchParams
-    if (!tokenMatches(params.get('token'), env.TOKEN)) return text(401, 'The token is missing or wrong.', cors)
-
-    const target = parseTarget(params.get('url'))
-    if (!target) return text(400, 'Pass an https address as ?url=.', cors)
-    const hosts = { allowedHosts: parseList(env.ALLOWED_HOSTS), redirectHosts: parseList(env.ALLOWED_REDIRECT_HOSTS) }
-    if (!targetAllowed(target, hosts)) return text(403, 'This host isn’t in ALLOWED_HOSTS.', cors)
-
-    // Redirects are followed here, one at a time, so each host is checked and not only the first:
-    // a play link on an allowed host can't send the proxy somewhere that isn't.
-    const headers = upstreamHeaders(request.headers)
-    let url = target
-    let upstream
-    for (let hop = 0; ; hop++) {
-      try {
-        upstream = await fetch(url, { method: request.method, headers, redirect: 'manual' })
-      } catch {
-        return text(502, 'Couldn’t reach the file’s host.', cors)
-      }
-      if (!redirectStatuses.has(upstream.status)) break
-      const location = upstream.headers.get('Location')
-      upstream.body?.cancel()
-      if (hop >= maxRedirects) return text(502, 'Too many redirects.', cors)
-      const next = location ? parseTarget(resolve(location, url)) : null
-      if (!next) return text(502, 'The file’s host redirected somewhere the proxy won’t go.', cors)
-      if (!targetAllowed(next, hosts, true)) return text(403, `The file redirects to ${next.hostname}, which isn’t in ALLOWED_HOSTS or ALLOWED_REDIRECT_HOSTS.`, cors)
-      url = next
-    }
-
-    if (!streamStatuses.has(upstream.status)) {
-      // The page needs the status (a file that's gone, a host that refused) but not the host's page.
-      upstream.body?.cancel()
-      // (A 204 or 304 can't carry a body, and nothing here should have produced one.)
-      return text(upstream.status >= 400 ? upstream.status : 502, `The file’s host answered ${upstream.status}.`, cors)
-    }
-    return new Response(request.method === 'HEAD' ? null : upstream.body, {
-      status: upstream.status,
-      headers: { ...cors, ...downstreamHeaders(upstream.headers) },
-    })
+    const hops = []
+    const response = await answer(request, env, hops)
+    // One line a request for `npx wrangler tail`. Hosts and statuses only: a path or query string
+    // holds a token or a file id.
+    console.log(`${request.method} ${upstreamHeaders(request.headers).Range ?? 'no range'} -> ${response.status} | ${hopsSummary(hops) || 'no hops'}`)
+    return response
   },
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { corsHeaders, downstreamHeaders, hostMatches, originAllowed, parseList, parseTarget, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
+import { cleanSnippet, corsHeaders, downstreamHeaders, hopsSummary, hostMatches, originAllowed, parseList, parseTarget, snippetWanted, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
 
 describe('parseList', () => {
   it('splits, trims and lower-cases', () => {
@@ -67,7 +67,7 @@ describe('CORS headers', () => {
     const h = corsHeaders('https://flow.example.com', allowed)
     expect(h['Access-Control-Allow-Origin']).toBe('https://flow.example.com')
     expect(h['Access-Control-Allow-Headers']).toBe('Range')
-    expect(h['Access-Control-Expose-Headers']).toBe('Content-Range, Content-Length, Accept-Ranges, Content-Type')
+    expect(h['Access-Control-Expose-Headers']).toBe('Content-Range, Content-Length, Accept-Ranges, Content-Type, X-Flow-Proxy-Hops')
     expect(h.Vary).toBe('Origin')
     expect(corsHeaders('http://localhost:5173/', allowed)['Access-Control-Allow-Origin']).toBe('http://localhost:5173')
   })
@@ -118,5 +118,45 @@ describe('tokenMatches', () => {
     expect(tokenMatches('s3cret!', 's3cret')).toBe(false)
     expect(tokenMatches(null, 's3cret')).toBe(false)
     expect(tokenMatches('', 's3cret')).toBe(false)
+  })
+})
+
+describe('hopsSummary', () => {
+  it('lists each host with the status it gave, and nothing else', () => {
+    expect(hopsSummary([{ host: 'media.example.com', status: 302 }, { host: 'files.example.com', status: 403 }])).toBe('media.example.com 302, files.example.com 403')
+    expect(hopsSummary([{ host: 'files.example.com', status: 'unreachable' }])).toBe('files.example.com unreachable')
+    expect(hopsSummary([])).toBe('')
+  })
+})
+
+describe('snippetWanted', () => {
+  it('takes plain text and JSON, and skips HTML and files', () => {
+    for (const type of ['text/plain', 'text/plain; charset=utf-8', 'application/json', 'application/problem+json; charset=utf-8']) expect(snippetWanted(type)).toBe(true)
+    for (const type of ['text/html', 'video/x-matroska', 'application/octet-stream', '', null, undefined]) expect(snippetWanted(type)).toBe(false)
+  })
+})
+
+describe('cleanSnippet', () => {
+  it('collapses whitespace and strips markup', () => {
+    expect(cleanSnippet('  IP\n\taddress   not   allowed \r\n')).toBe('IP address not allowed')
+    expect(cleanSnippet('<h1>Forbidden</h1><script>alert(1)</script><p>IP   banned</p>')).toBe('Forbidden IP banned')
+    expect(cleanSnippet('a\u0000b\u0007c')).toBe('a b c')
+  })
+
+  it('keeps a link’s host and drops its path and query, which can hold a token', () => {
+    expect(cleanSnippet('Link https://files.example.com/d/abc123?token=secret expired')).toBe('Link files.example.com expired')
+  })
+
+  it('cuts a long answer at 160 characters', () => {
+    const out = cleanSnippet('word '.repeat(100))
+    expect(out.length).toBeLessThanOrEqual(161)
+    expect(out.endsWith('…')).toBe(true)
+    expect(cleanSnippet('x'.repeat(160))).toBe('x'.repeat(160))
+  })
+
+  it('is empty when nothing is left', () => {
+    expect(cleanSnippet('')).toBe('')
+    expect(cleanSnippet('<br><br>')).toBe('')
+    expect(cleanSnippet(undefined)).toBe('')
   })
 })

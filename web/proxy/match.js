@@ -54,6 +54,37 @@ export function targetAllowed(url, { allowedHosts, redirectHosts = [] }, redirec
   return hostMatches(url.hostname, allowedHosts) || (redirected && hostMatches(url.hostname, redirectHosts))
 }
 
+/** Names the hosts that answered and how, so a failure can be read off Flow's screen and in
+ *  `wrangler tail`: only host names and statuses, never a path or query string (those hold tokens
+ *  and file ids). */
+export const hopsHeader = 'X-Flow-Proxy-Hops'
+
+/** `media.example.com 302, files.example.com 403`: one entry per host asked, in order. A status is
+ *  a number, or a word when there was no answer (`unreachable`, `not allowed`). */
+export function hopsSummary(hops) {
+  return hops.map((hop) => `${hop.host} ${hop.status}`).join(', ')
+}
+
+/** True for the kinds of error body worth quoting: plain text and JSON. A host's HTML error page is
+ *  skipped, since a snippet of it would only be markup. */
+export function snippetWanted(contentType) {
+  return /^\s*(text\/plain|application\/([\w.-]+\+)?json)\b/i.test(String(contentType ?? ''))
+}
+
+/** A host's error text made fit to show: no markup, no links (they may carry a token, so each
+ *  becomes its host name), single spaces, and at most `max` characters. Empty when nothing is left. */
+export function cleanSnippet(text, max = 160) {
+  const clean = String(text ?? '')
+    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/https?:\/\/([^\s/?#"'<>]+)[^\s"'<>]*/gi, '$1')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return clean.length > max ? `${clean.slice(0, max).trimEnd()}…` : clean
+}
+
 /** The headers that let a page read the answer, only for an allowed origin: nothing is added for
  *  any other, so the browser keeps blocking it. `Vary: Origin` always goes, since the answer
  *  depends on it. */
@@ -65,7 +96,7 @@ export function corsHeaders(origin, allowedOrigins) {
     'Access-Control-Allow-Origin': origin.trim().replace(/\/$/, ''),
     'Access-Control-Allow-Headers': 'Range',
     'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-    'Access-Control-Expose-Headers': 'Content-Range, Content-Length, Accept-Ranges, Content-Type',
+    'Access-Control-Expose-Headers': `Content-Range, Content-Length, Accept-Ranges, Content-Type, ${hopsHeader}`,
     'Access-Control-Max-Age': '86400',
   }
 }
