@@ -65,6 +65,8 @@ enum ScreenshotTour {
                 m.activePlayback?.endWithSuggestions()
             },
             Step(name: "person") { m in m.activePlayback?.stop(); m.paths[.home] = [.detail(duneItem), .person(id: 1190668, name: "Timothée Chalamet")] },
+            // Home once more after the player has saved a new resume point: it must agree with the Library's row.
+            Step(name: "home-after-playback") { m in m.paths[.home] = []; m.selectedTab = .home },
             Step(name: "explore") { m in m.paths[.home] = []; m.selectedTab = .explore },
             Step(name: "library") { m in m.selectedTab = .library },
             Step(name: "calendar") { m in m.paths[.library] = [.calendar] },
