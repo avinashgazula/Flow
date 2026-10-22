@@ -238,7 +238,7 @@ struct LeadBlock: View {
         let format = model.lastEdgeFormat(for: item)
         switch lead.kind {
         case .resume:
-            return EdgePrint(progress: (lead.progress?.percent ?? 0) / 100, lead: episodeLead, key: minutes.map { Reel.compactLeft(minutes: $0) },
+            return EdgePrint(progress: Reel.watchedFraction(lead.progress), lead: episodeLead, key: minutes.map { Reel.compactLeft(minutes: $0) },
                              endsInMinutes: minutes, tail: format)
         case .nextUp:
             return EdgePrint(progress: 0, lead: episodeLead, key: "Up next", endsInMinutes: minutes, tail: format)
@@ -387,7 +387,7 @@ struct UpNextCell: View {
         if entry.isNextUp {
             return EdgePrint(progress: 0, lead: lead, key: "Up next", endsInMinutes: minutes, tail: format)
         }
-        return EdgePrint(progress: (entry.progress?.percent ?? 0) / 100, lead: lead, key: minutes.map { Reel.compactLeft(minutes: $0) },
+        return EdgePrint(progress: Reel.watchedFraction(entry.progress), lead: lead, key: minutes.map { Reel.compactLeft(minutes: $0) },
                          endsInMinutes: minutes, tail: format)
     }
 

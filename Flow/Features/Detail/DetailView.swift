@@ -120,7 +120,7 @@ struct DetailView: View {
         } else if !started, let runtime = current.runtimeMinutes, runtime > 0 {
             lead.append(Reel.compactDuration(minutes: runtime))
         }
-        let strip = EdgePrint(progress: started ? (progress?.percent ?? 0) / 100 : nil, lead: lead,
+        let strip = EdgePrint(progress: started ? Reel.watchedFraction(progress) : nil, lead: lead,
                               key: started ? minutes.map { Reel.compactLeft(minutes: $0) } : nil, endsInMinutes: minutes)
         return FilmFrame(art: .still(current), strip: strip)
             .accessibilityHidden(true)

@@ -132,7 +132,7 @@ struct EpisodeListing: View {
 
     /// Perforations fill with how much is watched: all of them for a watched episode, none for one not yet started.
     private var strip: EdgePrint {
-        let progress = model.progress(for: show, episode: episode.ref).map { $0.percent / 100 }
+        let progress = model.progress(for: show, episode: episode.ref).map { Reel.watchedFraction($0) }
         let fill: Double? = aired ? (watched ? 1 : (progress ?? 0)) : nil
         let runtime = episode.runtimeMinutes.flatMap { $0 > 0 ? Reel.compactDuration(minutes: $0) : nil }
         return EdgePrint(progress: fill, lead: [airText ?? "TBA"], tail: runtime.map { [$0] } ?? [])

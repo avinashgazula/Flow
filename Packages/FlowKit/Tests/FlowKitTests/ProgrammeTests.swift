@@ -31,6 +31,19 @@ final class ProgrammeTests: XCTestCase {
         XCTAssertEqual(Reel.minutesLeft(progress: nearlyDone, runtimeMinutes: 50), 1)
     }
 
+    func testWatchedFractionFollowsThePositionSoPerforationsAgreeWithTimeLeft() {
+        // A stale stored percentage (38) must not contradict a position that is nearly at the end.
+        let stale = PlaybackProgress(key: key, percent: 38, positionSeconds: 3540, durationSeconds: 3600)
+        XCTAssertEqual(Reel.watchedFraction(stale), 0.983, accuracy: 0.001)
+        XCTAssertEqual(Reel.minutesLeft(progress: stale, runtimeMinutes: 167), 1)
+    }
+
+    func testWatchedFractionFallsBackToThePercentage() {
+        XCTAssertEqual(Reel.watchedFraction(PlaybackProgress(key: key, percent: 62)), 0.62, accuracy: 0.0001)
+        XCTAssertEqual(Reel.watchedFraction(nil), 0)
+        XCTAssertEqual(Reel.watchedFraction(PlaybackProgress(key: key, percent: 250)), 1)
+    }
+
     func testEndDateAddsTheMinutes() {
         let now = date("2026-10-22T21:00:00Z")
         XCTAssertEqual(Reel.endDate(from: now, minutesLeft: 48), date("2026-10-22T21:48:00Z"))

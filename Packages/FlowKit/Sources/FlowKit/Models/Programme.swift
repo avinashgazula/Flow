@@ -16,6 +16,17 @@ public enum Reel {
         return runtime
     }
 
+    /// How much of a title is watched, 0...1, as the perforations show it. A resume point's position and duration
+    /// decide it when both are known, so the perforations always agree with the time left; the stored percentage
+    /// only stands in when they aren't (a tracker that gives a percentage and nothing else).
+    public static func watchedFraction(_ progress: PlaybackProgress?) -> Double {
+        guard let progress else { return 0 }
+        if let duration = progress.durationSeconds, duration > 0, let position = progress.positionSeconds {
+            return min(1, max(0, position / duration))
+        }
+        return min(1, max(0, progress.percent / 100))
+    }
+
     /// When it would be over if started at `now`.
     public static func endDate(from now: Date, minutesLeft: Int) -> Date {
         now.addingTimeInterval(Double(minutesLeft) * 60)
