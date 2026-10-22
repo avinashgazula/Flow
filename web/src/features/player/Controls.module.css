@@ -510,6 +510,9 @@
   .controls { --bottom-band: 112px; }
   /* A phone's width holds one card: a notice (No Sound, Playback Is Struggling) takes it. */
   .noSound ~ .info { display: none; }
+  /* As wide as the notices, and dense enough to stay above the transport in the middle. */
+  .info { width: calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--edge)); padding: 8px 14px 8px; }
+  .infoRow { padding: 2px 0; }
   .noSound { padding: 12px 14px; }
   .noSoundActions { display: grid; grid-template-columns: 1fr 1fr; }
   .noSoundActions .btn { padding: 0 8px; font-size: 13px; }
@@ -534,10 +537,11 @@
   .noSoundActions .btn { height: 32px; }
   /* Beside the notice, not under it: the notice is on the left, this on the right. */
   .noSound ~ .info { display: block; }
-  .info { top: calc(var(--inset-top) + 8px + 46px + 6px); width: min(250px, 34%); padding: 8px 12px 10px; border-radius: 18px; }
-  .infoHeader { margin-bottom: 2px; }
+  .info { top: calc(var(--inset-top) + 8px + 46px + 6px); width: min(250px, 34%); padding: 6px 12px 6px; border-radius: 18px; }
+  .infoHeader { margin-bottom: 0; }
   .infoTitle { font-size: 14px; }
-  .infoRow { padding: 2px 0; font-size: 11px; line-height: 1.3; gap: 10px; }
+  .infoClose { width: 24px; height: 24px; }
+  .infoRow { padding: 1px 0; font-size: 11px; line-height: 1.25; gap: 10px; }
   .upNextStill { width: 96px; }
   .upNextText { width: 140px; }
   /* A panel is as tall as the picture here, so the transport steps aside rather than sit behind it. */

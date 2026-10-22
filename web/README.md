@@ -70,6 +70,25 @@ fragment after a start or seek and re-anchored when the file has a gap, so it st
 picture. Tracks that play as they are are never converted, and a failure at any step (the module
 won't load, a decoder crashes, the encoder errors) drops the audio buffer so the picture plays on.
 
+## Smooth playback
+
+`canPlayType` says a browser accepts a codec, not that this device keeps up with it: 4K HEVC or AV1
+without a hardware decoder plays as a slideshow. At startup (when the page is idle) `lib/sources/smooth.ts`
+asks `navigator.mediaCapabilities.decodingInfo` about each class sources come in (H.264, HEVC, AV1 and
+VP9 at 2160p, 1440p and 1080p, with and without HDR; Dolby Vision counts as its HEVC base layer) and
+remembers `smooth` and `powerEfficient`. Ranking reads those answers synchronously: a class known not to
+be smooth sinks below a smooth 1080p copy and says "May stutter on this device" in the picker; software
+decoding that keeps up costs a little. An unanswered class, or a browser without the API, changes nothing.
+
+While a film plays, `features/player/Struggle.tsx` samples the element every two seconds
+(`getVideoPlaybackQuality`, stalls, seconds buffered ahead) into the rules in `struggle.ts`: more than 8 %
+of frames dropped over ten seconds, or two stalls in a minute, never in the first eight seconds after a
+start or seek. A dry buffer means the connection (and says how fast the file arrives against how fast it
+needs to); frames dropped with a full buffer mean the device. The notice offers the best lower-resolution
+source that plays, keeping the position, and "Keep Watching" is remembered per title. Press **I** (or
+Options → Playback Info) for a card with the picture size, codec, engine, dropped frames, buffer and
+download rate.
+
 ## Sample data
 
 `?demo` in the address, or **Explore with Sample Data** on the welcome screen, fills every screen

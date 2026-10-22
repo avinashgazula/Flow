@@ -147,11 +147,18 @@ export class StruggleTracker {
 
 // MARK: Words
 
-/** "4K", "1440p", "1080p": a picture's height as a viewer says it. */
-export function heightName(height: number | undefined): string | undefined {
-  if (!height) return undefined
-  if (height >= 2000) return '4K'
-  return `${height}p`
+/** How a picture's size is said: by what the source calls it ("2160p" is "4K"), else by the picture
+ *  itself. A widescreen 4K film is 3840 by 1600, so width counts as much as height. */
+export function sizeName(resolution: string | undefined, width?: number, height?: number): string | undefined {
+  if (resolution) return resolution === '2160p' ? '4K' : resolution
+  if (!width && !height) return undefined
+  const w = width ?? 0
+  const h = height ?? 0
+  if (w >= 3200 || h >= 2000) return '4K'
+  if (w >= 2400 || h >= 1300) return '1440p'
+  if (w >= 1700 || h >= 900) return '1080p'
+  if (w >= 1200 || h >= 650) return '720p'
+  return h ? `${h}p` : undefined
 }
 
 /** "12.4 Mb/s": bytes a second as megabits, one decimal under ten. */
@@ -161,7 +168,8 @@ export function megabits(bytesPerSecond: number): string {
 }
 
 export interface StruggleFacts {
-  height?: number
+  /** "4K", "1080p": see `sizeName`. */
+  size?: string
   /** "HEVC", "AV1": as the source names it. */
   codec?: string
   bytesPerSecond?: number
@@ -169,9 +177,8 @@ export interface StruggleFacts {
 }
 
 /** What the notice says, for each cause. Says only what's known: no numbers when there are none. */
-export function struggleText(cause: Cause, { height, codec, bytesPerSecond, bitrate }: StruggleFacts): string {
+export function struggleText(cause: Cause, { size, codec, bytesPerSecond, bitrate }: StruggleFacts): string {
   if (cause === 'device') {
-    const size = heightName(height)
     const what = size && codec ? `${size} ${codec}` : size ? `${size} video` : codec ? `${codec} video` : 'this video'
     return `This device can’t keep up with ${what} here.`
   }

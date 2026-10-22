@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dropRatio, heightName, judge, limits, megabits, StruggleTracker, struggleText, type Sample } from './struggle'
+import { dropRatio, judge, limits, megabits, sizeName, StruggleTracker, struggleText, type Sample } from './struggle'
 
 const s = (seconds: number, dropped: number, total: number, ahead = 30): Sample => ({ at: seconds * 1000, dropped, total, ahead })
 
@@ -169,12 +169,16 @@ describe('judge', () => {
 })
 
 describe('words', () => {
-  it('names a height as a viewer would', () => {
-    expect(heightName(2160)).toBe('4K')
-    expect(heightName(2076)).toBe('4K')
-    expect(heightName(1080)).toBe('1080p')
-    expect(heightName(undefined)).toBeUndefined()
-    expect(heightName(0)).toBeUndefined()
+  it('names a picture as a viewer would: by the source’s word, else by the picture', () => {
+    expect(sizeName('2160p')).toBe('4K')
+    expect(sizeName('1080p', 640, 360)).toBe('1080p')
+    expect(sizeName(undefined, 3840, 1600)).toBe('4K')
+    expect(sizeName(undefined, 3840, 2160)).toBe('4K')
+    expect(sizeName(undefined, 1920, 800)).toBe('1080p')
+    expect(sizeName(undefined, 1280, 536)).toBe('720p')
+    expect(sizeName(undefined, 640, 360)).toBe('360p')
+    expect(sizeName(undefined)).toBeUndefined()
+    expect(sizeName(undefined, 0, 0)).toBeUndefined()
   })
 
   it('writes bytes a second as megabits', () => {
@@ -184,8 +188,8 @@ describe('words', () => {
   })
 
   it('says what is known and no more', () => {
-    expect(struggleText('device', { height: 2160, codec: 'HEVC' })).toBe('This device can’t keep up with 4K HEVC here.')
-    expect(struggleText('device', { height: 1440 })).toBe('This device can’t keep up with 1440p video here.')
+    expect(struggleText('device', { size: '4K', codec: 'HEVC' })).toBe('This device can’t keep up with 4K HEVC here.')
+    expect(struggleText('device', { size: '1440p' })).toBe('This device can’t keep up with 1440p video here.')
     expect(struggleText('device', { codec: 'AV1' })).toBe('This device can’t keep up with AV1 video here.')
     expect(struggleText('device', {})).toBe('This device can’t keep up with this video here.')
     expect(struggleText('connection', { bytesPerSecond: 437_500, bitrate: 5_000_000 })).toBe('The file isn’t arriving fast enough: about 3.5 Mb/s, and it needs 40 Mb/s.')

@@ -5,7 +5,7 @@ import { keepFocus } from './Controls'
 import type { PlayerController } from './controller'
 import { codecName } from './format'
 import { struggleDismissals } from './session'
-import { bufferAhead, StruggleTracker, struggleText, type Cause, type StruggleFacts } from './struggle'
+import { bufferAhead, sizeName, StruggleTracker, struggleText, type Cause, type StruggleFacts } from './struggle'
 import s from './Controls.module.css'
 
 const everyMs = 2000
@@ -75,7 +75,7 @@ export function StruggleNotice({ controller, titleKey, sources, findLower, suppr
         up = true
         const { bytesPerSecond, bitrate } = rates()
         const info = controller.engine?.videoInfo?.()
-        setShown({ cause: verdict.cause, facts: { height: video.videoHeight, codec: controller.source?.videoCodec ?? codecName(info?.codec), bytesPerSecond, bitrate }, lower: lowerNow.current() })
+        setShown({ cause: verdict.cause, facts: { size: sizeName(controller.source?.resolution, video.videoWidth, video.videoHeight), codec: controller.source?.videoCodec ?? codecName(info?.codec), bytesPerSecond, bitrate }, lower: lowerNow.current() })
       } else if (!verdict.struggling && up) {
         // It passed: the notice goes, and doesn't come back for this playback.
         finished.current = true
