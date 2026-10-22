@@ -31,6 +31,9 @@ const empty: SearchUpdate = { sources: [], providers: [], torrents: 0, finished:
 export function SourcePicker({ request, seed, onPick, onClose }: { request: PlaybackRequest; seed?: SearchUpdate; onPick: (source: Source) => void; onClose: () => void }) {
   const [search, setSearch] = useState<SearchUpdate>(seed?.finished ? seed : empty)
   const [reload, setReload] = useState(0)
+  // The virtualised rows need the scroller to exist when they first render.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
   const [filter, setFilter] = useState<Filter>({ kind: 'all' })
   const [activeId, setActiveId] = useState<string>()
   const remember = useSettings((x) => x.rememberLastSource)
@@ -192,7 +195,7 @@ export function SourcePicker({ request, seed, onPick, onClose }: { request: Play
             </Empty>
           )}
           {search.finished && !noProviders && all.length === 0 && <Empty title="No Sources" text="None of your sources have this title yet." />}
-          {list.length > 0 && <Rows entries={entries} best={best} active={active} lastPlayedId={lastPlayed?.id} onPick={pick} onHover={setActiveId} scroller={listRef} />}
+          {mounted && list.length > 0 && <Rows entries={entries} best={best} active={active} lastPlayedId={lastPlayed?.id} onPick={pick} onHover={setActiveId} scroller={listRef} />}
           {(search.torrents > 0 || failures.length > 0) && (
             <div className={s.notes}>
               {search.torrents > 0 && (

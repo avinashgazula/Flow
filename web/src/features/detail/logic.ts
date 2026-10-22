@@ -46,20 +46,32 @@ export function sourcesSummary(count: number, providers: ProviderState[]): strin
   return [String(count), names.join(', ')].filter(Boolean).join(' · ')
 }
 
-/** The strip under the still: "2024 · 2 H 47 · 1 H 44 MIN LEFT · ENDS 22:56". The time left is the one
- *  yellow fact; without progress the end time is when it finishes if started now. A series prints its
- *  seasons and episode length instead of a film's runtime. */
-export function titlePrint(d: Pick<MediaDetail, 'type' | 'year' | 'runtime' | 'seasons'>, progress: { position: number; duration: number } | undefined, now: number, locale?: string): PrintPart[] {
+/** The strip under the still, as edge print. A film: "2024 · 2 H 47 · 1 H 44 MIN LEFT · ENDS 22:56", the
+ *  time left the one yellow fact; not started, just "2024 · 2 H 47 · ENDS 22:56". A series started prints
+ *  the episode: "S3 E7 · 35 MIN LEFT · ENDS 22:56"; not started, "2008 · 5 SEASONS · 47 MIN · ENDS 22:56".
+ *  `compact` drops the year, for a strip too narrow to hold it (the meta line has it). */
+export function titlePrint(
+  d: Pick<MediaDetail, 'type' | 'year' | 'runtime' | 'seasons'>,
+  progress: { position: number; duration: number; episode?: { season: number; episode: number } } | undefined,
+  now: number,
+  locale?: string,
+  compact = false,
+): PrintPart[] {
   const seasons = d.seasons.filter((x) => x.number > 0).length
   const length = d.runtime ? formatRuntime(d.runtime * 60) : ''
-  const facts: PrintPart[] = [d.year ? String(d.year) : '']
-  if (d.type === 'show') facts.push(seasons ? `${seasons} ${seasons === 1 ? 'season' : 'seasons'}` : 'Series')
-  if (length) facts.push(d.type === 'show' ? `${length} episodes` : length)
-  if (progress && progress.duration > 0) {
-    const left = secondsLeft(progress)
+  const started = progress && progress.duration > 0 ? progress : undefined
+  const year = d.year && !compact ? String(d.year) : ''
+  const facts: PrintPart[] = []
+  if (started) {
+    const left = secondsLeft(started)
+    if (d.type === 'show') facts.push(started.episode ? `S${started.episode.season} E${started.episode.episode}` : '')
+    else facts.push(year, length)
     facts.push({ key: formatLeft(left) }, `ends ${formatClock(endTime(now, left), locale)}`)
-  } else if (d.runtime) {
-    facts.push(`ends ${formatClock(endTime(now, d.runtime * 60), locale)}`)
+  } else {
+    facts.push(year)
+    if (d.type === 'show') facts.push(seasons ? `${seasons} ${seasons === 1 ? 'season' : 'seasons'}` : 'Series')
+    facts.push(length)
+    if (d.runtime) facts.push(`ends ${formatClock(endTime(now, d.runtime * 60), locale)}`)
   }
   return facts.filter((p) => p !== '')
 }

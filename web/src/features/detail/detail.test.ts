@@ -51,9 +51,14 @@ describe('strip and buttons', () => {
     expect(titlePrint(film, { position: 3720, duration: 10020 }, now, 'en-GB')).toEqual(['2024', '2 h 47', { key: '1 h 45 min left' }, 'ends 23:15'])
   })
 
-  it('prints a series by its seasons', () => {
+  it('prints a series by its seasons, and a started one by its episode', () => {
     const show = { type: 'show' as const, year: 2008, runtime: 47, seasons: [{ number: 0, name: 'Specials', episodeCount: 1 }, { number: 1, name: 'Season 1', episodeCount: 7 }] }
-    expect(titlePrint(show, undefined, now, 'en-GB')).toEqual(['2008', '1 season', '47 min episodes', 'ends 22:17'])
+    expect(titlePrint(show, undefined, now, 'en-GB')).toEqual(['2008', '1 season', '47 min', 'ends 22:17'])
+    expect(titlePrint(show, { position: 600, duration: 2700, episode: { season: 3, episode: 7 } }, now, 'en-GB')).toEqual(['S3 E7', { key: '35 min left' }, 'ends 22:05'])
+  })
+
+  it('drops the year when the strip is narrow', () => {
+    expect(titlePrint(film, { position: 3720, duration: 10020 }, now, 'en-GB', true)).toEqual(['2 h 47', { key: '1 h 45 min left' }, 'ends 23:15'])
   })
 
   it('labels the yellow button', () => {

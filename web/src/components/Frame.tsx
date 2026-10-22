@@ -21,7 +21,7 @@ import s from './Frame.module.css'
 export type PrintPart = string | { key: string }
 
 /** How many perforations a strip draws (CSS sets the width: `--perfs` in Frame.module.css). */
-export type StripSize = 'lead' | 'still'
+export type StripSize = 'lead' | 'title' | 'still'
 
 export function EdgeStrip({ progress, print = [], size = 'still', hidden }: { progress?: number; print?: PrintPart[]; size?: StripSize; hidden?: boolean }) {
   const parts = print.filter((p) => (typeof p === 'string' ? p : p.key))

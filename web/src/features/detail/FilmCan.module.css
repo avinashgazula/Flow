@@ -69,7 +69,6 @@
 
 @media (max-width: 720px) {
   .can { padding-inline: var(--space-s); }
-  .row { grid-template-columns: 1fr; row-gap: 0; padding: 8px 0; }
-  .row + .row { border-top: 1px solid var(--rule); }
-  .open { margin: 0; padding: 4px 0; min-height: 32px; }
+  .row { grid-template-columns: 96px minmax(0, 1fr); column-gap: var(--space-s); padding: 5px 0; min-height: 30px; }
+  .open { margin: -5px 0; padding: 5px 0; }
 }

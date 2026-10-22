@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { Artwork } from '../../components/Artwork'
 import { FrameCard, Plate } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
@@ -21,6 +21,20 @@ import s from './DetailScreen.module.css'
 const TrailerSheet = lazy(() => import('./TrailerSheet'))
 const SourcePicker = lazy(() => import('../sources/SourcePicker').then((m) => ({ default: m.SourcePicker })))
 
+/** True on a phone-width window, where the strip has less room for print. */
+const phoneQuery = '(max-width: 720px)'
+function usePhone() {
+  return useSyncExternalStore(
+    (notify) => {
+      const list = matchMedia(phoneQuery)
+      list.addEventListener('change', notify)
+      return () => list.removeEventListener('change', notify)
+    },
+    () => matchMedia(phoneQuery).matches,
+    () => false,
+  )
+}
+
 /** The still's width at each layout, for `srcset`: two columns from 1000px, one below. */
 const stillSizes = '(min-width: 1360px) 600px, (min-width: 1000px) 44vw, calc(100vw - 32px)'
 
@@ -31,6 +45,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   const { data: d, isPlaceholderData, isError, error } = useQuery(q.detail(type, id))
   const navigate = useNavigate()
   const now = useMinuteTick()
+  const phone = usePhone()
   const [trailer, setTrailer] = useState(false)
   const [picker, setPicker] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -96,8 +111,8 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
               sizes={stillSizes}
               priority
               progress={progress ? watchedFraction(progress) : undefined}
-              print={titlePrint(d, progress, now, userLocale)}
-              stripSize="lead"
+              print={titlePrint(d, progress, now, userLocale, phone)}
+              stripSize="title"
               fallback={d.title}
             />
           </div>
@@ -290,7 +305,7 @@ function Row({ title, items, now }: { title: string; items: MediaItem[]; now: nu
     <section className={s.section} aria-label={title}>
       <h2 className={s.sectionTitle}>{title}</h2>
       <ul className={s.posters}>
-        {items.slice(0, 14).map((m) => (
+        {items.slice(0, 12).map((m) => (
           <FrameCard
             key={`${m.type}${m.id}`}
             shape="poster"

@@ -24,6 +24,7 @@
 /* Perforations are a repeating rounded 7x9 hole on an 11px pitch: --perfs of them, unwatched in base-4,
    watched in yellow. The tile is a mask, so the colours come from tokens. */
 .strip[data-size='lead'] { --perfs: 30; }
+.strip[data-size='title'] { --perfs: 18; }
 .strip[data-size='still'] { --perfs: 6; }
 @media (max-width: 1299px) {
   .strip[data-size='lead'] { --perfs: 22; }
@@ -33,6 +34,7 @@
 }
 @media (max-width: 720px) {
   .strip[data-size='lead'] { --perfs: 10; }
+  .strip[data-size='title'] { --perfs: 5; }
   .strip[data-size='still'] { --perfs: 5; }
 }
 .perfs {
