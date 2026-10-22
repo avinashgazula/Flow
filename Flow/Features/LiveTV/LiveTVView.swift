@@ -124,10 +124,12 @@ struct LiveTVView: View {
                     Image(systemName: showGuide ? "list.bullet" : "calendar.day.timeline.left")
                 }
                 .accessibilityLabel(showGuide ? "Show List" : "Show Guide")
+                .tint(Theme.Palette.text)
             }
             ToolbarItem(placement: .primaryAction) {
                 Button { refresh() } label: { Image(systemName: "arrow.clockwise") }
                     .accessibilityLabel("Refresh")
+                    .tint(Theme.Palette.text)
             }
         }
         #endif

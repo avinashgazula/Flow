@@ -73,6 +73,8 @@ struct ExploreView: View {
                     Image(systemName: isFiltered ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                 }
                 .accessibilityLabel(isFiltered ? "Filters, On" : "Filters")
+                // Yellow says "on" in the chips, so the button itself stays paper.
+                .tint(Theme.Palette.text)
             }
         }
         .sheet(isPresented: $showFilters) {

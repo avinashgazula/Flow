@@ -100,6 +100,7 @@ struct HomeView: View {
             ToolbarItem(placement: .primaryAction) {
                 SettingsLink { Image(systemName: "gearshape") }
                     .accessibilityLabel("Settings")
+                    .tint(Theme.Palette.text)
             }
         }
         #elseif os(tvOS)
@@ -109,6 +110,7 @@ struct HomeView: View {
                 ToolbarItem(placement: .automatic) {
                     Button { model.showSettings = true } label: { Image(systemName: "gearshape.fill") }
                         .accessibilityLabel("Settings")
+                        .tint(Theme.Palette.text)
                 }
             }
         }

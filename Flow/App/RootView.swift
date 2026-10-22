@@ -51,7 +51,7 @@ struct RootView: View {
                     .flowDestinations()
                     .toolbar {
                         #if !os(tvOS)
-                        ToolbarItem(placement: .confirmationAction) { Button("Done") { model.showSettings = false } }
+                        ToolbarItem(placement: .confirmationAction) { Button("Done") { model.showSettings = false }.tint(Theme.Palette.text) }
                         #endif
                     }
             }

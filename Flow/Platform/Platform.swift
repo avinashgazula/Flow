@@ -442,7 +442,9 @@ struct SettingsToolbarItem: ToolbarContent {
     }
 
     private var button: some View {
+        // Paper on the glass: yellow is for the next action, not for chrome.
         Button(action: action) { Image(systemName: "gearshape") }
             .accessibilityLabel("Settings")
+            .tint(Theme.Palette.text)
     }
 }

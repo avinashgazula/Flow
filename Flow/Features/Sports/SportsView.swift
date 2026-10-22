@@ -58,6 +58,7 @@ struct SportsView: View {
             ToolbarItem(placement: .primaryAction) {
                 Button { showSearch = true } label: { Image(systemName: "plus") }
                     .accessibilityLabel("Follow a Team")
+                    .tint(Theme.Palette.text)
             }
         }
         .sheet(isPresented: $showSearch) { TeamSearchView().environment(model) }
