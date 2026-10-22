@@ -1,0 +1,37 @@
+/* One row of chips that scrolls sideways on every width: twenty-odd of them wrapped made Explore the busiest
+   screen in the app. The row bleeds to the page edge so the chip at the edge is cut off, and a fade on each
+   side with more to scroll says it does (a scrollbar alone is easy to miss, and a phone hides it). */
+.wrap {
+  position: relative;
+  margin-bottom: var(--space-l);
+  margin-inline: calc(-1 * var(--gutter));
+}
+.row {
+  --fade-before: 0px;
+  --fade-after: 0px;
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-xs);
+  /* Room for the focus ring, which the scroll box would otherwise clip. */
+  padding: 4px var(--gutter) var(--space-xs);
+  scroll-padding-inline: var(--gutter);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-before), #000 calc(100% - var(--fade-after)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-before), #000 calc(100% - var(--fade-after)), transparent 100%);
+}
+.row::-webkit-scrollbar { display: none; }
+.row > * { flex: none; }
+.row[data-before] { --fade-before: calc(var(--gutter) + 72px); }
+.row[data-after] { --fade-after: calc(var(--gutter) + 72px); }
+
+/* Scroll buttons sit in the page's side margin, for a mouse only. */
+.arrow { display: none; }
+@media (hover: hover) and (pointer: fine) and (min-width: 721px) {
+  /* Round with a hairline, so it reads as a control over the row and not as one more chip. */
+  .arrow { display: inline-flex; position: absolute; top: 4px; border-radius: 50%; border: 1px solid var(--rule); background: var(--base-2); color: var(--paper); }
+  .back { left: 4px; }
+  .forward { right: 4px; }
+}

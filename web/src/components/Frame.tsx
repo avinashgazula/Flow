@@ -9,7 +9,7 @@ import s from './Frame.module.css'
 /* Frame and edge strip: Flow's one repeating object, after the printed edge of 35mm film. A still or a
    poster (the frame) has a strip attached under it. The strip's perforations are the progress meter: they
    fill in film-stock yellow as you watch. Its edge print says the facts that decide what to watch:
-   "S3 E7 · 18 MIN LEFT · ENDS 21:30 · 2160P · DV".
+   "S3 E7 · 18M LEFT · ENDS 21:30 · 2160P · DV".
 
    - EdgeStrip: the strip alone, to sit under any frame (the title page's still, the player's scrubber).
    - Plate: a frame with its strip, one object (radius 6 on top, 6 below).
@@ -32,7 +32,7 @@ function useStripLayout(facts: Fact[], kind: StripKind, active: boolean) {
   const [width, setWidth] = useState(0)
   const [bump, setBump] = useState({ key: '', n: 0 })
   const [fontsAt, setFontsAt] = useState(0)
-  const signature = facts.map((f) => `${f.text}|${f.short ?? ''}|${f.rank}`).join('/')
+  const signature = facts.map((f) => `${f.text}|${f.rank}`).join('/')
 
   useLayoutEffect(() => {
     const el = strip.current

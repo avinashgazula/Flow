@@ -37,11 +37,11 @@ describe('Up Next', () => {
 describe('edge print for something started', () => {
   it('reads episode, time left in yellow, end time, then format', () => {
     const p = entry('a', 1, { item: item({ type: 'show' }), episode: { season: 3, episode: 7 }, position: 1740, duration: 2820 })
-    expect(plain(resumePrint(p, now, { resolution: '2160p', hdr: ['DV'], quality: 'REMUX' }, 'en-GB'))).toEqual(['S3 E7', { key: '18 min left' }, 'ends 21:48', '2160p', 'DV', 'REMUX'])
+    expect(plain(resumePrint(p, now, { resolution: '2160p', hdr: ['DV'], quality: 'REMUX' }, 'en-GB'))).toEqual(['S3 E7', { key: '18m left' }, 'ends 21:48', '2160p', 'DV', 'REMUX'])
   })
 
   it('leaves out what is not known: no episode for a film, no format before one has played', () => {
-    expect(plain(resumePrint(entry('b', 1, { position: 0, duration: 2 * 3600 }), now, undefined, 'en-GB'))).toEqual([{ key: '2 h left' }, 'ends 23:30'])
+    expect(plain(resumePrint(entry('b', 1, { position: 0, duration: 2 * 3600 }), now, undefined, 'en-GB'))).toEqual([{ key: '2h left' }, 'ends 23:30'])
   })
 
   it('prints the picture, then the sound when the release names it', () => {

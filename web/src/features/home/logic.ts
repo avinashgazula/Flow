@@ -3,7 +3,7 @@ import { genreNames } from '../../lib/genres'
 import type { LastSource } from '../../lib/sources/lastSource'
 import type { Progress } from '../../lib/store/library'
 import type { MediaDetail, MediaItem } from '../../lib/tmdb/types'
-import { endTime, formatClock, formatLeft, formatLeftShort, formatRuntime, spokenDuration } from '../../lib/time'
+import { endTime, formatClock, formatLeftShort, formatRuntime, spokenDuration } from '../../lib/time'
 
 /** What's left of an in-progress title, in seconds. */
 export const secondsLeft = (p: Pick<Progress, 'position' | 'duration'>) => Math.max(0, p.duration - p.position)
@@ -42,8 +42,9 @@ export function formatPrint(last?: Format): string[] {
   return parts.filter((p): p is string => !!p)
 }
 
-/** The time left as print: the one fact in yellow, in a compact form when the strip is short of room. */
-export const leftPart = (seconds: number): PrintPart => ({ key: formatLeft(seconds), short: formatLeftShort(seconds), rank: rank.left })
+/** The time left as print: the one fact in yellow, spelled the same ("1h44 left", "18m left") on every strip at
+ *  every width. */
+export const leftPart = (seconds: number): PrintPart => ({ key: formatLeftShort(seconds), rank: rank.left })
 
 /** When it would end, the fact that must never be cut: it ranks just under the time left. */
 export const endsPart = (seconds: number, now: number, locale?: string): PrintPart => ({ text: `ends ${formatClock(endTime(now, seconds), locale)}`, rank: rank.ends })
@@ -58,8 +59,8 @@ export function formatSpoken(last?: Format): string | undefined {
   return words.length ? words.join(' ') : undefined
 }
 
-/** The edge print of something started: "S3 E7 · 18 MIN LEFT · ENDS 21:30 · 2160P · DV". The minutes left
- *  are the one fact in yellow. */
+/** The edge print of something started: "S3 E7 · 18M LEFT · ENDS 21:30 · 2160P · DV". The time left is
+ *  the one fact in yellow. */
 export function resumePrint(p: Progress, now: number, last?: Format, locale?: string): PrintPart[] {
   const left = secondsLeft(p)
   const episode = episodeShort(p.episode)

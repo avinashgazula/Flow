@@ -13,23 +13,6 @@
 }
 .types { min-width: 240px; }
 
-/* Genres are chips in one row that scrolls sideways, on every width: twenty-odd of them wrapped made this the
-   busiest screen in the app. A thin scrollbar says there is more to the right (a phone scrolls by touch). */
-.chips {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-l);
-  /* Room for the focus ring, which the scroll box would otherwise clip. */
-  padding: 4px 4px var(--space-xs);
-  margin-inline: -4px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--base-4) transparent;
-}
-.chips > * { flex: none; }
-
 .results { min-height: 60vh; }
 
 .more {
@@ -45,11 +28,4 @@
   .sortMenu { display: inline-flex; }
   .sorts { display: none; }
   .types { flex: 1; }
-  .chips {
-    margin-inline: calc(-1 * var(--gutter));
-    padding: 4px var(--gutter);
-    scrollbar-width: none;
-    scroll-padding: 0 var(--gutter);
-  }
-  .chips::-webkit-scrollbar { display: none; }
 }

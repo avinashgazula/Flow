@@ -55,9 +55,9 @@ export function sourcesSummary(count: number, providers: ProviderState[]): strin
   return [String(count), names.join(', ')].filter(Boolean).join(' · ')
 }
 
-/** The strip under the still, as edge print. A film: "2024 · 2 H 47 · 1 H 44 MIN LEFT · ENDS 22:56", the
+/** The strip under the still, as edge print. A film: "2024 · 2 H 47 · 1H44 LEFT · ENDS 22:56", the
  *  time left the one yellow fact; not started, just "2024 · 2 H 47 · ENDS 22:56". A series started prints
- *  the episode: "S3 E7 · 35 MIN LEFT · ENDS 22:56"; not started, "2008 · 5 SEASONS · 47 MIN · ENDS 22:56".
+ *  the episode: "S3 E7 · 35M LEFT · ENDS 22:56"; not started, "2008 · 5 SEASONS · 47 MIN · ENDS 22:56".
  *  Every fact has a rank (stripLayout), so a strip with less room drops the year first and keeps the end time. */
 export function titlePrint(
   d: Pick<MediaDetail, 'type' | 'year' | 'runtime' | 'seasons'>,

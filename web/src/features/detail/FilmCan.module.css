@@ -31,7 +31,8 @@
   font-variant-numeric: tabular-nums;
   color: var(--paper);
 }
-/* A long version wraps between its parts, with the dot staying at the end of a line, never opening the next. */
+/* A long version wraps between its parts (the one space after each dot is the only place a line can break), with
+   the dot staying at the end of a line, never opening the next, and no part, a size included, split in two. */
 .part { white-space: nowrap; }
 .direct { color: var(--stock); }
 .warn { color: var(--warn); }

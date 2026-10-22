@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import { movieGenres, tvGenres } from '../../lib/genres'
 import { q } from '../../lib/queries'
 import type { Genre, MediaType } from '../../lib/tmdb/types'
+import { ChipRow } from './ChipRow'
 import { Segmented, Select, StateView, errorMessage } from './Controls'
 import { PosterGrid } from './PosterGrid'
 import { exploreSorts, exploreSource, orderGenres, uniqueItems, type ExploreSort } from './source'
@@ -66,16 +67,7 @@ export function ExploreScreen({ type, sort, genre }: { type: MediaType; sort: Ex
         <Segmented className={s.sorts} options={exploreSorts} value={sort} onChange={(v) => update({ sort: v })} label="Sort by" />
       </div>
 
-      <div
-        className={s.chips}
-        role="group"
-        aria-label="Genre"
-        ref={(row) => {
-          // Land with the selected genre in view: a "See All" from Home can pick one far along the row.
-          const chip = row?.querySelector<HTMLElement>('[aria-pressed="true"]')
-          if (row && chip && chip.offsetLeft + chip.offsetWidth > row.clientWidth) row.scrollLeft = chip.offsetLeft - row.clientWidth / 2 + chip.offsetWidth / 2
-        }}
-      >
+      <ChipRow label="Genre">
         <button type="button" className="chip" aria-pressed={!genre} onClick={() => update({ genre: null })}>
           All
         </button>
@@ -84,7 +76,7 @@ export function ExploreScreen({ type, sort, genre }: { type: MediaType; sort: Ex
             {g.name}
           </button>
         ))}
-      </div>
+      </ChipRow>
 
       <div ref={gridTop} className={s.results}>
         {query.isError && items.length === 0 ? (

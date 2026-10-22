@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Icon } from '../../components/Icon'
 import type { SearchUpdate, Source } from '../../lib/sources'
@@ -23,7 +24,12 @@ export function FilmCan({ search, best, lastPlayed, onOpen }: { search: SearchUp
           <>
           <div className={s.row}>
             <dt>{lastPlayed ? 'Last played' : 'Best version'}</dt>
-            <dd>{waiting ? <Bar width="62%" /> : nothingPlays ? <span className={s.warn}>None plays in this browser</span> : version.length ? version.map((p, i) => <span key={p} className={s.part}>{p}{i < version.length - 1 && ' · '}</span>) : 'Unnamed release'}</dd>
+            <dd>{waiting ? <Bar width="62%" /> : nothingPlays ? <span className={s.warn}>None plays in this browser</span> : version.length ? version.map((p, i) => (
+                <Fragment key={p}>
+                  <span className={s.part}>{p}{i < version.length - 1 && ' ·'}</span>
+                  {i < version.length - 1 && ' '}
+                </Fragment>
+              )) : 'Unnamed release'}</dd>
           </div>
           {!nothingPlays && (
             <div className={s.row}>
@@ -36,7 +42,7 @@ export function FilmCan({ search, best, lastPlayed, onOpen }: { search: SearchUp
                     <span className={facts.direct ? s.direct : undefined}>{facts.mode}</span>
                     {facts.notes.map((n) => (
                       <span key={n.text}>
-                        {' · '}
+                        {'\u00a0· '}
                         <span className={n.tone === 'warn' ? s.warn : undefined}>{n.text}</span>
                       </span>
                     ))}

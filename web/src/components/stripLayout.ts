@@ -1,7 +1,7 @@
 /* What fits on an edge strip. A strip is a fixed band: perforations on the left, edge print after them. Print
    that doesn't fit is never cut off mid-word (an end time that reads "ENDS 1:0…" is worse than none): it is
-   composed to fit instead. The facts have a priority; the lowest go first, and the longest forms give way to
-   compact ones ("1h44 left" for "1 h 44 min left") before anything is dropped.
+   composed to fit instead. The facts have a priority and the lowest go first. Every fact has one spelling at
+   every width ("1h44 left", "18m left"), so the same time never reads two ways on one screen.
 
    Priority, highest first: time left, end time, format, episode code, rating, then year, runtime, seasons.
    Everything here is a pure function of the width, so it is tested without a browser; the component measures
@@ -10,15 +10,13 @@
 /** One fact in edge print. `key` is the time left, the one fact in yellow. */
 export interface Fact {
   text: string
-  /** A compact form, used before anything is dropped. */
-  short?: string
   /** Lower is more important; ties drop the later one first. */
   rank: number
   key?: boolean
 }
 
 /** What a caller hands over: a plain string is white print of the lowest priority. */
-export type PrintPart = string | { key: string; short?: string; rank?: number } | { text: string; short?: string; rank?: number }
+export type PrintPart = string | { key: string; rank?: number } | { text: string; rank?: number }
 
 /** The priorities, so every screen ranks the same facts the same way: `facts` is a runtime or a season count. */
 export const rank = { left: 0, ends: 1, format: 2, episode: 3, rating: 4, facts: 5, year: 6 } as const
@@ -27,8 +25,8 @@ export function toFacts(parts: PrintPart[]): Fact[] {
   return parts
     .map((p): Fact => {
       if (typeof p === 'string') return { text: p, rank: rank.facts }
-      if ('key' in p) return { text: p.key, short: p.short, rank: p.rank ?? rank.left, key: true }
-      return { text: p.text, short: p.short, rank: p.rank ?? rank.facts }
+      if ('key' in p) return { text: p.key, rank: p.rank ?? rank.left, key: true }
+      return { text: p.text, rank: p.rank ?? rank.facts }
     })
     .filter((f) => f.text !== '')
 }
@@ -67,8 +65,6 @@ export interface Layout {
   perfs: number
   /** The facts to print, in their original order. */
   facts: Fact[]
-  /** Compact forms are in use. */
-  compact: boolean
 }
 
 export type Measure = (text: string) => number
@@ -77,19 +73,12 @@ export type Measure = (text: string) => number
 export function composeStrip({ width, facts, kind, measure }: { width: number; facts: Fact[]; kind: StripKind; measure?: Measure }): Layout {
   const m: Measure = measure ?? ((t) => estimateWidth(t, kind))
   const sep = m(' · ')
-  const total = (list: Fact[], short: boolean) => list.reduce((sum, f) => sum + m(short && f.short ? f.short : f.text), 0) + sep * Math.max(0, list.length - 1)
-  const fits = (list: Fact[], room: number): Layout | undefined => {
-    if (total(list, false) <= room) return { perfs: 0, facts: list, compact: false }
-    if (list.some((f) => f.short) && total(list, true) <= room) return { perfs: 0, facts: list.map((f) => (f.short ? { ...f, text: f.short, short: undefined } : f)), compact: true }
-    return undefined
-  }
-  /** The most that fits in `room`: all of it, or its compact form, then without the least important fact, and so on. */
+  const total = (list: Fact[]) => list.reduce((sum, f) => sum + m(f.text), 0) + sep * Math.max(0, list.length - 1)
+  /** The most that fits in `room`: all of it, then without the least important fact, and so on. */
   const compose = (room: number): Omit<Layout, 'perfs'> => {
     let list = facts
     for (;;) {
-      const hit = fits(list, room)
-      if (hit) return { facts: hit.facts, compact: hit.compact }
-      if (list.length <= 1) return { facts: list.map((f) => (f.short ? { ...f, text: f.short, short: undefined } : f)), compact: true }
+      if (total(list) <= room || list.length <= 1) return { facts: list }
       // Least important first; of equals, the later one.
       let drop = 0
       list.forEach((f, i) => {
@@ -102,7 +91,7 @@ export function composeStrip({ width, facts, kind, measure }: { width: number; f
   const room = (perfs: number) => width - (perfs > 0 ? perfsWidth(perfs) + gap : 0)
   const fitPerfs = (space: number) => Math.floor((space + 4) / pitch)
 
-  if (facts.length === 0) return { perfs: Math.min(maxPerfs[kind], Math.max(0, fitPerfs(width))), facts: [], compact: false }
+  if (facts.length === 0) return { perfs: Math.min(maxPerfs[kind], Math.max(0, fitPerfs(width))), facts: [] }
 
   const keep = reserve[kind]
   if (keep !== undefined) {
@@ -112,9 +101,9 @@ export function composeStrip({ width, facts, kind, measure }: { width: number; f
     return { perfs, ...compose(room(perfs)) }
   }
   // A lead or a title's still: print in full if it fits beside the most perforations, else beside the fewest.
-  const full = total(facts, false)
+  const full = total(facts)
   const n = Math.min(maxPerfs[kind], fitPerfs(width - full - gap))
-  if (n >= minPerfs[kind]) return { perfs: n, facts, compact: false }
-  const perfs = width >= perfsWidth(minPerfs[kind]) + gap + total(facts.filter((f) => f.rank <= rank.ends), true) ? minPerfs[kind] : 0
+  if (n >= minPerfs[kind]) return { perfs: n, facts }
+  const perfs = width >= perfsWidth(minPerfs[kind]) + gap + total(facts.filter((f) => f.rank <= rank.ends)) ? minPerfs[kind] : 0
   return { perfs, ...compose(room(perfs)) }
 }

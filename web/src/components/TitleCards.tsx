@@ -4,7 +4,7 @@ import { prefetchDetail, q } from '../lib/queries'
 import { lastSourceStore } from '../lib/sources/lastSource'
 import { useStore } from '../lib/store/createStore'
 import type { Progress } from '../lib/store/library'
-import { formatLeft, userLocale, useMinuteTick } from '../lib/time'
+import { formatLeftShort, userLocale, useMinuteTick } from '../lib/time'
 import type { MediaItem } from '../lib/tmdb/types'
 import { useNearScreen } from '../lib/useNearScreen'
 import { episodeLine, pickPrint, resumePrint, secondsLeft, spokenPick, spokenResume, watchedFraction, type PickDetail } from '../features/home/logic'
@@ -72,7 +72,7 @@ export function ResumeItem({ p, sizes, children }: { p: Progress; sizes: string;
       progress={watchedFraction(p)}
       print={resumePrint(p, now, last, userLocale)}
       title={p.item.title}
-      meta={episodeLine(p.episode) ?? formatLeft(secondsLeft(p))}
+      meta={episodeLine(p.episode) ?? formatLeftShort(secondsLeft(p))}
       label={spokenResume(p, now, userLocale, last)}
       fallback={p.item.title}
       onIntent={() => prefetchDetail(p.item)}

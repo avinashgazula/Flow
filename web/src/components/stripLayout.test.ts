@@ -6,7 +6,7 @@ const fact = (text: string, r: number, over: Partial<Fact> = {}): Fact => ({ tex
 /** A resume strip: S3 E7 · 18 MIN LEFT · ENDS 11:40 AM · 2160P · DV · WEB-DL, as the home screen builds it. */
 const resume: Fact[] = [
   fact('S3 E7', rank.episode),
-  fact('18 min left', rank.left, { key: true, short: '18m left' }),
+  fact('18m left', rank.left, { key: true }),
   fact('ends 11:40 AM', rank.ends),
   fact('2160p', rank.format),
   fact('DV', rank.format),
@@ -28,7 +28,6 @@ describe('what an edge strip can say', () => {
   it('prints everything when there is room, and fills the rest with perforations', () => {
     const layout = composeStrip({ width: 740, facts: resume, kind: 'lead' })
     expect(texts(layout.facts)).toEqual(texts(resume))
-    expect(layout.compact).toBe(false)
     expect(layout.perfs).toBeGreaterThanOrEqual(8)
   })
 
@@ -37,7 +36,7 @@ describe('what an edge strip can say', () => {
       for (const kind of ['lead', 'still'] as const) {
         const { facts, perfs } = composeStrip({ width, facts: resume, kind })
         const used = facts.reduce((sum, f) => sum + estimateWidth(f.text, kind), 0) + estimateWidth(' · ', kind) * (facts.length - 1) + (perfs ? perfsWidth(perfs) + gapAfterPerfs(kind) : 0)
-        // Room enough for the two facts that matter (in their compact form) means they are both there, and it all fits.
+        // Room enough for the two facts that matter means they are both there, and it all fits.
         if (width >= 195) {
           expect(texts(facts)).toContain('ends 11:40 AM')
           expect(facts.some((f) => f.key)).toBe(true)
@@ -64,12 +63,14 @@ describe('what an edge strip can say', () => {
     expect(episodeGone).toBeGreaterThan(formatGone)
   })
 
-  it('uses the compact time left before dropping a fact', () => {
-    const base: Fact[] = [fact('1 h 44 min left', rank.left, { key: true, short: '1h44 left' }), fact('ends 1:06 PM', rank.ends)]
-    const full = estimateWidth('1 h 44 min left · ends 1:06 PM', 'still')
-    const layout = composeStrip({ width: full - 10, facts: base, kind: 'lead' })
-    expect(texts(layout.facts)).toEqual(['1h44 left', 'ends 1:06 PM'])
-    expect(layout.compact).toBe(true)
+  it('spells the time left one way at every width: it is dropped last, never reworded', () => {
+    const base: Fact[] = [fact('1h44 left', rank.left, { key: true }), fact('ends 1:06 PM', rank.ends), fact('2160p', rank.format)]
+    for (let width = 120; width <= 740; width += 10) {
+      for (const kind of ['lead', 'title', 'still'] as const) {
+        const left = composeStrip({ width, facts: base, kind }).facts.find((f) => f.key)
+        expect(left?.text).toBe('1h44 left')
+      }
+    }
   })
 
   it('keeps the format only as a unit of pieces, resolution last to go', () => {
@@ -109,12 +110,12 @@ describe('what an edge strip can say', () => {
   })
 
   it('reads callers’ parts: strings are the lowest priority, { key } is the time left, { text, rank } as given', () => {
-    const facts = toFacts(['S1 E1', { key: '5 min left', short: '5m left' }, { text: 'ends 9:00', rank: rank.ends }, ''])
+    const facts = toFacts(['S1 E1', { key: '5m left' }, { text: 'ends 9:00', rank: rank.ends }, ''])
     expect(facts).toEqual([
       { text: 'S1 E1', rank: rank.facts },
-      { text: '5 min left', short: '5m left', rank: rank.left, key: true },
-      { text: 'ends 9:00', short: undefined, rank: rank.ends },
+      { text: '5m left', rank: rank.left, key: true },
+      { text: 'ends 9:00', rank: rank.ends },
     ])
-    expect(print(facts)).toBe('S1 E1 · 5 min left · ends 9:00')
+    expect(print(facts)).toBe('S1 E1 · 5m left · ends 9:00')
   })
 })

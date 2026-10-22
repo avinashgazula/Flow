@@ -64,19 +64,19 @@ describe('strip and buttons', () => {
   })
 
   it('puts time left in the key slot once started', () => {
-    expect(plain(titlePrint(film, { position: 3720, duration: 10020 }, now, 'en-GB'))).toEqual(['2024', '2 h 47', { key: '1 h 45 min left' }, 'ends 23:15'])
+    expect(plain(titlePrint(film, { position: 3720, duration: 10020 }, now, 'en-GB'))).toEqual(['2024', '2 h 47', { key: '1h45 left' }, 'ends 23:15'])
   })
 
   it('prints a series by its seasons, and a started one by its episode', () => {
     const show = { type: 'show' as const, year: 2008, runtime: 47, seasons: [{ number: 0, name: 'Specials', episodeCount: 1 }, { number: 1, name: 'Season 1', episodeCount: 7 }] }
     expect(plain(titlePrint(show, undefined, now, 'en-GB'))).toEqual(['2008', '1 season', '47 min', 'ends 22:17'])
-    expect(plain(titlePrint(show, { position: 600, duration: 2700, episode: { season: 3, episode: 7 } }, now, 'en-GB'))).toEqual(['S3 E7', { key: '35 min left' }, 'ends 22:05'])
+    expect(plain(titlePrint(show, { position: 600, duration: 2700, episode: { season: 3, episode: 7 } }, now, 'en-GB'))).toEqual(['S3 E7', { key: '35m left' }, 'ends 22:05'])
   })
 
   it('ranks the year lowest, so a narrow strip drops it first and keeps the time left and the end time', () => {
     const facts = toFacts(titlePrint(film, { position: 3720, duration: 10020 }, now, 'en-GB'))
     const order = [...facts].sort((a, b) => a.rank - b.rank).map((f) => f.text)
-    expect(order[0]).toBe('1 h 45 min left')
+    expect(order[0]).toBe('1h45 left')
     expect(order[1]).toBe('ends 23:15')
     expect(order.at(-1)).toBe('2024')
   })

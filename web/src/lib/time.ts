@@ -78,7 +78,7 @@ export function formatLeft(seconds: number): string {
   return `${formatDuration(seconds)} left`
 }
 
-/** The compact form for a strip with little room: "18m left", "1h44 left", "2h left". */
+/** The one spelling of time left on a strip, whatever its width: "18m left", "1h44 left", "2h left". */
 export function formatLeftShort(seconds: number): string {
   const total = minutesIn(seconds)
   const h = Math.floor(total / 60)
