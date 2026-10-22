@@ -42,6 +42,8 @@ export interface PlayerState {
   subtitleTrack: TextTrack | null
   controls: boolean
   panel: Panel
+  /** The Playback Info card is up (I, or Options). */
+  info: boolean
   fit: 'contain' | 'cover'
   fullscreen: boolean
   pip: boolean
@@ -96,6 +98,7 @@ export class PlayerController {
     subtitleTrack: null,
     controls: true,
     panel: null,
+    info: false,
     fit: 'contain',
     fullscreen: false,
     pip: false,
@@ -321,6 +324,7 @@ export class PlayerController {
     this.video.defaultPlaybackRate = rate
   }
   setFit = (fit: PlayerState['fit']) => this.set({ fit })
+  toggleInfo = () => this.set({ info: !this.state.info })
 
   // MARK: Tracks
 

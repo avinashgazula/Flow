@@ -21,8 +21,23 @@ export interface Track {
   converted?: boolean
 }
 
+/** What an engine knows about its download, in bytes a second: how fast the file is arriving, how
+ *  fast it plays (its average rate; 0 when unknown), and how many requests are open. */
+export interface NetStats {
+  bytesPerSecond: number
+  bitrate: number
+  inFlight: number
+}
+
 export interface Engine {
   readonly kind: 'native' | 'hls' | 'remux'
+  /** The bytes come through the stream proxy, not straight from the host. */
+  readonly viaProxy?: boolean
+  /** Download figures, for engines that measure them (the remuxer, hls.js); null until there are some. */
+  netStats?(): NetStats | null
+  /** What the stream says its video is (a codec string like "hvc1.2.4.L153.B0", and "HDR10" or
+   *  "Dolby Vision"), for engines that read it. */
+  videoInfo?(): { codec: string; range?: string } | undefined
   audio(): { tracks: Track[]; selected?: string }
   selectAudio(id: string): void | Promise<void>
   /** Subtitles inside the stream. External files are the controller's job. */
@@ -243,6 +258,13 @@ async function attachHls(video: HTMLVideoElement, source: Source, options: Attac
     },
     seek: (time) => (video.currentTime = time),
     duration: () => video.duration,
+    netStats() {
+      // hls.js's estimate is of the whole connection, in bits a second; the level's bitrate is the stream's.
+      const measured = hls.bandwidthEstimate
+      if (!Number.isFinite(measured) || measured <= 0) return null
+      const level = hls.levels[hls.currentLevel]
+      return { bytesPerSecond: measured / 8, bitrate: (level?.bitrate ?? 0) / 8, inFlight: 0 }
+    },
     recover() {
       if (recovered) return false
       recovered = true
@@ -328,6 +350,10 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
 
   return {
     kind: 'remux',
+    viaProxy,
+    // The session measures the download itself (the reader in lib/remux); an older one has nothing to say.
+    netStats: () => (remux as { netStats?: NetStats | null }).netStats ?? null,
+    videoInfo: () => (remux.video ? { codec: remux.video.codec, range: remux.video.range } : undefined),
     audio: () => ({
       tracks: remux.audioTracks.map((t) => ({
         id: String(t.id),

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Source } from '../../lib/sources'
 import type { Episode } from '../../lib/tmdb/types'
-import { matchSource, nextEpisode, nextSource, resumePosition, shouldResume } from './session'
+import { matchSource, nextEpisode, nextSource, resolutionHeight, resumePosition, shouldResume } from './session'
 
 const src = (id: string, extra: Partial<Source> = {}): Source => ({ id, origin: 'addon', provider: 'P', title: id, url: `https://x/${id}`, engine: 'native', resolution: '1080p', ...extra }) as Source
 const ep = (number: number, airDate?: string): Episode => ({ id: number, season: 1, number, name: `E${number}`, overview: '', airDate })
@@ -71,5 +71,28 @@ describe('nextSource', () => {
     expect(nextSource(list, list[3], new Set(['a', 'd']), { best: true, playableOnly: true })?.id).toBe('c')
     expect(nextSource(list, list[0], new Set(['a']), { best: true, playableOnly: true, prefer: (x) => x.id === 'd' })?.id).toBe('d')
     expect(nextSource(list, list[0], new Set(['a']), { best: true, playableOnly: true })?.id).toBe('c')
+  })
+})
+
+describe('nextSource below a resolution', () => {
+  const list = [src('4k', { resolution: '2160p' }), src('hdr4k', { resolution: '2160p' }), src('qhd', { resolution: '1440p' }), src('fhd'), src('hd', { resolution: '720p' }), src('blank', { resolution: undefined }), src('dead', { resolution: '1080p', unsupported: 'No' } as Partial<Source>)]
+
+  it('finds the best lower-resolution source that plays, from the top of the list', () => {
+    expect(nextSource(list, list[0], new Set(['4k']), { best: true, playableOnly: true, below: 2160 })?.id).toBe('qhd')
+    expect(nextSource(list, list[0], new Set(['4k']), { best: true, playableOnly: true, below: 1440 })?.id).toBe('fhd')
+    expect(nextSource(list, list[0], new Set(['4k', 'qhd', 'fhd']), { best: true, playableOnly: true, below: 2160 })?.id).toBe('hd')
+  })
+
+  it('offers nothing that is not lower, nor anything that says nothing about its size', () => {
+    expect(nextSource(list, list[4], new Set(['hd']), { best: true, playableOnly: true, below: 720 })).toBeUndefined()
+    expect(nextSource([list[0]!, list[5]!], list[0], new Set(['4k']), { best: true, below: 2160 })).toBeUndefined()
+    // Even when unsupported ones are allowed, they have to be lower.
+    expect(nextSource([list[0]!, list[6]!], list[0], new Set(['4k']), { best: true, below: 1080 })).toBeUndefined()
+  })
+
+  it('reads a resolution as a height', () => {
+    expect(resolutionHeight('2160p')).toBe(2160)
+    expect(resolutionHeight('SD')).toBe(480)
+    expect(resolutionHeight(undefined)).toBeUndefined()
   })
 })

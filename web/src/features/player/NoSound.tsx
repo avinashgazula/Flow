@@ -13,7 +13,7 @@ import s from './Controls.module.css'
  *  It reads the element on `timeupdate` into refs and re-renders once, when it decides.
  *  `conversionFailed` is the other way to end up here: Flow was converting the audio and gave up, so
  *  there is nothing to watch for. The notice says so at once, with the same two ways forward. */
-export function NoSoundNotice({ controller, source, conversionFailed = false, onSilent, onTryAnother }: { controller: PlayerController; source: Source | null; conversionFailed?: boolean; onSilent: () => void; onTryAnother: () => void }) {
+export function NoSoundNotice({ controller, source, conversionFailed = false, onSilent, onTryAnother, onShowing }: { controller: PlayerController; source: Source | null; conversionFailed?: boolean; onSilent: () => void; onTryAnother: () => void; onShowing?: (showing: boolean) => void }) {
   const [silent, setSilent] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   // This notice only shows for the browser's own player, which the remuxer falls back to after the
@@ -52,6 +52,11 @@ export function NoSoundNotice({ controller, source, conversionFailed = false, on
   }, [controller])
 
   const shown = (silent || conversionFailed) && !dismissed
+  // Other notices wait while this one is up.
+  useEffect(() => {
+    onShowing?.(shown)
+    return () => onShowing?.(false)
+  }, [shown, onShowing])
   if (!shown) return null
   const names = silentAudioNames(source?.audio, browserCapabilities())
   return (

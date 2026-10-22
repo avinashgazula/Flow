@@ -53,6 +53,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   const proxyError = usePlayer(controller, (st) => st.proxyError)
   const rate = usePlayer(controller, (st) => st.rate)
   const fit = usePlayer(controller, (st) => st.fit)
+  const info = usePlayer(controller, (st) => st.info)
   const close = () => controller.setPanel(null)
   const back = () => setPage(start === 'tracks' && page !== 'root' ? 'tracks' : 'root')
 
@@ -145,6 +146,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
         title: `Zoom · ${fit === 'cover' ? 'Fill' : 'Fit'}`,
         action: () => controller.setFit(fit === 'cover' ? 'contain' : 'cover'),
       })
+      rows.push({ id: 'info', icon: 'info', title: 'Playback Info', value: info ? 'On' : 'Off', action: controller.toggleInfo })
       groups = [{ rows }]
       break
     }

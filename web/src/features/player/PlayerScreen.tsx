@@ -17,8 +17,10 @@ import { attachSource, warmEngines, type Engine } from './engine'
 import { mediaErrorMessage, PlaybackError } from './errors'
 import { episodeLine } from './format'
 import { NoSoundNotice } from './NoSound'
+import { PlaybackInfo } from './PlaybackInfo'
 import { Buffering, FeedbackFlash, SubtitleOverlay, TapLayer } from './Overlays'
-import { lastSources, matchSource, nextEpisode, nextSource, resumePosition } from './session'
+import { lastSources, matchSource, nextEpisode, nextSource, resolutionHeight, resumePosition } from './session'
+import { StruggleNotice } from './Struggle'
 import { UpNext } from './UpNext'
 import s from './Player.module.css'
 
@@ -93,6 +95,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
     controller.setContext(key, originalLanguage)
   }, [controller, key, originalLanguage])
   const fit = usePlayer(controller, (st) => st.fit)
+  const infoOpen = usePlayer(controller, (st) => st.info)
   const video = useRef<HTMLVideoElement>(null)
   const [phase, setPhase] = useState<Phase>('finding')
   const [source, setSource] = useState<Source | null>(null)
@@ -107,6 +110,8 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
   const [blocked, setBlocked] = useState(false)
   /** The file's audio was being converted for this browser and that failed: the picture plays without sound. */
   const [convertFailed, setConvertFailed] = useState(false)
+  /** The No Sound notice is on screen, so the struggling notice waits. */
+  const [noSoundUp, setNoSoundUp] = useState(false)
 
   const tried = useRef(new Set<string>())
   const startAt = useRef<number | undefined>(undefined)
@@ -170,6 +175,25 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
     const { sources: list, source: cur } = latest.current
     const caps = browserCapabilities()
     const candidate = nextSource(list, cur ?? undefined, tried.current, { playableOnly: true, best: true, prefer: (x) => hasPlayableAudio(x.audio, caps) })
+    if (candidate) start(candidate, controller.currentTime())
+    else setPicker(true)
+  }
+
+  // The best source of a lower resolution that plays, for a picture that's too much for the
+  // connection or the device. The current source's resolution if it says one, else the picture's.
+  const findLower = () => {
+    const { sources: list, source: cur } = latest.current
+    const height = resolutionHeight(cur?.resolution) ?? (controller.video?.videoHeight || undefined)
+    if (!height) return undefined
+    const caps = browserCapabilities()
+    return nextSource(list, cur ?? undefined, tried.current, { playableOnly: true, best: true, below: height, prefer: (x) => hasPlayableAudio(x.audio, caps) })
+  }
+
+  // From a picture that stutters with no lower resolution to step down to: the next source that plays,
+  // else the picker. Never one marked unsupported: that would only trade a stutter for a silence.
+  const tryPlayable = () => {
+    const { sources: list, source: cur } = latest.current
+    const candidate = nextSource(list, cur ?? undefined, tried.current, { playableOnly: true })
     if (candidate) start(candidate, controller.currentTime())
     else setPicker(true)
   }
@@ -469,6 +493,9 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
         case 'c':
           c.toggleSubtitles()
           break
+        case 'i':
+          c.toggleInfo()
+          break
         case 'Escape':
           if (c.get().panel) c.setPanel(null)
           else if (picker) setPicker(false)
@@ -534,8 +561,19 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
             episodes={epRef ? { season: epRef.season, current: epRef.episode, list: seasonEpisodes, onPick: playEpisode, fallbackStill: item?.backdrop } : undefined}
           />
           {(blocked || convertFailed) && (
-            <NoSoundNotice key={`${source?.id}#${attempt}`} controller={controller} source={source} conversionFailed={convertFailed} onSilent={() => lastSources.forget(key)} onTryAnother={tryWithSound} />
+            <NoSoundNotice key={`${source?.id}#${attempt}`} controller={controller} source={source} conversionFailed={convertFailed} onSilent={() => lastSources.forget(key)} onTryAnother={tryWithSound} onShowing={setNoSoundUp} />
           )}
+          <StruggleNotice
+            key={`${source?.id}#${attempt}`}
+            controller={controller}
+            titleKey={key}
+            sources={sources}
+            findLower={findLower}
+            suppressed={noSoundUp}
+            onSwitch={(x) => start(x, controller.currentTime())}
+            onTryAnother={tryPlayable}
+          />
+          {infoOpen && <PlaybackInfo controller={controller} source={source} />}
           {next && <UpNext key={next.id} controller={controller} next={next} autoplay={autoplayNext} fallbackStill={item?.backdrop} onPlay={() => playEpisode(next)} />}
           <FeedbackFlash controller={controller} />
         </>

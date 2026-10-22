@@ -52,13 +52,23 @@ export interface NextSourceOptions {
   best?: boolean
   /** Sources this answers true for come first, so a known-good audio track beats an unknown one. */
   prefer?: (source: Source) => boolean
+  /** Only sources of a lower resolution than this height, for stepping down from a picture the
+   *  connection or the device can't carry. A source that doesn't say its resolution can't promise
+   *  to be lower, so it isn't offered. */
+  below?: number
 }
+
+const heights: Record<NonNullable<Source['resolution']>, number> = { '2160p': 2160, '1440p': 1440, '1080p': 1080, '720p': 720, '480p': 480, SD: 480 }
+
+/** A source's picture height in pixels, when it says. */
+export const resolutionHeight = (resolution: Source['resolution']): number | undefined => (resolution ? heights[resolution] : undefined)
 
 /** The next untried source after `current` in the list, for Try Another Source and fail-over.
  *  Sources marked unsupported come last, and only when `playableOnly` isn't set. */
 export function nextSource(list: Source[], current: Source | undefined, tried: ReadonlySet<string>, options: NextSourceOptions = {}): Source | undefined {
   const start = options.best || !current ? -1 : list.findIndex((s) => s.id === current.id)
-  const ordered = [...list.slice(start + 1), ...list.slice(0, Math.max(0, start))].filter((s) => !tried.has(s.id))
+  const below = options.below
+  const ordered = [...list.slice(start + 1), ...list.slice(0, Math.max(0, start))].filter((s) => !tried.has(s.id) && (below === undefined || (resolutionHeight(s.resolution) ?? Infinity) < below))
   const playable = ordered.filter((s) => !s.unsupported)
   const preferred = options.prefer ? playable.filter(options.prefer) : []
   return preferred[0] ?? playable[0] ?? (options.playableOnly ? undefined : ordered[0])
@@ -124,6 +134,20 @@ export const prefs = {
   get: (): PlayerPrefs => read(prefsKey, defaultPrefs),
   set(patch: Partial<PlayerPrefs>) {
     write(prefsKey, { ...prefs.get(), ...patch })
+  },
+}
+
+const struggleKey = 'flow.player.struggleDismissed.v1'
+
+/** Titles whose "Playback Is Struggling" notice was dismissed with Keep Watching, so it doesn't come
+ *  back for them (a show counts as one title). Per device. */
+export const struggleDismissals = {
+  has: (key: string): boolean => key in read<Record<string, number>>(struggleKey, {}),
+  add(key: string) {
+    const all = read<Record<string, number>>(struggleKey, {})
+    all[key] = Date.now()
+    const kept = Object.entries(all).sort((a, b) => b[1] - a[1]).slice(0, 200)
+    write(struggleKey, Object.fromEntries(kept))
   },
 }
 

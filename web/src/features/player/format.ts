@@ -48,3 +48,13 @@ export function fileSize(bytes?: number): string | undefined {
   const gb = bytes / 1024 ** 3
   return gb >= 1 ? `${gb.toFixed(gb >= 10 ? 0 : 1)} GB` : `${Math.max(1, Math.round(bytes / 1024 ** 2))} MB`
 }
+
+/** "HEVC" from a codec string like "hvc1.2.4.L153.B0": what an engine reports, as the sources name it. */
+export function codecName(codec: string | undefined): string | undefined {
+  if (!codec) return undefined
+  if (/^(hvc1|hev1|dvh1|dvhe)/i.test(codec)) return 'HEVC'
+  if (/^avc/i.test(codec)) return 'H.264'
+  if (/^av01/i.test(codec)) return 'AV1'
+  if (/^vp0?9/i.test(codec)) return 'VP9'
+  return undefined
+}
