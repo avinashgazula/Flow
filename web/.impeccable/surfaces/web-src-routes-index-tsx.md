@@ -15,19 +15,22 @@ Constraints: native Apple navigation and controls stay (tab bar, stacks, sheets,
 
 ## Direction contract
 
-THESIS: Flow's home is tonight's programme, not a poster wall. Every listing says when it would end, how long is left and which version will play, aligned in a timetable column. It refuses the full-bleed backdrop carousel with a white pill button that every streaming app ships.
+THESIS: Flow treats every title as a reel of film it knows about: each still and poster carries an edge strip, like the printed edge of 35mm stock, whose perforations fill as you watch and whose edge print says how long is left, when it ends and what format it plays in. It refuses the full-bleed backdrop carousel, the white pill button and the badge soup every streaming app ships.
 
-OWN-WORLD: A two-ink repertory programme on a screen. Deep programme-ink blue owns every surface; paper-white type; a blue-tinted second ink for secondary text; one fluorescent pink spot reserved for the next action, focus and "now". San Francisco throughout with tabular figures; titles set by weight and size, never condensed display. No badges or chips: formats are plain text in their column. Small artwork at one fixed scale per section. Flat ink: no glass, glow or gradient on content (system bars keep system materials).
+OWN-WORLD: Warm film-base black owns every surface; paper-white type with warm second and third inks; film-stock yellow reserved for the one next action, focus and selection; signal red only for live and errors. San Francisco for all interface text; a condensed, tracked, uppercase edge-print voice (SF Condensed natively, Barlow Condensed on the web) only on edge strips and labels. Formats as edge print, never badges. Frames radius 6 with the strip attached below; matte, flat, no glass or glow on content (system bars keep system materials); artwork at one fixed scale per row.
 
-STORY: The viewer opens Flow, sees what they were watching and exactly when it would finish, and resumes in one move; or reads down tonight's picks, each with runtime, end time, rating and best version, and starts one.
+STORY: The viewer opens Flow and sees the reel they were watching, how much is left and when it ends, and resumes in one press; or scans Up Next and the picks, reading each strip's runtime, rating and format, and plays one. A title's page answers "will it play well" on a film-can label.
 
-FIRST VIEWPORT: iPhone Home: large title "Tonight" with the date. The lead listing (the resume item) is a full-width 16:9 still with its timetable line beneath (start → end time, title, episode, minutes left, best version) and a pink Resume field. Then "Carry On" listings (time column | fixed-size artwork | title, episode, minutes left) and the first listings of "Pick Something New". Native tab bar. Web at 1440: the programme column beside a large still of the selected listing. Apple TV: the programme list on the left, the focused listing's still on the right; focus fills the row in pink.
+FIRST VIEWPORT: Desktop web: the lead item (resume or top pick) as a large 16:9 frame with its edge strip (perforations = progress, print = episode, time left in yellow, end time, format), the title, a yellow Resume and a quiet Details; Up Next beside it as a 2-column grid of framed stills with strips; Pick Something New posters below with strips. iPhone: large title by time of day, the lead frame full width with strip, title, yellow Resume, then Up Next and picks; native tab bar tinted yellow. Apple TV: the lead frame left, Up Next right, rows below; focus is a yellow outline round frame and strip with a lift, the strip's print turning yellow.
 
-FORM: a repertory cinema's printed monthly programme (timetable listings); candidate 1 of 7, Impeccable's pick, chosen by the user over the assigned direction. seed:c27adc5ae91211d3
+FORM: 35mm film stock: edge print, perforations, stock labels and film-can labels; candidate 7 of 7, the direction assigned by the roll, chosen by the user after comparing sketches with Impeccable's pick. seed:c27adc5ae91211d3
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+
+Raised by the directions it beat: yellow marks only the current action (orienteering map's reserved course colour); size and weight, never badges, set hierarchy (type specimen); one dominant item per screen (zoo guide map); matte unprinted ground with no decorative blur (factory catalog sleeves); one fixed artwork scale per row (botanical folio).
 
 ## Unresolved
 
 - Light appearance: not designed; the apps and site stay dark-only (evening living-room scene).
+- Superseded: "Tonight's Programme" (two-ink timetable) was built partway on the web and then replaced by Film Stock at the owner's choice after sketches.
 - The app icon and name may change later; not part of this round.
