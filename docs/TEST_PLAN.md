@@ -62,23 +62,29 @@ Platforms: **i** iPhone, **P** iPad, **M** Mac, **T** Apple TV. Unmarked means a
 
 ### Home
 
-- **Hero:**
-  - The page indicator fills while auto-advancing, restarts on swipe and pauses while swiping.
-  - At most 10 titles.
-  - The artwork's glow reaches under the status bar (i, P).
-  - Card style vs full-bleed (Settings → General). T is always full-bleed with focusable Play, +, i.
-  - Reduce Motion stops auto-advance.
-- **Continue Watching:**
-  - The progress bar sits on the picture; "S3 E7 · 18m left" is below it.
-  - The long-press menu offers Go to Details, Mark as Watched and Remove.
+The Film Stock design (October 2026): `web/DESIGN.md` records its rules, and the same palette and
+pieces are in Theme.swift natively.
+
+- **Title by hour:** "This Morning" 5–12, "This Afternoon" 12–17, "Tonight" 17–5, with the date below.
+- **Lead:** the latest resume (else the top pick) as one large framed still. Its edge strip's
+  perforations show progress, and its print says "S3 E7 · 18M LEFT · ENDS 9:30 PM"; time left is
+  yellow. Yellow Resume (or Play) and a quiet Details sit below, in the same type size.
+  T: Resume is focused on arrival and the lead fits the first screen.
+- **Up Next:** framed stills with the same strips. On a wide window (P, M from 760 pt, T always)
+  they sit beside the lead, in one or two columns; otherwise they form a row below it.
+  - Progress agrees everywhere. After playing, Home, Library and the title page show the same time
+    left, and the perforations match it (the tour's `home-after-playback` step shows this).
+  - iOS 27: swipe for Watched and Remove; Remove asks first. The long-press menu still offers Go to
+    Details, Mark as Watched and Remove.
   - "Skip Details on Continue Watching" plays directly.
-- **Other shelves:** Upcoming, Streaming Services and Genres folders, Because You Watched, media
-  server rows, custom Discover shelves. Shelves load lazily, show placeholders and never jump.
+- **Other shelves:** posters at one fixed size; Upcoming, Streaming Services and Genres folders, Because
+  You Watched, media server rows, custom Discover shelves. Shelves load lazily, show placeholders and
+  never jump.
 - **Mac:** hovering a row shows paging arrows.
-- **Apple TV:** Settings is the last tab, and no gear floats over the hero.
-- **Pull to refresh** (i, P).
-- **Tab bar (i):** Flow's own capsule. The current tab is a white pill with its name and slides
-  between tabs; tapping it again returns to the tab's start; VoiceOver names every tab.
+- **Apple TV:** Settings is the last tab. Something is always visibly focused.
+- **Pull to refresh** (i, P). iOS 27: the navigation bar shrinks on scroll; Settings stays pinned.
+- **Yellow is earned:** only the next action, focus, the current selection, watched perforations and
+  time left. Toolbar icons are paper.
 
 ### Detail page
 
@@ -412,6 +418,11 @@ Commits on `claude/build-flow-app` describe each fix; `git log` is the full reco
   plain connection errors.
 - `Theme.Palette.overPicture` tints glass that floats over video without a scrim.
 - A `player-still-watching` tour step on every platform.
+- The Film Stock redesign: `Reel` (edge-print time: `compactLeft`, `compactDuration`, `watchedFraction`),
+  `WatchlistOrder` (a drag-arranged watchlist kept on the device over the tracker's order), and the
+  `home-after-playback` tour step. iOS 27 APIs sit behind `#if compiler(>=6.4)` and
+  `#available(iOS 27, macOS 27, tvOS 27, *)`. CI's Xcode 27 legs are experimental: they report but
+  don't block. The swipe, reorder and confirm-removal interactions compile but haven't been tried by hand.
 
 **Automated player and UI checks** (run these after any player change)
 - `scripts/player-check.sh ios|ipad|tvos|macos` (debug, sample data): every sample stream through
