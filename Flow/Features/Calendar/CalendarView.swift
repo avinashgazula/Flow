@@ -298,6 +298,7 @@ private struct CalendarFrame: View {
     }
 }
 
+@MainActor
 private extension CalendarEntry {
     /// What is special about it, if anything: a premiere, a film's release day, or a new episode.
     var label: String? {

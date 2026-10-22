@@ -480,9 +480,15 @@ struct SettingsToolbarItem: ToolbarContent {
 
 extension View {
     /// The film ground behind a Form or List: the system's grey is hidden and the warm base shows through.
+    @ViewBuilder
     func filmGround() -> some View {
+        #if os(tvOS)
+        // tvOS has no content background to hide: its forms already sit on the screen's own ground.
+        background(Theme.Palette.ground)
+        #else
         scrollContentBackground(.hidden)
             .background(Theme.Palette.ground)
+        #endif
     }
 
     /// Rows on base-2, so a group of settings reads as a panel on the ground. Apple TV keeps the system's own row
