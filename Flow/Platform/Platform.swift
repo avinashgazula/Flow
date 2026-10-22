@@ -510,6 +510,10 @@ struct FilmForm<Content: View>: View {
 
     var body: some View {
         Form { content.filmRows() }
+            #if os(macOS)
+            // Grouped panels like System Settings, rather than the Mac's default two-column form.
+            .formStyle(.grouped)
+            #endif
             .filmGround()
     }
 }

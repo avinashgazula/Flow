@@ -149,17 +149,6 @@ enum ScreenshotTour {
             ?? FileManager.default.temporaryDirectory.appendingPathComponent("flow-tour-step")).appendingPathExtension("log")
     }
 
-    nonisolated(unsafe) private static var passes = 0
-
-    /// The first few lines of a view that may be re-drawing in a loop, so the tour's log shows what changed each time.
-    /// Callable from a view's body and its change handlers, which all run on the main thread.
-    nonisolated static func logPass(_ message: @autoclosure () -> String) {
-        guard UserDefaults.standard.bool(forKey: "FlowTour"), passes < 120 else { return }
-        passes += 1
-        let text = message()
-        MainActor.assumeIsolated { log(text) }
-    }
-
     /// Appends a diagnostic line while a tour is running; no-op otherwise.
     static func log(_ message: String) {
         guard isRequested else { return }

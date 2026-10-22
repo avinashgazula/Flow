@@ -34,7 +34,6 @@ struct DetailView: View {
     private var wide: Bool { Platform.isTV || width >= 820 }
 
     var body: some View {
-        let _ = ScreenshotTour.logPass("DetailView body width=\(width) bar=\(barBottom) collapsed=\(titleCollapsed)")
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 topInset
@@ -56,14 +55,12 @@ struct DetailView: View {
         .detailTextSize(general.detailTextSize)
         .background(AmbientBackground(url: nil))
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { new in
-            ScreenshotTour.logPass("DetailView width \(width) -> \(new)")
             if abs(new - width) > 0.5 { width = new }
         }
         #if os(iOS)
         .ignoresSafeArea(edges: .top)
         .background {
             Color.clear.onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { new in
-                ScreenshotTour.logPass("DetailView bar \(barBottom) -> \(new)")
                 if new > 0, abs(new - barBottom) > 0.5 { barBottom = new }
             }
         }
@@ -159,7 +156,6 @@ struct DetailView: View {
                         if bottom > barBottom + 12 { return false }
                         return titleCollapsed
                     } action: { collapsed in
-                        ScreenshotTour.logPass("DetailView collapsed -> \(collapsed)")
                         withAnimation(Theme.Motion.fade) { titleCollapsed = collapsed }
                     }
                     #endif
