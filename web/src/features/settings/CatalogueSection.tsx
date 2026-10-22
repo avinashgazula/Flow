@@ -94,8 +94,8 @@ export function CatalogueSection() {
             checked={demo}
             onChange={async (on) => {
               if (on) {
-                const [{ seededLibrary }, { libraryStore }] = await Promise.all([import('../../lib/tmdb/demo'), import('../../lib/store/library')])
-                if (libraryStore.get().watchlist.length === 0) libraryStore.set(seededLibrary())
+                const [{ seedDemo }, { libraryStore }] = await Promise.all([import('../../lib/tmdb/demo'), import('../../lib/store/library')])
+                if (libraryStore.get().watchlist.length === 0) seedDemo()
               }
               settingsStore.set({ demo: on, ...(on ? { onboarded: true } : {}) })
             }}

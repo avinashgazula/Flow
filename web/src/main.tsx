@@ -60,7 +60,7 @@ whenIdle(() => void checkSmoothVideo())
 
 // Sample data comes with a lived-in library, as on the other platforms.
 if (settingsStore.get().demo && Object.keys(libraryStore.get().progress).length === 0 && libraryStore.get().watchlist.length === 0) {
-  void import('./lib/tmdb/demo').then(({ seededLibrary }) => libraryStore.set(seededLibrary()))
+  void import('./lib/tmdb/demo').then(({ seedDemo }) => seedDemo())
 }
 
 createRoot(document.getElementById('root')!).render(

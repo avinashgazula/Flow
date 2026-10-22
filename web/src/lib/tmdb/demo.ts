@@ -2,6 +2,10 @@
    catalogue so every screen fills without keys or accounts. Artwork comes from TMDB's public image
    CDN; the API itself is never called. Loaded only when sample data is on. */
 
+import { demoProviderId } from '../sources/demo'
+import { lastSourceStore, type LastSource } from '../sources/lastSource'
+import { libraryStore } from '../store/library'
+
 type Row = [id: number, type: 'movie' | 'show', title: string, year: number, genres: number[], poster: string, backdrop: string, rating: number, runtime: number, certification: string, imdb: string, seasons: number, overview: string]
 
 // prettier-ignore
@@ -39,10 +43,60 @@ const rows: Row[] = [
 interface Title { id: number; type: 'movie' | 'show'; title: string; year: number; genres: number[]; poster: string; backdrop: string; rating: number; runtime: number; certification: string; imdb: string; seasons: number; overview: string }
 export const titles: Title[] = rows.map(([id, type, title, year, genres, poster, backdrop, rating, runtime, certification, imdb, seasons, overview]) => ({ id, type, title, year, genres, poster, backdrop, rating, runtime, certification, imdb, seasons, overview }))
 
-export const cast: [number, string][] = [
-  [1190668, 'Timothée Chalamet'], [505710, 'Zendaya'], [2037, 'Cillian Murphy'], [1892, 'Matt Damon'], [3223, 'Robert Downey Jr.'],
-  [17419, 'Bryan Cranston'], [1245, 'Scarlett Johansson'], [6193, 'Leonardo DiCaprio'], [64, 'Gary Oldman'],
-]
+/* Who is in what, and who made it: each title's principal cast with the characters they played, and its
+   director or creator, as the films and series credit them. Only credits that are well established are
+   here; a title lists fewer people rather than guess. The same person is one person wherever they appear. */
+type Credits = { cast: [name: string, character: string][]; crew: [name: string, job: 'Director' | 'Creator'][] }
+
+// prettier-ignore
+const credits: Record<number, Credits> = {
+  693134: { cast: [['Timothée Chalamet', 'Paul Atreides'], ['Zendaya', 'Chani'], ['Rebecca Ferguson', 'Lady Jessica'], ['Javier Bardem', 'Stilgar'], ['Josh Brolin', 'Gurney Halleck'], ['Austin Butler', 'Feyd-Rautha Harkonnen']], crew: [['Denis Villeneuve', 'Director']] },
+  872585: { cast: [['Cillian Murphy', 'J. Robert Oppenheimer'], ['Emily Blunt', 'Kitty Oppenheimer'], ['Matt Damon', 'Leslie Groves'], ['Robert Downey Jr.', 'Lewis Strauss'], ['Florence Pugh', 'Jean Tatlock'], ['Josh Hartnett', 'Ernest Lawrence']], crew: [['Christopher Nolan', 'Director']] },
+  157336: { cast: [['Matthew McConaughey', 'Cooper'], ['Anne Hathaway', 'Brand'], ['Jessica Chastain', 'Murph'], ['Michael Caine', 'Professor Brand'], ['Matt Damon', 'Dr. Mann'], ['Casey Affleck', 'Tom']], crew: [['Christopher Nolan', 'Director']] },
+  155: { cast: [['Christian Bale', 'Bruce Wayne / Batman'], ['Heath Ledger', 'Joker'], ['Aaron Eckhart', 'Harvey Dent'], ['Michael Caine', 'Alfred Pennyworth'], ['Maggie Gyllenhaal', 'Rachel Dawes'], ['Gary Oldman', 'James Gordon']], crew: [['Christopher Nolan', 'Director']] },
+  27205: { cast: [['Leonardo DiCaprio', 'Cobb'], ['Joseph Gordon-Levitt', 'Arthur'], ['Elliot Page', 'Ariadne'], ['Tom Hardy', 'Eames'], ['Ken Watanabe', 'Saito'], ['Cillian Murphy', 'Robert Fischer']], crew: [['Christopher Nolan', 'Director']] },
+  496243: { cast: [['Song Kang-ho', 'Kim Ki-taek'], ['Lee Sun-kyun', 'Park Dong-ik'], ['Cho Yeo-jeong', 'Park Yeon-kyo'], ['Choi Woo-shik', 'Kim Ki-woo'], ['Park So-dam', 'Kim Ki-jung'], ['Jang Hye-jin', 'Chung-sook']], crew: [['Bong Joon-ho', 'Director']] },
+  569094: { cast: [['Shameik Moore', 'Miles Morales'], ['Hailee Steinfeld', 'Gwen Stacy'], ['Brian Tyree Henry', 'Jefferson Davis'], ['Luna Lauren Velez', 'Rio Morales'], ['Oscar Isaac', 'Miguel O’Hara'], ['Jake Johnson', 'Peter B. Parker']], crew: [['Joaquim Dos Santos', 'Director'], ['Kemp Powers', 'Director'], ['Justin K. Thompson', 'Director']] },
+  603: { cast: [['Keanu Reeves', 'Neo'], ['Laurence Fishburne', 'Morpheus'], ['Carrie-Anne Moss', 'Trinity'], ['Hugo Weaving', 'Agent Smith'], ['Joe Pantoliano', 'Cypher'], ['Gloria Foster', 'Oracle']], crew: [['Lana Wachowski', 'Director'], ['Lilly Wachowski', 'Director']] },
+  550: { cast: [['Brad Pitt', 'Tyler Durden'], ['Edward Norton', 'The Narrator'], ['Helena Bonham Carter', 'Marla Singer'], ['Meat Loaf', 'Robert “Bob” Paulson'], ['Jared Leto', 'Angel Face']], crew: [['David Fincher', 'Director']] },
+  680: { cast: [['John Travolta', 'Vincent Vega'], ['Samuel L. Jackson', 'Jules Winnfield'], ['Uma Thurman', 'Mia Wallace'], ['Bruce Willis', 'Butch Coolidge'], ['Ving Rhames', 'Marsellus Wallace'], ['Harvey Keitel', 'Winston Wolfe']], crew: [['Quentin Tarantino', 'Director']] },
+  238: { cast: [['Marlon Brando', 'Don Vito Corleone'], ['Al Pacino', 'Michael Corleone'], ['James Caan', 'Sonny Corleone'], ['Robert Duvall', 'Tom Hagen'], ['Diane Keaton', 'Kay Adams'], ['John Cazale', 'Fredo Corleone']], crew: [['Francis Ford Coppola', 'Director']] },
+  346698: { cast: [['Margot Robbie', 'Barbie'], ['Ryan Gosling', 'Ken'], ['America Ferrera', 'Gloria'], ['Kate McKinnon', 'Weird Barbie'], ['Issa Rae', 'President Barbie'], ['Will Ferrell', 'Mattel CEO']], crew: [['Greta Gerwig', 'Director']] },
+  438631: { cast: [['Timothée Chalamet', 'Paul Atreides'], ['Rebecca Ferguson', 'Lady Jessica'], ['Oscar Isaac', 'Duke Leto Atreides'], ['Josh Brolin', 'Gurney Halleck'], ['Jason Momoa', 'Duncan Idaho'], ['Zendaya', 'Chani']], crew: [['Denis Villeneuve', 'Director']] },
+  475557: { cast: [['Joaquin Phoenix', 'Arthur Fleck / Joker'], ['Robert De Niro', 'Murray Franklin'], ['Zazie Beetz', 'Sophie Dumond'], ['Frances Conroy', 'Penny Fleck'], ['Brett Cullen', 'Thomas Wayne']], crew: [['Todd Phillips', 'Director']] },
+  13: { cast: [['Tom Hanks', 'Forrest Gump'], ['Robin Wright', 'Jenny Curran'], ['Gary Sinise', 'Lieutenant Dan Taylor'], ['Sally Field', 'Mrs. Gump'], ['Mykelti Williamson', 'Bubba Blue']], crew: [['Robert Zemeckis', 'Director']] },
+  299534: { cast: [['Robert Downey Jr.', 'Tony Stark / Iron Man'], ['Chris Evans', 'Steve Rogers / Captain America'], ['Mark Ruffalo', 'Bruce Banner / Hulk'], ['Chris Hemsworth', 'Thor'], ['Scarlett Johansson', 'Natasha Romanoff / Black Widow'], ['Jeremy Renner', 'Clint Barton / Hawkeye']], crew: [['Anthony Russo', 'Director'], ['Joe Russo', 'Director']] },
+  1396: { cast: [['Bryan Cranston', 'Walter White'], ['Aaron Paul', 'Jesse Pinkman'], ['Anna Gunn', 'Skyler White'], ['Dean Norris', 'Hank Schrader'], ['Betsy Brandt', 'Marie Schrader'], ['RJ Mitte', 'Walter White Jr.']], crew: [['Vince Gilligan', 'Creator']] },
+  1399: { cast: [['Emilia Clarke', 'Daenerys Targaryen'], ['Kit Harington', 'Jon Snow'], ['Peter Dinklage', 'Tyrion Lannister'], ['Lena Headey', 'Cersei Lannister'], ['Nikolaj Coster-Waldau', 'Jaime Lannister'], ['Sophie Turner', 'Sansa Stark']], crew: [['David Benioff', 'Creator'], ['D. B. Weiss', 'Creator']] },
+  66732: { cast: [['Millie Bobby Brown', 'Eleven'], ['Finn Wolfhard', 'Mike Wheeler'], ['Winona Ryder', 'Joyce Byers'], ['David Harbour', 'Jim Hopper'], ['Gaten Matarazzo', 'Dustin Henderson'], ['Caleb McLaughlin', 'Lucas Sinclair']], crew: [['Matt Duffer', 'Creator'], ['Ross Duffer', 'Creator']] },
+  100088: { cast: [['Pedro Pascal', 'Joel Miller'], ['Bella Ramsey', 'Ellie'], ['Gabriel Luna', 'Tommy Miller'], ['Anna Torv', 'Tess'], ['Nick Offerman', 'Bill']], crew: [['Craig Mazin', 'Creator'], ['Neil Druckmann', 'Creator']] },
+  94997: { cast: [['Paddy Considine', 'King Viserys I Targaryen'], ['Emma D’Arcy', 'Rhaenyra Targaryen'], ['Matt Smith', 'Daemon Targaryen'], ['Olivia Cooke', 'Alicent Hightower'], ['Rhys Ifans', 'Otto Hightower'], ['Steve Toussaint', 'Corlys Velaryon']], crew: [['Ryan Condal', 'Creator'], ['George R. R. Martin', 'Creator']] },
+  82856: { cast: [['Pedro Pascal', 'Din Djarin'], ['Carl Weathers', 'Greef Karga'], ['Gina Carano', 'Cara Dune'], ['Giancarlo Esposito', 'Moff Gideon'], ['Emily Swallow', 'The Armorer']], crew: [['Jon Favreau', 'Creator']] },
+  119051: { cast: [['Jenna Ortega', 'Wednesday Addams'], ['Gwendoline Christie', 'Larissa Weems'], ['Riki Lindhome', 'Dr. Valerie Kinbott'], ['Jamie McShane', 'Sheriff Donovan Galpin'], ['Hunter Doohan', 'Tyler Galpin'], ['Percy Hynes White', 'Xavier Thorpe']], crew: [['Alfred Gough', 'Creator'], ['Miles Millar', 'Creator']] },
+  94605: { cast: [['Hailee Steinfeld', 'Vi'], ['Ella Purnell', 'Jinx'], ['Kevin Alejandro', 'Silco'], ['Katie Leung', 'Caitlyn'], ['Jason Spisak', 'Vander'], ['Harry Lloyd', 'Viktor']], crew: [['Christian Linke', 'Creator'], ['Alex Yee', 'Creator']] },
+  60059: { cast: [['Bob Odenkirk', 'Jimmy McGill / Saul Goodman'], ['Rhea Seehorn', 'Kim Wexler'], ['Jonathan Banks', 'Mike Ehrmantraut'], ['Michael McKean', 'Chuck McGill'], ['Giancarlo Esposito', 'Gus Fring'], ['Patrick Fabian', 'Howard Hamlin']], crew: [['Vince Gilligan', 'Creator'], ['Peter Gould', 'Creator']] },
+  126308: { cast: [['Hiroyuki Sanada', 'Yoshii Toranaga'], ['Cosmo Jarvis', 'John Blackthorne'], ['Anna Sawai', 'Toda Mariko'], ['Tadanobu Asano', 'Kashigi Yabushige'], ['Takehiro Hira', 'Toda Hiromatsu']], crew: [['Rachel Kondo', 'Creator'], ['Justin Marks', 'Creator']] },
+  2316: { cast: [['Steve Carell', 'Michael Scott'], ['Rainn Wilson', 'Dwight Schrute'], ['John Krasinski', 'Jim Halpert'], ['Jenna Fischer', 'Pam Beesly'], ['B. J. Novak', 'Ryan Howard'], ['Ed Helms', 'Andy Bernard']], crew: [['Greg Daniels', 'Creator']] },
+  76331: { cast: [['Brian Cox', 'Logan Roy'], ['Jeremy Strong', 'Kendall Roy'], ['Sarah Snook', 'Shiv Roy'], ['Kieran Culkin', 'Roman Roy'], ['Alan Ruck', 'Connor Roy'], ['Matthew Macfadyen', 'Tom Wambsgans']], crew: [['Jesse Armstrong', 'Creator']] },
+}
+
+/** TMDB's own ids for the people the catalogue has always had; everyone else gets a stable id of their own. */
+const directors = new Set(Object.values(credits).flatMap((c) => c.crew.map(([name]) => name)))
+const knownPeople: Record<string, number> = {
+  'Timothée Chalamet': 1190668, Zendaya: 505710, 'Cillian Murphy': 2037, 'Matt Damon': 1892, 'Robert Downey Jr.': 3223,
+  'Bryan Cranston': 17419, 'Scarlett Johansson': 1245, 'Leonardo DiCaprio': 6193, 'Gary Oldman': 64,
+}
+const personId = (name: string) => {
+  if (knownPeople[name]) return knownPeople[name]
+  let h = 5381
+  for (const ch of name) h = (Math.imul(h, 33) + ch.charCodeAt(0)) >>> 0
+  return 9_000_000 + (h % 900_000)
+}
+
+/** Everyone credited anywhere in the catalogue, as [id, name]. */
+export const cast: [number, string][] = [...new Set(Object.values(credits).flatMap((c) => [...c.cast, ...c.crew].map(([name]) => name)))].map((name) => [personId(name), name])
+/** The titles a person is credited in, for their page and for "known for" in search. */
+const creditedIn = (id: number) => titles.filter((t) => credits[t.id]?.cast.some(([name]) => personId(name) === id) || credits[t.id]?.crew.some(([name]) => personId(name) === id))
 
 const movieGenres: Record<number, string> = { 28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance', 878: 'Science Fiction', 10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western' }
 const tvGenres: Record<number, string> = { 10759: 'Action & Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family', 10762: 'Kids', 9648: 'Mystery', 10763: 'News', 10764: 'Reality', 10765: 'Sci-Fi & Fantasy', 10766: 'Soap', 10767: 'Talk', 10768: 'War & Politics', 37: 'Western' }
@@ -97,10 +151,11 @@ function detail(t: Title) {
   o.status = t.type === 'movie' ? 'Released' : returning ? 'Returning Series' : 'Ended'
   o.imdb_id = t.imdb
   o.external_ids = { imdb_id: t.imdb, tvdb_id: t.id + 70000 }
-  const roles = ['Paul', 'Chani', 'Jessica', 'Duncan', 'Stilgar', 'Irulan']
+  const credited = credits[t.id]
+  if (t.type === 'show') o.created_by = (credits[t.id]?.crew ?? []).map(([name]) => ({ id: personId(name), name }))
   o.credits = {
-    cast: shuffled(cast.map(([id, name]) => ({ id, name })), t.id).map((p, i) => ({ id: p.id, name: p.name, character: roles[i % roles.length], order: i })),
-    crew: [{ id: 137427, name: 'Denis Villeneuve', job: t.type === 'movie' ? 'Director' : 'Creator' }],
+    cast: (credited?.cast ?? []).map(([name, character], order) => ({ id: personId(name), name, character, order })),
+    crew: (credited?.crew ?? []).map(([name, job]) => ({ id: personId(name), name, job })),
   }
   o.videos = { results: [{ key: 'Way9Dexny3w', name: 'Official Trailer', site: 'YouTube', type: 'Trailer', official: true }] }
   const region: Record<string, unknown> = { link: `https://www.themoviedb.org/${t.type === 'movie' ? 'movie' : 'tv'}/${t.id}/watch?locale=US`, flatrate: [services[t.id % services.length]] }
@@ -165,7 +220,7 @@ export async function demoTmdb(rawPath: string, query: Record<string, unknown>):
     case 'search': {
       const q = String(query.query ?? '').toLowerCase()
       const results: unknown[] = titles.filter((t) => t.title.toLowerCase().includes(q)).map(listJSON)
-      for (const [id, name] of cast) if (name.toLowerCase().includes(q)) results.push({ id, name, media_type: 'person', known_for_department: 'Acting', known_for: shuffled(titles, id).slice(0, 2).map(listJSON) })
+      for (const [id, name] of cast) if (name.toLowerCase().includes(q)) results.push({ id, name, media_type: 'person', known_for_department: directors.has(name) ? 'Directing' : 'Acting', known_for: creditedIn(id).slice(0, 2).map(listJSON) })
       return { page: 1, total_pages: 1, results }
     }
     case 'genre': {
@@ -175,10 +230,10 @@ export async function demoTmdb(rawPath: string, query: Record<string, unknown>):
     case 'person': {
       const person = cast.find(([id]) => id === Number(parts[1]))
       if (!person) throw new Error('Not in the sample data')
+      // Only what the catalogue knows: who they are and which of these titles they are credited in.
       return {
-        id: person[0], name: person[1], known_for_department: 'Acting', birthday: '1985-04-12', place_of_birth: 'Los Angeles, California',
-        biography: `${person[1]} is an acclaimed performer known for work across film and television.`,
-        combined_credits: { cast: shuffled(titles, person[0]).slice(0, 10).map(listJSON) },
+        id: person[0], name: person[1], known_for_department: directors.has(person[1]) ? 'Directing' : 'Acting', biography: '',
+        combined_credits: { cast: creditedIn(person[0]).map(listJSON) },
       }
     }
     case 'movie':
@@ -222,4 +277,21 @@ export function seededLibrary() {
     ],
     watchedEpisodes: {},
   }
+}
+
+/** The release the sample add-on offers as its 4K row, remembered as played for the titles in progress, so
+ *  Home's strips and the title page show a real format ("2160P · DV · ATMOS 5.1") and Play opens the same
+ *  source the label names. It matches by the add-on's binge group, so it holds for every title and episode. */
+function seededLastSources(): Record<string, LastSource> {
+  const played = (days: number): LastSource => ({
+    providerId: demoProviderId, bingeGroup: 'demo-1', resolution: '2160p', quality: 'WEB-DL', hdr: ['DV', 'HDR10'], audio: ['Atmos', 'DD+'], audioChannels: '5.1', date: Date.now() - days * 86400e3,
+  })
+  return { 'show:1396': played(0), 'movie:693134': played(0), 'show:100088': played(1) }
+}
+
+/** Sample data comes with a lived-in library and a last-played source for what is in progress. Whatever the
+ *  viewer already has is left as it is. */
+export function seedDemo() {
+  libraryStore.set(seededLibrary())
+  lastSourceStore.set((st) => ({ byTitle: { ...seededLastSources(), ...st.byTitle } }))
 }

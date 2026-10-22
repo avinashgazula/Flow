@@ -3,7 +3,8 @@ import { useNavigate, useRouter } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { q } from '../../lib/queries'
 import { queryClient } from '../../lib/queryClient'
-import { browserCapabilities, findSources, type PlaybackRequest, type Source } from '../../lib/sources'
+import { browserCapabilities, findSources, rememberSource, type PlaybackRequest, type Source } from '../../lib/sources'
+import { lastSourceStore, matchLastSource } from '../../lib/sources/lastSource'
 import { hasPlayableAudio } from '../../lib/sources/rank'
 import { library, libraryStore, mediaKey, type EpisodeRef } from '../../lib/store/library'
 import { settingsStore, useSettings } from '../../lib/store/settings'
@@ -221,7 +222,12 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
   useEffect(() => {
     performance.mark('flow:watch-start')
     const abort = new AbortController()
-    const remembered = lastSources.get(key)
+    // Remember last source is a setting: off, Play always starts from the ranking (or the picker).
+    const remember = settingsStore.get().rememberLastSource
+    const remembered = remember ? lastSources.get(key) : undefined
+    // What the title page's label said Play would open when nothing is in the player's own memory: the
+    // picker's record of the title, which also seeds sample data.
+    const recorded = remember ? lastSourceStore.get().byTitle[key] : undefined
     const sameEpisode = !epRef || (remembered?.episode?.season === epRef.season && remembered.episode.episode === epRef.episode)
     const direct = sourceId ? (remembered?.source.id === sourceId ? remembered.source : undefined) : sameEpisode ? remembered?.source : undefined
     if (direct) {
@@ -230,14 +236,14 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
     }
     void (async () => {
       const demo = settingsStore.get().demo
-      if (sourceId || remembered || demo) {
+      if (sourceId || remembered || recorded || demo) {
         // Add-ons look titles up by IMDb id, which only the full detail carries.
         const full = await queryClient.ensureQueryData(q.detail(type, id)).catch(() => undefined)
         if (abort.signal.aborted) return
         const list = full ? await findSources(requestFor(full, type, epRef), { signal: abort.signal }).catch(() => []) : []
         if (abort.signal.aborted) return
         setSources(list)
-        const found = sourceId ? list.find((x) => x.id === sourceId) : remembered ? matchSource(remembered.source, list) : undefined
+        const found = sourceId ? list.find((x) => x.id === sourceId) : (remembered ? matchSource(remembered.source, list) : undefined) ?? matchLastSource(recorded, list)
         if (found) {
           start(found)
           return
@@ -289,7 +295,11 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
         // Marks are a nicety.
       }
       const { source: src, epRef: ep, sources: list } = latest.current
-      if (src) lastSources.remember(key, src, ep)
+      if (src) {
+        lastSources.remember(key, src, ep)
+        // The title page, Home's strips and the picker read the other record: keep the two the same.
+        rememberSource({ type, tmdbId: id }, src)
+      }
       // The source list for switching mid-film, fetched once the picture is moving so it doesn't
       // compete with the stream for the first seconds.
       if (src && list.length <= 1 && src.origin !== 'demo') {

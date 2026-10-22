@@ -29,8 +29,8 @@ export function Welcome() {
   }
 
   async function sample() {
-    const { seededLibrary } = await import('../../lib/tmdb/demo')
-    if (libraryStore.get().watchlist.length === 0) libraryStore.set(seededLibrary())
+    const { seedDemo } = await import('../../lib/tmdb/demo')
+    if (libraryStore.get().watchlist.length === 0) seedDemo()
     settingsStore.set({ demo: true, onboarded: true })
   }
 
