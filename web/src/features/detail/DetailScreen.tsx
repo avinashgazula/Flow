@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { lazy, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Artwork } from '../../components/Artwork'
 import { Plate } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
@@ -8,6 +8,7 @@ import { PosterRow } from '../../components/PosterRow'
 import { genreNames } from '../../lib/genres'
 import { q } from '../../lib/queries'
 import { lastSourceFor, type PlaybackRequest, type Source } from '../../lib/sources'
+import { lastSources, matchSource } from '../player/session'
 import { library, mediaKey, useLibrary } from '../../lib/store/library'
 import { useSettings } from '../../lib/store/settings'
 import { userLocale, useMinuteTick } from '../../lib/time'
@@ -15,26 +16,12 @@ import type { MediaDetail, MediaItem, MediaType } from '../../lib/tmdb/types'
 import { watchedFraction } from '../home/logic'
 import { Episodes } from './Episodes'
 import { FilmCan } from './FilmCan'
-import { bestSource, formatDay, metaLine, playLabel, titlePrint } from './logic'
+import { formatDay, metaLine, playLabel, playsFirst, titlePrint } from './logic'
 import { useSourceSearch } from './useSourceSearch'
 import s from './DetailScreen.module.css'
 
 const TrailerSheet = lazy(() => import('./TrailerSheet'))
 const SourcePicker = lazy(() => import('../sources/SourcePicker').then((m) => ({ default: m.SourcePicker })))
-
-/** True on a phone-width window, where the strip has less room for print. */
-const phoneQuery = '(max-width: 720px)'
-function usePhone() {
-  return useSyncExternalStore(
-    (notify) => {
-      const list = matchMedia(phoneQuery)
-      list.addEventListener('change', notify)
-      return () => list.removeEventListener('change', notify)
-    },
-    () => matchMedia(phoneQuery).matches,
-    () => false,
-  )
-}
 
 /** The still's width at each layout, for `srcset`: two columns from 1000px, one below. */
 const stillSizes = '(min-width: 1360px) 600px, (min-width: 1000px) 44vw, calc(100vw - 32px)'
@@ -46,7 +33,6 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   const { data: d, isPlaceholderData, isError, error } = useQuery(q.detail(type, id))
   const navigate = useNavigate()
   const now = useMinuteTick()
-  const phone = usePhone()
   const [trailer, setTrailer] = useState(false)
   const [picker, setPicker] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -83,7 +69,19 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
     [d?.id, d?.imdb, d?.title, type, target?.season, target?.episode],
   )
   const search = useSourceSearch(request, !!d && !isPlaceholderData)
-  const best = bestSource(search.sources, remember && request ? lastSourceFor(request, search.sources) : undefined)
+  // What Play opens: the player's own memory of this title (it plays that source again, whatever the ranking
+  // says), then the picker's, then the best that plays. The label under the still says which, so it matches.
+  const playerLast = useMemo(() => {
+    const last = remember && d ? lastSources.get(key) : undefined
+    const here = !target || (last?.episode?.season === target.season && last.episode.episode === target.episode)
+    return last && here ? last.source : undefined
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remember, d?.id, key, target?.season, target?.episode])
+  const { source: best, lastPlayed } = playsFirst(
+    search.sources,
+    playerLast && { source: playerLast, matched: matchSource(playerLast, search.sources) },
+    remember && request ? lastSourceFor(request, search.sources) : undefined,
+  )
 
   if (isError && !d) {
     return (
@@ -112,17 +110,17 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
               sizes={stillSizes}
               priority
               progress={progress ? watchedFraction(progress) : undefined}
-              print={titlePrint(d, progress, now, userLocale, phone)}
+              print={titlePrint(d, progress, now, userLocale)}
               stripSize="title"
               fallback={d.title}
             />
           </div>
-          <FilmCan search={search} best={best} onOpen={() => setPicker(true)} />
+          <FilmCan search={search} best={best} lastPlayed={lastPlayed} onOpen={() => setPicker(true)} />
         </div>
 
         <div className={s.info}>
-          <p className={s.meta}>{metaLine(d, genreNames(d.genres, type))}</p>
           <h1 className={s.name}>{d.title}</h1>
+          <p className={s.meta}>{metaLine(d, genreNames(d.genres, type))}</p>
 
           {rated && (
             <ul className={s.ratings}>

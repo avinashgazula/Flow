@@ -12,11 +12,17 @@
   .head { display: flex; align-items: baseline; gap: var(--space-m); min-height: 44px; }
   .date { margin-top: 0; font-size: var(--fs-body); }
 }
+/* On a desktop the lead and the first row of posters belong in the first screen, so the greeting steps out
+   of the way: it stays for screen readers (the page's heading) and for the document title, not on screen. */
+@media (min-width: 1100px) {
+  .home { padding-top: calc(var(--nav-height) + var(--space-m)); }
+  .head { position: absolute; width: 1px; height: 1px; min-height: 0; margin: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
 
 /* The lead, and Up Next beside it on desktop (below it, scrolling sideways, on a phone). */
 .top > * { min-width: 0; }
 @media (min-width: 1100px) {
-  .top { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); column-gap: var(--space-xxl); align-items: start; }
+  .top { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); column-gap: var(--space-xl); align-items: start; }
 }
 .side { margin-top: var(--section); }
 @media (min-width: 1100px) { .side { margin-top: 0; } }
@@ -34,7 +40,7 @@
   .stills > * { flex-basis: 280px; }
 }
 @media (min-width: 1100px) {
-  .stills { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-l) var(--space-m); overflow: visible; }
+  .stills { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-m); overflow: visible; }
   .stills > * { flex: none; }
   /* Four fit beside the lead; the rest are a phone's scrolling row. */
   .stills > :nth-child(n + 5) { display: none; }
@@ -43,6 +49,9 @@
 /* Rows of posters, one size. Seven across on desktop, five on a tablet, a scrolling row on a phone. */
 .picks { margin-top: var(--section); }
 .rowSection { margin-top: var(--space-l); }
+/* The first row sits right under its section heading, so the posters start high on a desktop screen. */
+.picks > .sectionTitle + .rowSection { margin-top: 0; }
+@media (min-width: 1100px) { .picks { margin-top: var(--space-xl); } }
 .rowHead { display: flex; align-items: baseline; gap: var(--space-s); margin-bottom: var(--space-s); }
 .rowTitle { font: 600 var(--fs-small) / 1.3 var(--font); color: var(--ink-2); }
 .seeAll { font-size: var(--fs-small); line-height: 1.3; color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }

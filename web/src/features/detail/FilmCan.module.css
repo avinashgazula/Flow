@@ -31,6 +31,8 @@
   font-variant-numeric: tabular-nums;
   color: var(--paper);
 }
+/* A long version wraps between its parts, with the dot staying at the end of a line, never opening the next. */
+.part { white-space: nowrap; }
 .direct { color: var(--stock); }
 .warn { color: var(--warn); }
 .quiet { color: var(--ink-3); }

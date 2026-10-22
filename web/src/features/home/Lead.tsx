@@ -19,7 +19,7 @@ export interface LeadItem {
 
 /** How wide the lead still renders, for `srcset`. index.html preloads the same still with the same string,
  *  so the browser reuses the download; keep the two in step with the layout in Lead.module.css. */
-export const leadSizes = '(min-width: 1500px) 724px, (min-width: 1100px) 52vw, (min-width: 721px) 420px, calc(100vw - 32px)'
+export const leadSizes = '(min-width: 1500px) 738px, (min-width: 1100px) 52vw, (min-width: 721px) 420px, calc(100vw - 32px)'
 
 /** The one dominant item on Home: a large 16:9 still with its edge strip (perforations for what's
  *  watched, print for the episode, time left in yellow, when it would end, and the format), then the

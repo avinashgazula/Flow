@@ -5,9 +5,9 @@ import { playFacts, sourcesSummary, versionParts } from './logic'
 import s from './FilmCan.module.css'
 
 /** The film-can label under the still: will it play well? Three rows, from what the sources said:
- *  the best version (what Play starts), how this browser plays it (and what is compromised), and who
+ *  the version Play starts (the best one, or the one played last time, and the label says which), how this browser plays it (and what is compromised), and who
  *  offered sources. The last row opens the picker. */
-export function FilmCan({ search, best, onOpen }: { search: SearchUpdate; best?: Source; onOpen: () => void }) {
+export function FilmCan({ search, best, lastPlayed, onOpen }: { search: SearchUpdate; best?: Source; lastPlayed?: boolean; onOpen: () => void }) {
   const { sources, providers, finished } = search
   const noProviders = finished && providers.length === 0
   const failed = providers.filter((p) => p.state === 'failed').length
@@ -22,8 +22,8 @@ export function FilmCan({ search, best, onOpen }: { search: SearchUpdate; best?:
         {(waiting || best || nothingPlays) && (
           <>
           <div className={s.row}>
-            <dt>Best version</dt>
-            <dd>{waiting ? <Bar width="62%" /> : nothingPlays ? <span className={s.warn}>None plays in this browser</span> : version.length ? version.join(' · ') : 'Unnamed release'}</dd>
+            <dt>{lastPlayed ? 'Last played' : 'Best version'}</dt>
+            <dd>{waiting ? <Bar width="62%" /> : nothingPlays ? <span className={s.warn}>None plays in this browser</span> : version.length ? version.map((p, i) => <span key={p} className={s.part}>{p}{i < version.length - 1 && ' · '}</span>) : 'Unnamed release'}</dd>
           </div>
           {!nothingPlays && (
             <div className={s.row}>
