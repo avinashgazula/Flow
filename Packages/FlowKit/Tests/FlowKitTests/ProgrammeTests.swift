@@ -171,6 +171,22 @@ final class ProgrammeTests: XCTestCase {
         XCTAssertEqual(segments.filter(\.isKey).map(\.text), ["18 min left"])
     }
 
+    func testEdgePrintDropsTheLeastImportantFactsWhole() {
+        let print = EdgePrint(progress: 0.6, lead: ["S3 E7"], key: "18m left", endsInMinutes: 48, tail: ["2160p", "DV"])
+        let now = date("2026-10-22T20:42:00Z")
+        func text(_ count: Int) -> [String] { print.segments(droppingLeast: count, now: now, locale: gb, timeZone: utc).map(\.text) }
+        XCTAssertEqual(text(0), ["S3 E7", "18m left", "ends 21:30", "2160p", "DV"])
+        XCTAssertEqual(text(1), ["18m left", "ends 21:30", "2160p", "DV"])
+        XCTAssertEqual(text(2), ["18m left", "ends 21:30", "2160p"])
+        XCTAssertEqual(text(3), ["18m left", "ends 21:30"])
+        XCTAssertEqual(text(4), ["18m left"])
+        XCTAssertEqual(text(9), [])
+        // Without a key fact the end time is still ranked as the end time.
+        let plain = EdgePrint(lead: ["2024"], endsInMinutes: 167, tail: ["1080p"])
+        XCTAssertEqual(plain.segments(droppingLeast: 1, now: now, locale: gb, timeZone: utc).map(\.text), ["ends 23:29", "1080p"])
+        XCTAssertEqual(plain.segments(droppingLeast: 2, now: now, locale: gb, timeZone: utc).map(\.text), ["ends 23:29"])
+    }
+
     func testEdgePrintLeavesOutWhatIsMissing() {
         let print = EdgePrint(lead: ["", "2024"], key: nil, endsInMinutes: nil, tail: [""])
         XCTAssertEqual(print.segments().map(\.text), ["2024"])

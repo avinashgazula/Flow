@@ -272,12 +272,16 @@ struct EdgeStrip: View {
         GeometryReader { proxy in
             HStack(spacing: 8 * scale) {
                 if let progress = print.progress { perforations(progress, frameWidth: proxy.size.width) }
-                printText(now: now)
-                    .font(Theme.Typeface.edgePrint)
-                    .edgePrint()
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer(minLength: 0)
+                // All of the print if it fits, else without its least important facts, each dropped whole: an end
+                // time cut to "ENDS 8:4…" is worse than none. Only the last choice may still truncate.
+                ViewThatFits(in: .horizontal) {
+                    printLine(now: now, dropping: 0)
+                    printLine(now: now, dropping: 1)
+                    printLine(now: now, dropping: 2)
+                    printLine(now: now, dropping: 3)
+                    printLine(now: now, dropping: 4)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 8 * scale)
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .leading)
@@ -299,9 +303,17 @@ struct EdgeStrip: View {
         .accessibilityHidden(true)
     }
 
-    private func printText(now: Date) -> Text {
+    private func printLine(now: Date, dropping count: Int) -> some View {
+        printText(print.segments(droppingLeast: count, now: now))
+            .font(Theme.Typeface.edgePrint)
+            .edgePrint()
+            .lineLimit(1)
+            .truncationMode(.tail)
+    }
+
+    private func printText(_ segments: [EdgePrint.Segment]) -> Text {
         var out = AttributedString()
-        for (index, segment) in print.segments(now: now).enumerated() {
+        for (index, segment) in segments.enumerated() {
             if index > 0 {
                 var dot = AttributedString(" · ")
                 dot.foregroundColor = Theme.Palette.textTertiary

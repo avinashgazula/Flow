@@ -237,6 +237,25 @@ public struct EdgePrint: Equatable, Sendable {
         return out
     }
 
+    /// The print without its `count` least important facts, for a strip too narrow for all of it: a fact that
+    /// doesn't fit goes whole, never cut to "ENDS 8:4…". The time left matters most, then the end time, the
+    /// format, then the episode or year; among equals the later one goes first. The web ranks them the same way.
+    public func segments(droppingLeast count: Int, now: Date = Date(), locale: Locale = .current,
+                         timeZone: TimeZone = .current) -> [Segment] {
+        let all = segments(now: now, locale: locale, timeZone: timeZone)
+        guard count > 0 else { return all }
+        let leadCount = lead.filter { !$0.isEmpty }.count
+        let endsIndex = endsInMinutes == nil ? nil : leadCount + ((key ?? "").isEmpty ? 0 : 1)
+        func rank(_ index: Int) -> Int {
+            if all[index].isKey { return 0 }
+            if index == endsIndex { return 1 }
+            return index < leadCount ? 3 : 2
+        }
+        let leastFirst = all.indices.sorted { (rank($0), $0) > (rank($1), $1) }
+        let dropped = Set(leastFirst.prefix(count))
+        return all.indices.filter { !dropped.contains($0) }.map { all[$0] }
+    }
+
     /// How many of `count` perforations are filled for `progress`. Any progress at all fills at least one,
     /// so a title just started doesn't look unwatched.
     public static func filledPerforations(progress: Double, of count: Int) -> Int {
