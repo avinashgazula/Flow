@@ -154,6 +154,7 @@ struct TabShell: View {
             NavigationStack(path: model.path(for: tab)) {
                 screen(for: tab)
                     .flowDestinations()
+                    .background(Theme.Palette.ground.ignoresSafeArea())
             }
         }
     }
@@ -212,6 +213,7 @@ struct MacShell: View {
                 ZoomNamespaceProvider {
                     TabShell().screen(for: model.selectedTab)
                         .flowDestinations()
+                        .background(Theme.Palette.ground.ignoresSafeArea())
                 }
             }
             .id(model.selectedTab)

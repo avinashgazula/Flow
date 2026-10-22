@@ -93,12 +93,8 @@ struct HomeView: View {
         .largeNavigationTitle()
         #endif
         #if os(iOS)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { model.showSettings = true } label: { Image(systemName: "gearshape") }
-                    .accessibilityLabel("Settings")
-            }
-        }
+        .toolbar { SettingsToolbarItem { model.showSettings = true } }
+        .flowMinimizingToolbar()
         #elseif os(macOS)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -133,7 +129,8 @@ struct HomeView: View {
     /// Apple TV scrolls under the tab bar, so the page starts below it.
     private var topInset: CGFloat {
         #if os(tvOS)
-        return 120
+        // The safe area already clears the tab bar; the first screen has to hold the lead and its buttons.
+        return 0
         #else
         return Theme.Space.xxs
         #endif
@@ -146,8 +143,9 @@ struct HomeView: View {
                 if wide {
                     HStack(alignment: .top, spacing: Theme.Space.xl) {
                         if let lead {
+                            // On Apple TV the lead is a fixed width so its buttons stay on the first screen.
                             LeadBlock(lead: lead)
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                                .frame(maxWidth: Platform.isTV ? 700 : .infinity, alignment: .topLeading)
                         }
                         if showsUpNext {
                             UpNextSection(leadEntryID: lead?.entryID, grid: true)
@@ -216,6 +214,10 @@ struct LeadBlock: View {
     @Environment(AppModel.self) private var model
     /// A runtime fetched when the lead has none, which is the case for most picks.
     @State private var fetchedMinutes: Int?
+    #if os(tvOS)
+    /// Focus starts on Resume, so one press of Select carries on watching.
+    @FocusState private var resumeFocused: Bool
+    #endif
 
     private var item: MediaItem { lead.item }
     private var minutes: Int? { lead.minutes ?? fetchedMinutes }
@@ -262,7 +264,7 @@ struct LeadBlock: View {
             #endif
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text(item.title)
-                    .font(.system(.title, weight: .bold))
+                    .font(.system(Platform.isTV ? .title2 : .title, weight: .bold))
                     .foregroundStyle(Theme.Palette.text)
                     .lineLimit(2)
                 if !meta.isEmpty {
@@ -280,10 +282,16 @@ struct LeadBlock: View {
                         .frame(minWidth: Platform.isTV ? 240 * Theme.scale : nil)
                 }
                 .buttonStyle(PrimaryButtonStyle())
+                #if os(tvOS)
+                .focused($resumeFocused)
+                #endif
                 Button { model.navigate(to: .detail(item)) } label: { Text("Details") }
                     .buttonStyle(GlassButtonStyle())
             }
         }
+        #if os(tvOS)
+        .defaultFocus($resumeFocused, true)
+        #endif
         .task(id: item.id) { await fetchMinutes() }
     }
 
@@ -330,6 +338,7 @@ private struct UpNextSection: View {
                             if let item = items[entry.key] { UpNextCell(entry: entry, item: item, width: Platform.landscapeWidth) }
                         }
                     }
+                    .flowSwipeActionsContainer()
                 }
             }
             .task(id: entries.map(\.id)) {
@@ -381,6 +390,16 @@ private struct UpNextCell: View {
             Button(role: .destructive) {
                 Task { await model.removeFromContinueWatching(entry) }
             } label: { Label("Remove from Continue Watching", systemImage: "xmark.circle") }
+        }
+        // iOS 27: swipe the card for the same two quick actions.
+        .flowSwipeActions {
+            Button { Task { await model.setWatched(item, episodes: entry.episode.map { [$0] }, watched: true) } } label: {
+                Label("Watched", systemImage: "checkmark.circle")
+            }
+            .tint(Theme.Palette.stock)
+            Button(role: .destructive) {
+                Task { await model.removeFromContinueWatching(entry) }
+            } label: { Label("Remove", systemImage: "xmark.circle") }
         }
     }
 

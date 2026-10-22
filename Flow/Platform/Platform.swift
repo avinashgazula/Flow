@@ -351,3 +351,98 @@ extension View {
         #endif
     }
 }
+
+// MARK: - iOS 27
+
+// Xcode 27 ships Swift 6.4. Everything here is behind `#if compiler(>=6.4)` and `#available(... 27 ...)`, so Xcode 16.4
+// and 26.3 never see it and older systems get exactly what they had.
+extension View {
+    /// iOS 27: the navigation bar slides away while a long page scrolls down, and returns on the way back.
+    @ViewBuilder
+    func flowMinimizingToolbar() -> some View {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            self.toolbarMinimizeBehavior(.onScrollDown, for: .navigationBar)
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
+    /// iOS 27: swipe an item in a ScrollView for its quick actions (Mark Watched, Remove). Nothing earlier.
+    @ViewBuilder
+    func flowSwipeActions<Actions: View>(@ViewBuilder _ actions: () -> Actions) -> some View {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            self.swipeActions(edge: .trailing, allowsFullSwipe: false) { actions() }
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
+    /// iOS 27: the container that lets the swipe actions above work on views outside a List.
+    @ViewBuilder
+    func flowSwipeActionsContainer() -> some View {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            self.swipeActionsContainer()
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
+    /// iOS 27, iPad and Mac: edge print and the yellow go quiet in a window that isn't the active one.
+    @ViewBuilder
+    func flowDimsWhenInactive() -> some View {
+        #if (os(iOS) || os(macOS)) && compiler(>=6.4)
+        if #available(iOS 27.0, macOS 27.0, *) {
+            self.modifier(InactiveWindowDimming())
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+}
+
+#if (os(iOS) || os(macOS)) && compiler(>=6.4)
+@available(iOS 27.0, macOS 27.0, *)
+private struct InactiveWindowDimming: ViewModifier {
+    @Environment(\.appearsActive) private var appearsActive
+
+    func body(content: Content) -> some View {
+        content.saturation(appearsActive ? 1 : 0.3).opacity(appearsActive ? 1 : 0.7)
+    }
+}
+#endif
+
+/// The toolbar's one always-visible action: Settings, pinned to the trailing edge on iOS 27, a primary action before.
+struct SettingsToolbarItem: ToolbarContent {
+    let action: () -> Void
+
+    var body: some ToolbarContent {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            ToolbarItem(placement: .topBarPinnedTrailing) { button }
+        } else {
+            ToolbarItem(placement: .primaryAction) { button }
+        }
+        #else
+        ToolbarItem(placement: .primaryAction) { button }
+        #endif
+    }
+
+    private var button: some View {
+        Button(action: action) { Image(systemName: "gearshape") }
+            .accessibilityLabel("Settings")
+    }
+}

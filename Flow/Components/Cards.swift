@@ -130,12 +130,13 @@ struct PosterArtwork: View {
 struct ProgressCapsule: View {
     let value: Double
     var height: CGFloat = 3 * Theme.scale
+    var tint: Color = Theme.Palette.stock
 
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                Capsule().fill(Theme.Palette.control)
-                Capsule().fill(Theme.Palette.spot).frame(width: max(height, proxy.size.width * min(1, max(0, value))))
+                Capsule().fill(Theme.Palette.lineStrong)
+                Capsule().fill(tint).frame(width: max(height, proxy.size.width * min(1, max(0, value))))
             }
         }
         .frame(height: height)
@@ -366,6 +367,7 @@ struct EdgeStrip: View {
         }
         .frame(height: 24 * scale)
         .background(Theme.Palette.edge)
+        .flowDimsWhenInactive()
     }
 
     private func strip(now: Date) -> some View {

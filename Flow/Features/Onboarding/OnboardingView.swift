@@ -94,7 +94,7 @@ struct OnboardingView: View {
         }
         .padding(Theme.Space.l)
         .frame(maxWidth: 460 * Theme.scale)
-        .flowGlass(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
+        .background(Theme.Palette.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
     }
 
     private func verify() async {

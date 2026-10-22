@@ -209,9 +209,9 @@ struct LiveTVView: View {
             Text(title)
                 .font(.system(.subheadline, weight: .semibold))
                 .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs + 1)
-                .background(selected ? Color.white : Theme.Palette.surface, in: Capsule())
-                .overlay(Capsule().strokeBorder(Theme.Palette.hairline, lineWidth: selected ? 0 : 1))
-                .foregroundStyle(selected ? Color.black : Color.white)
+                .frame(minHeight: 44 * Theme.scale)
+                .background(selected ? Theme.Palette.stock : Theme.Palette.control, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+                .foregroundStyle(selected ? Theme.Palette.onStock : Theme.Palette.text)
         }
         .buttonStyle(CardButtonStyle())
     }
@@ -280,7 +280,7 @@ struct ChannelRow: View {
                                 Text(TimeFormat.remaining(max(0, now.end.timeIntervalSince(context.date))))
                                     .font(.system(.caption).monospacedDigit()).foregroundStyle(tertiary)
                             }
-                            ProgressCapsule(value: now.progress(at: context.date), height: 2)
+                            ProgressCapsule(value: now.progress(at: context.date), height: 2, tint: Theme.Palette.red)
                                 .opacity(focused ? 0.5 : 1)
                         }
                     }
@@ -509,13 +509,13 @@ struct LiveInfoCard: View {
                         Text("LIVE")
                             .font(Theme.Typeface.micro).kerning(1)
                             .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(.red, in: Capsule())
+                            .background(Theme.Palette.red, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
                     if let now {
                         Text(now.title).font(.system(.title3, weight: .semibold)).lineLimit(1)
                         HStack(spacing: 8) {
                             Text(now.start, style: .time)
-                            ProgressCapsule(value: min(1, max(0, context.date.timeIntervalSince(now.start) / max(1, now.end.timeIntervalSince(now.start)))), height: 3)
+                            ProgressCapsule(value: min(1, max(0, context.date.timeIntervalSince(now.start) / max(1, now.end.timeIntervalSince(now.start)))), height: 3, tint: Theme.Palette.red)
                                 .frame(width: 140)
                             Text(now.end, style: .time)
                         }

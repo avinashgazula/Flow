@@ -63,6 +63,7 @@ struct DetailView: View {
         #endif
         .collapsingNavigationTitle(current.title, collapsed: titleCollapsed)
         .inlineNavigationTitle()
+        .flowMinimizingToolbar()
         .task(id: item.id) { await load() }
         .task(id: item.id) { await watchBestVersion() }
         .advertisesTitle(current)
@@ -225,6 +226,9 @@ struct DetailView: View {
             HStack(spacing: Theme.Space.s) {
                 Button { Task { await model.play(current, library: libraryProviderID) } } label: {
                     Label(playLabel, systemImage: "play.fill")
+                        // One line, always: "Resume · 1 h 44 min left" must not wrap on Apple TV.
+                        .lineLimit(1)
+                        .fixedSize(horizontal: wide, vertical: false)
                         .frame(maxWidth: wide ? nil : .infinity)
                         .frame(minWidth: wide ? 220 * Theme.scale : nil)
                 }
@@ -686,7 +690,10 @@ private struct PlainActionBody: View {
     var body: some View {
         configuration.label
             .font(.system(.subheadline, weight: .semibold))
-            .foregroundStyle(focused ? Theme.Palette.onSpot : Theme.Palette.text)
+            // A word is never broken across lines ("Watche / d").
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.text)
             .padding(.horizontal, Theme.Space.xs)
             .frame(minHeight: 44 * Theme.scale)
             .background(focused ? Theme.Palette.spot : Color.clear, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))

@@ -261,7 +261,7 @@ struct AboutView: View {
     }
 }
 
-/// White glyph on a coloured squircle, like iOS Settings.
+/// A glyph in print colour on a flat control-ink squircle: the tint is kept for callers but no longer drawn.
 struct SettingsIcon: View {
     let systemImage: String
     let tint: Color
@@ -269,11 +269,8 @@ struct SettingsIcon: View {
     var body: some View {
         Image(systemName: systemImage)
             .font(.system(.subheadline, weight: .semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.Palette.print)
             .frame(width: 29 * Theme.scale, height: 29 * Theme.scale)
-            .background(
-                LinearGradient(colors: [tint.opacity(0.95), tint.opacity(0.75)], startPoint: .top, endPoint: .bottom),
-                in: RoundedRectangle(cornerRadius: 7 * Theme.scale, style: .continuous)
-            )
+            .background(Theme.Palette.control, in: RoundedRectangle(cornerRadius: 7 * Theme.scale, style: .continuous))
     }
 }

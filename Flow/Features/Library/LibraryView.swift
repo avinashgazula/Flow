@@ -183,7 +183,7 @@ struct LibraryTile: View {
                 }
             }
             .padding(Theme.Space.m)
-            .flowGlass(RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
+            .background(Theme.Palette.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
         }
         .buttonStyle(CardButtonStyle())
     }
@@ -191,9 +191,9 @@ struct LibraryTile: View {
     private var icon: some View {
         Image(systemName: systemImage)
             .font(.system(size: 17 * Theme.scale, weight: .semibold))
-            .foregroundStyle(tint)
+            .foregroundStyle(Theme.Palette.textSecondary)
             .frame(width: 42 * Theme.scale, height: 42 * Theme.scale)
-            .background(tint.opacity(0.16), in: Circle())
+            .background(Theme.Palette.control, in: Circle())
     }
 
     private var labels: some View {
