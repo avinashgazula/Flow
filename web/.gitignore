@@ -7,3 +7,4 @@ crates/*/target
 *.tsbuildinfo
 proxy/wrangler.toml
 .wrangler
+.impeccable/review/
