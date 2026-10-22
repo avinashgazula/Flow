@@ -103,6 +103,8 @@
   .card:hover .print { color: var(--paper); }
 }
 .card:active .plate { transform: scale(0.98); }
+.card:disabled { cursor: default; }
+.card:disabled:active .plate { transform: none; }
 /* The ring goes round the frame and strip together. */
 .card:focus-visible { outline: none; }
 .card:focus-visible .plate { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }

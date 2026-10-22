@@ -7,14 +7,14 @@ import type { PlaybackRequest, Source } from '../../lib/sources'
 import { searchSources, type SearchUpdate } from '../../lib/sources/index'
 import { lastSourceFor, rememberSource } from '../../lib/sources/lastSource'
 import { useSettings } from '../../lib/store/settings'
-import { imageURL } from '../../lib/tmdb/images'
-import { metaLine, plainFormats, playDescription, premiumBadges, resolutionLabel, sizeLabel, spokenLabel } from './labels'
+import { playFacts } from '../detail/logic'
+import { detailLine, formatLine, resolutionText, spokenLabel } from './labels'
 import s from './SourcePicker.module.css'
 
 type Filter = { kind: 'all' } | { kind: 'resolution'; value: NonNullable<Source['resolution']> } | { kind: 'provider'; value: string }
 
 const resolutionChips: { value: NonNullable<Source['resolution']>; label: string }[] = [
-  { value: '2160p', label: '4K' },
+  { value: '2160p', label: '2160p' },
   { value: '1440p', label: '1440p' },
   { value: '1080p', label: '1080p' },
   { value: '720p', label: '720p' },
@@ -24,10 +24,12 @@ const resolutionChips: { value: NonNullable<Source['resolution']>; label: string
 const empty: SearchUpdate = { sources: [], providers: [], torrents: 0, finished: false }
 
 /** Lists what every add-on and server offers for the request, best first, and calls `onPick`.
- *  A sheet over the title's artwork, as the native source picker: the best match is one tap (or
- *  Enter) away, arrows move through the rest, Esc closes. */
-export function SourcePicker({ request, onPick, onClose }: { request: PlaybackRequest; onPick: (source: Source) => void; onClose: () => void }) {
-  const [search, setSearch] = useState<SearchUpdate>(empty)
+ *  A flat base-2 sheet, as the native source picker: each source is a film-can label row, the best
+ *  match carries the yellow Play and is one tap (or Enter) away, arrows move through the rest, Esc
+ *  closes. `seed` is a finished search the title page already ran, so opening doesn't ask every
+ *  add-on again. */
+export function SourcePicker({ request, seed, onPick, onClose }: { request: PlaybackRequest; seed?: SearchUpdate; onPick: (source: Source) => void; onClose: () => void }) {
+  const [search, setSearch] = useState<SearchUpdate>(seed?.finished ? seed : empty)
   const [reload, setReload] = useState(0)
   const [filter, setFilter] = useState<Filter>({ kind: 'all' })
   const [activeId, setActiveId] = useState<string>()
@@ -36,9 +38,12 @@ export function SourcePicker({ request, onPick, onClose }: { request: PlaybackRe
   // A parent may build the request afresh on every render; only a different title searches again.
   const requestRef = useRef(request)
   requestRef.current = request
+  const seedRef = useRef(seed)
   const requestKey = `${request.type}:${request.tmdbId}:${request.season ?? ''}:${request.episode ?? ''}`
 
   useEffect(() => {
+    // The title page's answer stands until the viewer searches again.
+    if (reload === 0 && seedRef.current?.finished) return
     const controller = new AbortController()
     setSearch(empty)
     searchSources(requestRef.current, { signal: controller.signal, onUpdate: setSearch }).catch(() => {
@@ -73,6 +78,7 @@ export function SourcePicker({ request, onPick, onClose }: { request: PlaybackRe
   const loading = search.providers.filter((p) => p.state === 'loading')
   const failures = search.providers.filter((p) => p.state === 'failed')
   const noProviders = search.finished && search.providers.length === 0
+  const entries = useMemo(() => grouped(list, best, lastPlayed?.id), [list, best, lastPlayed?.id])
 
   function pick(source: Source | undefined) {
     if (!source || source.unsupported) return
@@ -86,7 +92,7 @@ export function SourcePicker({ request, onPick, onClose }: { request: PlaybackRe
     const index = active ? playable.indexOf(active) : -1
     const next = playable[Math.max(0, Math.min(playable.length - 1, index < 0 ? 0 : index + delta))]!
     setActiveId(next.id)
-    listRef.current?.dispatchEvent(new CustomEvent('flow:reveal', { detail: list.indexOf(next) }))
+    listRef.current?.dispatchEvent(new CustomEvent('flow:reveal', { detail: entries.findIndex((e) => e.kind === 'row' && e.source.id === next.id) }))
   }
 
   function onKeyDown(event: KeyboardEvent) {
@@ -130,22 +136,19 @@ export function SourcePicker({ request, onPick, onClose }: { request: PlaybackRe
 
   return (
     <div className={s.overlay} role="dialog" aria-modal="true" aria-label={`Sources for ${request.item.title}`} onKeyDown={onKeyDown}>
-      <div className={s.ambient} aria-hidden>
-        {request.item.backdrop && <img src={imageURL(request.item.backdrop, 300)} alt="" decoding="async" />}
-      </div>
       <div className={s.scrim} onClick={onClose} aria-hidden />
       <div className={s.sheet}>
         <div className={s.controls}>
-          <button className="btn btn-glass btn-circle btn-compact" onClick={() => setReload((n) => n + 1)} disabled={!search.finished} aria-label="Search Again">
+          <button className="btn btn-secondary btn-circle btn-compact" onClick={() => setReload((n) => n + 1)} disabled={!search.finished} aria-label="Search Again">
             <Icon name="refresh" size={18} strokeWidth={2.2} />
           </button>
-          <button className="btn btn-glass btn-circle btn-compact" onClick={onClose} aria-label="Close">
+          <button className="btn btn-secondary btn-circle btn-compact" onClick={onClose} aria-label="Close">
             <Icon name="close" size={18} strokeWidth={2.4} />
           </button>
         </div>
 
         <header className={s.header}>
-          <Artwork path={request.item.poster} kind="poster" alt="" sizes="64px" className={s.poster} fallback={request.item.title.slice(0, 1)} />
+          <Artwork path={request.item.poster} kind="poster" alt="" sizes="48px" className={s.poster} fallback={request.item.title.slice(0, 1)} />
           <div className={s.heading}>
             <h2 className={s.title}>{request.item.title}</h2>
             {request.type === 'show' && request.season !== undefined && (
@@ -158,22 +161,6 @@ export function SourcePicker({ request, onPick, onClose }: { request: PlaybackRe
             </p>
           </div>
         </header>
-
-        {best && all.length > 1 && (
-          <div className={s.best}>
-            <button className={`btn btn-primary ${s.play}`} onClick={() => pick(best)} aria-label={`Play, ${lastPlayed ? 'last played, ' : ''}${playDescription(best)}`}>
-              <Icon name="play" size={18} /> Play
-            </button>
-            <p className={s.bestCaption} aria-hidden>
-              {lastPlayed && (
-                <>
-                  <Icon name="history" size={13} strokeWidth={2.2} /> Last played ·{' '}
-                </>
-              )}
-              {playDescription(best)}
-            </p>
-          </div>
-        )}
 
         {all.length > 0 && (resolutions.length > 1 || providerNames.length > 1) && (
           <div className={s.chips} role="toolbar" aria-label="Filter sources">
@@ -199,13 +186,13 @@ export function SourcePicker({ request, onPick, onClose }: { request: PlaybackRe
           {all.length === 0 && !search.finished && <Placeholder />}
           {noProviders && (
             <Empty title="No Sources Yet" text="Add a stream add-on or media server in Settings.">
-              <Link to="/settings" className="btn btn-glass btn-compact">
+              <Link to="/settings" className="btn btn-secondary btn-compact">
                 Open Settings
               </Link>
             </Empty>
           )}
           {search.finished && !noProviders && all.length === 0 && <Empty title="No Sources" text="None of your sources have this title yet." />}
-          {list.length > 0 && <Rows list={list} active={active} lastPlayedId={lastPlayed?.id} onPick={pick} onHover={setActiveId} scroller={listRef} />}
+          {list.length > 0 && <Rows entries={entries} best={best} active={active} lastPlayedId={lastPlayed?.id} onPick={pick} onHover={setActiveId} scroller={listRef} />}
           {(search.torrents > 0 || failures.length > 0) && (
             <div className={s.notes}>
               {search.torrents > 0 && (
@@ -236,15 +223,34 @@ function listFormat(names: string[]): string {
   }
 }
 
+type Entry = { kind: 'heading'; id: string; text: string } | { kind: 'row'; source: Source }
+
+/** The list in plain groups: the match Play would start, the other sources that play, then those that
+ *  can't play in this browser. A group with nothing in it has no heading. */
+function grouped(list: Source[], best: Source | undefined, lastPlayedId: string | undefined): Entry[] {
+  const top = best && list.includes(best) ? best : undefined
+  const rest = list.filter((x) => x !== top && !x.unsupported)
+  const blocked = list.filter((x) => x.unsupported)
+  const rows = (sources: Source[]): Entry[] => sources.map((source) => ({ kind: 'row', source }))
+  const out: Entry[] = []
+  if (top) out.push({ kind: 'heading', id: 'best', text: top.id === lastPlayedId ? 'Last Played' : 'Best Match' }, ...rows([top]))
+  if (rest.length) out.push({ kind: 'heading', id: 'rest', text: top ? 'Other Sources' : 'Sources' }, ...rows(rest))
+  if (blocked.length) out.push({ kind: 'heading', id: 'blocked', text: 'Can’t Play in This Browser' }, ...rows(blocked))
+  return out
+}
+
 /** The rows, virtualised: add-ons often answer with a hundred or more. */
-function Rows({ list, active, lastPlayedId, onPick, onHover, scroller }: { list: Source[]; active?: Source; lastPlayedId?: string; onPick: (s: Source) => void; onHover: (id: string) => void; scroller: RefObject<HTMLDivElement | null> }) {
+function Rows({ entries, best, active, lastPlayedId, onPick, onHover, scroller }: { entries: Entry[]; best?: Source; active?: Source; lastPlayedId?: string; onPick: (s: Source) => void; onHover: (id: string) => void; scroller: RefObject<HTMLDivElement | null> }) {
   'use no memo'
   const virtualizer = useVirtualizer({
-    count: list.length,
+    count: entries.length,
     getScrollElement: () => scroller.current,
-    estimateSize: () => 92,
+    estimateSize: (i) => (entries[i]!.kind === 'heading' ? 44 : 92),
     overscan: 8,
-    getItemKey: (i) => list[i]!.id,
+    getItemKey: (i) => {
+      const e = entries[i]!
+      return e.kind === 'heading' ? `heading-${e.id}` : e.source.id
+    },
     // The table sits this far into the scroller, below its top padding.
     scrollMargin: 4,
   })
@@ -263,10 +269,22 @@ function Rows({ list, active, lastPlayedId, onPick, onHover, scroller }: { list:
   return (
     <div className={s.table} style={{ height: virtualizer.getTotalSize() }}>
       {items.map((v) => {
-        const source = list[v.index]!
+        const entry = entries[v.index]!
         return (
           <div key={v.key} data-index={v.index} ref={virtualizer.measureElement} className={s.slot} style={{ transform: `translateY(${v.start - margin}px)` }}>
-            <SourceRow source={source} active={source.id === active?.id} lastPlayed={source.id === lastPlayedId} divider={v.index > 0} onPick={onPick} onHover={onHover} />
+            {entry.kind === 'heading' ? (
+              <h3 className={s.group} role="presentation">{entry.text}</h3>
+            ) : (
+              <SourceRow
+                source={entry.source}
+                active={entry.source.id === active?.id}
+                best={entry.source === best}
+                lastPlayed={entry.source.id === lastPlayedId}
+                divider={entries[v.index - 1]?.kind === 'row'}
+                onPick={onPick}
+                onHover={onHover}
+              />
+            )}
           </div>
         )
       })}
@@ -274,14 +292,12 @@ function Rows({ list, active, lastPlayedId, onPick, onHover, scroller }: { list:
   )
 }
 
-/** One source as a line of a table: the resolution in its own column, the size right-aligned in
- *  tabular digits, then formats, provider and languages, and the release's name. */
-function SourceRow({ source, active, lastPlayed, divider, onPick, onHover }: { source: Source; active: boolean; lastPlayed: boolean; divider: boolean; onPick: (s: Source) => void; onHover: (id: string) => void }) {
-  const badges = premiumBadges(source)
-  const plain = plainFormats(source)
-  const size = sizeLabel(source)
-  const heading = source.quality ?? (size ? undefined : source.title)
-  const showRelease = source.title && source.title !== heading
+/** One source as a film-can label row: the resolution large on the left; then the format line in edge
+ *  print, the release's name, and size, provider and languages in ink-3. The best match has the yellow
+ *  Play (a cue: the whole row plays); one that can't play is dimmed and says why in words. */
+function SourceRow({ source, active, best, lastPlayed, divider, onPick, onHover }: { source: Source; active: boolean; best: boolean; lastPlayed: boolean; divider: boolean; onPick: (s: Source) => void; onHover: (id: string) => void }) {
+  const formats = formatLine(source)
+  const facts = source.unsupported ? undefined : playFacts(source)
   return (
     <div
       id={optionId(source)}
@@ -295,46 +311,33 @@ function SourceRow({ source, active, lastPlayed, divider, onPick, onHover }: { s
       onClick={() => onPick(source)}
       onPointerEnter={() => !source.unsupported && onHover(source.id)}
     >
-      <span className={s.resolution} data-tone={source.resolution === '2160p' || source.resolution === '1440p' || source.resolution === '1080p' ? 'high' : source.resolution ? 'low' : 'none'}>
-        {resolutionLabel(source) ?? '–'}
-      </span>
+      <span className={s.resolution}>{resolutionText(source) ?? '–'}</span>
       <span className={s.body}>
-        <span className={s.titleLine}>
-          <span className={s.rowTitle}>{heading ?? 'Stream'}</span>
-          {size && <span className={s.size}>{size}</span>}
-        </span>
-        {(badges.length > 0 || plain) && (
-          <span className={s.formats}>
-            {badges.map((b) => (
-              <span key={b.text} className={s.badge} data-kind={b.kind}>
-                {b.text}
-              </span>
-            ))}
-            {plain && <span className={s.plain}>{plain}</span>}
+        <span className={s.content}>
+          {formats && <span className={s.formats}>{formats}</span>}
+          <span className={s.release}>{source.title || source.quality || 'Stream'}</span>
+          <span className={s.meta}>
+            {detailLine(source)}
+            {source.cached === false && ' · Not cached'}
           </span>
-        )}
-        <span className={s.meta}>
-          {metaLine(source)}
-          {lastPlayed && (
-            <span className={s.flag}>
-              <Icon name="history" size={12} strokeWidth={2.2} /> Last played
+          {facts && facts.notes.length > 0 && (
+            <span className={s.notesLine}>
+              {facts.notes.map((n, i) => (
+                <span key={n.text} className={n.tone === 'warn' ? s.warn : undefined}>
+                  {i > 0 && ' · '}
+                  {n.text}
+                </span>
+              ))}
             </span>
           )}
-          {source.cached === false && <span className={`${s.flag} ${s.warn}`}>Not cached</span>}
         </span>
-        {showRelease && <span className={s.release}>{source.title}</span>}
-        {source.unsupported ? (
-          <span className={s.unsupported}>
-            <Icon name="warning" size={13} strokeWidth={2.2} /> {source.unsupported}
-          </span>
-        ) : (
-          source.note && (
-            <span className={s.note}>
-              <Icon name="info" size={13} strokeWidth={2.2} /> {source.note}
-            </span>
-          )
-        )}
+        {source.unsupported && <span className={s.unsupported}>{source.unsupported}</span>}
       </span>
+      {best && (
+        <span className={`btn btn-primary btn-compact ${s.play}`} aria-hidden>
+          <Icon name="play" size={14} /> Play
+        </span>
+      )}
     </div>
   )
 }
@@ -344,11 +347,13 @@ function Placeholder() {
     <div className={`${s.table} ${s.placeholder}`} aria-hidden>
       {[0, 1, 2].map((i) => (
         <div key={i} className={s.row} data-divider={i > 0 ? '' : undefined}>
-          <span className={s.bar} style={{ width: 40, height: 14 }} />
+          <span className={s.bar} style={{ width: 48, height: 18 }} />
           <span className={s.body}>
-            <span className={s.bar} style={{ width: '38%', height: 14 }} />
-            <span className={s.bar} style={{ width: '62%', height: 10 }} />
-            <span className={s.bar} style={{ width: '28%', height: 10 }} />
+            <span className={s.content}>
+              <span className={s.bar} style={{ width: '46%', height: 12 }} />
+              <span className={s.bar} style={{ width: '70%', height: 14 }} />
+              <span className={s.bar} style={{ width: '34%', height: 12 }} />
+            </span>
           </span>
         </div>
       ))}
@@ -359,7 +364,6 @@ function Placeholder() {
 function Empty({ title, text, children }: { title: string; text: string; children?: ReactNode }) {
   return (
     <div className={s.empty}>
-      <Icon name="play" size={28} />
       <h3>{title}</h3>
       <p>{text}</p>
       {children}

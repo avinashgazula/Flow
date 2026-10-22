@@ -4,6 +4,8 @@ import type { Source } from '../../lib/sources'
 /* The words a source is shown with, as the native picker's SourceSummary and PremiumBadge. */
 
 export const resolutionLabel = (s: Source) => (s.resolution === '2160p' ? '4K' : s.resolution === '480p' ? 'SD' : s.resolution)
+/** The resolution as printed on a label: "2160p", "1080p", "SD". */
+export const resolutionText = (s: Pick<Source, 'resolution'>) => (s.resolution === '480p' ? 'SD' : s.resolution)
 export const sizeLabel = (s: Source) => (s.sizeBytes ? formatBytes(s.sizeBytes) : undefined)
 
 const hdrNames: Record<string, string> = { DV: 'Dolby Vision', 'HDR10+': 'HDR10+', HDR10: 'HDR10', HDR: 'HDR', HLG: 'HLG' }
@@ -33,6 +35,16 @@ export function plainFormats(s: Source): string | undefined {
 /** "4K · Dolby Vision · Atmos · 18.20 GB · AIOStreams": exactly what Play will start. */
 export function playDescription(s: Source): string {
   return [resolutionLabel(s), ...premiumBadges(s).map((b) => b.text), sizeLabel(s), s.provider].filter(Boolean).join(' · ')
+}
+
+/** The format line in edge print: "Dolby Vision · TrueHD · HEVC · 7.1 · REMUX". Only what the release says. */
+export function formatLine(s: Source): string {
+  return [...premiumBadges(s).map((b) => b.text), plainFormats(s), s.quality].filter(Boolean).join(' · ')
+}
+
+/** Size, provider, languages and release group, plain: "18.20 GB · AIOStreams · English, Spanish · FLUX". */
+export function detailLine(s: Source): string {
+  return [sizeLabel(s), s.provider, s.languages?.join(', '), s.releaseGroup?.toUpperCase()].filter(Boolean).join(' · ')
 }
 
 /** Provider, languages and release group. */

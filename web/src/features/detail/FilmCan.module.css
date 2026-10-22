@@ -1,0 +1,75 @@
+/* The film-can label: a base-2 panel with a hairline, rows of edge print. The key is the label's small
+   grey print; the value is the same face larger and in paper. */
+.can {
+  margin-top: var(--space-m);
+  padding: var(--space-xs) var(--space-m);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-label);
+  background: var(--base-2);
+}
+.rows { margin: 0; }
+.row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  column-gap: var(--space-m);
+  align-items: baseline;
+  padding: 7px 0;
+  min-height: 34px;
+}
+.row dt {
+  font: 600 var(--fs-caption) / 1.6 var(--font-edge);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.row dd {
+  margin: 0;
+  min-width: 0;
+  font: 600 var(--fs-small) / 1.5 var(--font-edge);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--paper);
+}
+.direct { color: var(--stock); }
+.warn { color: var(--warn); }
+.quiet { color: var(--ink-3); }
+
+/* The row that opens the picker is a whole-line control: the arrow says so. */
+.open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  margin: -7px 0;
+  padding: 7px 0;
+  text-align: left;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--paper);
+  text-decoration: underline;
+  text-decoration-color: var(--ink-3);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.3em;
+  transition: text-decoration-color var(--dur-state) ease;
+}
+.open:hover { text-decoration-color: var(--paper); }
+.open svg { flex: none; color: var(--ink-3); }
+
+.bar {
+  display: block;
+  height: 10px;
+  margin: 8px 0;
+  border-radius: 5px;
+  background: var(--base-3);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse { 50% { opacity: 0.5; } }
+
+@media (max-width: 720px) {
+  .can { padding-inline: var(--space-s); }
+  .row { grid-template-columns: 1fr; row-gap: 0; padding: 8px 0; }
+  .row + .row { border-top: 1px solid var(--rule); }
+  .open { margin: 0; padding: 4px 0; min-height: 32px; }
+}

@@ -1,5 +1,6 @@
 import type { PrintPart } from '../../components/Frame'
 import { formatBytes } from '../../lib/sources/parser'
+import { resolutionText } from '../sources/labels'
 import type { ProviderState, Source } from '../../lib/sources'
 import { endTime, formatClock, formatLeft, formatRuntime } from '../../lib/time'
 import type { Episode, MediaDetail } from '../../lib/tmdb/types'
@@ -9,8 +10,6 @@ import { secondsLeft } from '../home/logic'
 
 const hdrNames: Record<string, string> = { DV: 'Dolby Vision', 'HDR10+': 'HDR10+', HDR10: 'HDR10', HDR: 'HDR', HLG: 'HLG' }
 
-/** "2160p", "SD": the resolution as printed on a label. */
-export const resolutionPrint = (s: Pick<Source, 'resolution'>) => (s.resolution === '480p' ? 'SD' : s.resolution)
 
 /** The source the page offers first, and so what Play starts: the one played last time when it's still
  *  listed, else the best that this browser can play. The same choice the picker makes. */
@@ -21,7 +20,7 @@ export function bestSource(list: Source[], lastPlayed?: Source): Source | undefi
 /** The BEST VERSION row: ["2160p", "Dolby Vision", "TrueHD 7.1", "18.2 GB"]. Only what the release says. */
 export function versionParts(s: Source): string[] {
   const sound = [s.audio?.[0], s.audioChannels].filter(Boolean).join(' ')
-  return [resolutionPrint(s), s.hdr?.[0] ? (hdrNames[s.hdr[0]] ?? s.hdr[0]) : undefined, sound || undefined, s.sizeBytes ? formatBytes(s.sizeBytes) : undefined].filter((p): p is string => !!p)
+  return [resolutionText(s), s.hdr?.[0] ? (hdrNames[s.hdr[0]] ?? s.hdr[0]) : undefined, sound || undefined, s.sizeBytes ? formatBytes(s.sizeBytes) : undefined].filter((p): p is string => !!p)
 }
 
 export interface PlayFacts {

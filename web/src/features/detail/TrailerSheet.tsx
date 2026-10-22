@@ -25,7 +25,7 @@ export default function TrailerSheet({ video, title, onClose }: { video: Video; 
           allowFullScreen
         />
       </div>
-      <button className={`btn btn-glass btn-circle ${s.close}`} onClick={onClose} aria-label="Close trailer">
+      <button className={`btn btn-secondary btn-circle ${s.close}`} onClick={onClose} aria-label="Close trailer">
         <Icon name="close" size={20} strokeWidth={2.4} />
       </button>
     </div>

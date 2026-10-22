@@ -95,23 +95,28 @@ export interface FrameCardProps extends Omit<PlateProps, 'hideStrip' | 'classNam
   itemRef?: Ref<HTMLLIElement>
   /** Can't be played here: dimmed, with the reason in `meta`. */
   dimmed?: boolean
+  /** Not actionable yet (an episode that hasn't aired): a button that does nothing. Dims it too. */
+  disabled?: boolean
+  /** More lines under the meta (inline spans), like an episode's synopsis. */
+  extra?: ReactNode
   /** Sits in the item beside the link, for a control that can't live inside it (Remove). */
   children?: ReactNode
 }
 
 /** An item in a list or grid: a plate, its title, one meta line; the whole of it one link (or button).
  *  Renders an <li>. Hover lifts the plate 2 px and brightens the print; focus rings the plate in yellow. */
-export function FrameCard({ link, onSelect, title, meta, label, onIntent, itemRef, dimmed, children, ...plate }: FrameCardProps) {
+export function FrameCard({ link, onSelect, title, meta, label, onIntent, itemRef, dimmed, disabled, extra, children, ...plate }: FrameCardProps) {
   const inside = (
     <>
       <Plate {...plate} hideStrip />
       <span className={s.title}>{title}</span>
       {meta && <span className={s.meta}>{meta}</span>}
+      {extra}
     </>
   )
   const shared = {
     className: s.card,
-    'data-dimmed': dimmed ? '' : undefined,
+    'data-dimmed': dimmed || disabled ? '' : undefined,
     'aria-label': label,
     onPointerEnter: (e: { pointerType: string }) => e.pointerType === 'mouse' && onIntent?.(),
     onFocus: onIntent,
@@ -123,7 +128,7 @@ export function FrameCard({ link, onSelect, title, meta, label, onIntent, itemRe
           {inside}
         </Link>
       ) : (
-        <button type="button" {...shared} onClick={onSelect}>
+        <button type="button" {...shared} onClick={onSelect} disabled={disabled}>
           {inside}
         </button>
       )}
