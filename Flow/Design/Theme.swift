@@ -284,6 +284,9 @@ private struct SecondaryButtonBody: View {
         let label = configuration.label
             .font(.system(size: (compact ? 15 : 17) * Theme.scale, weight: .semibold))
             .foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.text)
+            // A word is never broken across lines ("Detail / s" on Apple TV).
+            .lineLimit(1)
+            .fixedSize(horizontal: !circle, vertical: false)
             .frame(minWidth: size, minHeight: size)
             .padding(.horizontal, circle ? 0 : Theme.Space.m)
             .contentShape(shape)
