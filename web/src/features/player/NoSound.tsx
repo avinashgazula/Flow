@@ -78,7 +78,7 @@ export function NoSoundNotice({ controller, source, conversionFailed = false, on
         <button className="btn btn-primary btn-compact" onClick={onTryAnother} onMouseDown={keepFocus}>
           Try Another Source
         </button>
-        <button className="btn btn-glass btn-compact" onClick={() => setDismissed(true)} onMouseDown={keepFocus}>
+        <button className="btn btn-quiet btn-compact" onClick={() => setDismissed(true)} onMouseDown={keepFocus}>
           Keep Watching
         </button>
       </div>

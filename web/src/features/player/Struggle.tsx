@@ -120,7 +120,7 @@ export function StruggleNotice({ controller, titleKey, sources, findLower, suppr
         <button className="btn btn-primary btn-compact" onClick={lower ? () => onSwitch(lower) : onTryAnother} onMouseDown={keepFocus}>
           {lower?.resolution ? `Switch to ${lower.resolution}` : 'Try Another Source'}
         </button>
-        <button className="btn btn-glass btn-compact" onClick={keepWatching} onMouseDown={keepFocus}>
+        <button className="btn btn-quiet btn-compact" onClick={keepWatching} onMouseDown={keepFocus}>
           Keep Watching
         </button>
       </div>

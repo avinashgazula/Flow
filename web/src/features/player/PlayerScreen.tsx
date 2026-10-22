@@ -587,7 +587,11 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
           logo={detail?.logo}
           title={title}
           line={line}
-          provider={phase === 'connecting' || phase === 'playing' ? source?.provider : undefined}
+          print={
+            phase === 'connecting' || phase === 'playing'
+              ? [source?.provider ? `From ${source.provider}` : '', source?.resolution ?? '', ...(source?.hdr ?? [])].filter(Boolean)
+              : [phase === 'finding' ? 'Finding a source' : 'Choose a source']
+          }
           sourceKey={source ? `${source.id}#${attempt}` : undefined}
           progress={phase === 'connecting' || phase === 'playing' ? progress : phase === 'finding' ? 'idle' : undefined}
           resumeAt={resumeAt}

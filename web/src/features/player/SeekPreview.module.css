@@ -1,12 +1,12 @@
-/* The seek preview: a small film frame above the scrubber with its time on an edge strip. Flat panels,
-   no blur. Every colour and the edge face come from the design tokens, with the current palette as the
-   fallback, so the redesign's names (--base-2, --edge, --print, --rule, --font-edge) take over by being defined. */
+/* The seek preview: a small film frame above the scrubber, cut from the same strip as the scrubber: the
+   picture with its edge strip under it, perforations filled to where you would land and the time in print.
+   Flat, no blur. */
 
 .preview {
-  --p-ink: var(--base-2, var(--elevated, #121212));
-  --p-strip: var(--edge, #000);
-  --p-print: var(--print, var(--text, #fff));
-  --p-rule: var(--rule, var(--hairline, rgb(255 255 255 / 0.1)));
+  --p-ink: var(--base-2);
+  --p-strip: var(--edge);
+  --p-print: var(--print);
+  --p-rule: var(--rule);
   --p-width: 240px;
   position: absolute;
   left: 0;
@@ -52,17 +52,22 @@
 .preview[data-state='loading'] .frame > * { opacity: 0.4; }
 
 .strip {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   height: 24px;
   padding: 0 10px;
   background: var(--p-strip);
   color: var(--p-print);
 }
+/* The same perforations as every strip (Frame.module.css), four of them. */
+.perfs { composes: perfs from '../../components/Frame.module.css'; --perfs: 4; }
+.watched { composes: watched from '../../components/Frame.module.css'; }
+
 /* Edge print: condensed, upper case, tracked. The edge face when it has loaded, the system's condensed width otherwise. */
 .time {
-  font: 600 12px / 1 var(--font-edge, "Barlow Condensed", var(--font));
-  font-stretch: var(--stretch-condensed, 75%);
+  font: 600 12px / 1 var(--font-edge);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.12em;
   text-transform: uppercase;

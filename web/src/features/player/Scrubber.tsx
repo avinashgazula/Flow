@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { usePlayer, type PlayerController } from './controller'
+import { endTime, formatClock, userLocale } from '../../lib/time'
 import { clock } from './format'
 import { SeekPreview, type SeekPreviewHandle } from './SeekPreview'
 import s from './Controls.module.css'
 
-/** Apple TV–style scrubber: a hairline that thickens under the pointer. It paints itself from the
+/** The scrubber is an edge strip: a 4 px track (buffered, then played in yellow) with the timecode, the
+ *  time left and when it would end in edge print under it. It paints itself from the
  *  video on each animation frame while the controls show, writing straight to the DOM, so playback
  *  never re-renders React. Over the bar (and while dragging) a small frame shows where you would land
  *  (SeekPreview). Dragging moves the time at once; the real seek happens on release. Where there is no
@@ -14,12 +16,14 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
   const track = useRef<HTMLDivElement>(null)
   const fill = useRef<HTMLDivElement>(null)
   const buffer = useRef<HTMLDivElement>(null)
+  const thumb = useRef<HTMLDivElement>(null)
+  const ends = useRef<HTMLSpanElement>(null)
   const elapsed = useRef<HTMLSpanElement>(null)
   const remaining = useRef<HTMLSpanElement>(null)
   const preview = useRef<SeekPreviewHandle>(null)
   const peeking = useRef(0)
   const drag = useRef<number | null>(null)
-  const last = useRef({ t: -1, d: -1, b: -1, second: -1 })
+  const last = useRef({ t: -1, d: -1, b: -1, second: -1, minute: -1 })
 
   const paint = () => {
     const video = controller.video
@@ -31,19 +35,24 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
       for (let i = 0; i < ranges.length; i++) if (ranges.start(i) <= t + 0.5 && ranges.end(i) >= t) b = ranges.end(i)
     }
     const prev = last.current
-    if (t === prev.t && d === prev.d && b === prev.b) return
+    // The end time moves on with the clock even when the picture doesn't (paused), so the minute counts too.
+    const minute = Math.floor(Date.now() / 60_000)
+    if (t === prev.t && d === prev.d && b === prev.b && minute === prev.minute) return
     const known = !Number.isNaN(d)
-    fill.current!.style.transform = `scaleX(${known ? Math.min(1, t / d) : 0})`
+    const played = known ? Math.min(1, t / d) : 0
+    fill.current!.style.transform = `scaleX(${played})`
+    thumb.current!.style.left = `${played * 100}%`
     buffer.current!.style.transform = `scaleX(${known ? Math.min(1, b / d) : 0})`
     const second = Math.floor(t)
-    if (second !== prev.second || d !== prev.d) {
+    if (second !== prev.second || d !== prev.d || minute !== prev.minute) {
       elapsed.current!.textContent = clock(t)
-      remaining.current!.textContent = known ? `-${clock(Math.max(0, d - t))}` : '--:--'
+      remaining.current!.textContent = known ? `\u2212${clock(Math.max(0, d - t))}` : '--:--'
+      ends.current!.textContent = known ? ` \u00b7 Ends ${formatClock(endTime(Date.now(), d - t), userLocale)}` : ''
       track.current!.setAttribute('aria-valuetext', known ? `${clock(t)} of ${clock(d)}` : clock(t))
       track.current!.setAttribute('aria-valuenow', String(second))
       if (known) track.current!.setAttribute('aria-valuemax', String(Math.floor(d)))
     }
-    last.current = { t, d, b, second }
+    last.current = { t, d, b, second, minute }
   }
 
   useEffect(() => {
@@ -143,11 +152,15 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
           <div ref={buffer} className={s.buffered} />
           <div ref={fill} className={s.played} />
         </div>
+        <div ref={thumb} className={s.thumb} />
         <SeekPreview controller={controller} ref={preview} />
       </div>
       <div className={s.times}>
         <span ref={elapsed}>0:00</span>
-        <span ref={remaining}>--:--</span>
+        <span>
+          <em ref={remaining}>--:--</em>
+          <span ref={ends} />
+        </span>
       </div>
     </div>
   )

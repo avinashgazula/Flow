@@ -1,10 +1,10 @@
-import { Artwork } from '../../components/Artwork'
+import { Plate } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
 import type { Episode } from '../../lib/tmdb/types'
 import { keepFocus } from './Controls'
 import s from './Controls.module.css'
 
-/** The rest of the season as a glass shelf over the scrubber, opened scrolled to the episode on
+/** The rest of the season as a flat shelf over the scrubber, opened scrolled to the episode on
  *  screen so what's next is a glance away. */
 export function EpisodeShelf({ season, current, list, onPick, onClose, fallbackStill }: {
   season: number
@@ -35,19 +35,26 @@ export function EpisodeShelf({ season, current, list, onPick, onClose, fallbackS
                 if (el && isCurrent) el.scrollIntoView({ inline: 'center', block: 'nearest' })
               }}
             >
-              <button className={s.episodeCard} disabled={!aired} onClick={() => (isCurrent ? onClose() : onPick(e))} onMouseDown={keepFocus} aria-current={isCurrent ? 'true' : undefined}>
-                <span className={s.episodeStill}>
-                  <Artwork path={e.still ?? fallbackStill} kind={e.still ? 'still' : 'backdrop'} alt="" sizes="200px" className={s.fill} fallback={`Episode ${e.number}`} />
-                  {isCurrent && (
-                    <span className={s.nowPlaying}>
-                      <Icon name="play" size={10} /> Now Playing
-                    </span>
-                  )}
-                </span>
-                <span className={s.episodeName}>
-                  E{e.number} · {e.name}
-                </span>
-                <span className={s.episodeMeta}>{aired ? (e.runtime ? `${e.runtime}m` : '') : 'Not out yet'}</span>
+              <button
+                className={s.episodeCard}
+                disabled={!aired}
+                onClick={() => (isCurrent ? onClose() : onPick(e))}
+                onMouseDown={keepFocus}
+                aria-current={isCurrent ? 'true' : undefined}
+                aria-label={`Episode ${e.number}, ${e.name}${isCurrent ? ', now playing' : aired ? '' : ', not out yet'}`}
+              >
+                <Plate
+                  className={s.episodeStill}
+                  shape="still"
+                  artPath={e.still ?? fallbackStill}
+                  artKind={e.still ? 'still' : 'backdrop'}
+                  sizes="200px"
+                  fallback={`Episode ${e.number}`}
+                  stripSize="still"
+                  print={[`E${e.number}`, isCurrent ? { key: 'Now playing' } : aired ? (e.runtime ? `${e.runtime} min` : '') : 'Not out yet']}
+                  hideStrip
+                />
+                <span className={s.episodeName}>{e.name}</span>
               </button>
             </li>
           )

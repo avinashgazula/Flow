@@ -47,7 +47,7 @@ export function readInfo(controller: PlayerController, source: Source | null, au
   ]
 }
 
-/** A small glass card of what the player is doing, for working out why a film stutters: the
+/** A small flat card of what the player is doing, for working out why a film stutters: the
  *  picture's size, the codec, the engine, dropped frames, the buffer and the download. Opened with
  *  I or from Options, refreshed once a second, and left out of the way of the controls. */
 export function PlaybackInfo({ controller, source }: { controller: PlayerController; source: Source | null }) {

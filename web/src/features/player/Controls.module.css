@@ -1,168 +1,175 @@
-/* The player's chrome, after IOSPlayerControls: glass capsules and circles tinted for sitting on a
-   picture, a scrim only where the controls are, and nothing that takes a click it can't use. */
+/* The player's chrome. Flat: paper icons on the picture, a warm-black scrim only where controls sit, the
+   transport on ink circles, panels and notices on base-2 at 94%. No blur. The scrubber is an edge strip:
+   a 4 px track on the strip's band, with the timecode and what's left in edge print under it.
+   Colours and sizes come from the tokens; --margin, --panel and --ink are set on the player's root. */
 
 .controls {
   /* Room the bottom row and scrubber take, so panels, Up Next and subtitles sit just above it. */
-  --bottom-band: 128px;
+  --bottom-band: 124px;
   position: absolute;
   inset: 0;
   z-index: 3;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  padding: calc(var(--inset-top) + 12px) calc(var(--inset-right) + var(--edge)) calc(var(--inset-bottom) + 6px) calc(var(--inset-left) + var(--edge));
+  padding: calc(var(--inset-top) + 12px) calc(var(--inset-right) + var(--margin)) calc(var(--inset-bottom) + 12px) calc(var(--inset-left) + var(--margin));
   /* The layer itself lets every tap through to the picture; only real controls take them. */
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.22s ease, visibility 0s linear 0.22s;
+  transition: opacity var(--dur-move) ease, visibility 0s linear var(--dur-move);
 }
 .controls[data-visible] {
   opacity: 1;
   visibility: visible;
-  transition: opacity 0.18s ease, visibility 0s;
+  transition: opacity var(--dur-state) ease, visibility 0s;
 }
 .controls[data-visible] .interactive { pointer-events: auto; }
-.scrim[data-visible] { opacity: 1; transition-duration: 0.18s; }
+.scrim[data-visible] { opacity: 1; transition-duration: var(--dur-state); }
 
+/* In the edge colour, so the dark is warm; light enough that the picture still reads through it. */
 .scrim {
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.22s ease;
-  background: linear-gradient(180deg, rgb(0 0 0 / 0.55) 0%, transparent 22%, transparent 55%, rgb(0 0 0 / 0.8) 100%);
-}
-
-.glass, .cluster, .round, .panel, .shelf, .upNext, .info {
-  /* Barely saturated: the site's glass boosts colour, which over a bright picture turns the
-     controls the colour of the scene and costs contrast. */
-  --player-blur: saturate(110%) blur(24px);
-  background-color: var(--over-picture);
-  -webkit-backdrop-filter: var(--player-blur);
-  backdrop-filter: var(--player-blur);
-  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition: opacity var(--dur-move) ease;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--edge) 62%, transparent) 0%,
+    transparent 20%,
+    transparent 56%,
+    color-mix(in srgb, var(--edge) 72%, transparent) 100%
+  );
 }
 
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
-.cluster {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px 6px;
-  border-radius: 999px;
-}
+.cluster { display: flex; align-items: center; gap: 4px; }
 .clusterButton {
   width: 44px;
   height: 44px;
   display: grid;
   place-items: center;
   flex: none;
-  border-radius: 50%;
-  color: #fff;
-  transition: background-color var(--dur-fade) ease, transform var(--dur-snappy) var(--ease-snappy);
+  border-radius: var(--radius-control);
+  color: var(--paper);
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
 }
-.clusterButton:hover { background: rgb(255 255 255 / 0.12); }
-.clusterButton:active { transform: scale(0.92); background: rgb(255 255 255 / 0.18); }
-.clusterButton[aria-pressed='true'] { background: rgb(255 255 255 / 0.22); }
+/* Paper on the picture; a flat backing appears only when the pointer is on it. */
+.clusterButton:hover { background: var(--overlay); }
+.clusterButton:active { transform: scale(0.94); background: var(--base-3); }
+/* The panel this button opened is the current selection. */
+.clusterButton[aria-pressed='true'] { color: var(--stock); }
 
-.volume { padding-right: 16px; }
+/* Volume is a slider on the picture, so it keeps a flat backing to stay readable over any scene. */
+.volume {
+  gap: 4px;
+  padding-right: 14px;
+  border-radius: var(--radius-control);
+  background: var(--overlay);
+}
+.volume .clusterButton:hover { background: var(--base-3); }
 .percent {
-  width: 44px;
+  width: 40px;
   text-align: right;
-  font: 600 14px / 1 var(--font);
+  font: 600 var(--fs-footnote) / 1 var(--font);
   font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
+  color: var(--ink-2);
 }
 .slider {
   -webkit-appearance: none;
   appearance: none;
-  width: 150px;
-  height: 30px;
+  width: 140px;
+  height: 28px;
   margin: 0 0 0 10px;
   background: transparent;
   cursor: pointer;
 }
 .slider::-webkit-slider-runnable-track {
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(90deg, #fff calc(var(--level) * 100%), rgb(255 255 255 / 0.22) 0);
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), var(--base-4) 0);
 }
 .slider::-moz-range-track {
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(90deg, #fff calc(var(--level) * 100%), rgb(255 255 255 / 0.22) 0);
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), var(--base-4) 0);
 }
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 36px;
-  height: 24px;
-  margin-top: -9px;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--paper);
 }
 .slider::-moz-range-thumb {
-  width: 36px;
-  height: 24px;
+  width: 14px;
+  height: 14px;
   border: 0;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+  border-radius: 50%;
+  background: var(--paper);
 }
 .slider:focus-visible { outline: none; }
-.slider:focus-visible::-webkit-slider-thumb { outline: 2px solid #fff; outline-offset: 2px; }
+.slider:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--stock); outline-offset: 2px; }
+.slider:focus-visible::-moz-range-thumb { outline: 2px solid var(--stock); outline-offset: 2px; }
 
-/* The transport, in the middle. */
+/* The transport, in the middle: flat ink circles, paper icons. Keyboard focus is the yellow ring. */
 .transport {
   align-self: center;
   justify-self: center;
   display: flex;
   align-items: center;
-  gap: 48px;
+  gap: 40px;
 }
 .round {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: #fff;
-  transition: transform var(--dur-snappy) var(--ease-snappy), background-color var(--dur-fade) ease;
+  background: var(--ink);
+  color: var(--paper);
+  transition: transform var(--dur-state) var(--ease-out), background-color var(--dur-state) ease;
 }
-.round:hover { background-color: rgb(40 40 44 / 0.62); }
-.round:active { transform: scale(0.92); }
+.round:hover { background: var(--overlay); }
+.round:active { transform: scale(0.94); }
 .skip { width: 60px; height: 60px; }
 .play { width: 84px; height: 84px; }
 .play svg { width: 34px; height: 34px; }
 
-/* The title, the panel buttons and the scrubber, along the bottom. */
-.bottom { display: flex; flex-direction: column; }
+/* The title and the panel buttons, then the scrubber's strip, along the bottom. */
+.bottom { display: flex; flex-direction: column; gap: 8px; }
 .bottomRow { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
-.titles { min-width: 0; text-shadow: 0 1px 8px rgb(0 0 0 / 0.5); }
+.titles { min-width: 0; }
 .title {
-  font: 600 20px / 1.2 var(--font-display);
+  font: 600 var(--fs-headline) / 1.2 var(--font);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .line {
-  margin-top: 3px;
-  font: 500 13px / 1.25 var(--font);
-  color: var(--text-secondary);
+  margin-top: 2px;
+  font: 400 var(--fs-footnote) / 1.3 var(--font);
+  color: var(--ink-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.scrubber { margin-top: 10px; }
+/* The scrubber: the printed edge of the stock, full width. A strip always has facts: here they are the
+   timecode, the time left (yellow, the one thing in it that matters) and when it would end. */
+.scrubber {
+  padding: 2px 16px 10px;
+  border-radius: var(--radius-art);
+  background: color-mix(in srgb, var(--edge) 94%, transparent);
+}
 .track {
   position: relative;
-  height: 24px;
+  height: 26px;
   cursor: pointer;
   touch-action: none;
 }
 .track:focus-visible { outline: none; }
-.track:focus-visible .rail { height: 8px; }
 .rail {
   position: absolute;
   left: 0;
@@ -170,12 +177,10 @@
   top: 50%;
   height: 4px;
   transform: translateY(-50%);
-  border-radius: 4px;
-  background: rgb(255 255 255 / 0.22);
+  border-radius: 2px;
+  background: var(--base-4);
   overflow: hidden;
-  transition: height var(--dur-snappy) var(--ease-snappy);
 }
-.track:hover .rail, .track[data-dragging] .rail { height: 8px; }
 .buffered, .played {
   position: absolute;
   inset: 0;
@@ -183,48 +188,71 @@
   transform-origin: left;
   will-change: transform;
 }
-.buffered { background: rgb(255 255 255 / 0.32); }
-.played { background: #fff; }
+/* Read-ahead is the lighter of the two greys; the yellow is how far you are. */
+.buffered { background: var(--ink-3); opacity: 0.55; }
+.played { background: var(--stock); }
+/* The thumb is only there when you are using the bar: under the pointer, while dragging, or on focus. */
+.thumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--paper);
+  opacity: 0;
+  transition: opacity var(--dur-state) ease;
+  pointer-events: none;
+}
+.track:hover .thumb, .track[data-dragging] .thumb, .track:focus-visible .thumb { opacity: 1; }
+.track:focus-visible .thumb { box-shadow: 0 0 0 2px var(--edge), 0 0 0 4px var(--stock); }
 .times {
   display: flex;
   justify-content: space-between;
-  font: 600 12px / 1 var(--font);
+  gap: 12px;
+  font: 600 var(--fs-caption) / 1 var(--font-edge);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
+  color: var(--print);
+  white-space: nowrap;
 }
+.times em { font-style: normal; color: var(--stock); }
 
 /* Options and Audio and Subtitles: one card above the buttons that open it. */
+.panel, .shelf, .upNext, .info, .noSound {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+}
 .panel {
   position: absolute;
-  right: calc(var(--inset-right) + var(--edge));
+  right: calc(var(--inset-right) + var(--margin));
   bottom: calc(var(--inset-bottom) + var(--bottom-band));
   width: min(380px, calc(100% - 32px));
   max-height: calc(100% - var(--inset-top) - var(--inset-bottom) - var(--bottom-band) - 72px);
   display: flex;
   flex-direction: column;
-  border-radius: 26px;
+  border-radius: var(--radius-panel);
   overflow: hidden;
-  box-shadow: inset 0 0 0 1px var(--hairline), 0 12px 40px rgb(0 0 0 / 0.3);
-  transform-origin: bottom right;
-  animation: panel var(--dur-snappy) var(--ease-snappy);
+  animation: panel var(--dur-state) var(--ease-out);
 }
-@keyframes panel { from { opacity: 0; transform: scale(0.94); } }
+@keyframes panel { from { opacity: 0; } }
 .panelHeader {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 14px 16px 12px;
-  font: 600 var(--text-headline) / 1.2 var(--font);
-  box-shadow: inset 0 -1px var(--hairline);
+  font: 600 var(--fs-body) / 1.2 var(--font);
+  border-bottom: 1px solid var(--rule);
   text-align: left;
 }
-.panelScroll { overflow-y: auto; padding: 6px 0; overscroll-behavior: contain; scrollbar-width: thin; }
+.panelScroll { overflow-y: auto; padding: 4px 0; overscroll-behavior: contain; scrollbar-width: thin; }
+/* Plain headings: a sentence-case label, not a kicker. */
 .groupTitle {
   padding: 12px 16px 4px;
-  font: 600 var(--text-micro) / 1 var(--font);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
+  font: 600 var(--fs-footnote) / 1.2 var(--font);
+  color: var(--ink-2);
 }
 .row {
   position: relative;
@@ -235,73 +263,75 @@
   min-height: 48px;
   padding: 12px 16px;
   text-align: left;
-  color: #fff;
-  transition: background-color 0.15s ease;
+  color: var(--paper);
+  transition: background-color var(--dur-state) ease;
 }
-.row:hover { background: var(--surface); }
-.row:active { background: var(--surface-strong); }
-.row:disabled { opacity: 0.45; cursor: default; }
+.row:hover { background: var(--base-3); }
+.row:active { background: var(--base-4); }
+.row:disabled { opacity: 0.5; cursor: default; }
 .row[data-plain]:disabled { opacity: 1; }
-.groupFooter {
-  padding: 8px 16px 12px;
-  font: 400 var(--text-caption) / 1.4 var(--font);
-  color: var(--text-secondary);
-}
-.groupReason {
-  display: block;
-  margin-top: 8px;
-  padding: 8px 10px;
-  border-radius: var(--radius-poster);
-  background: var(--surface);
-  color: var(--text);
-  overflow-wrap: anywhere;
-  user-select: text;
-}
-.groupFooter a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+/* The rule between rows, inset to the text. */
 .row + .row::before {
   content: '';
   position: absolute;
   top: 0;
   left: 16px;
-  right: 0;
+  right: 16px;
   height: 1px;
-  background: var(--hairline);
+  background: var(--rule);
 }
 .row:has(.rowIcon) + .row::before { left: 50px; }
-.rowIcon { width: 22px; display: grid; place-items: center; flex: none; }
+.rowIcon { width: 22px; display: grid; place-items: center; flex: none; color: var(--ink-2); }
 .rowText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.rowTitle { font: 400 var(--text-body) / 1.3 var(--font); overflow-wrap: anywhere; }
+.rowTitle { font: 400 var(--fs-body) / 1.3 var(--font); overflow-wrap: anywhere; }
 .rowTitle[data-checked] { font-weight: 600; }
 .rowDetail {
-  font: 400 var(--text-caption) / 1.3 var(--font);
-  color: var(--text-secondary);
+  font: 400 var(--fs-caption) / 1.3 var(--font);
+  color: var(--ink-2);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   overflow-wrap: anywhere;
 }
-.rowValue { color: var(--text-secondary); font-size: var(--text-body); }
-.chevron { color: var(--text-tertiary); display: grid; }
+.rowValue { color: var(--ink-2); font-size: var(--fs-small); }
+/* The selected row's check: the one yellow in a list. */
+.check { color: var(--stock); flex: none; }
+.chevron { color: var(--ink-3); display: grid; }
+.groupFooter {
+  padding: 8px 16px 12px;
+  font: 400 var(--fs-caption) / 1.4 var(--font);
+  color: var(--ink-2);
+}
+.groupFooter a { color: var(--paper); text-decoration: underline; text-underline-offset: 2px; }
+/* A reason from the network or the proxy is data: on the edge band, in print, selectable to copy. */
+.groupReason, .noSoundReason {
+  display: block;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-label);
+  background: var(--edge);
+  color: var(--print);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
 
 /* The season's episodes, over the scrubber. */
 .shelf {
   position: absolute;
-  left: calc(var(--inset-left) + var(--edge));
-  right: calc(var(--inset-right) + var(--edge));
+  left: calc(var(--inset-left) + var(--margin));
+  right: calc(var(--inset-right) + var(--margin));
   bottom: calc(var(--inset-bottom) + var(--bottom-band));
-  padding: 14px 0 16px;
-  border-radius: 26px;
-  box-shadow: inset 0 0 0 1px var(--hairline), 0 12px 40px rgb(0 0 0 / 0.3);
-  animation: shelf var(--dur-snappy) var(--ease-snappy);
+  padding: 12px 0 16px;
+  border-radius: var(--radius-panel);
+  animation: panel var(--dur-state) var(--ease-out);
 }
-@keyframes shelf { from { opacity: 0; transform: translateY(16px); } }
-.shelfHeader { display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 20px; }
-.shelfHeader h2 { font: 600 var(--text-headline) / 1.2 var(--font); }
+.shelfHeader { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 20px; }
+.shelfHeader h2 { font: 600 var(--fs-body) / 1.2 var(--font); }
 .shelfRow {
   display: flex;
-  gap: 14px;
-  padding: 10px 20px 2px;
+  gap: 16px;
+  padding: 8px 20px 2px;
   overflow-x: auto;
   scroll-snap-type: x proximity;
   scroll-padding: 0 20px;
@@ -310,138 +340,108 @@
 }
 .shelfRow::-webkit-scrollbar { display: none; }
 .shelfRow > li { flex: none; width: 200px; scroll-snap-align: start; }
-.shelfGhost { height: 150px; border-radius: 12px; background: var(--surface); }
-.episodeCard { width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left; color: #fff; }
-.episodeCard:disabled { opacity: 0.45; cursor: default; }
-.episodeStill {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: transform var(--dur-snappy) var(--ease-snappy);
-}
-.episodeCard:hover .episodeStill { transform: scale(1.03); }
-.episodeCard[aria-current] .episodeStill { box-shadow: 0 0 0 2.5px #fff; overflow: visible; }
-.episodeCard[aria-current] .episodeStill > :first-child { border-radius: 12px; }
-.fill { position: absolute; inset: 0; width: 100%; height: 100%; }
-.nowPlaying {
-  position: absolute;
-  left: 8px;
-  bottom: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: var(--over-picture);
-  -webkit-backdrop-filter: saturate(110%) blur(24px);
-  backdrop-filter: saturate(110%) blur(24px);
-  font: 600 var(--text-micro) / 1 var(--font);
-}
-.episodeName { font: 600 14px / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.episodeMeta { font: 400 var(--text-caption) / 1.2 var(--font); color: var(--text-secondary); min-height: 1.2em; }
+.shelfGhost { height: 150px; border-radius: var(--radius-art); background: var(--base-3); }
+.episodeCard { width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left; color: var(--paper); }
+.episodeCard:disabled { opacity: 0.5; cursor: default; }
+/* The frame and its strip are one object; the current episode gets the yellow ring round both. */
+.episodeCard[aria-current] .episodeStill { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }
+.episodeCard:focus-visible { outline: none; }
+.episodeCard:focus-visible .episodeStill { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }
+.episodeStill { display: block; transition: opacity var(--dur-state) ease; }
+.episodeCard:not(:disabled):hover .episodeStill { opacity: 0.88; }
+.episodeName { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Up Next: bottom right, above the scrubber while the controls show. */
+/* Up Next: bottom right, above the scrubber while the controls show. The still has a strip whose
+   perforations empty as the countdown runs. */
 .upNext {
   /* Up Next sits beside Controls, not inside it, so it needs the band's height of its own. */
-  --bottom-band: 128px;
+  --bottom-band: 124px;
   position: absolute;
   z-index: 4;
-  right: calc(var(--inset-right) + var(--edge));
-  bottom: calc(var(--inset-bottom) + 36px);
+  right: calc(var(--inset-right) + var(--margin));
+  bottom: calc(var(--inset-bottom) + 24px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
   padding: 10px 16px 10px 10px;
-  border-radius: 22px;
-  transition: transform var(--dur-gentle) var(--ease-gentle);
-  animation: upNext var(--dur-gentle) var(--ease-gentle);
+  border-radius: var(--radius-panel);
+  transition: transform var(--dur-move) var(--ease-out);
+  animation: upNext var(--dur-move) var(--ease-out);
 }
-.upNext[data-lifted] { transform: translateY(calc(-1 * (var(--bottom-band) - 36px + 6px))); }
-@keyframes upNext { from { opacity: 0; translate: 24px 0; } }
-.upNextStill {
-  position: relative;
-  width: 136px;
-  aspect-ratio: 16 / 9;
-  flex: none;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: transform var(--dur-snappy) var(--ease-snappy);
-}
-.upNextStill:hover { transform: scale(1.03); }
-.upNextStill:active { transform: scale(0.97); }
-.upNextRing {
+.upNext[data-lifted] { transform: translateY(calc(-1 * (var(--bottom-band) - 24px + 6px))); }
+@keyframes upNext { from { opacity: 0; } }
+.upNextStill { --w: 148px; display: block; width: var(--w); flex: none; text-align: left; }
+.upNextStill:focus-visible { outline: none; }
+.upNextStill:focus-visible .upNextPlate { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }
+.upNextPlate { display: block; }
+.upNextPlay {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: calc(var(--w) * 9 / 32);
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
   display: grid;
   place-items: center;
-  background: rgb(0 0 0 / 0.28);
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
 }
-.upNextRing > * { grid-area: 1 / 1; }
-.upNextRing circle { transition: stroke-dashoffset 1s linear; }
-.upNextText { width: 168px; display: flex; flex-direction: column; gap: 3px; }
+.upNextFrame { position: relative; display: block; }
+.upNextText { width: 168px; display: flex; flex-direction: column; gap: 3px; padding-top: 2px; }
 .upNextLabel {
-  font: 600 var(--text-micro) / 1.2 var(--font);
-  letter-spacing: 0.08em;
+  font: 600 var(--fs-caption) / 1.2 var(--font-edge);
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+  color: var(--print);
 }
 .upNextName {
-  font: 600 15px / 1.25 var(--font);
+  font: 600 var(--fs-small) / 1.25 var(--font);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.upNextMeta { font: 400 var(--text-caption) / 1.25 var(--font); color: var(--text-secondary); }
+.upNextMeta { font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--ink-2); }
 .upNextCancel {
   align-self: flex-start;
   margin-top: 4px;
-  font: 600 var(--text-caption) / 1 var(--font);
-  color: rgb(255 255 255 / 0.85);
+  font: 600 var(--fs-caption) / 1 var(--font);
+  color: var(--ink-2);
 }
-.upNextCancel:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.upNextCancel:hover { color: var(--paper); text-decoration: underline; text-underline-offset: 3px; }
 
-/* No Sound in This Browser: under the title row, so neither the controls nor the subtitles are
-   behind it, and denser than the other glass so its words hold up over a bright picture. */
+/* Notices (No Sound, Couldn't Convert the Audio, Playback Is Struggling): under the title row, so
+   neither the controls nor the subtitles are behind them. */
 .noSound {
   position: absolute;
   z-index: 4;
-  top: calc(var(--inset-top) + 12px + 46px + 10px);
-  left: calc(var(--inset-left) + var(--edge));
-  width: min(420px, calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--edge)));
+  top: calc(var(--inset-top) + 12px + 44px + 10px);
+  left: calc(var(--inset-left) + var(--margin));
+  width: min(420px, calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--margin)));
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 14px 16px 14px;
-  border-radius: 22px;
-  background-color: rgb(12 12 14 / 0.8);
-  animation: noSound var(--dur-gentle) var(--ease-gentle);
+  padding: 14px 16px;
+  border-radius: var(--radius-panel);
+  animation: notice var(--dur-move) var(--ease-out);
 }
-@keyframes noSound { from { opacity: 0; translate: 0 -8px; } }
+@keyframes notice { from { opacity: 0; translate: 0 -8px; } }
 .noSoundTitle {
   display: flex;
   align-items: center;
   gap: 8px;
-  font: 600 var(--text-headline) / 1.25 var(--font);
+  font: 600 var(--fs-body) / 1.25 var(--font);
 }
-.noSoundTitle svg { flex: none; }
-.noSoundText { font: 400 13px / 1.45 var(--font); color: rgb(255 255 255 / 0.9); text-wrap: pretty; }
-.noSoundReason {
-  padding: 8px 10px;
-  border-radius: var(--radius-poster);
-  background: var(--surface-strong);
-  font: 400 var(--text-caption) / 1.45 var(--font);
-  color: rgb(255 255 255 / 0.9);
-  overflow-wrap: anywhere;
-  user-select: text;
-}
-.noSoundReason strong { display: block; font-weight: 600; color: #fff; }
+.noSoundTitle svg { flex: none; color: var(--warn); }
+.noSoundText { font: 400 var(--fs-footnote) / 1.45 var(--font); color: var(--ink-2); text-wrap: pretty; }
+.noSoundReason { margin-top: 0; font: 400 var(--fs-caption) / 1.45 var(--font); }
+.noSoundReason strong { display: block; font-weight: 600; color: var(--paper); }
 .noSoundActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-.noSoundActions .btn { padding: 0 14px; }
-.noSoundHint { font: 400 var(--text-caption) / 1.45 var(--font); color: var(--text-secondary); }
-.noSoundHint a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+.noSoundActions :global(.btn) { padding: 0 14px; }
+.noSoundHint { font: 400 var(--fs-caption) / 1.45 var(--font); color: var(--ink-3); }
+.noSoundHint a { color: var(--ink-2); text-decoration: underline; text-underline-offset: 2px; }
 
 /* Playback Info: the other side of the title row from the notices, so neither sits on the other
    (on a phone there is only room for one, and the notice wins). Out of the controls' way, and kept
@@ -449,16 +449,15 @@
 .info {
   position: absolute;
   z-index: 4;
-  top: calc(var(--inset-top) + 12px + 46px + 10px);
-  right: calc(var(--inset-right) + var(--edge));
-  width: min(320px, calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--edge)));
+  top: calc(var(--inset-top) + 12px + 44px + 10px);
+  right: calc(var(--inset-right) + var(--margin));
+  width: min(320px, calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--margin)));
   padding: 10px 14px 12px;
-  border-radius: 22px;
-  background-color: rgb(12 12 14 / 0.8);
-  animation: noSound var(--dur-gentle) var(--ease-gentle);
+  border-radius: var(--radius-panel);
+  animation: notice var(--dur-move) var(--ease-out);
 }
 .infoHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.infoTitle { font: 600 var(--text-headline) / 1.25 var(--font); }
+.infoTitle { font: 600 var(--fs-body) / 1.25 var(--font); }
 .infoClose {
   width: 28px;
   height: 28px;
@@ -466,27 +465,34 @@
   display: grid;
   place-items: center;
   flex: none;
-  border-radius: 50%;
-  color: var(--text-secondary);
-  transition: background-color var(--dur-fade) ease, color var(--dur-fade) ease;
+  border-radius: var(--radius-label);
+  color: var(--ink-2);
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-.infoClose:hover { background: rgb(255 255 255 / 0.12); color: #fff; }
-.infoRows { display: grid; gap: 1px; }
+.infoClose:hover { background: var(--base-3); color: var(--paper); }
+.infoRows { display: grid; }
 .infoRow {
   display: grid;
   grid-template-columns: minmax(0, auto) minmax(0, 1fr);
   align-items: baseline;
   gap: 16px;
-  padding: 4px 0;
-  border-top: 0.5px solid var(--hairline);
-  font: 400 var(--text-caption) / 1.35 var(--font);
+  padding: 5px 0;
+  border-top: 1px solid var(--rule);
+  font: 400 var(--fs-caption) / 1.35 var(--font);
 }
 .infoRow:first-child { border-top: 0; }
-.infoRow dt { color: var(--text-secondary); white-space: nowrap; }
+/* The labels are edge print: the card reads like the data block on a film can. */
+.infoRow dt {
+  font: 600 var(--fs-caption) / 1.35 var(--font-edge);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
 .infoRow dd {
   text-align: right;
   font-variant-numeric: tabular-nums;
-  color: #fff;
+  color: var(--paper);
   overflow-wrap: anywhere;
   user-select: text;
 }
@@ -494,41 +500,43 @@
 /* Phones and short windows: tighter, and the transport shrinks to fit a landscape iPhone. */
 @media (max-width: 720px), (max-height: 500px) {
   .controls { --bottom-band: 112px; }
+  .upNext { --bottom-band: 112px; }
   /* A phone's width holds one card: a notice (No Sound, Playback Is Struggling) takes it. */
   .noSound ~ .info { display: none; }
   /* As wide as the notices, and dense enough to stay above the transport in the middle. */
-  .info { width: calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--edge)); padding: 8px 14px 8px; }
-  .infoRow { padding: 2px 0; }
+  .info { width: calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--margin)); padding: 8px 14px; }
+  .infoRow { padding: 3px 0; }
   .noSound { padding: 12px 14px; }
   .noSoundActions { display: grid; grid-template-columns: 1fr 1fr; }
-  .noSoundActions .btn { padding: 0 8px; font-size: 13px; }
-  .noSoundHint { font-size: var(--text-micro); }
-  .title { font-size: 17px; }
-  .transport { gap: 36px; }
+  .noSoundActions :global(.btn) { padding: 0 8px; font-size: var(--fs-footnote); }
+  .noSoundHint { font-size: var(--fs-caption); }
+  .title { font-size: var(--fs-body); }
+  .transport { gap: 32px; }
   .clusterButton { width: 40px; height: 40px; }
   .slider { width: 110px; }
+  .scrubber { padding: 0 12px 8px; }
 }
 @media (max-height: 500px) {
-  .controls { padding-top: calc(var(--inset-top) + 8px); }
+  .controls { padding-top: calc(var(--inset-top) + 8px); padding-bottom: calc(var(--inset-bottom) + 8px); }
   .skip { width: 52px; height: 52px; }
   .play { width: 68px; height: 68px; }
   .play svg { width: 28px; height: 28px; }
-  .upNext { --bottom-band: 112px; padding: 8px 12px 8px 8px; gap: 10px; }
+  .upNext { padding: 8px 12px 8px 8px; gap: 10px; }
   /* A landscape phone's transport sits in the middle: keep to the left of it, and leave the hint out. */
-  .noSound { top: calc(var(--inset-top) + 8px + 46px + 6px); width: min(272px, 38%); gap: 6px; padding: 10px 12px; border-radius: 18px; }
-  .noSoundTitle { font-size: 14px; }
-  .noSoundText { font-size: 12px; line-height: 1.4; }
+  .noSound { top: calc(var(--inset-top) + 8px + 40px + 6px); width: min(272px, 38%); gap: 6px; padding: 10px 12px; }
+  .noSoundTitle { font-size: var(--fs-small); }
+  .noSoundText { font-size: var(--fs-caption); line-height: 1.4; }
   .noSoundHint { display: none; }
   .noSoundActions { display: grid; grid-template-columns: none; justify-items: start; gap: 6px; margin-top: 2px; }
-  .noSoundActions .btn { height: 32px; }
+  .noSoundActions :global(.btn) { height: 32px; }
   /* Beside the notice, not under it: the notice is on the left, this on the right. */
   .noSound ~ .info { display: block; }
-  .info { top: calc(var(--inset-top) + 8px + 46px + 6px); width: min(250px, 34%); padding: 6px 12px 6px; border-radius: 18px; }
+  .info { top: calc(var(--inset-top) + 8px + 40px + 6px); width: min(250px, 34%); padding: 6px 12px; }
   .infoHeader { margin-bottom: 0; }
-  .infoTitle { font-size: 14px; }
+  .infoTitle { font-size: var(--fs-small); }
   .infoClose { width: 24px; height: 24px; }
-  .infoRow { padding: 1px 0; font-size: 11px; line-height: 1.25; gap: 10px; }
-  .upNextStill { width: 96px; }
+  .infoRow { padding: 1px 0; font-size: var(--fs-caption); line-height: 1.25; gap: 10px; }
+  .upNextStill { --w: 112px; }
   .upNextText { width: 140px; }
   /* A panel is as tall as the picture here, so the transport steps aside rather than sit behind it. */
   .controls[data-panel] .transport { visibility: hidden; }

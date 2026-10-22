@@ -34,7 +34,7 @@ interface Group {
 
 const noop = () => {}
 
-/** The player's options as one glass card above the button that opened it. Each row names what's
+/** The player's options as one flat card above the button that opened it. Each row names what's
  *  chosen and opens a list inside the same card, as PlayerOptionsPanel does in the apps. */
 export function OptionsPanel({ controller, start, sources, source, onPickSource, onMoreSources }: {
   controller: PlayerController
@@ -211,7 +211,11 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
                   {row.detail && <span className={s.rowDetail}>{row.detail}</span>}
                 </span>
                 {row.value && <span className={s.rowValue}>{row.value}</span>}
-                {row.checked && <Icon name="check" size={16} strokeWidth={2.8} />}
+                {row.checked && (
+                  <span className={s.check}>
+                    <Icon name="check" size={16} strokeWidth={2.8} />
+                  </span>
+                )}
                 {row.chevron && (
                   <span className={s.chevron}>
                     <Icon name="chevronRight" size={14} strokeWidth={2.6} />

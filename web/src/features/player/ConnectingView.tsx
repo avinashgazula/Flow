@@ -1,25 +1,29 @@
 import { useEffect, useState } from 'react'
+import { Plate } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
-import { imageURL, srcSet } from '../../lib/tmdb/images'
+import { imageURL } from '../../lib/tmdb/images'
 import { keepFocus } from './Controls'
 import { clock } from './format'
 import s from './Player.module.css'
 
 const slowAfter = 15_000
+/** How often the strip's next perforation lights while there is nothing to measure yet. */
+const chaseMs = 260
+const chaseHoles = 30
 
-/** While a stream opens: the title's backdrop, dimmed and slowly pushing in like a camera settling
- *  on the first shot, with the title, the episode, a hairline that fills as it buffers, and where
- *  it's coming from. Offers Resume when there's somewhere to resume from. After the native
- *  ConnectingView. */
-export function ConnectingView({ backdrop, logo, title, line, provider, sourceKey, progress, resumeAt, leaving, onResume, onStartOver, onTryAnother, onClose, onGone }: {
+/** While a stream opens: the title's still as a frame on the flat base, its edge strip saying where the
+ *  stream comes from and what format it is, and the strip's perforations filling in yellow as it
+ *  buffers. Under it, the title and the episode. Offers Resume when there's somewhere to resume from.
+ *  After the native ConnectingView. */
+export function ConnectingView({ backdrop, logo, title, line, print, sourceKey, progress, resumeAt, leaving, onResume, onStartOver, onTryAnother, onClose, onGone }: {
   backdrop?: string
   logo?: string
   title: string
   line?: string
-  /** Undefined while there's no source yet (finding or picking one). */
-  provider?: string
+  /** The strip's facts: where it comes from, the format. Always at least one. */
+  print: string[]
   sourceKey?: string
-  /** 0–1 as the stream opens, 'idle' while looking for a source, undefined for no hairline. */
+  /** 0–1 as the stream opens, 'idle' while looking for a source, undefined for none. */
   progress?: number | 'idle'
   resumeAt: number | null
   /** Playback has started: fade out, then `onGone`. */
@@ -39,33 +43,34 @@ export function ConnectingView({ backdrop, logo, title, line, provider, sourceKe
   }, [sourceKey, leaving])
   const slow = !!sourceKey && slowFor === sourceKey && resumeAt === null
 
+  // With nothing to measure yet the next perforation lights on each beat and the row starts over, like a
+  // reel being threaded. Reduce Motion gets one lit hole, still.
+  const [beat, setBeat] = useState(1)
+  const chasing = progress === 'idle' && resumeAt === null
+  useEffect(() => {
+    if (!chasing || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const timer = setInterval(() => setBeat((n) => (n >= chaseHoles + 3 ? 1 : n + 1)), chaseMs)
+    return () => clearInterval(timer)
+  }, [chasing])
+  const filled = resumeAt !== null ? undefined : typeof progress === 'number' ? Math.max(0.04, Math.min(1, progress)) : chasing ? Math.min(1, beat / chaseHoles) : undefined
+
   return (
     <div className={s.connecting} data-leaving={leaving ? '' : undefined} onTransitionEnd={(e) => leaving && e.target === e.currentTarget && onGone()}>
-      {backdrop && (
-        <img
-          className={s.connectingArt}
-          src={imageURL(backdrop, 1280)}
-          srcSet={srcSet(backdrop, 'backdrop')}
-          sizes="100vw"
-          alt=""
-          fetchPriority="high"
-          onLoad={(e) => e.currentTarget.setAttribute('data-loaded', '')}
-          ref={(img) => {
-            if (img?.complete && img.naturalWidth) img.setAttribute('data-loaded', '')
-          }}
-        />
-      )}
-      <div className={s.connectingShade} />
       <div className={s.connectingBody}>
         <div className={s.connectingCentre}>
+          <div
+            className={s.connectingFrame}
+            role={typeof progress === 'number' && filled !== undefined ? 'progressbar' : undefined}
+            aria-label={typeof progress === 'number' && filled !== undefined ? 'Loading' : undefined}
+            aria-valuemin={typeof progress === 'number' && filled !== undefined ? 0 : undefined}
+            aria-valuemax={typeof progress === 'number' && filled !== undefined ? 100 : undefined}
+            aria-valuenow={typeof progress === 'number' && filled !== undefined ? Math.round(progress * 100) : undefined}
+          >
+            <Plate shape="still" artPath={backdrop} sizes="(max-width: 720px) 100vw, 560px" priority stripSize="lead" progress={filled} print={print} />
+          </div>
+          {chasing && <span role="progressbar" aria-label="Loading" className="sr-only" />}
           {logo ? <img className={s.connectingLogo} src={imageURL(logo, 500)} alt={title} /> : <h1 className={s.connectingTitle}>{title}</h1>}
           {line && <p className={s.connectingLine}>{line}</p>}
-          {resumeAt === null && typeof progress === 'number' && (
-            <div className={s.hairline} role="progressbar" aria-label="Loading" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
-              <span style={{ transform: `scaleX(${Math.max(0.04, Math.min(1, progress))})` }} />
-            </div>
-          )}
-          {resumeAt === null && progress === 'idle' && <div className={s.hairlineIdle} role="progressbar" aria-label="Loading" />}
         </div>
         <div className={s.connectingFoot}>
           {resumeAt !== null ? (
@@ -73,28 +78,25 @@ export function ConnectingView({ backdrop, logo, title, line, provider, sourceKe
               <button className="btn btn-primary" onClick={onResume} autoFocus>
                 <Icon name="play" size={18} /> Resume from {clock(resumeAt)}
               </button>
-              <button className="btn btn-glass" onClick={onStartOver} onMouseDown={keepFocus}>
+              <button className="btn btn-secondary" onClick={onStartOver} onMouseDown={keepFocus}>
                 <Icon name="history" size={18} /> Start Over
               </button>
             </div>
           ) : (
-            <>
-              {slow && (
-                <>
-                  <p className={s.slow}>This is taking longer than usual.</p>
-                  {onTryAnother && (
-                    <button className="btn btn-glass btn-compact" onClick={onTryAnother}>
-                      Try Another Source
-                    </button>
-                  )}
-                </>
-              )}
-              {provider && <p className={s.from}>From {provider}</p>}
-            </>
+            slow && (
+              <>
+                <p className={s.slow}>This is taking longer than usual.</p>
+                {onTryAnother && (
+                  <button className="btn btn-secondary btn-compact" onClick={onTryAnother}>
+                    Try Another Source
+                  </button>
+                )}
+              </>
+            )
           )}
         </div>
       </div>
-      <button className={`btn btn-glass btn-circle ${s.connectingClose}`} onClick={onClose} aria-label="Close Player">
+      <button className={`btn btn-quiet btn-circle ${s.connectingClose}`} onClick={onClose} aria-label="Close Player">
         <Icon name="close" size={20} strokeWidth={2.4} />
       </button>
     </div>
@@ -119,10 +121,10 @@ export function ErrorView({ message, detail, canTryAnother, onTryAnother, onRetr
             Try Another Source
           </button>
         )}
-        <button className="btn btn-glass" onClick={onRetry} autoFocus={!canTryAnother}>
+        <button className="btn btn-secondary" onClick={onRetry} autoFocus={!canTryAnother}>
           Try Again
         </button>
-        <button className="btn btn-glass" onClick={onClose}>
+        <button className="btn btn-quiet" onClick={onClose}>
           Back
         </button>
       </div>

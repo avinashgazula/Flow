@@ -85,10 +85,15 @@ export function FeedbackFlash({ controller }: { controller: PlayerController }) 
   )
 }
 
-/** Buffering, shown only while the controls are away (the play button is the centre otherwise). */
+/** Buffering, shown only while the controls are away (the play button is the centre otherwise): a row of
+ *  perforations filling in yellow, on a flat card. */
 export function Buffering({ controller }: { controller: PlayerController }) {
   const waiting = usePlayer(controller, (st) => st.waiting && !st.paused && !st.controls)
-  return waiting ? <div className={s.spinner} role="status" aria-label="Loading" /> : null
+  return waiting ? (
+    <div className={s.buffering} role="status" aria-label="Loading">
+      <span className={s.holes} />
+    </div>
+  ) : null
 }
 
 /** The picture itself: click to play or pause and double-click for full screen with a mouse; with

@@ -24,6 +24,7 @@ export function SeekPreview({ controller, ref }: { controller: PlayerController;
   const root = useRef<HTMLDivElement>(null)
   const frame = useRef<HTMLDivElement>(null)
   const label = useRef<HTMLSpanElement>(null)
+  const reel = useRef<HTMLSpanElement>(null)
   const mine = useRef<{ engine: Engine | null; source: PreviewSource | null; state: PreviewState; dim: number }>({ engine: null, source: null, state: 'loading', dim: 0 })
 
   useImperativeHandle(
@@ -68,6 +69,9 @@ export function SeekPreview({ controller, ref }: { controller: PlayerController;
           if (!el || !label.current) return
           const src = source()
           label.current.textContent = clock(time)
+          // The strip's perforations show how far into the film that is, as they do on every frame.
+          const d = controller.duration()
+          reel.current?.style.setProperty('--p', String(Number.isNaN(d) || d <= 0 ? 0 : Math.min(1, Math.max(0, time / d))))
           if (src && m.state !== 'none') {
             el.dataset.mode = 'frame'
             if (el.dataset.state === 'ready') dim(el)
@@ -96,6 +100,9 @@ export function SeekPreview({ controller, ref }: { controller: PlayerController;
       <div className={s.card}>
         <div ref={frame} className={s.frame} />
         <div className={s.strip}>
+          <span className={s.perfs} aria-hidden="true">
+            <span ref={reel} className={s.watched} />
+          </span>
           <span ref={label} className={s.time}>
             0:00
           </span>

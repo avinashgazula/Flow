@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Artwork } from '../../components/Artwork'
+import { Plate } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
 import type { Episode } from '../../lib/tmdb/types'
 import { usePlayer, type PlayerController } from './controller'
@@ -10,7 +10,7 @@ const countdownFrom = 10
 /** How close to the end the card comes up, without credits markers to go on. */
 const tail = 30
 
-/** The next episode's still with a ring that drains as the countdown runs; tap it to play now.
+/** The next episode's still with a strip whose perforations empty as the countdown runs; tap it to play now.
  *  It watches the clock itself and re-renders only when it comes or goes, and once a second while
  *  counting down. */
 export function UpNext({ controller, next, autoplay, fallbackStill, onPlay }: { controller: PlayerController; next: Episode; autoplay: boolean; fallbackStill?: string; onPlay: () => void }) {
@@ -60,30 +60,24 @@ export function UpNext({ controller, next, autoplay, fallbackStill, onPlay }: { 
   }, [counting, left, onPlay])
 
   if (!due || dismissed || panel) return null
-  const circumference = 2 * Math.PI * 17
   return (
     <aside className={s.upNext} data-lifted={lifted ? '' : undefined} aria-label="Up Next">
       <button className={s.upNextStill} onClick={onPlay} onMouseDown={keepFocus} aria-label="Play Next Episode Now">
-        <Artwork path={next.still ?? fallbackStill} kind={next.still ? 'still' : 'backdrop'} alt="" sizes="136px" className={s.fill} />
-        <span className={s.upNextRing}>
-          <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
-            <circle cx="20" cy="20" r="17" fill="none" stroke="rgb(255 255 255 / 0.28)" strokeWidth="2.5" />
-            {counting && (
-              <circle
-                cx="20"
-                cy="20"
-                r="17"
-                fill="none"
-                stroke="#fff"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeDasharray={circumference}
-                strokeDashoffset={circumference * (1 - left / countdownFrom)}
-                transform="rotate(-90 20 20)"
-              />
-            )}
-          </svg>
-          <Icon name="play" size={14} />
+        <span className={s.upNextFrame}>
+          <Plate
+            className={s.upNextPlate}
+            shape="still"
+            artPath={next.still ?? fallbackStill}
+            artKind={next.still ? 'still' : 'backdrop'}
+            sizes="148px"
+            stripSize="still"
+            hideStrip
+            progress={counting ? left / countdownFrom : undefined}
+            print={counting ? [{ key: `${left}s` }] : undefined}
+          />
+          <span className={s.upNextPlay}>
+            <Icon name="play" size={14} />
+          </span>
         </span>
       </button>
       <div className={s.upNextText}>

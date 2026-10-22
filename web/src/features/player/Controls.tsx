@@ -21,8 +21,8 @@ export interface ControlsProps {
   episodes?: { season: number; current: number; list: Episode[] | undefined; onPick: (episode: Episode) => void; fallbackStill?: string }
 }
 
-/** Laid out like Apple's own players: what you leave by top left, sound top right, the title and
- *  scrubber along the bottom with the panels' buttons at its end, the transport in the middle.
+/** Laid out like Apple's own players: what you leave by top left, sound top right, the title along the
+ *  bottom with the panels' buttons at its end, the scrubber's strip under them, the transport in the middle.
  *  Re-renders only when it shows, hides or opens a panel; each part subscribes to its own state. */
 export function Controls({ controller, title, line, onClose, sources, source, onPickSource, onMoreSources, episodes }: ControlsProps) {
   const visible = usePlayer(controller, (st) => st.controls)

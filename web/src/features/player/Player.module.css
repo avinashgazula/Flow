@@ -1,18 +1,25 @@
 /* The watch page fills the viewport, picture edge to edge. Controls keep clear of the notch and
-   home indicator through the safe-area insets, which every layer reads from these variables. */
+   home indicator through the safe-area insets, which every layer reads from these variables.
+   Everything over the picture is flat: no blur, no glass. The warm base at 94% (--panel) holds panels
+   and notices; a warm-black scrim (the edge colour) sits only behind the controls that need it. */
 .root {
   --inset-top: env(safe-area-inset-top, 0px);
   --inset-right: env(safe-area-inset-right, 0px);
   --inset-bottom: env(safe-area-inset-bottom, 0px);
   --inset-left: env(safe-area-inset-left, 0px);
-  --edge: 28px;
+  /* The side margin the controls keep from the window's edge. */
+  --margin: 28px;
+  /* base-2 at 94%: panels, notices, the Up Next card. */
+  --panel: color-mix(in srgb, var(--base-2) 94%, transparent);
+  /* The base at 70%: the transport's circles. */
+  --ink: color-mix(in srgb, var(--base) 70%, transparent);
   position: fixed;
   inset: 0;
   z-index: 50;
   height: 100dvh;
   overflow: hidden;
   background: #000;
-  color: var(--text);
+  color: var(--paper);
   isolation: isolate;
   touch-action: manipulation;
   -webkit-user-select: none;
@@ -21,7 +28,7 @@
 }
 .root[data-idle] { cursor: none; }
 @media (max-width: 720px), (max-height: 500px) {
-  .root { --edge: 16px; }
+  .root { --margin: 16px; }
 }
 
 .video {
@@ -53,7 +60,7 @@
   color: #fff;
   text-shadow: 0 1px 2px rgb(0 0 0 / 0.95), 0 0 6px rgb(0 0 0 / 0.55), 0 2px 14px rgb(0 0 0 / 0.35);
   text-wrap: balance;
-  transition: transform var(--dur-snappy) var(--ease-snappy);
+  transition: transform var(--dur-move) var(--ease-out);
 }
 .subtitles[data-lifted] { transform: translateY(calc(-1 * var(--lift, 96px))); }
 .subtitleLine { max-width: 100%; }
@@ -62,7 +69,7 @@
   .subtitles { --lift: 78px; font-size: clamp(17px, 2vw + 1vh, 28px); bottom: calc(var(--inset-bottom) + 16px); }
 }
 
-/* Keyboard feedback: a disc in the middle that's gone in half a second. */
+/* Keyboard feedback: a flat disc in the middle that's gone in half a second. */
 .feedback {
   position: absolute;
   z-index: 5;
@@ -74,7 +81,7 @@
   gap: 10px;
   pointer-events: none;
   transform: translate(-50%, -50%);
-  animation: feedback 0.6s var(--ease-gentle) forwards;
+  animation: feedback 0.6s var(--ease-out) forwards;
 }
 .feedbackDisc {
   width: 92px;
@@ -82,23 +89,22 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--over-picture);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  box-shadow: inset 0 0 0 1px var(--hairline);
+  background: var(--ink);
+  color: var(--paper);
 }
 .feedbackText {
-  padding: 5px 12px;
-  border-radius: 999px;
-  background: var(--over-picture);
-  font: 600 14px / 1.2 var(--font);
+  padding: 6px 12px;
+  border-radius: var(--radius-label);
+  background: var(--ink);
+  color: var(--paper);
+  font: 600 var(--fs-footnote) / 1.2 var(--font);
   font-variant-numeric: tabular-nums;
 }
 @keyframes feedback {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.86); }
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
   18% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   70% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.06); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.04); }
 }
 
 /* A double-tap skip, at the side that was tapped. */
@@ -106,77 +112,81 @@
   position: absolute;
   z-index: 5;
   top: 50%;
-  width: 150px;
-  height: 150px;
-  margin-top: -75px;
+  width: 132px;
+  height: 132px;
+  margin-top: -66px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.06) 70%, transparent);
-  font: 600 13px / 1 var(--font);
+  background: var(--ink);
+  color: var(--paper);
+  font: 600 var(--fs-footnote) / 1 var(--font);
+  font-variant-numeric: tabular-nums;
   pointer-events: none;
   animation: side 0.65s ease forwards;
 }
 .sideFlash[data-side='left'] { left: calc(var(--inset-left) + 7%); }
 .sideFlash[data-side='right'] { right: calc(var(--inset-right) + 7%); }
 @keyframes side {
-  0% { opacity: 0; transform: scale(0.9); }
+  0% { opacity: 0; transform: scale(0.92); }
   20%, 70% { opacity: 1; transform: scale(1); }
   100% { opacity: 0; }
 }
 
-.spinner {
+/* Buffering while the controls are away: a short row of perforations that fills in yellow, on a flat
+   card so it reads over any picture. Eight holes, one more lit at each step. */
+.buffering {
   position: absolute;
   z-index: 3;
   left: 50%;
   top: 50%;
-  width: 44px;
-  height: 44px;
-  margin: -22px 0 0 -22px;
-  border-radius: 50%;
-  border: 3px solid rgb(255 255 255 / 0.22);
-  border-top-color: #fff;
+  padding: 12px 14px;
+  border-radius: var(--radius-label);
+  background: var(--ink);
+  transform: translate(-50%, -50%);
   pointer-events: none;
-  animation: spin 0.8s linear infinite, appear 0.3s 0.4s both;
+  animation: appear var(--dur-move) 0.4s both;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 @keyframes appear { from { opacity: 0; } }
+.holes {
+  position: relative;
+  display: block;
+  width: calc(8 * 11px - 4px);
+  height: 9px;
+  background: var(--base-4);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E") 0 0 / 11px 9px repeat-x;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E") 0 0 / 11px 9px repeat-x;
+  overflow: hidden;
+}
+.holes::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(8 * 11px);
+  background: var(--stock);
+  animation: fill 1.2s steps(8, jump-end) infinite;
+}
+@keyframes fill { from { width: 0; } to { width: calc(8 * 11px); } }
+@media (prefers-reduced-motion: reduce) {
+  /* Still: three of the eight lit, and no movement. */
+  .holes::after { animation: none; width: calc(3 * 11px); }
+}
 
-/* Connecting */
+/* Connecting: the title's still as a frame, with the stream opening on its strip. Flat base, nothing
+   over the artwork. */
 .connecting {
   position: absolute;
   inset: 0;
   z-index: 6;
-  background: #000;
+  background: var(--base);
+  color: var(--paper);
   overflow: hidden;
-  transition: opacity 0.4s ease;
+  transition: opacity var(--dur-move) ease;
 }
 .connecting[data-leaving] { opacity: 0; pointer-events: none; }
-.connectingArt {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transform-origin: 50% 40%;
-  transition: opacity 0.6s ease;
-  /* A slow push in, like a camera settling on the first shot. Reduced motion stills it (global rule). */
-  animation: drift 24s ease-out forwards;
-}
-.connectingArt[data-loaded] { opacity: 0.42; }
-@keyframes drift { to { transform: scale(1.06); } }
-@media (prefers-reduced-motion: reduce) {
-  .connectingArt { animation: none; }
-}
-.connectingShade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgb(0 0 0 / 0.35) 0%, transparent 38%, transparent 55%, rgb(0 0 0 / 0.85) 100%);
-}
 .connectingBody {
   position: absolute;
   inset: 0;
@@ -185,6 +195,7 @@
   align-items: center;
   padding: calc(var(--inset-top) + 72px) calc(var(--inset-right) + var(--space-xl)) calc(var(--inset-bottom) + var(--space-xl)) calc(var(--inset-left) + var(--space-xl));
   text-align: center;
+  overflow-y: auto;
 }
 .connectingCentre {
   flex: 1;
@@ -192,73 +203,47 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-m);
-  max-width: min(620px, 100%);
+  gap: var(--space-xs);
+  width: min(560px, 100%);
+}
+.connectingFrame {
+  display: block;
+  width: 100%;
+  margin-bottom: var(--space-m);
 }
 .connectingTitle {
-  font: 700 var(--fs-page-title) / 1.1 var(--font-display);
+  font: 700 var(--fs-title3) / 1.15 var(--font-display);
   letter-spacing: -0.02em;
   text-wrap: balance;
-  text-shadow: 0 2px 30px rgb(0 0 0 / 0.5);
 }
-.connectingLogo { max-width: min(380px, 80vw); max-height: 104px; object-fit: contain; filter: drop-shadow(0 4px 20px rgb(0 0 0 / 0.5)); }
-.connectingLine { font: 500 var(--text-body) / 1.3 var(--font); color: var(--text-secondary); }
-.hairline, .hairlineIdle {
-  position: relative;
-  width: 160px;
-  height: 3px;
-  margin-top: var(--space-s);
-  border-radius: 2px;
-  background: rgb(255 255 255 / 0.18);
-  overflow: hidden;
-}
-.hairline span {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: rgb(255 255 255 / 0.9);
-  transform-origin: left;
-  transition: transform var(--dur-gentle) var(--ease-gentle);
-}
-.hairlineIdle::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  width: 40%;
-  border-radius: inherit;
-  background: rgb(255 255 255 / 0.75);
-  animation: idle 1.4s var(--ease-gentle) infinite;
-}
-@keyframes idle {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(250%); }
-}
+.connectingLogo { max-width: min(320px, 70%); max-height: 72px; object-fit: contain; }
+.connectingLine { font: 400 var(--fs-small) / 1.3 var(--font); color: var(--ink-2); }
 .connectingFoot {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-s);
   min-height: 24px;
+  margin-top: var(--space-l);
 }
-.slow { font: 500 var(--text-caption) / 1.3 var(--font); color: var(--text-secondary); animation: appear var(--dur-gentle) ease; }
-.from { font: 500 var(--text-caption) / 1.3 var(--font); color: var(--text-tertiary); }
+.slow { font: 400 var(--fs-footnote) / 1.3 var(--font); color: var(--ink-2); animation: appear var(--dur-move) ease; }
 .resume {
   width: min(330px, 100%);
   display: grid;
-  gap: var(--space-s);
-  margin-bottom: var(--space-l);
-  animation: rise var(--dur-gentle) var(--ease-gentle);
+  gap: var(--space-xs);
+  animation: appear var(--dur-move) ease;
 }
-@keyframes rise { from { opacity: 0; transform: scale(0.96); } }
 .connectingClose {
   position: absolute;
   top: calc(var(--inset-top) + 16px);
-  left: calc(var(--inset-left) + var(--edge));
+  left: calc(var(--inset-left) + var(--margin));
 }
 @media (max-height: 500px) {
-  .connectingBody { padding-top: calc(var(--inset-top) + 24px); }
-  .connectingTitle { font-size: clamp(28px, 4vw, 44px); }
-  .resume { margin-bottom: 0; }
+  /* A landscape phone: the frame sits beside the words rather than above them. */
+  .connectingBody { padding-top: calc(var(--inset-top) + 16px); padding-bottom: calc(var(--inset-bottom) + var(--space-m)); }
+  .connectingCentre { width: min(560px, 100%); }
+  .connectingFrame { width: min(260px, 52%); margin-bottom: var(--space-s); }
+  .connectingFoot { margin-top: var(--space-s); }
 }
 
 /* Couldn't play */
@@ -270,20 +255,26 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-m);
+  gap: var(--space-s);
   padding: calc(var(--inset-top) + var(--space-xl)) calc(var(--inset-right) + var(--space-xl)) calc(var(--inset-bottom) + var(--space-xl)) calc(var(--inset-left) + var(--space-xl));
-  background: rgb(0 0 0 / 0.92);
+  background: color-mix(in srgb, var(--base) 96%, transparent);
   text-align: center;
-  animation: appear var(--dur-fade) ease;
+  animation: appear var(--dur-move) ease;
 }
-.errorIcon { color: var(--gold); }
-.errorTitle { font: 700 var(--text-title) / 1.2 var(--font-display); }
-.errorMessage { max-width: 460px; color: var(--text-secondary); font-size: var(--text-body); line-height: 1.45; text-wrap: pretty; }
-.errorActions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-s); margin-top: var(--space-xs); }
+.errorIcon { color: var(--red); }
+.errorTitle { font: 700 var(--fs-title3) / 1.2 var(--font-display); letter-spacing: -0.02em; }
+.errorMessage { max-width: 460px; color: var(--ink-2); font-size: var(--fs-small); line-height: 1.5; text-wrap: pretty; }
+.errorActions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xs); margin-top: var(--space-s); }
+/* The technical reason is data: set out on the edge band in print, selectable so it can be copied. */
 .errorDetail {
-  margin-top: var(--space-xs);
-  font: 500 var(--text-micro) / 1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: var(--text-tertiary);
+  max-width: min(460px, 100%);
+  margin-top: var(--space-s);
+  padding: 8px 10px;
+  border-radius: var(--radius-label);
+  background: var(--edge);
+  color: var(--print);
+  font: 400 var(--fs-caption) / 1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-wrap: anywhere;
   -webkit-user-select: text;
   user-select: text;
 }
