@@ -158,7 +158,8 @@ struct SettingsRootView: View {
                 .font(.system(.largeTitle, weight: .bold))
                 .foregroundStyle(Theme.Palette.text)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, Theme.Space.gutter)
+                // Lines up with the list's own leading edge.
+                .padding(.horizontal, Theme.Space.s)
                 .padding(.top, Theme.Space.s)
                 .accessibilityAddTraits(.isHeader)
         }
