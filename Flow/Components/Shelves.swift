@@ -334,21 +334,14 @@ struct ContinueWatchingShelf: View {
         if !entries.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 SectionHeader(title, route: .library(.continueWatching))
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
-                        ForEach(entries) { entry in
-                            if let item = items[entry.key] {
-                                ContinueWatchingCard(entry: entry, item: item)
-                            }
+                FilmScroller(ids: entries.map(\.id), itemWidth: Platform.landscapeWidth) {
+                    ForEach(entries) { entry in
+                        if let item = items[entry.key] {
+                            UpNextCell(entry: entry, item: item, width: Platform.landscapeWidth)
                         }
                     }
-                    .padding(.horizontal, Theme.Space.gutter)
-                    .padding(.vertical, Platform.isTV ? 36 : 6)
-                    .scrollTargetLayout()
                 }
-                .scrollTargetBehavior(.viewAligned)
-                .scrollClipDisabled()
-                .pagingArrows(ids: entries.map(\.id), itemWidth: Platform.landscapeWidth + 14)
+                .flowSwipeActionsContainer()
             }
             .task(id: entries.map(\.id)) {
                 let hydrated = await model.hydrate(entries.map(\.key))

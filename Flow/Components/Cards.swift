@@ -83,7 +83,6 @@ struct PosterArtwork: View {
             .hairline(shape)
             // Focus is the spot colour: a ring around the poster on Apple TV, and for keyboard focus elsewhere.
             .overlay { if focused { shape.strokeBorder(Theme.Palette.spot, lineWidth: Platform.isTV ? 5 : 2) } }
-            .overlay(alignment: .bottom) { progressBar }
             .overlay(alignment: .bottomTrailing) {
                 if model.settings.general.showWatchedBadges && model.isWatched(item) {
                     WatchedCheck().padding(Theme.Space.xs)
@@ -113,15 +112,6 @@ struct PosterArtwork: View {
                 .background(Theme.Palette.overPicture, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
                 .padding(Theme.Space.xs)
                 .accessibilityLabel("\(p.watched) of \(p.aired) episodes watched")
-        }
-    }
-
-    @ViewBuilder
-    private var progressBar: some View {
-        if item.type == .movie, let p = model.progress(for: item), p.percent > 1 {
-            ProgressCapsule(value: p.percent / 100)
-                .padding(.horizontal, Theme.Space.xs)
-                .padding(.bottom, Theme.Space.xs)
         }
     }
 }
@@ -220,98 +210,6 @@ struct UpcomingCard: View {
         f.timeZone = TimeZone(identifier: "UTC")
         f.setLocalizedDateFormatFromTemplate(format)
         return f
-    }
-}
-
-/// Wide card for Continue Watching: still/backdrop, progress and what's next.
-struct ContinueWatchingCard: View {
-    let entry: ContinueWatchingBuilder.Entry
-    let item: MediaItem
-    @Environment(AppModel.self) private var model
-
-    private var width: CGFloat { Platform.landscapeWidth }
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous) }
-    private var zoomID: String { "continue-\(item.id)" }
-
-    var body: some View {
-        Button {
-            if model.settings.playback.skipDetailsOnContinueWatching {
-                Task { await model.play(item, episode: nil) }
-            } else {
-                model.navigate(to: .detail(item, zoom: zoomID))
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                ZStack(alignment: .bottomLeading) {
-                    RemoteImage(url: item.smallBackdropURL ?? item.tmdbPosterURL, maxPixel: Platform.isTV ? 1000 : 700, fallbackTitle: item.title)
-                        .frame(width: width, height: width * 9 / 16)
-                    // Only what reads at a glance sits on the picture: how far in. The rest is in the line below.
-                    if let p = entry.progress {
-                        LinearGradient(colors: [.clear, .black.opacity(0.55)], startPoint: .center, endPoint: .bottom)
-                        ProgressCapsule(value: p.percent / 100)
-                            .padding(Theme.Space.s)
-                    }
-                    if let remaining = episodesRemaining {
-                        // Says what's left: "44 Remaining" read as minutes as easily as episodes.
-                        Text(remaining == 1 ? "1 episode left" : "\(remaining) episodes left")
-                            .font(.system(.caption2, weight: .semibold))
-                            .padding(.horizontal, 8).padding(.vertical, 3)
-                            .background(.black.opacity(0.5), in: Capsule())
-                            .padding(Theme.Space.s)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    }
-                }
-                .frame(width: width, height: width * 9 / 16)
-                .zoomSource(zoomID)
-                .clipShape(shape)
-                .hairline(shape)
-                .artworkShadow(0.5)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
-                    Text(subtitle).font(.system(.caption)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
-                }
-                .frame(width: width, alignment: .leading)
-            }
-        }
-        .buttonStyle(CardButtonStyle())
-        .contextMenu {
-            Button { model.navigate(to: .detail(item)) } label: { Label("Go to Details", systemImage: "info.circle") }
-            Button { Task { await model.setWatched(item, episodes: entry.episode.map { [$0] }, watched: true) } } label: {
-                Label("Mark as Watched", systemImage: "checkmark.circle")
-            }
-            Button(role: .destructive) {
-                Task { await model.removeFromContinueWatching(entry) }
-            } label: { Label("Remove from Continue Watching", systemImage: "xmark.circle") }
-        }
-    }
-
-    private var badgeText: String? {
-        if let p = entry.progress {
-            if let r = p.remainingSeconds { return TimeFormat.remaining(r) }
-            if let runtime = item.runtimeMinutes { return TimeFormat.remaining(Double(runtime) * 60 * (1 - p.percent / 100)) }
-            return "\(Int(p.percent))%"
-        }
-        return entry.isNextUp ? "Up Next" : nil
-    }
-
-    /// Episodes of a show not yet watched, once the app knows how many have aired.
-    private var episodesRemaining: Int? {
-        guard model.settings.general.showEpisodesRemaining, entry.episode != nil, let p = model.episodeProgress(for: item) else { return nil }
-        let remaining = p.aired - p.watched
-        return remaining > 0 ? remaining : nil
-    }
-
-    /// "S3 E7 · 18m left", "S4 E1 · Up Next", "1h 12m left", or the year and genre of a film not yet started.
-    private var subtitle: String {
-        var parts: [String] = []
-        if let ep = entry.episode { parts.append("S\(ep.season) E\(ep.episode)") }
-        if let badge = badgeText {
-            parts.append(badge)
-        } else if entry.episode == nil {
-            if model.settings.general.showContinueWatchingReleaseDate, let year = item.year { parts.append(String(year)) }
-            if let genre = item.genres.first?.name { parts.append(genre) }
-        }
-        return parts.joined(separator: " · ")
     }
 }
 

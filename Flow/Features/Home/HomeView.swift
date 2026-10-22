@@ -353,7 +353,8 @@ private struct UpNextSection: View {
     }
 }
 
-private struct UpNextCell: View {
+/// A Continue Watching or Up Next item as a frame with its edge strip: perforations for how far in, print for the rest.
+struct UpNextCell: View {
     let entry: ContinueWatchingBuilder.Entry
     let item: MediaItem
     let width: CGFloat?
