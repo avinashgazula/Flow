@@ -223,6 +223,7 @@ pub mod id {
     pub const CUE_TRACK_POSITIONS: u32 = 0xB7;
     pub const CUE_TRACK: u32 = 0xF7;
     pub const CUE_CLUSTER_POSITION: u32 = 0xF1;
+    pub const CUE_RELATIVE_POSITION: u32 = 0xF0;
     pub const CHAPTERS: u32 = 0x1043A770;
     pub const CLUSTER: u32 = 0x1F43B675;
     pub const TIMECODE: u32 = 0xE7;

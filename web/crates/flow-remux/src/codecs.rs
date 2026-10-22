@@ -180,7 +180,7 @@ pub fn output(t: &Track, first_frame: Option<&[u8]>) -> Option<Output> {
     }
 }
 
-fn video_output(t: &Track, codec: Codec, first_frame: Option<&[u8]>) -> Option<Output> {
+pub fn video_output(t: &Track, codec: Codec, first_frame: Option<&[u8]>) -> Option<Output> {
     let p = &t.codec_private;
     let mut children = Vec::new();
     let mut kind = *b"avc1";

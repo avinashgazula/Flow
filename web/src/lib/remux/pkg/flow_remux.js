@@ -476,6 +476,113 @@ export class Remuxer {
         }
     }
     /**
+     * The codec string for a WebCodecs `VideoDecoder` for the selected picture track, or empty when
+     * there is none to give (no picture, a codec the remuxer can't carry). `frame` is a keyframe's
+     * payload (VP9's string needs one to be exact) or empty. `thumbDescription()` is the decoder's
+     * `description` (avcC, hvcC or av1C; empty for VP9).
+     * @param {Uint8Array} frame
+     * @returns {string}
+     */
+    thumbCodec(frame) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(frame, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.remuxer_thumbCodec(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred2_0 = r0;
+            deferred2_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
+     * @returns {Uint8Array}
+     */
+    thumbDescription() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.remuxer_thumbDescription(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v1 = getArrayU8FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export(r0, r1 * 1, 1);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Looks for the keyframe in `bytes`, which start at the target's offset (`aligned`, `relative` and
+     * `token` as `thumbTarget` gave them; pass -1 for the last two to take the cluster's first
+     * keyframe). Returns [0, media time, payload length] when found (`thumbPayload()` has the bytes),
+     * [1, bytes needed from the start of `bytes`] when it needs more (a lower bound), or [2] when that
+     * cluster has no keyframe of the picture. Stateless: it never disturbs what is streaming.
+     * @param {Uint8Array} bytes
+     * @param {boolean} aligned
+     * @param {number} relative
+     * @param {number} token
+     * @returns {Float64Array}
+     */
+    thumbFind(bytes, aligned, relative, token) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.remuxer_thumbFind(retptr, this.__wbg_ptr, ptr0, len0, aligned, relative, token);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v2 = getArrayF64FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export(r0, r1 * 8, 8);
+            return v2;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * The payload `thumbFind` found, handed over once.
+     * @returns {Uint8Array}
+     */
+    thumbPayload() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.remuxer_thumbPayload(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v1 = getArrayU8FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export(r0, r1 * 1, 1);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Where to read a seek preview from, for the time `seconds`: [byte offset, media time of the keyframe
+     * there, 1 if the offset is a cluster's start, the keyframe's position inside the cluster or -1, the
+     * index entry's token or -1]. The last three go back to `thumbFind` as they are. Needs a picture
+     * track selected; the read can happen while the file streams.
+     * @param {number} seconds
+     * @returns {Float64Array}
+     */
+    thumbTarget(seconds) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.remuxer_thumbTarget(retptr, this.__wbg_ptr, seconds);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v1 = getArrayF64FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export(r0, r1 * 8, 8);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * @returns {boolean}
      */
     timingKnown() {

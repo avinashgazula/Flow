@@ -16,6 +16,9 @@ use crate::matroska::{self, Block, Decoding, HeaderReader, Need, AUDIO, MAX_TIME
 use crate::mp4;
 use crate::subtitle;
 
+mod thumb;
+pub use thumb::{Thumb, ThumbTarget};
+
 /// Frames held back before their decode times are assigned: B-frame reordering never reaches further.
 const LOOKAHEAD: usize = 16;
 /// Frames per fragment once playing; the first fragment after a seek is smaller, for a quick start.
@@ -240,13 +243,8 @@ impl Core {
     pub fn seek_target(&self, seconds: f64) -> (u64, f64, bool) {
         let h = &self.reader.header;
         let first = h.first_cluster.unwrap_or(h.segment_data_start);
-        let target = ((seconds.max(0.0) * 1e9) as i64 - self.delay).clamp(0, MAX_TIME);
-        let anchor = self.video.as_ref().or(self.audio.as_ref()).map(|s| s.track);
-        let mut cues: Vec<&matroska::Cue> = h.cues.iter().filter(|c| Some(c.track) == anchor).collect();
-        if cues.is_empty() {
-            cues = h.cues.iter().collect();
-        }
-        if let Some(cue) = cues.iter().rev().find(|c| c.time <= target).or(cues.first()) {
+        let target = self.target_ns(seconds);
+        if let Some(cue) = self.cue_at(target) {
             let offset = h.segment_data_start + cue.cluster_position;
             return (offset.max(first), (cue.time + self.delay) as f64 / 1e9, true);
         }
@@ -258,6 +256,23 @@ impl Core {
             }
             _ => (first, self.delay as f64 / 1e9, true),
         }
+    }
+
+    /// `seconds` of media time as file time, in nanoseconds.
+    fn target_ns(&self, seconds: f64) -> i64 {
+        ((seconds.max(0.0) * 1e9) as i64 - self.delay).clamp(0, MAX_TIME)
+    }
+
+    /// The index entry for the keyframe at or before `target` (file time), from the selected video
+    /// track's entries, else the audio's, else any.
+    fn cue_at(&self, target: i64) -> Option<matroska::Cue> {
+        let h = &self.reader.header;
+        let anchor = self.video.as_ref().or(self.audio.as_ref()).map(|s| s.track);
+        let mut cues: Vec<&matroska::Cue> = h.cues.iter().filter(|c| Some(c.track) == anchor).collect();
+        if cues.is_empty() {
+            cues = h.cues.iter().collect();
+        }
+        cues.iter().rev().find(|c| c.time <= target).or(cues.first()).map(|c| **c)
     }
 
     // MARK: Streaming
@@ -458,12 +473,23 @@ impl Core {
     }
 
     fn block(&self, start: usize, end: usize, cluster_time: i64, simple: bool) -> Option<Block> {
+        self.block_in(&self.buf, start, end, cluster_time, simple)
+    }
+
+    fn block_in(&self, b: &[u8], start: usize, end: usize, cluster_time: i64, simple: bool) -> Option<Block> {
         let scale = self.reader.header.timecode_scale;
-        matroska::parse_block(&self.buf[start..end], cluster_time, scale, simple, |t| self.decoding(t))
+        matroska::parse_block(&b[start..end], cluster_time, scale, simple, |t| self.decoding(t))
     }
 
     fn block_group(&mut self, start: usize, end: usize, cluster_time: i64) {
-        let Ok(children) = ebml::children_in(&self.buf, start, end) else { return };
+        if let Some(block) = self.group_in(&self.buf, start, end, cluster_time) {
+            self.handle(block);
+        }
+    }
+
+    /// A BlockGroup's block, with its duration, and a keyframe when nothing is referenced.
+    fn group_in(&self, b: &[u8], start: usize, end: usize, cluster_time: i64) -> Option<Block> {
+        let children = ebml::children_in(b, start, end).ok()?;
         let mut block = None;
         let mut duration = None;
         let mut reference = false;
@@ -471,20 +497,19 @@ impl Core {
         for child in children {
             match child.id {
                 id::BLOCK => {
-                    if let Some(e) = child.end_within(self.buf.len()) {
-                        block = self.block(child.data_start, e, cluster_time, false);
+                    if let Some(e) = child.end_within(b.len()) {
+                        block = self.block_in(b, child.data_start, e, cluster_time, false);
                     }
                 }
-                id::BLOCK_DURATION => duration = Some((ebml::uint(&self.buf, &child) as i64).saturating_mul(scale).min(MAX_TIME)),
+                id::BLOCK_DURATION => duration = Some((ebml::uint(b, &child) as i64).saturating_mul(scale).min(MAX_TIME)),
                 id::REFERENCE_BLOCK => reference = true,
                 _ => {}
             }
         }
-        if let Some(mut block) = block {
-            block.duration = duration;
-            block.keyframe = !reference;
-            self.handle(block);
-        }
+        let mut block = block?;
+        block.duration = duration;
+        block.keyframe = !reference;
+        Some(block)
     }
 
     fn handle(&mut self, block: Block) {

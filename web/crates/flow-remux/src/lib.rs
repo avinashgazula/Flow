@@ -13,6 +13,10 @@
 //!    `seekTarget(t)` after `reset()`), draining `nextFragment()` and `takeCues()` after each push.
 //!    `initSegment(track)` is ready once the first fragment is (it may need a real audio frame).
 //! 4. `finish()` at the end of the file sends what's held back.
+//! 5. Seek previews, independent of the above and usable while the file streams: `thumbTarget(t)` says
+//!    where a keyframe is, `thumbFind(bytes, …)` takes what was read there and returns the keyframe's
+//!    payload (`thumbPayload()`) or how many more bytes it needs, and `thumbCodec(frame)` and
+//!    `thumbDescription()` are the WebCodecs `VideoDecoder` configuration.
 //!
 //! `OpusMuxer` is separate: it wraps Opus packets the worker encoded in a fragmented MP4 (`init()`, then
 //! `fragment()` per batch), for the audio SourceBuffer when a track was converted.
@@ -28,13 +32,16 @@ mod opus_mux;
 pub mod remuxer;
 mod subtitle;
 
-use remuxer::{Core, Fragment};
+use remuxer::{Core, Fragment, Thumb};
 
 #[wasm_bindgen]
 pub struct Remuxer {
     core: Core,
     fragment: Option<Fragment>,
     codec: String,
+    /// The preview keyframe `thumbFind` last found, until `thumbPayload` takes it.
+    thumb: Vec<u8>,
+    thumb_description: Vec<u8>,
 }
 
 fn range(r: Option<(u64, u64)>) -> Vec<f64> {
@@ -47,7 +54,7 @@ impl Remuxer {
     #[wasm_bindgen(constructor)]
     pub fn new(length: f64) -> Remuxer {
         let length = (length.is_finite() && length > 0.0).then_some(length as u64);
-        Remuxer { core: Core::new(length), fragment: None, codec: String::new() }
+        Remuxer { core: Core::new(length), fragment: None, codec: String::new(), thumb: Vec::new(), thumb_description: Vec::new() }
     }
 
     /// [offset, length] of the next header read, or an empty array when the header is done (or failed).
@@ -117,6 +124,62 @@ impl Remuxer {
     pub fn seek_target(&self, seconds: f64) -> Vec<f64> {
         let (offset, time, aligned) = self.core.seek_target(seconds);
         vec![offset as f64, time, if aligned { 1.0 } else { 0.0 }]
+    }
+
+    /// Where to read a seek preview from, for the time `seconds`: [byte offset, media time of the keyframe
+    /// there, 1 if the offset is a cluster's start, the keyframe's position inside the cluster or -1, the
+    /// index entry's token or -1]. The last three go back to `thumbFind` as they are. Needs a picture
+    /// track selected; the read can happen while the file streams.
+    #[wasm_bindgen(js_name = thumbTarget)]
+    pub fn thumb_target(&self, seconds: f64) -> Vec<f64> {
+        let t = self.core.thumb_target(seconds);
+        vec![t.offset as f64, t.time, if t.aligned { 1.0 } else { 0.0 }, t.relative.map_or(-1.0, |r| r as f64), t.key.map_or(-1.0, |k| k as f64)]
+    }
+
+    /// Looks for the keyframe in `bytes`, which start at the target's offset (`aligned`, `relative` and
+    /// `token` as `thumbTarget` gave them; pass -1 for the last two to take the cluster's first
+    /// keyframe). Returns [0, media time, payload length] when found (`thumbPayload()` has the bytes),
+    /// [1, bytes needed from the start of `bytes`] when it needs more (a lower bound), or [2] when that
+    /// cluster has no keyframe of the picture. Stateless: it never disturbs what is streaming.
+    #[wasm_bindgen(js_name = thumbFind)]
+    pub fn thumb_find(&mut self, bytes: &[u8], aligned: bool, relative: f64, token: f64) -> Vec<f64> {
+        let relative = (relative >= 0.0).then_some(relative as u64);
+        let key = (token >= 0.0).then_some(token as i64);
+        match self.core.thumb_find(bytes, aligned, relative, key) {
+            Thumb::Found(time, payload) => {
+                let len = payload.len() as f64;
+                self.thumb = payload;
+                vec![0.0, time, len]
+            }
+            Thumb::More(needed) => vec![1.0, needed as f64],
+            Thumb::Nothing => vec![2.0],
+        }
+    }
+
+    /// The payload `thumbFind` found, handed over once.
+    #[wasm_bindgen(js_name = thumbPayload)]
+    pub fn thumb_payload(&mut self) -> Vec<u8> {
+        std::mem::take(&mut self.thumb)
+    }
+
+    /// The codec string for a WebCodecs `VideoDecoder` for the selected picture track, or empty when
+    /// there is none to give (no picture, a codec the remuxer can't carry). `frame` is a keyframe's
+    /// payload (VP9's string needs one to be exact) or empty. `thumbDescription()` is the decoder's
+    /// `description` (avcC, hvcC or av1C; empty for VP9).
+    #[wasm_bindgen(js_name = thumbCodec)]
+    pub fn thumb_codec(&mut self, frame: &[u8]) -> String {
+        match self.core.thumb_config(Some(frame)) {
+            Some((codec, description)) => {
+                self.thumb_description = description;
+                codec
+            }
+            None => String::new(),
+        }
+    }
+
+    #[wasm_bindgen(js_name = thumbDescription)]
+    pub fn thumb_description(&self) -> Vec<u8> {
+        self.thumb_description.clone()
     }
 
     pub fn reset(&mut self, offset: f64, aligned: bool) {

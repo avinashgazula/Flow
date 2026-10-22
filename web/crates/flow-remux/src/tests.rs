@@ -858,3 +858,332 @@ fn opus_muxer_fragments() {
     let empty = muxer.fragment(0.0, &[], vec![], vec![]);
     assert_eq!(parse_fragment(&empty, false).sizes.len(), 0);
 }
+
+// MARK: - Seek previews
+
+use crate::remuxer::Thumb;
+
+/// A VP9 picture and an audio track, written by hand, with several keyframes in one cluster and an
+/// index entry (with its position inside the cluster) for each, as mkvmerge writes them.
+mod thumbs {
+    use super::mkv::{el, text, uint};
+
+    pub struct Frame {
+        pub track: u8,
+        pub ms: i16,
+        pub key: bool,
+        /// A BlockGroup (a keyframe has no ReferenceBlock) instead of a SimpleBlock.
+        pub group: bool,
+        pub body: Vec<u8>,
+    }
+
+    pub fn frame(track: u8, ms: i16, key: bool, group: bool, fill: u8, len: usize) -> Frame {
+        Frame { track, ms, key, group, body: vec![fill; len] }
+    }
+
+    fn block(f: &Frame) -> Vec<u8> {
+        let mut payload = vec![0x80 | f.track];
+        payload.extend_from_slice(&f.ms.to_be_bytes());
+        // Audio frames always say "key", as real muxers do: only the picture track's count.
+        payload.push(if f.key && !f.group || f.track == 2 { 0x80 } else { 0 });
+        payload.extend_from_slice(&f.body);
+        if !f.group {
+            return el(0xA3, &payload);
+        }
+        let mut group = el(0xA1, &payload);
+        if !f.key {
+            group.extend(uint(0xFB, 1));
+        }
+        el(0xA0, &group)
+    }
+
+    /// A cluster and where each frame's element starts inside its payload (after the timecode).
+    fn cluster(ms: u64, frames: &[Frame]) -> (Vec<u8>, Vec<u64>) {
+        let mut body = uint(0xE7, ms);
+        let mut at = Vec::new();
+        for f in frames {
+            at.push(body.len() as u64);
+            body.extend(block(f));
+        }
+        (el(0x1F43B675, &body), at)
+    }
+
+    pub struct File {
+        pub bytes: Vec<u8>,
+        /// Each cluster's absolute offset.
+        pub clusters: Vec<u64>,
+    }
+
+    /// `clusters`: start in ms and frames. Every keyframe of track 1 is indexed, with its position in the cluster when `relative`.
+    pub fn file(clusters: &[(u64, Vec<Frame>)], relative: bool) -> File {
+        let mut head = el(0x1A45DFA3, &[el(0x4282, b"matroska"), uint(0x4287, 4)].concat());
+        let video = [uint(0xD7, 1), uint(0x83, 1), text(0x86, "V_VP9"), el(0xE0, &[uint(0xB0, 640), uint(0xBA, 360)].concat())].concat();
+        let audio = [uint(0xD7, 2), uint(0x83, 2), text(0x86, "A_OPUS"), el(0xE1, &[el(0xB5, &48000f64.to_be_bytes()), uint(0x9F, 2)].concat())].concat();
+        let mut segment = el(0x1549A966, &[uint(0x2AD7B1, 1_000_000), el(0x4489, &9000f64.to_be_bytes())].concat());
+        segment.extend(el(0x1654AE6B, &[el(0xAE, &video), el(0xAE, &audio)].concat()));
+        let built: Vec<(Vec<u8>, Vec<u64>)> = clusters.iter().map(|(ms, frames)| cluster(*ms, frames)).collect();
+        let index = |first: u64| -> Vec<u8> {
+            let mut position = first;
+            let mut points = Vec::new();
+            for ((ms, frames), (bytes, at)) in clusters.iter().zip(&built) {
+                for (f, &rel) in frames.iter().zip(at) {
+                    if f.track == 1 && f.key {
+                        let mut place = el(0xF7, &[1]);
+                        place.extend(el(0xF1, &(position as u32).to_be_bytes()));
+                        if relative {
+                            place.extend(el(0xF0, &(rel as u32).to_be_bytes()));
+                        }
+                        let mut point = uint(0xB3, (*ms as i64 + f.ms as i64) as u64);
+                        point.extend(el(0xB7, &place));
+                        points.extend(el(0xBB, &point));
+                    }
+                }
+                position += bytes.len() as u64;
+            }
+            el(0x1C53BB6B, &points)
+        };
+        // Positions are relative to the Segment's payload.
+        let first = (segment.len() + index(0).len()) as u64;
+        segment.extend(index(first));
+        let mut offsets = Vec::new();
+        let mut position = first;
+        for (bytes, _) in &built {
+            offsets.push(position);
+            segment.extend_from_slice(bytes);
+            position += bytes.len() as u64;
+        }
+        let segment_len = segment.len();
+        head.extend(el(0x18538067, &segment));
+        // The EBML header and the Segment's own header come before its payload.
+        let shift = (head.len() - segment_len) as u64;
+        File { bytes: head, clusters: offsets.into_iter().map(|o| o + shift).collect() }
+    }
+}
+
+use thumbs::{file as thumb_file, frame, File as ThumbFile};
+
+fn thumb_sample(relative: bool) -> ThumbFile {
+    thumb_file(
+        &[
+            (
+                0,
+                vec![
+                    frame(2, 0, true, false, 0xEE, 40),
+                    frame(1, 0, true, false, 0xA0, 300),
+                    frame(1, 40, false, false, 0x11, 50),
+                    frame(2, 40, true, false, 0xEE, 40),
+                    frame(1, 1000, true, false, 0xB1, 500),
+                    frame(1, 1040, false, true, 0x22, 60),
+                    frame(1, 2000, true, true, 0xC2, 700),
+                ],
+            ),
+            (3000, vec![frame(1, 0, true, false, 0xD3, 200), frame(1, 40, false, false, 0x33, 20)]),
+        ],
+        relative,
+    )
+}
+
+fn thumb_core(f: &ThumbFile) -> Core {
+    let mut core = open(&f.bytes);
+    core.select(1, 2);
+    core
+}
+
+fn expect_found(t: Thumb, time: f64, fill: u8, len: usize) {
+    match t {
+        Thumb::Found(at, payload) => {
+            assert!((at - time).abs() < 1e-9, "keyframe at {at}, wanted {time}");
+            assert_eq!(payload, vec![fill; len]);
+        }
+        other => panic!("expected a keyframe, got {other:?}"),
+    }
+}
+
+#[test]
+fn preview_goes_straight_to_the_indexed_keyframe() {
+    let f = thumb_sample(true);
+    let core = thumb_core(&f);
+    // 1.4 s is inside the second keyframe's GOP, in the middle of the first cluster.
+    let t = core.thumb_target(1.4);
+    assert_eq!(t.offset, f.clusters[0]);
+    assert!(t.aligned && (t.time - 1.0).abs() < 1e-9);
+    assert!(t.relative.is_some_and(|r| r > 0), "the keyframe is not the cluster's first block");
+    assert_eq!(t.key, Some(1_000_000_000));
+    let bytes = &f.bytes[t.offset as usize..];
+    expect_found(core.thumb_find(bytes, t.aligned, t.relative, t.key), 1.0, 0xB1, 500);
+    // The audio keyframe before it and the delta frames are never taken, and a BlockGroup keyframe is.
+    let t = core.thumb_target(2.5);
+    expect_found(core.thumb_find(&f.bytes[t.offset as usize..], true, t.relative, t.key), 2.0, 0xC2, 700);
+    // The next cluster.
+    let t = core.thumb_target(3.9);
+    assert_eq!(t.offset, f.clusters[1]);
+    expect_found(core.thumb_find(&f.bytes[t.offset as usize..], true, t.relative, t.key), 3.0, 0xD3, 200);
+    // Before the first keyframe: the first one.
+    let t = core.thumb_target(0.0);
+    expect_found(core.thumb_find(&f.bytes[t.offset as usize..], true, t.relative, t.key), 0.0, 0xA0, 300);
+}
+
+#[test]
+fn preview_without_an_index_position_scans_to_the_named_keyframe() {
+    // Older muxers write no CueRelativePosition: the cluster is read in order, up to the keyframe whose time the index gave.
+    let f = thumb_sample(false);
+    let core = thumb_core(&f);
+    let t = core.thumb_target(2.2);
+    assert_eq!(t.relative, None);
+    expect_found(core.thumb_find(&f.bytes[t.offset as usize..], true, t.relative, t.key), 2.0, 0xC2, 700);
+    // With nothing to say which, the cluster's first keyframe.
+    expect_found(core.thumb_find(&f.bytes[t.offset as usize..], true, None, None), 0.0, 0xA0, 300);
+    // A keyframe time the cluster doesn't have falls back to the first it does.
+    expect_found(core.thumb_find(&f.bytes[t.offset as usize..], true, None, Some(8_000_000_000)), 0.0, 0xA0, 300);
+    // An estimated offset, in the middle of something else, resynchronises on the next cluster.
+    let sloppy = f.clusters[1] as usize - 9;
+    expect_found(core.thumb_find(&f.bytes[sloppy..], false, None, None), 3.0, 0xD3, 200);
+    // A relative position that points at something else is ignored.
+    expect_found(core.thumb_find(&f.bytes[f.clusters[0] as usize..], true, Some(1), Some(2_000_000_000)), 2.0, 0xC2, 700);
+}
+
+#[test]
+fn preview_says_how_much_more_it_needs_and_works_at_every_length() {
+    for relative in [true, false] {
+        let f = thumb_sample(relative);
+        let core = thumb_core(&f);
+        let t = core.thumb_target(1.4);
+        let whole = &f.bytes[t.offset as usize..];
+        let rel = if relative { t.relative } else { None };
+        let mut found_at = None;
+        for len in 0..=whole.len() {
+            match core.thumb_find(&whole[..len], true, rel, t.key) {
+                Thumb::More(n) => {
+                    assert!(n as usize > len, "asking for {n} bytes when {len} are in hand would never end");
+                    assert!(found_at.is_none(), "found at {found_at:?} but not at {len}");
+                }
+                Thumb::Found(time, payload) => {
+                    found_at.get_or_insert(len);
+                    assert!((time - 1.0).abs() < 1e-9);
+                    assert_eq!(payload, vec![0xB1; 500]);
+                }
+                Thumb::Nothing => panic!("no keyframe at {len} bytes"),
+            }
+        }
+        let at = found_at.expect("found by the end");
+        if relative {
+            // Nothing after the keyframe's block is needed: the cluster's header (12 bytes), what the index skips, and the block (9 bytes of header, 4 of its own, the frame).
+            assert_eq!(at, 12 + t.relative.unwrap() as usize + 9 + 4 + 500, "needed {at} bytes");
+            // And the answer to "how much" is exactly that, from the first bytes.
+            let Thumb::More(n) = core.thumb_find(&whole[..12 + t.relative.unwrap() as usize + 9], true, rel, t.key) else { panic!("more is needed") };
+            assert_eq!(n as usize, at, "asks for exactly what finds it");
+        }
+    }
+}
+
+#[test]
+fn preview_has_nothing_to_show_without_a_picture_or_a_cluster() {
+    let f = thumb_sample(true);
+    let mut core = open(&f.bytes);
+    // No picture track selected.
+    core.select(0, 2);
+    assert_eq!(core.thumb_find(&f.bytes[f.clusters[0] as usize..], true, None, None), Thumb::Nothing);
+    assert!(core.thumb_config(None).is_none());
+    // Not at a cluster.
+    core.select(1, 2);
+    assert_eq!(core.thumb_find(&f.bytes[..200], true, None, None), Thumb::Nothing);
+    // A cluster with only audio in it.
+    let audio_only = thumb_file(&[(0, vec![frame(2, 0, true, false, 0x01, 10)])], false);
+    let mut core = open(&audio_only.bytes);
+    core.select(1, 2);
+    assert_eq!(core.thumb_find(&audio_only.bytes[audio_only.clusters[0] as usize..], true, None, None), Thumb::Nothing);
+}
+
+#[test]
+fn preview_decoder_config_matches_what_mse_is_given() {
+    // VP9 needs no description; its string is the header's until a frame refines it.
+    let f = thumb_sample(true);
+    let core = thumb_core(&f);
+    let (codec, description) = core.thumb_config(None).unwrap();
+    assert_eq!(codec, "vp09.00.31.08");
+    assert!(description.is_empty());
+
+    // H.264: the codec string the header gives, and avcC as CodecPrivate stores it.
+    let bytes = fixture("avc-aac-srt");
+    let mut core = open(&bytes);
+    core.select(1, 2);
+    let (codec, description) = core.thumb_config(None).unwrap();
+    let track = core.reader.header.track(1).unwrap();
+    assert!(codec.starts_with("avc1."), "{codec}");
+    assert_eq!(description, track.codec_private);
+    assert_eq!(description[0], 1, "an avcC record");
+    assert!(core.header_json().contains(&format!("\"codec\":\"{codec}\"")));
+
+    // HEVC: hvcC, and a base-layer string.
+    let bytes = fixture("hevc-eac3-ac3");
+    let mut core = open(&bytes);
+    let video = track_id(&core, "V_MPEGH/ISO/HEVC");
+    core.select(video, 0);
+    let (codec, description) = core.thumb_config(None).unwrap();
+    assert!(codec.starts_with("hvc1.2.4.L"), "{codec}");
+    assert!(description.len() >= 23 && description[0] == 1, "an hvcC record");
+}
+
+#[test]
+fn preview_of_a_real_file_is_the_keyframe_the_remuxer_would_start_from() {
+    for name in ["avc-aac-srt", "hevc-eac3-ac3"] {
+        let bytes = fixture(name);
+        let mut core = open(&bytes);
+        let video = core.reader.header.tracks.iter().find(|t| t.kind == crate::matroska::VIDEO).unwrap().number;
+        core.select(video, 0);
+        // Streaming has learned the timeline's delay by the time anyone hovers, and carries on undisturbed.
+        let first = core.reader.header.first_cluster.unwrap();
+        stream(&mut core, &bytes, first, 16 * 1024);
+        let duration = core.reader.header.duration.unwrap() as f64 / 1e9;
+        for at in [0.0, 1.2, duration * 0.5, duration - 0.5] {
+            let t = core.thumb_target(at);
+            let found = core.thumb_find(&bytes[t.offset as usize..], t.aligned, t.relative, t.key);
+            let Thumb::Found(time, payload) = found else { panic!("{name} at {at}: {found:?}") };
+            // Streaming from the same place starts on the same picture.
+            let mut streaming = open(&bytes);
+            streaming.select(video, 0);
+            streaming.reset(t.offset, true);
+            let fragments = stream(&mut streaming, &bytes, t.offset, 4096);
+            let first = fragments.iter().find(|f| f.kind == KIND_VIDEO).unwrap();
+            let sizes = parse_fragment(&first.data, true).sizes;
+            let total: usize = sizes.iter().map(|&s| s as usize).sum();
+            let body = &first.data[first.data.len() - total..];
+            assert_eq!(&body[..sizes[0] as usize], &payload[..], "{name} at {at}: the same bytes");
+            // The index's time is the keyframe's, and the fragment starts with the earliest picture, which can be a leading B-frame or two before it.
+            // (A core that starts partway learns its own delay, so the two are compared in file time.)
+            let (shown, started) = (time - core.delay_seconds(), first.start - streaming.delay_seconds());
+            assert!((started - shown).abs() < 0.25, "{name} at {at}: {started} vs {shown}");
+        }
+    }
+}
+
+#[test]
+fn preview_never_panics_on_corrupt_bytes() {
+    let mut seed = 0x9E37_79B9_7F4A_7C15u64;
+    let mut next = move |n: usize| {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        (seed % n.max(1) as u64) as usize
+    };
+    for name in ["avc-aac-srt", "hevc-eac3-ac3"] {
+        let bytes = fixture(name);
+        let mut core = open(&bytes);
+        let video = core.reader.header.tracks.iter().find(|t| t.kind == crate::matroska::VIDEO).unwrap().number;
+        core.select(video, 0);
+        let start = core.reader.header.first_cluster.unwrap() as usize;
+        for _ in 0..200 {
+            let mut chunk = bytes[start..(start + 1 + next(20_000)).min(bytes.len())].to_vec();
+            for _ in 0..next(12) {
+                let i = next(chunk.len());
+                chunk[i] = next(256) as u8;
+            }
+            let aligned = next(2) == 0;
+            let relative = (next(2) == 0).then(|| next(30_000) as u64);
+            let key = (next(2) == 0).then(|| next(6_000_000_000) as i64);
+            let _ = core.thumb_find(&chunk, aligned, relative, key);
+        }
+        let _ = core.thumb_target(f64::NAN);
+        let _ = core.thumb_target(1e12);
+    }
+}

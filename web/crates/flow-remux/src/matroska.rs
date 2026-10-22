@@ -101,6 +101,9 @@ pub struct Cue {
     pub track: u32,
     /// Cluster offset relative to the Segment's payload.
     pub cluster_position: u64,
+    /// Where the keyframe's block starts inside the cluster, from the first byte after the cluster's
+    /// header, when the muxer wrote it (CueRelativePosition is optional).
+    pub relative_position: Option<u64>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -619,14 +622,16 @@ pub fn parse_cues(b: &[u8], e: &Element, timecode_scale: i64) -> Result<Vec<Cue>
                 id::CUE_TRACK_POSITIONS => {
                     let mut track = 0;
                     let mut cluster = 0;
+                    let mut relative = None;
                     for p in ebml::children(b, &child)? {
                         match p.id {
                             id::CUE_TRACK => track = ebml::uint(b, &p) as u32,
                             id::CUE_CLUSTER_POSITION => cluster = ebml::uint(b, &p),
+                            id::CUE_RELATIVE_POSITION => relative = Some(ebml::uint(b, &p)),
                             _ => {}
                         }
                     }
-                    positions.push((track, cluster));
+                    positions.push((track, cluster, relative));
                 }
                 _ => {}
             }
@@ -635,8 +640,8 @@ pub fn parse_cues(b: &[u8], e: &Element, timecode_scale: i64) -> Result<Vec<Cue>
         if !(0..MAX_TIME).contains(&ns) {
             continue;
         }
-        for (track, cluster_position) in positions {
-            cues.push(Cue { time: ns, track, cluster_position });
+        for (track, cluster_position, relative_position) in positions {
+            cues.push(Cue { time: ns, track, cluster_position, relative_position });
         }
     }
     cues.sort_by_key(|c| c.time);

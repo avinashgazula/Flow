@@ -115,6 +115,33 @@ export class Remuxer {
      * Text subtitle cues read since the last call, as JSON [{track, start, end, text}], or undefined.
      */
     takeCues(): string | undefined;
+    /**
+     * The codec string for a WebCodecs `VideoDecoder` for the selected picture track, or empty when
+     * there is none to give (no picture, a codec the remuxer can't carry). `frame` is a keyframe's
+     * payload (VP9's string needs one to be exact) or empty. `thumbDescription()` is the decoder's
+     * `description` (avcC, hvcC or av1C; empty for VP9).
+     */
+    thumbCodec(frame: Uint8Array): string;
+    thumbDescription(): Uint8Array;
+    /**
+     * Looks for the keyframe in `bytes`, which start at the target's offset (`aligned`, `relative` and
+     * `token` as `thumbTarget` gave them; pass -1 for the last two to take the cluster's first
+     * keyframe). Returns [0, media time, payload length] when found (`thumbPayload()` has the bytes),
+     * [1, bytes needed from the start of `bytes`] when it needs more (a lower bound), or [2] when that
+     * cluster has no keyframe of the picture. Stateless: it never disturbs what is streaming.
+     */
+    thumbFind(bytes: Uint8Array, aligned: boolean, relative: number, token: number): Float64Array;
+    /**
+     * The payload `thumbFind` found, handed over once.
+     */
+    thumbPayload(): Uint8Array;
+    /**
+     * Where to read a seek preview from, for the time `seconds`: [byte offset, media time of the keyframe
+     * there, 1 if the offset is a cluster's start, the keyframe's position inside the cluster or -1, the
+     * index entry's token or -1]. The last three go back to `thumbFind` as they are. Needs a picture
+     * track selected; the read can happen while the file streams.
+     */
+    thumbTarget(seconds: number): Float64Array;
     timingKnown(): boolean;
 }
 
@@ -157,6 +184,11 @@ export interface InitOutput {
     readonly remuxer_select: (a: number, b: number, c: number, d: number) => void;
     readonly remuxer_setVideoFloor: (a: number, b: number) => void;
     readonly remuxer_takeCues: (a: number, b: number) => void;
+    readonly remuxer_thumbCodec: (a: number, b: number, c: number, d: number) => void;
+    readonly remuxer_thumbDescription: (a: number, b: number) => void;
+    readonly remuxer_thumbFind: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+    readonly remuxer_thumbPayload: (a: number, b: number) => void;
+    readonly remuxer_thumbTarget: (a: number, b: number, c: number) => void;
     readonly remuxer_timingKnown: (a: number) => number;
     readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
     readonly __wbindgen_export: (a: number, b: number, c: number) => void;
