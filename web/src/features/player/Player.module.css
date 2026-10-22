@@ -12,7 +12,7 @@
   /* base-2 at 94%: panels, notices, the Up Next card. */
   --panel: color-mix(in srgb, var(--base-2) 94%, transparent);
   /* The base at 70%: the transport's circles. */
-  --ink: color-mix(in srgb, var(--base) 70%, transparent);
+  --over-video: color-mix(in srgb, var(--base) 70%, transparent);
   position: fixed;
   inset: 0;
   z-index: 50;
@@ -89,13 +89,13 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--over-video);
   color: var(--paper);
 }
 .feedbackText {
   padding: 6px 12px;
   border-radius: var(--radius-label);
-  background: var(--ink);
+  background: var(--over-video);
   color: var(--paper);
   font: 600 var(--fs-footnote) / 1.2 var(--font);
   font-variant-numeric: tabular-nums;
@@ -121,7 +121,7 @@
   justify-content: center;
   gap: 6px;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--over-video);
   color: var(--paper);
   font: 600 var(--fs-footnote) / 1 var(--font);
   font-variant-numeric: tabular-nums;
@@ -145,7 +145,7 @@
   top: 50%;
   padding: 12px 14px;
   border-radius: var(--radius-label);
-  background: var(--ink);
+  background: var(--over-video);
   transform: translate(-50%, -50%);
   pointer-events: none;
   animation: appear var(--dur-move) 0.4s both;

@@ -1,7 +1,7 @@
 /* The player's chrome. Flat: paper icons on the picture, a warm-black scrim only where controls sit, the
    transport on ink circles, panels and notices on base-2 at 94%. No blur. The scrubber is an edge strip:
    a row of perforations on the strip's band (the track), with the timecode and what's left in edge print under it.
-   Colours and sizes come from the tokens; --margin, --panel and --ink are set on the player's root. */
+   Colours and sizes come from the tokens; --margin, --panel and --over-video are set on the player's root. */
 
 .controls {
   /* Room the bottom row and scrubber take, so panels, Up Next and subtitles sit just above it. */
@@ -127,7 +127,7 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--over-video);
   color: var(--paper);
   transition: transform var(--dur-state) var(--ease-out), background-color var(--dur-state) ease;
 }
@@ -390,7 +390,7 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--over-video);
   color: var(--paper);
 }
 .upNextFrame { position: relative; display: block; }

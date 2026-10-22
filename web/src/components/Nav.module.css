@@ -59,9 +59,7 @@
 
 @media (max-width: 720px) {
   .top { justify-content: space-between; }
-  .mark { width: 12px; height: 16px; border-radius: 2px; background: var(--stock); }
-
-.links { display: none; }
+  .links { display: none; }
   .bottom {
     position: fixed;
     z-index: 50;
