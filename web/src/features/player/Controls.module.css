@@ -34,7 +34,7 @@
   background: linear-gradient(180deg, rgb(0 0 0 / 0.55) 0%, transparent 22%, transparent 55%, rgb(0 0 0 / 0.8) 100%);
 }
 
-.glass, .cluster, .round, .panel, .shelf, .upNext, .tip, .info {
+.glass, .cluster, .round, .panel, .shelf, .upNext, .info {
   /* Barely saturated: the site's glass boosts colour, which over a bright picture turns the
      controls the colour of the scene and costs contrast. */
   --player-blur: saturate(110%) blur(24px);
@@ -185,20 +185,6 @@
 }
 .buffered { background: rgb(255 255 255 / 0.32); }
 .played { background: #fff; }
-.tip {
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 4px);
-  padding: 5px 9px;
-  border-radius: 8px;
-  font: 600 12px / 1 var(--font);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.12s ease;
-}
-.tip[data-on] { opacity: 1; }
 .times {
   display: flex;
   justify-content: space-between;

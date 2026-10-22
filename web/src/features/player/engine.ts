@@ -7,6 +7,7 @@ import type { Source } from '../../lib/sources'
 import { needsProxy, proxied, rememberBlocked, streamProxy } from '../../lib/sources/proxy'
 import { hlsErrorMessage, PlaybackError } from './errors'
 import { trackLabel } from './format'
+import { BitmapPreview, canPreviewWithVideo, type PreviewSource, TilePreview, VideoPreview } from './preview'
 import { prefs } from './session'
 
 export interface Track {
@@ -38,6 +39,9 @@ export interface Engine {
   /** What the stream says its video is (a codec string like "hvc1.2.4.L153.B0", and "HDR10" or
    *  "Dolby Vision"), for engines that read it. */
   videoInfo?(): { codec: string; range?: string } | undefined
+  /** Where the seek preview's pictures come from, made the first time it is asked for (the scrubber
+   *  asks on the first hover); null when this engine can't give any. Torn down with the engine. */
+  preview?(): PreviewSource | null
   audio(): { tracks: Track[]; selected?: string }
   selectAudio(id: string): void | Promise<void>
   /** Subtitles inside the stream. External files are the controller's job. */
@@ -83,6 +87,22 @@ const hlsMime = 'application/vnd.apple.mpegurl'
 const nativeHls = (video: HTMLVideoElement) => video.canPlayType(hlsMime) !== '' && /Apple/.test(navigator.vendor)
 
 export async function attachSource(video: HTMLVideoElement, source: Source, options: AttachOptions): Promise<Engine> {
+  const engine = await open(video, source, options)
+  // A server that already cut the film into preview pictures (Jellyfin's trickplay) beats decoding them here, for any engine.
+  const tiles = source.trickplay
+  if (tiles) {
+    let preview: TilePreview | undefined
+    const destroy = engine.destroy.bind(engine)
+    engine.preview = () => (preview ??= new TilePreview(tiles))
+    engine.destroy = () => {
+      preview?.destroy()
+      destroy()
+    }
+  }
+  return engine
+}
+
+async function open(video: HTMLVideoElement, source: Source, options: AttachOptions): Promise<Engine> {
   const looksHls = /\.m3u8($|\?)/i.test(source.url)
   if (source.engine === 'remux') return attachRemux(video, source, options)
   if ((source.engine === 'hls' || looksHls) && !nativeHls(video)) return attachHls(video, source, options)
@@ -113,8 +133,14 @@ function attachNative(video: HTMLVideoElement, source: Source, { startAt, onTrac
   if (startAt) video.addEventListener('loadedmetadata', () => (video.currentTime = startAt), { once: true })
   video.src = source.url
 
+  // A second copy of the file is only worth loading for a plain file, on a device with bandwidth to spare.
+  let preview: VideoPreview | null | undefined
   return {
     kind: 'native',
+    preview: () => {
+      if (preview === undefined) preview = source.engine === 'hls' || /\.m3u8($|\?)/i.test(source.url) || !canPreviewWithVideo() ? null : new VideoPreview(source.url)
+      return preview
+    },
     audio() {
       if (!audioList || audioList.length < 1) return { tracks: [] }
       const tracks: Track[] = []
@@ -144,6 +170,7 @@ function attachNative(video: HTMLVideoElement, source: Source, { startAt, onTrac
     duration: () => video.duration,
     recover: () => false,
     destroy() {
+      preview?.destroy()
       audioList?.removeEventListener('addtrack', onTracks)
       audioList?.removeEventListener('change', onTracks)
       video.textTracks.removeEventListener('addtrack', onTracks)
@@ -347,10 +374,13 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
   const stopWatching = remux.onAudioFailed(options.onAudioFailed)
   let unsubscribe: (() => void) | undefined
   let current: TextTrack | null = null
+  let preview: BitmapPreview | undefined
 
   return {
     kind: 'remux',
     viaProxy,
+    // Keyframes read and decoded in the worker; none where this browser or file can't (then the scrubber shows the time alone).
+    preview: () => (remux.thumbnailsSupported === false ? null : (preview ??= new BitmapPreview(remux, remux.video && remux.video.height > 0 ? remux.video.width / remux.video.height : undefined))),
     // The session measures the download itself (the reader in lib/remux); an older one has nothing to say.
     netStats: () => (remux as { netStats?: NetStats | null }).netStats ?? null,
     videoInfo: () => (remux.video ? { codec: remux.video.codec, range: remux.video.range } : undefined),
@@ -401,6 +431,7 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
     duration: () => remux.duration || video.duration,
     recover: () => false,
     destroy() {
+      preview?.destroy()
       stopWatching()
       unsubscribe?.()
       if (current) current.mode = 'disabled'

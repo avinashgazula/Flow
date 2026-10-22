@@ -9,7 +9,7 @@ import { SourceError, withTimeout } from './http'
 import { dedupe, dedupeKey, rankSources } from './rank'
 import type { PlaybackRequest, Source } from './types'
 
-export type { PlaybackRequest, Source, ExternalSubtitle, PlaybackEngine, SourceOrigin } from './types'
+export type { PlaybackRequest, Source, ExternalSubtitle, PlaybackEngine, SourceOrigin, Trickplay } from './types'
 export { lastSourceFor, rememberSource } from './lastSource'
 export { browserCapabilities } from './capabilities'
 

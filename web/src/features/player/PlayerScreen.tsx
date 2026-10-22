@@ -468,12 +468,14 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
           c.seekBy(-10)
           c.flash('back10')
           c.poke()
+          c.peek(c.currentTime())
           break
         case 'ArrowRight':
         case 'l':
           c.seekBy(10)
           c.flash('forward10')
           c.poke()
+          c.peek(c.currentTime())
           break
         case 'ArrowUp':
         case 'ArrowDown': {
@@ -513,6 +515,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
             if (!Number.isNaN(d)) {
               c.seekTo((d * Number(key)) / 10)
               c.poke()
+              c.peek(c.currentTime())
             }
             break
           }

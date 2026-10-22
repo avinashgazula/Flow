@@ -29,6 +29,21 @@ export interface ExternalSubtitle {
   format: 'vtt' | 'srt' | 'ass'
 }
 
+/** Preview pictures the server already made (Jellyfin's trickplay): small frames of the film, `interval` ms
+ *  apart, in grids of `columns` x `rows` per image, so a seek preview needs no decoding. */
+export interface Trickplay {
+  /** Where tile image n is, with `{n}` in place of its number. */
+  url: string
+  /** One picture's size in pixels. */
+  width: number
+  height: number
+  columns: number
+  rows: number
+  /** How many pictures there are in all. */
+  count: number
+  interval: number
+}
+
 export interface Source {
   /** Stable for the same file, so "play the source used last time" works. */
   id: string
@@ -80,6 +95,8 @@ export interface Source {
   bingeGroup?: string
   /** The add-on's own multi-line text, kept for the picker's secondary line. */
   detail?: string
+  /** Seek preview pictures made by the server, when it has them. */
+  trickplay?: Trickplay
   /** Stremio's hint that the stream isn't ready for a web player as it is (often an odd container). */
   notWebReady?: boolean
 }

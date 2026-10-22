@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { usePlayer, type PlayerController } from './controller'
 import { clock } from './format'
+import { SeekPreview, type SeekPreviewHandle } from './SeekPreview'
 import s from './Controls.module.css'
 
 /** Apple TV–style scrubber: a hairline that thickens under the pointer. It paints itself from the
  *  video on each animation frame while the controls show, writing straight to the DOM, so playback
- *  never re-renders React. Dragging moves the time at once and the picture a few times a second;
- *  the real seek happens on release. */
+ *  never re-renders React. Over the bar (and while dragging) a small frame shows where you would land
+ *  (SeekPreview). Dragging moves the time at once; the real seek happens on release. Where there is no
+ *  preview picture (a phone playing a plain file, say) the video itself follows a drag a few times a second. */
 export function Scrubber({ controller }: { controller: PlayerController }) {
   const visible = usePlayer(controller, (st) => st.controls)
   const track = useRef<HTMLDivElement>(null)
@@ -14,7 +16,8 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
   const buffer = useRef<HTMLDivElement>(null)
   const elapsed = useRef<HTMLSpanElement>(null)
   const remaining = useRef<HTMLSpanElement>(null)
-  const tip = useRef<HTMLDivElement>(null)
+  const preview = useRef<SeekPreviewHandle>(null)
+  const peeking = useRef(0)
   const drag = useRef<number | null>(null)
   const last = useRef({ t: -1, d: -1, b: -1, second: -1 })
 
@@ -64,14 +67,29 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
 
   const showTip = (clientX: number) => {
     const { time, x, width } = timeAt(clientX)
-    const el = tip.current!
-    el.textContent = clock(time)
-    // Kept inside the track so the tooltip never runs off the screen's edge.
-    const half = el.offsetWidth / 2
-    el.style.transform = `translateX(${Math.min(width - half, Math.max(half, x)) - half}px)`
-    el.dataset.on = ''
+    preview.current?.show(time, x, width)
     return time
   }
+
+  const hideTip = () => {
+    clearTimeout(peeking.current)
+    preview.current?.hide()
+  }
+
+  // The arrow keys seek from outside the scrubber: the frame shows where they landed, for a moment.
+  useEffect(
+    () =>
+      controller.onPeek((time) => {
+        const d = controller.duration()
+        if (Number.isNaN(d) || drag.current !== null) return
+        const box = track.current!.getBoundingClientRect()
+        preview.current?.show(time, (Math.min(1, Math.max(0, time / d))) * box.width, box.width)
+        clearTimeout(peeking.current)
+        peeking.current = window.setTimeout(() => preview.current?.hide(), 1400)
+      }),
+    [controller],
+  )
+  useEffect(() => () => clearTimeout(peeking.current), [])
 
   return (
     <div className={s.scrubber}>
@@ -88,16 +106,18 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
           controller.scrubbing = true
           controller.showControls(false)
           track.current!.dataset.dragging = ''
+          clearTimeout(peeking.current)
           drag.current = showTip(e.clientX)
           paint()
-          controller.previewSeek(drag.current)
+          if (!preview.current?.live) controller.previewSeek(drag.current)
         }}
         onPointerMove={(e) => {
+          clearTimeout(peeking.current)
           const time = showTip(e.clientX)
           if (drag.current === null) return
           drag.current = time
           paint()
-          controller.previewSeek(time)
+          if (!preview.current?.live) controller.previewSeek(time)
         }}
         onPointerUp={(e) => {
           if (drag.current === null) return
@@ -105,7 +125,7 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
           drag.current = null
           controller.scrubbing = false
           delete track.current!.dataset.dragging
-          if (e.pointerType !== 'mouse') delete tip.current!.dataset.on
+          if (e.pointerType !== 'mouse') hideTip()
           controller.seekTo(target)
           controller.scheduleHide()
         }}
@@ -113,17 +133,17 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
           drag.current = null
           controller.scrubbing = false
           delete track.current!.dataset.dragging
-          delete tip.current!.dataset.on
+          hideTip()
         }}
         onPointerLeave={() => {
-          if (drag.current === null) delete tip.current!.dataset.on
+          if (drag.current === null) hideTip()
         }}
       >
         <div className={s.rail}>
           <div ref={buffer} className={s.buffered} />
           <div ref={fill} className={s.played} />
         </div>
-        <div ref={tip} className={s.tip} aria-hidden="true" />
+        <SeekPreview controller={controller} ref={preview} />
       </div>
       <div className={s.times}>
         <span ref={elapsed}>0:00</span>

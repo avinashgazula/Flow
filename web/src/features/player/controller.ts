@@ -106,6 +106,7 @@ export class PlayerController {
   }
   private listeners = new Set<() => void>()
   private feedbackListeners = new Set<(f: Feedback) => void>()
+  private peekListeners = new Set<(time: number) => void>()
   private hideTimer = 0
   private previewTimer = 0
   private previewAt = 0
@@ -277,6 +278,15 @@ export class PlayerController {
     else if (this.video) this.video.currentTime = target
   }
   seekBy = (delta: number) => this.seekTo(this.currentTime() + delta)
+
+  /** Shows the seek preview at `time` for a moment, for seeks that aren't made on the scrubber (the arrow keys). */
+  peek(time: number) {
+    this.peekListeners.forEach((l) => l(time))
+  }
+  onPeek(listener: (time: number) => void) {
+    this.peekListeners.add(listener)
+    return () => void this.peekListeners.delete(listener)
+  }
 
   /** The picture follows a dragged scrubber, at most four times a second so a stream isn't asked
    *  for a segment per pixel. The remuxer seeks through the file's index, so it waits for the release. */
