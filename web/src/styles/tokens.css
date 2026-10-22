@@ -1,6 +1,33 @@
-/* Flow's design tokens, mirrored from Flow/Design/Theme.swift: one black canvas, one accent, and the
-   artwork provides the colour. */
+/* Flow's design tokens: tonight's programme. A repertory cinema's printed monthly listing, on a screen.
+   Two inks: a deep blue that owns every surface, and one fluorescent pink spot. The spot marks only the
+   next action (the primary button), keyboard focus, the current selection in navigation, and "now"
+   (the played part of a bar). Never decoration. Dark only: the scene is an evening living room.
+   The same palette, scale and rules drive the apps (Flow/Design/Theme.swift). */
 :root {
+  /* Ink: every surface, from the ground up. */
+  --ink-900: #0d1431; /* ground: every page background */
+  --ink-800: #141d42; /* panel: sheets, panels, hovered rows, the selected listing's band */
+  --ink-700: #1d2853; /* control: secondary buttons, inputs, segmented controls, progress track */
+  --ink-600: #2a3668; /* line-strong: dividers when truly needed, buffered part of a scrubber */
+  --rule: rgb(214 222 255 / 0.12); /* hairline separators; prefer space */
+
+  /* Type colours. Never grey: the second and third inks are tinted from the blue. */
+  --paper: #f3f1ea; /* primary text, 16:1 on ground */
+  --ink-2: #a7b0d8; /* secondary text and meta, 8.5:1 */
+  --ink-3: #7983b5; /* captions, labels under numbers, disabled; 4.9:1, never for body copy */
+
+  /* The spot. */
+  --spot: #ff4da6; /* 5.9:1 on ground */
+  --spot-hover: #ff66b3;
+  --spot-press: #e63e93;
+  --on-spot: #0d1431; /* text and icons on a pink fill */
+
+  --warn: #ffc453; /* degraded states: "may stutter" */
+  --error: #ff6b57; /* failures; distinct from the spot */
+  --overlay: rgb(13 20 49 / 0.86); /* player chrome and notices over video: flat, no blur */
+  --selection: rgb(255 77 166 / 0.35);
+
+  /* Space, on a 4-pt base. More above a section heading (--section) than below it (--space-s to m). */
   --space-xxs: 4px;
   --space-xs: 8px;
   --space-s: 12px;
@@ -8,91 +35,117 @@
   --space-l: 24px;
   --space-xl: 32px;
   --space-xxl: 48px;
+  --space-xxxl: 64px;
   --gutter: clamp(16px, 4vw, 56px);
-  --section: 36px;
+  /* The page's side padding: the gutter, growing on very wide screens so content stops at 1800px. The nav
+     uses it too, so the wordmark and the page title share one left edge. */
+  --page-inset: max(var(--gutter), calc(50% - 900px));
+  --section: 40px;
 
-  --radius-poster: 12px;
-  --radius-card: 16px;
-  --radius-tile: 20px;
-  --radius-hero: 30px;
-  --radius-control: 14px;
+  /* Shape. Artwork is print-like; stills and panels are 12; web buttons 10. */
+  --radius-art: 6px;
+  --radius-panel: 12px;
+  --radius-control: 10px;
 
-  --canvas: #000;
-  --elevated: #121212;
-  --surface: rgb(255 255 255 / 0.07);
-  --surface-strong: rgb(255 255 255 / 0.12);
-  --hairline: rgb(255 255 255 / 0.09);
-  --text: #fff;
-  --text-secondary: rgb(255 255 255 / 0.62);
-  --text-tertiary: rgb(255 255 255 / 0.38);
-  --gold: rgb(245 204 107);
-  --over-picture: rgb(0 0 0 / 0.5);
+  /* Type, fixed (not fluid). Titles and section headings are set by weight and size, never condensed.
+     Page titles are --fs-page-title at 700 with -0.02em tracking. Section headings are --fs-headline/600,
+     listing titles --fs-body/600, meta --fs-small/400 in ink-2, version lines --fs-footnote in ink-3.
+     Times, durations, sizes, ratings and counts use tabular figures (.num, or global.css). */
+  --fs-caption: 12px;
+  --fs-footnote: 13px;
+  --fs-small: 15px;
+  --fs-body: 17px;
+  --fs-headline: 20px;
+  --fs-title3: 24px;
+  --fs-title2: 30px;
+  --fs-title1: 40px;
+  --fs-page-title: 34px;
+  --measure: 65ch;
 
-  --text-display: clamp(28px, 3.2vw, 40px);
-  --text-title: clamp(20px, 2vw, 24px);
-  --text-section: clamp(18px, 1.6vw, 21px);
-  --text-headline: 16px;
-  --text-body: 15px;
-  --text-caption: 12px;
-  --text-micro: 11px;
+  /* Motion: 150 to 220 ms, ease-out, state changes only. Reduced motion is handled in global.css. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-state: 0.15s;
+  --dur-move: 0.22s;
 
-  /* Springs approximated as curves: snappy for taps, gentle for movement. */
-  --ease-snappy: cubic-bezier(0.32, 0.72, 0, 1);
-  --ease-gentle: cubic-bezier(0.22, 1, 0.36, 1);
-  --dur-snappy: 0.32s;
-  --dur-gentle: 0.55s;
-  --dur-fade: 0.28s;
-
-  --shadow-artwork: 0 8px 28px rgb(0 0 0 / 0.45);
-  --glass: rgb(30 30 34 / 0.55);
-  --glass-blur: saturate(180%) blur(24px);
   --nav-height: 64px;
+  --tabbar-height: 0px;
 }
 
+@media (min-width: 721px) {
+  :root { --fs-page-title: 40px; }
+}
 @media (max-width: 720px) {
   :root {
-    --radius-hero: 22px;
-    --section: 28px;
+    --section: 32px;
     --nav-height: 56px;
+    --tabbar-height: calc(56px + env(safe-area-inset-bottom));
   }
+}
+
+/* Legacy names. The screens that haven't been redesigned yet still use these; each maps to the palette
+   and scale above, so nothing needs a second look to stay on-brand. New work uses the names above, and
+   redesigned screens drop these. */
+:root {
+  --canvas: var(--ink-900);
+  --elevated: var(--ink-800);
+  --surface: var(--ink-700);
+  --surface-strong: var(--ink-600);
+  --hairline: var(--rule);
+  --text: var(--paper);
+  --text-secondary: var(--ink-2);
+  --text-tertiary: var(--ink-3);
+  --gold: var(--ink-2);
+  --over-picture: var(--overlay);
+
+  --radius-poster: var(--radius-art);
+  --radius-card: var(--radius-panel);
+  --radius-tile: var(--radius-panel);
+  --radius-hero: var(--radius-panel);
+
+  --text-display: var(--fs-page-title);
+  --text-title: var(--fs-title3);
+  --text-section: var(--fs-headline);
+  --text-headline: var(--fs-body);
+  --text-body: var(--fs-small);
+  --text-caption: var(--fs-caption);
+  --text-micro: var(--fs-caption);
+
+  --ease-snappy: var(--ease-out);
+  --ease-gentle: var(--ease-out);
+  --dur-snappy: var(--dur-state);
+  --dur-gentle: var(--dur-move);
+  --dur-fade: var(--dur-move);
+
+  /* No shadows on content, no glass, no blur. */
+  --shadow-artwork: 0 0 0 0 transparent;
+  --glass: var(--overlay);
+  --glass-blur: none;
 }
 
 /* The typeface. System (the default) is the device's own font; the others are chosen in Settings >
    Appearance and set on <html data-font> before first paint (index.html) and on change (main.tsx).
    The rule matches any element, so Settings can preview a face inside its card. Each web font lists a
    metric-matched stand-in (fonts.css) ahead of the system stack, so the swap barely moves anything.
-   --stretch-condensed is for artwork titles: SF is a variable font, so 75% asks for its condensed
-   width on Apple devices; other fonts have no such cut and ignore it. It sits after each `font:`
-   shorthand, which would reset it. */
+   The choice only swaps the family: sizes and weights are the same in every face. */
 :root,
 [data-font='system'] {
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
   --font-display: var(--font);
-  --font-condensed: var(--font);
-  --stretch-condensed: 75%;
 }
 [data-font='inter'] {
   --font: "Inter Variable", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   --font-display: var(--font);
-  --font-condensed: var(--font);
-  --stretch-condensed: 100%;
 }
 [data-font='geist'] {
   --font: "Geist Variable", "Geist Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   --font-display: var(--font);
-  --font-condensed: var(--font);
-  --stretch-condensed: 100%;
 }
 [data-font='manrope'] {
   --font: "Manrope Variable", "Manrope Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   --font-display: var(--font);
-  --font-condensed: var(--font);
-  --stretch-condensed: 100%;
 }
 /* Ioskeley Mono (SIL OFL). The fallbacks are monospaced too. */
 [data-font='ioskeley'] {
   --font: "Ioskeley Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-display: var(--font);
-  --font-condensed: "Ioskeley Mono Condensed", "Ioskeley Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --stretch-condensed: 100%;
 }

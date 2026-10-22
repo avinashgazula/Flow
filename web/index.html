@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#0d1431" />
     <meta name="color-scheme" content="dark" />
     <meta name="description" content="Flow: an Apple-quality front end for your own media servers, add-ons and IPTV." />
     <title>Flow</title>
@@ -34,43 +34,59 @@
       } catch (e) {}
     </script>
     <script>
-      // The hero image is the largest thing on Home. Its address from the last visit is known before
-      // any script loads, so the download starts now, alongside the app's code, not after it.
+      // Home's lead still is its largest image. Its address from the last visit is known before any
+      // script loads, so the download starts now, alongside the app's code, not after it.
+      // `s` is the sizes string Home rendered it with (leadSizes in features/home/Featured.tsx).
       try {
         var h = JSON.parse(localStorage.getItem('flow.lcp') || 'null')
-        if (h && h.path === location.pathname) {
+        if (h && h.path === location.pathname && h.d && h.s) {
           var l = document.createElement('link')
           l.rel = 'preload'
           l.as = 'image'
           l.fetchPriority = 'high'
-          l.imageSrcset = matchMedia('(max-width: 720px)').matches ? h.m : h.d
-          l.imageSizes = '100vw'
+          l.imageSrcset = h.d
+          l.imageSizes = h.s
           document.head.appendChild(l)
-        }
-      } catch (e) {}
+        } else h = null
+      } catch (e) {
+        h = null
+      }
     </script>
     <style>
-      /* Painted before any CSS file arrives, so the first frame is already Flow's black canvas. */
-      html, body { background: #000; color: #fff; margin: 0; }
-      #root:empty::before { content: ""; position: fixed; inset: 0; background: radial-gradient(120% 70% at 50% 0%, #15151b 0%, #000 60%); }
-      /* A still of Home's hero, drawn from the HTML alone on a repeat visit. Same box and crop as the
-         real hero (Hero.module.css), which replaces it without a visible change. */
-      .shell-hero { position: relative; height: min(86vh, calc(56.25vw + 120px)); min-height: 480px; overflow: hidden; }
-      .shell-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
-      .shell-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(0 0 0 / 0.78) 0%, rgb(0 0 0 / 0.35) 38%, transparent 62%), linear-gradient(0deg, #000 0%, rgb(0 0 0 / 0.55) 18%, transparent 46%), linear-gradient(180deg, rgb(0 0 0 / 0.5) 0%, transparent 18%); }
-      @media (max-width: 720px) {
-        .shell-hero { height: auto; min-height: 0; aspect-ratio: 3 / 4.3; margin: calc(56px + env(safe-area-inset-top) + 12px) clamp(16px, 4vw, 56px) 0; border-radius: 22px; }
-        .shell-hero img { object-position: center top; }
-        .shell-hero::after { background: linear-gradient(0deg, rgb(0 0 0 / 0.92) 0%, rgb(0 0 0 / 0.5) 30%, transparent 55%); }
+      /* Painted before any CSS file arrives, so the first frame is already Flow's ink. */
+      html, body { background: #0d1431; color: #f3f1ea; margin: 0; }
+      /* A shell of Home from the HTML alone on a repeat visit: the greeting, the date and the lead still,
+         in the boxes the real page uses (HomeScreen.module.css, Featured.module.css). The real page
+         replaces it without a visible change, so keep these measurements in step with those. */
+      .shell-home { padding: calc(var(--nav-height, 56px) + 24px) var(--page-inset, 16px) 0; font-family: var(--font, system-ui, sans-serif); }
+      .shell-wrap { max-width: 1360px; margin: 0 auto; }
+      .shell-head { min-height: 62px; margin-bottom: 24px; }
+      .shell-title { font-weight: 700; font-size: var(--fs-page-title, 34px); line-height: 1.1; letter-spacing: -0.02em; }
+      .shell-date { margin-top: 4px; font-size: 15px; line-height: 1.3; color: #a7b0d8; }
+      .shell-still { aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #141d42; }
+      .shell-still img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      @media (min-width: 721px) {
+        .shell-head { display: flex; align-items: baseline; gap: 16px; min-height: 44px; }
+        .shell-date { margin-top: 0; font-size: 17px; }
+        .shell-still { max-width: 340px; }
+      }
+      @media (min-width: 1100px) {
+        .shell-grid { display: grid; grid-template-columns: minmax(0, 1fr) clamp(420px, 38vw, 560px); column-gap: 48px; }
+        .shell-still { grid-column: 2; max-width: none; }
       }
     </style>
   </head>
   <body>
     <div id="root"></div>
     <script>
-      if (window.h && h.path === location.pathname && h.d) {
+      if (window.h) {
+        var now = new Date(), hr = now.getHours()
         document.getElementById('root').innerHTML =
-          '<div class="shell-hero" aria-hidden="true"><picture><source media="(max-width: 720px)" sizes="100vw" srcset="' + h.m + '"><img alt="" sizes="100vw" fetchpriority="high" srcset="' + h.d + '"></picture></div>'
+          '<div class="shell-home" aria-hidden="true"><div class="shell-wrap"><div class="shell-head"><div class="shell-title">' +
+          (hr >= 5 && hr < 12 ? 'This Morning' : hr >= 12 && hr < 17 ? 'This Afternoon' : 'Tonight') +
+          '</div><div class="shell-date">' +
+          now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) +
+          '</div></div><div class="shell-grid"><div class="shell-still"><img alt="" sizes="' + h.s + '" fetchpriority="high" srcset="' + h.d + '"></div></div></div></div>'
       }
     </script>
     <script type="module" src="/src/main.tsx"></script>

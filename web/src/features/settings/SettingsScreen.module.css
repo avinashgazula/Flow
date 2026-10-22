@@ -218,7 +218,7 @@ img.logo { padding: 4px; }
 .face[data-selected] { background: var(--surface-strong); box-shadow: inset 0 0 0 2px #fff; }
 .face:has(:focus-visible) { outline: 2px solid #fff; outline-offset: 3px; }
 .sample { display: flex; flex-direction: column; gap: 6px; flex: 1; padding-right: 22px; color: var(--text); }
-.sampleTitle { font: 800 26px / 1.05 var(--font-condensed); font-stretch: var(--stretch-condensed); letter-spacing: -0.02em; }
+.sampleTitle { font: 700 var(--fs-title3) / 1.1 var(--font-display); letter-spacing: -0.02em; }
 .sampleText { font: 400 13px / 1.4 var(--font); color: var(--text-secondary); text-wrap: pretty; }
 .faceText { display: flex; flex-direction: column; gap: 2px; padding-top: var(--space-s); border-top: 1px solid var(--hairline); }
 .faceName { font: 600 var(--text-headline) / 1.3 var(--font); }

@@ -12,31 +12,26 @@
 .posterArt {
   aspect-ratio: 2 / 3;
   border-radius: var(--radius-poster);
-  box-shadow: inset 0 0 0 1px var(--hairline), var(--shadow-artwork);
-  transition: transform var(--dur-snappy) var(--ease-snappy), box-shadow var(--dur-snappy) ease;
+  transition: transform var(--dur-state) var(--ease-out);
 }
 .backdropArtWrap { position: relative; }
 .backdropArt {
   aspect-ratio: 16 / 9;
-  border-radius: var(--radius-card);
-  box-shadow: inset 0 0 0 1px var(--hairline), var(--shadow-artwork);
-  transition: transform var(--dur-snappy) var(--ease-snappy);
+  border-radius: var(--radius-panel);
+  transition: transform var(--dur-state) var(--ease-out);
 }
 
-@media (hover: hover) {
-  .poster:hover .posterArt, .backdrop:hover .backdropArt { transform: translateY(-4px) scale(1.03); }
-}
-.poster:active .posterArt, .backdrop:active .backdropArt { transform: scale(0.97); }
+/* Artwork doesn't grow on hover; pressing it scales it down and keyboard focus rings it in pink. */
+.poster:active .posterArt, .backdrop:active .backdropArt { transform: scale(0.98); }
 .poster:focus-visible, .backdrop:focus-visible { outline: none; }
 .poster:focus-visible .posterArt, .backdrop:focus-visible .backdropArt {
-  outline: 3px solid #fff;
+  outline: 2px solid var(--spot);
   outline-offset: 3px;
-  transform: scale(1.04);
 }
 
 .caption { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 0 2px; }
 .title {
-  font: 500 14px / 1.25 var(--font);
+  font: 600 var(--fs-small) / 1.25 var(--font);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -48,13 +43,13 @@
   left: 12px; right: 12px; bottom: 10px;
   height: 4px;
   border-radius: 2px;
-  background: rgb(255 255 255 / 0.28);
+  background: var(--ink-700);
   overflow: hidden;
 }
 .progress > span {
   display: block;
   height: 100%;
-  background: #fff;
+  background: var(--spot);
   border-radius: 2px;
   transform-origin: left;
 }

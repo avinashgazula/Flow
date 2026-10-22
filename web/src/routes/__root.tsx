@@ -23,7 +23,7 @@ function Root() {
   return (
     <>
       <Nav />
-      <main>
+      <main data-tabbar={path.startsWith('/watch') ? undefined : ''}>
         <Outlet />
       </main>
     </>

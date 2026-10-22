@@ -36,9 +36,8 @@
 }
 .logo { max-width: min(440px, 80%); max-height: 150px; object-fit: contain; object-position: left bottom; filter: drop-shadow(0 4px 20px rgb(0 0 0 / 0.5)); }
 .title {
-  font: 800 clamp(38px, 5vw, 72px) / 0.96 var(--font-condensed);
-  font-stretch: var(--stretch-condensed);
-  letter-spacing: -0.025em;
+  font: 700 var(--fs-page-title) / 1.1 var(--font-display);
+  letter-spacing: -0.02em;
   text-wrap: balance;
   text-shadow: 0 2px 30px rgb(0 0 0 / 0.45);
 }

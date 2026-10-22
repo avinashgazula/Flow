@@ -6,35 +6,59 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+  color-scheme: dark;
+  /* The parts of the browser nobody draws still carry the palette: scrollbars, form controls' accent
+     (checkboxes, sliders), the text caret and the selection. */
+  scrollbar-color: var(--ink-600) transparent;
+  scrollbar-width: thin;
+  accent-color: var(--spot);
+  caret-color: var(--spot);
+  background: var(--ink-900);
 }
 
 body {
   margin: 0;
   min-height: 100dvh;
-  background: var(--canvas);
-  color: var(--text);
-  font: 400 var(--text-body) / 1.4 var(--font);
+  background: var(--ink-900);
+  color: var(--paper);
+  font: 400 var(--fs-body) / 1.5 var(--font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: none;
 }
 
+/* The tab bar on phones covers the bottom of the page; leave room for it. */
+main[data-tabbar] { padding-bottom: var(--tabbar-height); }
+
 img { display: block; max-width: 100%; }
 a { color: inherit; text-decoration: none; }
+/* Links in running text: underlined, with room between the line and the letters. */
+p a, .prose a { text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+p a:hover, .prose a:hover { text-decoration-color: var(--paper); }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 input, select, textarea { font: inherit; color: inherit; }
 h1, h2, h3, h4, p { margin: 0; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
 
+/* Times, durations, sizes, ratings and counts keep their digits one width, so columns line up and a
+   ticking clock doesn't shimmer. */
+.num, time, input[type='number'], td, th { font-variant-numeric: tabular-nums; }
+
+/* Keyboard focus is the one pink ring, 2 px, offset so it reads on pink fills too. The ring follows the
+   element's own corners (modern browsers), so nothing here sets a radius. */
 :focus { outline: none; }
 :focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--spot);
   outline-offset: 3px;
-  border-radius: 6px;
 }
 
-::selection { background: rgb(255 255 255 / 0.25); }
+::selection { background: var(--selection); color: var(--paper); }
+::placeholder { color: var(--ink-2); opacity: 1; }
+
+/* Where the scrollbar can be styled the long way (older WebKit), match it. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--ink-600); border-radius: 5px; border: 2px solid var(--ink-900); }
+::-webkit-scrollbar-track { background: transparent; }
 
 .sr-only {
   position: absolute !important;
@@ -45,84 +69,91 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 }
 
 .page {
-  padding: calc(var(--nav-height) + var(--space-l)) var(--gutter) calc(var(--space-xxl) + env(safe-area-inset-bottom));
-  max-width: 1800px;
-  margin: 0 auto;
+  padding: calc(var(--nav-height) + var(--space-l)) var(--page-inset) var(--space-xxl);
 }
 
+/* Large page titles: 34 on phones, 40 on desktop, 700, set by weight and size alone. */
 .page-title {
-  font: 700 var(--text-display) / 1.1 var(--font-display);
+  font: 700 var(--fs-page-title) / 1.1 var(--font-display);
   letter-spacing: -0.02em;
+  text-wrap: balance;
   margin-bottom: var(--space-l);
 }
 
-/* Buttons, after PrimaryButtonStyle, GlassButtonStyle and CircleButton. */
+/* Buttons. Three kinds: primary (pink: the one next action on a screen), secondary (ink-700) and quiet
+   (text only). Radius 10, pressed scales to 0.98, focus is the pink ring, disabled goes flat ink-3.
+   .btn-glass is the old name for secondary, kept so screens not yet redesigned keep working.
+   .btn-circle is a square icon button (still named for what it was). Icons are drawn with currentColor. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 46px;
-  padding: 0 22px;
-  border-radius: 999px;
-  font: 600 var(--text-headline) / 1 var(--font);
+  height: 44px;
+  padding: 0 20px;
+  border-radius: var(--radius-control);
+  background: var(--ink-700);
+  color: var(--paper);
+  font: 600 var(--fs-small) / 1 var(--font);
   white-space: nowrap;
-  transition: transform var(--dur-snappy) var(--ease-snappy), background-color var(--dur-fade) ease, opacity var(--dur-fade) ease;
+  transition: transform var(--dur-state) var(--ease-out), background-color var(--dur-state) ease, color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
-.btn:active { transform: scale(0.96); }
+.btn:hover { background: var(--ink-600); }
+.btn:active { transform: scale(0.98); }
 .btn svg { width: 18px; height: 18px; flex: none; }
-.btn-primary { background: #fff; color: #000; }
-.btn-primary:hover { background: rgb(255 255 255 / 0.88); }
-.btn-glass {
-  background: var(--glass);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  box-shadow: inset 0 0 0 1px var(--hairline);
-}
-.btn-glass:hover { background: rgb(60 60 66 / 0.6); }
-.btn-compact { height: 36px; padding: 0 16px; font-size: 14px; }
-.btn-circle { width: 46px; padding: 0; }
+.btn-primary { background: var(--spot); color: var(--on-spot); }
+.btn-primary:hover { background: var(--spot-hover); }
+.btn-primary:active { background: var(--spot-press); }
+.btn-secondary, .btn-glass { background: var(--ink-700); color: var(--paper); }
+.btn-quiet { background: transparent; color: var(--ink-2); padding: 0 12px; }
+.btn-quiet:hover { background: var(--ink-800); color: var(--paper); }
+.btn-large { height: 48px; padding: 0 24px; font-size: var(--fs-body); }
+.btn-compact { height: 36px; padding: 0 14px; font-size: var(--fs-small); }
+.btn-circle { width: 44px; padding: 0; }
 .btn-circle.btn-compact { width: 36px; }
-.btn[disabled] { opacity: 0.4; pointer-events: none; }
+.btn[disabled], .btn[aria-disabled='true'] { background: var(--ink-700); color: var(--ink-3); pointer-events: none; }
+.btn-quiet[disabled], .btn-quiet[aria-disabled='true'] { background: transparent; }
 
 .field {
   width: 100%;
-  height: 46px;
+  height: 44px;
   padding: 0 16px;
   border-radius: var(--radius-control);
   border: 0;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--hairline);
-  transition: box-shadow var(--dur-fade) ease, background-color var(--dur-fade) ease;
+  background: var(--ink-700);
+  color: var(--paper);
+  transition: background-color var(--dur-state) ease;
 }
-.field:focus { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.4); background: var(--surface-strong); }
-.field::placeholder { color: var(--text-tertiary); }
+.field:hover { background: var(--ink-600); }
+.field:focus-visible { background: var(--ink-700); outline-offset: 2px; }
 
+/* A filter or toggle in a row of choices. Current is a lighter ink and paper text, never pink. */
 .chip {
   display: inline-flex;
   align-items: center;
-  height: 34px;
+  height: 36px;
   padding: 0 14px;
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text-secondary);
-  font: 600 14px / 1 var(--font);
+  border-radius: var(--radius-control);
+  background: var(--ink-700);
+  color: var(--ink-2);
+  font: 600 var(--fs-small) / 1 var(--font);
   white-space: nowrap;
-  transition: background-color var(--dur-fade) ease, color var(--dur-fade) ease;
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-.chip:hover { color: var(--text); background: var(--surface-strong); }
-.chip[aria-pressed='true'], .chip[aria-current='page'] { background: #fff; color: #000; }
+.chip:hover { color: var(--paper); background: var(--ink-600); }
+.chip[aria-pressed='true'], .chip[aria-current='page'] { background: var(--ink-600); color: var(--paper); }
 
-.muted { color: var(--text-secondary); }
-.faint { color: var(--text-tertiary); }
+.muted { color: var(--ink-2); }
+.faint { color: var(--ink-3); }
 
 /* The poster or backdrop a title grows out of, for the View Transitions zoom. */
-::view-transition-group(*) { animation-duration: 0.42s; animation-timing-function: var(--ease-gentle); }
-::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.22s; }
+::view-transition-group(*) { animation-duration: var(--dur-move); animation-timing-function: var(--ease-out); }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--dur-state); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .btn:active { transform: none; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }

@@ -2,18 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Logo } from '../../components/Nav'
 import { libraryStore } from '../../lib/store/library'
 import { settingsStore, useSettings } from '../../lib/store/settings'
-import { imageURL } from '../../lib/tmdb/images'
 import s from './Welcome.module.css'
-
-// A wall of posters from the sample catalogue, straight from TMDB's CDN.
-const wall = [
-  '/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg', '/ggFHVNu6YYI5L9pCfOacjizRGt.jpg', '/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg', '/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
-  '/uKvVjHNqB5VmOrdxqAt2F7J78ED.jpg', '/qJ2tW6WMUDux911r6m7haRef0WH.jpg', '/fqldf2t8ztc9aiwn3k6mlX3tvRT.jpg', '/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg',
-  '/49WJfeN0moxb9IPfGn8AIqMGskD.jpg', '/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg', '/7O4iVfOMQmdCSxhOg1WnzG1AgYT.jpg', '/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg',
-  '/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg', '/9PFonBhy4cQy7Jz20NpMygczOkv.jpg', '/3bhkrj58Vtu7enYsRolD1fZdja1.jpg', '/sWgBv7LV2PRoQgkxwlibdGXKz1S.jpg',
-  '/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg', '/fC2HDm5t0kHl7mTm7jxMR31b7by.jpg', '/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg', '/z2yahl2uefxDCl0nogcRBstwruJ.jpg',
-  '/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg', '/7HW47XbkNQ5fiwQFYGWdw9gs144.jpg', '/d5NXSklXo0qyIYkgV94XAgMIckC.jpg', '/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg',
-]
 
 export function Welcome() {
   const saved = useSettings((x) => x.tmdbKey)
@@ -47,13 +36,8 @@ export function Welcome() {
 
   return (
     <div className={s.welcome}>
-      <div className={s.wall} aria-hidden>
-        {wall.map((path, i) => (
-          <img key={path} src={imageURL(path, 185)} alt="" loading={i < 12 ? 'eager' : 'lazy'} decoding="async" onLoad={(e) => e.currentTarget.setAttribute('data-loaded', '')} />
-        ))}
-      </div>
       <div className={s.panel}>
-        <Logo size={64} />
+        <Logo size={48} />
         <h1 className={s.title}>Welcome to Flow</h1>
         <p className={s.lede}>Your Jellyfin, Emby and Plex servers, stream add-ons and live TV, in one beautiful place. Flow hosts no content: it plays what you already have.</p>
         <form className={s.form} onSubmit={submit}>

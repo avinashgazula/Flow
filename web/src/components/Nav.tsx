@@ -10,8 +10,9 @@ const tabs: { to: '/' | '/explore' | '/library' | '/search'; label: string; icon
   { to: '/search', label: 'Search', icon: 'search' },
 ]
 
-/** One navigation for every width: a floating glass pill at the top of wide screens (as on Apple
- *  TV and iPad), a tab bar at the bottom on phones. */
+/** A top bar on every width: the "Flow" wordmark, the sections as plain text (the current one in paper
+ *  with the pink underline), and Settings at the right. On phones the sections move to a flat tab bar
+ *  at the bottom, current one in pink, like the system tab bar. No pill, no glass. */
 export function Nav() {
   const path = useRouterState({ select: (r) => r.location.pathname })
   const [scrolled, setScrolled] = useState(false)
@@ -30,19 +31,17 @@ export function Nav() {
     <>
       <header className={s.top} data-scrolled={scrolled ? '' : undefined}>
         <Link to="/" className={s.brand} aria-label="Flow home">
-          <Logo />
-          <span>Flow</span>
+          Flow
         </Link>
-        <nav className={s.pill} aria-label="Main">
+        <nav className={s.links} aria-label="Main">
           {tabs.map((t) => (
-            <Link key={t.to} to={t.to} className={s.tab} aria-current={current(t.to) ? 'page' : undefined}>
-              <Icon name={t.icon} size={17} strokeWidth={2.2} />
-              <span>{t.label}</span>
+            <Link key={t.to} to={t.to} className={s.link} aria-current={current(t.to) ? 'page' : undefined}>
+              {t.label}
             </Link>
           ))}
         </nav>
-        <Link to="/settings" className={`btn btn-glass btn-circle btn-compact ${s.settings}`} aria-label="Settings" aria-current={current('/settings') ? 'page' : undefined}>
-          <Icon name="settings" size={18} strokeWidth={2} />
+        <Link to="/settings" className={`btn btn-quiet btn-circle ${s.settings}`} aria-label="Settings" aria-current={current('/settings') ? 'page' : undefined}>
+          <Icon name="settings" size={20} strokeWidth={2} />
         </Link>
       </header>
       <nav className={s.bottom} aria-label="Tabs">
@@ -57,17 +56,12 @@ export function Nav() {
   )
 }
 
+/** The play-triangle mark, flat: paper on ink. Used where the brand needs a face (the welcome screen). */
 export function Logo({ size = 26 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <defs>
-        <linearGradient id="flow-logo" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#7d8bff" />
-          <stop offset="1" stopColor="#ff8a7a" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="8" fill="#0b0d1a" />
-      <path d="M12 9.2v13.6a1 1 0 0 0 1.5.86l10.6-6.8a1 1 0 0 0 0-1.72L13.5 8.34A1 1 0 0 0 12 9.2z" fill="url(#flow-logo)" />
+      <rect width="32" height="32" rx="8" fill="#1d2853" />
+      <path d="M12 9.2v13.6a1 1 0 0 0 1.5.86l10.6-6.8a1 1 0 0 0 0-1.72L13.5 8.34A1 1 0 0 0 12 9.2z" fill="#f3f1ea" />
     </svg>
   )
 }

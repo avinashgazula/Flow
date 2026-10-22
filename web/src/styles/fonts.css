@@ -25,8 +25,7 @@
   src: url("/fonts/manrope-latin-wght-normal.woff2") format("woff2");
 }
 
-/* Ioskeley Mono (SIL OFL), subset to the characters Flow shows. Heavier text (800) uses Bold; artwork
-   titles use the semi-condensed cut. */
+/* Ioskeley Mono (SIL OFL), subset to the characters Flow shows. Heavier text (800) uses Bold. */
 @font-face {
   font-family: "Ioskeley Mono";
   font-weight: 400;
@@ -61,13 +60,6 @@
   font-style: normal;
   font-display: swap;
   src: url("/fonts/ioskeley-mono-bold.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Ioskeley Mono Condensed";
-  font-weight: 700 900;
-  font-style: normal;
-  font-display: swap;
-  src: url("/fonts/ioskeley-mono-condensed-extrabold.woff2") format("woff2");
 }
 
 /* Stand-ins for the web fonts while they load: Arial, scaled and re-spaced so its lines are as wide

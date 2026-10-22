@@ -1,6 +1,44 @@
-.home { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
-.shelves { position: relative; margin-top: -56px; z-index: 1; }
-@media (max-width: 720px) {
-  .home { padding-top: var(--nav-height); }
-  .shelves { margin-top: 0; }
+/* Home, "Tonight". index.html paints a shell of this layout before any script runs (the greeting, the
+   date and the lead still); its measurements below must match the .shell-* rules there. */
+.home { padding: calc(var(--nav-height) + var(--space-l)) var(--page-inset) var(--space-xxl); }
+/* The programme and its frame stop at 1360px and centre, so rows never run across a huge screen. */
+.wrap { max-width: 1360px; margin: 0 auto; }
+
+/* The title says what time of day it is; the date sits under it on a phone, beside it on desktop. */
+.head { min-height: 62px; margin-bottom: var(--space-l); }
+.title { font: 700 var(--fs-page-title) / 1.1 var(--font-display); letter-spacing: -0.02em; }
+.date { margin-top: var(--space-xxs); font-size: var(--fs-small); line-height: 1.3; color: var(--ink-2); }
+@media (min-width: 721px) {
+  .head { display: flex; align-items: baseline; gap: var(--space-m); min-height: 44px; }
+  .date { margin-top: 0; font-size: var(--fs-body); }
 }
+
+.programme { min-width: 0; }
+/* The first block sits at the top of its column; every later section has room above its heading. */
+.programme > :first-child { margin-top: 0; }
+
+@media (min-width: 1100px) {
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(420px, 38vw, 560px);
+    column-gap: var(--space-xxl);
+    align-items: start;
+  }
+  .frame { position: sticky; top: calc(var(--nav-height) + var(--space-l)); }
+}
+
+.section, .group { margin-top: var(--section); }
+.groupTitle { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; margin-bottom: var(--space-s); }
+.group > section:first-of-type { margin-top: var(--space-m); }
+.teach { max-width: var(--measure); font-size: var(--fs-small); line-height: 1.5; color: var(--ink-2); }
+
+/* Nothing to show yet: teach the next step. A flat panel, no icon. */
+.setup {
+  max-width: 560px;
+  padding: var(--space-l);
+  border-radius: var(--radius-panel);
+  background: var(--ink-800);
+}
+.setupTitle { font: 700 var(--fs-title3) / 1.15 var(--font-display); letter-spacing: -0.015em; }
+.setupText { margin-top: var(--space-s); font-size: var(--fs-small); line-height: 1.5; color: var(--ink-2); max-width: var(--measure); }
+.setupActions { display: flex; flex-wrap: wrap; gap: var(--space-s); margin-top: var(--space-l); }

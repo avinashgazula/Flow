@@ -196,9 +196,8 @@
   max-width: min(620px, 100%);
 }
 .connectingTitle {
-  font: 800 clamp(34px, 4.6vw, 64px) / 0.98 var(--font-condensed);
-  font-stretch: var(--stretch-condensed);
-  letter-spacing: -0.025em;
+  font: 700 var(--fs-page-title) / 1.1 var(--font-display);
+  letter-spacing: -0.02em;
   text-wrap: balance;
   text-shadow: 0 2px 30px rgb(0 0 0 / 0.5);
 }

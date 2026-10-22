@@ -25,7 +25,7 @@ npm test             # unit tests (Vitest)
 - **TanStack Virtual** for long grids (Explore, Library).
 - **Rust → WebAssembly** (`crates/`) for the work that's actually heavy in a browser: demuxing
   Matroska and remuxing it to fragmented MP4 for Media Source Extensions, in a Web Worker.
-- **CSS Modules + tokens** (`src/styles/tokens.css`, mirrored from `Flow/Design/Theme.swift`). No
+- **CSS Modules + tokens** (`src/styles/tokens.css`: two inks and one pink spot, see `PRODUCT.md`). No
   CSS-in-JS runtime. The default typeface is the system's (SF on Apple devices); Settings →
   Appearance offers Inter, Geist, Manrope and Ioskeley Mono, and only the chosen one downloads.
 
@@ -33,7 +33,7 @@ npm test             # unit tests (Vitest)
 | --- | --- |
 | `src/routes/` | One file per screen; `__root.tsx` holds the navigation and onboarding gate. |
 | `src/features/<area>/` | Each screen's components and CSS. |
-| `src/components/` | Shared pieces: `Artwork`, `Cards`, `Shelf`, `Hero`, `Nav`, `Icon`. |
+| `src/components/` | Shared pieces: `Artwork`, `Listing` (the programme listing), `Cards`, `Shelf`, `Nav`, `Icon`. |
 | `src/lib/tmdb/` | TMDB client (normalises responses into `types.ts`), images, sample data. |
 | `src/lib/store/` | Settings and library (watchlist, progress, history) in localStorage. |
 | `src/lib/sources/` | Stream add-ons, Jellyfin/Emby and Plex, and source ranking. |
