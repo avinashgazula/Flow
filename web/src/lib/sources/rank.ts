@@ -11,6 +11,7 @@ import type { Capabilities } from './capabilities'
 import { losslessCinemaAudio } from './capabilities'
 import { isCinemaCapture, releaseQualities, type ParsedQuality, type ResolutionClass, type StreamTraits } from './parser'
 import { isReadable } from './proxy'
+import { isHDR } from './smooth'
 import type { PlaybackEngine, ReleaseQuality, Source, SourceOrigin } from './types'
 
 export interface BuildInput {
@@ -246,9 +247,34 @@ export function audioLanguageScore(languages: string[] | undefined, audioLanguag
   return languages.includes('Multi') ? 50 : 0
 }
 
+/** A file this device is known to decode in software, too slowly: more than a resolution step and
+ *  its usual extras (HDR, a remux's quality, the viewer's own server), so a smooth 1080p copy of the
+ *  same title beats a 4K one that stutters, whatever the preferred quality is. Still far above
+ *  anything unsupported. */
+export const stutterPenalty = 3500
+/** A file this device decodes smoothly but not on hardware: a nudge that costs battery and heat, not
+ *  enough to turn a better picture down. */
+export const inefficientPenalty = 300
+
+/** How the device copes with the source's video, when it has said: `rough` for a known stutter,
+ *  `warm` for software decoding that keeps up. A server's transcode is decoded as the server made it,
+ *  not as the original file was, so it's left alone. */
+export function decodeFeel(s: Source, caps: Capabilities): 'rough' | 'warm' | undefined {
+  if (s.container === 'm3u8' && (s.origin === 'jellyfin' || s.origin === 'emby' || s.origin === 'plex')) return undefined
+  const decode = caps.smoothVideo(s.videoCodec, s.resolution, isHDR(s.hdr))
+  if (!decode) return undefined
+  if (decode.smooth === false) return 'rough'
+  return decode.powerEfficient === false ? 'warm' : undefined
+}
+
+export const stutterNote = 'May stutter on this device'
+
 export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilities): number {
   if (s.unsupported) return -1_000_000 + resolutionScore(s.resolution, prefs.preferredQuality) * 10
   let score = resolutionScore(s.resolution, prefs.preferredQuality) * 1000
+  const feel = decodeFeel(s, caps)
+  if (feel === 'rough') score -= stutterPenalty
+  else if (feel === 'warm') score -= inefficientPenalty
   if (isCinemaCapture(s.quality as ParsedQuality)) score -= 3000
   score += Math.max(0, releaseQualities.indexOf((s.quality ?? 'Unknown') as ParsedQuality)) * 30
   // HDR only helps on a screen that shows it; elsewhere the browser tone-maps it, so SDR goes first.
@@ -278,9 +304,18 @@ export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilitie
 /** Best first. Ties keep the providers' own order. */
 export function rankSources(list: Source[], prefs: RankPreferences, caps: Capabilities): Source[] {
   return list
-    .map((s, i) => ({ s: { ...s, score: Math.round(scoreSource(s, prefs, caps)) }, i }))
+    .map((s, i) => ({ s: withDecodeNote({ ...s, score: Math.round(scoreSource(s, prefs, caps)) }, caps), i }))
     .sort((a, b) => b.s.score! - a.s.score! || a.i - b.i)
     .map((x) => x.s)
+}
+
+/** Says in the picker that a source is known to stutter here, after any note it already has
+ *  ("TrueHD audio converted for this browser"). Safe to run on a list that was ranked before. */
+function withDecodeNote(s: Source, caps: Capabilities): Source {
+  if (s.unsupported || decodeFeel(s, caps) !== 'rough') return s
+  s.mayStutter = true
+  if (!s.note?.includes(stutterNote)) s.note = s.note ? `${s.note} · ${stutterNote}` : stutterNote
+  return s
 }
 
 /** The same file offered twice (an aggregator and the add-on it wraps, or one add-on installed

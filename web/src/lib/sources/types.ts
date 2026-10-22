@@ -54,6 +54,8 @@ export interface Source {
   convertsAudio?: boolean
   /** A short remark for the picker: "TrueHD audio converted for this browser". */
   note?: string
+  /** True when this device is known to decode this kind of video too slowly (set by ranking, with a note). */
+  mayStutter?: boolean
   /** Higher is better; set by ranking. */
   score?: number
   subtitles?: ExternalSubtitle[]

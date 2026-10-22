@@ -2,6 +2,8 @@
    while the page is open, and the picker asks for every row. */
 
 import { canConvertAudio } from '../audio/support'
+import { smoothnessOf, type Smoothness } from './smooth'
+import type { Source } from './types'
 
 export type VideoCodecName = 'H264' | 'HEVC' | 'AV1' | 'VP9' | 'XviD'
 export type AudioCodecName = 'AAC' | 'DD' | 'DD+' | 'Atmos' | 'FLAC' | 'Opus' | 'MP3' | 'DTS' | 'DTS-HD MA' | 'DTS:X' | 'TrueHD' | 'TrueHD Atmos'
@@ -18,6 +20,9 @@ export interface Capabilities {
   convertAudio: boolean
   video(codec: string): boolean
   audio(codec: string): boolean
+  /** How well this device decodes that kind of video (see smooth.ts): undefined until the browser has
+   *  said, or when it can't. Never a reason to refuse a source, only to rank it lower. */
+  smoothVideo(codec: string | undefined, resolution: Source['resolution'] | undefined, hdr: boolean): Smoothness | undefined
 }
 
 const videoTypes: Record<string, string[]> = {
@@ -78,12 +83,23 @@ export function browserCapabilities(): Capabilities {
     },
     video: (codec) => (videoTypes[codec] ?? []).some(canPlayType),
     audio: (codec) => decodes(codec, (c) => (audioTypes[c] ?? []).some(canPlayType)),
+    smoothVideo: smoothnessOf,
   }
   return detected
 }
 
 /** A fixed set of capabilities, for tests and for reasoning about "a typical browser". */
-export function fixedCapabilities(c: { mse?: boolean; nativeHLS?: boolean; hdr?: boolean; convertAudio?: boolean; video?: string[]; audio?: string[] }): Capabilities {
+export function fixedCapabilities(c: {
+  mse?: boolean
+  nativeHLS?: boolean
+  hdr?: boolean
+  convertAudio?: boolean
+  video?: string[]
+  audio?: string[]
+  /** What the device says about decoding, by class: `'HEVC@2160'` for any range, `'HEVC@2160+hdr'` for
+   *  HDR only. A class not listed is unknown. */
+  smooth?: Record<string, Partial<Smoothness>>
+}): Capabilities {
   const video = new Set(c.video ?? ['H264', 'VP9', 'AV1'])
   const audio = new Set(c.audio ?? ['AAC', 'FLAC', 'Opus', 'MP3'])
   return {
@@ -93,5 +109,10 @@ export function fixedCapabilities(c: { mse?: boolean; nativeHLS?: boolean; hdr?:
     convertAudio: c.convertAudio ?? false,
     video: (codec) => video.has(codec),
     audio: (codec) => decodes(codec, (c) => audio.has(c)),
+    smoothVideo(codec, resolution, hdr) {
+      const name = codec === 'H.264' ? 'H264' : codec
+      const found = c.smooth?.[`${name}@${resolution?.replace('p', '')}${hdr ? '+hdr' : ''}`] ?? c.smooth?.[`${name}@${resolution?.replace('p', '')}`]
+      return found && { supported: true, smooth: true, powerEfficient: true, ...found }
+    },
   }
 }

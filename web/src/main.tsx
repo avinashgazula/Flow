@@ -6,6 +6,7 @@ import { routeTree } from './routeTree.gen'
 import { ErrorScreen } from './components/ErrorScreen'
 import { cacheBuster, persister, queryClient } from './lib/queryClient'
 import { checkConvertAudio } from './lib/audio/support'
+import { checkSmoothVideo } from './lib/sources/smooth'
 import { settingsStore } from './lib/store/settings'
 import { libraryStore } from './lib/store/library'
 import './styles/global.css'
@@ -51,6 +52,11 @@ window.addEventListener('load', () => setTimeout(() => sessionStorage.removeItem
 // Ask the browser's audio encoder what it takes, so source ranking knows whether audio it can't
 // decode can be converted. Nothing waits on the answer.
 void checkConvertAudio()
+
+// Ask the browser which kinds of video it decodes smoothly (4K HEVC without a hardware decoder, say),
+// so ranking can put those lower. Once the page is idle: nothing waits on the answer.
+const whenIdle = window.requestIdleCallback ? (run: () => void) => window.requestIdleCallback(run, { timeout: 2000 }) : (run: () => void) => setTimeout(run, 300)
+whenIdle(() => void checkSmoothVideo())
 
 // Sample data comes with a lived-in library, as on the other platforms.
 if (settingsStore.get().demo && Object.keys(libraryStore.get().progress).length === 0 && libraryStore.get().watchlist.length === 0) {
