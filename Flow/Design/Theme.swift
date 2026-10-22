@@ -282,7 +282,10 @@ private struct SecondaryButtonBody: View {
     private func chrome<S: Shape>(_ shape: S) -> some View {
         let size = (compact ? 44 : 52) * Theme.scale
         let label = configuration.label
-            .font(.system(size: (compact ? 15 : 17) * Theme.scale, weight: .semibold))
+            // Words take the primary button's type so a Resume and Details pair matches on every platform
+            // (the headline style is 13 pt on a Mac and larger on Apple TV); icons keep their fixed size.
+            .font(circle ? .system(size: (compact ? 15 : 17) * Theme.scale, weight: .semibold)
+                  : compact ? .system(.subheadline, weight: .semibold) : Theme.Typeface.headline)
             .foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.text)
             // A word is never broken across lines ("Detail / s" on Apple TV).
             .lineLimit(1)
