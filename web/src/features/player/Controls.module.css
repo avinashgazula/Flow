@@ -452,7 +452,7 @@
   top: calc(var(--inset-top) + 12px + 44px + 10px);
   right: calc(var(--inset-right) + var(--margin));
   width: min(320px, calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--margin)));
-  padding: 10px 14px 12px;
+  padding: 10px 14px 8px;
   border-radius: var(--radius-panel);
   animation: notice var(--dur-move) var(--ease-out);
 }
@@ -483,7 +483,7 @@
 .infoRow:first-child { border-top: 0; }
 /* The labels are edge print: the card reads like the data block on a film can. */
 .infoRow dt {
-  font: 600 var(--fs-caption) / 1.35 var(--font-edge);
+  font: 600 var(--fs-caption) / 1.25 var(--font-edge);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-2);
@@ -505,7 +505,7 @@
   .noSound ~ .info { display: none; }
   /* As wide as the notices, and dense enough to stay above the transport in the middle. */
   .info { width: calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--margin)); padding: 8px 14px; }
-  .infoRow { padding: 3px 0; }
+  .infoRow { padding: 2px 0; }
   .noSound { padding: 12px 14px; }
   .noSoundActions { display: grid; grid-template-columns: 1fr 1fr; }
   .noSoundActions :global(.btn) { padding: 0 8px; font-size: var(--fs-footnote); }
@@ -531,11 +531,11 @@
   .noSoundActions :global(.btn) { height: 32px; }
   /* Beside the notice, not under it: the notice is on the left, this on the right. */
   .noSound ~ .info { display: block; }
-  .info { top: calc(var(--inset-top) + 8px + 40px + 6px); width: min(250px, 34%); padding: 6px 12px; }
+  .info { top: calc(var(--inset-top) + 8px + 40px + 6px); width: min(300px, 40%); padding: 6px 12px 4px; }
   .infoHeader { margin-bottom: 0; }
   .infoTitle { font-size: var(--fs-small); }
   .infoClose { width: 24px; height: 24px; }
-  .infoRow { padding: 1px 0; font-size: var(--fs-caption); line-height: 1.25; gap: 10px; }
+  .infoRow { padding: 0; font-size: var(--fs-caption); line-height: 1.25; gap: 10px; }
   .upNextStill { --w: 112px; }
   .upNextText { width: 140px; }
   /* A panel is as tall as the picture here, so the transport steps aside rather than sit behind it. */

@@ -211,6 +211,10 @@
   width: 100%;
   margin-bottom: var(--space-m);
 }
+/* Fewer holes on a narrow frame, so the strip's print (where it comes from, the format) is never cut. */
+@media (max-width: 720px) {
+  div.connectingFrame span[data-size='lead'] { --perfs: 6; }
+}
 .connectingTitle {
   font: 700 var(--fs-title3) / 1.15 var(--font-display);
   letter-spacing: -0.02em;
@@ -242,7 +246,7 @@
   /* A landscape phone: the frame sits beside the words rather than above them. */
   .connectingBody { padding-top: calc(var(--inset-top) + 16px); padding-bottom: calc(var(--inset-bottom) + var(--space-m)); }
   .connectingCentre { width: min(560px, 100%); }
-  .connectingFrame { width: min(260px, 52%); margin-bottom: var(--space-s); }
+  .connectingFrame { width: min(340px, 60%); margin-bottom: var(--space-s); }
   .connectingFoot { margin-top: var(--space-s); }
 }
 
