@@ -80,17 +80,22 @@ function decoder(): Decoder | undefined {
   return caps?.decodingInfo ? (config) => caps.decodingInfo!(config) : undefined
 }
 
-/** One class, asked of the browser. Undefined when it won't say. A browser that rejects the HDR
- *  fields (older Chromium) is asked again without them: the 10-bit profile is what costs the CPU. */
+/** One class, asked of the browser. Undefined when it won't say. HDR is asked as HDR first; a browser
+ *  that rejects the fields (older Chromium throws) or says "unsupported" because the screen isn't HDR
+ *  (it tone-maps the picture and plays it anyway) is asked again as plain 10-bit, which is what costs
+ *  the decoder its effort. */
 export async function probe(ask: Decoder, codec: SmoothCodec, height: SmoothHeight, hdr: boolean): Promise<Smoothness | undefined> {
-  const run = async (withHDR: boolean) => {
+  const run = async (withHDR: boolean): Promise<Smoothness> => {
     const info = await ask(decodingConfig(codec, height, hdr, withHDR))
     return { supported: info.supported === true, smooth: info.smooth === true, powerEfficient: info.powerEfficient === true }
   }
-  try {
-    return await run(true)
-  } catch {
-    if (!hdr) return undefined
+  if (hdr) {
+    try {
+      const answer = await run(true)
+      if (answer.supported) return answer
+    } catch {
+      // Fall through to the plain question.
+    }
   }
   try {
     return await run(false)

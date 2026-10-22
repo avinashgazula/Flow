@@ -42,6 +42,14 @@ describe('probe', () => {
     expect(seen).toHaveLength(2)
   })
 
+  it('asks again without the HDR fields when the screen isn’t HDR and the browser says unsupported', async () => {
+    const ask: Ask = async (config) => ('transferFunction' in (config as { video: object }).video ? { supported: false, smooth: false, powerEfficient: false } : { supported: true, smooth: false, powerEfficient: false })
+    expect(await probe(ask, 'HEVC', 2160, true)).toEqual({ supported: true, smooth: false, powerEfficient: false })
+    // SDR has no second question.
+    const sdr: Ask = async () => ({ supported: false })
+    expect(await probe(sdr, 'HEVC', 2160, false)).toEqual({ supported: false, smooth: false, powerEfficient: false })
+  })
+
   it('says nothing when the browser throws every time', async () => {
     const ask: Ask = async () => {
       throw new TypeError('no')
