@@ -90,46 +90,6 @@
   }
 }
 
-/* Legacy names. The screens that haven't been redesigned yet still use these; each maps to the palette
-   and scale above, so nothing needs a second look to stay on-brand. New work uses the names above, and
-   redesigned screens drop these. */
-:root {
-  --canvas: var(--base);
-  --elevated: var(--base-2);
-  --surface: var(--base-3);
-  --surface-strong: var(--base-4);
-  --hairline: var(--rule);
-  --text: var(--paper);
-  --text-secondary: var(--ink-2);
-  --text-tertiary: var(--ink-3);
-  --gold: var(--ink-2);
-  --over-picture: var(--overlay);
-
-  --radius-poster: var(--radius-art);
-  --radius-card: var(--radius-panel);
-  --radius-tile: var(--radius-panel);
-  --radius-hero: var(--radius-panel);
-
-  --text-display: var(--fs-page-title);
-  --text-title: var(--fs-title3);
-  --text-section: var(--fs-headline);
-  --text-headline: var(--fs-body);
-  --text-body: var(--fs-small);
-  --text-caption: var(--fs-caption);
-  --text-micro: var(--fs-caption);
-
-  --ease-snappy: var(--ease-out);
-  --ease-gentle: var(--ease-out);
-  --dur-snappy: var(--dur-state);
-  --dur-gentle: var(--dur-move);
-  --dur-fade: var(--dur-move);
-
-  /* No shadows on content, no glass, no blur. */
-  --shadow-artwork: 0 0 0 0 transparent;
-  --glass: var(--overlay);
-  --glass-blur: none;
-}
-
 /* The typeface. System (the default) is the device's own font; the others are chosen in Settings >
    Appearance and set on <html data-font> before first paint (index.html) and on change (main.tsx).
    The rule matches any element, so Settings can preview a face inside its card. Each web font lists a
