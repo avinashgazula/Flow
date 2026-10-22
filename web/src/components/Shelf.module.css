@@ -45,7 +45,7 @@ a.title:hover svg { color: var(--text); transform: translateX(2px); }
 .ghostPoster, .ghostBackdrop {
   flex: none;
   border-radius: var(--radius-poster);
-  background: var(--ink-800);
+  background: var(--base-2);
 }
 .ghostPoster { width: var(--poster-width, 168px); aspect-ratio: 2 / 3; }
 .ghostBackdrop { width: var(--backdrop-width, 320px); aspect-ratio: 16 / 9; border-radius: var(--radius-card); }

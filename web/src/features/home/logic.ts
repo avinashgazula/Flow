@@ -1,12 +1,15 @@
-import type { LastSource } from '../../lib/sources/lastSource'
+import type { PrintPart } from '../../components/Frame'
 import { genreNames } from '../../lib/genres'
+import type { LastSource } from '../../lib/sources/lastSource'
 import type { Progress } from '../../lib/store/library'
-import type { ListingWhen } from '../../components/Listing'
 import type { MediaDetail, MediaItem } from '../../lib/tmdb/types'
-import { endTime, formatClock, formatShortDay, spokenDuration } from '../../lib/time'
+import { endTime, formatClock, formatLeft, formatRuntime, spokenDuration } from '../../lib/time'
 
 /** What's left of an in-progress title, in seconds. */
 export const secondsLeft = (p: Pick<Progress, 'position' | 'duration'>) => Math.max(0, p.duration - p.position)
+
+/** How far through, 0 to 1. */
+export const watchedFraction = (p: Pick<Progress, 'position' | 'duration'>) => (p.duration > 0 ? Math.min(1, p.position / p.duration) : 0)
 
 /** In-progress titles, the one most recently watched first. */
 export function inProgress(progress: Record<string, Progress>): Progress[] {
@@ -22,62 +25,84 @@ export function episodeLine(episode?: Progress['episode']): string | undefined {
   return episode.name ? `${label} · ${episode.name}` : label
 }
 
+/** "S3 E7": the episode alone, for edge print. */
+export const episodeShort = (episode?: Progress['episode']) => (episode ? `S${episode.season} E${episode.episode}` : undefined)
+
 const hdrNames: Record<string, string> = { DV: 'Dolby Vision', 'HDR10+': 'HDR10+', HDR10: 'HDR10', HDR: 'HDR', HLG: 'HLG' }
 
-/** The version line from the source a title was last played from: "2160p · Dolby Vision · REMUX". Plain
- *  text in the order a viewer reads it. Undefined when nothing is known, so nothing is invented. */
-export function versionLine(last?: Pick<LastSource, 'resolution' | 'hdr' | 'quality'>): string | undefined {
+/** The format of the source a title was last played from, as edge print: ["2160p", "DV", "REMUX"], in the
+ *  order a viewer reads it. Empty when nothing is known, so nothing is invented. */
+export function formatPrint(last?: Pick<LastSource, 'resolution' | 'hdr' | 'quality'>): string[] {
+  if (!last) return []
+  const parts: (string | undefined)[] = [last.resolution, last.hdr?.[0], last.quality]
+  return parts.filter((p): p is string => !!p)
+}
+
+/** The same in words for the label a screen reader reads: "2160p Dolby Vision REMUX". */
+export function formatSpoken(last?: Pick<LastSource, 'resolution' | 'hdr' | 'quality'>): string | undefined {
   if (!last) return undefined
-  const parts = [last.resolution, ...(last.hdr?.slice(0, 1).map((h) => hdrNames[h] ?? h) ?? []), last.quality].filter(Boolean)
-  return parts.length ? parts.join(' · ') : undefined
+  const words = [last.resolution, last.hdr?.[0] ? (hdrNames[last.hdr[0]] ?? last.hdr[0]) : undefined, last.quality].filter(Boolean)
+  return words.length ? words.join(' ') : undefined
 }
 
-/** The rating as plain text, "8.4 TMDB", or nothing when there isn't one. */
-export const ratingText = (item: Pick<MediaItem, 'rating'>) => (item.rating ? `${item.rating.toFixed(1)} TMDB` : undefined)
-
-/** "Film · 2024 · Science Fiction, Adventure · 8.4 TMDB": the plain facts under a pick's title. */
-export function pickMeta(item: MediaItem): string {
-  const genres = genreNames(item.genres, item.type).slice(0, 2).join(', ')
-  return [item.type === 'movie' ? 'Film' : 'Series', item.year, genres, ratingText(item)].filter(Boolean).join(' · ')
+/** The edge print of something started: "S3 E7 · 18 MIN LEFT · ENDS 21:30 · 2160P · DV". The minutes left
+ *  are the one fact in yellow. */
+export function resumePrint(p: Progress, now: number, last?: Pick<LastSource, 'resolution' | 'hdr' | 'quality'>, locale?: string): PrintPart[] {
+  const left = secondsLeft(p)
+  return [episodeShort(p.episode) ?? '', { key: formatLeft(left) }, `ends ${formatClock(endTime(now, left), locale)}`, ...formatPrint(last)].filter((x) => x !== '')
 }
 
-/** The part of a title's detail a pick's time column needs. */
+/** The part of a title's detail edge print needs. */
 export type PickDetail = Pick<MediaDetail, 'runtime' | 'nextEpisode' | 'lastEpisode' | 'seasons'>
 
 const day = 24 * 60 * 60_000
 /** TMDB dates are plain "2026-10-27": a calendar day, not an instant, so read it as local midnight. */
 const localDay = (iso: string) => {
-  const [y = 1970, m = 1, d = 1] = iso.split("-").map(Number)
+  const [y = 1970, m = 1, d = 1] = iso.split('-').map(Number)
   return new Date(y, m - 1, d)
 }
 
-/** What a pick's time column says. A film: when it would end if started now. A series: when its next
- *  episode airs, or when the latest one aired (within a month), or how many episodes there are. Until the
- *  detail arrives, a dash, so the column keeps its place. */
-export function pickWhen(item: Pick<MediaItem, 'type'>, detail: PickDetail | undefined, now: number, locale?: string): ListingWhen {
-  if (!detail) return { time: '–' }
-  if (item.type === 'movie') return detail.runtime ? { ends: detail.runtime * 60 } : { time: '–' }
-  const next = detail.nextEpisode?.airDate
-  if (next && localDay(next).getTime() + day > now) return { time: formatShortDay(localDay(next), locale), label: 'airs' }
+/** A series with an episode that aired in the last two weeks is new again. */
+const hasNewEpisode = (detail: PickDetail, now: number) => {
   const last = detail.lastEpisode?.airDate
-  if (last && now - localDay(last).getTime() < 30 * day) return { time: formatShortDay(localDay(last), locale), label: 'aired' }
-  const episodes = detail.seasons.filter((s) => s.number > 0).reduce((sum, s) => sum + s.episodeCount, 0)
-  if (episodes) return { time: String(episodes), label: 'eps' }
-  return { time: '–' }
+  return !!last && now - localDay(last).getTime() < 14 * day
 }
 
-/** What a screen reader says for a resume row: "Breaking Bad, season 3 episode 7, 18 minutes left, ends 9:48 PM". */
-export function spokenResume(p: Progress, now: number, locale?: string): string {
+/** The edge print of a title not started, as plain facts. A film: runtime, then (when `ends`) when it
+ *  would end if started now, then the rating. A series: NEW EP when one just aired, else how many
+ *  seasons, then the rating. Until the detail arrives it says only what the list knew. */
+export function pickPrint(item: Pick<MediaItem, 'type' | 'rating'>, detail: PickDetail | undefined, now: number, opts: { ends?: boolean; locale?: string } = {}): PrintPart[] {
+  const rating = item.rating ? item.rating.toFixed(1) : ''
+  if (item.type === 'movie') {
+    if (!detail?.runtime) return ['Film', rating].filter(Boolean)
+    const seconds = detail.runtime * 60
+    return [formatRuntime(seconds), opts.ends ? `ends ${formatClock(endTime(now, seconds), opts.locale)}` : '', rating].filter(Boolean)
+  }
+  if (!detail) return ['Series', rating].filter(Boolean)
+  const seasons = detail.seasons.filter((s) => s.number > 0).length
+  const state: PrintPart = hasNewEpisode(detail, now) ? { key: 'new ep' } : seasons ? `${seasons} ${seasons === 1 ? 'season' : 'seasons'}` : 'Series'
+  return [state, detail.runtime && opts.ends ? formatRuntime(detail.runtime * 60) : '', rating].filter(Boolean)
+}
+
+/** "Film · 2024 · Science Fiction, Adventure": the plain facts under a title. */
+export function pickMeta(item: MediaItem): string {
+  const genres = genreNames(item.genres, item.type).slice(0, 2).join(', ')
+  return [item.type === 'movie' ? 'Film' : 'Series', item.year, genres].filter(Boolean).join(' · ')
+}
+
+/** What a screen reader says for a started title: "Breaking Bad, season 3 episode 7, 18 minutes left,
+ *  ends 9:48 PM, 2160p Dolby Vision". */
+export function spokenResume(p: Progress, now: number, locale?: string, last?: Pick<LastSource, 'resolution' | 'hdr' | 'quality'>): string {
   const left = secondsLeft(p)
   const where = p.episode ? `season ${p.episode.season} episode ${p.episode.episode}` : undefined
-  return [p.item.title, where, `${spokenDuration(left)} left`, `ends ${formatClock(endTime(now, left), locale)}`].filter(Boolean).join(', ')
+  return [p.item.title, where, `${spokenDuration(left)} left`, `ends ${formatClock(endTime(now, left), locale)}`, formatSpoken(last)].filter(Boolean).join(', ')
 }
 
-/** And for a pick: "Dune: Part Two, film, 2024, rated 8.2 on TMDB". */
-export function spokenPick(item: MediaItem): string {
-  return [item.title, item.type === 'movie' ? 'film' : 'series', item.year, item.rating ? `rated ${item.rating.toFixed(1)} on TMDB` : undefined].filter(Boolean).join(', ')
+/** And for a title not started: "Dune: Part Two, film, 2024, 2 hours 47 minutes, rated 8.2 on TMDB". */
+export function spokenPick(item: MediaItem, detail?: PickDetail): string {
+  const runtime = detail?.runtime ? spokenDuration(detail.runtime * 60) : undefined
+  return [item.title, item.type === 'movie' ? 'film' : 'series', item.year, runtime, item.rating ? `rated ${item.rating.toFixed(1)} on TMDB` : undefined].filter(Boolean).join(', ')
 }
 
-/** The first titles of a list that have a still to show, for the lead and as a stand-in while the
- *  catalogue loads. */
+/** The first title of a list that has a still to show. */
 export const firstWithStill = (items: MediaItem[] | undefined) => items?.find((i) => i.backdrop)

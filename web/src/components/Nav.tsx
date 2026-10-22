@@ -10,9 +10,9 @@ const tabs: { to: '/' | '/explore' | '/library' | '/search'; label: string; icon
   { to: '/search', label: 'Search', icon: 'search' },
 ]
 
-/** A top bar on every width: the "Flow" wordmark, the sections as plain text (the current one in paper
- *  with the pink underline), and Settings at the right. On phones the sections move to a flat tab bar
- *  at the bottom, current one in pink, like the system tab bar. No pill, no glass. */
+/** A top bar on every width: the yellow mark and "Flow" wordmark, the sections as plain text (the current
+ *  one in paper with the yellow underline), and Settings at the right. On phones the sections move to a
+ *  flat tab bar at the bottom, current one in yellow, like the system tab bar. No pill, no glass. */
 export function Nav() {
   const path = useRouterState({ select: (r) => r.location.pathname })
   const [scrolled, setScrolled] = useState(false)
@@ -31,6 +31,7 @@ export function Nav() {
     <>
       <header className={s.top} data-scrolled={scrolled ? '' : undefined}>
         <Link to="/" className={s.brand} aria-label="Flow home">
+          <span className={s.mark} aria-hidden="true" />
           Flow
         </Link>
         <nav className={s.links} aria-label="Main">
@@ -56,12 +57,13 @@ export function Nav() {
   )
 }
 
-/** The play-triangle mark, flat: paper on ink. Used where the brand needs a face (the welcome screen). */
+/** The mark: a film-stock yellow frame (12 by 16, as in the top bar) with the play triangle cut out of it.
+ *  Used where the brand needs a face (the welcome screen). */
 export function Logo({ size = 26 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="8" fill="#1d2853" />
-      <path d="M12 9.2v13.6a1 1 0 0 0 1.5.86l10.6-6.8a1 1 0 0 0 0-1.72L13.5 8.34A1 1 0 0 0 12 9.2z" fill="#f3f1ea" />
+    <svg width={size * 0.75} height={size} viewBox="0 0 12 16" aria-hidden="true">
+      <rect width="12" height="16" rx="2" fill="#f6b40e" />
+      <path d="M4.4 4.9v6.2a.5.5 0 0 0 .76.43l4.9-3.1a.5.5 0 0 0 0-.86l-4.9-3.1a.5.5 0 0 0-.76.43z" fill="#15120f" />
     </svg>
   )
 }

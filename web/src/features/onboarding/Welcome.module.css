@@ -15,7 +15,7 @@
   text-align: center;
   padding: var(--space-xl) var(--space-l);
   border-radius: var(--radius-panel);
-  background: var(--ink-800);
+  background: var(--base-2);
 }
 .title { font: 700 var(--fs-title2) / 1.1 var(--font-display); letter-spacing: -0.02em; }
 .lede { color: var(--ink-2); font-size: var(--fs-small); line-height: 1.5; text-wrap: pretty; }
@@ -24,6 +24,6 @@
 .hint { font-size: var(--fs-footnote); color: var(--ink-3); line-height: 1.45; }
 .hint a { color: var(--ink-2); text-decoration: underline; text-underline-offset: 0.2em; }
 .hint a:hover { color: var(--paper); }
-.error { font-size: var(--fs-footnote); color: var(--error); }
+.error { font-size: var(--fs-footnote); color: var(--red); }
 .form :global(.btn) { margin-top: var(--space-xs); }
 .sample { width: 100%; }

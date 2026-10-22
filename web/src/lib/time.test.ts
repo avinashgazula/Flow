@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clockParts, endTime, formatClock, formatDuration, formatLeft, formatShortDay, formatWeekdayDate, greetingTitle, spokenDuration } from './time'
+import { clockParts, endTime, formatClock, formatDuration, formatLeft, formatRuntime, formatShortDay, formatWeekdayDate, greetingTitle, spokenDuration } from './time'
 
 // Local-time dates, so the tests hold in any time zone. 2026-10-22 is a Thursday.
 const at = (h: number, m = 0, day = 22) => new Date(2026, 9, day, h, m, 0)
@@ -63,6 +63,13 @@ describe('durations', () => {
     expect(formatLeft(20)).toBe('1 min left')
     expect(formatLeft(0)).toBe('1 min left')
     expect(formatLeft(18 * 60 + 40)).toBe('19 min left')
+  })
+
+  it('writes a runtime for edge print, with padded minutes after an hour', () => {
+    expect(formatRuntime(167 * 60)).toBe('2 h 47')
+    expect(formatRuntime(181 * 60)).toBe('3 h 01')
+    expect(formatRuntime(2 * 3600)).toBe('2 h 00')
+    expect(formatRuntime(47 * 60)).toBe('47 min')
   })
 
   it('has a spoken form for screen readers', () => {

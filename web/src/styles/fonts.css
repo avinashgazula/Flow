@@ -3,6 +3,16 @@
    (html[data-font]). So a visitor downloads the one font they chose, and System downloads none.
    Licences and sources: public/fonts/README.txt. Only the Latin subsets are hosted. */
 
+/* The edge print on strips and film-can labels (tokens.css: --font-edge). Always used on the home screen, so
+   index.html preloads it there; elsewhere it loads when a strip first appears. */
+@font-face {
+  font-family: "Barlow Condensed";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/barlow-condensed-latin-600-normal.woff2") format("woff2");
+}
+
 @font-face {
   font-family: "Inter Variable";
   font-weight: 100 900;

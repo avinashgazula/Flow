@@ -21,11 +21,11 @@
   transition: transform var(--dur-state) var(--ease-out);
 }
 
-/* Artwork doesn't grow on hover; pressing it scales it down and keyboard focus rings it in pink. */
+/* Artwork doesn't grow on hover; pressing it scales it down and keyboard focus rings it in yellow. */
 .poster:active .posterArt, .backdrop:active .backdropArt { transform: scale(0.98); }
 .poster:focus-visible, .backdrop:focus-visible { outline: none; }
 .poster:focus-visible .posterArt, .backdrop:focus-visible .backdropArt {
-  outline: 2px solid var(--spot);
+  outline: 2px solid var(--stock);
   outline-offset: 3px;
 }
 
@@ -43,13 +43,13 @@
   left: 12px; right: 12px; bottom: 10px;
   height: 4px;
   border-radius: 2px;
-  background: var(--ink-700);
+  background: var(--base-3);
   overflow: hidden;
 }
 .progress > span {
   display: block;
   height: 100%;
-  background: var(--spot);
+  background: var(--stock);
   border-radius: 2px;
   transform-origin: left;
 }

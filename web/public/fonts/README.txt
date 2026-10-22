@@ -9,6 +9,11 @@ manrope-latin-wght-normal.woff2   Manrope, variable weight, Latin subset    OFL-
                                   from @fontsource-variable/manrope 5.3.0
 ioskeley-mono-*.woff2             Ioskeley Mono, subset to the characters   OFL-Ioskeley-Mono.txt
                                   Flow shows
+barlow-condensed-latin-600-normal.woff2
+                                  Barlow Condensed 600, Latin subset        OFL-Barlow-Condensed.txt
+                                  from @fontsource/barlow-condensed 5.2.5
+                                  (not a Settings choice: the edge print on strips and labels)
 
-Only the file for the chosen typeface is downloaded. To update one, `npm pack` its fontsource package
+Only the file for the chosen typeface is downloaded (plus Barlow Condensed, which every screen with a
+strip uses). To update one, `npm pack` its fontsource package
 and copy files/<name>-latin-wght-normal.woff2 here; nothing imports the packages at build time.

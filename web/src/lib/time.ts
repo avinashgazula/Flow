@@ -64,6 +64,15 @@ export function formatDuration(seconds: number): string {
   return m === 0 ? `${h} h` : `${h} h ${m} min`
 }
 
+/** A runtime as edge print reads it: "2 h 47", "3 h 01", "47 min". Minutes are padded after an hour, like a
+ *  clock, so a row of them lines up. */
+export function formatRuntime(seconds: number): string {
+  const total = minutesIn(seconds)
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  return h === 0 ? `${m} min` : `${h} h ${String(m).padStart(2, '0')}`
+}
+
 /** "18 min left", "1 h 44 min left". */
 export function formatLeft(seconds: number): string {
   return `${formatDuration(seconds)} left`

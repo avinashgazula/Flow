@@ -9,17 +9,17 @@ html {
   color-scheme: dark;
   /* The parts of the browser nobody draws still carry the palette: scrollbars, form controls' accent
      (checkboxes, sliders), the text caret and the selection. */
-  scrollbar-color: var(--ink-600) transparent;
+  scrollbar-color: var(--base-4) transparent;
   scrollbar-width: thin;
-  accent-color: var(--spot);
-  caret-color: var(--spot);
-  background: var(--ink-900);
+  accent-color: var(--stock);
+  caret-color: var(--stock);
+  background: var(--base);
 }
 
 body {
   margin: 0;
   min-height: 100dvh;
-  background: var(--ink-900);
+  background: var(--base);
   color: var(--paper);
   font: 400 var(--fs-body) / 1.5 var(--font);
   -webkit-font-smoothing: antialiased;
@@ -44,11 +44,11 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
    ticking clock doesn't shimmer. */
 .num, time, input[type='number'], td, th { font-variant-numeric: tabular-nums; }
 
-/* Keyboard focus is the one pink ring, 2 px, offset so it reads on pink fills too. The ring follows the
+/* Keyboard focus is the one yellow ring, 2 px, offset so it reads on yellow fills too. The ring follows the
    element's own corners (modern browsers), so nothing here sets a radius. */
 :focus { outline: none; }
 :focus-visible {
-  outline: 2px solid var(--spot);
+  outline: 2px solid var(--stock);
   outline-offset: 3px;
 }
 
@@ -57,7 +57,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* Where the scrollbar can be styled the long way (older WebKit), match it. */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--ink-600); border-radius: 5px; border: 2px solid var(--ink-900); }
+::-webkit-scrollbar-thumb { background: var(--base-4); border-radius: 5px; border: 2px solid var(--base); }
 ::-webkit-scrollbar-track { background: transparent; }
 
 .sr-only {
@@ -80,8 +80,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   margin-bottom: var(--space-l);
 }
 
-/* Buttons. Three kinds: primary (pink: the one next action on a screen), secondary (ink-700) and quiet
-   (text only). Radius 10, pressed scales to 0.98, focus is the pink ring, disabled goes flat ink-3.
+/* Buttons. Three kinds: primary (film-stock yellow: the one next action on a screen), secondary (base-3)
+   and quiet (text only). Radius 10, pressed scales to 0.98, focus is the yellow ring, disabled goes flat ink-3.
    .btn-glass is the old name for secondary, kept so screens not yet redesigned keep working.
    .btn-circle is a square icon button (still named for what it was). Icons are drawn with currentColor. */
 .btn {
@@ -92,7 +92,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   height: 44px;
   padding: 0 20px;
   border-radius: var(--radius-control);
-  background: var(--ink-700);
+  background: var(--base-3);
   color: var(--paper);
   font: 600 var(--fs-small) / 1 var(--font);
   white-space: nowrap;
@@ -100,20 +100,20 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
-.btn:hover { background: var(--ink-600); }
+.btn:hover { background: var(--base-4); }
 .btn:active { transform: scale(0.98); }
 .btn svg { width: 18px; height: 18px; flex: none; }
-.btn-primary { background: var(--spot); color: var(--on-spot); }
-.btn-primary:hover { background: var(--spot-hover); }
-.btn-primary:active { background: var(--spot-press); }
-.btn-secondary, .btn-glass { background: var(--ink-700); color: var(--paper); }
+.btn-primary { background: var(--stock); color: var(--on-stock); }
+.btn-primary:hover { background: var(--stock-hover); }
+.btn-primary:active { background: var(--stock-press); }
+.btn-secondary, .btn-glass { background: var(--base-3); color: var(--paper); }
 .btn-quiet { background: transparent; color: var(--ink-2); padding: 0 12px; }
-.btn-quiet:hover { background: var(--ink-800); color: var(--paper); }
+.btn-quiet:hover { background: var(--base-2); color: var(--paper); }
 .btn-large { height: 48px; padding: 0 24px; font-size: var(--fs-body); }
 .btn-compact { height: 36px; padding: 0 14px; font-size: var(--fs-small); }
 .btn-circle { width: 44px; padding: 0; }
 .btn-circle.btn-compact { width: 36px; }
-.btn[disabled], .btn[aria-disabled='true'] { background: var(--ink-700); color: var(--ink-3); pointer-events: none; }
+.btn[disabled], .btn[aria-disabled='true'] { background: var(--base-3); color: var(--ink-3); pointer-events: none; }
 .btn-quiet[disabled], .btn-quiet[aria-disabled='true'] { background: transparent; }
 
 .field {
@@ -122,28 +122,28 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   padding: 0 16px;
   border-radius: var(--radius-control);
   border: 0;
-  background: var(--ink-700);
+  background: var(--base-3);
   color: var(--paper);
   transition: background-color var(--dur-state) ease;
 }
-.field:hover { background: var(--ink-600); }
-.field:focus-visible { background: var(--ink-700); outline-offset: 2px; }
+.field:hover { background: var(--base-4); }
+.field:focus-visible { background: var(--base-3); outline-offset: 2px; }
 
-/* A filter or toggle in a row of choices. Current is a lighter ink and paper text, never pink. */
+/* A filter or toggle in a row of choices. Current is a lighter base and paper text, never yellow. */
 .chip {
   display: inline-flex;
   align-items: center;
   height: 36px;
   padding: 0 14px;
   border-radius: var(--radius-control);
-  background: var(--ink-700);
+  background: var(--base-3);
   color: var(--ink-2);
   font: 600 var(--fs-small) / 1 var(--font);
   white-space: nowrap;
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-.chip:hover { color: var(--paper); background: var(--ink-600); }
-.chip[aria-pressed='true'], .chip[aria-current='page'] { background: var(--ink-600); color: var(--paper); }
+.chip:hover { color: var(--paper); background: var(--base-4); }
+.chip[aria-pressed='true'], .chip[aria-current='page'] { background: var(--base-4); color: var(--paper); }
 
 .muted { color: var(--ink-2); }
 .faint { color: var(--ink-3); }

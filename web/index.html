@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0d1431" />
+    <meta name="theme-color" content="#15120f" />
     <meta name="color-scheme" content="dark" />
     <meta name="description" content="Flow: an Apple-quality front end for your own media servers, add-ons and IPTV." />
     <title>Flow</title>
@@ -22,6 +22,16 @@
         var font = (JSON.parse(localStorage.getItem('flow.settings.v1') || 'null') || {}).font
         if (!files.hasOwnProperty(font)) font = 'system'
         document.documentElement.dataset.font = font
+        // The edge print on Home's strips is in the first viewport: start it now, on Home only.
+        if (location.pathname === '%BASE_URL%') {
+          var e = document.createElement('link')
+          e.rel = 'preload'
+          e.as = 'font'
+          e.type = 'font/woff2'
+          e.crossOrigin = ''
+          e.href = '%BASE_URL%fonts/barlow-condensed-latin-600-normal.woff2'
+          document.head.appendChild(e)
+        }
         if (font !== 'system') {
           var p = document.createElement('link')
           p.rel = 'preload'
@@ -53,26 +63,27 @@
       }
     </script>
     <style>
-      /* Painted before any CSS file arrives, so the first frame is already Flow's ink. */
-      html, body { background: #0d1431; color: #f3f1ea; margin: 0; }
-      /* A shell of Home from the HTML alone on a repeat visit: the greeting, the date and the lead still,
-         in the boxes the real page uses (HomeScreen.module.css, Featured.module.css). The real page
+      /* Painted before any CSS file arrives, so the first frame is already Flow's film-base black. */
+      html, body { background: #15120f; color: #f4efe6; margin: 0; }
+      /* A shell of Home from the HTML alone on a repeat visit: the greeting, the date and the lead still with
+         its strip, in the boxes the real page uses (HomeScreen.module.css, Lead.module.css). The real page
          replaces it without a visible change, so keep these measurements in step with those. */
       .shell-home { padding: calc(var(--nav-height, 56px) + 24px) var(--page-inset, 16px) 0; font-family: var(--font, system-ui, sans-serif); }
       .shell-wrap { max-width: 1360px; margin: 0 auto; }
       .shell-head { min-height: 62px; margin-bottom: 24px; }
       .shell-title { font-weight: 700; font-size: var(--fs-page-title, 34px); line-height: 1.1; letter-spacing: -0.02em; }
-      .shell-date { margin-top: 4px; font-size: 15px; line-height: 1.3; color: #a7b0d8; }
-      .shell-still { aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #141d42; }
+      .shell-date { margin-top: 4px; font-size: 15px; line-height: 1.3; color: #bfb5a6; }
+      .shell-still { aspect-ratio: 16 / 9; border-radius: 6px 6px 0 0; overflow: hidden; background: #1f1b17; }
       .shell-still img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      .shell-strip { height: 26px; border-radius: 0 0 6px 6px; background: #0d0b09; }
       @media (min-width: 721px) {
         .shell-head { display: flex; align-items: baseline; gap: 16px; min-height: 44px; }
         .shell-date { margin-top: 0; font-size: 17px; }
-        .shell-still { max-width: 340px; }
+        .shell-plate { max-width: 420px; }
       }
       @media (min-width: 1100px) {
-        .shell-grid { display: grid; grid-template-columns: minmax(0, 1fr) clamp(420px, 38vw, 560px); column-gap: 48px; }
-        .shell-still { grid-column: 2; max-width: none; }
+        .shell-top { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); column-gap: 48px; }
+        .shell-plate { max-width: none; }
       }
     </style>
   </head>
@@ -86,7 +97,7 @@
           (hr >= 5 && hr < 12 ? 'This Morning' : hr >= 12 && hr < 17 ? 'This Afternoon' : 'Tonight') +
           '</div><div class="shell-date">' +
           now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) +
-          '</div></div><div class="shell-grid"><div class="shell-still"><img alt="" sizes="' + h.s + '" fetchpriority="high" srcset="' + h.d + '"></div></div></div></div>'
+          '</div></div><div class="shell-top"><div class="shell-plate"><div class="shell-still"><img alt="" sizes="' + h.s + '" fetchpriority="high" srcset="' + h.d + '"></div><div class="shell-strip"></div></div></div></div></div>'
       }
     </script>
     <script type="module" src="/src/main.tsx"></script>

@@ -1,0 +1,27 @@
+/* The lead. Phone: the plate at full content width, then the title, facts and buttons. From 721px the
+   plate (420px) sits beside them, until 1100px, where the lead is a column beside Up Next. */
+.lead { display: flex; flex-direction: column; min-width: 0; }
+.plate { display: block; min-width: 0; }
+.info { display: flex; flex-direction: column; min-width: 0; }
+
+.name { margin-top: var(--space-m); font: 700 var(--fs-title2) / 1.1 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
+.meta { margin-top: var(--space-xxs); font-size: var(--fs-small); line-height: 1.4; color: var(--ink-2); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-s); margin-top: var(--space-m); }
+.actions > :first-child { flex: 0 0 auto; min-width: 168px; }
+
+@media (min-width: 721px) {
+  .name { font-size: 34px; }
+}
+@media (min-width: 721px) and (max-width: 1099px) {
+  .lead { flex-direction: row; align-items: flex-start; gap: var(--space-l); }
+  .plate { flex: none; width: 420px; }
+  .name { margin-top: 0; }
+}
+@media (max-width: 720px) {
+  .actions > *, .actions > :first-child { flex: 1 1 0; min-width: 0; }
+}
+
+/* Placeholder: the same box, a flat frame with its strip. */
+.ghostFrame { display: block; aspect-ratio: 16 / 9; border-radius: var(--radius-art) var(--radius-art) 0 0; background: var(--base-2); overflow: hidden; }
+.ghostImg { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ghostStrip { display: block; height: 26px; border-radius: 0 0 var(--radius-art) var(--radius-art); background: var(--edge); }

@@ -1,31 +1,34 @@
-/* Flow's design tokens: tonight's programme. A repertory cinema's printed monthly listing, on a screen.
-   Two inks: a deep blue that owns every surface, and one fluorescent pink spot. The spot marks only the
-   next action (the primary button), keyboard focus, the current selection in navigation, and "now"
-   (the played part of a bar). Never decoration. Dark only: the scene is an evening living room.
+/* Flow's design tokens: Film Stock. Every title is a reel of film Flow knows about; each still and poster
+   carries an edge strip under its frame, like the printed edge of 35mm stock (components/Frame). A warm
+   film-base black owns every surface, and one film-stock yellow marks only the next action (Resume, Play),
+   keyboard focus, the current selection in navigation, the watched perforations of a progress meter, and
+   the "time left" fact in edge print. Never decoration. Dark only: the scene is an evening living room.
    The same palette, scale and rules drive the apps (Flow/Design/Theme.swift). */
 :root {
-  /* Ink: every surface, from the ground up. */
-  --ink-900: #0d1431; /* ground: every page background */
-  --ink-800: #141d42; /* panel: sheets, panels, hovered rows, the selected listing's band */
-  --ink-700: #1d2853; /* control: secondary buttons, inputs, segmented controls, progress track */
-  --ink-600: #2a3668; /* line-strong: dividers when truly needed, buffered part of a scrubber */
-  --rule: rgb(214 222 255 / 0.12); /* hairline separators; prefer space */
+  /* Film base: every surface, from the ground up. */
+  --base: #15120f; /* every page background */
+  --base-2: #1f1b17; /* panels, sheets, hovered items, labels */
+  --base-3: #2a251f; /* secondary buttons, inputs, segmented controls, tracks */
+  --base-4: #3a342c; /* unwatched perforations, strong dividers, scrollbar thumbs */
+  --edge: #0d0b09; /* the edge strip's band */
+  --rule: rgb(255 236 200 / 0.1); /* hairlines; prefer space */
 
-  /* Type colours. Never grey: the second and third inks are tinted from the blue. */
-  --paper: #f3f1ea; /* primary text, 16:1 on ground */
-  --ink-2: #a7b0d8; /* secondary text and meta, 8.5:1 */
-  --ink-3: #7983b5; /* captions, labels under numbers, disabled; 4.9:1, never for body copy */
+  /* Type colours: warm, never grey. */
+  --paper: #f4efe6; /* primary text, 16:1 */
+  --ink-2: #bfb5a6; /* secondary text and meta, 9.2:1 */
+  --ink-3: #8d8476; /* captions and labels, 5.1:1; never for body copy */
+  --print: #d9cdb6; /* edge print on the edge band, 12.5:1 */
 
-  /* The spot. */
-  --spot: #ff4da6; /* 5.9:1 on ground */
-  --spot-hover: #ff66b3;
-  --spot-press: #e63e93;
-  --on-spot: #0d1431; /* text and icons on a pink fill */
+  /* The one accent. */
+  --stock: #f6b40e; /* 10:1 on the base */
+  --stock-hover: #ffc233;
+  --stock-press: #dda00a;
+  --on-stock: #15120f; /* text and icons on a yellow fill, 10:1 */
 
-  --warn: #ffc453; /* degraded states: "may stutter" */
-  --error: #ff6b57; /* failures; distinct from the spot */
-  --overlay: rgb(13 20 49 / 0.86); /* player chrome and notices over video: flat, no blur */
-  --selection: rgb(255 77 166 / 0.35);
+  --red: #f25c45; /* live, recording, errors */
+  --warn: #ff9f43; /* degraded states: "may stutter" */
+  --overlay: rgb(21 18 15 / 0.94); /* player chrome and notices over video: flat, no blur */
+  --selection: rgb(246 180 14 / 0.3);
 
   /* Space, on a 4-pt base. More above a section heading (--section) than below it (--space-s to m). */
   --space-xxs: 4px;
@@ -36,21 +39,22 @@
   --space-xl: 32px;
   --space-xxl: 48px;
   --space-xxxl: 64px;
-  --gutter: clamp(16px, 4vw, 56px);
+  --gutter: clamp(16px, 4vw, 48px);
   /* The page's side padding: the gutter, growing on very wide screens so content stops at 1800px. The nav
      uses it too, so the wordmark and the page title share one left edge. */
   --page-inset: max(var(--gutter), calc(50% - 900px));
   --section: 40px;
 
-  /* Shape. Artwork is print-like; stills and panels are 12; web buttons 10. */
+  /* Shape. A frame is 6 on top and its edge strip 6 below, so the two read as one object. Panels 8 to 12;
+     web buttons 10. */
   --radius-art: 6px;
+  --radius-label: 8px;
   --radius-panel: 12px;
   --radius-control: 10px;
 
-  /* Type, fixed (not fluid). Titles and section headings are set by weight and size, never condensed.
-     Page titles are --fs-page-title at 700 with -0.02em tracking. Section headings are --fs-headline/600,
-     listing titles --fs-body/600, meta --fs-small/400 in ink-2, version lines --fs-footnote in ink-3.
-     Times, durations, sizes, ratings and counts use tabular figures (.num, or global.css). */
+  /* Type, fixed (not fluid). Titles are set by weight and size in the interface face, never condensed. The
+     condensed face is the edge print (--font-edge) and nothing else. Times, durations, sizes, ratings and
+     counts use tabular figures (.num, or global.css). */
   --fs-caption: 12px;
   --fs-footnote: 13px;
   --fs-small: 15px;
@@ -60,7 +64,11 @@
   --fs-title2: 30px;
   --fs-title1: 40px;
   --fs-page-title: 34px;
-  --measure: 65ch;
+  --measure: 62ch;
+
+  /* Edge print: condensed, uppercase, tracked, 600. Self-hosted Barlow Condensed (fonts.css), only for
+     strips, film-can labels and small format labels. */
+  --font-edge: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
 
   /* Motion: 150 to 220 ms, ease-out, state changes only. Reduced motion is handled in global.css. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -86,10 +94,10 @@
    and scale above, so nothing needs a second look to stay on-brand. New work uses the names above, and
    redesigned screens drop these. */
 :root {
-  --canvas: var(--ink-900);
-  --elevated: var(--ink-800);
-  --surface: var(--ink-700);
-  --surface-strong: var(--ink-600);
+  --canvas: var(--base);
+  --elevated: var(--base-2);
+  --surface: var(--base-3);
+  --surface-strong: var(--base-4);
   --hairline: var(--rule);
   --text: var(--paper);
   --text-secondary: var(--ink-2);

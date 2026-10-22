@@ -1,5 +1,5 @@
 /* The top bar is flat ground ink, so page content scrolls under a solid edge; a hairline appears once
-   it does. The current section is paper with a 2 px pink underline; the others are ink-2. */
+   it does. The current section is paper with a 2 px yellow underline; the others are ink-2. */
 .top {
   position: fixed;
   inset: 0 0 auto;
@@ -10,17 +10,22 @@
   gap: var(--space-xl);
   padding: 0 var(--page-inset);
   padding-top: env(safe-area-inset-top);
-  background: var(--ink-900);
+  background: var(--base);
   transition: box-shadow var(--dur-move) ease;
 }
 .top[data-scrolled] { box-shadow: 0 1px 0 var(--rule); }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font: 600 var(--fs-headline) / 1 var(--font-display);
   letter-spacing: -0.01em;
   color: var(--paper);
   padding: var(--space-xs) 0;
 }
+
+.mark { width: 12px; height: 16px; border-radius: 2px; background: var(--stock); }
 
 .links { display: flex; gap: var(--space-l); height: 100%; align-items: stretch; margin-right: auto; }
 .link {
@@ -41,17 +46,19 @@
   bottom: 10px;
   height: 2px;
   border-radius: 1px;
-  background: var(--spot);
+  background: var(--stock);
 }
 
 .settings { margin-right: -10px; }
-.settings[aria-current='page'] { color: var(--spot); }
+.settings[aria-current='page'] { color: var(--stock); }
 
 .bottom { display: none; }
 
 @media (max-width: 720px) {
   .top { justify-content: space-between; }
-  .links { display: none; }
+  .mark { width: 12px; height: 16px; border-radius: 2px; background: var(--stock); }
+
+.links { display: none; }
   .settings { margin-left: auto; }
   .bottom {
     position: fixed;
@@ -61,7 +68,7 @@
     grid-template-columns: repeat(4, 1fr);
     height: var(--tabbar-height);
     padding-bottom: env(safe-area-inset-bottom);
-    background: var(--ink-800);
+    background: var(--base-2);
     box-shadow: 0 -1px 0 var(--rule);
   }
   .bottomTab {
@@ -75,7 +82,7 @@
     -webkit-tap-highlight-color: transparent;
     transition: color var(--dur-state) ease;
   }
-  .bottomTab[aria-current='page'] { color: var(--spot); }
+  .bottomTab[aria-current='page'] { color: var(--stock); }
   .bottomTab:active { transform: scale(0.98); }
   .bottomTab:focus-visible { outline-offset: -4px; }
 }
