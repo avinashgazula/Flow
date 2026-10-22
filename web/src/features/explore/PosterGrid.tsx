@@ -1,10 +1,13 @@
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { useEffect, useLayoutEffect, useRef } from 'react'
-import { PosterCard } from '../../components/Cards'
+import { PosterItem } from '../../components/TitleCards'
 import type { MediaItem } from '../../lib/tmdb/types'
 import { gridLayout, rowCount, shouldLoadMore } from './gridLayout'
 import { useMeasuredBox } from './useMeasuredBox'
 import s from './PosterGrid.module.css'
+
+/** The grid's posters are 100 to 200 px wide. */
+const gridSizes = '(max-width: 720px) 34vw, 200px'
 
 interface Props {
   items: MediaItem[]
@@ -69,9 +72,7 @@ export function PosterGrid({ items, pending = false, hasMore = false, onNearEnd,
               const item = pending ? undefined : items[start + column]
               if (item)
                 return (
-                  <div key={`${item.type}${item.id}`} className={s.cell} role="listitem">
-                    <PosterCard item={item} />
-                  </div>
+                  <PosterItem key={`${item.type}${item.id}`} item={item} meta={item.year ? String(item.year) : undefined} sizes={gridSizes} />
                 )
               return ghosts ? <Ghost key={`ghost${column}`} /> : null
             })}
@@ -86,6 +87,7 @@ function Ghost() {
   return (
     <div className={s.ghost} aria-hidden>
       <div className={s.ghostArt} />
+      <div className={s.ghostStrip} />
       <div className={s.ghostLine} />
     </div>
   )

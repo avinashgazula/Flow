@@ -13,8 +13,8 @@ export interface GridLayout {
   rowGap: number
 }
 
-/** The title and year under a poster, plus the space above them. */
-export const captionHeight = 46
+/** Under a poster: its 22 px edge strip, then the title and year with the space above them. */
+export const captionHeight = 72
 
 /** Below this width the grid is laid out for a phone: three across, tighter gaps. */
 const phone = 600

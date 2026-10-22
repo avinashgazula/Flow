@@ -24,7 +24,7 @@ describe('gridLayout', () => {
 
   it('gives rows a fixed height: a 2:3 poster, its caption and the gap below', () => {
     const l = gridLayout(1328)
-    expect(l.rowHeight).toBe(Math.round(l.cellWidth * 1.5 + 46 + 24))
+    expect(l.rowHeight).toBe(Math.round(l.cellWidth * 1.5 + 72 + 24))
     expect(gridLayout(1328, { caption: false }).rowHeight).toBe(Math.round(l.cellWidth * 1.5 + 24))
   })
 

@@ -93,7 +93,7 @@ export function ExploreScreen({ type, sort, genre }: { type: MediaType; sort: Ex
             title="Couldn’t Load Titles"
             message={errorMessage(query.error)}
             action={
-              <button className="btn btn-glass" onClick={() => void query.refetch()}>
+              <button className="btn btn-secondary" onClick={() => void query.refetch()}>
                 Try Again
               </button>
             }
@@ -106,7 +106,7 @@ export function ExploreScreen({ type, sort, genre }: { type: MediaType; sort: Ex
         {query.isFetchNextPageError && (
           <div className={s.more}>
             <p className="muted">Couldn’t load more titles.</p>
-            <button className="btn btn-glass btn-compact" onClick={() => void query.fetchNextPage()}>
+            <button className="btn btn-secondary btn-compact" onClick={() => void query.fetchNextPage()}>
               Try Again
             </button>
           </div>

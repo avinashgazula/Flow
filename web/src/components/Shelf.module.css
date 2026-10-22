@@ -1,9 +1,11 @@
+/* A titled, horizontally scrolling row of Frame items, all one size (--poster-width, or --still-width for a
+   row of stills). Off-screen shelves skip layout and paint (content-visibility). */
 .shelf {
   margin-top: var(--section);
   content-visibility: auto;
   contain-intrinsic-size: auto 330px;
 }
-.backdropShelf { contain-intrinsic-size: auto 260px; }
+.stillShelf { contain-intrinsic-size: auto 260px; }
 
 .header {
   display: flex;
@@ -15,16 +17,16 @@
 .title {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-xxs);
   font: 600 var(--fs-headline) / 1.25 var(--font-display);
   letter-spacing: -0.005em;
 }
-a.title svg { color: var(--text-tertiary); transition: transform var(--dur-snappy) var(--ease-snappy), color var(--dur-fade); }
-a.title:hover svg { color: var(--text); transform: translateX(2px); }
+a.title svg { color: var(--ink-3); transition: color var(--dur-state) ease; }
+a.title:hover svg { color: var(--paper); }
 
-.arrows { display: none; gap: 8px; }
+.arrows { display: none; gap: var(--space-xs); }
 @media (hover: hover) and (min-width: 721px) {
-  .arrows { display: flex; opacity: 0; transition: opacity var(--dur-fade) ease; }
+  .arrows { display: flex; opacity: 0; transition: opacity var(--dur-state) ease; }
   .shelf:hover .arrows, .shelf:focus-within .arrows { opacity: 1; }
 }
 
@@ -33,25 +35,24 @@ a.title:hover svg { color: var(--text); transform: translateX(2px); }
   gap: var(--space-m);
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 6px var(--gutter) 18px;
+  padding: 6px var(--gutter) var(--space-m);
   scroll-padding: 0 var(--gutter);
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
 }
 .row::-webkit-scrollbar { display: none; }
-.row > * { scroll-snap-align: start; }
+.row > * { flex: 0 0 var(--poster-width, 150px); scroll-snap-align: start; }
+.stillShelf .row > * { flex-basis: var(--still-width, 280px); }
 
-.ghostPoster, .ghostBackdrop {
-  flex: none;
-  border-radius: var(--radius-poster);
-  background: var(--base-2);
-}
-.ghostPoster { width: var(--poster-width, 168px); aspect-ratio: 2 / 3; }
-.ghostBackdrop { width: var(--backdrop-width, 320px); aspect-ratio: 16 / 9; border-radius: var(--radius-card); }
+.ghost { flex: none; border-radius: var(--radius-art); background: var(--base-2); }
+.ghostPoster { width: var(--poster-width, 150px); aspect-ratio: 2 / 3; }
+.ghostStill { width: var(--still-width, 280px); aspect-ratio: 16 / 9; }
 
 @media (max-width: 720px) {
-  .row { gap: 12px; }
-  .ghostPoster { width: 30vw; max-width: 150px; }
-  .ghostBackdrop { width: 72vw; max-width: 320px; }
+  .row { gap: var(--space-s); }
+  .row > * { flex-basis: var(--poster-width, 112px); }
+  .stillShelf .row > * { flex-basis: var(--still-width, 240px); }
+  .ghostPoster { width: 112px; }
+  .ghostStill { width: 240px; }
 }

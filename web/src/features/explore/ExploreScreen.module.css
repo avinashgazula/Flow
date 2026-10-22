@@ -1,8 +1,8 @@
 :global(.page).screen { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 
-.titleRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-m); }
-.titleRow :global(.page-title) { margin-bottom: var(--space-m); }
-.sortMenu { display: none; margin-bottom: var(--space-m); }
+.titleRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-m); margin-bottom: var(--space-l); }
+.titleRow :global(.page-title) { margin-bottom: 0; }
+.sortMenu { display: none; }
 
 .controls {
   display: flex;
@@ -13,17 +13,13 @@
 }
 .types { min-width: 240px; }
 
+/* Genres are chips: wrapped on a wide screen so every one is in sight, a scrolling strip on a phone. */
 .chips {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xs);
-  margin: 0 calc(-1 * var(--gutter)) var(--space-l);
-  padding: 2px var(--gutter);
-  overflow-x: auto;
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
-  scroll-padding: 0 var(--gutter);
+  margin-bottom: var(--space-l);
 }
-.chips::-webkit-scrollbar { display: none; }
 .chips > * { flex: none; }
 
 .results { min-height: 60vh; }
@@ -41,4 +37,14 @@
   .sortMenu { display: inline-flex; }
   .sorts { display: none; }
   .types { flex: 1; }
+  .chips {
+    flex-wrap: nowrap;
+    margin-inline: calc(-1 * var(--gutter));
+    padding: 2px var(--gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    scroll-padding: 0 var(--gutter);
+  }
+  .chips::-webkit-scrollbar { display: none; }
 }

@@ -1,30 +1,26 @@
+/* Standard controls, flat: a segmented control (a mode), a select (a sort), and the empty or error state.
+   The current segment is lighter, never yellow. */
 .segmented {
   display: inline-grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   padding: 3px;
-  border-radius: 999px;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--hairline);
+  border-radius: var(--radius-control);
+  background: var(--base-3);
 }
 .segment {
-  height: 32px;
-  padding: 0 16px;
-  border-radius: 999px;
-  font: 600 14px / 1 var(--font);
-  color: var(--text-secondary);
+  height: 34px;
+  padding: 0 var(--space-m);
+  border-radius: 7px;
+  font: 600 var(--fs-small) / 1 var(--font);
+  color: var(--ink-2);
   white-space: nowrap;
-  transition: background-color var(--dur-fade) ease, color var(--dur-fade) ease;
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
 }
-.segment:hover { color: var(--text); }
-/* A lighter grey than the chips' white, as the system's segmented control: it's a mode, not a filter. */
-.segment[aria-checked='true'] {
-  background: rgb(255 255 255 / 0.2);
-  color: var(--text);
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
-}
-.segment:focus-visible { outline-offset: -2px; border-radius: 999px; }
+.segment:hover { color: var(--paper); }
+.segment[aria-checked='true'] { background: var(--base-4); color: var(--paper); }
+.segment:focus-visible { outline-offset: -2px; }
 
 .select {
   position: relative;
@@ -34,42 +30,31 @@
 }
 .select select {
   appearance: none;
-  height: 36px;
-  padding: 0 34px 0 16px;
+  height: 40px;
+  padding: 0 36px 0 14px;
   border: 0;
-  border-radius: 999px;
-  background: var(--glass);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  box-shadow: inset 0 0 0 1px var(--hairline);
-  font: 600 14px / 1 var(--font);
+  border-radius: var(--radius-control);
+  background: var(--base-3);
+  color: var(--paper);
+  font: 600 var(--fs-small) / 1 var(--font);
   cursor: pointer;
+  transition: background-color var(--dur-state) ease;
 }
-.select select:hover { background: rgb(60 60 66 / 0.6); }
-.select select:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-.select option { background: var(--elevated); color: var(--text); }
-.select svg { position: absolute; right: 13px; pointer-events: none; color: var(--text-secondary); }
+.select select:hover { background: var(--base-4); }
+.select option { background: var(--base-2); color: var(--paper); }
+.select svg { position: absolute; right: 12px; pointer-events: none; color: var(--ink-2); }
 
+/* Nothing to list, or loading failed: a title, a line on what to do next, and the action. Left-aligned
+   with the page, flat, no icon container. */
 .state {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  max-width: 440px;
-  margin: 0 auto;
-  padding: var(--space-xxl) var(--space-m);
-  text-align: center;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  max-width: 480px;
+  padding: var(--space-xl) 0;
 }
-.stateIcon {
-  display: grid;
-  place-items: center;
-  width: 60px;
-  height: 60px;
-  margin-bottom: 4px;
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--text-secondary);
-}
-.stateTitle { font: 700 var(--text-title) / 1.2 var(--font-display); letter-spacing: -0.01em; }
-.stateMessage { color: var(--text-secondary); text-wrap: pretty; }
-.state :global(.btn) { margin-top: 8px; }
+.stateIcon { color: var(--ink-3); margin-bottom: var(--space-xxs); }
+.stateTitle { font: 700 var(--fs-title3) / 1.2 var(--font-display); letter-spacing: -0.015em; }
+.stateMessage { color: var(--ink-2); font-size: var(--fs-small); line-height: 1.5; text-wrap: pretty; }
+.state :global(.btn) { margin-top: var(--space-s); }

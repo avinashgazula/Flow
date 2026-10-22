@@ -14,15 +14,9 @@
   will-change: transform;
 }
 
-/* The shared card sizes itself for shelves; in a grid it fills its column instead. */
-.cell > a { width: 100%; max-width: none; }
-
-.ghost { display: flex; flex-direction: column; gap: 8px; }
-.ghostArt, .ghostLine {
-  background: linear-gradient(90deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.05));
-  background-size: 200% 100%;
-  animation: shimmer 1.6s linear infinite;
-}
-.ghostArt { aspect-ratio: 2 / 3; border-radius: var(--radius-poster); }
-.ghostLine { width: 70%; height: 12px; margin: 3px 2px 0; border-radius: 6px; }
-@keyframes shimmer { to { background-position: -200% 0; } }
+/* Placeholders: flat base-2 blocks the size of a poster, its strip and a title line. */
+.ghost { display: flex; flex-direction: column; }
+.ghostArt, .ghostStrip, .ghostLine { background: var(--base-2); }
+.ghostArt { aspect-ratio: 2 / 3; border-radius: var(--radius-art) var(--radius-art) 0 0; }
+.ghostStrip { height: 22px; background: var(--edge); border-radius: 0 0 var(--radius-art) var(--radius-art); }
+.ghostLine { width: 70%; height: 12px; margin-top: var(--space-s); border-radius: 4px; }

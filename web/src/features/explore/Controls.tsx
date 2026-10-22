@@ -31,7 +31,7 @@ export function Segmented<T extends string>({ options, value, onChange, label, c
   )
 }
 
-/** A compact glass pop-up menu. The system's own picker opens, which on phones is the familiar wheel. */
+/** A compact pop-up menu. The system's own picker opens, which on phones is the familiar wheel. */
 export function Select<T extends string>({ options, value, onChange, label, className }: { options: readonly { id: T; label: string }[]; value: T; onChange: (value: T) => void; label: string; className?: string }) {
   return (
     <label className={`${s.select} ${className ?? ''}`}>
@@ -62,8 +62,8 @@ export function StateView({ icon, title, message, action }: { icon?: Parameters<
   return (
     <div className={s.state} role="status">
       {icon && (
-        <span className={s.stateIcon}>
-          <Icon name={icon} size={28} strokeWidth={2} />
+        <span className={s.stateIcon} aria-hidden="true">
+          <Icon name={icon} size={24} strokeWidth={2} />
         </span>
       )}
       <h2 className={s.stateTitle}>{title}</h2>

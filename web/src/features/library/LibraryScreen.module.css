@@ -1,84 +1,58 @@
 :global(.page).screen { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 
-/* Shelves bring their own gutter and run to the window's edges. */
-.bleed { margin: 0 calc(-1 * var(--gutter)); }
+/* Sections: a plain heading, its count, and a link to the whole list. More room above than below. */
+.section { margin-top: var(--section); }
+.section:first-of-type { margin-top: 0; }
+.sectionHead { display: flex; align-items: baseline; gap: var(--space-s); margin-bottom: var(--space-s); }
+.sectionTitle { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; }
+.count { font-size: var(--fs-small); color: var(--ink-3); }
+.seeAll { margin-left: auto; font-size: var(--fs-small); line-height: 1.3; color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+.seeAll:hover { color: var(--paper); text-decoration-color: var(--paper); }
 
-/* Tiles, after LibraryTile: a tinted icon, the list and its count. System colours, as on the apps. */
-.blue { --tint: rgb(10 132 255); }
-.teal { --tint: rgb(64 200 224); }
-.pink { --tint: rgb(255 55 95); }
-.orange { --tint: rgb(255 159 10); }
+/* Stills (Continue Watching) and posters (Watchlist, Favourites) in one fixed size per row: a scrolling row
+   on a phone, 3 or 4 stills and 5 or 7 posters across on wider screens. */
+.stills, .posters { display: flex; gap: var(--space-m); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 6px; margin: -6px; }
+.stills::-webkit-scrollbar, .posters::-webkit-scrollbar { display: none; }
+.stills > * { flex: 0 0 240px; scroll-snap-align: start; }
+.posters > * { flex: 0 0 112px; scroll-snap-align: start; }
+@media (max-width: 720px) {
+  .stills, .posters { gap: var(--space-s); margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); scroll-padding-inline: var(--gutter); }
+}
+@media (min-width: 721px) {
+  .stills, .posters { overflow: visible; display: grid; }
+  .stills > *, .posters > * { flex: none; }
+  .stills { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stills > :nth-child(n + 4) { display: none; }
+  .posters { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .posters > :nth-child(n + 6) { display: none; }
+}
+@media (min-width: 1100px) {
+  .stills { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .stills > :nth-child(n + 4) { display: block; }
+  .stills > :nth-child(n + 5) { display: none; }
+  .posters { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .posters > :nth-child(n + 6) { display: block; }
+  .posters > :nth-child(n + 8) { display: none; }
+}
 
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-.tile {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  min-width: 0;
-  padding: var(--space-m);
-  border-radius: var(--radius-tile);
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--hairline);
-  transition: transform var(--dur-snappy) var(--ease-snappy), background-color var(--dur-fade) ease;
-  -webkit-tap-highlight-color: transparent;
-}
-.tile:hover { background: var(--surface-strong); }
-.tile:active { transform: scale(0.97); }
-.tileIcon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  color: var(--tint);
-  background: color-mix(in srgb, var(--tint) 16%, transparent);
-}
-.tileText { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.tileTitle { font: 600 var(--text-headline) / 1.2 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tileCount { font-size: var(--text-caption); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tileChevron { flex: none; color: var(--text-tertiary); }
-.narrow { display: none; }
-
-/* Continue Watching, with its remove button over the artwork. */
-.continue { position: relative; flex: none; }
-.remove.remove {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 30px;
-  height: 30px;
-  opacity: 0;
-  transition: opacity var(--dur-fade) ease, transform var(--dur-snappy) var(--ease-snappy);
-}
-.continue:hover .remove, .continue:focus-within .remove, .remove:focus-visible { opacity: 1; }
-/* No hover on touch screens: the button is always there. */
+/* Remove sits on the still's corner: a control, not text, shown on hover or focus and always on touch. */
+.remove.remove { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; opacity: 0; transition: opacity var(--dur-state) ease, background-color var(--dur-state) ease; }
+li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 1; }
 @media (hover: none) { .remove.remove { opacity: 1; } }
 
-.continueGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-l) var(--space-m); }
-.continueGrid .continue > a { width: 100%; max-width: none; }
+.continueGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-l) var(--space-m); }
 
-/* History */
-.recent { margin-top: var(--section); padding: 0 var(--gutter); max-width: 900px; content-visibility: auto; contain-intrinsic-size: auto 500px; }
-.sectionHeader { margin-bottom: 2px; }
-.sectionTitle { display: inline-flex; align-items: center; gap: 4px; font: 700 var(--text-section) / 1.2 var(--font-display); letter-spacing: -0.01em; }
-.sectionTitle svg { color: var(--text-tertiary); transition: transform var(--dur-snappy) var(--ease-snappy), color var(--dur-fade); }
-.sectionTitle:hover svg { color: var(--text); transform: translateX(2px); }
-.recentRow { height: 84px; }
+/* History: a frame with its strip, then what it was and when. */
+.history { max-width: 900px; content-visibility: auto; contain-intrinsic-size: auto 500px; }
+.recentRow { height: 124px; }
 
 .dayHeading {
   display: flex;
   align-items: flex-end;
   height: 56px;
-  padding-bottom: 10px;
-  font: 600 var(--text-caption) / 1 var(--font);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
+  padding-bottom: var(--space-xs);
+  font: 600 var(--fs-footnote) / 1 var(--font);
+  color: var(--ink-2);
 }
 
 .historyColumn { max-width: 900px; }
@@ -91,17 +65,25 @@
   gap: var(--space-m);
   height: 100%;
   padding: 8px 0;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--rule);
   -webkit-tap-highlight-color: transparent;
 }
-.historyArt { flex: none; width: 120px; aspect-ratio: 16 / 9; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--hairline); }
-.historyItem:hover .historyTitle { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--text-tertiary); }
+.historyPlate { flex: none; width: 144px; }
+.historyItem:hover .historyTitle { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ink-3); }
+.historyItem:hover .historyPlate :global(*) { color: inherit; }
 .historyItem:focus-visible { outline: none; }
-.historyItem:focus-visible .historyArt { outline: 3px solid #fff; outline-offset: 2px; }
+.historyItem:focus-visible .historyPlate { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }
 .historyText { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
-.historyTitle { font: 600 15px / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.historyMeta { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.historyTime { flex: none; font-size: var(--text-caption); color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.historyTitle { font: 600 var(--fs-small) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.historyMeta { font-size: var(--fs-footnote); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.historyTime { flex: none; font-size: var(--fs-caption); color: var(--ink-3); }
+
+/* Stats: labels left, numbers right in tabular figures, a rule between rows. */
+.stats { max-width: 560px; margin: 0; padding: var(--space-xxs) var(--space-m); border-radius: var(--radius-panel); background: var(--base-2); }
+.stat { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-m); padding: var(--space-s) 0; }
+.stat + .stat { border-top: 1px solid var(--rule); }
+.stat dt { font-size: var(--fs-small); color: var(--ink-2); }
+.stat dd { margin: 0; font: 600 var(--fs-body) / 1.2 var(--font); text-align: right; }
 
 /* One list */
 .back {
@@ -109,10 +91,10 @@
   align-items: center;
   gap: 2px;
   margin: 0 0 var(--space-xs) -4px;
-  font: 600 15px / 1 var(--font);
-  color: var(--text-secondary);
+  font: 600 var(--fs-small) / 1 var(--font);
+  color: var(--ink-2);
 }
-.back:hover { color: var(--text); }
+.back:hover { color: var(--paper); }
 .toolbar {
   display: flex;
   align-items: center;
@@ -121,19 +103,9 @@
   gap: var(--space-s);
   margin-bottom: var(--space-l);
 }
-.toolbarEnd { display: inline-flex; align-items: center; gap: var(--space-s); font-size: 14px; }
+.toolbarEnd { display: inline-flex; align-items: center; gap: var(--space-s); font-size: var(--fs-small); }
 
-@media (max-width: 900px) {
-  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-s); }
-}
 @media (max-width: 720px) {
-  .tile { flex-wrap: wrap; position: relative; padding: 14px; }
-  .tileText { flex-basis: 100%; }
-  .wide { display: none; }
-  .narrow { display: inline; }
-  .tileChevron { position: absolute; top: 28px; right: 14px; }
-  .historyArt { width: 96px; }
-  .historyItem { gap: var(--space-s); }
   .continueGrid { grid-template-columns: 1fr; }
   .toolbar > :first-child { flex: 1 1 100%; }
   .toolbarEnd { flex: 1 1 100%; justify-content: space-between; }
