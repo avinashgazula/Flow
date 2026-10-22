@@ -2,16 +2,15 @@ import { useQuery, type UseQueryOptions } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { FrameCard } from '../../components/Frame'
+import { PosterItem, ResumeItem } from '../../components/TitleCards'
 import { prefetchDetail, q } from '../../lib/queries'
-import { lastSourceStore } from '../../lib/sources/lastSource'
-import { useStore } from '../../lib/store/createStore'
 import { mediaKey, useLibrary, type Progress } from '../../lib/store/library'
-import { formatLeft, formatWeekdayDate, greetingTitle, userLocale, useMinuteTick } from '../../lib/time'
+import { formatWeekdayDate, greetingTitle, userLocale, useMinuteTick } from '../../lib/time'
 import { srcSet } from '../../lib/tmdb/images'
 import type { MediaItem, MediaType, Page } from '../../lib/tmdb/types'
 import { useNearScreen } from '../../lib/useNearScreen'
 import { Lead, LeadGhost, leadSizes, type LeadItem } from './Lead'
-import { episodeLine, firstWithStill, inProgress, pickMeta, pickPrint, resumePrint, spokenPick, spokenResume, watchedFraction, secondsLeft } from './logic'
+import { firstWithStill, inProgress, pickMeta, pickPrint, spokenPick } from './logic'
 import s from './HomeScreen.module.css'
 
 /** Home, by the hour: the greeting title and date, the lead item with its yellow Resume, Up Next beside it
@@ -68,7 +67,7 @@ export function HomeScreen() {
                 </h2>
                 {upNext.length ? (
                   <ul className={s.stills}>
-                    {upNext.map((u) => (u.resume ? <ResumeCard key={u.key} p={u.resume} /> : <WatchCard key={u.key} item={u.item} />))}
+                    {upNext.map((u) => (u.resume ? <ResumeItem key={u.key} p={u.resume} sizes={stillSizes} /> : <WatchCard key={u.key} item={u.item} />))}
                   </ul>
                 ) : (
                   <p className={s.teach}>Start a film or an episode and it waits here, with how long is left and when it would finish if you carried on now.</p>
@@ -93,30 +92,6 @@ export function HomeScreen() {
 }
 
 const stillSizes = '(min-width: 1100px) 22vw, (min-width: 721px) 30vw, 240px'
-
-/** Something started, as a still: perforations for how far, print for the episode, the minutes left in
- *  yellow, when it would end, and the format it last played in. */
-function ResumeCard({ p }: { p: Progress }) {
-  const now = useMinuteTick()
-  const last = useStore(lastSourceStore, (st) => st.byTitle[p.key])
-  const still = p.episode?.still
-  return (
-    <FrameCard
-      link={{ to: '/title/$type/$id', params: { type: p.item.type, id: p.item.id }, search: p.episode ? { season: p.episode.season } : undefined }}
-      shape="still"
-      artPath={still ?? p.item.backdrop}
-      artKind={still ? 'still' : 'backdrop'}
-      sizes={stillSizes}
-      progress={watchedFraction(p)}
-      print={resumePrint(p, now, last, userLocale)}
-      title={p.item.title}
-      meta={episodeLine(p.episode) ?? formatLeft(secondsLeft(p))}
-      label={spokenResume(p, now, userLocale, last)}
-      fallback={p.item.title}
-      onIntent={() => prefetchDetail(p.item)}
-    />
-  )
-}
 
 /** A watchlist title, as a still with print only: nothing watched yet, so no perforations. */
 function WatchCard({ item }: { item: MediaItem }) {
@@ -170,33 +145,9 @@ function PosterRow({
                 <span />
               </li>
             ))
-          : data?.results.slice(0, 12).map((item) => <PosterCard key={`${item.type}${item.id}`} item={item} />)}
+          : data?.results.slice(0, 12).map((item) => <PosterItem key={`${item.type}${item.id}`} item={item} sizes="(max-width: 720px) 112px, 180px" />)}
       </ul>
     </section>
-  )
-}
-
-/** A title you haven't started: poster, and print only (runtime and rating, or seasons and rating, or NEW EP
- *  when an episode just aired). The detail behind it is fetched once the poster is about to be seen. */
-function PosterCard({ item }: { item: MediaItem }) {
-  const now = useMinuteTick()
-  const [near, itemRef] = useNearScreen<HTMLLIElement>()
-  const { data } = useQuery({ ...q.detail(item.type, item.id), enabled: near })
-  // The placeholder (what the list knew) has no runtime or seasons, so only a real answer counts.
-  const detail = data && (data.runtime || data.seasons.length) ? data : undefined
-  return (
-    <FrameCard
-      link={{ to: '/title/$type/$id', params: { type: item.type, id: item.id } }}
-      itemRef={itemRef}
-      shape="poster"
-      artPath={item.poster}
-      sizes="(max-width: 720px) 112px, 180px"
-      print={pickPrint(item, detail, now)}
-      title={item.title}
-      label={spokenPick(item, detail)}
-      fallback={item.title}
-      onIntent={() => prefetchDetail(item)}
-    />
   )
 }
 

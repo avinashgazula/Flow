@@ -72,7 +72,7 @@
 .plate[data-shape='poster'] .print { font-size: 11px; letter-spacing: 0.1em; }
 
 /* An item: the plate, a title and one line of facts. */
-.item { display: block; min-width: 0; }
+.item { position: relative; display: block; min-width: 0; }
 .card {
   display: block;
   width: 100%;

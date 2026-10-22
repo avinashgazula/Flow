@@ -2,7 +2,7 @@ import { Link, type LinkProps } from '@tanstack/react-router'
 import type { ReactNode, Ref } from 'react'
 import type { ImageKind } from '../lib/tmdb/images'
 import { Artwork } from './Artwork'
-import { markZoomSource } from './Cards'
+import { markZoomSource } from './zoom'
 import s from './Frame.module.css'
 
 /* Frame and edge strip: Flow's one repeating object, after the printed edge of 35mm film. A still or a
@@ -95,12 +95,13 @@ export interface FrameCardProps extends Omit<PlateProps, 'hideStrip' | 'classNam
   itemRef?: Ref<HTMLLIElement>
   /** Can't be played here: dimmed, with the reason in `meta`. */
   dimmed?: boolean
+  /** Sits in the item beside the link, for a control that can't live inside it (Remove). */
   children?: ReactNode
 }
 
 /** An item in a list or grid: a plate, its title, one meta line; the whole of it one link (or button).
  *  Renders an <li>. Hover lifts the plate 2 px and brightens the print; focus rings the plate in yellow. */
-export function FrameCard({ link, onSelect, title, meta, label, onIntent, itemRef, dimmed, ...plate }: FrameCardProps) {
+export function FrameCard({ link, onSelect, title, meta, label, onIntent, itemRef, dimmed, children, ...plate }: FrameCardProps) {
   const inside = (
     <>
       <Plate {...plate} hideStrip />
@@ -116,7 +117,7 @@ export function FrameCard({ link, onSelect, title, meta, label, onIntent, itemRe
     onFocus: onIntent,
   }
   return (
-    <li className={s.item} ref={itemRef}>
+    <li className={s.item} ref={itemRef} role="listitem">
       {link ? (
         <Link {...link} {...shared} onClick={markZoomSource} viewTransition>
           {inside}
@@ -126,6 +127,7 @@ export function FrameCard({ link, onSelect, title, meta, label, onIntent, itemRe
           {inside}
         </button>
       )}
+      {children}
     </li>
   )
 }
