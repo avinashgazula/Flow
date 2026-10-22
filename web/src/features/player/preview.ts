@@ -202,7 +202,8 @@ export class VideoPreview implements PreviewSource {
 export class TilePreview implements PreviewSource {
   private box: HTMLElement | null = null
   private report: (state: PreviewState, aspect?: number) => void = () => {}
-  private loaded = new Set<number>()
+  /** Tiles that have arrived, with their size: the last tile of a film may be a shorter image than the rest. */
+  private loaded = new Map<number, { width: number; height: number }>()
   private wanted = -1
 
   constructor(private tiles: Trickplay) {}
@@ -221,13 +222,18 @@ export class TilePreview implements PreviewSource {
     if (!box) return
     const { tile, column, row } = trickplayCell(this.tiles, time)
     this.wanted = tile
-    // The tile is scaled so one picture fills the box exactly; its cell is then a whole number of box widths in.
+    // The image is scaled so one picture fills the box exactly, and moved to the picture's cell. Its own size is
+    // what is scaled (a film's last tile can be a shorter image than the rest); the columns say how wide a picture is.
     const place = () => {
       const t = this.tiles
-      const scale = (box.clientWidth || t.width) / t.width
+      const size = this.loaded.get(tile)
+      if (!size) return
+      const cellWidth = size.width / t.columns
+      const cellHeight = (cellWidth * t.height) / t.width
+      const scale = (box.clientWidth || cellWidth) / cellWidth
       box.style.backgroundImage = `url("${this.address(tile)}")`
-      box.style.backgroundSize = `${t.width * t.columns * scale}px ${t.height * t.rows * scale}px`
-      box.style.backgroundPosition = `${-column * t.width * scale}px ${-row * t.height * scale}px`
+      box.style.backgroundSize = `${size.width * scale}px ${size.height * scale}px`
+      box.style.backgroundPosition = `${-column * cellWidth * scale}px ${-row * cellHeight * scale}px`
       this.report('ready')
     }
     if (this.loaded.has(tile)) return place()
@@ -235,7 +241,7 @@ export class TilePreview implements PreviewSource {
     this.report('loading')
     const image = new Image()
     image.onload = () => {
-      this.loaded.add(tile)
+      this.loaded.set(tile, { width: image.naturalWidth, height: image.naturalHeight })
       if (this.wanted === tile && this.box) place()
     }
     image.onerror = () => {

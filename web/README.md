@@ -52,7 +52,7 @@ npm test             # unit tests (Vitest)
 
 ## Matroska
 
-Browsers can't play `.mkv`, so `src/lib/remux` does it: a Rust crate (`crates/flow-remux`, 120 KB of
+Browsers can't play `.mkv`, so `src/lib/remux` does it: a Rust crate (`crates/flow-remux`, 130 KB of
 WebAssembly) demuxes Matroska in a Web Worker, fed by range requests (header, seek index, then
 clusters a few MB at a time), and remuxes it to fragmented MP4 for Media Source Extensions. The page
 only sees `attachMatroska(video, url)`; nothing loads until an MKV is played. The built wasm and its
@@ -99,6 +99,25 @@ needs to); frames dropped with a full buffer mean the device. The notice offers 
 source that plays, keeping the position, and "Keep Watching" is remembered per title. Press **I** (or
 Options → Playback Info) for a card with the picture size, codec, engine, dropped frames, buffer and
 download rate.
+
+## Seek previews
+
+Hovering or dragging the scrubber, or pressing an arrow key, shows a small frame (`SeekPreview.tsx`) of where you
+would land, with the time on a strip under it; where no picture is available it is the time alone. Dragging moves the
+time at once and seeks the real video on release, except where there is no preview picture (a phone playing a plain
+file), where the picture follows the finger a few times a second as before. Where the pictures come from:
+
+- **Matroska:** the worker reads one keyframe on its own lane (`worker.ts`, `thumbs.ts`). The demuxer's `thumbTarget`
+  names the cluster and the keyframe's position inside it from the seek index, so the read starts there and stops as soon
+  as the keyframe is whole: 512 KB first (more once the file's keyframes are known to be bigger, up to 4 MB), then one
+  request for what is missing. WebCodecs decodes it in the worker, it is drawn at most 320 px wide, and the last sixty
+  are kept. One preview is read at a time at low priority, the newest replaces one still waiting (and one that has only
+  just started), and none starts while the stream has under two seconds buffered ahead. Without `VideoDecoder`, or a
+  decoder for the file's codec (HEVC and H.264 depend on the device), the player says so once and shows the time only.
+- **Files the browser plays itself** (MP4, WebM, including the blocked-host fallback): a hidden muted second `<video>`
+  with the same address, seeked on hover and shown in the frame, so it needs no CORS. Created on the first hover; not on
+  phones or with Data Saver on.
+- **Jellyfin 10.9+:** the server's trickplay tiles, whatever the engine; no decoding at all.
 
 ## Sample data
 
