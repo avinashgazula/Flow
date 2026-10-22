@@ -40,6 +40,7 @@ struct FlowApp: App {
                     if phase == .background { model.flushSettings(waits: true) }
                 }
                 #if os(macOS)
+                .opensSettingsOnRequest(model)
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                     model.flushSettings(waits: true)
                 }

@@ -82,5 +82,11 @@ bundle_id=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "dd/Build/Prod
 SIMCTL_CHILD_FLOW_TOUR_FILE="$tour_file" SIMCTL_CHILD_FLOW_TOUR_DWELL=5 \
   xcrun simctl launch "$udid" "$bundle_id" -FlowDemo YES -FlowTour YES
 capture_loop 'xcrun simctl io "$udid" screenshot "$file"'
+# A tour that never finished means the app hung or crashed: keep what says where, next to the screenshots.
+if [ "$(cat "$tour_file" 2>/dev/null || true)" != "done" ]; then
+  app_pid=$(pgrep -f "$udid.*/Flow.app/Flow" | head -1 || true)
+  [ -n "$app_pid" ] && sample "$app_pid" 5 -file "$out/hang-sample.txt" || true
+  cp "$HOME"/Library/Logs/DiagnosticReports/Flow* "$out/" 2>/dev/null || true
+fi
 cp "$tour_file.log" "$out/tour.log" 2>/dev/null || true
 xcrun simctl terminate "$udid" "$bundle_id" || true

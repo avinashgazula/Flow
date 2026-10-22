@@ -1,7 +1,4 @@
 import SwiftUI
-#if os(macOS)
-import AppKit
-#endif
 import FlowKit
 
 /// Drives the app through its main screens for automated screenshots (`-FlowTour YES`).
@@ -125,7 +122,7 @@ enum ScreenshotTour {
         #else
         // The Mac's Settings is its own window; the pages open inside it.
         steps += [
-            Step(name: "settings") { _ in NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) },
+            Step(name: "settings") { m in m.settingsWindowRequest += 1 },
             Step(name: "settings-general") { m in m.settingsPath = [.settings(.general)] },
             Step(name: "settings-account") { m in m.settingsPath = [.settings(.account)] },
             Step(name: "settings-shelves") { m in m.settingsPath = [.settings(.shelves)] },
@@ -185,3 +182,19 @@ enum ScreenshotTour {
         try? "done".write(to: file, atomically: true, encoding: .utf8)
     }
 }
+
+#if os(macOS)
+/// The tour asks for the Settings window through the model, since only a view can open it.
+private struct OpensSettingsOnRequest: ViewModifier {
+    let model: AppModel
+    @Environment(\.openSettings) private var openSettings
+
+    func body(content: Content) -> some View {
+        content.onChange(of: model.settingsWindowRequest) { _, _ in openSettings() }
+    }
+}
+
+extension View {
+    func opensSettingsOnRequest(_ model: AppModel) -> some View { modifier(OpensSettingsOnRequest(model: model)) }
+}
+#endif
