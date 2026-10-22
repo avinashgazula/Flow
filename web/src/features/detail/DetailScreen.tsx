@@ -2,16 +2,17 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { lazy, Suspense, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { Artwork } from '../../components/Artwork'
-import { FrameCard, Plate } from '../../components/Frame'
+import { Plate } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
+import { PosterRow } from '../../components/PosterRow'
 import { genreNames } from '../../lib/genres'
-import { prefetchDetail, q } from '../../lib/queries'
+import { q } from '../../lib/queries'
 import { lastSourceFor, type PlaybackRequest, type Source } from '../../lib/sources'
 import { library, mediaKey, useLibrary } from '../../lib/store/library'
 import { useSettings } from '../../lib/store/settings'
 import { userLocale, useMinuteTick } from '../../lib/time'
 import type { MediaDetail, MediaItem, MediaType } from '../../lib/tmdb/types'
-import { pickPrint, spokenPick, watchedFraction } from '../home/logic'
+import { watchedFraction } from '../home/logic'
 import { Episodes } from './Episodes'
 import { FilmCan } from './FilmCan'
 import { bestSource, formatDay, metaLine, playLabel, titlePrint } from './logic'
@@ -197,8 +198,8 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
         </section>
       )}
 
-      <Row title="You Might Also Like" items={d.recommendations} now={now} />
-      <Row title="Similar" items={d.similar} now={now} />
+      <PosterRow title="You Might Also Like" items={d.recommendations} now={now} />
+      <PosterRow title="Similar" items={d.similar} now={now} />
 
       {!isPlaceholderData && <Info detail={d} />}
 
@@ -295,33 +296,6 @@ function Providers({ kind, names, href }: { kind: string; names: string[]; href?
         )}
       </dd>
     </div>
-  )
-}
-
-/** A row of posters at one size, each with a print-only strip: what it is, and its rating. */
-function Row({ title, items, now }: { title: string; items: MediaItem[]; now: number }) {
-  if (items.length === 0) return null
-  return (
-    <section className={s.section} aria-label={title}>
-      <h2 className={s.sectionTitle}>{title}</h2>
-      <ul className={s.posters}>
-        {items.slice(0, 12).map((m) => (
-          <FrameCard
-            key={`${m.type}${m.id}`}
-            shape="poster"
-            artPath={m.poster}
-            sizes="(max-width: 720px) 30vw, 150px"
-            print={pickPrint(m, undefined, now)}
-            fallback={m.title}
-            title={m.title}
-            meta={m.year ? String(m.year) : undefined}
-            label={spokenPick(m)}
-            link={{ to: '/title/$type/$id', params: { type: m.type, id: m.id } }}
-            onIntent={() => prefetchDetail(m)}
-          />
-        ))}
-      </ul>
-    </section>
   )
 }
 

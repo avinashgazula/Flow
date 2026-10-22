@@ -1,44 +1,19 @@
-:global(.page).screen { position: relative; padding-bottom: calc(96px + env(safe-area-inset-bottom)); isolation: isolate; }
+/* A person: a fixed-size portrait beside the name and facts; the posters below run at one size. */
+.wrap { max-width: 1360px; margin: 0 auto; }
 
-/* The portrait, blurred into a soft glow behind the header, as AmbientBackground on the apps. */
-.ambient {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 520px;
-  z-index: -1;
-  background-size: cover;
-  background-position: center 20%;
-  filter: blur(80px) saturate(1.4);
-  opacity: 0.32;
-  -webkit-mask-image: linear-gradient(180deg, #000 30%, transparent);
-  mask-image: linear-gradient(180deg, #000 30%, transparent);
-  pointer-events: none;
-}
+.header { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: var(--space-l) var(--space-xl); align-items: start; }
+.portrait { width: 168px; aspect-ratio: 2 / 3; border-radius: var(--radius-art); background: var(--base-2); }
+.portrait :global(span) { font: 600 var(--fs-title1) / 1 var(--font); color: var(--ink-3); }
+.facts { display: flex; flex-direction: column; min-width: 0; }
+.name { font: 700 var(--fs-page-title) / 1.1 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
+@media (min-width: 721px) { .name { font-size: 46px; line-height: 1.05; } }
+.meta { margin-top: var(--space-xs); font-size: var(--fs-small); line-height: 1.5; color: var(--ink-2); }
 
-.header {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: var(--space-xl);
-  align-items: center;
-  max-width: 1100px;
-  padding-top: var(--space-s);
-}
-.portrait {
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1px var(--hairline), var(--shadow-artwork);
-}
-.portrait :global(span) { font-size: 52px; }
-.facts { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.name { font: 700 var(--text-display) / 1.1 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
-.department { font: 600 var(--text-headline) / 1.3 var(--font); color: var(--text-secondary); }
-.life { font-size: 13px; color: var(--text-tertiary); }
-
-.bio { margin-top: var(--space-s); max-width: 72ch; }
+.bio { margin-top: var(--space-m); max-width: var(--measure); }
 .bioText {
-  color: var(--text-secondary);
+  font-size: var(--fs-body);
   line-height: 1.55;
+  color: var(--ink-2);
   white-space: pre-line;
   display: -webkit-box;
   -webkit-line-clamp: 5;
@@ -46,47 +21,30 @@
   overflow: hidden;
 }
 .bioText[data-expanded] { display: block; -webkit-line-clamp: unset; }
-.more {
-  margin-top: 6px;
-  font: 700 var(--text-micro) / 1 var(--font);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgb(255 255 255 / 0.85);
-}
-.more:hover { color: var(--text); }
-
-/* Shelves bring their own gutter and run to the window's edges. */
-.bleed { margin: 0 calc(-1 * var(--gutter)); }
+.more { margin-top: var(--space-xxs); height: 36px; font: 500 var(--fs-small) / 1 var(--font); color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.25em; }
+.more:hover { color: var(--paper); text-decoration-color: var(--paper); }
 
 .filmography { margin-top: var(--section); }
-.filmHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-s);
-  margin-bottom: var(--space-m);
-}
-.sectionTitle { font: 700 var(--text-section) / 1.2 var(--font-display); letter-spacing: -0.01em; }
-.count { margin-left: 4px; font: 500 15px / 1 var(--font); color: var(--text-tertiary); }
-.filmControls { display: flex; align-items: center; gap: var(--space-s); }
+.filmHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-s); margin-bottom: var(--space-m); }
+.sectionTitle { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; }
+.count { margin-left: 4px; font: 500 var(--fs-small) / 1 var(--font); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.filmControls { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-s); }
 
-.ghost {
-  background: linear-gradient(90deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.05));
-  background-size: 200% 100%;
-  animation: shimmer 1.6s linear infinite;
-}
-.ghostName { width: min(360px, 80%); height: 40px; border-radius: 10px; }
-.ghostLine { width: min(240px, 60%); height: 16px; border-radius: 8px; margin-top: 6px; }
-.ghostBio { width: 100%; max-width: 72ch; height: 110px; border-radius: 12px; margin-top: var(--space-s); }
-@keyframes shimmer { to { background-position: -200% 0; } }
+.state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); max-width: 440px; margin: var(--section) 0; color: var(--ink-2); }
+.stateTitle { font: 700 var(--fs-title2) / 1.15 var(--font-display); letter-spacing: -0.015em; color: var(--paper); }
+.state :global(.btn) { margin-top: var(--space-xs); }
 
-/* Phones: a centred stack, as PersonView. */
+.ghost { background: var(--base-2); }
+.ghostName { width: min(360px, 80%); height: 44px; border-radius: 8px; }
+.ghostLine { width: min(240px, 60%); height: 16px; border-radius: 8px; margin-top: var(--space-xs); }
+
+/* Phones: a smaller portrait beside the name; the biography runs the full width underneath. */
 @media (max-width: 720px) {
-  .header { grid-template-columns: 1fr; justify-items: center; gap: var(--space-l); text-align: center; }
-  .portrait { width: 160px; height: 160px; }
-  .facts { align-items: center; width: 100%; }
-  .bio { text-align: left; align-self: stretch; }
-  .ghostName, .ghostLine { margin-left: auto; margin-right: auto; }
-  .filmControls { width: 100%; justify-content: space-between; }
+  .header { grid-template-columns: 96px minmax(0, 1fr); gap: var(--space-m); }
+  .portrait { width: 96px; grid-row: 1 / span 2; }
+  .portrait :global(span) { font-size: var(--fs-headline); }
+  .bio { grid-column: 1 / -1; margin-top: 0; }
+  .facts { display: contents; }
+  .name { grid-column: 2; align-self: end; }
+  .meta { grid-column: 2; align-self: start; margin-top: 0; }
 }

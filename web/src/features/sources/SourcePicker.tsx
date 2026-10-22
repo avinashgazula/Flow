@@ -33,7 +33,9 @@ export function SourcePicker({ request, seed, onPick, onClose }: { request: Play
   const [reload, setReload] = useState(0)
   // The virtualised rows need the scroller to exist when they first render.
   const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  useEffect(() => {
+    setMounted(true)
+  }, [])
   const [filter, setFilter] = useState<Filter>({ kind: 'all' })
   const [activeId, setActiveId] = useState<string>()
   const remember = useSettings((x) => x.rememberLastSource)

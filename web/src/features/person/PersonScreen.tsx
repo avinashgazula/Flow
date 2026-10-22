@@ -1,13 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Artwork } from '../../components/Artwork'
-import { PosterCard } from '../../components/Cards'
-import { Shelf } from '../../components/Shelf'
+import { ChoiceSelect, Segmented } from '../../components/Choice'
+import { PosterRow, PosterWall } from '../../components/PosterRow'
 import { q } from '../../lib/queries'
-import { imageURL } from '../../lib/tmdb/images'
+import { useMinuteTick } from '../../lib/time'
 import type { MediaType, Person } from '../../lib/tmdb/types'
-import { Segmented, Select, StateView, errorMessage } from '../explore/Controls'
-import { PosterGrid } from '../explore/PosterGrid'
 import { creditSorts, filmography, lifeLine, type CreditSort } from './logic'
 import s from './PersonScreen.module.css'
 
@@ -17,8 +15,8 @@ const filters = [
   { id: 'show', label: 'Shows' },
 ] as const
 
-/** A person: portrait, the facts, a biography that opens on request, what they're known for, and
- *  everything they've been in. */
+/** A person: a portrait at one size, the name and facts, a biography that opens on request, what they're
+ *  known for, and everything they've been in, as posters with print-only strips. */
 export function PersonScreen({ id }: { id: number }) {
   const { data: person, isError, error, refetch, isRefetching } = useQuery(q.person(id))
   useEffect(() => {
@@ -28,17 +26,14 @@ export function PersonScreen({ id }: { id: number }) {
   if (!person) {
     if (isError)
       return (
-        <div className={`page ${s.screen}`}>
-          <StateView
-            icon="person"
-            title="Couldn’t Load This Person"
-            message={errorMessage(error)}
-            action={
-              <button className="btn btn-glass" onClick={() => void refetch()} disabled={isRefetching}>
-                Try Again
-              </button>
-            }
-          />
+        <div className="page">
+          <div className={s.state} role="status">
+            <h1 className={s.stateTitle}>Couldn’t Load This Person</h1>
+            <p>{error instanceof Error && error.message ? `${error.message.replace(/[.!?]$/, '')}. Try again in a moment.` : 'Flow couldn’t reach TMDB. Check your connection, then try again.'}</p>
+            <button className="btn btn-secondary" onClick={() => void refetch()} disabled={isRefetching}>
+              Try Again
+            </button>
+          </div>
         </div>
       )
     return <Skeleton />
@@ -49,48 +44,47 @@ export function PersonScreen({ id }: { id: number }) {
 function Loaded({ person }: { person: Person }) {
   const [type, setType] = useState<'all' | MediaType>('all')
   const [sort, setSort] = useState<CreditSort>('year')
-  const line = lifeLine(person)
+  const now = useMinuteTick()
   const credits = filmography(person.credits, type === 'all' ? undefined : type, sort)
   const hasBoth = person.credits.some((c) => c.type === 'movie') && person.credits.some((c) => c.type === 'show')
+  const [birth, ...rest] = (lifeLine(person) ?? '').split(' · ')
+  const facts = [person.department, birth, ...rest].filter(Boolean)
 
   return (
-    <div className={`page ${s.screen}`}>
-      {person.profile && <div className={s.ambient} style={{ backgroundImage: `url(${imageURL(person.profile, 185)})` }} aria-hidden />}
-      <header className={s.header}>
-        <Artwork path={person.profile} kind="profile" alt="" sizes="(max-width: 720px) 160px, 220px" priority className={s.portrait} fallback={initials(person.name)} />
-        <div className={s.facts}>
-          <h1 className={s.name}>{person.name}</h1>
-          {person.department && <p className={s.department}>{person.department}</p>}
-          {line && <p className={s.life}>{line}</p>}
-          {person.biography && <Biography text={person.biography} />}
-        </div>
-      </header>
-
-      {person.credits.length > 0 ? (
-        <>
-          <div className={s.bleed}>
-            <Shelf title="Known For">
-              {person.credits.slice(0, 12).map((m) => (
-                <PosterCard key={`${m.type}${m.id}`} item={m} />
-              ))}
-            </Shelf>
+    <div className="page">
+      <div className={s.wrap}>
+        <header className={s.header}>
+          <Artwork path={person.profile} kind="profile" alt="" sizes="168px" priority className={s.portrait} fallback={initials(person.name)} />
+          <div className={s.facts}>
+            <h1 className={s.name}>{person.name}</h1>
+            {facts.length > 0 && <p className={s.meta}>{facts.join(' · ')}</p>}
+            {person.biography && <Biography text={person.biography} />}
           </div>
-          <section className={s.filmography}>
-            <header className={s.filmHeader}>
-              <h2 className={s.sectionTitle}>
-                Filmography <span className={s.count}>{credits.length}</span>
-              </h2>
-              <div className={s.filmControls}>
-                {hasBoth && <Segmented options={filters} value={type} onChange={setType} label="Show" />}
-                <Select options={creditSorts} value={sort} onChange={setSort} label="Sort by" />
-              </div>
-            </header>
-            <PosterGrid items={credits} label="Filmography" />
-          </section>
-        </>
-      ) : (
-        <StateView title="No Credits Yet" message="TMDB doesn’t list any films or shows for this person." />
-      )}
+        </header>
+
+        {person.credits.length > 0 ? (
+          <>
+            <PosterRow title="Known For" items={person.credits.slice(0, 12)} now={now} />
+            <section className={s.filmography} aria-labelledby="filmography-title">
+              <header className={s.filmHeader}>
+                <h2 id="filmography-title" className={s.sectionTitle}>
+                  Filmography <span className={s.count}>{credits.length}</span>
+                </h2>
+                <div className={s.filmControls}>
+                  {hasBoth && <Segmented options={filters} value={type} onChange={setType} label="Show" />}
+                  <ChoiceSelect options={creditSorts} value={sort} onChange={setSort} label="Sort by" />
+                </div>
+              </header>
+              <PosterWall items={credits} now={now} label="Filmography" />
+            </section>
+          </>
+        ) : (
+          <div className={s.state} role="status">
+            <h2 className={s.stateTitle}>No Credits Yet</h2>
+            <p>TMDB doesn’t list any films or shows for this person.</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -116,7 +110,7 @@ function Biography({ text }: { text: string }) {
       </p>
       {(overflows || expanded) && (
         <button className={s.more} onClick={() => setExpanded(!expanded)} aria-expanded={expanded} aria-controls="person-bio">
-          {expanded ? 'Less' : 'More'}
+          {expanded ? 'Show less' : 'Read more'}
         </button>
       )}
     </div>
@@ -125,17 +119,15 @@ function Biography({ text }: { text: string }) {
 
 function Skeleton() {
   return (
-    <div className={`page ${s.screen}`} aria-busy>
-      <header className={s.header}>
-        <div className={`${s.portrait} ${s.ghost}`} />
-        <div className={s.facts}>
-          <div className={`${s.ghost} ${s.ghostName}`} />
-          <div className={`${s.ghost} ${s.ghostLine}`} />
-          <div className={`${s.ghost} ${s.ghostBio}`} />
-        </div>
-      </header>
-      <div className={s.bleed}>
-        <Shelf title="Known For" loading />
+    <div className="page" aria-busy>
+      <div className={s.wrap}>
+        <header className={s.header}>
+          <div className={`${s.portrait} ${s.ghost}`} />
+          <div className={s.facts}>
+            <div className={`${s.ghost} ${s.ghostName}`} />
+            <div className={`${s.ghost} ${s.ghostLine}`} />
+          </div>
+        </header>
       </div>
     </div>
   )

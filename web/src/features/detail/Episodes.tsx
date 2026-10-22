@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { ChoiceSelect, Segmented } from '../../components/Choice'
 import { FrameCard } from '../../components/Frame'
 import { q } from '../../lib/queries'
 import { episodeKey, mediaKey, useLibrary } from '../../lib/store/library'
@@ -46,42 +47,8 @@ export function Episodes({ detail, initial, onPlay }: { detail: MediaDetail; ini
 }
 
 function SeasonPicker({ seasons, value, onChange }: { seasons: { number: number }[]; value: number; onChange: (n: number) => void }) {
-  if (seasons.length > 4) {
-    return (
-      <label className={s.select}>
-        <span className="sr-only">Season</span>
-        <select className="field" value={value} onChange={(e) => onChange(Number(e.target.value))}>
-          {seasons.map((x) => (
-            <option key={x.number} value={x.number}>
-              {label(x.number)}
-            </option>
-          ))}
-        </select>
-      </label>
-    )
-  }
-  return (
-    <div
-      className={s.segmented}
-      role="radiogroup"
-      aria-label="Season"
-      onKeyDown={(e) => {
-        const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
-        if (!step) return
-        e.preventDefault()
-        const group = e.currentTarget
-        const i = seasons.findIndex((x) => x.number === value)
-        onChange(seasons[(i + step + seasons.length) % seasons.length]!.number)
-        requestAnimationFrame(() => group.querySelector<HTMLElement>('[aria-checked="true"]')?.focus())
-      }}
-    >
-      {seasons.map((x) => (
-        <button key={x.number} type="button" role="radio" aria-checked={x.number === value} tabIndex={x.number === value ? 0 : -1} className={s.segment} onClick={() => onChange(x.number)}>
-          {label(x.number)}
-        </button>
-      ))}
-    </div>
-  )
+  const options = seasons.map((x) => ({ id: x.number, label: label(x.number) }))
+  return seasons.length > 4 ? <ChoiceSelect options={options} value={value} onChange={onChange} label="Season" /> : <Segmented options={options} value={value} onChange={onChange} label="Season" />
 }
 
 function EpisodeCard({ episode: e, aired, watched, partial, now, onPlay }: { episode: Episode; aired: boolean; watched: boolean; partial?: number; now: number; onPlay: () => void }) {
