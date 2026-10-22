@@ -11,7 +11,7 @@ struct LicencesView: View {
         .filter { !$0.isEmpty }
 
     var body: some View {
-        List {
+        FilmList {
             Section("FFmpeg") {
                 Text(FFmpegLicence.notice)
             }
@@ -30,7 +30,7 @@ struct GeneralSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             #if os(iOS)
             AppIconSection()
             #endif
@@ -151,7 +151,7 @@ struct PlaybackSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             Section {
                 #if os(iOS)
                 Toggle("Auto Rotate to Landscape", isOn: $model.settings.playback.autoRotate)
@@ -321,7 +321,7 @@ struct SubtitleSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             SubtitlePreviewSection()
             SubtitleAppearanceSections()
             Section {
@@ -378,7 +378,7 @@ struct MetadataSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             Section {
                 Picker("Episode Source", selection: $model.settings.metadata.episodeSource) {
                     ForEach(EpisodeSource.allCases) { Text($0.title).tag($0) }
@@ -482,7 +482,7 @@ struct RatingsShownView: View {
         let shown = model.settings.metadata.ratingsShown
         // Hidden scores sit below the shown ones, so a drag only ever reorders what's on screen.
         let ordered = shown + RatingSource.allCases.filter { !shown.contains($0) }
-        List {
+        FilmList {
             Section {
                 ForEach(ordered) { source in
                     row(source, shown: shown)

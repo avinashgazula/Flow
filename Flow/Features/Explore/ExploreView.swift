@@ -163,7 +163,7 @@ struct DiscoverFilterView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            FilmForm {
                 #if os(tvOS)
                 // The toolbar's Reset doesn't read on tvOS (white on Flow's white accent), so it lives in the form.
                 Section {

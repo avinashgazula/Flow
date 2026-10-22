@@ -8,7 +8,7 @@ struct MediaServersSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        List {
+        FilmList {
             Section {
                 ForEach($model.settings.mediaServers.servers) { $server in
                     HStack(spacing: 12) {
@@ -113,7 +113,7 @@ struct AddServerView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            FilmForm {
                 Picker("Server Type", selection: $kind) {
                     ForEach(MediaServerKind.allCases) { Text($0.displayName).tag($0) }
                 }

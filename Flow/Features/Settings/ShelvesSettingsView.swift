@@ -11,7 +11,7 @@ struct ShelvesSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        List {
+        FilmList {
             Section {
                 ForEach($model.settings.shelves) { $shelf in
                     HStack {
@@ -180,7 +180,7 @@ struct DiscoverShelfEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            FilmForm {
                 TextField("Shelf Title", text: $title)
                 Picker("Type", selection: $query.type) {
                     Text("Movies").tag(MediaType.movie)
@@ -246,7 +246,7 @@ struct ListShelfPicker: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            FilmForm {
                 if model.trakt != nil {
                     Section("Trakt") {
                         ForEach(traktLists, id: \.ids.slug) { list in

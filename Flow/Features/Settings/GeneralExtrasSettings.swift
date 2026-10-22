@@ -105,7 +105,7 @@ struct TabOrderView: View {
 
     var body: some View {
         let tabs = model.settings.general.orderedTabs
-        List {
+        FilmList {
             Section {
                 ForEach(tabs) { tab in
                     row(tab, in: tabs)

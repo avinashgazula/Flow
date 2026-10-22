@@ -34,7 +34,7 @@ struct ConnectSeerrView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            FilmForm {
                 Section {
                     TextField("Server URL", text: $address, prompt: Text("https://seerr.example.com"))
                         .autocorrectionDisabled()

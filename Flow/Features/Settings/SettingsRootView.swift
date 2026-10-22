@@ -107,7 +107,7 @@ struct SettingsRootView: View {
     @State private var query = ""
 
     var body: some View {
-        List {
+        FilmList {
             if query.isEmpty {
                 if model.isDemo {
                     Section {
@@ -244,7 +244,7 @@ struct OptionalTextField: View {
 
 struct AboutView: View {
     var body: some View {
-        List {
+        FilmList {
             Section {
                 VStack(spacing: 8) {
                     Image("FlowMark")

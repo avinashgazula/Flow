@@ -38,7 +38,7 @@ struct DataStorageView: View {
 
     var body: some View {
         @Bindable var model = model
-        List {
+        FilmList {
             Section {
                 Toggle("iCloud Sync", isOn: $model.settings.sync.iCloudEnabled)
                 if model.settings.sync.iCloudEnabled {
@@ -236,7 +236,7 @@ struct ShareSetupView: View {
     @State private var fileURL: URL?
 
     var body: some View {
-        Form {
+        FilmForm {
             Section {
                 Toggle("Include API Keys & Passwords", isOn: $includeSecrets)
             } footer: {
@@ -283,7 +283,7 @@ struct ImportSetupView: View {
     @State private var showImporter = false
 
     var body: some View {
-        Form {
+        FilmForm {
             Section {
                 TextField("Setup link or JSON", text: $text, prompt: Text("flow://setup?d=…"), axis: .vertical)
                     .lineLimit(1...6)

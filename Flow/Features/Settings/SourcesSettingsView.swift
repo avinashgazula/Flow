@@ -6,7 +6,7 @@ struct SourcesSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        List {
+        FilmList {
             Section {
                 Toggle(isOn: $model.settings.sources.useCustomOrdering) {
                     Label("Use Custom Source Ordering", systemImage: "list.number")
@@ -203,7 +203,7 @@ struct SourceAppearanceView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             Section {
                 Toggle("Show Add-on Formatting", isOn: $model.settings.sources.appearance.showRawText)
                 Picker("Title", selection: $model.settings.sources.appearance.titleDisplay) {
@@ -240,7 +240,7 @@ struct AddonsSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        List {
+        FilmList {
             Section {
                 ForEach($model.settings.sources.addons) { $addon in
                     HStack {

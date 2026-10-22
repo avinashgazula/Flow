@@ -51,7 +51,7 @@ extension AppModel {
     /// The runtime a poster prints: the one the title carries, else a film's from its details.
     func posterRuntime(for item: MediaItem) async -> Int? {
         if let known = item.runtimeMinutes, known > 0 { return known }
-        guard item.type == .movie, let catalog, let id = item.ids.tmdb else { return nil }
+        guard item.type == .movie, let catalog = self.catalog, let id = item.ids.tmdb else { return nil }
         guard let minutes = (try? await catalog.details(item.type, id: id))?.item.runtimeMinutes, minutes > 0 else { return nil }
         return minutes
     }

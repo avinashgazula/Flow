@@ -192,7 +192,7 @@ struct DownloadsView: View {
     @State private var manager = DownloadManager.shared
 
     var body: some View {
-        List {
+        FilmList {
             if model.settings.downloads.deleteWatchedDownloads || model.settings.downloads.downloadNextEpisode {
                 Text(smartDownloadsNote).font(.footnote).foregroundStyle(.secondary).listRowBackground(Color.clear)
             }

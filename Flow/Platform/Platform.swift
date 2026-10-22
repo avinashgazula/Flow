@@ -475,3 +475,45 @@ struct SettingsToolbarItem: ToolbarContent {
             .tint(Theme.Palette.text)
     }
 }
+
+// MARK: - Forms on the film ground
+
+extension View {
+    /// The film ground behind a Form or List: the system's grey is hidden and the warm base shows through.
+    func filmGround() -> some View {
+        scrollContentBackground(.hidden)
+            .background(Theme.Palette.ground)
+    }
+
+    /// Rows on base-2, so a group of settings reads as a panel on the ground. Apple TV keeps the system's own row
+    /// and focus look, which a custom row background would replace.
+    @ViewBuilder
+    fileprivate func filmRows() -> some View {
+        #if os(tvOS)
+        self
+        #else
+        listRowBackground(Theme.Palette.panel)
+        #endif
+    }
+}
+
+/// A Form on the film ground with its rows on base-2. A row background belongs to the rows and can't be set from
+/// outside the form, so every settings page builds its form with this instead of the system Form.
+struct FilmForm<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        Form { content.filmRows() }
+            .filmGround()
+    }
+}
+
+/// The same for a List: the settings pages that list things (servers, shelves, sources).
+struct FilmList<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        List { content.filmRows() }
+            .filmGround()
+    }
+}

@@ -17,7 +17,7 @@ struct AccountSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             Section {
                 ForEach(TrackerKind.allCases) { kind in
                     Button { select(kind) } label: {
@@ -336,7 +336,7 @@ struct APIKeysView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             Section {
                 OptionalTextField(title: "MDBList API Key", text: $model.credentials.mdblistAPIKey, secure: true)
                 Link("Get a key at mdblist.com", destination: URL(string: "https://mdblist.com/preferences/")!)

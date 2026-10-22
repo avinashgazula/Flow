@@ -9,7 +9,7 @@ struct WebDAVSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        List {
+        FilmList {
             Section {
                 ForEach($model.settings.webDAV) { $config in
                     HStack {
@@ -49,7 +49,7 @@ struct WebDAVEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            FilmForm {
                 TextField("Name", text: $config.name)
                 TextField("Address", text: $urlText, prompt: Text("https://nas.local:5006/dav"))
                     .autocorrectionDisabled()
@@ -110,7 +110,7 @@ struct LiveTVSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        List {
+        FilmList {
             Section {
                 ForEach($model.settings.liveTV.providers) { $provider in
                     HStack {
@@ -158,7 +158,7 @@ struct IPTVEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            FilmForm {
                 TextField("Name", text: $config.name)
                 Picker("Type", selection: $config.kind) {
                     ForEach(IPTVProviderKind.allCases) { Text($0.displayName).tag($0) }
