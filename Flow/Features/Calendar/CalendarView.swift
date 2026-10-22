@@ -175,19 +175,19 @@ private struct DayStrip: View {
                         VStack(spacing: 4) {
                             Text(CalendarView.format(date, "EEE").uppercased())
                                 .font(Theme.Typeface.micro).kerning(0.6)
-                                .foregroundStyle(isToday ? Color.black.opacity(0.6) : Theme.Palette.textTertiary)
+                                .foregroundStyle(isToday ? Theme.Palette.onStock.opacity(0.7) : Theme.Palette.textTertiary)
                             Text(CalendarView.format(date, "d"))
                                 .font(.system(.title3, weight: .semibold).monospacedDigit())
-                                .foregroundStyle(isToday ? Color.black : (hasEntries ? Color.white : Theme.Palette.textSecondary))
+                                .foregroundStyle(isToday ? Theme.Palette.onStock : (hasEntries ? Theme.Palette.text : Theme.Palette.textSecondary))
                             Circle()
-                                .fill(isToday ? Color.black : Color.white)
+                                .fill(isToday ? Theme.Palette.onStock : Theme.Palette.text)
                                 .frame(width: 4 * Theme.scale, height: 4 * Theme.scale)
                                 .opacity(hasEntries ? 1 : 0)
                         }
                         .frame(width: 46 * Theme.scale, height: 72 * Theme.scale)
                         .background {
                             let shape = RoundedRectangle(cornerRadius: 14 * Theme.scale, style: .continuous)
-                            if isToday { shape.fill(.white) } else { shape.fill(Theme.Palette.surface).overlay(shape.strokeBorder(Theme.Palette.hairline)) }
+                            if isToday { shape.fill(Theme.Palette.stock) } else { shape.fill(Theme.Palette.surface).overlay(shape.strokeBorder(Theme.Palette.hairline)) }
                         }
                     }
                     .buttonStyle(CardButtonStyle())

@@ -158,7 +158,7 @@ extension AppModel {
         return out
     }
 
-    /// Items for the home hero carousel: the primary source, with the secondary one interleaved when set.
+    /// The top picks Home leads with when nothing is in progress: the primary source, with the secondary one interleaved when set.
     func heroItems() async -> [MediaItem] {
         let primary = settings.general.heroSource
         var items = await heroItems(from: primary)
@@ -184,8 +184,8 @@ extension AppModel {
         case .watchlist:
             items = await hydrate(watchlistKeys, limit: 15)
         }
-        // The hero is a poster on iPhone and a backdrop everywhere else: only titles with that art.
-        return await catalog.apply(catalogFilters, to: items.filter { Platform.isPhone ? $0.posterPath != nil : $0.backdropPath != nil }, exemptFromRelease: source == .watchlist)
+        // Home's lead is a framed 16:9 still: only titles with a backdrop.
+        return await catalog.apply(catalogFilters, to: items.filter { $0.backdropPath != nil }, exemptFromRelease: source == .watchlist)
     }
 
     // MARK: Upcoming

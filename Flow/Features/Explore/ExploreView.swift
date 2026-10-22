@@ -73,6 +73,8 @@ struct ExploreView: View {
                     Image(systemName: isFiltered ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                 }
                 .accessibilityLabel(isFiltered ? "Filters, On" : "Filters")
+                // Yellow says "on" in the chips, so the button itself stays paper.
+                .tint(Theme.Palette.text)
             }
         }
         .sheet(isPresented: $showFilters) {
@@ -103,9 +105,9 @@ struct ExploreView: View {
             Text(title)
                 .font(.system(.subheadline, weight: .semibold))
                 .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs + 1)
-                .foregroundStyle(selected ? Color.black : Color.white)
-                .background(selected ? Color.white : Theme.Palette.surface, in: Capsule())
-                .overlay(Capsule().strokeBorder(Theme.Palette.hairline, lineWidth: selected ? 0 : 1))
+                .frame(minHeight: 44 * Theme.scale)
+                .foregroundStyle(selected ? Theme.Palette.onStock : Theme.Palette.text)
+                .background(selected ? Theme.Palette.stock : Theme.Palette.control, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
         }
         .buttonStyle(CardButtonStyle())
     }

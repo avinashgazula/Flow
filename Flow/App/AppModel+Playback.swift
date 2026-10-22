@@ -115,6 +115,37 @@ extension AppModel {
         prefetchTasks[request.id] = task
     }
 
+    /// What Play would start for a title, as the page words it under its buttons.
+    struct BestVersion: Equatable {
+        /// "2160p · Dolby Vision · TrueHD 7.1 · 18.20 GB"
+        var line: String
+        /// Every source found, which the picker lists.
+        var count: Int
+        /// Who they came from, best first.
+        var providers: [String]
+        var note: VersionNote?
+    }
+
+    /// The request Play would open the picker with: the film, or a show's next episode.
+    func playRequest(for item: MediaItem) async -> PlaybackRequest? {
+        await playbackRequest(for: item, episode: nil)
+    }
+
+    /// The best of the sources the detail page already found for `request` (Prefetch on Detail View), ranked as the
+    /// picker ranks them. Nil until the search has answered, or when nothing playable came back.
+    func bestVersion(for request: PlaybackRequest) -> BestVersion? {
+        guard let found = prefetchedSources.sources(for: request), !found.isEmpty else { return nil }
+        let ranked = SourceRanker.rank(found, settings: settings.sources, resolutionCap: resolutionCap, decodesAV1: Platform.decodesAV1,
+                                       decodesLosslessAudio: MatroskaRemuxer.audioDecoders != nil, prefersHDR: settings.playback.preferHDR,
+                                       preferredAudioLanguage: settings.playback.preferredAudioLanguage)
+        guard let best = lastSource(for: request, in: ranked) ?? ranked.first(where: \.isPlayable) else { return nil }
+        let line = best.traits.versionLine(includeSize: true)
+        let note = Reel.versionNote(for: best.traits, decodesAV1: Platform.decodesAV1, convertsLosslessAudio: MatroskaRemuxer.audioDecoders != nil)
+        var seen = Set<String>()
+        let providers = ranked.map(\.providerName).filter { seen.insert($0).inserted }
+        return BestVersion(line: line, count: ranked.count, providers: providers, note: note)
+    }
+
     func shufflePlay(_ show: MediaItem) async {
         guard let episode = await shuffleEpisode(for: show) else { showToast("Nothing to shuffle yet."); return }
         await play(show, episode: episode)

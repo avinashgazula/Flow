@@ -78,7 +78,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
     /// Words that make a page show up in Search Settings.
     var keywords: String {
         switch self {
-        case .general: return "accent color start tab opening tab tab order app icon light dark notifications episodes matches poster titles hero haptics specials season spoilers blur episodes left remaining"
+        case .general: return "accent color start tab opening tab tab order app icon light dark notifications episodes matches poster titles hero top pick lead haptics specials season spoilers blur episodes left remaining"
         case .account: return "trakt simkl mdblist publicmetadb tracking sync interval watchlist favourites sign in"
         case .shelves: return "home rows discover lists reorder"
         case .mediaServers: return "jellyfin emby plex server badge artwork"
@@ -150,8 +150,21 @@ struct SettingsRootView: View {
                 ForEach(matches) { row($0) }
             }
         }
+        #if os(tvOS)
+        // The system's centred title is drawn dim on Apple TV, so it reads as disabled: the page sets its own, in paper.
+        .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            Text("Settings")
+                .font(.system(.largeTitle, weight: .bold))
+                .foregroundStyle(Theme.Palette.text)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // Lines up with the list's own leading edge.
+                .padding(.horizontal, Theme.Space.s)
+                .padding(.top, Theme.Space.s)
+                .accessibilityAddTraits(.isHeader)
+        }
+        #else
         .navigationTitle("Settings")
-        #if !os(tvOS)
         // On TV a search field is a full on-screen keyboard parked above the content.
         .searchable(text: $query, prompt: "Search Settings")
         #endif
@@ -261,7 +274,7 @@ struct AboutView: View {
     }
 }
 
-/// White glyph on a coloured squircle, like iOS Settings.
+/// A glyph in print colour on a flat control-ink squircle: the tint is kept for callers but no longer drawn.
 struct SettingsIcon: View {
     let systemImage: String
     let tint: Color
@@ -269,11 +282,8 @@ struct SettingsIcon: View {
     var body: some View {
         Image(systemName: systemImage)
             .font(.system(.subheadline, weight: .semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.Palette.print)
             .frame(width: 29 * Theme.scale, height: 29 * Theme.scale)
-            .background(
-                LinearGradient(colors: [tint.opacity(0.95), tint.opacity(0.75)], startPoint: .top, endPoint: .bottom),
-                in: RoundedRectangle(cornerRadius: 7 * Theme.scale, style: .continuous)
-            )
+            .background(Theme.Palette.control, in: RoundedRectangle(cornerRadius: 7 * Theme.scale, style: .continuous))
     }
 }

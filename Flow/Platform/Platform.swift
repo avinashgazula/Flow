@@ -189,7 +189,8 @@ enum BundleKeys {
 extension AccentColorChoice {
     var color: Color {
         switch self {
-        case .white: return .white
+        // White was the old default; film-stock yellow takes its place as Flow's own accent.
+        case .white: return Theme.Palette.stock
         case .blue: return .blue
         case .red: return .red
         case .orange: return .orange
@@ -202,18 +203,11 @@ extension AccentColorChoice {
 }
 
 extension AccentColorChoice {
-    /// Switches can't use a white accent: their knob is white. They turn green instead, as in Settings.
-    var switchColor: Color { self == .white ? .green : color }
+    /// Switches turn on in the accent.
+    var switchColor: Color { color }
 
-    /// The app-wide tint. On tvOS a white tint would make focused toolbar buttons white on white,
-    /// so the system's own focus colours are used instead.
-    var tint: Color? {
-        #if os(tvOS)
-        return self == .white ? nil : color
-        #else
-        return color
-        #endif
-    }
+    /// The app-wide tint: system controls, tab selection and toggles take it.
+    var tint: Color? { color }
 }
 
 #if os(iOS)
@@ -355,5 +349,129 @@ extension View {
         #else
         self
         #endif
+    }
+}
+
+// MARK: - iOS 27
+
+// Xcode 27 ships Swift 6.4. Everything here is behind `#if compiler(>=6.4)` and `#available(... 27 ...)`, so Xcode 16.4
+// and 26.3 never see it and older systems get exactly what they had.
+extension View {
+    /// iOS 27: the navigation bar slides away while a long page scrolls down, and returns on the way back.
+    @ViewBuilder
+    func flowMinimizingToolbar() -> some View {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            self.toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
+    /// iOS 27: swipe an item in a ScrollView for its quick actions (Mark Watched, Remove). Nothing earlier.
+    @ViewBuilder
+    func flowSwipeActions<Actions: View>(@ViewBuilder _ actions: () -> Actions) -> some View {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            self.swipeActions(edge: .trailing, allowsFullSwipe: false) { actions() }
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
+    /// iOS 27: the container that lets the swipe actions above work on views outside a List.
+    @ViewBuilder
+    func flowSwipeActionsContainer() -> some View {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            self.swipeActionsContainer()
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
+    /// iOS 27, iPad and Mac: edge print and the yellow go quiet in a window that isn't the active one.
+    @ViewBuilder
+    func flowDimsWhenInactive() -> some View {
+        #if (os(iOS) || os(macOS)) && compiler(>=6.4)
+        if #available(iOS 27.0, macOS 27.0, *) {
+            self.modifier(InactiveWindowDimming())
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+}
+
+#if (os(iOS) || os(macOS)) && compiler(>=6.4)
+@available(iOS 27.0, macOS 27.0, *)
+private struct InactiveWindowDimming: ViewModifier {
+    @Environment(\.appearsActive) private var appearsActive
+
+    func body(content: Content) -> some View {
+        content.saturation(appearsActive ? 1 : 0.3).opacity(appearsActive ? 1 : 0.7)
+    }
+}
+#endif
+
+/// Whether this system asks "Remove?" with an item-bound confirmation dialog (iOS 27); earlier systems remove straight away.
+enum ItemDialogs {
+    static var available: Bool {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *) { return true }
+        #endif
+        return false
+    }
+}
+
+extension View {
+    /// iOS 27: a confirmation dialog bound to the item it is about; nothing earlier (callers check `ItemDialogs.available`).
+    @ViewBuilder
+    func flowConfirmationDialog<Item: Identifiable, Actions: View>(_ title: String, item: Binding<Item?>,
+                                                                   @ViewBuilder actions: @escaping (Item) -> Actions) -> some View {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            self.confirmationDialog(Text(title), item: item) { entry in actions(entry) }
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+}
+
+/// The toolbar's one always-visible action: Settings, pinned to the trailing edge on iOS 27, a primary action before.
+struct SettingsToolbarItem: ToolbarContent {
+    let action: () -> Void
+
+    var body: some ToolbarContent {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            ToolbarItem(placement: .topBarPinnedTrailing) { button }
+        } else {
+            ToolbarItem(placement: .primaryAction) { button }
+        }
+        #else
+        ToolbarItem(placement: .primaryAction) { button }
+        #endif
+    }
+
+    private var button: some View {
+        // Paper on the glass: yellow is for the next action, not for chrome.
+        Button(action: action) { Image(systemName: "gearshape") }
+            .accessibilityLabel("Settings")
+            .tint(Theme.Palette.text)
     }
 }

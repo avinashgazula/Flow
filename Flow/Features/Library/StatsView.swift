@@ -169,7 +169,7 @@ struct StatsView: View {
             }
             .frame(height: 180 * Theme.scale)
             .padding(Theme.Space.m)
-            .flowGlass(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .background(Theme.Palette.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
             .padding(.horizontal, Theme.Space.gutter)
             .statFocus()
         }
@@ -208,7 +208,7 @@ struct StatsView: View {
                 }
             }
             .padding(Theme.Space.m)
-            .flowGlass(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .background(Theme.Palette.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
             .padding(.horizontal, Theme.Space.gutter)
             .statFocus()
         }
@@ -336,7 +336,7 @@ private struct StatTile: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Theme.Space.m)
-        .flowGlass(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .background(Theme.Palette.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
         .accessibilityElement(children: .combine)
         .statFocus()
     }

@@ -1,14 +1,38 @@
 import SwiftUI
 import FlowKit
 
+/// What Home leads with: a title, the episode if it is one, and how far in.
+struct HomeLead: Equatable, Identifiable {
+    enum Kind: Equatable { case resume, nextUp, pick }
+
+    var item: MediaItem
+    var episode: EpisodeRef?
+    var progress: PlaybackProgress?
+    var kind: Kind = .pick
+    /// The Continue Watching entry it came from, so Up Next doesn't list it twice.
+    var entryID: String?
+
+    var id: String { entryID ?? item.id }
+
+    /// Minutes still to watch, when the app knows (a resume point, or a runtime).
+    var minutes: Int? { Reel.minutesLeft(progress: progress, runtimeMinutes: item.runtimeMinutes) }
+}
+
+/// Home: a large title by the hour, the one thing to carry on with as a big frame with its edge strip and a
+/// yellow Resume, then Up Next as framed stills, then rows of posters to pick from. On wide screens (and
+/// Apple TV) the lead stands left and Up Next right.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
-    @State private var heroItem: MediaItem?
+    @State private var lead: HomeLead?
+    /// The greeting follows the hour, so it is refreshed each minute.
+    @State private var now = Date()
+
+    private var general: GeneralSettings { model.settings.general }
+    private var dayPart: Reel.DayPart { Reel.DayPart(date: now) }
 
     /// The enabled shelves, minus the ones their General switches turn off.
     private var shelves: [ShelfConfig] {
-        let general = model.settings.general
-        return model.settings.shelves.filter { shelf in
+        model.settings.shelves.filter { shelf in
             guard shelf.enabled else { return false }
             switch shelf.source {
             case .builtIn(.continueWatching): return general.showContinueWatching
@@ -18,67 +42,67 @@ struct HomeView: View {
         }
     }
 
+    /// Continue Watching and Next Up are one section on Home, "Up Next", beside the lead; the other shelves are rows below.
+    private var rowShelves: [ShelfConfig] {
+        shelves.filter { shelf in
+            if case .builtIn(let builtIn) = shelf.source, builtIn == .continueWatching || builtIn == .nextUp { return false }
+            return true
+        }
+    }
+
+    private var showsUpNext: Bool {
+        shelves.contains { shelf in
+            if case .builtIn(let builtIn) = shelf.source { return builtIn == .continueWatching || builtIn == .nextUp }
+            return false
+        }
+    }
+
+    private var servers: [MediaServerConfig] {
+        model.mediaServers.map(\.config).filter { model.settings.mediaServers.showsHomeRow(for: $0.id) }
+    }
+
+    /// What decides the lead: the top Continue Watching entry, or the top pick when nothing is in progress.
+    private var leadKey: String {
+        "\(model.contentVersion)-\(general.showContinueWatching)-\(model.continueWatching.first?.id ?? "none")-\(general.heroSource.rawValue)-\(general.heroSecondarySource?.rawValue ?? "")"
+    }
+
     var body: some View {
         Group {
             if model.catalog == nil {
                 MissingKeyView()
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: Theme.Space.section) {
-                        HeroCarousel(current: $heroItem)
-                        ForEach(shelves) { shelf in
-                            ShelfView(shelf: shelf)
-                        }
-                        ForEach(model.mediaServers.map(\.config).filter { model.settings.mediaServers.showsHomeRow(for: $0.id) }) { server in
-                            ServerLibrariesShelf(server: server)
-                        }
-                        if shelves.isEmpty {
-                            ContentUnavailableView("No Shelves", systemImage: "square.grid.2x2", description: Text("Turn shelves on in Settings → Shelves."))
-                        }
+                GeometryReader { proxy in
+                    ScrollView {
+                        page(wide: Self.splits(width: proxy.size.width), width: proxy.size.width)
                     }
-                    .padding(.bottom, Theme.Space.xxl)
+                    .scrollIndicators(.hidden)
+                    .refreshable { await model.refreshLibrary(force: true) }
                 }
-                .scrollIndicators(.hidden)
-                #if os(iOS)
-                .ignoresSafeArea(edges: .top)
-                #elseif os(tvOS)
-                .ignoresSafeArea(edges: [.top, .horizontal])
-                #endif
-                .refreshable { await model.refreshLibrary(force: true) }
-                .background(alignment: .top) {
-                    // The page takes on the colour of whichever title the hero is showing.
-                    AmbientBackground(url: heroItem?.smallBackdropURL ?? heroItem?.tmdbPosterURL, intensity: 0.9)
-                        .mask(LinearGradient(colors: [.black, .black, .clear], startPoint: .top, endPoint: .bottom))
-                        .frame(height: 1400)
-                        // Under the status bar too: the mask stops at the safe area unless the frame reaches past it.
-                        .ignoresSafeArea(edges: .top)
-                        .animation(Theme.Motion.gentle, value: heroItem?.id)
-                }
-                .background(Theme.Palette.canvas)
             }
         }
-        .overlay(alignment: .topTrailing) {
-            #if os(macOS)
-            settingsButton.padding(.trailing, Theme.Space.gutter).padding(.top, Theme.Space.xs)
-            #elseif os(iOS)
-            if Platform.isPhone {
-                settingsButton.padding(.trailing, Theme.Space.gutter).padding(.top, Theme.Space.xs)
+        .background(Theme.Palette.ground.ignoresSafeArea())
+        .task(id: leadKey) { await loadLead() }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 60_000_000_000)
+                now = Date()
             }
-            #endif
         }
+        #if !os(tvOS)
+        .tabRootTitle(dayPart.title)
+        .largeNavigationTitle()
+        #endif
         #if os(iOS)
-        // iPad: in the bar, level with the floating tab bar, as Library's button is. Floating
-        // below it, the gear landed on the corner of the next hero card.
+        .toolbar { SettingsToolbarItem { model.showSettings = true } }
+        .flowMinimizingToolbar()
+        #elseif os(macOS)
         .toolbar {
-            if !Platform.isPhone {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { model.showSettings = true } label: { Image(systemName: "gearshape.fill") }
-                        .accessibilityLabel("Settings")
-                }
+            ToolbarItem(placement: .primaryAction) {
+                SettingsLink { Image(systemName: "gearshape") }
+                    .accessibilityLabel("Settings")
+                    .tint(Theme.Palette.text)
             }
         }
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbar(Platform.isPhone ? .hidden : .automatic, for: .navigationBar)
         #elseif os(tvOS)
         .toolbar {
             // tvOS 17 has no Settings tab.
@@ -86,34 +110,607 @@ struct HomeView: View {
                 ToolbarItem(placement: .automatic) {
                     Button { model.showSettings = true } label: { Image(systemName: "gearshape.fill") }
                         .accessibilityLabel("Settings")
+                        .tint(Theme.Palette.text)
                 }
             }
         }
-        #else
-        .navigationTitle("Home")
         #endif
     }
 
-    @ViewBuilder
-    private var settingsButton: some View {
-        #if os(macOS)
-        SettingsLink {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 16, weight: .semibold))
-                .frame(width: 40, height: 40)
-                .flowGlass(Circle(), interactive: true)
-        }
-        .buttonStyle(.plain)
+    // MARK: Layout
+
+    /// Lead and Up Next side by side once there is room; always on Apple TV.
+    private static func splits(width: CGFloat) -> Bool {
+        #if os(tvOS)
+        return true
+        #elseif os(macOS)
+        // A Mac window is wide even when it is not big: the lead and Up Next share it from here.
+        return width >= 760
         #else
-        Button { model.showSettings = true } label: {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 17, weight: .semibold))
-                .frame(width: 42, height: 42)
-                .flowGlass(Circle(), interactive: true)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Settings")
+        return width >= 900
         #endif
+    }
+
+    /// Apple TV scrolls under the tab bar, so the page starts below it.
+    private var topInset: CGFloat {
+        #if os(tvOS)
+        // The safe area already clears the tab bar; the first screen has to hold the lead and its buttons.
+        return 0
+        #else
+        return Theme.Space.xxs
+        #endif
+    }
+
+    /// The lead takes about 55% of a wide page, never more than 760 pt, so a big window doesn't blow it up.
+    /// Apple TV fixes it at 700 so its buttons stay on the first screen.
+    private func leadWidth(in width: CGFloat) -> CGFloat {
+        if Platform.isTV { return 700 }
+        let available = width - Theme.Space.gutter * 2 - Theme.Space.xl
+        return min(760, max(320, available * 0.55))
+    }
+
+    private func page(wide: Bool, width: CGFloat) -> some View {
+        LazyVStack(alignment: .leading, spacing: Theme.Space.section) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                header
+                if wide {
+                    HStack(alignment: .top, spacing: Theme.Space.xl) {
+                        if let lead {
+                            LeadBlock(lead: lead)
+                                .frame(width: leadWidth(in: width), alignment: .topLeading)
+                        }
+                        if showsUpNext {
+                            UpNextSection(leadEntryID: lead?.entryID, grid: true)
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                        }
+                    }
+                    .padding(.horizontal, Theme.Space.gutter)
+                } else if let lead {
+                    LeadBlock(lead: lead)
+                        .padding(.horizontal, Theme.Space.gutter)
+                        .frame(maxWidth: 720, alignment: .leading)
+                }
+            }
+            if !wide && showsUpNext {
+                UpNextSection(leadEntryID: lead?.entryID, grid: false)
+            }
+            ForEach(rowShelves) { shelf in
+                HomeRow(shelf: shelf)
+            }
+            ForEach(servers) { server in
+                ServerLibrariesIndex(server: server)
+            }
+            if shelves.isEmpty {
+                ContentUnavailableView("No Shelves", systemImage: "square.grid.2x2", description: Text("Turn shelves on in Settings → Shelves."))
+            }
+        }
+        .padding(.bottom, Theme.Space.xxl)
+    }
+
+    /// The date, and on Apple TV the greeting too: its tab bar names the page, so the title is drawn here.
+    private var header: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            #if os(tvOS)
+            Text(dayPart.title)
+                .font(.system(.largeTitle, weight: .bold))
+                .foregroundStyle(Theme.Palette.text)
+            #endif
+            Text(Reel.dateLine(now))
+                .font(.system(.subheadline))
+                .foregroundStyle(Theme.Palette.textSecondary)
+        }
+        .padding(.horizontal, Theme.Space.gutter)
+        .padding(.top, topInset)
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: Loading
+
+    private func loadLead() async {
+        if general.showContinueWatching, let entry = model.continueWatching.first, let item = await model.hydrate([entry.key]).first {
+            lead = HomeLead(item: item, episode: entry.episode, progress: entry.progress, kind: entry.isNextUp ? .nextUp : .resume, entryID: entry.id)
+        } else if let top = await model.heroItems().first {
+            lead = HomeLead(item: top)
+        } else {
+            lead = nil
+        }
+    }
+}
+
+// MARK: - The lead
+
+/// The one dominant item: a large 16:9 frame with its edge strip, the title, a line of meta, a yellow Resume
+/// (or Play) and a quiet Details.
+struct LeadBlock: View {
+    let lead: HomeLead
+    @Environment(AppModel.self) private var model
+    /// A runtime fetched when the lead has none, which is the case for most picks.
+    @State private var fetchedMinutes: Int?
+    #if os(tvOS)
+    /// Focus starts on Resume, so one press of Select carries on watching.
+    @FocusState private var resumeFocused: Bool
+    #endif
+
+    private var item: MediaItem { lead.item }
+    private var minutes: Int? { lead.minutes ?? fetchedMinutes }
+
+    private var strip: EdgePrint {
+        let format = model.lastEdgeFormat(for: item)
+        switch lead.kind {
+        case .resume:
+            return EdgePrint(progress: Reel.watchedFraction(lead.progress), lead: episodeLead, key: minutes.map { Reel.compactLeft(minutes: $0) },
+                             endsInMinutes: minutes, tail: format)
+        case .nextUp:
+            return EdgePrint(progress: 0, lead: episodeLead, key: "Up next", endsInMinutes: minutes, tail: format)
+        case .pick:
+            return EdgePrint(lead: [item.year.map { String($0) } ?? "", minutes.map { Reel.compactDuration(minutes: $0) } ?? ""], endsInMinutes: minutes, tail: format)
+        }
+    }
+
+    private var episodeLead: [String] {
+        guard let episode = lead.episode else { return item.year.map { [String($0)] } ?? [] }
+        return ["S\(episode.season) E\(episode.episode)"]
+    }
+
+    private var meta: String {
+        if let episode = lead.episode { return "Season \(episode.season), Episode \(episode.episode)" }
+        return item.shortMeta
+    }
+
+    private var spoken: String {
+        Reel.spokenListing(title: item.title, episode: lead.episode, minutesLeft: lead.kind == .resume ? minutes : nil,
+                                endsAt: minutes.map { Reel.endDate(from: Date(), minutesLeft: $0) }, extra: model.lastEdgeFormat(for: item))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Button { model.navigate(to: .detail(item)) } label: {
+                FilmFrame(art: .still(item), strip: strip)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(spoken)
+            }
+            .buttonStyle(CardButtonStyle(lift: 1.04))
+            #if os(tvOS)
+            // The Details button is the remote's way in; a frame that takes focus too would be one stop too many.
+            .focusable(false)
+            #endif
+            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                Text(item.title)
+                    .font(.system(Platform.isTV ? .title2 : .title, weight: .bold))
+                    .foregroundStyle(Theme.Palette.text)
+                    .lineLimit(2)
+                if !meta.isEmpty {
+                    Text(meta)
+                        .font(.system(.subheadline).monospacedDigit())
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                        .lineLimit(2)
+                }
+            }
+            HStack(spacing: Theme.Space.s) {
+                // The width goes on the label, so the button's own fill stretches with it.
+                Button { Task { await model.play(item) } } label: {
+                    Label(lead.kind == .resume ? "Resume" : "Play", systemImage: "play.fill")
+                        .frame(maxWidth: Platform.isTV ? nil : .infinity)
+                        .frame(minWidth: Platform.isTV ? 240 * Theme.scale : nil)
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                #if os(tvOS)
+                .focused($resumeFocused)
+                #endif
+                Button { model.navigate(to: .detail(item)) } label: { Text("Details") }
+                    .buttonStyle(GlassButtonStyle())
+            }
+        }
+        #if os(tvOS)
+        .defaultFocus($resumeFocused, true)
+        #endif
+        .task(id: item.id) { await fetchMinutes() }
+    }
+
+    private func fetchMinutes() async {
+        guard lead.minutes == nil, let catalog = model.catalog, let id = item.ids.tmdb else { return }
+        if let detail = try? await catalog.details(item.type, id: id), let runtime = detail.item.runtimeMinutes, runtime > 0 {
+            fetchedMinutes = runtime
+        }
+    }
+}
+
+// MARK: - Up Next
+
+/// What is in progress, and the next episodes, as framed stills whose strips fill as you watch.
+private struct UpNextSection: View {
+    let leadEntryID: String?
+    /// A two-column grid beside the lead; otherwise one row that scrolls sideways.
+    let grid: Bool
+    @Environment(AppModel.self) private var model
+    @State private var items: [MediaKey: MediaItem] = [:]
+
+    /// Most recent first, so a limit keeps the latest; the lead is already on the page.
+    private var entries: [ContinueWatchingBuilder.Entry] {
+        let all = model.continueWatching
+        let limited = model.settings.general.continueWatchingLimit.map { Array(all.prefix($0)) } ?? all
+        return limited.filter { $0.id != leadEntryID }
+    }
+
+    var body: some View {
+        if !entries.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                SectionHeader("Up Next", route: .library(.continueWatching))
+                    .padding(.horizontal, grid ? -Theme.Space.gutter : 0)
+                if grid {
+                    // One column when the space beside the lead is narrow, two when there is room.
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 220 * Theme.scale), spacing: Theme.Space.m, alignment: .top)],
+                              alignment: .leading, spacing: Theme.Space.m) {
+                        ForEach(entries.prefix(6)) { entry in
+                            if let item = items[entry.key] { UpNextCell(entry: entry, item: item, width: nil) }
+                        }
+                    }
+                } else {
+                    FilmScroller(ids: entries.map(\.id), itemWidth: Platform.landscapeWidth) {
+                        ForEach(entries) { entry in
+                            if let item = items[entry.key] { UpNextCell(entry: entry, item: item, width: Platform.landscapeWidth) }
+                        }
+                    }
+                    .flowSwipeActionsContainer()
+                }
+            }
+            .task(id: entries.map(\.id)) {
+                let hydrated = await model.hydrate(entries.map(\.key))
+                var map = items
+                for item in hydrated { if let key = item.key { map[key] = item } }
+                // Coming back to the page re-runs this; unchanged titles shouldn't redraw the row.
+                guard map != items else { return }
+                withAnimation(Theme.Motion.fade) { items = map }
+            }
+        }
+    }
+}
+
+/// A Continue Watching or Up Next item as a frame with its edge strip: perforations for how far in, print for the rest.
+struct UpNextCell: View {
+    let entry: ContinueWatchingBuilder.Entry
+    let item: MediaItem
+    let width: CGFloat?
+    @Environment(AppModel.self) private var model
+    /// iOS 27 asks before a removal; earlier systems remove straight away.
+    @State private var removing: ContinueWatchingBuilder.Entry?
+
+    private var minutes: Int? { Reel.minutesLeft(progress: entry.progress, runtimeMinutes: item.runtimeMinutes) }
+
+    private func requestRemoval() {
+        if ItemDialogs.available { removing = entry } else { Task { await model.removeFromContinueWatching(entry) } }
+    }
+
+    private var strip: EdgePrint {
+        let lead = entry.episode.map { ["S\($0.season) E\($0.episode)"] } ?? []
+        let format = model.lastEdgeFormat(for: item)
+        if entry.isNextUp {
+            return EdgePrint(progress: 0, lead: lead, key: "Up next", endsInMinutes: minutes, tail: format)
+        }
+        return EdgePrint(progress: Reel.watchedFraction(entry.progress), lead: lead, key: minutes.map { Reel.compactLeft(minutes: $0) },
+                         endsInMinutes: minutes, tail: format)
+    }
+
+    private var spoken: String {
+        Reel.spokenListing(title: item.title, episode: entry.episode, minutesLeft: entry.isNextUp ? nil : minutes,
+                                endsAt: minutes.map { Reel.endDate(from: Date(), minutesLeft: $0) },
+                                extra: (entry.isNextUp ? ["up next"] : []) + model.lastEdgeFormat(for: item))
+    }
+
+    var body: some View {
+        Button(action: open) {
+            FilmCard(art: .still(item), strip: strip, title: item.title, meta: item.shortMeta, width: width, spoken: spoken)
+        }
+        .buttonStyle(CardButtonStyle(lift: 1.04))
+        .contextMenu {
+            Button { model.navigate(to: .detail(item)) } label: { Label("Go to Details", systemImage: "info.circle") }
+            Button { Task { await model.setWatched(item, episodes: entry.episode.map { [$0] }, watched: true) } } label: {
+                Label("Mark as Watched", systemImage: "checkmark.circle")
+            }
+            Button(role: .destructive) { requestRemoval() } label: { Label("Remove from Continue Watching", systemImage: "xmark.circle") }
+        }
+        .flowConfirmationDialog("Remove from Continue Watching?", item: $removing) { entry in
+            Button("Remove", role: .destructive) { Task { await model.removeFromContinueWatching(entry) } }
+        }
+        // iOS 27: swipe the card for the same two quick actions.
+        .flowSwipeActions {
+            Button { Task { await model.setWatched(item, episodes: entry.episode.map { [$0] }, watched: true) } } label: {
+                Label("Watched", systemImage: "checkmark.circle")
+            }
+            .tint(Theme.Palette.stock)
+            Button(role: .destructive) { requestRemoval() } label: { Label("Remove", systemImage: "xmark.circle") }
+        }
+    }
+
+    private func open() {
+        if model.settings.playback.skipDetailsOnContinueWatching {
+            Task { await model.play(item, episode: nil) }
+        } else {
+            model.navigate(to: .detail(item))
+        }
+    }
+}
+
+// MARK: - Rows
+
+/// One shelf as a row on the page: a plain heading over posters at one fixed size, each with a print-only strip.
+private struct HomeRow: View {
+    let shelf: ShelfConfig
+
+    var body: some View {
+        switch shelf.source {
+        case .builtIn(.upcomingEpisodes):
+            UpcomingRow(shelf: shelf)
+        case .builtIn(.streamingServices):
+            ServicesIndex(shelf: shelf)
+        case .builtIn(.genres):
+            IndexSection(title: shelf.title, entries: GenreTile.featured.map { genre in
+                IndexSection.Entry(id: "genre-\(genre.id)", title: genre.name, meta: nil,
+                                   shelf: ShelfConfig(id: "genre-\(genre.id)", title: genre.name, source: .discover(genre.query)))
+            })
+        default:
+            PicksRow(shelf: shelf)
+        }
+    }
+}
+
+/// A catalogue shelf: posters, each with the runtime and rating in edge print, no perforations (nothing watched).
+private struct PicksRow: View {
+    let shelf: ShelfConfig
+    @Environment(AppModel.self) private var model
+    @State private var items: [MediaItem] = []
+    @State private var loaded = false
+    /// Replaces the configured title when the row names its seed ("Because You Watched Dune").
+    @State private var title: String?
+
+    var body: some View {
+        Group {
+            if !items.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    SectionHeader(title ?? shelf.title, route: .shelf(shelf))
+                    FilmScroller(ids: items.map(\.id), itemWidth: Platform.posterWidth) {
+                        ForEach(items) { item in
+                            PickCard(item: item, context: shelf.id)
+                        }
+                    }
+                }
+                .transition(.opacity)
+            } else if !loaded {
+                ShelfPlaceholder(title: shelf.title)
+            }
+        }
+        .animation(Theme.Motion.fade, value: items.isEmpty)
+        .task(id: "\(shelf.id)-\(model.shelfReloadKey(for: shelf))") { await load() }
+    }
+
+    private func load() async {
+        if case .builtIn(.becauseYouWatched) = shelf.source, let seed = model.becauseYouWatchedSeed,
+           let source = await model.hydrate([seed]).first {
+            title = "Because You Watched \(source.title)"
+        }
+        // Unchanged contents leave the row alone, so a reload never re-renders it.
+        if let loadedItems = try? await model.shelfItems(for: shelf), loadedItems != items { items = loadedItems }
+        loaded = true
+    }
+}
+
+private struct PickCard: View {
+    let item: MediaItem
+    let context: String
+    @Environment(AppModel.self) private var model
+    /// Shelves list titles without runtimes, so each card asks for its own as it appears.
+    @State private var runtime: Int?
+
+    private var zoomID: String { "\(context)-\(item.id)" }
+
+    private var strip: EdgePrint {
+        var lead: [String] = []
+        if let runtime { lead.append(Reel.compactDuration(minutes: runtime)) } else if item.type == .show { lead.append("Series") }
+        let tail = item.voteAverage.flatMap { $0 > 0 ? [String(format: "%.1f", $0)] : nil } ?? []
+        return EdgePrint(lead: lead, tail: tail)
+    }
+
+    private var spoken: String {
+        var extra: [String] = []
+        if let year = item.year { extra.append(String(year)) }
+        if let runtime { extra.append(Reel.spokenDuration(minutes: runtime)) }
+        if let vote = item.voteAverage, vote > 0 { extra.append("rated " + String(format: "%.1f", vote)) }
+        if model.isWatched(item) { extra.append("watched") }
+        return Reel.spokenListing(title: item.title, extra: extra)
+    }
+
+    var body: some View {
+        NavigationLink(value: Route.detail(item, zoom: zoomID)) {
+            FilmCard(art: .poster(item), strip: strip, title: item.title, meta: item.year.map { String($0) }, width: Platform.posterWidth, spoken: spoken, zoomID: zoomID)
+        }
+        .buttonStyle(CardButtonStyle(lift: 1.04))
+        .contextMenu { MediaContextMenu(item: item) } preview: { PosterPreview(item: item) }
+        .task(id: item.id) { await loadRuntime() }
+    }
+
+    private func loadRuntime() async {
+        if let known = item.runtimeMinutes, known > 0 { runtime = known; return }
+        guard item.type == .movie, let catalog = model.catalog, let id = item.ids.tmdb else { return }
+        if let detail = try? await catalog.details(item.type, id: id), let minutes = detail.item.runtimeMinutes, minutes > 0 {
+            runtime = minutes
+        }
+    }
+}
+
+/// What is coming: stills with the air day in the key position of the strip.
+private struct UpcomingRow: View {
+    let shelf: ShelfConfig
+    @Environment(AppModel.self) private var model
+    @State private var entries: [UpcomingEntry] = []
+
+    var body: some View {
+        Group {
+            if !entries.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    SectionHeader(shelf.title, route: .shelf(shelf))
+                    FilmScroller(ids: entries.map(\.id), itemWidth: Platform.landscapeWidth) {
+                        ForEach(entries) { entry in
+                            UpcomingCell(entry: entry, context: shelf.id)
+                        }
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(Theme.Motion.fade, value: entries.isEmpty)
+        .task(id: "\(model.contentVersion)-\(model.settings.general.upcomingWithinDays)-\(model.settings.general.includeWatchlistPremieres)-\(model.settings.general.filmDates.rawValue)") {
+            entries = await model.upcoming()
+        }
+    }
+}
+
+private struct UpcomingCell: View {
+    let entry: UpcomingEntry
+    let context: String
+
+    private var zoomID: String { "\(context)-\(entry.id)" }
+
+    private var strip: EdgePrint {
+        let air = Reel.airColumn(for: entry.date)
+        return EdgePrint(lead: entry.episode.map { [$0.code] } ?? ["Film"], key: "\(air.label) \(air.day)")
+    }
+
+    var body: some View {
+        let air = Reel.airColumn(for: entry.date)
+        NavigationLink(value: Route.detail(entry.item, zoom: zoomID)) {
+            FilmCard(art: .still(entry.item), strip: strip, title: entry.item.title, meta: entry.episode?.title ?? entry.item.shortMeta,
+                     width: Platform.landscapeWidth,
+                     spoken: Reel.spokenListing(title: entry.item.title, episode: entry.episode?.ref, extra: ["\(air.label) \(air.day)"]),
+                     zoomID: zoomID)
+        }
+        .buttonStyle(CardButtonStyle(lift: 1.04))
+        .contextMenu { MediaContextMenu(item: entry.item) } preview: { PosterPreview(item: entry.item) }
+    }
+}
+
+/// A row that scrolls sideways, snapping to cards, with the Mac's paging arrows.
+struct FilmScroller<ID: Hashable, Content: View>: View {
+    let ids: [ID]
+    let itemWidth: CGFloat
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
+                content
+            }
+            .padding(.horizontal, Theme.Space.gutter)
+            .padding(.vertical, Platform.isTV ? 36 : 6)
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.viewAligned)
+        .scrollClipDisabled()
+        .pagingArrows(ids: ids, itemWidth: itemWidth + 14)
+    }
+}
+
+/// Streaming services as a plain index: tapping one opens what is popular on it.
+private struct ServicesIndex: View {
+    let shelf: ShelfConfig
+    @Environment(AppModel.self) private var model
+    @State private var services: [StreamingService] = []
+
+    var body: some View {
+        Group {
+            if !services.isEmpty {
+                let region = model.settings.metadata.region
+                IndexSection(title: shelf.title, entries: services.map { service in
+                    IndexSection.Entry(id: "service-\(service.id)", title: service.name, meta: nil,
+                                       shelf: ShelfConfig(id: "service-\(service.id)-\(region)", title: service.name, source: .discover(service.query(region: region))))
+                })
+            }
+        }
+        .task(id: "\(model.settings.metadata.region)-\(model.contentVersion)") {
+            services = await model.catalog?.streamingServices() ?? []
+        }
+    }
+}
+
+/// One media server's libraries, named in a plain index.
+private struct ServerLibrariesIndex: View {
+    let server: MediaServerConfig
+    @Environment(AppModel.self) private var model
+    @State private var libraries: [AppModel.ServerLibrary] = []
+
+    var body: some View {
+        Group {
+            if !libraries.isEmpty {
+                IndexSection(title: server.name, entries: libraries.map { entry in
+                    IndexSection.Entry(id: entry.id, title: entry.library.name, meta: nil, shelf: entry.shelf)
+                })
+            }
+        }
+        .task(id: "\(server.id)-\(model.contentVersion)") {
+            libraries = await model.serverLibraries(for: server.id)
+        }
+    }
+}
+
+/// Names that open a shelf (genres, services, a server's libraries), set as text in a grid of plain rows.
+private struct IndexSection: View {
+    struct Entry: Identifiable {
+        let id: String
+        let title: String
+        var meta: String?
+        let shelf: ShelfConfig
+    }
+
+    let title: String
+    let entries: [Entry]
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            SectionHeader<Route>(title)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 170 * Theme.scale), spacing: Theme.Space.xxs, alignment: .top)],
+                      alignment: .leading, spacing: Theme.Space.xxs) {
+                ForEach(entries) { entry in
+                    ProgrammeRow(title: entry.title, meta: entry.meta, action: { model.navigate(to: .shelf(entry.shelf)) })
+                }
+            }
+            .padding(.horizontal, Theme.Space.gutter - ProgrammeMetrics.inset)
+        }
+    }
+}
+
+/// Listings, one after another, inset so their text lines up with the page's headings.
+struct ProgrammeList<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        LazyVStack(alignment: .leading, spacing: Theme.Space.xxs) { content }
+            .padding(.horizontal, Theme.Space.gutter - ProgrammeMetrics.inset)
+    }
+}
+
+extension AppModel {
+    /// What a shelf's contents depend on. Catalogue rows (trending, popular, Discover) don't change
+    /// when you mark something watched, so they don't reload with every library change.
+    func shelfReloadKey(for shelf: ShelfConfig) -> String {
+        // Language and region change what TMDb returns, so they reload catalogue rows too.
+        var filters = "\(settings.general.contentShelfLength)-\(settings.metadata.showUnreleasedTitles)-\(settings.metadata.language)-\(settings.metadata.region)"
+        // Filtering to your servers depends on their index, which refreshes with the library.
+        if settings.mediaServers.onlyShowServerContent { filters += "-\(contentVersion)" }
+        switch shelf.source {
+        case .builtIn(let builtIn) where builtIn.isContentShelf && builtIn != .recommendedForYou && builtIn != .becauseYouWatched:
+            return filters
+        case .discover:
+            return filters
+        default:
+            return "\(filters)-\(contentVersion)"
+        }
+    }
+
+    /// ["2160p", "DV"]: what this title last played as, when Remember Last Source is on and it has played.
+    func lastEdgeFormat(for item: MediaItem) -> [String] {
+        guard settings.sources.rememberLastSource, let key = item.key?.description,
+              let last = settings.sources.lastSources[key] else { return [] }
+        return last.edgeFormat
     }
 }
 

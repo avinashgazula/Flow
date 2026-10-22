@@ -118,14 +118,14 @@ struct GuideView: View {
                     }
                     .padding(.horizontal, 10)
                     .frame(width: width, height: rowHeight - 6, alignment: .leading)
-                    .background(live ? Color.white.opacity(0.16) : Theme.Palette.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .background(live ? Theme.Palette.control : Theme.Palette.panel, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .overlay(alignment: .bottomLeading) {
                         if live {
-                            Capsule().fill(.white).frame(width: max(0, (width - 20) * programme.progress(at: now)), height: 2)
+                            Capsule().fill(Theme.Palette.red).frame(width: max(0, (width - 20) * programme.progress(at: now)), height: 2)
                                 .padding(.horizontal, 10).padding(.bottom, 5)
                         }
                     }
-                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.Palette.hairline))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(live ? Theme.Palette.stock : Theme.Palette.hairline, lineWidth: live ? 2 : 1))
                 }
                 .buttonStyle(CardButtonStyle())
                 .contextMenu {
@@ -210,7 +210,7 @@ private struct ProgrammeSheet: View {
                             .font(Theme.Typeface.caption)
                             .foregroundStyle(Theme.Palette.textSecondary)
                         if live {
-                            ProgressView(value: programme.progress(at: context.date)).tint(.white)
+                            ProgressView(value: programme.progress(at: context.date)).tint(Theme.Palette.red)
                         }
                         if let category = programme.category, !category.isEmpty {
                             Text(category.uppercased()).font(.system(size: 11 * Theme.scale, weight: .semibold)).tracking(0.6)

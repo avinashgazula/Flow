@@ -194,24 +194,17 @@ struct RemoteImage: View {
     }
 }
 
-/// A typographic poster for titles without artwork: a hue derived from the title, set in condensed heavy type.
+/// A plain panel carrying the title, for titles without artwork: flat ink, set in system type.
 struct GeneratedArtwork: View {
     let title: String
-
-    private var hue: Double {
-        var hash: UInt64 = 1469598103934665603
-        for byte in title.utf8 { hash = (hash ^ UInt64(byte)) &* 1099511628211 }
-        return Double(hash % 360) / 360
-    }
 
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .bottomLeading) {
-                LinearGradient(colors: [Color(hue: hue, saturation: 0.55, brightness: 0.42), Color(hue: (hue + 0.08).truncatingRemainder(dividingBy: 1), saturation: 0.7, brightness: 0.16)],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-                Text(title.uppercased())
-                    .font(Theme.Typeface.artworkTitle(max(14, proxy.size.width * 0.16)))
-                    .foregroundStyle(.white.opacity(0.92))
+                Theme.Palette.control
+                Text(title)
+                    .font(Theme.Typeface.artworkTitle(max(11, proxy.size.width * 0.13)))
+                    .foregroundStyle(Theme.Palette.textSecondary)
                     .lineLimit(4)
                     .minimumScaleFactor(0.5)
                     .padding(proxy.size.width * 0.09)
@@ -220,34 +213,15 @@ struct GeneratedArtwork: View {
     }
 }
 
-/// A soft wash of colour taken from artwork, used behind detail pages, the hero and the player.
+/// The page ground. It once took a wash of colour from the artwork; the programme is two flat inks,
+/// so the artwork arguments stay (every screen still passes them) and nothing is drawn from them.
 struct AmbientBackground: View {
     let url: URL?
     var intensity: Double = 1
 
-    @State private var color: ArtworkColor?
-
     var body: some View {
-        ZStack {
-            Theme.Palette.canvas
-            RemoteImage(url: url, maxPixel: 64)
-                .blur(radius: 80)
-                .saturation(1.4)
-                .opacity(0.55 * intensity)
-                .scaleEffect(1.3)
-            if let color {
-                LinearGradient(colors: [color.glow.opacity(0.35 * intensity), .clear], startPoint: .top, endPoint: .center)
-                    .blendMode(.plusLighter)
-                    .opacity(0.6)
-            }
-            LinearGradient(colors: [.black.opacity(0.15), .black.opacity(0.55), .black], startPoint: .top, endPoint: .bottom)
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
-        .task(id: url) {
-            guard let url else { return }
-            let found = await ImagePipeline.shared.color(url)
-            withAnimation(Theme.Motion.gentle) { color = found }
-        }
+        Theme.Palette.ground
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 }

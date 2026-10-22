@@ -21,12 +21,7 @@ struct SourcePickerView: View {
     }
 
     /// The source auto-play would start: the one this title was last played from when it's still
-    /// offered, else the first playable one in the providers' order. Only called out when there is a
-    /// choice to make.
-    private func bestMatch(in list: [StreamSource]) -> StreamSource? {
-        list.count > 1 ? preferred(in: list) : nil
-    }
-
+    /// offered, else the first playable one in the providers' order. Its row carries the pink Play.
     private func preferred(in list: [StreamSource]) -> StreamSource? {
         model.lastSource(for: request, in: list) ?? list.first(where: \.isPlayable)
     }
@@ -39,17 +34,13 @@ struct SourcePickerView: View {
 
     var body: some View {
         let list = ranked
-        let best = bestMatch(in: list)
+        let bestID = preferred(in: list)?.id
         let lastPlayedID = model.lastSource(for: request, in: list)?.id
         let groups = grouped(list)
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
                     header(count: list.count)
-                    if let best {
-                        PlayChoice(source: best, forDownload: forDownload, lastPlayed: lastPlayedID == best.id) { choose(best) }
-                            .contextMenu { sourceMenu(best) }
-                    }
                     if list.isEmpty && !finished {
                         GroupedTable {
                             ForEach(0..<3, id: \.self) { index in SourceRowPlaceholder(showsDivider: index > 0) }
@@ -71,10 +62,10 @@ struct SourcePickerView: View {
                             // By position: the demotions can leave one provider's sources in two separate runs.
                             ForEach(Array(Self.byProvider(sources).enumerated()), id: \.offset) { _, group in
                                 section(title: group.first?.providerName ?? category.displayName, count: group.count,
-                                        note: groups.count > 1 ? category.displayName : nil, sources: group, lastPlayedID: lastPlayedID)
+                                        note: groups.count > 1 ? category.displayName : nil, sources: group, lastPlayedID: lastPlayedID, bestID: bestID)
                             }
                         } else {
-                            section(title: category.displayName, count: sources.count, note: nil, sources: sources, lastPlayedID: lastPlayedID)
+                            section(title: category.displayName, count: sources.count, note: nil, sources: sources, lastPlayedID: lastPlayedID, bestID: bestID)
                         }
                     }
                     failureNotes
@@ -96,10 +87,10 @@ struct SourcePickerView: View {
     }
 
     /// A provider's sources under its name, as one grouped list in the order the provider gave them.
-    private func section(title: String, count: Int, note: String?, sources: [StreamSource], lastPlayedID: String?) -> some View {
+    private func section(title: String, count: Int, note: String?, sources: [StreamSource], lastPlayedID: String?, bestID: String?) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(title).font(Theme.Typeface.headline)
+                Text(title).font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.text)
                 Text("\(count)").font(.system(.subheadline).monospacedDigit()).foregroundStyle(Theme.Palette.textTertiary)
                 Spacer(minLength: 0)
                 if let note { Text(note).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary) }
@@ -111,7 +102,7 @@ struct SourcePickerView: View {
                 ForEach(Array(sources.enumerated()), id: \.element.id) { index, source in
                     Button { choose(source) } label: {
                         SourceRow(source: source, appearance: model.settings.sources.appearance, providerShownAbove: providerHeaders,
-                                  lastPlayed: source.id == lastPlayedID, showsDivider: index > 0)
+                                  lastPlayed: source.id == lastPlayedID, isBest: source.id == bestID, forDownload: forDownload, showsDivider: index > 0)
                     }
                     .buttonStyle(TableRowButtonStyle())
                     .disabled(!source.isActionable)
@@ -147,12 +138,12 @@ struct SourcePickerView: View {
     private func header(count: Int) -> some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
             RemoteImage(url: request.item.posterURL, maxPixel: 300, fallbackTitle: request.item.title, fallbackURL: request.item.tmdbPosterURL)
-                .frame(width: 64 * Theme.scale, height: 96 * Theme.scale)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .hairline(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .frame(width: ProgrammeMetrics.poster.width, height: ProgrammeMetrics.poster.height)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.artwork, style: .continuous))
+                .hairline(RoundedRectangle(cornerRadius: Theme.Radius.artwork, style: .continuous))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
-                Text(request.item.title).font(Theme.Typeface.title).displayTracking().lineLimit(2)
+                Text(request.item.title).font(Theme.Typeface.title).foregroundStyle(Theme.Palette.text).displayTracking().lineLimit(2)
                 if let ep = request.episode {
                     Text("\(ep.code) · \(ep.title)").font(Theme.Typeface.body).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
                 }
@@ -190,7 +181,7 @@ struct SourcePickerView: View {
                     Label {
                         Text("\(providerName(id)): \(error)")
                     } icon: {
-                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.Palette.warn)
                     }
                 }
             }
@@ -301,93 +292,64 @@ struct SourcePickerView: View {
     }
 }
 
-/// The one action most people want, saying exactly what it will start: "4K · Dolby Vision · Atmos ·
-/// 18.20 GB · AIOStreams". The same source is also in the list below, in its place.
-private struct PlayChoice: View {
-    let source: StreamSource
-    var forDownload = false
-    /// The title was last played from this source, which is why it's the one offered.
-    var lastPlayed = false
-    let action: () -> Void
-
-    private var verb: String { forDownload ? "Download" : "Play" }
-
-    private var description: String {
-        let formats = (source.traits.hdr.map { PremiumBadge.display($0) }
-            + [source.traits.audioCodec].compactMap { $0 }.filter(PremiumBadge.isPremium).map { PremiumBadge.display($0) })
-        let parts = [source.resolutionLabel] + formats + [source.sizeLabel, source.providerName]
-        return parts.compactMap { $0 }.joined(separator: " · ")
-    }
-
-    var body: some View {
-        VStack(spacing: Theme.Space.s) {
-            Button(action: action) {
-                Label(verb, systemImage: forDownload ? "arrow.down.to.line" : "play.fill")
-                    // Full width, except on Apple TV, where a full-width button grows past the screen's edge when focused.
-                    .frame(maxWidth: Platform.isTV ? nil : .infinity)
-                    .frame(minWidth: Platform.isTV ? 420 : nil)
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .accessibilityLabel("\(verb), \(lastPlayed ? "last played, " : "")\(description)")
-            Group {
-                if lastPlayed {
-                    Text("\(Image(systemName: "clock.arrow.circlepath")) Last played · \(description)")
-                } else {
-                    Text(description)
-                }
-            }
-            .font(Theme.Typeface.caption)
-            .foregroundStyle(Theme.Palette.textSecondary)
-            .multilineTextAlignment(.center)
-            .accessibilityHidden(true)
-        }
-        .frame(maxWidth: .infinity)
-        // Room for Apple TV's focus lift.
-        .padding(.vertical, Platform.isTV ? Theme.Space.s : 0)
-    }
-}
-
-/// One source as a line of a table: the resolution in its own column on the release's baseline, the
-/// size right-aligned in tabular digits, then the formats and languages beneath. Premium formats get a
-/// small outlined badge; codecs stay plain words; only the exceptions (not cached, needs debrid) are flagged.
+/// One source as a film-can label row: the resolution large in the left column, then the formats in edge print,
+/// the release name, and the size, provider and languages in the third ink. The ranked-best row carries the
+/// yellow Play; every row plays on tap. Only exceptions are flagged, in words.
 struct SourceRow: View {
     let source: StreamSource
     let appearance: SourceAppearance
     /// The provider's name heads the group, so the row leads with what tells its sources apart.
     var providerShownAbove = false
     var lastPlayed = false
+    /// The source Play would start: its row says so with the one yellow control.
+    var isBest = false
+    var forDownload = false
     /// A hairline above this row, from the text column across, when it follows another in a list.
     var showsDivider = false
 
     @Environment(\.isFocused) private var focused
     @Environment(\.dynamicTypeSize) private var typeSize
-    @ScaledMetric(relativeTo: .headline) private var scaledColumn: CGFloat = 54
+    @ScaledMetric(relativeTo: .headline) private var scaledColumn: CGFloat = 60
 
     private var summary: SourceSummary { SourceSummary(source: source, appearance: appearance, providerShownElsewhere: providerShownAbove) }
     /// The resolution column; past a point it stops growing and its label shrinks to fit.
-    private var column: CGFloat { min(scaledColumn, 76) * Theme.scale }
+    private var column: CGFloat { min(scaledColumn, 84) * Theme.scale }
     /// At accessibility text sizes the column would squeeze the rest, so the resolution joins the title.
     private var columnShown: Bool { !typeSize.isAccessibilitySize }
     private var vertical: CGFloat { appearance.compact ? Theme.Space.s : 14 * Theme.scale }
 
-    // Apple TV draws focus the system way, white with dark text.
-    private var primary: Color { focused ? .black : .white }
-    private var secondary: Color { focused ? .black.opacity(0.62) : Theme.Palette.textSecondary }
-    private var tertiary: Color { focused ? .black.opacity(0.45) : Theme.Palette.textTertiary }
+    // On Apple TV a focused row is filled with the spot, so its text turns to ink.
+    private var primary: Color { focused ? Theme.Palette.onSpot : Theme.Palette.text }
+    private var secondary: Color { focused ? Theme.Palette.onSpot.opacity(0.85) : Theme.Palette.textSecondary }
+    private var tertiary: Color { focused ? Theme.Palette.onSpot.opacity(0.78) : Theme.Palette.textTertiary }
+    private var warning: Color { focused ? Theme.Palette.onSpot : Theme.Palette.warn }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+        HStack(alignment: .top, spacing: Theme.Space.m) {
             if columnShown {
-                Text(source.resolutionLabel ?? "–")
-                    .font(.system(.headline, design: .rounded, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(resolutionColor)
+                Text(Reel.resolutionLabel(source.traits.resolution) ?? "–")
+                    .font(.system(.title3, weight: .bold).monospacedDigit())
+                    .textCase(.uppercase)
+                    .foregroundStyle(source.traits.resolution == .unknown ? tertiary : primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .frame(width: column, alignment: .leading)
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             }
-            VStack(alignment: .leading, spacing: appearance.compact ? 3 : 5) {
-                titleLine
+            VStack(alignment: .leading, spacing: 3) {
+                // The formats first, as printed on the can; raw add-on text replaces them when asked for.
+                if !appearance.showRawText, let formats = formatLine {
+                    Text(formats)
+                        .font(Theme.Typeface.edgePrint)
+                        .edgePrint()
+                        .foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.print)
+                        .lineLimit(2)
+                }
+                Text(title)
+                    .font(Theme.Typeface.headline)
+                    .foregroundStyle(primary)
+                    .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
+                    .truncationMode(.middle)
                 if appearance.showRawText {
                     let lines = summary.rawLines
                     if !lines.isEmpty {
@@ -397,11 +359,21 @@ struct SourceRow: View {
                             .lineLimit(appearance.compact ? 3 : 8)
                             .multilineTextAlignment(.leading)
                     }
-                } else {
-                    SourceFormatLine(source: source, pack: appearance.badgePack, focused: focused)
+                } else if let size = summary.size, !typeSize.isAccessibilitySize {
+                    Text(size)
+                        .font(.system(.subheadline).monospacedDigit())
+                        .foregroundStyle(secondary)
                 }
-                metaLine
+                if let words = summary.detail, !appearance.showRawText {
+                    Text(words)
+                        .font(.system(.footnote))
+                        .foregroundStyle(tertiary)
+                        .lineLimit(1)
+                }
+                notes
             }
+            Spacer(minLength: Theme.Space.s)
+            if isBest { playPill }
         }
         .padding(.horizontal, Theme.Space.m)
         .padding(.vertical, vertical)
@@ -409,126 +381,58 @@ struct SourceRow: View {
         .tvRowSurface(focused: focused)
         .tableDivider(showsDivider, inset: Theme.Space.m + (columnShown ? column + Theme.Space.m : 0))
         .contentShape(Rectangle())
-        .opacity(source.isActionable ? 1 : 0.5)
+        .opacity(source.isActionable ? 1 : 0.55)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel((lastPlayed ? "Last played, " : "") + summary.accessibilityLabel)
+        .accessibilityLabel((lastPlayed ? "Last played, " : "") + (isBest ? "Best match, " : "") + summary.accessibilityLabel)
     }
 
-    /// "WEB-DL                 18.20 GB": the title gives way (truncates) before the size does.
-    private var titleLine: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-            Text(title)
-                .font(Theme.Typeface.headline)
-                .foregroundStyle(primary)
-                .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
-                .truncationMode(.middle)
-            Spacer(minLength: Theme.Space.s)
-            if let size = summary.size, !typeSize.isAccessibilitySize {
-                Text(size).font(.system(.subheadline).monospacedDigit()).foregroundStyle(secondary).layoutPriority(1)
-            }
-        }
-    }
-
+    /// The release's own name is the title; the resolution has the column, unless the column is hidden.
     private var title: String {
         let text = summary.title ?? source.filename ?? source.providerName
-        guard !columnShown, let resolution = source.resolutionLabel else { return text }
+        guard !columnShown, let resolution = Reel.resolutionLabel(source.traits.resolution) else { return text }
         let withSize = typeSize.isAccessibilitySize ? [summary.size].compactMap { $0 } : []
         return ([resolution, text] + withSize).joined(separator: " · ")
     }
 
-    /// Languages and release group, then whatever needs saying about this one in particular.
+    /// "DV · TRUEHD 7.1": what is different about this one, as edge print. Badges off (Settings → Source
+    /// Appearance) leaves it out.
+    private var formatLine: String? {
+        guard appearance.badgePack != .none else { return nil }
+        let parts = Reel.edgeFormat(hdr: source.traits.hdr, audioCodec: source.traits.audioCodec, audioChannels: source.traits.audioChannels)
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// Only the exceptions, in plain words: last played, not cached, needs debrid, no decoder for the video.
     @ViewBuilder
-    private var metaLine: some View {
-        let words = appearance.showRawText ? nil : summary.detail
+    private var notes: some View {
         let notCached = source.traits.isCached == false && source.category == .addons
         let needsDebrid: Bool = { if !source.isPlayable, case .torrent = source.location { return true }; return false }()
-        if words != nil || lastPlayed || notCached || needsDebrid {
-            WrappingRow(spacing: 10 * Theme.scale, lineSpacing: 4) {
-                if let words { Text(words).foregroundStyle(tertiary).lineLimit(1) }
-                if lastPlayed { Label("Last played", systemImage: "clock.arrow.circlepath").foregroundStyle(secondary) }
-                if notCached { Label("Not cached", systemImage: "hourglass").foregroundStyle(.orange) }
-                if needsDebrid { Label("Needs a debrid-enabled add-on", systemImage: "exclamationmark.circle").foregroundStyle(.orange) }
+        let decoderNote = Reel.versionNote(for: source.traits, decodesAV1: Platform.decodesAV1, convertsLosslessAudio: false)
+        if lastPlayed || notCached || needsDebrid || decoderNote != nil {
+            VStack(alignment: .leading, spacing: 2) {
+                if lastPlayed { Text("Last played").foregroundStyle(secondary) }
+                if notCached { Text("Not cached").foregroundStyle(warning) }
+                if needsDebrid { Text("Needs a debrid-enabled add-on").foregroundStyle(warning) }
+                if let decoderNote { Text(decoderNote.text).foregroundStyle(warning) }
             }
-            .font(Theme.Typeface.caption)
-            .labelStyle(TightLabelStyle())
+            .font(.system(.footnote))
         }
     }
 
-    private var resolutionColor: Color {
-        if focused { return .black }
-        switch source.traits.resolution {
-        case .uhd4k, .uhd1440, .hd1080: return .white
-        case .unknown: return Theme.Palette.textTertiary
-        default: return Theme.Palette.textSecondary
-        }
-    }
-}
-
-/// Icon and words a few points apart; the system's spacing is made for list rows, not captions.
-private struct TightLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 4) {
-            configuration.icon.imageScale(.small)
-            configuration.title
-        }
-    }
-}
-
-/// "[DOLBY VISION] [ATMOS] HEVC · 5.1": outlined badges for the formats that change what you see and
-/// hear, plain words for the rest. Follows Settings → Source Appearance → Badges.
-private struct SourceFormatLine: View {
-    let source: StreamSource
-    let pack: BadgePack
-    var focused = false
-
-    private var traits: StreamTraits { source.traits }
-
-    private var premium: [String] {
-        let all = traits.hdr + [traits.audioCodec].compactMap { $0 }.filter(PremiumBadge.isPremium)
-        return pack == .minimal ? Array(all.prefix(2)) : all
-    }
-
-    private var plain: String? {
-        guard pack != .minimal else { return nil }
-        let words = [traits.videoCodec, traits.audioCodec.flatMap { PremiumBadge.isPremium($0) ? nil : $0 }, traits.audioChannels].compactMap { $0 }
-        return words.isEmpty ? nil : words.joined(separator: " · ")
-    }
-
-    var body: some View {
-        if pack != .none, !premium.isEmpty || plain != nil {
-            WrappingRow(spacing: 6 * Theme.scale, lineSpacing: 5 * Theme.scale) {
-                ForEach(premium, id: \.self) { badge($0) }
-                if let plain {
-                    Text(plain)
-                        .font(.system(.caption).monospacedDigit())
-                        .foregroundStyle(focused ? .black.opacity(0.62) : Theme.Palette.textSecondary)
-                        .padding(.leading, premium.isEmpty ? 0 : 2)
-                }
-            }
-        }
-    }
-
-    private func badge(_ name: String) -> some View {
-        let tint = tint(for: name)
-        return Text(PremiumBadge.display(name).uppercased())
-            .font(.system(size: 9.5 * Theme.scale, weight: .bold))
-            .kerning(0.4)
-            .foregroundStyle(tint)
-            .padding(.horizontal, 5 * Theme.scale)
-            .padding(.vertical, 2.5 * Theme.scale)
-            .overlay(RoundedRectangle(cornerRadius: 4 * Theme.scale, style: .continuous).strokeBorder(tint.opacity(0.55), lineWidth: 1))
+    /// Looks like the primary button, but it is the row that is tapped: a button inside a row's button would
+    /// swallow the tap. On Apple TV the focused row is already the spot, so the pill turns to ink.
+    private var playPill: some View {
+        Text(forDownload ? "Download" : "Play")
+            .font(.system(.subheadline, weight: .semibold))
+            .foregroundStyle(focused ? Theme.Palette.stock : Theme.Palette.onStock)
+            .padding(.horizontal, Theme.Space.m)
+            .frame(minHeight: 36 * Theme.scale)
+            .background(focused ? Theme.Palette.onStock : Theme.Palette.stock, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
             .fixedSize()
     }
-
-    /// Colored tells picture formats from sound formats by a faint tint; the others stay white.
-    private func tint(for name: String) -> Color {
-        if focused { return .black.opacity(0.75) }
-        guard pack == .colored else { return .white.opacity(0.85) }
-        return PremiumBadge.hdr[name] != nil ? Color(red: 0.78, green: 0.7, blue: 1.0) : Color(red: 0.6, green: 0.88, blue: 0.9)
-    }
 }
 
-// MARK: - Pieces shared by the rows and the Play button
+// MARK: - Pieces shared by the rows
 
 private extension StreamSource {
     /// Opens outside Flow (a link): nothing to stream, but the row still does something when picked.

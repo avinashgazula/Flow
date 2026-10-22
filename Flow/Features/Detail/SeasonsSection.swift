@@ -1,6 +1,8 @@
 import SwiftUI
 import FlowKit
 
+/// A show's episodes as stills with edge strips (the air date, the runtime, perforations for what is watched),
+/// then the title and what it is about. Seasons are a standard segmented control.
 struct SeasonsSection: View {
     let show: MediaItem
     let seasons: [Season]
@@ -25,18 +27,20 @@ struct SeasonsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Episodes").font(Theme.Typeface.sectionTitle).displayTracking()
+                Text("Episodes")
+                    .font(Theme.Typeface.sectionTitle)
+                    .foregroundStyle(Theme.Palette.text)
+                    .displayTracking()
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
                 if !airedRefs.isEmpty {
                     let allWatched = airedRefs.allSatisfy { model.isEpisodeWatched(show, $0) }
                     Button {
                         Task { await model.setWatched(show, episodes: airedRefs, watched: !allWatched) }
                     } label: {
-                        Label(allWatched ? "Unwatch Season" : "Watch Season", systemImage: allWatched ? "eye.slash" : "checkmark.circle")
-                            .font(Theme.Typeface.caption)
+                        Text(allWatched ? "Unwatch Season" : "Watch Season")
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .buttonStyle(PlainActionButtonStyle())
                 }
             }
             .padding(.horizontal, Theme.Space.gutter)
@@ -45,9 +49,10 @@ struct SeasonsSection: View {
 
             if episodes.isEmpty && !isLoading {
                 VStack(spacing: Theme.Space.s) {
-                    Text(failed ? "Couldn't load the episodes." : "No episodes listed for this season yet.")
+                    Text(failed ? "Couldn't load the episodes. Check your connection and try again." : "No episodes listed for this season yet.")
                         .font(Theme.Typeface.body)
                         .foregroundStyle(Theme.Palette.textSecondary)
+                        .multilineTextAlignment(.center)
                     if failed { Button("Try Again", action: retry).buttonStyle(GlassButtonStyle()) }
                 }
                 .frame(maxWidth: .infinity)
@@ -55,28 +60,18 @@ struct SeasonsSection: View {
             } else if episodes.isEmpty {
                 VStack(spacing: Theme.Space.s) {
                     ForEach(0..<3, id: \.self) { _ in
-                        RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.Palette.surface).frame(height: 84)
+                        RoundedRectangle(cornerRadius: Theme.Radius.artwork, style: .continuous).fill(Theme.Palette.panel).frame(height: 100)
                     }
                 }
                 .padding(.horizontal, Theme.Space.gutter)
                 .shimmering()
-            } else if Platform.isPhone {
-                LazyVStack(spacing: Theme.Space.m) {
-                    ForEach(episodes) { episode in EpisodeRow(show: show, episode: episode, libraryProviderID: libraryProviderID) }
+            } else {
+                LazyVStack(alignment: .leading, spacing: Theme.Space.m) {
+                    ForEach(episodes) { episode in
+                        EpisodeListing(show: show, episode: episode, libraryProviderID: libraryProviderID)
+                    }
                 }
                 .padding(.horizontal, Theme.Space.gutter)
-                .animation(Theme.Motion.gentle, value: selectedSeason)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 16) {
-                        ForEach(episodes) { episode in EpisodeCard(show: show, episode: episode, libraryProviderID: libraryProviderID) }
-                    }
-                    .padding(.horizontal, Theme.Space.gutter)
-                    .padding(.vertical, Platform.isTV ? 36 : 4)
-                    .scrollTargetLayout()
-                }
-                .scrollTargetBehavior(.viewAligned)
-                .scrollClipDisabled()
             }
         }
         .onAppear(perform: keepSelectionVisible)
@@ -90,37 +85,32 @@ struct SeasonsSection: View {
         }
     }
 
+    private func seasonLabel(_ season: Season) -> String {
+        if season.isSpecials { return "Specials" }
+        return orderedSeasons.count > 5 ? "S\(season.number)" : "Season \(season.number)"
+    }
+
     private var seasonPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Theme.Space.xs) {
-                ForEach(orderedSeasons) { season in
-                    let selected = season.number == selectedSeason
-                    Button {
-                        withAnimation(Theme.Motion.snappy) { selectedSeason = season.number }
-                    } label: {
-                        Text(season.isSpecials ? "Specials" : (orderedSeasons.count > 6 ? "S\(season.number)" : season.name))
-                            .font(.system(.subheadline, weight: .semibold))
-                            .padding(.horizontal, Theme.Space.m)
-                            .padding(.vertical, Theme.Space.xs + 1)
-                            .foregroundStyle(selected ? Color.black : Color.white)
-                            .background {
-                                if selected { Capsule().fill(.white) } else { Capsule().fill(Theme.Palette.surface) }
-                            }
-                            .overlay(Capsule().strokeBorder(Theme.Palette.hairline, lineWidth: selected ? 0 : 1))
-                    }
-                    .buttonStyle(CardButtonStyle())
-                    .accessibilityAddTraits(selected ? .isSelected : [])
-                }
+        let picker = Picker("Season", selection: $selectedSeason) {
+            ForEach(orderedSeasons) { season in
+                Text(seasonLabel(season)).tag(season.number)
             }
-            .padding(.horizontal, Theme.Space.gutter)
-            .padding(.vertical, Platform.isTV ? 16 : 0)
         }
-        .scrollClipDisabled()
+        return Group {
+            // A segmented control while the seasons fit across; a menu for a long-running show.
+            if orderedSeasons.count <= 8 {
+                picker.pickerStyle(.segmented)
+            } else {
+                picker.pickerStyle(.menu)
+            }
+        }
+        .padding(.horizontal, Theme.Space.gutter)
     }
 }
 
-/// iPhone: still on the left, title, air date and synopsis on the right.
-struct EpisodeRow: View {
+/// One episode: its still with the edge strip, then the title and what it is about. Not-yet-aired episodes dim and
+/// do nothing; the rest play.
+struct EpisodeListing: View {
     let show: MediaItem
     let episode: Episode
     /// The library the title was opened from, for Play From This Library Only.
@@ -130,115 +120,62 @@ struct EpisodeRow: View {
     private var aired: Bool { (episode.airDate ?? .distantFuture) <= Date() }
     private var watched: Bool { model.isEpisodeWatched(show, episode.ref) }
     private var hidden: Bool { model.hidesSpoilers(show, episode) }
+    private var frameWidth: CGFloat { Platform.isTV ? 420 : (Platform.isPhone ? 168 : 240) }
+
+    /// With Episode Spoilers off, an aired, unwatched episode's still stays out of sight.
+    private var art: ProgrammeArt {
+        if hidden { return .stillImage(url: nil, title: "Episode \(episode.number)") }
+        return .stillImage(url: TMDBImage.url(episode.stillPath, size: .still) ?? show.smallBackdropURL, title: episode.title)
+    }
+
+    private var airText: String? { episode.airDate.map { Reel.airPrint(for: $0) } }
+
+    /// Perforations fill with how much is watched: all of them for a watched episode, none for one not yet started.
+    private var strip: EdgePrint {
+        let progress = model.progress(for: show, episode: episode.ref).map { Reel.watchedFraction($0) }
+        let fill: Double? = aired ? (watched ? 1 : (progress ?? 0)) : nil
+        let runtime = episode.runtimeMinutes.flatMap { $0 > 0 ? Reel.compactDuration(minutes: $0) : nil }
+        return EdgePrint(progress: fill, lead: [airText ?? "TBA"], tail: runtime.map { [$0] } ?? [])
+    }
+
+    private var spoken: String {
+        var extra: [String] = []
+        if let airText { extra.append(airText) }
+        if let runtime = episode.runtimeMinutes, runtime > 0 { extra.append(Reel.spokenDuration(minutes: runtime)) }
+        if watched { extra.append("watched") }
+        return Reel.spokenListing(title: episode.title, episode: episode.ref, extra: extra)
+    }
 
     var body: some View {
         Button {
             guard aired else { return }
             Task { await model.play(show, episode: episode, library: libraryProviderID) }
         } label: {
-            HStack(alignment: .top, spacing: Theme.Space.s) {
-                EpisodeStill(show: show, episode: episode, width: 140)
-                VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                FilmFrame(art: art, strip: strip)
+                    .frame(width: frameWidth)
+                VStack(alignment: .leading, spacing: 4) {
                     Text("\(episode.number). \(episode.title)")
-                        .font(.system(.subheadline, weight: .semibold))
+                        .font(Theme.Typeface.headline)
+                        .foregroundStyle(Theme.Palette.text)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                    HStack(spacing: 5) {
-                        if let date = episode.airDate {
-                            Text(AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))
-                        }
-                        if let runtime = episode.runtimeMinutes, runtime > 0 { Text("· \(runtime)m") }
-                    }
-                    .font(.system(.caption, weight: .medium))
-                    .foregroundStyle(Theme.Palette.textTertiary)
                     if let overview = episode.overview, !overview.isEmpty, !hidden {
                         Text(overview)
-                            .font(.system(.footnote))
+                            .font(.system(.subheadline))
                             .foregroundStyle(Theme.Palette.textSecondary)
-                            .lineLimit(2)
+                            .lineLimit(Platform.isPhone ? 3 : 4)
                             .multilineTextAlignment(.leading)
                     }
                 }
                 Spacer(minLength: 0)
             }
-            .contentShape(Rectangle())
-            .opacity(aired ? 1 : 0.5)
+            .opacity(aired ? 1 : 0.55)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(spoken)
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(CardButtonStyle(lift: 1.04))
         .contextMenu { EpisodeMenu(show: show, episode: episode, libraryProviderID: libraryProviderID) }
-    }
-}
-
-/// iPad, Mac and TV: a wide still with text beneath.
-struct EpisodeCard: View {
-    let show: MediaItem
-    let episode: Episode
-    /// The library the title was opened from, for Play From This Library Only.
-    var libraryProviderID: String? = nil
-    @Environment(AppModel.self) private var model
-
-    private var aired: Bool { (episode.airDate ?? .distantFuture) <= Date() }
-    private var hidden: Bool { model.hidesSpoilers(show, episode) }
-
-    var body: some View {
-        Button {
-            guard aired else { return }
-            Task { await model.play(show, episode: episode, library: libraryProviderID) }
-        } label: {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                EpisodeStill(show: show, episode: episode, width: Platform.landscapeWidth)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("\(episode.number). \(episode.title)").font(Theme.Typeface.headline).lineLimit(1)
-                    HStack(spacing: 5) {
-                        if let date = episode.airDate {
-                            Text(AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))
-                        }
-                        if let runtime = episode.runtimeMinutes, runtime > 0 { Text("· \(runtime)m") }
-                    }
-                    .font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary)
-                    if let overview = episode.overview, !overview.isEmpty, !hidden {
-                        Text(overview).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary).lineLimit(2)
-                    }
-                }
-                .frame(width: Platform.landscapeWidth, alignment: .leading)
-            }
-            .opacity(aired ? 1 : 0.5)
-        }
-        .buttonStyle(CardButtonStyle())
-        .contextMenu { EpisodeMenu(show: show, episode: episode, libraryProviderID: libraryProviderID) }
-    }
-}
-
-struct EpisodeStill: View {
-    let show: MediaItem
-    let episode: Episode
-    let width: CGFloat
-    @Environment(AppModel.self) private var model
-
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.poster, style: .continuous) }
-
-    var body: some View {
-        RemoteImage(url: TMDBImage.url(episode.stillPath, size: .still) ?? show.smallBackdropURL, maxPixel: Int(width * 2.5), fallbackTitle: episode.title)
-            .frame(width: width, height: width * 9 / 16)
-            .blur(radius: model.hidesSpoilers(show, episode) ? 18 : 0)
-            .clipShape(shape)
-            .hairline(shape)
-            .overlay(alignment: .bottomTrailing) {
-                if model.isEpisodeWatched(show, episode.ref) { WatchedCheck().scaleEffect(0.85).padding(6) }
-            }
-            .overlay(alignment: .bottom) {
-                if let p = model.progress(for: show, episode: episode.ref) {
-                    ProgressCapsule(value: p.percent / 100).padding(.horizontal, 8).padding(.bottom, 7)
-                }
-            }
-            .overlay {
-                if (episode.airDate ?? .distantFuture) > Date() {
-                    Text(episode.airDate.map { "Airs " + AirDateFormatting.string(for: $0, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone) } ?? "Upcoming")
-                        .font(Theme.Typeface.micro)
-                        .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(.black.opacity(0.6), in: Capsule())
-                }
-            }
     }
 }
 

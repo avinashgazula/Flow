@@ -41,16 +41,15 @@ struct GeneralSettingsView: View {
             Section("Appearance") {
                 Picker("Accent Colour", selection: $model.settings.general.accent) {
                     ForEach(AccentColorChoice.allCases) { choice in
-                        Label(choice.rawValue.capitalized, systemImage: "circle.fill").foregroundStyle(choice.color).tag(choice)
+                        Label(choice == .white ? "Flow" : choice.rawValue.capitalized, systemImage: "circle.fill").foregroundStyle(choice.color).tag(choice)
                     }
                 }
                 Toggle("Show Watched Check Marks", isOn: $model.settings.general.showWatchedBadges)
             }
             Section("Home") {
-                Picker("Hero Shows", selection: $model.settings.general.heroSource) {
+                Picker("Top Pick From", selection: $model.settings.general.heroSource) {
                     ForEach(HeroSource.allCases) { Text($0.title).tag($0) }
                 }
-                Toggle("Auto-Advance Hero", isOn: $model.settings.general.heroAutoAdvance)
             }
             Section {
                 Toggle("About", isOn: $model.settings.general.showAboutSection)

@@ -1,6 +1,8 @@
 import SwiftUI
 import FlowKit
 
+/// A title's page: a masthead (the title, its plain facts, ratings as numbers, the one pink action, the best
+/// version) beside or under a framed still, then episodes as listings, cast, and the rest.
 struct DetailView: View {
     let item: MediaItem
     /// The library the title was opened from, if any.
@@ -13,24 +15,29 @@ struct DetailView: View {
     @State private var loadingEpisodes = true
     @State private var episodesFailed = false
     @State private var selectedSeason = 1
-    @State private var selectedTrailer = 0
     @State private var rewatching = false
     @State private var downloadRequest: PlaybackRequest?
     @State private var showFullOverview = false
     @State private var reviews: [Review] = []
-    /// The logo has scrolled up under the navigation bar, so the bar shows the title instead.
+    /// What Play would start, once the sources the page searched for have answered.
+    @State private var bestVersion: AppModel.BestVersion?
+    /// The title has scrolled up under the navigation bar, so the bar shows it instead.
     @State private var titleCollapsed = false
-    /// Where the navigation bar ends, so the title collapses once the logo has passed beneath it.
+    /// Where the navigation bar ends, so the title collapses once it has passed beneath it.
     @State private var barBottom: CGFloat = 100
+    /// The page's width, to choose between the one-column and two-column masthead.
+    @State private var width: CGFloat = Platform.isPhone ? 0 : 1200
 
     private var general: GeneralSettings { model.settings.general }
     private var current: MediaItem { detail?.item ?? item }
-    private var wide: Bool { !Platform.isPhone }
+    /// The still beside the text once there's room for both; above it otherwise.
+    private var wide: Bool { Platform.isTV || width >= 820 }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                header
+                topInset
+                masthead
                 // Specials alone, with Specials Season off, leave nothing to list.
                 if current.type == .show, let detail, detail.seasons.contains(where: { $0.number > 0 || general.showSpecialsSeason }) {
                     SeasonsSection(show: current, seasons: detail.seasons, episodesBySeason: episodesBySeason, selectedSeason: $selectedSeason, libraryProviderID: libraryProviderID,
@@ -46,7 +53,8 @@ struct DetailView: View {
         }
         .scrollIndicators(.hidden)
         .detailTextSize(general.detailTextSize)
-        .background(AmbientBackground(url: current.smallBackdropURL ?? current.tmdbPosterURL))
+        .background(AmbientBackground(url: nil))
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         #if os(iOS)
         .ignoresSafeArea(edges: .top)
         .background { Color.clear.onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { if $0 > 0 { barBottom = $0 } } }
@@ -55,109 +63,147 @@ struct DetailView: View {
         #endif
         .collapsingNavigationTitle(current.title, collapsed: titleCollapsed)
         .inlineNavigationTitle()
+        .flowMinimizingToolbar()
         .task(id: item.id) { await load() }
+        .task(id: item.id) { await watchBestVersion() }
         .advertisesTitle(current)
         .sheet(item: $downloadRequest) { request in
             SourcePickerView(request: request, forDownload: true).environment(model)
         }
     }
 
-    // MARK: Header
-
-    private var header: some View {
-        ZStack(alignment: wide ? .bottomLeading : .bottom) {
-            RemoteImage(url: wide ? TMDBImage.url(current.backdropPath, size: .original) : TMDBImage.url(current.heroPosterPath, size: .original),
-                        maxPixel: wide ? 2000 : 1100, fallbackTitle: current.title)
-                .frame(height: headerHeight)
-                .frame(maxWidth: .infinity)
-                .clipped()
-                .mask(LinearGradient(stops: headerFade, startPoint: .top, endPoint: .bottom))
-                .visualEffect { content, proxy in
-                    let y = proxy.frame(in: .scrollView(axis: .vertical)).minY
-                    return content
-                        .scaleEffect(y > 0 ? 1 + y / max(proxy.size.height, 1) : 1, anchor: .bottom)
-                        .offset(y: y < 0 ? -y * 0.4 : 0)
-                }
-            if wide {
-                // Reaches across the text column, so ratings stay readable over bright skies.
-                LinearGradient(stops: [.init(color: .black.opacity(0.75), location: 0), .init(color: .black.opacity(0.45), location: 0.4),
-                                       .init(color: .clear, location: 0.75)],
-                               startPoint: .leading, endPoint: .trailing)
-                    .allowsHitTesting(false)
-            }
-            headerContent
-                .padding(.horizontal, Theme.Space.gutter)
-                .frame(maxWidth: wide ? 720 * Theme.scale : .infinity, alignment: wide ? .leading : .center)
-        }
-        .frame(minHeight: headerHeight)
+    /// The page runs under the navigation bar on iPhone and iPad, and under the tab bar on Apple TV.
+    @ViewBuilder
+    private var topInset: some View {
+        #if os(iOS)
+        Color.clear.frame(height: max(0, barBottom - Theme.Space.s))
+        #elseif os(tvOS)
+        Color.clear.frame(height: 110)
+        #endif
     }
 
-    private var headerContent: some View {
-        VStack(alignment: wide ? .leading : .center, spacing: Theme.Space.m) {
-            LogoOrTitle(logoPath: current.logoPath, title: current.title, maxHeight: Platform.isTV ? 200 : (wide ? 130 : 110),
-                        alignment: wide ? .leading : .center)
-                .frame(maxWidth: wide ? 520 : 330, alignment: wide ? .leading : .center)
-                #if os(iOS)
-                .onGeometryChange(for: Bool.self) { [barBottom] in $0.size.height > 0 && $0.frame(in: .global).maxY < barBottom } action: { collapsed in
-                    withAnimation(Theme.Motion.fade) { titleCollapsed = collapsed }
+    // MARK: Masthead
+
+    private var stillWidth: CGFloat { Platform.isTV ? 760 : min(460, width * 0.42) }
+
+    /// The still and, under it, the film-can label: one object; beside the text on wide screens, above it otherwise.
+    private var masthead: some View {
+        let visual = VStack(alignment: .leading, spacing: Theme.Space.m) {
+            still
+            versionLabel
+        }
+        return Group {
+            if wide {
+                HStack(alignment: .top, spacing: Theme.Space.xl) {
+                    visual.frame(width: stillWidth)
+                    textColumn.frame(maxWidth: .infinity, alignment: .leading)
                 }
-                #endif
-            MetadataLine(item: current, certification: current.certification, showRating: false)
+            } else {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    visual
+                    textColumn
+                }
+            }
+        }
+        .padding(.horizontal, Theme.Space.gutter)
+    }
+
+    /// The title's frame with its edge strip: progress if it is started, and `2024 · 2 H 47 · ENDS 22:56`.
+    private var still: some View {
+        let progress = model.progress(for: current)
+        let started = current.type == .movie && (progress?.percent ?? 0) > 1
+        let minutes = current.type == .movie ? Reel.minutesLeft(progress: progress, runtimeMinutes: current.runtimeMinutes) : nil
+        var lead: [String] = []
+        if let year = current.year { lead.append(String(year)) }
+        if current.type == .show {
+            if let seasons = detail?.numberOfSeasons { lead.append(seasons == 1 ? "1 season" : "\(seasons) seasons") }
+        } else if !started, let runtime = current.runtimeMinutes, runtime > 0 {
+            lead.append(Reel.compactDuration(minutes: runtime))
+        }
+        let strip = EdgePrint(progress: started ? Reel.watchedFraction(progress) : nil, lead: lead,
+                              key: started ? minutes.map { Reel.compactLeft(minutes: $0) } : nil, endsInMinutes: minutes)
+        return FilmFrame(art: .still(current), strip: strip)
+            .accessibilityHidden(true)
+    }
+
+    private var textColumn: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                let factsText = facts
+                if !factsText.isEmpty {
+                    Text(factsText)
+                        .font(.system(.subheadline).monospacedDigit())
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                }
+                Text(current.title)
+                    .font(.system(.largeTitle, weight: .bold))
+                    .tracking(-0.7)
+                    .foregroundStyle(Theme.Palette.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                    #if os(iOS)
+                    .onGeometryChange(for: Bool.self) { [barBottom] in $0.size.height > 0 && $0.frame(in: .global).maxY < barBottom } action: { collapsed in
+                        withAnimation(Theme.Motion.fade) { titleCollapsed = collapsed }
+                    }
+                    #endif
+            }
             if !ratings.isEmpty || current.voteAverage != nil {
-                RatingsRow(ratings: ratings.isEmpty ? Ratings(tmdb: current.voteAverage) : ratings, item: current, centered: !wide)
+                RatingsRow(ratings: ratings.isEmpty ? Ratings(tmdb: current.voteAverage) : ratings, item: current)
             }
             actions
-            if let overview = current.overview, !overview.isEmpty {
-                VStack(alignment: wide ? .leading : .center, spacing: 4) {
-                    if let tagline = detail?.tagline {
-                        Text(tagline).font(Theme.Typeface.headline).foregroundStyle(.white.opacity(0.9))
-                    }
-                    Text(overview)
-                        .font(Theme.Typeface.body)
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                        .multilineTextAlignment(wide ? .leading : .center)
-                        .lineLimit(showFullOverview ? nil : 3)
-                        .lineSpacing(2)
-                    if !showFullOverview && overview.count > 160 {
-                        Text("MORE").font(Theme.Typeface.micro).kerning(1).foregroundStyle(.white.opacity(0.85))
-                    }
-                    if let scenes = detail?.creditsScenes, scenes.any {
-                        Label(scenes.afterCredits ? (scenes.duringCredits ? "Scenes during and after the credits" : "Scene after the credits")
-                                                  : "Scene during the credits", systemImage: "sparkles")
-                            .font(Theme.Typeface.caption)
-                            .foregroundStyle(.white.opacity(0.85))
-                            .padding(.top, 6)
-                    }
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { withAnimation(Theme.Motion.gentle) { showFullOverview.toggle() } }
-                .frame(maxWidth: 640 * Theme.scale, alignment: wide ? .leading : .center)
-            }
+            overviewBlock
         }
     }
 
-    /// On iPhone the poster's lower third carries its own title art; fade it out before the logo and buttons sit on it.
-    private var headerFade: [Gradient.Stop] {
-        wide
-            ? [.init(color: .black, location: 0.55), .init(color: .clear, location: 1)]
-            : [.init(color: .black, location: 0.4), .init(color: .black.opacity(0.4), location: 0.66), .init(color: .clear, location: 0.86)]
+    /// "2024 · 2 h 47 min · PG-13 · Science Fiction".
+    private var facts: String {
+        var parts: [String] = []
+        if let year = current.year { parts.append(String(year)) }
+        if current.type == .movie, let runtime = current.runtimeMinutes, runtime > 0 {
+            parts.append(Reel.duration(minutes: runtime))
+        } else if current.type == .show, let seasons = detail?.numberOfSeasons {
+            parts.append(seasons == 1 ? "1 season" : "\(seasons) seasons")
+        }
+        if let certification = current.certification, !certification.isEmpty { parts.append(certification) }
+        let genres = current.genres.prefix(2).map(\.name)
+        if !genres.isEmpty { parts.append(genres.joined(separator: ", ")) }
+        return parts.joined(separator: " · ")
     }
 
-    private var headerHeight: CGFloat {
-        #if os(tvOS)
-        900
-        #elseif os(macOS)
-        560
-        #else
-        Platform.isPhone ? 720 : 640
-        #endif
+    @ViewBuilder
+    private var overviewBlock: some View {
+        if let overview = current.overview, !overview.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                if let tagline = detail?.tagline, !tagline.isEmpty {
+                    Text(tagline).font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.text)
+                }
+                Text(overview)
+                    .font(.system(.body))
+                    .foregroundStyle(Theme.Palette.text)
+                    .lineSpacing(4)
+                    .lineLimit(showFullOverview ? nil : 5)
+                if !showFullOverview && overview.count > 220 {
+                    Text("More").font(.system(.subheadline, weight: .semibold)).foregroundStyle(Theme.Palette.textSecondary)
+                }
+                if let scenes = detail?.creditsScenes, scenes.any {
+                    Label(scenes.afterCredits ? (scenes.duringCredits ? "Scenes during and after the credits" : "Scene after the credits")
+                                              : "Scene during the credits", systemImage: "sparkles")
+                        .font(Theme.Typeface.caption)
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                        .padding(.top, 6)
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { withAnimation(Theme.Motion.gentle) { showFullOverview.toggle() } }
+            .frame(maxWidth: 640 * Theme.scale, alignment: .leading)
+        }
     }
 
     // MARK: Actions
 
     private var playLabel: String {
         if current.type == .movie, let p = model.progress(for: current), p.percent > 1 {
-            if let r = p.remainingSeconds { return "Resume · \(TimeFormat.remaining(r))" }
+            if let minutes = Reel.minutesLeft(progress: p, runtimeMinutes: current.runtimeMinutes) { return "Resume · \(Reel.left(minutes: minutes))" }
             return "Resume"
         }
         if current.type == .show, let key = current.key, let entry = model.continueWatching.first(where: { $0.key == key }), let ep = entry.episode {
@@ -169,82 +215,27 @@ struct DetailView: View {
             let state = model.showStates[key] ?? ShowWatchState(key: key)
             if let next = state.nextUp(aired: aired) ?? aired.first { return "Play \(next.code)" }
         }
+        if current.type == .movie, let runtime = current.runtimeMinutes, runtime > 0 {
+            return "Play · ends \(Reel.clock(Reel.endDate(from: Date(), minutesLeft: runtime)))"
+        }
         return "Play"
     }
 
     private var actions: some View {
-        VStack(alignment: wide ? .leading : .center, spacing: Theme.Space.s) {
-            Button { Task { await model.play(current, library: libraryProviderID) } } label: {
-                Label(playLabel, systemImage: "play.fill")
-                    .frame(maxWidth: wide ? nil : .infinity)
-                    .frame(minWidth: wide ? 240 * Theme.scale : nil)
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .frame(maxWidth: wide ? nil : 420)
-
-            GlassGroup(spacing: 12) {
-                HStack(alignment: .top, spacing: wide ? Theme.Space.m : Theme.Space.xs) {
-                    let watched = model.isWatched(current)
-                    action(watched ? "checkmark.circle.fill" : "checkmark.circle", title: "Watched",
-                           accessibility: watched ? "Watched" : "Mark Watched", active: watched) {
-                        Task { await model.setWatched(current, episodes: nil, watched: !watched) }
-                    }
-                    action(model.isWatchlisted(current) ? "bookmark.fill" : "bookmark", title: "Watchlist", active: model.isWatchlisted(current)) {
-                        Task { await model.toggleWatchlist(current) }
-                    }
-                    action(model.isFavourite(current) ? "heart.fill" : "heart", title: "Favourite", active: model.isFavourite(current)) {
-                        Task { await model.toggleFavourite(current) }
-                    }
-                    if Platform.supportsDownloads {
-                        action("arrow.down.circle", title: "Download", active: false) { Task { await download() } }
-                    }
-                    if current.type == .show {
-                        // iPhone has room for four labelled actions; the show-only ones fold into More.
-                        if wide {
-                            action("shuffle", title: "Shuffle", active: false) { Task { await model.shufflePlay(current) } }
-                            action("arrow.counterclockwise", title: rewatching ? "End Rewatch" : "Rewatch", active: rewatching) { toggleRewatch() }
-                        } else {
-                            // The menu's label is only the circle: iOS 27 spreads glass over a menu's whole label, and
-                            // iOS 26 draws a glass group over anything that isn't part of the glass itself.
-                            VStack(spacing: 6 * Theme.scale) {
-                                Menu {
-                                    Button { Task { await model.shufflePlay(current) } } label: { Label("Shuffle Play", systemImage: "shuffle") }
-                                    Button { toggleRewatch() } label: {
-                                        Label(rewatching ? "End Rewatch" : "Rewatch", systemImage: "arrow.counterclockwise")
-                                    }
-                                    #if !os(tvOS)
-                                    TitleShareLink(item: current) { Label("Share", systemImage: "square.and.arrow.up") }
-                                    #endif
-                                } label: {
-                                    Image(systemName: "ellipsis")
-                                        .font(.system(size: 19 * Theme.scale, weight: .semibold))
-                                        .foregroundStyle(.white)
-                                        .frame(width: 50 * Theme.scale, height: 50 * Theme.scale)
-                                        .flowGlass(Circle(), interactive: true)
-                                }
-                                .buttonStyle(DetailActionButtonStyle())
-                                .accessibilityLabel("More")
-                                Text("More")
-                                    .font(.system(size: 11 * Theme.scale, weight: .semibold))
-                                    .foregroundStyle(Theme.Palette.textSecondary)
-                                    .lineLimit(1)
-                                    .fixedSize()
-                                    .accessibilityHidden(true)
-                            }
-                            .frame(minWidth: 64 * Theme.scale)
-                        }
-                    }
-                    #if !os(tvOS)
-                    // On iPhone a show's Share lives in More; a film has the room for it (five across, like a show with More).
-                    if wide || current.type == .movie {
-                        TitleShareLink(item: current) {
-                            Label("Share", systemImage: "square.and.arrow.up").labelStyle(DetailActionLabelStyle(active: false))
-                        }
-                        .buttonStyle(DetailActionButtonStyle())
-                    }
-                    #endif
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack(spacing: Theme.Space.s) {
+                Button { Task { await model.play(current, library: libraryProviderID) } } label: {
+                    Label(playLabel, systemImage: "play.fill")
+                        // One line, always: "Resume · 1 h 44 min left" must not wrap on Apple TV.
+                        .lineLimit(1)
+                        .fixedSize(horizontal: wide, vertical: false)
+                        .frame(maxWidth: wide ? nil : .infinity)
+                        .frame(minWidth: wide ? 220 * Theme.scale : nil)
                 }
+                .buttonStyle(PrimaryButtonStyle())
+                if let trailers = detail?.trailers, !trailers.isEmpty { trailerButton(trailers) }
             }
+            textActions
             if model.isWatched(current) || model.rating(for: current) != nil {
                 HStack(spacing: Theme.Space.s) {
                     Text("Your Rating").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary)
@@ -254,6 +245,71 @@ struct DetailView: View {
             RequestButton(item: current, seasons: detail?.seasons ?? [])
             if let next = detail?.nextEpisode, let date = next.airDate { airsLine(next, date: date) }
         }
+    }
+
+    /// Owners decide by trailers, so it sits beside Play. More than one trailer makes it a menu.
+    @ViewBuilder
+    private func trailerButton(_ trailers: [Video]) -> some View {
+        if trailers.count > 1 {
+            Menu {
+                ForEach(Array(trailers.enumerated()), id: \.offset) { _, video in
+                    Button(video.name) { openTrailer(video) }
+                }
+            } label: {
+                Text("Trailer")
+            }
+            .buttonStyle(GlassButtonStyle())
+        } else if let video = trailers.first {
+            Button { openTrailer(video) } label: { Text("Trailer") }
+                .buttonStyle(GlassButtonStyle())
+                .accessibilityHint("Opens \(video.name) in YouTube")
+        }
+    }
+
+    private func openTrailer(_ video: Video) {
+        if let url = video.youtubeURL { model.openExternally(url) }
+    }
+
+    /// Watchlist, Watched, Favourite, Download and Share as plain labelled text, wrapping when they must.
+    private var textActions: some View {
+        WrappingRow(spacing: Theme.Space.m, lineSpacing: 0) {
+            let watched = model.isWatched(current)
+            textAction("Watched", active: watched, accessibility: watched ? "Watched" : "Mark Watched") {
+                Task { await model.setWatched(current, episodes: nil, watched: !watched) }
+            }
+            let listed = model.isWatchlisted(current)
+            textAction("Watchlist", active: listed, accessibility: listed ? "Remove from Watchlist" : "Add to Watchlist") {
+                Task { await model.toggleWatchlist(current) }
+            }
+            let favourite = model.isFavourite(current)
+            textAction("Favourite", active: favourite, accessibility: favourite ? "Remove from Favourites" : "Add to Favourites") {
+                Task { await model.toggleFavourite(current) }
+            }
+            if Platform.supportsDownloads {
+                textAction("Download", active: false, accessibility: "Download") { Task { await download() } }
+            }
+            if current.type == .show {
+                textAction("Shuffle", active: false, accessibility: "Shuffle Play") { Task { await model.shufflePlay(current) } }
+                textAction(rewatching ? "End Rewatch" : "Rewatch", active: rewatching, accessibility: rewatching ? "End Rewatch" : "Rewatch") { toggleRewatch() }
+            }
+            #if !os(tvOS)
+            TitleShareLink(item: current) { Text("Share") }
+                .buttonStyle(PlainActionButtonStyle())
+            #endif
+        }
+    }
+
+    /// One text action; a small check after the word says it is on.
+    private func textAction(_ title: String, active: Bool, accessibility: String, perform: @escaping () -> Void) -> some View {
+        Button(action: perform) {
+            HStack(spacing: 4) {
+                Text(title)
+                if active { Image(systemName: "checkmark").imageScale(.small) }
+            }
+        }
+        .buttonStyle(PlainActionButtonStyle())
+        .accessibilityLabel(accessibility)
+        .sensoryFeedbackIfAvailable(active)
     }
 
     @ViewBuilder
@@ -277,14 +333,57 @@ struct DetailView: View {
         #endif
     }
 
-    /// An icon in a glass circle with its name underneath, so nobody has to guess what a symbol does.
-    private func action(_ symbol: String, title: String, accessibility: String? = nil, active: Bool, perform: @escaping () -> Void) -> some View {
-        Button(action: perform) {
-            Label(title, systemImage: symbol).labelStyle(DetailActionLabelStyle(active: active))
+    /// The film-can label: what will play and how, as edge print. Best version, how it plays on this device, and
+    /// the sources (which open the picker).
+    @ViewBuilder
+    private var versionLabel: some View {
+        if let best = bestVersion {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                labelRow("Best version") {
+                    Text(best.line.isEmpty ? "Unknown format" : best.line)
+                        .foregroundStyle(Theme.Palette.print)
+                }
+                labelRow("Plays") {
+                    if let note = best.note, note.isWarning {
+                        Text(note.text).foregroundStyle(Theme.Palette.warn)
+                    } else if let note = best.note {
+                        Text("Direct · " + note.text).foregroundStyle(Theme.Palette.print)
+                    } else {
+                        Text("Direct").foregroundStyle(Theme.Palette.stock)
+                    }
+                }
+                Button { Task { await model.play(current, library: libraryProviderID) } } label: {
+                    labelRow("Sources") {
+                        Text(([String(best.count)] + best.providers.prefix(3)).joined(separator: " · "))
+                            .foregroundStyle(Theme.Palette.print)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens the source list")
+            }
+            .padding(Theme.Space.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.Palette.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.frame, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.frame, style: .continuous).strokeBorder(Theme.Palette.line, lineWidth: 1))
+            .transition(.opacity)
         }
-        .buttonStyle(DetailActionButtonStyle())
-        .accessibilityLabel(accessibility ?? title)
-        .sensoryFeedbackIfAvailable(active)
+    }
+
+    /// One row of the label: a small tracked name, then its value in larger print.
+    private func labelRow<Value: View>(_ name: String, @ViewBuilder value: () -> Value) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+            Text(name)
+                .font(Theme.Typeface.edgePrint)
+                .edgePrint(tracking: 1.6)
+                .foregroundStyle(Theme.Palette.textTertiary)
+                .frame(width: 92 * Theme.scale, alignment: .leading)
+            value()
+                .font(Font.system(.subheadline, weight: .semibold).width(.condensed).monospacedDigit())
+                .edgePrint()
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func toggleRewatch() {
@@ -332,8 +431,7 @@ struct DetailView: View {
                 .scrollClipDisabled()
             }
         }
-        if !detail.trailers.isEmpty { trailerSection(detail.trailers) }
-        if let collection = detail.collection { collectionCard(collection) }
+        if let collection = detail.collection { collectionRow(collection) }
         if !detail.recommendations.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 SectionHeader<Route>("More Like This")
@@ -351,79 +449,18 @@ struct DetailView: View {
         if !about.isEmpty { about }
     }
 
-    private func collectionCard(_ collection: MediaCollection) -> some View {
-        NavigationLink(value: Route.collection(id: collection.id, name: collection.name)) {
-            ZStack(alignment: .bottomLeading) {
-                RemoteImage(url: TMDBImage.url(collection.backdropPath, size: .backdropLarge), maxPixel: 1400, fallbackTitle: collection.name)
-                    .frame(height: 150 * Theme.scale)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-                LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .top, endPoint: .bottom)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("PART OF THE").font(Theme.Typeface.micro).kerning(1.2).foregroundStyle(Theme.Palette.textSecondary)
-                    Text(collection.name).font(Theme.Typeface.title).displayTracking()
-                }
-                .padding(Theme.Space.m)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-            .hairline(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-        }
-        .buttonStyle(CardButtonStyle())
-        .padding(.horizontal, Theme.Space.gutter)
-    }
-
-    private func trailerSection(_ trailers: [Video]) -> some View {
+    /// The collection a film belongs to, as one listing.
+    private func collectionRow(_ collection: MediaCollection) -> some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack {
-                if trailers.count > 1 {
-                    Menu {
-                        ForEach(Array(trailers.enumerated()), id: \.offset) { index, video in
-                            Button(video.name) { selectedTrailer = index }
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text("Trailers")
-                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 12 * Theme.scale, weight: .bold)).foregroundStyle(Theme.Palette.textTertiary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    Text("Trailer")
-                }
-                Spacer()
+            SectionHeader<Route>("Collection")
+            ProgrammeList {
+                ProgrammeRow(
+                    art: .stillImage(url: TMDBImage.url(collection.backdropPath, size: .backdrop), title: collection.name),
+                    title: collection.name,
+                    meta: "Every film in the collection",
+                    action: { model.navigate(to: .collection(id: collection.id, name: collection.name)) }
+                )
             }
-            .font(Theme.Typeface.sectionTitle)
-            .displayTracking()
-            .padding(.horizontal, Theme.Space.gutter)
-            let video = trailers[min(selectedTrailer, trailers.count - 1)]
-            Button {
-                if let url = video.youtubeURL { model.openExternally(url) }
-            } label: {
-                // The name goes under the picture, not on it: trailer thumbnails carry their own lettering.
-                VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                    ZStack {
-                        RemoteImage(url: video.thumbnailURL, maxPixel: 900, fallbackTitle: video.name)
-                        Color.black.opacity(0.15)
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 22 * Theme.scale, weight: .bold))
-                            .frame(width: 60 * Theme.scale, height: 60 * Theme.scale)
-                            .flowGlass(Circle())
-                    }
-                    .frame(width: Platform.landscapeWidth * 1.5, height: Platform.landscapeWidth * 1.5 * 9 / 16)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-                    .hairline(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-                    .artworkShadow(0.5)
-                    HStack(spacing: 6) {
-                        Text(video.name).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
-                        Text("YouTube").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary)
-                    }
-                    .frame(width: Platform.landscapeWidth * 1.5, alignment: .leading)
-                }
-            }
-            .buttonStyle(CardButtonStyle())
-            .accessibilityLabel("Play \(video.name)")
-            .accessibilityHint("Opens in YouTube")
-            .padding(.horizontal, Theme.Space.gutter)
         }
     }
 
@@ -433,6 +470,19 @@ struct DetailView: View {
     private func fetchReviews(from catalog: CatalogService, for item: MediaItem) async -> [Review] {
         guard general.showReviews else { return [] }
         return await catalog.reviews(for: item)
+    }
+
+    /// The sources Prefetch on Detail View finds arrive a little after the page opens, so this waits for them.
+    private func watchBestVersion() async {
+        guard let request = await model.playRequest(for: item) else { return }
+        for _ in 0..<40 {
+            if let found = model.bestVersion(for: request) {
+                withAnimation(Theme.Motion.fade) { bestVersion = found }
+                return
+            }
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            if Task.isCancelled { return }
+        }
     }
 
     private func load() async {
@@ -481,32 +531,31 @@ extension DetailView {
     }
 }
 
-/// The scores chosen in Settings → Metadata → Ratings Shown, in that order.
+/// The scores chosen in Settings → Metadata → Ratings Shown, in that order: each an aligned number with the
+/// source's name under it. No logos and no colour; a custom icon pack (Settings) still replaces the name.
 struct RatingsRow: View {
     let ratings: Ratings
     /// The title, so a score can open its site's page when Tap a Rating is on.
     var item: MediaItem?
-    var centered = false
     @Environment(AppModel.self) private var model
 
     private var metadata: MetadataSettings { model.settings.metadata }
-    /// Only while a pack URL is set, so clearing the field brings the built-in badges straight back.
+    /// Only while a pack URL is set, so clearing the field brings the plain names straight back.
     private var iconPack: RatingIconPack? { metadata.ratingIconPackURL == nil ? nil : model.ratingIconPack }
 
     var body: some View {
-        // One line when it fits; otherwise a second line, never a badge cut off at the screen's edge.
-        WrappingRow(spacing: 14 * Theme.scale, lineSpacing: 10 * Theme.scale, centered: centered) {
+        // One line when it fits; otherwise a second line, never a score cut off at the screen's edge.
+        WrappingRow(spacing: 28 * Theme.scale, lineSpacing: 14 * Theme.scale) {
             ForEach(metadata.ratingsShown) { source in
-                chip(source)
+                score(source)
             }
         }
-        .font(.system(.subheadline, weight: .semibold).monospacedDigit())
-        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .task(id: metadata.ratingIconPackURL) { await model.loadRatingIconPack() }
     }
 
     @ViewBuilder
-    private func chip(_ source: RatingSource) -> some View {
+    private func score(_ source: RatingSource) -> some View {
         if let value = text(for: source) {
             if let link = reviewsURL(for: source) {
                 Button { model.openExternally(link) } label: { content(source, value) }
@@ -542,62 +591,23 @@ struct RatingsRow: View {
         #endif
     }
 
-    @ViewBuilder
     private func content(_ source: RatingSource, _ value: String) -> some View {
-        if let icon = iconPack?[source] {
-            HStack(spacing: 5) {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.system(.title2, weight: .semibold).monospacedDigit())
+                .foregroundStyle(Theme.Palette.text)
+            if let icon = iconPack?[source] {
                 RemoteImage(url: icon, contentMode: .fit, maxPixel: 96)
-                    .frame(width: 24 * Theme.scale, height: 16 * Theme.scale)
-                Text(value)
+                    .frame(width: 24 * Theme.scale, height: 14 * Theme.scale, alignment: .leading)
+            } else {
+                Text(source.title)
+                    .font(.system(.caption))
+                    .foregroundStyle(Theme.Palette.textTertiary)
             }
-            .fixedSize()
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(source.spokenScore(value))
-        } else {
-            builtIn(source, value)
-                .accessibilityLabel(source.spokenScore(value))
-        }
-    }
-
-    @ViewBuilder
-    private func builtIn(_ source: RatingSource, _ value: String) -> some View {
-        switch source {
-        case .imdb: badge("IMDb", value, fill: Color(red: 0.96, green: 0.77, blue: 0.09), dark: true)
-        case .tomatometer:
-            let rt = ratings.rottenTomatoes ?? 0
-            score(symbol: rt >= 60 ? "circle.fill" : "drop.fill", color: rt >= 60 ? Color(red: 0.98, green: 0.2, blue: 0.1) : Color(red: 0.4, green: 0.75, blue: 0.2), value)
-        case .popcornmeter: score(symbol: "popcorn.fill", color: Color(red: 0.98, green: 0.65, blue: 0.2), value)
-        case .metacritic:
-            let mc = ratings.metacritic ?? 0
-            badge("MC", value, fill: mc >= 61 ? Color(red: 0.4, green: 0.8, blue: 0.2) : mc >= 40 ? Color(red: 1, green: 0.8, blue: 0.2) : Color(red: 1, green: 0.25, blue: 0.25), dark: true)
-        case .tmdb: badge("TMDB", value, fill: Color(red: 0.05, green: 0.75, blue: 0.75), dark: true)
-        case .letterboxd: badge("LB", value, fill: .white.opacity(0.18), dark: false)
-        case .trakt: badge("Trakt", value, fill: .white.opacity(0.18), dark: false)
-        case .mal: badge("MAL", value, fill: .white.opacity(0.18), dark: false)
-        }
-    }
-
-    private func badge(_ label: String, _ value: String, fill: Color, dark: Bool) -> some View {
-        HStack(spacing: 5) {
-            Text(label)
-                .font(.system(size: 10 * Theme.scale, weight: .heavy))
-                .padding(.horizontal, 4).padding(.vertical, 2)
-                .background(fill, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                .foregroundStyle(dark ? .black : .white)
-            Text(value)
-        }
-        // Never squeezed: laid out at exactly its ideal width, a fraction of a point short truncates the label.
-        .fixedSize()
-        .accessibilityElement(children: .combine)
-    }
-
-    private func score(symbol: String, color: Color, _ value: String) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: symbol).foregroundStyle(color).imageScale(.small)
-            Text(value)
         }
         .fixedSize()
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(source.spokenScore(value))
     }
 }
 
@@ -666,47 +676,29 @@ struct WhereToWatch: View {
     }
 }
 
-/// A detail page action: the symbol in a glass circle, its name in small type below.
-struct DetailActionLabelStyle: LabelStyle {
-    let active: Bool
-
+/// A plain labelled text action: paper text on the ground, 44 pt tall. On Apple TV the focused one fills with the spot.
+struct PlainActionButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        DetailActionLabel(icon: configuration.icon, title: configuration.title, active: active)
+        PlainActionBody(configuration: configuration)
     }
 }
 
-private struct DetailActionLabel<Icon: View, Title: View>: View {
-    let icon: Icon
-    let title: Title
-    let active: Bool
-    /// Apple TV shows focus the system way: the circle turns white.
+private struct PlainActionBody: View {
+    let configuration: ButtonStyleConfiguration
     @Environment(\.isFocused) private var focused
 
     var body: some View {
-        VStack(spacing: 6 * Theme.scale) {
-            icon
-                .font(.system(size: 19 * Theme.scale, weight: .semibold))
-                .foregroundStyle(focused ? Color.black : (active ? Color.accentColor : .white))
-                .contentTransition(.symbolEffect(.replace))
-                .frame(width: 50 * Theme.scale, height: 50 * Theme.scale)
-                .background { if focused { Circle().fill(.white) } }
-                .flowGlass(Circle(), interactive: true)
-            title
-                .font(.system(size: 11 * Theme.scale, weight: .semibold))
-                .foregroundStyle(active || focused ? .white : Theme.Palette.textSecondary)
-                .lineLimit(1)
-                .fixedSize()
-        }
-        .frame(minWidth: 64 * Theme.scale)
-        .contentShape(Rectangle())
-    }
-}
-
-struct DetailActionButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
-            .animation(Theme.Motion.snappy, value: configuration.isPressed)
-            .modifier(FocusLift())
+            .font(.system(.subheadline, weight: .semibold))
+            // A word is never broken across lines ("Watche / d").
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.text)
+            .padding(.horizontal, Theme.Space.xs)
+            .frame(minHeight: 44 * Theme.scale)
+            .background(focused ? Theme.Palette.spot : Color.clear, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.6 : 1)
+            .modifier(FocusLift(scale: 1.04))
     }
 }
