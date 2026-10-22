@@ -94,7 +94,7 @@ struct FlowApp: App {
 
         #if os(macOS)
         Settings {
-            NavigationStack {
+            NavigationStack(path: $model.settingsPath) {
                 SettingsRootView()
                     .flowDestinations()
             }

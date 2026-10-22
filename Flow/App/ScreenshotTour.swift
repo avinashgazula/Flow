@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 import FlowKit
 
 /// Drives the app through its main screens for automated screenshots (`-FlowTour YES`).
@@ -69,8 +72,11 @@ enum ScreenshotTour {
             Step(name: "home-after-playback") { m in m.paths[.home] = []; m.selectedTab = .home },
             Step(name: "explore") { m in m.paths[.home] = []; m.selectedTab = .explore },
             Step(name: "library") { m in m.selectedTab = .library },
+            Step(name: "library-watchlist") { m in m.paths[.library] = [.library(.watchlist)] },
             Step(name: "calendar") { m in m.paths[.library] = [.calendar] },
             Step(name: "search") { m in m.paths[.library] = []; m.selectedTab = .search; m.searchText = "the" },
+            // A confident match, so the top result's poster shows beside the rows.
+            Step(name: "search-top") { m in m.searchText = "dune" },
             Step(name: "livetv") { m in m.searchText = ""; m.selectedTab = .liveTV },
         ]
         #if os(iOS)
@@ -110,6 +116,27 @@ enum ScreenshotTour {
             Step(name: "settings-playback") { m in m.settingsPath = [.settings(.playback)] },
             Step(name: "settings-data") { m in m.settingsPath = [.settings(.dataStorage)] },
             Step(name: "settings-subtitles") { m in m.settingsPath = [.settings(.subtitles)] },
+            Step(name: "settings-account") { m in m.settingsPath = [.settings(.account)] },
+            Step(name: "settings-shelves") { m in m.settingsPath = [.settings(.shelves)] },
+            Step(name: "settings-servers") { m in m.settingsPath = [.settings(.mediaServers)] },
+            Step(name: "settings-webdav") { m in m.settingsPath = [.settings(.webDAV)] },
+            Step(name: "settings-livetv") { m in m.settingsPath = [.settings(.liveTV)] },
+        ]
+        #else
+        // The Mac's Settings is its own window; the pages open inside it.
+        steps += [
+            Step(name: "settings") { _ in NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) },
+            Step(name: "settings-general") { m in m.settingsPath = [.settings(.general)] },
+            Step(name: "settings-account") { m in m.settingsPath = [.settings(.account)] },
+            Step(name: "settings-shelves") { m in m.settingsPath = [.settings(.shelves)] },
+            Step(name: "settings-servers") { m in m.settingsPath = [.settings(.mediaServers)] },
+            Step(name: "settings-webdav") { m in m.settingsPath = [.settings(.webDAV)] },
+            Step(name: "settings-livetv") { m in m.settingsPath = [.settings(.liveTV)] },
+            Step(name: "settings-sources") { m in m.settingsPath = [.settings(.sources)] },
+            Step(name: "settings-data") { m in m.settingsPath = [.settings(.dataStorage)] },
+            Step(name: "settings-playback") { m in m.settingsPath = [.settings(.playback)] },
+            Step(name: "settings-subtitles") { m in m.settingsPath = [.settings(.subtitles)] },
+            Step(name: "settings-metadata") { m in m.settingsPath = [.settings(.metadata)] },
         ]
         #endif
         return steps
