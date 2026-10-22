@@ -34,6 +34,17 @@ public enum Reel {
     /// "18 min left", "1 h 44 min left".
     public static func left(minutes: Int) -> String { "\(duration(minutes: minutes)) left" }
 
+    /// Edge print's short form of a length: "47m", "2h", "2h47". Edge print uppercases it.
+    public static func compactDuration(minutes: Int) -> String {
+        let minutes = max(0, minutes)
+        let hours = minutes / 60, rest = minutes % 60
+        if hours == 0 { return "\(rest)m" }
+        return rest == 0 ? "\(hours)h" : "\(hours)h\(String(format: "%02d", rest))"
+    }
+
+    /// The same for what is left: "18m left", "1h44 left".
+    public static func compactLeft(minutes: Int) -> String { compactDuration(minutes: minutes) + " left" }
+
     /// A length of time for VoiceOver: "18 minutes", "1 hour 44 minutes".
     public static func spokenDuration(minutes: Int) -> String {
         let minutes = max(0, minutes)

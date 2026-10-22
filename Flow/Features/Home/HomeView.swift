@@ -226,12 +226,12 @@ struct LeadBlock: View {
         let format = model.lastEdgeFormat(for: item)
         switch lead.kind {
         case .resume:
-            return EdgePrint(progress: (lead.progress?.percent ?? 0) / 100, lead: episodeLead, key: minutes.map { Reel.left(minutes: $0) },
+            return EdgePrint(progress: (lead.progress?.percent ?? 0) / 100, lead: episodeLead, key: minutes.map { Reel.compactLeft(minutes: $0) },
                              endsInMinutes: minutes, tail: format)
         case .nextUp:
             return EdgePrint(progress: 0, lead: episodeLead, key: "Up next", endsInMinutes: minutes, tail: format)
         case .pick:
-            return EdgePrint(lead: [item.year.map { String($0) } ?? "", minutes.map { Reel.duration(minutes: $0) } ?? ""], endsInMinutes: minutes, tail: format)
+            return EdgePrint(lead: [item.year.map { String($0) } ?? "", minutes.map { Reel.compactDuration(minutes: $0) } ?? ""], endsInMinutes: minutes, tail: format)
         }
     }
 
@@ -367,7 +367,7 @@ private struct UpNextCell: View {
         if entry.isNextUp {
             return EdgePrint(progress: 0, lead: lead, key: "Up next", endsInMinutes: minutes, tail: format)
         }
-        return EdgePrint(progress: (entry.progress?.percent ?? 0) / 100, lead: lead, key: minutes.map { Reel.left(minutes: $0) },
+        return EdgePrint(progress: (entry.progress?.percent ?? 0) / 100, lead: lead, key: minutes.map { Reel.compactLeft(minutes: $0) },
                          endsInMinutes: minutes, tail: format)
     }
 
@@ -486,7 +486,7 @@ private struct PickCard: View {
 
     private var strip: EdgePrint {
         var lead: [String] = []
-        if let runtime { lead.append(Reel.duration(minutes: runtime)) } else if item.type == .show { lead.append("Series") }
+        if let runtime { lead.append(Reel.compactDuration(minutes: runtime)) } else if item.type == .show { lead.append("Series") }
         let tail = item.voteAverage.flatMap { $0 > 0 ? [String(format: "%.1f", $0)] : nil } ?? []
         return EdgePrint(lead: lead, tail: tail)
     }

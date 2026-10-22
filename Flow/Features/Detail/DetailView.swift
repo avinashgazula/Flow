@@ -118,10 +118,10 @@ struct DetailView: View {
         if current.type == .show {
             if let seasons = detail?.numberOfSeasons { lead.append(seasons == 1 ? "1 season" : "\(seasons) seasons") }
         } else if !started, let runtime = current.runtimeMinutes, runtime > 0 {
-            lead.append(Reel.duration(minutes: runtime))
+            lead.append(Reel.compactDuration(minutes: runtime))
         }
         let strip = EdgePrint(progress: started ? (progress?.percent ?? 0) / 100 : nil, lead: lead,
-                              key: started ? minutes.map { Reel.left(minutes: $0) } : nil, endsInMinutes: minutes)
+                              key: started ? minutes.map { Reel.compactLeft(minutes: $0) } : nil, endsInMinutes: minutes)
         return FilmFrame(art: .still(current), strip: strip)
             .accessibilityHidden(true)
     }

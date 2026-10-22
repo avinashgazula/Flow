@@ -44,6 +44,15 @@ final class ProgrammeTests: XCTestCase {
         XCTAssertEqual(Reel.left(minutes: 104), "1 h 44 min left")
     }
 
+    func testCompactFormsForEdgePrint() {
+        XCTAssertEqual(Reel.compactDuration(minutes: 47), "47m")
+        XCTAssertEqual(Reel.compactDuration(minutes: 120), "2h")
+        XCTAssertEqual(Reel.compactDuration(minutes: 167), "2h47")
+        XCTAssertEqual(Reel.compactDuration(minutes: 121), "2h01")
+        XCTAssertEqual(Reel.compactLeft(minutes: 104), "1h44 left")
+        XCTAssertEqual(Reel.compactLeft(minutes: 18), "18m left")
+    }
+
     func testSpokenDuration() {
         XCTAssertEqual(Reel.spokenLeft(minutes: 1), "1 minute left")
         XCTAssertEqual(Reel.spokenLeft(minutes: 18), "18 minutes left")
