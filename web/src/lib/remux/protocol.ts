@@ -54,6 +54,9 @@ export type ToWorker =
   | { type: 'hold'; hold: boolean }
   /** The browser's buffer filled up with this many seconds ahead of the playhead: read less far ahead than that. */
   | { type: 'pressure'; ahead: number }
+  /** The picture at `time`, for the seek preview: the keyframe at or before it, decoded and drawn small. Answered
+   *  with `id` once, as a `thumb` or `thumb-none`. Handled outside the stream's queue, one at a time. */
+  | { type: 'thumb'; id: number; time: number }
   | { type: 'destroy' }
 
 export type FromWorker =
@@ -72,6 +75,13 @@ export type FromWorker =
   /** The audio couldn't be converted (the decoder didn't load or crashed, the encoder failed). The
    *  video carries on, so the page drops the audio buffer and plays without sound rather than stall. */
   | { type: 'audio-failed'; epoch: number; message: string }
+  /** A preview: `time` is the keyframe's media time, `bitmap` its picture (at most 320 px wide), transferred. */
+  | { type: 'thumb'; id: number; time: number; bitmap: ImageBitmap }
+  /** No picture for this request: a newer one replaced it (`superseded`), or it couldn't be made (`failed`). */
+  | { type: 'thumb-none'; id: number; why: 'superseded' | 'failed' }
+  /** This browser or this file can't give previews (no WebCodecs, a codec its decoder won't take, a server
+   *  without ranges). Said once; every later request is answered `failed` at once. */
+  | { type: 'thumbs-unsupported'; reason: string }
   /** `blocked`: the host answers but doesn't let web pages read its files (no CORS headers).
    *  `notMatroska`: the file is something else (MP4, say), which the browser's own player may take. */
   | { type: 'error'; message: string; blocked?: boolean; notMatroska?: boolean }

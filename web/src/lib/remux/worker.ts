@@ -10,6 +10,7 @@ import { cleanDetail, DETAIL_BYTES, detailWanted, httpFailureMessage, networkFai
 import { AHEAD_TARGET, aheadCapFor, AheadGovernor, RateMeter } from './pacing'
 import type { FromWorker, HeaderInfo, RawCue, ToWorker } from './protocol'
 import { PieceReader, planReads } from './reader'
+import { CACHE_SIZE, firstRead, type Found, Lru, readKeyframe, thumbSize } from './thumbs'
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope
 
@@ -135,15 +136,17 @@ function friendly(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-async function request(start: number, end: number | null, signal?: AbortSignal): Promise<Response> {
+async function request(start: number, end: number | null, signal?: AbortSignal, low = false): Promise<Response> {
   const h = new Headers(headers)
   h.set('Range', `bytes=${start}-${end ?? ''}`)
-  let res = await fetch(url, { headers: h, signal })
+  // A seek preview tells the browser's scheduler that the stream's own reads come first.
+  const init: RequestInit = { headers: h, signal, ...(low ? { priority: 'low' } : {}) }
+  let res = await fetch(url, init)
   // The redirect's target can expire or be refused before the play link does: back to the play link once.
   if (url !== given && res.status >= 400) {
     res.body?.cancel().catch(() => {})
     url = given
-    res = await fetch(url, { headers: h, signal })
+    res = await fetch(url, init)
   }
   // An add-on's play link can look the file up again on every request, which costs each piece a
   // round trip or two before any bytes. The proxy says where the link led, and later pieces go there.
@@ -432,6 +435,191 @@ async function begin(epoch: number, at: number, floor = 0, inits: 'all' | 'audio
   run = { ctl, done: task }
 }
 
+// MARK: Seek previews
+
+/* A picture for the scrubber, made on a lane of its own: the keyframe's bytes are fetched by the same
+   `request()` as the stream's (so the proxy, the direct-URL switch and the headers all apply) but at
+   low priority, one at a time, and not while the stream is running dry. WebCodecs decodes it here, off
+   the page's thread, and it is drawn at most 320 px wide. The remuxer is only asked where the keyframe
+   is and what its bytes are, so nothing here disturbs what is streaming. */
+
+/** A preview that has been running less than this when a newer one arrives is dropped; one that has
+ *  waited out the round trip is let finish, so dragging across the bar shows pictures on the way
+ *  instead of nothing until the pointer stops. */
+const THUMB_GRACE_MS = 250
+/** Seconds buffered ahead of the playhead below which previews wait, and how long they will. */
+const THUMB_WAIT_AHEAD = 2
+const THUMB_MAX_WAIT_MS = 8000
+
+interface ThumbJob {
+  id: number
+  time: number
+}
+let thumbPending: ThumbJob | null = null
+let thumbActive: { ctl: AbortController; startedAt: number } | null = null
+let thumbBusy = false
+let thumbSupport: 'unknown' | 'yes' | 'no' = 'unknown'
+let thumbDecoder: { decoder: VideoDecoder; key: string } | null = null
+let thumbAwaiting: { resolve: (frame: VideoFrame) => void; reject: (error: unknown) => void } | null = null
+let thumbCanvas: { canvas: OffscreenCanvas; g: OffscreenCanvasRenderingContext2D } | null = null
+/** Pictures by where they were read (the cluster and which keyframe in it). A hit is posted as a copy. */
+const thumbCache = new Lru<{ bitmap: ImageBitmap; time: number }>(CACHE_SIZE, (v) => v.bitmap.close())
+/** The biggest recent keyframe, so the first read is sized for this file. */
+let keyframeBytes = 0
+
+function thumbNone(id: number, why: 'superseded' | 'failed') {
+  post({ type: 'thumb-none', id, why })
+}
+
+function thumbRequest(id: number, time: number) {
+  if (thumbSupport === 'no') return thumbNone(id, 'failed')
+  if (thumbPending) thumbNone(thumbPending.id, 'superseded')
+  thumbPending = { id, time }
+  if (thumbActive && performance.now() - thumbActive.startedAt < THUMB_GRACE_MS) thumbActive.ctl.abort()
+  void thumbPump()
+}
+
+async function thumbPump() {
+  if (thumbBusy) return
+  thumbBusy = true
+  try {
+    while (thumbPending) {
+      const job = thumbPending
+      thumbPending = null
+      const ctl = new AbortController()
+      thumbActive = { ctl, startedAt: performance.now() }
+      try {
+        const made = await makeThumb(job, ctl.signal)
+        if (made) post({ type: 'thumb', id: job.id, time: made.time, bitmap: made.bitmap }, [made.bitmap])
+        else thumbNone(job.id, 'failed')
+      } catch (error) {
+        thumbNone(job.id, ctl.signal.aborted ? 'superseded' : 'failed')
+        if (!ctl.signal.aborted && !(error instanceof HttpError)) console.debug('Flow: a seek preview failed', error)
+      }
+      thumbActive = null
+    }
+  } finally {
+    thumbBusy = false
+  }
+}
+
+/** Decides once whether this browser and file can give previews, saying so to the page when not. */
+async function thumbsUsable(rem: Remuxer): Promise<boolean> {
+  if (thumbSupport !== 'unknown') return thumbSupport === 'yes'
+  const no = (reason: string) => {
+    thumbSupport = 'no'
+    post({ type: 'thumbs-unsupported', reason })
+    return false
+  }
+  if (typeof VideoDecoder === 'undefined' || typeof EncodedVideoChunk === 'undefined' || typeof OffscreenCanvas === 'undefined') return no('This browser can’t decode video frames.')
+  if (!ranges || length <= 0) return no('This server can’t be read in pieces.')
+  // The header's codec string is enough to ask; a frame refines it (VP9's bit depth) before decoding.
+  const codec = rem.thumbCodec(new Uint8Array(0))
+  if (!codec) return no('This file’s picture can’t be previewed.')
+  try {
+    const description = rem.thumbDescription()
+    const { supported } = await VideoDecoder.isConfigSupported({ codec, ...(description.length ? { description } : {}) })
+    if (!supported) return no(`This browser can’t decode ${codec}.`)
+  } catch {
+    return no(`This browser can’t decode ${codec}.`)
+  }
+  thumbSupport = 'yes'
+  return true
+}
+
+/** Previews give way to the stream: not while it has under two seconds ahead of the playhead and is still reading. */
+async function thumbTurn(signal: AbortSignal) {
+  const until = performance.now() + THUMB_MAX_WAIT_MS
+  while (streaming && !hold && produced - playhead < THUMB_WAIT_AHEAD) {
+    if (performance.now() > until) throw new Error('The stream needs the connection.')
+    await sleep(100, signal)
+    signal.throwIfAborted()
+  }
+}
+
+async function makeThumb(job: ThumbJob, signal: AbortSignal): Promise<{ time: number; bitmap: ImageBitmap } | null> {
+  const rem = remuxer
+  if (!rem || !videoTrack) return null
+  await cuesReady
+  signal.throwIfAborted()
+  if (remuxer !== rem || !(await thumbsUsable(rem))) return null
+  signal.throwIfAborted()
+
+  const target = rem.thumbTarget(job.time)
+  const [offset, aligned, relative, token] = [target[0]!, target[2]!, target[3]!, target[4]!]
+  const key = `${offset}:${token}`
+  const hit = thumbCache.get(key)
+  if (hit) return { time: hit.time, bitmap: await createImageBitmap(hit.bitmap) }
+
+  await thumbTurn(signal)
+  const find = (bytes: Uint8Array, rel: number, tok: number): Found => {
+    if (remuxer !== rem) throw new DOMException('Stopped', 'AbortError')
+    const r = rem.thumbFind(bytes, aligned === 1, rel, tok)
+    return r[0] === 0 ? { kind: 'found', time: r[1]! } : r[0] === 1 ? { kind: 'more', need: r[1]! } : { kind: 'none' }
+  }
+  const read = (rel: number, tok: number) =>
+    readKeyframe({ offset, length, first: firstRead(keyframeBytes), open: (start, end, sig) => request(start, end, sig, true), find: (bytes) => find(bytes, rel, tok), signal })
+  let got = await read(relative, token)
+  // The keyframe sits deep in its cluster: the cluster's first is close enough, and costs less.
+  if (got.kind === 'toofar') got = await read(-1, -1)
+  if (got.kind !== 'found') return null
+
+  const payload = rem.thumbPayload()
+  keyframeBytes = Math.max(payload.length, Math.round(keyframeBytes * 0.9))
+  const bitmap = await decodeKeyframe(rem.thumbCodec(payload), rem.thumbDescription(), payload)
+  signal.throwIfAborted()
+  thumbCache.set(key, { bitmap, time: got.time })
+  return { time: got.time, bitmap: await createImageBitmap(bitmap) }
+}
+
+/** Decodes one keyframe and draws it small. The decoder is kept between pictures. */
+async function decodeKeyframe(codec: string, description: Uint8Array, payload: Uint8Array): Promise<ImageBitmap> {
+  const key = `${codec}/${description.length}`
+  if (!thumbDecoder || thumbDecoder.key !== key || thumbDecoder.decoder.state === 'closed') {
+    if (thumbDecoder?.decoder.state !== 'closed') thumbDecoder?.decoder.close()
+    const decoder = new VideoDecoder({
+      output: (frame) => (thumbAwaiting ? thumbAwaiting.resolve(frame) : frame.close()),
+      error: (error) => {
+        thumbAwaiting?.reject(error)
+        thumbDecoder = null
+      },
+    })
+    decoder.configure({ codec, ...(description.length ? { description } : {}), optimizeForLatency: true })
+    thumbDecoder = { decoder, key }
+  }
+  const { decoder } = thumbDecoder
+  const frame = await new Promise<VideoFrame>((resolve, reject) => {
+    thumbAwaiting = { resolve, reject }
+    decoder.decode(new EncodedVideoChunk({ type: 'key', timestamp: 0, data: payload }))
+    // Frames come out before the flush resolves; none by then means the decoder had nothing to give.
+    decoder.flush().then(() => reject(new Error('The decoder gave no picture.')), reject)
+  }).finally(() => (thumbAwaiting = null))
+  try {
+    const { width, height } = thumbSize(frame.displayWidth, frame.displayHeight)
+    if (!thumbCanvas) {
+      const canvas = new OffscreenCanvas(width, height)
+      thumbCanvas = { canvas, g: canvas.getContext('2d', { alpha: false })! }
+    }
+    thumbCanvas.canvas.width = width
+    thumbCanvas.canvas.height = height
+    thumbCanvas.g.imageSmoothingQuality = 'high'
+    thumbCanvas.g.drawImage(frame, 0, 0, width, height)
+    return thumbCanvas.canvas.transferToImageBitmap()
+  } finally {
+    frame.close()
+  }
+}
+
+function closeThumbs() {
+  thumbPending = null
+  thumbActive?.ctl.abort()
+  thumbCache.clear()
+  try {
+    if (thumbDecoder?.decoder.state !== 'closed') thumbDecoder?.decoder.close()
+  } catch {}
+  thumbDecoder = null
+}
+
 // MARK: Commands
 
 /** Points the remuxer at an audio track, raw when it is to be converted. A track the decoders can't take can't be converted. */
@@ -457,9 +645,13 @@ ctx.onmessage = (event: MessageEvent<ToWorker>) => {
     case 'pressure':
       governor.pressure(message.ahead, performance.now())
       return
+    case 'thumb':
+      thumbRequest(message.id, message.time)
+      return
     case 'destroy':
       run?.ctl.abort()
       wake?.()
+      closeThumbs()
       if (statsTimer) clearInterval(statsTimer)
       statsTimer = null
       converter?.close()

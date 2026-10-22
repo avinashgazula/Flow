@@ -12,6 +12,8 @@
    session.netStats / session.onStats(stats => …)  how fast the file is arriving (bytes per second), its average bitrate, requests in flight
    session.onError(message => …)                  mid-playback failures (the initial ones reject attachMatroska)
    session.onAudioFailed(() => …)                 converting the audio failed: the picture plays on without sound
+   const thumb = await session.thumbnail(seconds)  the picture at (the keyframe before) a time, for a seek preview; null when
+                                                  superseded or unavailable (session.thumbnailsSupported is false when it never will be)
    session.destroy()
 
    attachMatroska resolves once the first picture is buffered. It rejects with an Error whose message
@@ -75,6 +77,13 @@ export interface NetStats {
   inFlight: number
 }
 
+/** A seek preview: the keyframe at or before the time asked for, drawn at most 320 px wide. The bitmap is the caller's to draw and close. */
+export interface RemuxThumbnail {
+  bitmap: ImageBitmap
+  /** The keyframe's time, which can be a little before the time asked for. */
+  time: number
+}
+
 export interface RemuxSession {
   duration: number
   audioTracks: RemuxAudioTrack[]
@@ -91,6 +100,13 @@ export interface RemuxSession {
   seek(seconds: number): Promise<void>
   /** The latest network figures; null until the first second of reading has passed. */
   readonly netStats: NetStats | null
+  /** A picture for the scrubber at `seconds`, read from the file on a lane of its own (one at a time, low
+   *  priority, after the stream's needs). Resolves with null when a newer request replaced this one, when
+   *  the stream needs the connection, or when it can't be made; `thumbnailsSupported` tells those from
+   *  "never". Needs WebCodecs and a codec this browser decodes, so H.264 and HEVC depend on the device. */
+  thumbnail(seconds: number): Promise<RemuxThumbnail | null>
+  /** True once a preview has been made, false once one has been found impossible here, null until either. */
+  readonly thumbnailsSupported: boolean | null
   /** Called with each update of `netStats`. */
   onStats(listener: (stats: NetStats) => void): () => void
   /** Failures after playback began (the connection dropped for good, the browser refused data). */
@@ -146,6 +162,9 @@ class Session implements RemuxSession {
   private audioFailed = false
   private stats: NetStats | null = null
   private statsListeners = new Set<(stats: NetStats) => void>()
+  private thumbs = new Map<number, (thumb: RemuxThumbnail | null) => void>()
+  private thumbId = 0
+  private thumbsSupported: boolean | null = null
   private waiters: { time: number; margin: number; resolve: () => void; timer: ReturnType<typeof setTimeout> }[] = []
 
   /** Inits seen for this epoch, until the buffers exist. */
@@ -271,6 +290,16 @@ class Session implements RemuxSession {
         return
       case 'cues':
         this.takeCues(message.cues)
+        return
+      case 'thumb':
+        this.thumbsSupported = true
+        this.thumbDone(message.id, { bitmap: message.bitmap, time: message.time })
+        return
+      case 'thumb-none':
+        this.thumbDone(message.id, null)
+        return
+      case 'thumbs-unsupported':
+        this.thumbsSupported = false
         return
       case 'stats':
         this.stats = { bytesPerSecond: message.bytesPerSecond, bitrate: message.bitrate, inFlight: message.inFlight }
@@ -515,6 +544,26 @@ class Session implements RemuxSession {
     return this.stats
   }
 
+  get thumbnailsSupported(): boolean | null {
+    return this.thumbsSupported
+  }
+
+  thumbnail(seconds: number): Promise<RemuxThumbnail | null> {
+    if (this.destroyed || this.thumbsSupported === false || !this.plan?.video) return Promise.resolve(null)
+    const id = ++this.thumbId
+    return new Promise((resolve) => {
+      this.thumbs.set(id, resolve)
+      this.send({ type: 'thumb', id, time: Math.max(0, seconds) })
+    })
+  }
+
+  private thumbDone(id: number, thumb: RemuxThumbnail | null) {
+    const resolve = this.thumbs.get(id)
+    if (!resolve) return thumb?.bitmap.close()
+    this.thumbs.delete(id)
+    resolve(thumb)
+  }
+
   onStats(listener: (stats: NetStats) => void): () => void {
     this.statsListeners.add(listener)
     return () => this.statsListeners.delete(listener)
@@ -541,6 +590,8 @@ class Session implements RemuxSession {
       this.worker.postMessage({ type: 'destroy' } satisfies ToWorker)
     } catch {}
     this.worker.terminate()
+    for (const resolve of this.thumbs.values()) resolve(null)
+    this.thumbs.clear()
     this.sink.destroy()
     this.cues.clear()
     this.errorListeners.clear()
