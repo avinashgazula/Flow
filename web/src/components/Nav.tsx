@@ -1,5 +1,6 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { useSettings } from '../lib/store/settings'
 import { Icon, type IconName } from './Icon'
 import s from './Nav.module.css'
 
@@ -16,6 +17,7 @@ const tabs: { to: '/' | '/explore' | '/library' | '/search'; label: string; icon
 export function Nav() {
   const path = useRouterState({ select: (r) => r.location.pathname })
   const [scrolled, setScrolled] = useState(false)
+  const sample = useSettings((x) => x.demo)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
@@ -41,9 +43,18 @@ export function Nav() {
             </Link>
           ))}
         </nav>
-        <Link to="/settings" className={`btn btn-quiet btn-circle ${s.settings}`} aria-label="Settings" aria-current={current('/settings') ? 'page' : undefined}>
-          <Icon name="settings" size={20} strokeWidth={2} />
-        </Link>
+        <div className={s.end}>
+          {/* The catalogue, the credits and the streams on every screen are made up while this is on: say so,
+              quietly, and link to where it is turned off. It is not there otherwise. */}
+          {sample && (
+            <Link to="/settings" className={s.sample} aria-label="Sample data is on. Open Settings to turn it off.">
+              Sample data
+            </Link>
+          )}
+          <Link to="/settings" className={`btn btn-quiet btn-circle ${s.settings}`} aria-label="Settings" aria-current={current('/settings') ? 'page' : undefined}>
+            <Icon name="settings" size={20} strokeWidth={2} />
+          </Link>
+        </div>
       </header>
       <nav className={s.bottom} aria-label="Tabs">
         {tabs.map((t) => (

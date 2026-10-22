@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { ProviderState, Source } from '../../lib/sources'
-import { bestSource, episodePrint, isNew, metaLine, playFacts, playLabel, sourcesSummary, titlePrint, versionParts } from './logic'
+import { bestSource, playsFirst, episodePrint, isNew, metaLine, playFacts, playLabel, sourcesSummary, titlePrint, versionParts } from './logic'
+import { toFacts } from '../../components/stripLayout'
+import type { PrintPart } from '../../components/stripLayout'
+
+/** Print as the screen reads it: white facts as text, the time left as { key }. */
+const plain = (parts: PrintPart[]) => toFacts(parts).map((f) => (f.key ? { key: f.text } : f.text))
 
 const now = new Date(2026, 9, 22, 21, 30).getTime()
 const source = (over: Partial<Source> = {}): Source => ({ id: 'a', origin: 'addon', provider: 'AIOStreams', title: 'x', url: 'https://x', engine: 'native', ...over })
@@ -31,6 +36,17 @@ describe('film-can label', () => {
     expect(bestSource([list[0]!])).toBeUndefined()
   })
 
+  it('says what Play opens: what the player remembered, else the picker\'s, else the ranking, and which of them it is', () => {
+    const list = [source({ id: 'dts', unsupported: 'DTS' }), source({ id: 'ok', resolution: '1080p' }), source({ id: 'uhd', resolution: '2160p' })]
+    expect(playsFirst(list)).toEqual({ source: list[1], lastPlayed: false })
+    // The player plays what it remembered, so the label shows that, even when the ranking prefers another.
+    expect(playsFirst(list, { source: list[2]!, matched: list[2] })).toEqual({ source: list[2], lastPlayed: true })
+    // Not in this search any more: the player still opens it as remembered, so the label does too.
+    const gone = source({ id: 'gone', resolution: '2160p' })
+    expect(playsFirst(list, { source: gone })).toEqual({ source: gone, lastPlayed: true })
+    expect(playsFirst(list, undefined, list[2])).toEqual({ source: list[2], lastPlayed: true })
+  })
+
   it('lists who answered', () => {
     const providers: ProviderState[] = [
       { id: '1', name: 'AIOStreams', kind: 'addon', state: 'done', count: 4, torrents: 0 },
@@ -44,21 +60,25 @@ describe('film-can label', () => {
 
 describe('strip and buttons', () => {
   it('prints a film not started with when it would end', () => {
-    expect(titlePrint(film, undefined, now, 'en-GB')).toEqual(['2024', '2 h 47', 'ends 00:17'])
+    expect(plain(titlePrint(film, undefined, now, 'en-GB'))).toEqual(['2024', '2 h 47', 'ends 00:17'])
   })
 
   it('puts time left in the key slot once started', () => {
-    expect(titlePrint(film, { position: 3720, duration: 10020 }, now, 'en-GB')).toEqual(['2024', '2 h 47', { key: '1 h 45 min left' }, 'ends 23:15'])
+    expect(plain(titlePrint(film, { position: 3720, duration: 10020 }, now, 'en-GB'))).toEqual(['2024', '2 h 47', { key: '1 h 45 min left' }, 'ends 23:15'])
   })
 
   it('prints a series by its seasons, and a started one by its episode', () => {
     const show = { type: 'show' as const, year: 2008, runtime: 47, seasons: [{ number: 0, name: 'Specials', episodeCount: 1 }, { number: 1, name: 'Season 1', episodeCount: 7 }] }
-    expect(titlePrint(show, undefined, now, 'en-GB')).toEqual(['2008', '1 season', '47 min', 'ends 22:17'])
-    expect(titlePrint(show, { position: 600, duration: 2700, episode: { season: 3, episode: 7 } }, now, 'en-GB')).toEqual(['S3 E7', { key: '35 min left' }, 'ends 22:05'])
+    expect(plain(titlePrint(show, undefined, now, 'en-GB'))).toEqual(['2008', '1 season', '47 min', 'ends 22:17'])
+    expect(plain(titlePrint(show, { position: 600, duration: 2700, episode: { season: 3, episode: 7 } }, now, 'en-GB'))).toEqual(['S3 E7', { key: '35 min left' }, 'ends 22:05'])
   })
 
-  it('drops the year when the strip is narrow', () => {
-    expect(titlePrint(film, { position: 3720, duration: 10020 }, now, 'en-GB', true)).toEqual(['2 h 47', { key: '1 h 45 min left' }, 'ends 23:15'])
+  it('ranks the year lowest, so a narrow strip drops it first and keeps the time left and the end time', () => {
+    const facts = toFacts(titlePrint(film, { position: 3720, duration: 10020 }, now, 'en-GB'))
+    const order = [...facts].sort((a, b) => a.rank - b.rank).map((f) => f.text)
+    expect(order[0]).toBe('1 h 45 min left')
+    expect(order[1]).toBe('ends 23:15')
+    expect(order.at(-1)).toBe('2024')
   })
 
   it('labels the yellow button', () => {
@@ -83,9 +103,9 @@ describe('episodes', () => {
   })
 
   it('prints runtime, with NEW first, and says when one has not aired', () => {
-    expect(episodePrint({ runtime: 47, airDate: '2026-10-15' }, { aired: true, watched: false, now })).toEqual([{ key: 'new' }, '47 min'])
-    expect(episodePrint({ runtime: 47, airDate: '2026-10-15' }, { aired: true, watched: true, now })).toEqual(['47 min'])
-    expect(episodePrint({ runtime: 47, airDate: '2027-01-01' }, { aired: false, watched: false, now })).toEqual(['Not yet aired'])
-    expect(episodePrint({}, { aired: true, watched: false, now })).toEqual([])
+    expect(plain(episodePrint({ runtime: 47, airDate: '2026-10-15' }, { aired: true, watched: false, now }))).toEqual(['new', '47 min'])
+    expect(plain(episodePrint({ runtime: 47, airDate: '2026-10-15' }, { aired: true, watched: true, now }))).toEqual(['47 min'])
+    expect(plain(episodePrint({ runtime: 47, airDate: '2027-01-01' }, { aired: false, watched: false, now }))).toEqual(['Not yet aired'])
+    expect(plain(episodePrint({}, { aired: true, watched: false, now }))).toEqual([])
   })
 })

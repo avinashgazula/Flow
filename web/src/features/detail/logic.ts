@@ -1,10 +1,10 @@
-import type { PrintPart } from '../../components/Frame'
+import { rank, type PrintPart } from '../../components/Frame'
 import { formatBytes } from '../../lib/sources/parser'
 import { resolutionText } from '../sources/labels'
 import type { ProviderState, Source } from '../../lib/sources'
 import { endTime, formatClock, formatLeft, formatRuntime } from '../../lib/time'
 import type { Episode, MediaDetail } from '../../lib/tmdb/types'
-import { secondsLeft } from '../home/logic'
+import { endsPart, leftPart, secondsLeft } from '../home/logic'
 
 /* What the title page says, as plain functions: the strip under the still, and the film-can label's rows. */
 
@@ -15,6 +15,15 @@ const hdrNames: Record<string, string> = { DV: 'Dolby Vision', 'HDR10+': 'HDR10+
  *  listed, else the best that this browser can play. The same choice the picker makes. */
 export function bestSource(list: Source[], lastPlayed?: Source): Source | undefined {
   return lastPlayed ?? list.find((s) => !s.unsupported)
+}
+
+/** What Play opens, and whether that is the source played last time. Play goes where the player goes: the
+ *  source the player remembered for this episode (the fresh copy from this search when it's listed, else as
+ *  remembered, the way the player opens it), then the one the picker remembered, then the best that plays. The
+ *  label says LAST PLAYED for the first two, so it never claims a ranking Play doesn't follow. */
+export function playsFirst(list: Source[], remembered?: { source: Source; matched?: Source }, picked?: Source): { source?: Source; lastPlayed: boolean } {
+  const last = remembered ? (remembered.matched ?? remembered.source) : picked
+  return last ? { source: last, lastPlayed: true } : { source: list.find((s) => !s.unsupported), lastPlayed: false }
 }
 
 /** The BEST VERSION row: ["2160p", "Dolby Vision", "TrueHD 7.1", "18.2 GB"]. Only what the release says. */
@@ -49,34 +58,33 @@ export function sourcesSummary(count: number, providers: ProviderState[]): strin
 /** The strip under the still, as edge print. A film: "2024 · 2 H 47 · 1 H 44 MIN LEFT · ENDS 22:56", the
  *  time left the one yellow fact; not started, just "2024 · 2 H 47 · ENDS 22:56". A series started prints
  *  the episode: "S3 E7 · 35 MIN LEFT · ENDS 22:56"; not started, "2008 · 5 SEASONS · 47 MIN · ENDS 22:56".
- *  `compact` drops the year, for a strip too narrow to hold it (the meta line has it). */
+ *  Every fact has a rank (stripLayout), so a strip with less room drops the year first and keeps the end time. */
 export function titlePrint(
   d: Pick<MediaDetail, 'type' | 'year' | 'runtime' | 'seasons'>,
   progress: { position: number; duration: number; episode?: { season: number; episode: number } } | undefined,
   now: number,
   locale?: string,
-  compact = false,
 ): PrintPart[] {
   const seasons = d.seasons.filter((x) => x.number > 0).length
-  const length = d.runtime ? formatRuntime(d.runtime * 60) : ''
+  const length: PrintPart = { text: d.runtime ? formatRuntime(d.runtime * 60) : '', rank: rank.facts }
   const started = progress && progress.duration > 0 ? progress : undefined
-  const year = d.year && !compact ? String(d.year) : ''
+  const year: PrintPart = { text: d.year ? String(d.year) : '', rank: rank.year }
   const facts: PrintPart[] = []
   if (started) {
     const left = secondsLeft(started)
-    if (d.type === 'show') facts.push(started.episode ? `S${started.episode.season} E${started.episode.episode}` : '')
+    if (d.type === 'show') facts.push({ text: started.episode ? `S${started.episode.season} E${started.episode.episode}` : '', rank: rank.episode })
     else facts.push(year, length)
-    facts.push({ key: formatLeft(left) }, `ends ${formatClock(endTime(now, left), locale)}`)
+    facts.push(leftPart(left), endsPart(left, now, locale))
   } else {
     facts.push(year)
-    if (d.type === 'show') facts.push(seasons ? `${seasons} ${seasons === 1 ? 'season' : 'seasons'}` : 'Series')
+    if (d.type === 'show') facts.push({ text: seasons ? `${seasons} ${seasons === 1 ? 'season' : 'seasons'}` : 'Series', rank: rank.facts })
     facts.push(length)
-    if (d.runtime) facts.push(`ends ${formatClock(endTime(now, d.runtime * 60), locale)}`)
+    if (d.runtime) facts.push(endsPart(d.runtime * 60, now, locale))
   }
-  return facts.filter((p) => p !== '')
+  return facts
 }
 
-/** The meta line above the title: "2024 · 2 h 47 min · PG-13 · Science Fiction, Adventure". */
+/** The meta line under the title: "2024 · 2 h 47 min · PG-13 · Science Fiction, Adventure". */
 export function metaLine(d: Pick<MediaDetail, 'type' | 'year' | 'runtime' | 'certification' | 'genreNames'>, genres: string[]): string {
   const minutes = d.runtime ? (d.runtime >= 60 ? `${Math.floor(d.runtime / 60)} h ${d.runtime % 60} min` : `${d.runtime} min`) : undefined
   const names = (d.genreNames.length ? d.genreNames : genres).slice(0, 2).join(', ')
@@ -96,12 +104,13 @@ export function playLabel(d: Pick<MediaDetail, 'type' | 'runtime'>, progress: { 
   return { text, spoken: text }
 }
 
-/** The facts under an episode's still: "Fri 12 Jan" is the air date; the strip carries runtime and NEW. */
+/** The facts under an episode's still: "Fri 12 Jan" is the air date; the strip carries runtime and NEW (print
+ *  like the rest: yellow is for what you act on). */
 export function episodePrint(e: Pick<Episode, 'runtime' | 'airDate'>, opts: { aired: boolean; watched: boolean; now: number }): PrintPart[] {
   const parts: PrintPart[] = []
   if (!opts.aired) return ['Not yet aired']
-  if (isNew(e.airDate, opts.now) && !opts.watched) parts.push({ key: 'new' })
-  if (e.runtime) parts.push(formatRuntime(e.runtime * 60))
+  if (isNew(e.airDate, opts.now) && !opts.watched) parts.push({ text: 'new', rank: rank.left })
+  if (e.runtime) parts.push({ text: formatRuntime(e.runtime * 60), rank: rank.facts })
   return parts
 }
 

@@ -49,6 +49,9 @@
   background: var(--stock);
 }
 
+.end { display: flex; align-items: center; gap: var(--space-xs); }
+.sample { font: 400 var(--fs-caption) / 1 var(--font); color: var(--ink-3); transition: color var(--dur-state) ease; }
+.sample:hover { color: var(--paper); }
 .settings { margin-right: -10px; }
 .settings[aria-current='page'] { color: var(--stock); }
 
@@ -59,7 +62,6 @@
   .mark { width: 12px; height: 16px; border-radius: 2px; background: var(--stock); }
 
 .links { display: none; }
-  .settings { margin-left: auto; }
   .bottom {
     position: fixed;
     z-index: 50;

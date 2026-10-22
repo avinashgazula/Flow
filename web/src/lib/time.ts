@@ -78,6 +78,15 @@ export function formatLeft(seconds: number): string {
   return `${formatDuration(seconds)} left`
 }
 
+/** The compact form for a strip with little room: "18m left", "1h44 left", "2h left". */
+export function formatLeftShort(seconds: number): string {
+  const total = minutesIn(seconds)
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  if (h === 0) return `${m}m left`
+  return m === 0 ? `${h}h left` : `${h}h${String(m).padStart(2, '0')} left`
+}
+
 /** The same, for a screen reader: "18 minutes left", "1 hour 44 minutes left". */
 export function spokenDuration(seconds: number): string {
   const total = minutesIn(seconds)

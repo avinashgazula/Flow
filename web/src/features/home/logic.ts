@@ -1,9 +1,9 @@
-import type { PrintPart } from '../../components/Frame'
+import { rank, type PrintPart } from '../../components/Frame'
 import { genreNames } from '../../lib/genres'
 import type { LastSource } from '../../lib/sources/lastSource'
 import type { Progress } from '../../lib/store/library'
 import type { MediaDetail, MediaItem } from '../../lib/tmdb/types'
-import { endTime, formatClock, formatLeft, formatRuntime, spokenDuration } from '../../lib/time'
+import { endTime, formatClock, formatLeft, formatLeftShort, formatRuntime, spokenDuration } from '../../lib/time'
 
 /** What's left of an in-progress title, in seconds. */
 export const secondsLeft = (p: Pick<Progress, 'position' | 'duration'>) => Math.max(0, p.duration - p.position)
@@ -30,16 +30,29 @@ export const episodeShort = (episode?: Progress['episode']) => (episode ? `S${ep
 
 const hdrNames: Record<string, string> = { DV: 'Dolby Vision', 'HDR10+': 'HDR10+', HDR10: 'HDR10', HDR: 'HDR', HLG: 'HLG' }
 
-/** The format of the source a title was last played from, as edge print: ["2160p", "DV", "REMUX"], in the
- *  order a viewer reads it. Empty when nothing is known, so nothing is invented. */
-export function formatPrint(last?: Pick<LastSource, 'resolution' | 'hdr' | 'quality'>): string[] {
+type Format = Pick<LastSource, 'resolution' | 'hdr' | 'quality' | 'audio' | 'audioChannels'>
+
+/** The format of the source a title was last played from, as edge print: ["2160p", "DV", "TrueHD 7.1"], in the
+ *  order a viewer reads it: picture, then sound (the release's kind, "REMUX", when its sound isn't known).
+ *  Empty when nothing is known, so nothing is invented. */
+export function formatPrint(last?: Format): string[] {
   if (!last) return []
-  const parts: (string | undefined)[] = [last.resolution, last.hdr?.[0], last.quality]
+  const sound = [last.audio?.[0], last.audioChannels].filter(Boolean).join(' ')
+  const parts: (string | undefined)[] = [last.resolution, last.hdr?.[0], sound || last.quality]
   return parts.filter((p): p is string => !!p)
 }
 
+/** The time left as print: the one fact in yellow, in a compact form when the strip is short of room. */
+export const leftPart = (seconds: number): PrintPart => ({ key: formatLeft(seconds), short: formatLeftShort(seconds), rank: rank.left })
+
+/** When it would end, the fact that must never be cut: it ranks just under the time left. */
+export const endsPart = (seconds: number, now: number, locale?: string): PrintPart => ({ text: `ends ${formatClock(endTime(now, seconds), locale)}`, rank: rank.ends })
+
+/** The format as print, each piece its own fact so a narrow strip keeps the resolution and drops the rest. */
+export const formatParts = (last?: Format): PrintPart[] => formatPrint(last).map((text) => ({ text, rank: rank.format }))
+
 /** The same in words for the label a screen reader reads: "2160p Dolby Vision REMUX". */
-export function formatSpoken(last?: Pick<LastSource, 'resolution' | 'hdr' | 'quality'>): string | undefined {
+export function formatSpoken(last?: Format): string | undefined {
   if (!last) return undefined
   const words = [last.resolution, last.hdr?.[0] ? (hdrNames[last.hdr[0]] ?? last.hdr[0]) : undefined, last.quality].filter(Boolean)
   return words.length ? words.join(' ') : undefined
@@ -47,9 +60,10 @@ export function formatSpoken(last?: Pick<LastSource, 'resolution' | 'hdr' | 'qua
 
 /** The edge print of something started: "S3 E7 · 18 MIN LEFT · ENDS 21:30 · 2160P · DV". The minutes left
  *  are the one fact in yellow. */
-export function resumePrint(p: Progress, now: number, last?: Pick<LastSource, 'resolution' | 'hdr' | 'quality'>, locale?: string): PrintPart[] {
+export function resumePrint(p: Progress, now: number, last?: Format, locale?: string): PrintPart[] {
   const left = secondsLeft(p)
-  return [episodeShort(p.episode) ?? '', { key: formatLeft(left) }, `ends ${formatClock(endTime(now, left), locale)}`, ...formatPrint(last)].filter((x) => x !== '')
+  const episode = episodeShort(p.episode)
+  return [...(episode ? [{ text: episode, rank: rank.episode }] : []), leftPart(left), endsPart(left, now, locale), ...formatParts(last)]
 }
 
 /** The part of a title's detail edge print needs. */
@@ -70,18 +84,19 @@ const hasNewEpisode = (detail: PickDetail, now: number) => {
 
 /** The edge print of a title not started, as plain facts. A film: runtime, then (when `ends`) when it
  *  would end if started now, then the rating. A series: NEW EP when one just aired, else how many
- *  seasons, then the rating. Until the detail arrives it says only what the list knew. */
+ *  seasons, then the rating. Until the detail arrives it says only what the list knew. NEW EP is print like
+ *  the rest (yellow is for what you act on), set first. */
 export function pickPrint(item: Pick<MediaItem, 'type' | 'rating'>, detail: PickDetail | undefined, now: number, opts: { ends?: boolean; locale?: string } = {}): PrintPart[] {
-  const rating = item.rating ? item.rating.toFixed(1) : ''
+  const score: PrintPart = { text: item.rating ? item.rating.toFixed(1) : '', rank: rank.rating }
   if (item.type === 'movie') {
-    if (!detail?.runtime) return ['Film', rating].filter(Boolean)
+    if (!detail?.runtime) return [{ text: 'Film', rank: rank.facts }, score]
     const seconds = detail.runtime * 60
-    return [formatRuntime(seconds), opts.ends ? `ends ${formatClock(endTime(now, seconds), opts.locale)}` : '', rating].filter(Boolean)
+    return [{ text: formatRuntime(seconds), rank: rank.facts }, ...(opts.ends ? [endsPart(seconds, now, opts.locale)] : []), score]
   }
-  if (!detail) return ['Series', rating].filter(Boolean)
+  if (!detail) return [{ text: 'Series', rank: rank.facts }, score]
   const seasons = detail.seasons.filter((s) => s.number > 0).length
-  const state: PrintPart = hasNewEpisode(detail, now) ? { key: 'new ep' } : seasons ? `${seasons} ${seasons === 1 ? 'season' : 'seasons'}` : 'Series'
-  return [state, detail.runtime && opts.ends ? formatRuntime(detail.runtime * 60) : '', rating].filter(Boolean)
+  const state: PrintPart = hasNewEpisode(detail, now) ? { text: 'new ep', rank: rank.left } : { text: seasons ? `${seasons} ${seasons === 1 ? 'season' : 'seasons'}` : 'Series', rank: rank.facts }
+  return [state, ...(detail.runtime && opts.ends ? [{ text: formatRuntime(detail.runtime * 60), rank: rank.facts }] : []), score]
 }
 
 /** "Film · 2024 · Science Fiction, Adventure": the plain facts under a title. */
@@ -92,7 +107,7 @@ export function pickMeta(item: MediaItem): string {
 
 /** What a screen reader says for a started title: "Breaking Bad, season 3 episode 7, 18 minutes left,
  *  ends 9:48 PM, 2160p Dolby Vision". */
-export function spokenResume(p: Progress, now: number, locale?: string, last?: Pick<LastSource, 'resolution' | 'hdr' | 'quality'>): string {
+export function spokenResume(p: Progress, now: number, locale?: string, last?: Format): string {
   const left = secondsLeft(p)
   const where = p.episode ? `season ${p.episode.season} episode ${p.episode.episode}` : undefined
   return [p.item.title, where, `${spokenDuration(left)} left`, `ends ${formatClock(endTime(now, left), locale)}`, formatSpoken(last)].filter(Boolean).join(', ')

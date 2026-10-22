@@ -19,24 +19,11 @@
   border-radius: 0 0 var(--radius-art) var(--radius-art);
   overflow: hidden;
 }
-.plate[data-shape='poster'] .strip { height: 22px; padding: 0 8px; }
+.plate[data-shape='poster'] .strip { height: 22px; padding: 0 8px; gap: var(--space-xs); }
 
-/* Perforations are a repeating rounded 7x9 hole on an 11px pitch: --perfs of them, unwatched in base-4,
-   watched in yellow. The tile is a mask, so the colours come from tokens. */
-.strip[data-size='lead'] { --perfs: 30; }
-.strip[data-size='title'] { --perfs: 18; }
-.strip[data-size='still'] { --perfs: 6; }
-@media (max-width: 1299px) {
-  .strip[data-size='lead'] { --perfs: 22; }
-}
-@media (min-width: 721px) and (max-width: 1099px) {
-  .strip[data-size='lead'] { --perfs: 14; }
-}
-@media (max-width: 720px) {
-  .strip[data-size='lead'] { --perfs: 10; }
-  .strip[data-size='title'] { --perfs: 5; }
-  .strip[data-size='still'] { --perfs: 5; }
-}
+/* Perforations are a repeating rounded 7x9 hole on an 11px pitch: --perfs of them, set by the strip from its
+   width (stripLayout.ts), unwatched in base-4, watched in yellow. The tile is a mask, so the colours come
+   from tokens. A title not started keeps them all unfilled: it is still a reel. */
 .perfs {
   position: relative;
   flex: none;

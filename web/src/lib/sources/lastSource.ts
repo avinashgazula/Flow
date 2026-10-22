@@ -14,6 +14,9 @@ export interface LastSource {
   resolution?: Source['resolution']
   quality?: Source['quality']
   hdr?: Source['hdr']
+  /** What the release's sound is called, for the format print on Home's strips (never a link). */
+  audio?: Source['audio']
+  audioChannels?: Source['audioChannels']
   date: number
 }
 
@@ -30,6 +33,8 @@ export function describeSource(source: Source, date = Date.now()): LastSource {
     resolution: source.resolution,
     quality: source.quality,
     hdr: source.hdr,
+    audio: source.audio,
+    audioChannels: source.audioChannels,
     date,
   }
 }

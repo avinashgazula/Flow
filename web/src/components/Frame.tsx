@@ -1,8 +1,9 @@
 import { Link, type LinkProps } from '@tanstack/react-router'
-import type { ReactNode, Ref } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
 import type { ImageKind } from '../lib/tmdb/images'
 import { Artwork } from './Artwork'
 import { markZoomSource } from './zoom'
+import { composeStrip, toFacts, type Fact, type PrintPart, type StripKind } from './stripLayout'
 import s from './Frame.module.css'
 
 /* Frame and edge strip: Flow's one repeating object, after the printed edge of 35mm film. A still or a
@@ -16,30 +17,93 @@ import s from './Frame.module.css'
 
    A strip always carries something real: progress, facts, or both. No strip without facts. */
 
-/** One piece of edge print. A plain string is print; `{ key }` is the fact that matters most (time left,
- *  NEW), which is the one thing in yellow. */
-export type PrintPart = string | { key: string }
+export { rank, type PrintPart } from './stripLayout'
 
-/** How many perforations a strip draws (CSS sets the width: `--perfs` in Frame.module.css). */
-export type StripSize = 'lead' | 'title' | 'still'
+/** How a strip counts perforations and composes its print: see stripLayout. A lead and a title's still fill
+ *  their width; stills and posters keep the same count in every strip of a row. */
+export type StripSize = StripKind
+
+/** The strip's own room inside its padding, and the layout that fits it. Measured on the strip, so a card in
+ *  a grid of any width gets the print that fits it. After drawing, the printed line is checked once and one
+ *  more fact dropped if the estimate was kind (a face that hadn't loaded yet, a locale's longer time). */
+function useStripLayout(facts: Fact[], kind: StripKind, active: boolean) {
+  const strip = useRef<HTMLSpanElement>(null)
+  const text = useRef<HTMLSpanElement>(null)
+  const [width, setWidth] = useState(0)
+  const [bump, setBump] = useState({ key: '', n: 0 })
+  const [fontsAt, setFontsAt] = useState(0)
+  const signature = facts.map((f) => `${f.text}|${f.short ?? ''}|${f.rank}`).join('/')
+
+  useLayoutEffect(() => {
+    const el = strip.current
+    if (!el) return
+    const read = () => {
+      const css = getComputedStyle(el)
+      setWidth(Math.floor(el.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight)))
+    }
+    read()
+    if (typeof ResizeObserver === 'undefined') return
+    const watch = new ResizeObserver(read)
+    watch.observe(el)
+    return () => watch.disconnect()
+  }, [active])
+
+  // The face arrives after the first paint on a cold load, and its widths differ from the fallback's.
+  useEffect(() => {
+    const fonts = typeof document === 'undefined' ? undefined : document.fonts
+    if (!fonts) return
+    const again = () => setFontsAt((n) => n + 1)
+    fonts.addEventListener?.('loadingdone', again)
+    return () => fonts.removeEventListener?.('loadingdone', again)
+  }, [])
+
+  const layout = useMemo(() => (width > 0 ? composeStrip({ width, facts, kind }) : undefined), [width, signature, kind]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Facts dropped beyond the estimate belong to this width, this print and this face only.
+  const key = `${width}|${signature}|${kind}|${fontsAt}`
+  const extra = bump.key === key ? bump.n : 0
+  const shown = layout && extra > 0 ? { ...layout, facts: dropLeast(layout.facts, extra) } : layout
+  useLayoutEffect(() => {
+    const el = text.current
+    if (el && shown && el.scrollWidth > el.clientWidth + 1 && shown.facts.length > 1) setBump({ key, n: extra + 1 })
+  })
+  return { strip, text, layout: shown }
+}
+
+/** Without its `n` least important facts (never the last one standing). */
+function dropLeast(facts: Fact[], n: number): Fact[] {
+  let list = facts
+  for (let i = 0; i < n && list.length > 1; i++) {
+    let drop = 0
+    list.forEach((f, j) => {
+      if (f.rank >= list[drop]!.rank) drop = j
+    })
+    list = list.filter((_, j) => j !== drop)
+  }
+  return list
+}
 
 export function EdgeStrip({ progress, print = [], size = 'still', hidden }: { progress?: number; print?: PrintPart[]; size?: StripSize; hidden?: boolean }) {
-  const parts = print.filter((p) => (typeof p === 'string' ? p : p.key))
-  if (progress === undefined && parts.length === 0) return null
+  const facts = useMemo(() => toFacts(print), [print])
+  const { strip, text, layout } = useStripLayout(facts, size, progress !== undefined || facts.length > 0)
+  if (progress === undefined && facts.length === 0) return null
+  // Until the strip has been measured it is drawn with all its print and no perforations.
+  const perfs = layout?.perfs ?? 0
+  const shown = layout?.facts ?? facts
   return (
-    <span className={s.strip} data-size={size} aria-hidden={hidden || undefined}>
-      {progress !== undefined && (
+    <span ref={strip} className={s.strip} data-size={size} aria-hidden={hidden || undefined} style={{ '--perfs': perfs } as React.CSSProperties}>
+      {perfs > 0 && (
         <span className={s.perfs}>
-          {/* --p is how much is watched, 0 to 1; CSS rounds it up to whole perforations. */}
-          <span className={s.watched} style={{ '--p': Math.max(0, Math.min(1, progress)) } as React.CSSProperties} />
+          {/* --p is how much is watched, 0 to 1; CSS rounds it up to whole perforations. A title not started
+              keeps its perforations, all unfilled: it is still a reel. */}
+          {progress !== undefined && progress > 0 && <span className={s.watched} style={{ '--p': Math.max(0, Math.min(1, progress)) } as React.CSSProperties} />}
         </span>
       )}
-      {parts.length > 0 && (
-        <span className={s.print}>
-          {parts.map((p, i) => (
+      {shown.length > 0 && (
+        <span ref={text} className={s.print}>
+          {shown.map((f, i) => (
             <span key={i}>
               {i > 0 && ' · '}
-              {typeof p === 'string' ? p : <em>{p.key}</em>}
+              {f.key ? <em>{f.text}</em> : f.text}
             </span>
           ))}
         </span>
@@ -74,7 +138,7 @@ export function Plate({ shape, artPath, artKind, sizes, priority, progress, prin
   return (
     <span className={`${s.plate} ${className ?? ''}`} data-shape={shape} data-strip={strip ? '' : undefined}>
       <Artwork zoom path={artPath} kind={artKind ?? (shape === 'still' ? 'backdrop' : 'poster')} alt="" sizes={sizes} priority={priority} className={s.frame} fallback={fallback} />
-      <EdgeStrip progress={progress} print={print} size={stripSize} hidden={hideStrip} />
+      <EdgeStrip progress={progress} print={print} size={stripSize ?? (shape === 'poster' ? 'poster' : 'still')} hidden={hideStrip} />
     </span>
   )
 }
