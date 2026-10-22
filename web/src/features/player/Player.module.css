@@ -246,8 +246,9 @@
   /* A landscape phone: the frame sits beside the words rather than above them. */
   .connectingBody { padding-top: calc(var(--inset-top) + 16px); padding-bottom: calc(var(--inset-bottom) + var(--space-m)); }
   .connectingCentre { width: min(560px, 100%); }
-  .connectingFrame { width: min(340px, 60%); margin-bottom: var(--space-s); }
+  .connectingFrame { width: min(300px, 50%); margin-bottom: var(--space-s); }
   .connectingFoot { margin-top: var(--space-s); }
+  .resume { width: min(440px, 100%); grid-template-columns: 1fr 1fr; }
 }
 
 /* Couldn't play */

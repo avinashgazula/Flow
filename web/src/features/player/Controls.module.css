@@ -537,6 +537,12 @@
   .infoClose { width: 24px; height: 24px; }
   .infoRow { padding: 0; font-size: var(--fs-caption); line-height: 1.25; gap: 10px; }
   .upNextStill { --w: 112px; }
+  /* A shelf that stays below the top row of buttons: smaller stills, tighter header. */
+  .shelf { padding: 6px 0 10px; }
+  .shelfHeader h2 { font-size: var(--fs-small); }
+  .shelfRow { gap: 12px; padding-top: 4px; }
+  .shelfRow > li { width: 152px; }
+  .episodeName { font-size: var(--fs-caption); }
   .upNextText { width: 140px; }
   /* A panel is as tall as the picture here, so the transport steps aside rather than sit behind it. */
   .controls[data-panel] .transport { visibility: hidden; }
