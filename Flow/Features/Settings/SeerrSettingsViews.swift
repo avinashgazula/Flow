@@ -58,7 +58,7 @@ struct ConnectSeerrView: View {
                     Section { Text(error).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("Connect Seerr")
+            .flowPageTitle("Connect Seerr")
             .inlineNavigationTitle()
             .sheetDismissButton("Cancel") { dismiss() }
         }

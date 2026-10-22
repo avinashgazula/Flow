@@ -57,7 +57,7 @@ struct CalendarView: View {
             .scrollIndicators(.hidden)
         }
         .background(AmbientBackground(url: upcomingDays.first?.entries.first?.item.smallBackdropURL, intensity: 0.55))
-        .navigationTitle("Upcoming")
+        .flowPageTitle("Upcoming", inset: Theme.Space.gutter)
         .task(id: model.contentVersion) {
             let loaded = await model.calendar()
             withAnimation(Theme.Motion.fade) { entries = loaded }

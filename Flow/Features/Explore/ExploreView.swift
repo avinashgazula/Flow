@@ -234,7 +234,7 @@ struct DiscoverFilterView: View {
                     }
                 }
             }
-            .navigationTitle(title)
+            .flowPageTitle(title)
             .inlineNavigationTitle()
             #if !os(tvOS)
             .toolbar {

@@ -30,7 +30,8 @@ struct PosterFilmCard: View {
         NavigationLink(value: Route.detail(item, zoom: zoomID, library: libraryProviderID)) {
             FilmCard(art: .poster(item), strip: model.posterPrint(for: item, runtime: runtime),
                      title: model.settings.general.showPosterTitles ? item.title : nil,
-                     meta: item.year.map { String($0) }, width: width, spoken: spoken, zoomID: zoomID)
+                     meta: model.settings.general.showReleaseYear ? item.year.map { String($0) } : nil,
+                     width: width, spoken: spoken, zoomID: zoomID)
         }
         .buttonStyle(CardButtonStyle(lift: 1.04))
         .contextMenu { MediaContextMenu(item: item, libraryProviderID: libraryProviderID) } preview: { PosterPreview(item: item) }

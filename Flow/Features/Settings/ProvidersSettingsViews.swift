@@ -68,7 +68,7 @@ struct WebDAVEditor: View {
                     if let status { Text(status).font(.caption).foregroundStyle(.secondary) }
                 }
             }
-            .navigationTitle(config.name)
+            .flowPageTitle(config.name)
             .inlineNavigationTitle()
             .sheetDismissButton("Cancel") { dismiss() }
             .sheetSaveButton(disabled: URL(string: urlText)?.host == nil) { save() }
@@ -136,7 +136,7 @@ struct LiveTVSettingsView: View {
                 Text("IPTV Providers")
             }
             Section("Guide") {
-                Picker("Refresh Guide Every", selection: $model.settings.liveTV.epgRefreshHours) {
+                FilmPicker("Refresh Guide Every", selection: $model.settings.liveTV.epgRefreshHours) {
                     ForEach([3, 6, 12, 24, 48], id: \.self) { Text("\($0) hours").tag($0) }
                 }
                 Toggle("Hide Empty Groups", isOn: $model.settings.liveTV.hideEmptyGroups)
@@ -160,7 +160,7 @@ struct IPTVEditor: View {
         NavigationStack {
             FilmForm {
                 TextField("Name", text: $config.name)
-                Picker("Type", selection: $config.kind) {
+                FilmPicker("Type", selection: $config.kind) {
                     ForEach(IPTVProviderKind.allCases) { Text($0.displayName).tag($0) }
                 }
                 Section {
@@ -188,7 +188,7 @@ struct IPTVEditor: View {
                     if let status { Text(status).font(.caption).foregroundStyle(.secondary) }
                 }
             }
-            .navigationTitle(config.name)
+            .flowPageTitle(config.name)
             .inlineNavigationTitle()
             .sheetDismissButton("Cancel") { dismiss() }
             .sheetSaveButton(disabled: URL(string: urlText)?.host == nil) { save() }

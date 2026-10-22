@@ -150,21 +150,8 @@ struct SettingsRootView: View {
                 ForEach(matches) { row($0) }
             }
         }
-        #if os(tvOS)
-        // The system's centred title is drawn dim on Apple TV, so it reads as disabled: the page sets its own, in paper.
-        .toolbar(.hidden, for: .navigationBar)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            Text("Settings")
-                .font(.system(.largeTitle, weight: .bold))
-                .foregroundStyle(Theme.Palette.text)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                // Lines up with the list's own leading edge.
-                .padding(.horizontal, Theme.Space.s)
-                .padding(.top, Theme.Space.s)
-                .accessibilityAddTraits(.isHeader)
-        }
-        #else
-        .navigationTitle("Settings")
+        .flowPageTitle("Settings")
+        #if !os(tvOS)
         // On TV a search field is a full on-screen keyboard parked above the content.
         .searchable(text: $query, prompt: "Search Settings")
         #endif
@@ -214,7 +201,7 @@ struct SettingsPageView: View {
             case .addons: AddonsSettingsView()
             }
         }
-        .navigationTitle(page.title)
+        .flowPageTitle(page.title)
         .inlineNavigationTitle()
     }
 }

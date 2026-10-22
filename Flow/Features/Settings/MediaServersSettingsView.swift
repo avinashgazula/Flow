@@ -114,7 +114,7 @@ struct AddServerView: View {
     var body: some View {
         NavigationStack {
             FilmForm {
-                Picker("Server Type", selection: $kind) {
+                FilmPicker("Server Type", selection: $kind) {
                     ForEach(MediaServerKind.allCases) { Text($0.displayName).tag($0) }
                 }
                 .pickerStyle(.segmented)
@@ -151,7 +151,7 @@ struct AddServerView: View {
                     Section { Text(error).foregroundStyle(.red) }
                 }
             }
-            .navigationTitle("Add Server")
+            .flowPageTitle("Add Server")
             .inlineNavigationTitle()
             .sheetDismissButton("Cancel") { dismiss() }
         }

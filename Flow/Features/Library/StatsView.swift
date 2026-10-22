@@ -41,7 +41,7 @@ struct StatsView: View {
             .padding(.bottom, Theme.Space.xl)
         }
         .scrollIndicators(.hidden)
-        .navigationTitle("Stats")
+        .flowPageTitle("Stats", inset: Theme.Space.gutter)
         .task(id: model.contentVersion) { await load() }
         .onChange(of: period) { _, _ in
             withAnimation(Theme.Motion.gentle) { recompute() }

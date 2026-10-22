@@ -503,6 +503,70 @@ extension View {
     }
 }
 
+extension View {
+    /// A pushed page's title. Apple TV draws the system's title dim and centred, so it reads as disabled: there the
+    /// navigation bar is hidden and the page sets its own large title in paper, lined up with its content (`inset`
+    /// is the content's leading padding). Everywhere else this is the ordinary navigation title.
+    @ViewBuilder
+    func flowPageTitle(_ title: String, inset: CGFloat = Theme.Space.s) -> some View {
+        #if os(tvOS)
+        toolbar(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                Text(title)
+                    .font(.system(.largeTitle, weight: .bold))
+                    .foregroundStyle(Theme.Palette.text)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, inset)
+                    .padding(.top, Theme.Space.s)
+                    .accessibilityAddTraits(.isHeader)
+            }
+        #else
+        navigationTitle(title)
+        #endif
+    }
+}
+
+#if os(tvOS)
+/// A toggle as a row with its value on the right. The system draws a toggle's label in the app's tint on Apple TV, so
+/// unfocused rows read yellow; a button row draws it in paper and keeps the system's own focus look.
+struct FilmToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button { configuration.isOn.toggle() } label: {
+            HStack {
+                configuration.label
+                Spacer(minLength: Theme.Space.m)
+                Text(configuration.isOn ? "On" : "Off").foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityAddTraits(.isToggle)
+        .accessibilityValue(configuration.isOn ? "On" : "Off")
+    }
+}
+#endif
+
+/// A Picker whose chosen value is quiet secondary text. A menu picker draws its value in the tint, which would make
+/// every setting look like the next action; yellow is kept for toggles that are on.
+struct FilmPicker<SelectionValue: Hashable, Content: View>: View {
+    let title: LocalizedStringKey
+    @Binding var selection: SelectionValue
+    let content: Content
+
+    init(_ title: LocalizedStringKey, selection: Binding<SelectionValue>, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self._selection = selection
+        self.content = content()
+    }
+
+    var body: some View {
+        #if os(tvOS)
+        Picker(title, selection: $selection) { content }
+        #else
+        Picker(title, selection: $selection) { content }
+            .tint(Theme.Palette.textSecondary)
+        #endif
+    }
+}
+
 /// A Form on the film ground with its rows on base-2. A row background belongs to the rows and can't be set from
 /// outside the form, so every settings page builds its form with this instead of the system Form.
 struct FilmForm<Content: View>: View {
@@ -515,6 +579,9 @@ struct FilmForm<Content: View>: View {
             .formStyle(.grouped)
             #endif
             .filmGround()
+            #if os(tvOS)
+            .toggleStyle(FilmToggleStyle())
+            #endif
     }
 }
 
@@ -525,5 +592,8 @@ struct FilmList<Content: View>: View {
     var body: some View {
         List { content.filmRows() }
             .filmGround()
+            #if os(tvOS)
+            .toggleStyle(FilmToggleStyle())
+            #endif
     }
 }

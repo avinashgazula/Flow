@@ -702,7 +702,7 @@ struct ShelfGridView: View {
             }
             ShelfGridContent(shelf: typed).id(type)
         }
-        .navigationTitle(shelf.title)
+        .flowPageTitle(shelf.title, inset: Theme.Space.gutter)
     }
 }
 

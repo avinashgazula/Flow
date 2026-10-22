@@ -266,7 +266,7 @@ struct LibraryListView: View {
             }
             .padding(.vertical)
         }
-        .navigationTitle(list.title)
+        .flowPageTitle(list.title, inset: Theme.Space.gutter)
         .task(id: model.contentVersion) {
             let keys = self.keys
             // The first screenful appears as soon as it's ready; the rest fills in behind it. Waiting for
@@ -340,7 +340,7 @@ struct CollectionView: View {
                 }
             }
         }
-        .navigationTitle(name)
+        .flowPageTitle(name, inset: Theme.Space.gutter)
         .task {
             failed = false
             collection = try? await model.catalog?.collection(collectionID)

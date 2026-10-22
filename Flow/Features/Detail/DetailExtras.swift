@@ -227,7 +227,7 @@ struct ReviewSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(Theme.Space.m)
             }
-            .navigationTitle("Review")
+            .flowPageTitle("Review")
             .inlineNavigationTitle()
             .sheetDismissButton("Close") { dismiss() }
         }

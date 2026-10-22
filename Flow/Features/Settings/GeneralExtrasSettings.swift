@@ -87,7 +87,7 @@ struct NavigationSettingsSection: View {
     var body: some View {
         @Bindable var model = model
         Section {
-            Picker("Opening Tab", selection: $model.settings.general.startTab) {
+            FilmPicker("Opening Tab", selection: $model.settings.general.startTab) {
                 ForEach(model.settings.general.orderedTabs) { Text($0.title).tag($0) }
             }
             NavigationLink("Tab Order") { TabOrderView() }
@@ -121,7 +121,7 @@ struct TabOrderView: View {
                     .disabled(tabs == AppTab.allCases)
             }
         }
-        .navigationTitle("Tab Order")
+        .flowPageTitle("Tab Order")
         #if os(iOS)
         .environment(\.editMode, .constant(.active))
         #endif
