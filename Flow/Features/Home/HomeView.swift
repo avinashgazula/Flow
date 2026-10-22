@@ -471,11 +471,7 @@ private struct PicksRow: View {
             if !items.isEmpty {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     SectionHeader(title ?? shelf.title, route: .shelf(shelf))
-                    FilmScroller(ids: items.map(\.id), itemWidth: Platform.posterWidth) {
-                        ForEach(items) { item in
-                            PickCard(item: item, context: shelf.id)
-                        }
-                    }
+                    PosterRow(items: items, context: shelf.id)
                 }
                 .transition(.opacity)
             } else if !loaded {
@@ -497,51 +493,8 @@ private struct PicksRow: View {
     }
 }
 
-private struct PickCard: View {
-    let item: MediaItem
-    let context: String
-    @Environment(AppModel.self) private var model
-    /// Shelves list titles without runtimes, so each card asks for its own as it appears.
-    @State private var runtime: Int?
-
-    private var zoomID: String { "\(context)-\(item.id)" }
-
-    private var strip: EdgePrint {
-        var lead: [String] = []
-        if let runtime { lead.append(Reel.compactDuration(minutes: runtime)) } else if item.type == .show { lead.append("Series") }
-        let tail = item.voteAverage.flatMap { $0 > 0 ? [String(format: "%.1f", $0)] : nil } ?? []
-        return EdgePrint(lead: lead, tail: tail)
-    }
-
-    private var spoken: String {
-        var extra: [String] = []
-        if let year = item.year { extra.append(String(year)) }
-        if let runtime { extra.append(Reel.spokenDuration(minutes: runtime)) }
-        if let vote = item.voteAverage, vote > 0 { extra.append("rated " + String(format: "%.1f", vote)) }
-        if model.isWatched(item) { extra.append("watched") }
-        return Reel.spokenListing(title: item.title, extra: extra)
-    }
-
-    var body: some View {
-        NavigationLink(value: Route.detail(item, zoom: zoomID)) {
-            FilmCard(art: .poster(item), strip: strip, title: item.title, meta: item.year.map { String($0) }, width: Platform.posterWidth, spoken: spoken, zoomID: zoomID)
-        }
-        .buttonStyle(CardButtonStyle(lift: 1.04))
-        .contextMenu { MediaContextMenu(item: item) } preview: { PosterPreview(item: item) }
-        .task(id: item.id) { await loadRuntime() }
-    }
-
-    private func loadRuntime() async {
-        if let known = item.runtimeMinutes, known > 0 { runtime = known; return }
-        guard item.type == .movie, let catalog = model.catalog, let id = item.ids.tmdb else { return }
-        if let detail = try? await catalog.details(item.type, id: id), let minutes = detail.item.runtimeMinutes, minutes > 0 {
-            runtime = minutes
-        }
-    }
-}
-
 /// What is coming: stills with the air day in the key position of the strip.
-private struct UpcomingRow: View {
+struct UpcomingRow: View {
     let shelf: ShelfConfig
     @Environment(AppModel.self) private var model
     @State private var entries: [UpcomingEntry] = []

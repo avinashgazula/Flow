@@ -201,6 +201,49 @@ final class ProgrammeTests: XCTestCase {
         XCTAssertEqual(EdgePrint.filledPerforations(progress: 0.5, of: 0), 0)
     }
 
+    func testPosterPrintCarriesRuntimeAndRatingWithNoPerforations() {
+        let film = EdgePrint.poster(runtimeMinutes: 167, isSeries: false, rating: 8.46)
+        XCTAssertNil(film.progress)
+        XCTAssertEqual(film.segments().map(\.text), ["2h47", "8.5"])
+        XCTAssertTrue(film.segments().allSatisfy { !$0.isKey })
+        XCTAssertEqual(EdgePrint.poster(runtimeMinutes: nil, isSeries: true, rating: 0).segments().map(\.text), ["Series"])
+        XCTAssertEqual(EdgePrint.poster(runtimeMinutes: nil, isSeries: false, rating: nil).segments().map(\.text), [])
+    }
+
+    func testPosterPrintSaysWatchedInPlainPrint() {
+        let done = EdgePrint.poster(runtimeMinutes: 100, isSeries: false, rating: 7.0, watched: true)
+        XCTAssertEqual(done.segments().map(\.text), ["Watched"])
+        XCTAssertTrue(done.segments().allSatisfy { !$0.isKey })
+        let partway = EdgePrint.poster(runtimeMinutes: nil, isSeries: true, rating: 8.0, episodesWatched: 3, episodesAired: 10)
+        XCTAssertEqual(partway.segments().map(\.text), ["3/10 ep", "8.0"])
+        // A show with none watched yet is just a series.
+        XCTAssertEqual(EdgePrint.poster(runtimeMinutes: nil, isSeries: true, rating: nil, episodesWatched: 0, episodesAired: 10).segments().map(\.text), ["Series"])
+    }
+
+    func testPosterPrintListsTheServerAfterTheRating() {
+        let print = EdgePrint.poster(runtimeMinutes: 90, isSeries: false, rating: 6.5, onServer: true)
+        XCTAssertEqual(print.segments().map(\.text), ["1h30", "6.5", "Server"])
+        // A watched title keeps only its watched mark and the server.
+        XCTAssertEqual(EdgePrint.poster(runtimeMinutes: 90, isSeries: false, rating: 6.5, watched: true, onServer: true).segments().map(\.text), ["Watched", "Server"])
+    }
+
+    func testCalendarPrintKeysWhatCanBePlayedNow() {
+        let aired = EdgePrint.calendar(episodeCode: "S02E01", label: "Season Premiere", day: "Yesterday", hasAired: true)
+        XCTAssertEqual(aired.segments().map(\.text), ["S02E01", "Season Premiere", "Yesterday"])
+        XCTAssertEqual(aired.segments().filter(\.isKey).map(\.text), ["Season Premiere"])
+        let coming = EdgePrint.calendar(episodeCode: "S02E05", label: nil, hasAired: false)
+        XCTAssertEqual(coming.segments().map(\.text), ["S02E05"])
+        XCTAssertTrue(coming.segments().allSatisfy { !$0.isKey })
+        let film = EdgePrint.calendar(episodeCode: nil, label: "Release", hasAired: false)
+        XCTAssertEqual(film.segments().map(\.text), ["Film", "Release"])
+    }
+
+    func testCalendarPrintSaysWatchedInPlainPrint() {
+        let seen = EdgePrint.calendar(episodeCode: "S01E03", label: "New", hasAired: true, watched: true)
+        XCTAssertEqual(seen.segments().map(\.text), ["S01E03", "Watched"])
+        XCTAssertTrue(seen.segments().allSatisfy { !$0.isKey })
+    }
+
     func testEdgeFormatKeepsBadgesShort() {
         XCTAssertEqual(Reel.edgeFormat(resolution: .uhd4k, hdr: ["DV"], audioCodec: "TrueHD", audioChannels: "7.1"), ["2160p", "DV", "TrueHD 7.1"])
         XCTAssertEqual(Reel.edgeFormat(), [])

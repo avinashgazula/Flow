@@ -366,9 +366,9 @@ private struct ReorderableWatchlistGrid: View {
     let onMove: ([MediaKey], MediaKey?) -> Void
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: Platform.posterWidth, maximum: Platform.posterWidth * 1.35), spacing: 14, alignment: .top)], spacing: 22) {
+        LazyVGrid(columns: PosterGrid.columns, spacing: 22) {
             ForEach(items) { item in
-                PosterCardFlexible(item: item, context: "watchlist")
+                PosterFilmCard(item: item, context: "watchlist", width: nil)
             }
             .reorderable()
         }

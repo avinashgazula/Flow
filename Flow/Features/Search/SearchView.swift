@@ -225,6 +225,8 @@ struct TopResultCard: View {
     @Environment(AppModel.self) private var model
 
     private var zoomID: String { "top-\(item.id)" }
+    /// Search results come without runtimes, so the card asks for the film's own, as a poster row does.
+    @State private var runtime: Int?
 
     private var posterWidth: CGFloat {
         #if os(tvOS)
@@ -239,9 +241,12 @@ struct TopResultCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             NavigationLink(value: Route.detail(item, zoom: zoomID, library: nil)) {
-                PosterArtwork(item: item).frame(width: posterWidth).zoomSource(zoomID)
+                FilmFrame(art: .poster(item), strip: model.posterPrint(for: item, runtime: runtime))
+                    .zoomSource(zoomID)
+                    .frame(width: posterWidth)
             }
-            .buttonStyle(CardButtonStyle())
+            .buttonStyle(CardButtonStyle(lift: 1.04))
+            .accessibilityLabel(item.title)
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 text
                 actions
@@ -250,6 +255,7 @@ struct TopResultCard: View {
         }
         .frame(maxWidth: Platform.isTV ? 1000 : 640, alignment: .leading)
         .contextMenu { MediaContextMenu(item: item) }
+        .task(id: item.id) { runtime = await model.posterRuntime(for: item) }
     }
 
     /// Tapping the words opens the detail page too. On tvOS the poster is the one way in: a second

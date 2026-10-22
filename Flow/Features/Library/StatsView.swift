@@ -226,7 +226,7 @@ struct StatsView: View {
                     LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
                         ForEach(shows) { show in
                             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                                PosterCard(item: show.item, context: "stats")
+                                PosterFilmCard(item: show.item, context: "stats")
                                 Text(show.episodes == 1 ? "1 episode" : "\(show.episodes) episodes")
                                     .font(Theme.Typeface.caption)
                                     .foregroundStyle(Theme.Palette.textSecondary)
