@@ -15,7 +15,7 @@ struct HomeLead: Equatable, Identifiable {
     var id: String { entryID ?? item.id }
 
     /// Minutes still to watch, when the app knows (a resume point, or a runtime).
-    var minutes: Int? { Programme.minutesLeft(progress: progress, runtimeMinutes: item.runtimeMinutes) }
+    var minutes: Int? { Reel.minutesLeft(progress: progress, runtimeMinutes: item.runtimeMinutes) }
 }
 
 /// Home: a large title by the hour, the one thing to carry on with as a big frame with its edge strip and a
@@ -28,7 +28,7 @@ struct HomeView: View {
     @State private var now = Date()
 
     private var general: GeneralSettings { model.settings.general }
-    private var dayPart: Programme.DayPart { Programme.DayPart(date: now) }
+    private var dayPart: Reel.DayPart { Reel.DayPart(date: now) }
 
     /// The enabled shelves, minus the ones their General switches turn off.
     private var shelves: [ShelfConfig] {
@@ -185,7 +185,7 @@ struct HomeView: View {
                 .font(.system(.largeTitle, weight: .bold))
                 .foregroundStyle(Theme.Palette.text)
             #endif
-            Text(Programme.dateLine(now))
+            Text(Reel.dateLine(now))
                 .font(.system(.subheadline))
                 .foregroundStyle(Theme.Palette.textSecondary)
         }
@@ -224,12 +224,12 @@ struct LeadBlock: View {
         let format = model.lastEdgeFormat(for: item)
         switch lead.kind {
         case .resume:
-            return EdgePrint(progress: (lead.progress?.percent ?? 0) / 100, lead: episodeLead, key: minutes.map { Programme.left(minutes: $0) },
+            return EdgePrint(progress: (lead.progress?.percent ?? 0) / 100, lead: episodeLead, key: minutes.map { Reel.left(minutes: $0) },
                              endsInMinutes: minutes, tail: format)
         case .nextUp:
             return EdgePrint(progress: 0, lead: episodeLead, key: "Up next", endsInMinutes: minutes, tail: format)
         case .pick:
-            return EdgePrint(lead: [item.year.map { String($0) } ?? "", minutes.map { Programme.duration(minutes: $0) } ?? ""], endsInMinutes: minutes, tail: format)
+            return EdgePrint(lead: [item.year.map { String($0) } ?? "", minutes.map { Reel.duration(minutes: $0) } ?? ""], endsInMinutes: minutes, tail: format)
         }
     }
 
@@ -244,8 +244,8 @@ struct LeadBlock: View {
     }
 
     private var spoken: String {
-        Programme.spokenListing(title: item.title, episode: lead.episode, minutesLeft: lead.kind == .resume ? minutes : nil,
-                                endsAt: minutes.map { Programme.endDate(from: Date(), minutesLeft: $0) }, extra: model.lastEdgeFormat(for: item))
+        Reel.spokenListing(title: item.title, episode: lead.episode, minutesLeft: lead.kind == .resume ? minutes : nil,
+                                endsAt: minutes.map { Reel.endDate(from: Date(), minutesLeft: $0) }, extra: model.lastEdgeFormat(for: item))
     }
 
     var body: some View {
@@ -350,7 +350,7 @@ private struct UpNextCell: View {
     let width: CGFloat?
     @Environment(AppModel.self) private var model
 
-    private var minutes: Int? { Programme.minutesLeft(progress: entry.progress, runtimeMinutes: item.runtimeMinutes) }
+    private var minutes: Int? { Reel.minutesLeft(progress: entry.progress, runtimeMinutes: item.runtimeMinutes) }
 
     private var strip: EdgePrint {
         let lead = entry.episode.map { ["S\($0.season) E\($0.episode)"] } ?? []
@@ -358,13 +358,13 @@ private struct UpNextCell: View {
         if entry.isNextUp {
             return EdgePrint(progress: 0, lead: lead, key: "Up next", endsInMinutes: minutes, tail: format)
         }
-        return EdgePrint(progress: (entry.progress?.percent ?? 0) / 100, lead: lead, key: minutes.map { Programme.left(minutes: $0) },
+        return EdgePrint(progress: (entry.progress?.percent ?? 0) / 100, lead: lead, key: minutes.map { Reel.left(minutes: $0) },
                          endsInMinutes: minutes, tail: format)
     }
 
     private var spoken: String {
-        Programme.spokenListing(title: item.title, episode: entry.episode, minutesLeft: entry.isNextUp ? nil : minutes,
-                                endsAt: minutes.map { Programme.endDate(from: Date(), minutesLeft: $0) },
+        Reel.spokenListing(title: item.title, episode: entry.episode, minutesLeft: entry.isNextUp ? nil : minutes,
+                                endsAt: minutes.map { Reel.endDate(from: Date(), minutesLeft: $0) },
                                 extra: (entry.isNextUp ? ["up next"] : []) + model.lastEdgeFormat(for: item))
     }
 
@@ -467,7 +467,7 @@ private struct PickCard: View {
 
     private var strip: EdgePrint {
         var lead: [String] = []
-        if let runtime { lead.append(Programme.duration(minutes: runtime)) } else if item.type == .show { lead.append("Series") }
+        if let runtime { lead.append(Reel.duration(minutes: runtime)) } else if item.type == .show { lead.append("Series") }
         let tail = item.voteAverage.flatMap { $0 > 0 ? [String(format: "%.1f", $0)] : nil } ?? []
         return EdgePrint(lead: lead, tail: tail)
     }
@@ -475,10 +475,10 @@ private struct PickCard: View {
     private var spoken: String {
         var extra: [String] = []
         if let year = item.year { extra.append(String(year)) }
-        if let runtime { extra.append(Programme.spokenDuration(minutes: runtime)) }
+        if let runtime { extra.append(Reel.spokenDuration(minutes: runtime)) }
         if let vote = item.voteAverage, vote > 0 { extra.append("rated " + String(format: "%.1f", vote)) }
         if model.isWatched(item) { extra.append("watched") }
-        return Programme.spokenListing(title: item.title, extra: extra)
+        return Reel.spokenListing(title: item.title, extra: extra)
     }
 
     var body: some View {
@@ -533,16 +533,16 @@ private struct UpcomingCell: View {
     private var zoomID: String { "\(context)-\(entry.id)" }
 
     private var strip: EdgePrint {
-        let air = Programme.airColumn(for: entry.date)
+        let air = Reel.airColumn(for: entry.date)
         return EdgePrint(lead: entry.episode.map { [$0.code] } ?? ["Film"], key: "\(air.label) \(air.day)")
     }
 
     var body: some View {
-        let air = Programme.airColumn(for: entry.date)
+        let air = Reel.airColumn(for: entry.date)
         NavigationLink(value: Route.detail(entry.item, zoom: zoomID)) {
             FilmCard(art: .still(entry.item), strip: strip, title: entry.item.title, meta: entry.episode?.title ?? entry.item.shortMeta,
                      width: Platform.landscapeWidth,
-                     spoken: Programme.spokenListing(title: entry.item.title, episode: entry.episode?.ref, extra: ["\(air.label) \(air.day)"]),
+                     spoken: Reel.spokenListing(title: entry.item.title, episode: entry.episode?.ref, extra: ["\(air.label) \(air.day)"]),
                      zoomID: zoomID)
         }
         .buttonStyle(CardButtonStyle(lift: 1.04))

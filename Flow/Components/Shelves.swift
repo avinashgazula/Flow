@@ -386,7 +386,7 @@ struct MetadataLine: View {
         var parts: [String] = []
         if showRating, let vote = item.voteAverage, vote > 0 { parts.append("TMDB " + String(format: "%.1f", vote)) }
         if let year = item.year { parts.append(String(year)) }
-        if let runtime = item.runtimeMinutes, runtime > 0, !showType { parts.append(Programme.duration(minutes: runtime)) }
+        if let runtime = item.runtimeMinutes, runtime > 0, !showType { parts.append(Reel.duration(minutes: runtime)) }
         let genres = item.genres.prefix(count).map(\.name).joined(separator: ", ")
         if !genres.isEmpty { parts.append(genres) }
         if let certification, !certification.isEmpty { parts.append(certification) }

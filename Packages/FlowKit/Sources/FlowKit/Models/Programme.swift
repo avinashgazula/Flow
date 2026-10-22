@@ -2,7 +2,7 @@ import Foundation
 
 /// The timetable arithmetic behind a programme listing: when something would end if you pressed play
 /// now, how long is left, and the plain words for both. The views only draw what this returns.
-public enum Programme {
+public enum Reel {
     // MARK: Time left
 
     /// Minutes of a title still to watch. From the resume point when it is known, otherwise what is left
@@ -139,7 +139,7 @@ public enum Programme {
 
 // MARK: - The version line
 
-extension Programme {
+extension Reel {
     /// A resolution as a listing writes it: "2160p", "1080p", "SD". Nil when it isn't known.
     public static func resolutionLabel(_ resolution: VideoResolution) -> String? {
         switch resolution {
@@ -208,8 +208,8 @@ public struct EdgePrint: Equatable, Sendable {
         var out = lead.filter { !$0.isEmpty }.map { Segment($0) }
         if let key, !key.isEmpty { out.append(Segment(key, isKey: true)) }
         if let endsInMinutes {
-            let end = Programme.endDate(from: now, minutesLeft: endsInMinutes)
-            out.append(Segment("ends " + Programme.clock(end, locale: locale, timeZone: timeZone)))
+            let end = Reel.endDate(from: now, minutesLeft: endsInMinutes)
+            out.append(Segment("ends " + Reel.clock(end, locale: locale, timeZone: timeZone)))
         }
         out += tail.filter { !$0.isEmpty }.map { Segment($0) }
         return out
@@ -223,7 +223,7 @@ public struct EdgePrint: Equatable, Sendable {
     }
 }
 
-extension Programme {
+extension Reel {
     /// The format as edge print: "2160p", "DV", "TrueHD 7.1". Badges stay short here; the film-can label spells them out.
     public static func edgeFormat(resolution: VideoResolution = .unknown, hdr: [String] = [], audioCodec: String? = nil, audioChannels: String? = nil) -> [String] {
         var parts: [String] = []
@@ -247,7 +247,7 @@ public struct VersionNote: Equatable, Sendable {
     }
 }
 
-extension Programme {
+extension Reel {
     /// What the page says under the best version: that this device can't decode the video, so it may stutter,
     /// or that the audio is converted to play here. Nil when it just plays.
     public static func versionNote(for traits: StreamTraits, decodesAV1: Bool, convertsLosslessAudio: Bool) -> VersionNote? {
@@ -264,15 +264,15 @@ extension Programme {
 extension StreamTraits {
     /// "2160p · Dolby Vision · TrueHD 7.1", with the size after it when asked.
     public func versionLine(includeSize: Bool = false) -> String {
-        Programme.versionLine(resolution: resolution, hdr: hdr, audioCodec: audioCodec, audioChannels: audioChannels,
+        Reel.versionLine(resolution: resolution, hdr: hdr, audioCodec: audioCodec, audioChannels: audioChannels,
                               sizeBytes: includeSize ? sizeBytes : nil)
     }
 }
 
 extension LastSource {
     /// What the last playback looked like: "2160p · Dolby Vision". Empty when nothing was known.
-    public var versionLine: String { Programme.versionLine(resolution: resolution, hdr: hdr) }
+    public var versionLine: String { Reel.versionLine(resolution: resolution, hdr: hdr) }
 
     /// The same as edge print: ["2160p", "DV"].
-    public var edgeFormat: [String] { Programme.edgeFormat(resolution: resolution, hdr: hdr) }
+    public var edgeFormat: [String] { Reel.edgeFormat(resolution: resolution, hdr: hdr) }
 }

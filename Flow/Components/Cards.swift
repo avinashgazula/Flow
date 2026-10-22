@@ -686,7 +686,7 @@ private struct ProgrammeRowContent: View {
     private func timeColumn(now: Date) -> some View {
         switch row.column {
         case .ends(let minutes, _):
-            columnText(Programme.clock(Programme.endDate(from: now, minutesLeft: minutes)), sub: "ends")
+            columnText(Reel.clock(Reel.endDate(from: now, minutesLeft: minutes)), sub: "ends")
         case .label(let text, let sub):
             columnText(text, sub: sub)
         case .none:
@@ -713,7 +713,7 @@ private struct ProgrammeRowContent: View {
     private func metaText(now: Date, roomy: Bool) -> String? {
         var parts: [String] = []
         if !roomy, let minutes {
-            parts.append("Ends \(Programme.clock(Programme.endDate(from: now, minutesLeft: minutes)))")
+            parts.append("Ends \(Reel.clock(Reel.endDate(from: now, minutesLeft: minutes)))")
         }
         if let meta = row.meta, !meta.isEmpty { parts.append(meta) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
@@ -752,15 +752,15 @@ private struct ProgrammeRowContent: View {
         var ends: Date?
         switch row.column {
         case .ends(let minutes, let resume):
-            ends = Programme.endDate(from: now, minutesLeft: minutes)
-            if resume { left = minutes } else { extra.append(Programme.spokenDuration(minutes: minutes)) }
+            ends = Reel.endDate(from: now, minutesLeft: minutes)
+            if resume { left = minutes } else { extra.append(Reel.spokenDuration(minutes: minutes)) }
         case .label(let text, let sub):
             extra.append([text, sub].compactMap { $0 }.joined(separator: " "))
         case .none:
             break
         }
         if let version = row.version, !version.isEmpty { extra.append(version) }
-        return Programme.spokenListing(title: row.title, episode: row.episode, minutesLeft: left, endsAt: ends, extra: extra)
+        return Reel.spokenListing(title: row.title, episode: row.episode, minutesLeft: left, endsAt: ends, extra: extra)
     }
 }
 
@@ -839,7 +839,7 @@ extension MediaItem {
         if type == .show {
             parts.append("Series")
         } else if let runtimeMinutes, runtimeMinutes > 0 {
-            parts.append(Programme.duration(minutes: runtimeMinutes))
+            parts.append(Reel.duration(minutes: runtimeMinutes))
         }
         if let genre = genres.first?.name { parts.append(genre) }
         if let vote = voteAverage, vote > 0 { parts.append("TMDB " + String(format: "%.1f", vote)) }

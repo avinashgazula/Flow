@@ -327,7 +327,7 @@ struct SourceRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             if columnShown {
-                Text(Programme.resolutionLabel(source.traits.resolution) ?? "–")
+                Text(Reel.resolutionLabel(source.traits.resolution) ?? "–")
                     .font(.system(.title3, weight: .bold).monospacedDigit())
                     .textCase(.uppercase)
                     .foregroundStyle(source.traits.resolution == .unknown ? tertiary : primary)
@@ -389,7 +389,7 @@ struct SourceRow: View {
     /// The release's own name is the title; the resolution has the column, unless the column is hidden.
     private var title: String {
         let text = summary.title ?? source.filename ?? source.providerName
-        guard !columnShown, let resolution = Programme.resolutionLabel(source.traits.resolution) else { return text }
+        guard !columnShown, let resolution = Reel.resolutionLabel(source.traits.resolution) else { return text }
         let withSize = typeSize.isAccessibilitySize ? [summary.size].compactMap { $0 } : []
         return ([resolution, text] + withSize).joined(separator: " · ")
     }
@@ -398,7 +398,7 @@ struct SourceRow: View {
     /// Appearance) leaves it out.
     private var formatLine: String? {
         guard appearance.badgePack != .none else { return nil }
-        let parts = Programme.edgeFormat(hdr: source.traits.hdr, audioCodec: source.traits.audioCodec, audioChannels: source.traits.audioChannels)
+        let parts = Reel.edgeFormat(hdr: source.traits.hdr, audioCodec: source.traits.audioCodec, audioChannels: source.traits.audioChannels)
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
@@ -407,7 +407,7 @@ struct SourceRow: View {
     private var notes: some View {
         let notCached = source.traits.isCached == false && source.category == .addons
         let needsDebrid: Bool = { if !source.isPlayable, case .torrent = source.location { return true }; return false }()
-        let decoderNote = Programme.versionNote(for: source.traits, decodesAV1: Platform.decodesAV1, convertsLosslessAudio: false)
+        let decoderNote = Reel.versionNote(for: source.traits, decodesAV1: Platform.decodesAV1, convertsLosslessAudio: false)
         if lastPlayed || notCached || needsDebrid || decoderNote != nil {
             VStack(alignment: .leading, spacing: 2) {
                 if lastPlayed { Text("Last played").foregroundStyle(secondary) }

@@ -140,7 +140,7 @@ extension AppModel {
                                        preferredAudioLanguage: settings.playback.preferredAudioLanguage)
         guard let best = lastSource(for: request, in: ranked) ?? ranked.first(where: \.isPlayable) else { return nil }
         let line = best.traits.versionLine(includeSize: true)
-        let note = Programme.versionNote(for: best.traits, decodesAV1: Platform.decodesAV1, convertsLosslessAudio: MatroskaRemuxer.audioDecoders != nil)
+        let note = Reel.versionNote(for: best.traits, decodesAV1: Platform.decodesAV1, convertsLosslessAudio: MatroskaRemuxer.audioDecoders != nil)
         var seen = Set<String>()
         let providers = ranked.map(\.providerName).filter { seen.insert($0).inserted }
         return BestVersion(line: line, count: ranked.count, providers: providers, note: note)

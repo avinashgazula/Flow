@@ -15,102 +15,102 @@ final class ProgrammeTests: XCTestCase {
     func testMinutesLeftPrefersTheResumePoint() {
         let progress = PlaybackProgress(key: key, percent: 62, positionSeconds: 1750, durationSeconds: 2820)
         // 1070 seconds are left: 17.8 minutes rounds up to 18.
-        XCTAssertEqual(Programme.minutesLeft(progress: progress, runtimeMinutes: 47), 18)
+        XCTAssertEqual(Reel.minutesLeft(progress: progress, runtimeMinutes: 47), 18)
     }
 
     func testMinutesLeftFallsBackToPercentThenRuntime() {
         let byPercent = PlaybackProgress(key: key, percent: 50)
-        XCTAssertEqual(Programme.minutesLeft(progress: byPercent, runtimeMinutes: 100), 50)
-        XCTAssertEqual(Programme.minutesLeft(progress: nil, runtimeMinutes: 167), 167)
-        XCTAssertNil(Programme.minutesLeft(progress: nil, runtimeMinutes: nil))
-        XCTAssertNil(Programme.minutesLeft(progress: nil, runtimeMinutes: 0))
+        XCTAssertEqual(Reel.minutesLeft(progress: byPercent, runtimeMinutes: 100), 50)
+        XCTAssertEqual(Reel.minutesLeft(progress: nil, runtimeMinutes: 167), 167)
+        XCTAssertNil(Reel.minutesLeft(progress: nil, runtimeMinutes: nil))
+        XCTAssertNil(Reel.minutesLeft(progress: nil, runtimeMinutes: 0))
     }
 
     func testMinutesLeftIsNeverBelowOne() {
         let nearlyDone = PlaybackProgress(key: key, percent: 99.9, positionSeconds: 2999, durationSeconds: 3000)
-        XCTAssertEqual(Programme.minutesLeft(progress: nearlyDone, runtimeMinutes: 50), 1)
+        XCTAssertEqual(Reel.minutesLeft(progress: nearlyDone, runtimeMinutes: 50), 1)
     }
 
     func testEndDateAddsTheMinutes() {
         let now = date("2026-10-22T21:00:00Z")
-        XCTAssertEqual(Programme.endDate(from: now, minutesLeft: 48), date("2026-10-22T21:48:00Z"))
+        XCTAssertEqual(Reel.endDate(from: now, minutesLeft: 48), date("2026-10-22T21:48:00Z"))
     }
 
     func testDurationWords() {
-        XCTAssertEqual(Programme.duration(minutes: 47), "47 min")
-        XCTAssertEqual(Programme.duration(minutes: 120), "2 h")
-        XCTAssertEqual(Programme.duration(minutes: 167), "2 h 47 min")
-        XCTAssertEqual(Programme.left(minutes: 18), "18 min left")
-        XCTAssertEqual(Programme.left(minutes: 104), "1 h 44 min left")
+        XCTAssertEqual(Reel.duration(minutes: 47), "47 min")
+        XCTAssertEqual(Reel.duration(minutes: 120), "2 h")
+        XCTAssertEqual(Reel.duration(minutes: 167), "2 h 47 min")
+        XCTAssertEqual(Reel.left(minutes: 18), "18 min left")
+        XCTAssertEqual(Reel.left(minutes: 104), "1 h 44 min left")
     }
 
     func testSpokenDuration() {
-        XCTAssertEqual(Programme.spokenLeft(minutes: 1), "1 minute left")
-        XCTAssertEqual(Programme.spokenLeft(minutes: 18), "18 minutes left")
-        XCTAssertEqual(Programme.spokenLeft(minutes: 60), "1 hour left")
-        XCTAssertEqual(Programme.spokenLeft(minutes: 104), "1 hour 44 minutes left")
-        XCTAssertEqual(Programme.spokenLeft(minutes: 121), "2 hours 1 minute left")
+        XCTAssertEqual(Reel.spokenLeft(minutes: 1), "1 minute left")
+        XCTAssertEqual(Reel.spokenLeft(minutes: 18), "18 minutes left")
+        XCTAssertEqual(Reel.spokenLeft(minutes: 60), "1 hour left")
+        XCTAssertEqual(Reel.spokenLeft(minutes: 104), "1 hour 44 minutes left")
+        XCTAssertEqual(Reel.spokenLeft(minutes: 121), "2 hours 1 minute left")
     }
 
     func testClockFollowsTheLocale() {
-        XCTAssertEqual(Programme.clock(date("2026-10-22T21:48:00Z"), locale: gb, timeZone: utc), "21:48")
-        XCTAssertEqual(Programme.clock(date("2026-10-22T09:05:00Z"), locale: gb, timeZone: utc), "09:05")
+        XCTAssertEqual(Reel.clock(date("2026-10-22T21:48:00Z"), locale: gb, timeZone: utc), "21:48")
+        XCTAssertEqual(Reel.clock(date("2026-10-22T09:05:00Z"), locale: gb, timeZone: utc), "09:05")
     }
 
     func testAirColumnSaysAirsOrAired() {
         let now = date("2026-10-22T12:00:00Z")
-        let upcoming = Programme.airColumn(for: date("2026-10-27T00:00:00Z"), now: now, locale: gb)
+        let upcoming = Reel.airColumn(for: date("2026-10-27T00:00:00Z"), now: now, locale: gb)
         XCTAssertEqual(upcoming.label, "airs")
         XCTAssertTrue(upcoming.day.contains("27"), upcoming.day)
-        let today = Programme.airColumn(for: date("2026-10-22T00:00:00Z"), now: now, locale: gb)
+        let today = Reel.airColumn(for: date("2026-10-22T00:00:00Z"), now: now, locale: gb)
         XCTAssertEqual(today.label, "airs")
-        let past = Programme.airColumn(for: date("2026-10-20T00:00:00Z"), now: now, locale: gb)
+        let past = Reel.airColumn(for: date("2026-10-20T00:00:00Z"), now: now, locale: gb)
         XCTAssertEqual(past.label, "aired")
     }
 
     func testAirColumnWritesTheDateAndYearForFarOffDays() {
         let now = date("2026-10-22T12:00:00Z")
-        let old = Programme.airColumn(for: date("2011-10-12T00:00:00Z"), now: now, locale: gb)
+        let old = Reel.airColumn(for: date("2011-10-12T00:00:00Z"), now: now, locale: gb)
         XCTAssertEqual(old.label, "aired 2011")
         XCTAssertTrue(old.day.contains("12"), old.day)
         XCTAssertTrue(old.day.contains("Oct"), old.day)
-        let sameYear = Programme.airColumn(for: date("2026-03-01T00:00:00Z"), now: now, locale: gb)
+        let sameYear = Reel.airColumn(for: date("2026-03-01T00:00:00Z"), now: now, locale: gb)
         XCTAssertEqual(sameYear.label, "aired")
-        let later = Programme.airColumn(for: date("2027-01-05T00:00:00Z"), now: now, locale: gb)
+        let later = Reel.airColumn(for: date("2027-01-05T00:00:00Z"), now: now, locale: gb)
         XCTAssertEqual(later.label, "airs 2027")
     }
 
     func testAirPrintReadsAsOneLine() {
         let now = date("2026-10-22T12:00:00Z")
-        XCTAssertTrue(Programme.airPrint(for: date("2026-10-27T00:00:00Z"), now: now, locale: gb).hasPrefix("airs "))
-        let old = Programme.airPrint(for: date("2011-10-12T00:00:00Z"), now: now, locale: gb)
+        XCTAssertTrue(Reel.airPrint(for: date("2026-10-27T00:00:00Z"), now: now, locale: gb).hasPrefix("airs "))
+        let old = Reel.airPrint(for: date("2011-10-12T00:00:00Z"), now: now, locale: gb)
         XCTAssertTrue(old.hasPrefix("aired "), old)
         XCTAssertTrue(old.hasSuffix("2011"), old)
     }
 
     func testDayPartNamesTheGreeting() {
-        XCTAssertEqual(Programme.DayPart(hour: 4).title, "Tonight")
-        XCTAssertEqual(Programme.DayPart(hour: 5).title, "This Morning")
-        XCTAssertEqual(Programme.DayPart(hour: 11).title, "This Morning")
-        XCTAssertEqual(Programme.DayPart(hour: 12).title, "This Afternoon")
-        XCTAssertEqual(Programme.DayPart(hour: 16).title, "This Afternoon")
-        XCTAssertEqual(Programme.DayPart(hour: 17).title, "Tonight")
-        XCTAssertEqual(Programme.DayPart(hour: 23).title, "Tonight")
+        XCTAssertEqual(Reel.DayPart(hour: 4).title, "Tonight")
+        XCTAssertEqual(Reel.DayPart(hour: 5).title, "This Morning")
+        XCTAssertEqual(Reel.DayPart(hour: 11).title, "This Morning")
+        XCTAssertEqual(Reel.DayPart(hour: 12).title, "This Afternoon")
+        XCTAssertEqual(Reel.DayPart(hour: 16).title, "This Afternoon")
+        XCTAssertEqual(Reel.DayPart(hour: 17).title, "Tonight")
+        XCTAssertEqual(Reel.DayPart(hour: 23).title, "Tonight")
     }
 
     func testDateLineHasTheDayAndMonth() {
-        let line = Programme.dateLine(date("2026-10-22T12:00:00Z"), locale: gb, timeZone: utc)
+        let line = Reel.dateLine(date("2026-10-22T12:00:00Z"), locale: gb, timeZone: utc)
         XCTAssertTrue(line.contains("22"), line)
         XCTAssertTrue(line.contains("October"), line)
         XCTAssertTrue(line.contains("Thursday"), line)
     }
 
     func testVersionLineIsPlainText() {
-        XCTAssertEqual(Programme.versionLine(resolution: .uhd4k, hdr: ["DV"], audioCodec: "TrueHD", audioChannels: "7.1", sizeBytes: 19_541_000_000),
+        XCTAssertEqual(Reel.versionLine(resolution: .uhd4k, hdr: ["DV"], audioCodec: "TrueHD", audioChannels: "7.1", sizeBytes: 19_541_000_000),
                        "2160p · Dolby Vision · TrueHD 7.1 · 18.20 GB")
-        XCTAssertEqual(Programme.versionLine(resolution: .hd1080, hdr: ["HDR10+"]), "1080p · HDR10+")
-        XCTAssertEqual(Programme.versionLine(), "")
-        XCTAssertEqual(Programme.versionLine(audioCodec: "AAC"), "AAC")
+        XCTAssertEqual(Reel.versionLine(resolution: .hd1080, hdr: ["HDR10+"]), "1080p · HDR10+")
+        XCTAssertEqual(Reel.versionLine(), "")
+        XCTAssertEqual(Reel.versionLine(audioCodec: "AAC"), "AAC")
     }
 
     func testTraitsAndLastSourceWriteTheSameLine() {
@@ -126,19 +126,19 @@ final class ProgrammeTests: XCTestCase {
     func testVersionNoteWarnsAboutAV1WithoutADecoder() {
         var traits = StreamTraits()
         traits.videoCodec = "AV1"
-        let note = Programme.versionNote(for: traits, decodesAV1: false, convertsLosslessAudio: true)
+        let note = Reel.versionNote(for: traits, decodesAV1: false, convertsLosslessAudio: true)
         XCTAssertEqual(note?.isWarning, true)
-        XCTAssertNil(Programme.versionNote(for: traits, decodesAV1: true, convertsLosslessAudio: false))
+        XCTAssertNil(Reel.versionNote(for: traits, decodesAV1: true, convertsLosslessAudio: false))
     }
 
     func testVersionNoteSaysWhenAudioIsConverted() {
         var traits = StreamTraits()
         traits.videoCodec = "HEVC"
         traits.audioCodec = "TrueHD Atmos"
-        XCTAssertEqual(Programme.versionNote(for: traits, decodesAV1: true, convertsLosslessAudio: true)?.isWarning, false)
-        XCTAssertNil(Programme.versionNote(for: traits, decodesAV1: true, convertsLosslessAudio: false))
+        XCTAssertEqual(Reel.versionNote(for: traits, decodesAV1: true, convertsLosslessAudio: true)?.isWarning, false)
+        XCTAssertNil(Reel.versionNote(for: traits, decodesAV1: true, convertsLosslessAudio: false))
         traits.audioCodec = "AAC"
-        XCTAssertNil(Programme.versionNote(for: traits, decodesAV1: true, convertsLosslessAudio: true))
+        XCTAssertNil(Reel.versionNote(for: traits, decodesAV1: true, convertsLosslessAudio: true))
     }
 
     func testEdgePrintOrdersTheFactsAndKeepsTheKeyOne() {
@@ -164,20 +164,20 @@ final class ProgrammeTests: XCTestCase {
     }
 
     func testEdgeFormatKeepsBadgesShort() {
-        XCTAssertEqual(Programme.edgeFormat(resolution: .uhd4k, hdr: ["DV"], audioCodec: "TrueHD", audioChannels: "7.1"), ["2160p", "DV", "TrueHD 7.1"])
-        XCTAssertEqual(Programme.edgeFormat(), [])
+        XCTAssertEqual(Reel.edgeFormat(resolution: .uhd4k, hdr: ["DV"], audioCodec: "TrueHD", audioChannels: "7.1"), ["2160p", "DV", "TrueHD 7.1"])
+        XCTAssertEqual(Reel.edgeFormat(), [])
     }
 
     func testSpokenDurationHasNoLeft() {
-        XCTAssertEqual(Programme.spokenDuration(minutes: 104), "1 hour 44 minutes")
-        XCTAssertEqual(Programme.spokenDuration(minutes: 0), "0 minutes")
+        XCTAssertEqual(Reel.spokenDuration(minutes: 104), "1 hour 44 minutes")
+        XCTAssertEqual(Reel.spokenDuration(minutes: 0), "0 minutes")
     }
 
     func testSpokenListingReadsNaturally() {
         let ends = date("2026-10-22T21:48:00Z")
-        let text = Programme.spokenListing(title: "Breaking Bad", episode: EpisodeRef(season: 3, episode: 7), minutesLeft: 18, endsAt: ends,
+        let text = Reel.spokenListing(title: "Breaking Bad", episode: EpisodeRef(season: 3, episode: 7), minutesLeft: 18, endsAt: ends,
                                            locale: gb, timeZone: utc)
         XCTAssertEqual(text, "Breaking Bad, season 3 episode 7, 18 minutes left, ends 21:48")
-        XCTAssertEqual(Programme.spokenListing(title: "Dune"), "Dune")
+        XCTAssertEqual(Reel.spokenListing(title: "Dune"), "Dune")
     }
 }

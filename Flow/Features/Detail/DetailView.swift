@@ -111,16 +111,16 @@ struct DetailView: View {
     private var still: some View {
         let progress = model.progress(for: current)
         let started = current.type == .movie && (progress?.percent ?? 0) > 1
-        let minutes = current.type == .movie ? Programme.minutesLeft(progress: progress, runtimeMinutes: current.runtimeMinutes) : nil
+        let minutes = current.type == .movie ? Reel.minutesLeft(progress: progress, runtimeMinutes: current.runtimeMinutes) : nil
         var lead: [String] = []
         if let year = current.year { lead.append(String(year)) }
         if current.type == .show {
             if let seasons = detail?.numberOfSeasons { lead.append(seasons == 1 ? "1 season" : "\(seasons) seasons") }
         } else if !started, let runtime = current.runtimeMinutes, runtime > 0 {
-            lead.append(Programme.duration(minutes: runtime))
+            lead.append(Reel.duration(minutes: runtime))
         }
         let strip = EdgePrint(progress: started ? (progress?.percent ?? 0) / 100 : nil, lead: lead,
-                              key: started ? minutes.map { Programme.left(minutes: $0) } : nil, endsInMinutes: minutes)
+                              key: started ? minutes.map { Reel.left(minutes: $0) } : nil, endsInMinutes: minutes)
         return FilmFrame(art: .still(current), strip: strip)
             .accessibilityHidden(true)
     }
@@ -159,7 +159,7 @@ struct DetailView: View {
         var parts: [String] = []
         if let year = current.year { parts.append(String(year)) }
         if current.type == .movie, let runtime = current.runtimeMinutes, runtime > 0 {
-            parts.append(Programme.duration(minutes: runtime))
+            parts.append(Reel.duration(minutes: runtime))
         } else if current.type == .show, let seasons = detail?.numberOfSeasons {
             parts.append(seasons == 1 ? "1 season" : "\(seasons) seasons")
         }
@@ -202,7 +202,7 @@ struct DetailView: View {
 
     private var playLabel: String {
         if current.type == .movie, let p = model.progress(for: current), p.percent > 1 {
-            if let minutes = Programme.minutesLeft(progress: p, runtimeMinutes: current.runtimeMinutes) { return "Resume · \(Programme.left(minutes: minutes))" }
+            if let minutes = Reel.minutesLeft(progress: p, runtimeMinutes: current.runtimeMinutes) { return "Resume · \(Reel.left(minutes: minutes))" }
             return "Resume"
         }
         if current.type == .show, let key = current.key, let entry = model.continueWatching.first(where: { $0.key == key }), let ep = entry.episode {
@@ -215,7 +215,7 @@ struct DetailView: View {
             if let next = state.nextUp(aired: aired) ?? aired.first { return "Play \(next.code)" }
         }
         if current.type == .movie, let runtime = current.runtimeMinutes, runtime > 0 {
-            return "Play · ends \(Programme.clock(Programme.endDate(from: Date(), minutesLeft: runtime)))"
+            return "Play · ends \(Reel.clock(Reel.endDate(from: Date(), minutesLeft: runtime)))"
         }
         return "Play"
     }

@@ -795,7 +795,7 @@ struct Scrubber: View {
                 // What is left, and when that would be the end if it kept playing: it follows the clock.
                 TimelineView(.everyMinute) { context in
                     let left = max(0, duration - (dragging ?? current))
-                    Text("-" + TimeFormat.clock(left) + " · ends " + Programme.clock(context.date.addingTimeInterval(left)))
+                    Text("-" + TimeFormat.clock(left) + " · ends " + Reel.clock(context.date.addingTimeInterval(left)))
                 }
             }
             // Timecode and the end time in edge print.
