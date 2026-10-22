@@ -68,7 +68,7 @@ export function Welcome() {
             {state === 'checking' ? 'Checking…' : 'Continue'}
           </button>
         </form>
-        <button className={`btn btn-glass ${s.sample}`} onClick={sample}>
+        <button className={`btn btn-secondary ${s.sample}`} onClick={sample}>
           Explore with Sample Data
         </button>
       </div>

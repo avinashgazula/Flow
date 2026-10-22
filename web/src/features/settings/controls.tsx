@@ -60,14 +60,14 @@ export function ConfirmButton({ label, confirm, onConfirm, compact = true }: { l
   const size = compact ? 'btn-compact' : ''
   if (!armed) {
     return (
-      <button type="button" className={`btn btn-glass ${size} ${s.danger}`} onClick={() => setArmed(true)}>
+      <button type="button" className={`btn btn-secondary ${size} ${s.danger}`} onClick={() => setArmed(true)}>
         {label}
       </button>
     )
   }
   return (
     <span className={s.confirm}>
-      <button type="button" className={`btn btn-glass ${size}`} onClick={() => setArmed(false)}>
+      <button type="button" className={`btn btn-secondary ${size}`} onClick={() => setArmed(false)}>
         Cancel
       </button>
       <button

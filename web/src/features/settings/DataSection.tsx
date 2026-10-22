@@ -56,12 +56,12 @@ export function DataSection() {
     <>
       <Group footer="Settings, sign-ins, your watchlist, favourites and progress, as one JSON file. Import replaces what the file contains and leaves the rest alone.">
         <Row label="Export" detail="Settings and library">
-          <button type="button" className="btn btn-glass btn-compact" onClick={exportBackup}>
+          <button type="button" className="btn btn-secondary btn-compact" onClick={exportBackup}>
             <Icon name="download" size={16} /> Export
           </button>
         </Row>
         <Row label="Import" detail="From a Flow backup">
-          <button type="button" className="btn btn-glass btn-compact" onClick={() => file.current?.click()}>
+          <button type="button" className="btn btn-secondary btn-compact" onClick={() => file.current?.click()}>
             <Icon name="upload" size={16} /> Import
           </button>
           <input ref={file} type="file" accept="application/json,.json" hidden onChange={(e) => void importBackup(e.target.files?.[0])} />

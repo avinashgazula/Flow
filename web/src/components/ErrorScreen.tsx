@@ -46,14 +46,14 @@ export function ErrorScreen({ error, reset, info }: ErrorComponentProps) {
           >
             Try Again
           </button>
-          <button className="btn btn-glass" onClick={() => (history.length > 1 ? router.history.back() : void router.navigate({ to: '/' }))}>
+          <button className="btn btn-secondary" onClick={() => (history.length > 1 ? router.history.back() : void router.navigate({ to: '/' }))}>
             Go Back
           </button>
         </div>
         <details className={s.details}>
           <summary>Details</summary>
           <pre>{details}</pre>
-          <button className="btn btn-glass btn-compact" onClick={copy}>
+          <button className="btn btn-secondary btn-compact" onClick={copy}>
             <Icon name="copy" size={16} /> {copied ? 'Copied' : 'Copy Details'}
           </button>
         </details>

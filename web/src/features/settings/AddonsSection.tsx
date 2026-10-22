@@ -62,13 +62,13 @@ export function AddonsSection() {
                   <span className={s.itemDetail}>{[types, addonHost(addon.url)].filter(Boolean).join(' · ')}</span>
                 </span>
                 <span className={s.itemActions}>
-                  <button type="button" className="btn btn-glass btn-circle btn-compact" onClick={() => move(addon.url, -1)} disabled={i === 0} aria-label={`Move ${addon.name} up`}>
+                  <button type="button" className="btn btn-secondary btn-circle btn-compact" onClick={() => move(addon.url, -1)} disabled={i === 0} aria-label={`Move ${addon.name} up`}>
                     <Icon name="chevronUp" size={16} strokeWidth={2.4} />
                   </button>
-                  <button type="button" className="btn btn-glass btn-circle btn-compact" onClick={() => move(addon.url, 1)} disabled={i === addons.length - 1} aria-label={`Move ${addon.name} down`}>
+                  <button type="button" className="btn btn-secondary btn-circle btn-compact" onClick={() => move(addon.url, 1)} disabled={i === addons.length - 1} aria-label={`Move ${addon.name} down`}>
                     <Icon name="chevronDown" size={16} strokeWidth={2.4} />
                   </button>
-                  <button type="button" className="btn btn-glass btn-circle btn-compact" onClick={() => void navigator.clipboard?.writeText(addon.url)} aria-label={`Copy ${addon.name}’s manifest URL`}>
+                  <button type="button" className="btn btn-secondary btn-circle btn-compact" onClick={() => void navigator.clipboard?.writeText(addon.url)} aria-label={`Copy ${addon.name}’s manifest URL`}>
                     <Icon name="copy" size={16} />
                   </button>
                   <Switch checked={addon.enabled} onChange={(on) => update(addon.url, { enabled: on })} label={`Use ${addon.name}`} />

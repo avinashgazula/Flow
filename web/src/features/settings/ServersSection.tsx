@@ -4,6 +4,7 @@ import { hostOf, isMixedContent, SourceError } from '../../lib/sources/http'
 import * as jellyfin from '../../lib/sources/jellyfin'
 import * as plex from '../../lib/sources/plex'
 import { settingsStore, useSettings, type ServerConfig } from '../../lib/store/settings'
+import { Segmented } from '../explore/Controls'
 import { ConfirmButton, Group, Note, Switch } from './controls'
 import s from './SettingsScreen.module.css'
 
@@ -59,7 +60,7 @@ function ServerRow({ server }: { server: ServerConfig }) {
         {isMixedContent(server.url) && <Note tone="warning">This page is HTTPS and this server is http://, so the browser blocks it. Add its https:// address instead.</Note>}
       </span>
       <span className={s.itemActions}>
-        <button type="button" className="btn btn-glass btn-compact" onClick={run} disabled={test.kind === 'testing'}>
+        <button type="button" className="btn btn-secondary btn-compact" onClick={run} disabled={test.kind === 'testing'}>
           {test.kind === 'testing' ? 'Testing…' : 'Test'}
         </button>
         <Switch checked={server.enabled} onChange={(on) => settingsStore.set((st) => ({ servers: st.servers.map((x) => (x.id === server.id ? { ...x, enabled: on } : x)) }))} label={`Use ${server.name}`} />
@@ -71,18 +72,14 @@ function ServerRow({ server }: { server: ServerConfig }) {
   )
 }
 
+const serverKinds = (['jellyfin', 'emby', 'plex'] as const).map((k) => ({ id: k, label: kindNames[k] }))
+
 function AddServer() {
   const [kind, setKind] = useState<ServerConfig['kind']>('jellyfin')
   return (
     <Group title="Add a Server" footer="Connect your Jellyfin, Emby or Plex server to stream from your own library.">
       <div className={s.pad}>
-        <div className={s.segmented} role="radiogroup" aria-label="Server type">
-          {(['jellyfin', 'emby', 'plex'] as const).map((k) => (
-            <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)}>
-              {kindNames[k]}
-            </button>
-          ))}
-        </div>
+        <Segmented options={serverKinds} value={kind} onChange={setKind} label="Server type" />
       </div>
       {kind === 'plex' ? <PlexLink /> : <JellyfinSignIn key={kind} kind={kind} />}
     </Group>
@@ -167,11 +164,11 @@ function JellyfinSignIn({ kind }: { kind: 'jellyfin' | 'emby' }) {
         </button>
         {kind === 'jellyfin' &&
           (state.kind === 'code' ? (
-            <button type="button" className="btn btn-glass btn-compact" onClick={() => (quick.current?.abort(), setState({ kind: 'idle' }))}>
+            <button type="button" className="btn btn-secondary btn-compact" onClick={() => (quick.current?.abort(), setState({ kind: 'idle' }))}>
               Cancel Quick Connect
             </button>
           ) : (
-            <button type="button" className="btn btn-glass btn-compact" onClick={quickConnect} disabled={!address.trim() || state.kind === 'working'}>
+            <button type="button" className="btn btn-secondary btn-compact" onClick={quickConnect} disabled={!address.trim() || state.kind === 'working'}>
               Use Quick Connect
             </button>
           ))}
@@ -233,7 +230,7 @@ function PlexLink() {
                   <span className={s.itemTitle}>{server.name}</span>
                   {note && note !== 'Connecting…' && <Note tone="error">{note}</Note>}
                 </span>
-                <button type="button" className="btn btn-glass btn-compact" onClick={() => add(server)} disabled={added || note === 'Connecting…'}>
+                <button type="button" className="btn btn-secondary btn-compact" onClick={() => add(server)} disabled={added || note === 'Connecting…'}>
                   {added ? (
                     <>
                       <Icon name="check" size={16} /> Added
@@ -262,7 +259,7 @@ function PlexLink() {
           {state.kind === 'error' && <Note tone="error">{state.text}</Note>}
           <div className={s.actions}>
             {state.kind === 'waiting' ? (
-              <button type="button" className="btn btn-glass btn-compact" onClick={() => (controller.current?.abort(), setState({ kind: 'idle' }))}>
+              <button type="button" className="btn btn-secondary btn-compact" onClick={() => (controller.current?.abort(), setState({ kind: 'idle' }))}>
                 Cancel
               </button>
             ) : (
