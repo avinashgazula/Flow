@@ -35,3 +35,45 @@ export function pushRecent(list: string[], term: string, max = 10): string[] {
   if (t.length < minimumQuery) return list
   return [t, ...list.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, max)
 }
+
+// MARK: Arrow keys across results
+
+export interface Box {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+export type Direction = 'left' | 'right' | 'up' | 'down'
+
+/** Which box an arrow key moves to from box `from`, judged by where they are on screen, so a wrapped grid, a
+ *  list and a lone top result all walk the way they look. Left and right stay in the row the two share; up
+ *  and down go to the nearest row in that direction, then the nearest column. */
+export function neighbour(boxes: Box[], from: number, direction: Direction): number | undefined {
+  const cur = boxes[from]
+  if (!cur) return undefined
+  const centre = (b: Box) => (b.left + b.right) / 2
+  let best: number | undefined
+  let bestScore = Infinity
+  boxes.forEach((b, i) => {
+    if (i === from) return
+    const sharesRow = b.top < cur.bottom && b.bottom > cur.top
+    let score: number
+    if (direction === 'right' || direction === 'left') {
+      const gap = direction === 'right' ? b.left - cur.right : cur.left - b.right
+      if (!sharesRow || gap < -2) return
+      score = Math.abs(gap)
+    } else {
+      const gap = direction === 'down' ? b.top - cur.top : cur.top - b.top
+      // The same row (within a few pixels) is not above or below.
+      if (gap <= 4 || sharesRow) return
+      score = Math.round(gap / 8) * 10_000 + Math.abs(centre(b) - centre(cur))
+    }
+    if (score < bestScore) {
+      bestScore = score
+      best = i
+    }
+  })
+  return best
+}

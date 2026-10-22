@@ -2,20 +2,25 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Artwork } from '../../components/Artwork'
-import { markZoomSource, PosterCard, posterSizes } from '../../components/Cards'
+import { Plate } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
-import { Shelf } from '../../components/Shelf'
+import { PosterItem } from '../../components/TitleCards'
+import { markZoomSource } from '../../components/zoom'
 import { genreNames } from '../../lib/genres'
 import { prefetchDetail, q } from '../../lib/queries'
 import { library, mediaKey, useLibrary } from '../../lib/store/library'
+import { userLocale, useMinuteTick } from '../../lib/time'
 import type { SearchResult } from '../../lib/tmdb/types'
 import { StateView, errorMessage } from '../explore/Controls'
-import { groupResults, minimumQuery, topResult, type MediaResult, type PersonResult } from './logic'
+import { pickPrint } from '../home/logic'
+import { groupResults, minimumQuery, neighbour, topResult, type Direction, type MediaResult, type PersonResult } from './logic'
 import { recentSearches, useRecentSearches } from './recent'
 import s from './SearchScreen.module.css'
 
 /** How long typing has to pause before a search goes out. */
 const debounce = 200
+
+const arrows: Record<string, Direction> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }
 
 /** Search: one field, kept in the address, with results that update as you type without flashing.
  *  `/` or ⌘K focuses the field, Enter opens the best match, and the arrow keys walk the results. */
@@ -80,6 +85,8 @@ export function SearchScreen({ initial }: { initial: string }) {
     open(top ?? results.find((r) => r.kind === 'media') ?? results[0])
   })
 
+  const links = () => [...(resultsRef.current?.querySelectorAll<HTMLElement>('a[data-result], li > a') ?? [])]
+
   const onFieldKey = (e: ReactKeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -90,7 +97,7 @@ export function SearchScreen({ initial }: { initial: string }) {
         void navigate({ search: { q: text.trim() || undefined }, replace: true, resetScroll: false })
       } else open(top ?? results.find((r) => r.kind === 'media') ?? results[0])
     } else if (e.key === 'ArrowDown') {
-      const first = resultsRef.current?.querySelector<HTMLElement>('[data-nav-row] a')
+      const first = links()[0]
       if (first) {
         e.preventDefault()
         first.focus()
@@ -101,28 +108,24 @@ export function SearchScreen({ initial }: { initial: string }) {
     }
   }
 
-  // Left and right move along a row; up and down jump between rows, keeping the position.
+  // The arrow keys move to whatever is next in that direction on screen; up from the first row returns to the field.
   const onResultsKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
-    const rows = [...(resultsRef.current?.querySelectorAll<HTMLElement>('[data-nav-row]') ?? [])].map((row) => [...row.querySelectorAll<HTMLElement>('a')])
-    const r = rows.findIndex((row) => row.includes(document.activeElement as HTMLElement))
-    if (r < 0) return
-    const c = rows[r]!.indexOf(document.activeElement as HTMLElement)
-    let next: HTMLElement | undefined
-    if (e.key === 'ArrowLeft') next = rows[r]![c - 1]
-    else if (e.key === 'ArrowRight') next = rows[r]![c + 1]
-    else {
-      const row = rows[r + (e.key === 'ArrowDown' ? 1 : -1)]
-      if (!row && e.key === 'ArrowUp') {
-        e.preventDefault()
-        input.current?.focus()
-        return
-      }
-      next = row?.[Math.min(c, row.length - 1)]
-    }
-    if (next) {
+    const direction = arrows[e.key]
+    if (!direction) return
+    const all = links()
+    const from = all.indexOf(document.activeElement as HTMLElement)
+    if (from < 0) return
+    const next = neighbour(
+      all.map((el) => el.getBoundingClientRect()),
+      from,
+      direction,
+    )
+    if (next !== undefined) {
       e.preventDefault()
-      next.focus()
+      all[next]!.focus()
+    } else if (direction === 'up') {
+      e.preventDefault()
+      input.current?.focus()
     }
   }
 
@@ -149,7 +152,7 @@ export function SearchScreen({ initial }: { initial: string }) {
         {text ? (
           <button
             type="button"
-            className={s.clear}
+            className={`btn btn-quiet btn-circle btn-compact ${s.clear}`}
             aria-label="Clear Search"
             onClick={() => {
               setText('')
@@ -182,49 +185,61 @@ export function SearchScreen({ initial }: { initial: string }) {
             title="Search Failed"
             message={errorMessage(search.error)}
             action={
-              <button className="btn btn-glass" onClick={() => void search.refetch()}>
+              <button className="btn btn-secondary" onClick={() => void search.refetch()}>
                 Try Again
               </button>
             }
           />
         ) : search.isPending ? (
-          <div className={s.bleed}>
-            <Shelf title="Movies" loading />
-          </div>
+          <section aria-label="Searching" aria-busy="true">
+            <ul className={s.grid}>
+              {Array.from({ length: 7 }, (_, i) => (
+                <li key={i} className={s.ghost} aria-hidden="true" />
+              ))}
+            </ul>
+          </section>
         ) : results.length === 0 ? (
-          <StateView icon="search" title={`No Results for “${term.trim()}”`} message="Check the spelling, or try a title, a show or a person’s name." />
+          <StateView
+            title={`No Results for “${term.trim()}”`}
+            message="Check the spelling, or try a shorter title, a show’s name or a person’s. You can also browse a genre instead."
+            action={
+              <Link to="/explore" className="btn btn-secondary">
+                Browse Titles
+              </Link>
+            }
+          />
         ) : (
           <>
             {top && <TopResult item={top} />}
-            <div className={s.bleed}>
-              {groups.movies.length > 0 && (
-                <div data-nav-row="">
-                  <Shelf title="Movies">
-                    {groups.movies.map((m) => (
-                      <PosterCard key={m.id} item={m} />
-                    ))}
-                  </Shelf>
-                </div>
-              )}
-              {groups.shows.length > 0 && (
-                <div data-nav-row="">
-                  <Shelf title="TV Shows">
-                    {groups.shows.map((m) => (
-                      <PosterCard key={m.id} item={m} />
-                    ))}
-                  </Shelf>
-                </div>
-              )}
-              {groups.people.length > 0 && (
-                <div data-nav-row="">
-                  <Shelf title="People">
-                    {groups.people.map((p) => (
-                      <PersonCard key={p.id} person={p} />
-                    ))}
-                  </Shelf>
-                </div>
-              )}
-            </div>
+            {groups.movies.length > 0 && (
+              <Group title="Movies" count={groups.movies.length}>
+                {groups.movies.map((m) => (
+                  <PosterItem key={m.id} item={m} meta={m.year ? String(m.year) : undefined} sizes={gridSizes} />
+                ))}
+              </Group>
+            )}
+            {groups.shows.length > 0 && (
+              <Group title="TV Shows" count={groups.shows.length}>
+                {groups.shows.map((m) => (
+                  <PosterItem key={m.id} item={m} meta={m.year ? String(m.year) : undefined} sizes={gridSizes} />
+                ))}
+              </Group>
+            )}
+            {groups.people.length > 0 && (
+              <section className={s.group} aria-labelledby="people">
+                <header className={s.groupHead}>
+                  <h2 id="people" className={s.groupTitle}>
+                    People
+                  </h2>
+                  <span className={`${s.count} num`}>{groups.people.length}</span>
+                </header>
+                <ul className={s.people}>
+                  {groups.people.map((p) => (
+                    <PersonRow key={p.id} person={p} />
+                  ))}
+                </ul>
+              </section>
+            )}
           </>
         )}
       </div>
@@ -232,50 +247,72 @@ export function SearchScreen({ initial }: { initial: string }) {
   )
 }
 
-/** The best match, given room: poster beside the essentials and a way to play, like the TV app's top hit. */
-function TopResult({ item }: { item: MediaResult }) {
-  const inWatchlist = useLibrary((l) => l.watchlist.some((e) => e.key === mediaKey(item.type, item.id)))
-  const meta = [item.year, genreNames(item.genres, item.type)[0], item.type === 'movie' ? 'Movie' : 'Series'].filter(Boolean)
-  const link = { to: '/title/$type/$id', params: { type: item.type, id: item.id } } as const
+const gridSizes = '(max-width: 720px) 34vw, 180px'
+
+function Group({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+  const id = `group-${title.replace(/\s+/g, '-').toLowerCase()}`
   return (
-    <article className={s.top} data-nav-row="">
-      <Link {...link} className={s.topPoster} onPointerEnter={() => prefetchDetail(item)} onFocus={() => prefetchDetail(item)} onClick={markZoomSource} viewTransition aria-label={item.title}>
-        <Artwork zoom path={item.poster} kind="poster" alt="" sizes={posterSizes} className={s.topArt} fallback={item.title} />
-      </Link>
-      <div className={s.topText}>
-        <span className={s.eyebrow}>Top Result</span>
-        <Link {...link} className={s.topTitle} onPointerEnter={() => prefetchDetail(item)} tabIndex={-1}>
-          {item.title}
-        </Link>
-        <p className={s.topMeta}>
-          {item.rating ? (
-            <span className={s.rating}>
-              <Icon name="star" size={12} /> {item.rating.toFixed(1)}
-            </span>
-          ) : null}
-          {meta.join(' · ')}
-        </p>
-        {item.overview && <p className={s.topOverview}>{item.overview}</p>}
-        <div className={s.topActions}>
-          <Link {...link} search={{ play: true }} className="btn btn-primary btn-compact" onPointerEnter={() => prefetchDetail(item)}>
-            <Icon name="play" size={16} /> Play
-          </Link>
-          <button className="btn btn-glass btn-circle btn-compact" onClick={() => library.toggleWatchlist(item)} aria-pressed={inWatchlist} aria-label={inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}>
-            <Icon name={inWatchlist ? 'check' : 'plus'} size={18} strokeWidth={2.4} />
-          </button>
-        </div>
-      </div>
-    </article>
+    <section className={s.group} aria-labelledby={id}>
+      <header className={s.groupHead}>
+        <h2 id={id} className={s.groupTitle}>
+          {title}
+        </h2>
+        <span className={`${s.count} num`}>{count}</span>
+      </header>
+      <ul className={s.grid}>{children}</ul>
+    </section>
   )
 }
 
-function PersonCard({ person }: { person: PersonResult }) {
+/** The best match, given room: its frame with the runtime and rating, the essentials, and a way to play. */
+function TopResult({ item }: { item: MediaResult }) {
+  const now = useMinuteTick()
+  const inWatchlist = useLibrary((l) => l.watchlist.some((e) => e.key === mediaKey(item.type, item.id)))
+  const detail = useQuery(q.detail(item.type, item.id)).data
+  const known = detail && (detail.runtime || detail.seasons.length) ? detail : undefined
+  const meta = [item.year, genreNames(item.genres, item.type)[0], item.type === 'movie' ? 'Film' : 'Series'].filter(Boolean)
+  const link = { to: '/title/$type/$id', params: { type: item.type, id: item.id } } as const
   return (
-    <Link to="/person/$id" params={{ id: person.id }} className={s.person}>
-      <Artwork path={person.profile} kind="profile" alt="" sizes="128px" className={s.face} fallback={initials(person.name)} />
-      <span className={s.personName}>{person.name}</span>
-      <span className={s.personRole}>{person.knownFor[0] ?? person.department ?? ''}</span>
-    </Link>
+    <section className={s.group} aria-labelledby="top-result">
+      <h2 id="top-result" className={s.groupTitle}>
+        Top Result
+      </h2>
+      <article className={s.top}>
+        <Link {...link} data-result="" className={s.topPlate} onPointerEnter={() => prefetchDetail(item)} onFocus={() => prefetchDetail(item)} onClick={markZoomSource} viewTransition aria-label={`${item.title}, top result`}>
+          <Plate shape="poster" artPath={item.poster} sizes="160px" print={pickPrint(item, known, now, { locale: userLocale })} fallback={item.title} hideStrip />
+        </Link>
+        <div className={s.topText}>
+          <Link {...link} className={s.topTitle} onPointerEnter={() => prefetchDetail(item)} tabIndex={-1}>
+            {item.title}
+          </Link>
+          <p className={s.topMeta}>{meta.join(' · ')}</p>
+          {item.overview && <p className={s.topOverview}>{item.overview}</p>}
+          <div className={s.topActions}>
+            <Link {...link} search={{ play: true }} className="btn btn-primary" onPointerEnter={() => prefetchDetail(item)}>
+              <Icon name="play" size={16} /> Play
+            </Link>
+            <button className="btn btn-secondary btn-circle" onClick={() => library.toggleWatchlist(item)} aria-pressed={inWatchlist} aria-label={inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}>
+              <Icon name={inWatchlist ? 'check' : 'plus'} size={18} strokeWidth={2.4} />
+            </button>
+          </div>
+        </div>
+      </article>
+    </section>
+  )
+}
+
+/** A person: a portrait at one fixed size, the name, and what they're known for. */
+function PersonRow({ person }: { person: PersonResult }) {
+  return (
+    <li role="listitem">
+      <Link to="/person/$id" params={{ id: person.id }} className={s.person} data-result="">
+        <Artwork path={person.profile} kind="profile" alt="" sizes="56px" className={s.face} fallback={initials(person.name)} />
+        <span className={s.personText}>
+          <span className={s.personName}>{person.name}</span>
+          <span className={s.personRole}>{person.knownFor[0] ?? person.department ?? ''}</span>
+        </span>
+      </Link>
+    </li>
   )
 }
 
@@ -285,10 +322,16 @@ function Idle({ onPick }: { onPick: (term: string) => void }) {
   const trending = useQuery(q.trending('all'))
   return (
     <div className={s.idle}>
+      <p className={s.teach}>
+        Search finds films, series and people by name. Press <kbd className={s.key}>/</kbd> anywhere on this page to jump to the field, and Enter to open the best match.
+      </p>
+
       {recents.length > 0 && (
-        <section className={s.section}>
-          <header className={s.sectionHeader}>
-            <h2 className={s.sectionTitle}>Recent</h2>
+        <section className={s.group} aria-labelledby="recent">
+          <header className={s.groupHead}>
+            <h2 id="recent" className={s.groupTitle}>
+              Recent
+            </h2>
             <button className={s.textButton} onClick={() => recentSearches.clear()}>
               Clear
             </button>
@@ -300,7 +343,7 @@ function Idle({ onPick }: { onPick: (term: string) => void }) {
                   <Icon name="history" size={15} strokeWidth={2.2} /> {t}
                 </button>
                 <button className={s.recentRemove} onClick={() => recentSearches.forget(t)} aria-label={`Remove “${t}” from Recent`}>
-                  <Icon name="close" size={11} strokeWidth={3} />
+                  <Icon name="close" size={12} strokeWidth={2.6} />
                 </button>
               </li>
             ))}
@@ -308,43 +351,50 @@ function Idle({ onPick }: { onPick: (term: string) => void }) {
         </section>
       )}
 
-      <section className={s.section}>
-        <h2 className={s.sectionTitle}>Browse</h2>
-        <div className={s.browse}>
+      <section className={s.group} aria-labelledby="browse">
+        <h2 id="browse" className={s.groupTitle}>
+          Browse by Genre
+        </h2>
+        <ul className={s.index}>
           {categories.map((c) => (
-            <Link key={`${c.type}${c.genre}`} to="/explore" search={{ type: c.type, genre: c.genre }} className={s.tile} style={{ ['--hue' as string]: c.hue }}>
-              {c.title}
-            </Link>
+            <li key={`${c.type}${c.genre}`}>
+              <Link to="/explore" search={{ type: c.type, genre: c.genre }} className={s.indexRow}>
+                {c.title}
+                <Icon name="chevronRight" size={14} strokeWidth={2.6} />
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
 
-      <section className={s.section}>
-        <h2 className={s.sectionTitle}>Trending</h2>
+      <section className={s.group} aria-labelledby="trending">
+        <h2 id="trending" className={s.groupTitle}>
+          Trending
+        </h2>
         {trending.isError ? (
           <p className="muted">Couldn’t load what’s trending. Check your connection, then search above.</p>
         ) : (
-          <div className={s.grid}>
+          <ul className={s.grid} aria-busy={trending.isPending || undefined}>
             {trending.isPending
-              ? Array.from({ length: 12 }, (_, i) => <div key={i} className={s.ghost} />)
-              : trending.data.results.slice(0, 18).map((m) => <PosterCard key={`${m.type}${m.id}`} item={m} />)}
-          </div>
+              ? Array.from({ length: 12 }, (_, i) => <li key={i} className={s.ghost} aria-hidden="true" />)
+              : trending.data.results.slice(0, 18).map((m) => <PosterItem key={`${m.type}${m.id}`} item={m} meta={m.year ? String(m.year) : undefined} sizes={gridSizes} />)}
+          </ul>
         )}
       </section>
     </div>
   )
 }
 
-/** Genre tiles that open Explore, as BrowseGrid on the other platforms. Hues are degrees on the colour wheel. */
+/** Genres that open Explore, as plain index rows. */
 const categories = [
-  { title: 'Action', type: 'movie', genre: 28, hue: 7 },
-  { title: 'Comedy', type: 'movie', genre: 35, hue: 47 },
-  { title: 'Science Fiction', type: 'movie', genre: 878, hue: 209 },
-  { title: 'Drama', type: 'movie', genre: 18, hue: 270 },
-  { title: 'Horror', type: 'movie', genre: 27, hue: 353 },
-  { title: 'Animation', type: 'movie', genre: 16, hue: 119 },
-  { title: 'Documentary', type: 'movie', genre: 99, hue: 162 },
-  { title: 'Crime Series', type: 'show', genre: 80, hue: 238 },
+  { title: 'Action', type: 'movie', genre: 28 },
+  { title: 'Comedy', type: 'movie', genre: 35 },
+  { title: 'Science Fiction', type: 'movie', genre: 878 },
+  { title: 'Drama', type: 'movie', genre: 18 },
+  { title: 'Horror', type: 'movie', genre: 27 },
+  { title: 'Animation', type: 'movie', genre: 16 },
+  { title: 'Documentary', type: 'movie', genre: 99 },
+  { title: 'Crime Series', type: 'show', genre: 80 },
 ] as const
 
 const initials = (name: string) =>
