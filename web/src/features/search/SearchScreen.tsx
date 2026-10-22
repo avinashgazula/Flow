@@ -323,7 +323,11 @@ function Idle({ onPick }: { onPick: (term: string) => void }) {
   return (
     <div className={s.idle}>
       <p className={s.teach}>
-        Search finds films, series and people by name. Press <kbd className={s.key}>/</kbd> anywhere on this page to jump to the field, and Enter to open the best match.
+        Search finds films, series and people by name.
+        <span className={s.shortcut}>
+          {' '}
+          Press <kbd className={s.key}>/</kbd> anywhere on this page to jump to the field, and Enter to open the best match.
+        </span>
       </p>
 
       {recents.length > 0 && (

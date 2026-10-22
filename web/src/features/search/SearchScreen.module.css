@@ -18,7 +18,7 @@
 }
 .hint { position: absolute; right: 14px; top: 14px; }
 .key { vertical-align: 1px; }
-@media (hover: none) { .hint { display: none; } }
+@media (hover: none) { .hint, .shortcut { display: none; } }
 
 .results { margin-top: var(--space-l); min-height: 50vh; transition: opacity var(--dur-state) ease; }
 /* Results for the previous words stay up while the new ones load, a little quieter. */
@@ -29,6 +29,7 @@
 .group:first-child { margin-top: 0; }
 .groupHead { display: flex; align-items: baseline; gap: var(--space-s); margin-bottom: var(--space-s); }
 .groupTitle { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; }
+.group > .groupTitle { margin-bottom: var(--space-s); }
 .count { font-size: var(--fs-small); color: var(--ink-3); }
 .textButton { margin-left: auto; font-size: var(--fs-small); color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
 .textButton:hover { color: var(--paper); text-decoration-color: var(--paper); }
