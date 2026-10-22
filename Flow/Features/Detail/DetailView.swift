@@ -34,6 +34,7 @@ struct DetailView: View {
     private var wide: Bool { Platform.isTV || width >= 820 }
 
     var body: some View {
+        let _ = ScreenshotTour.logPass("DetailView body width=\(width) bar=\(barBottom) collapsed=\(titleCollapsed)")
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.xl) {
                 topInset
@@ -54,10 +55,18 @@ struct DetailView: View {
         .scrollIndicators(.hidden)
         .detailTextSize(general.detailTextSize)
         .background(AmbientBackground(url: nil))
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { new in
+            ScreenshotTour.logPass("DetailView width \(width) -> \(new)")
+            if abs(new - width) > 0.5 { width = new }
+        }
         #if os(iOS)
         .ignoresSafeArea(edges: .top)
-        .background { Color.clear.onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { if $0 > 0 { barBottom = $0 } } }
+        .background {
+            Color.clear.onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { new in
+                ScreenshotTour.logPass("DetailView bar \(barBottom) -> \(new)")
+                if new > 0, abs(new - barBottom) > 0.5 { barBottom = new }
+            }
+        }
         #elseif os(tvOS)
         .ignoresSafeArea(edges: [.top, .horizontal])
         #endif
@@ -142,7 +151,15 @@ struct DetailView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                     #if os(iOS)
-                    .onGeometryChange(for: Bool.self) { [barBottom] in $0.size.height > 0 && $0.frame(in: .global).maxY < barBottom } action: { collapsed in
+                    // With a margin each way, so the bar changing as the title collapses can't flip it straight back.
+                    .onGeometryChange(for: Bool.self) { [barBottom, titleCollapsed] proxy in
+                        guard proxy.size.height > 0 else { return false }
+                        let bottom = proxy.frame(in: .global).maxY
+                        if bottom < barBottom - 4 { return true }
+                        if bottom > barBottom + 12 { return false }
+                        return titleCollapsed
+                    } action: { collapsed in
+                        ScreenshotTour.logPass("DetailView collapsed -> \(collapsed)")
                         withAnimation(Theme.Motion.fade) { titleCollapsed = collapsed }
                     }
                     #endif
