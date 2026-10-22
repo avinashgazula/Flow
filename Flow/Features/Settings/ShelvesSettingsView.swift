@@ -51,11 +51,6 @@ struct ShelvesSettingsView: View {
             }
 
             Section {
-                #if !os(tvOS)
-                Picker("Style", selection: $model.settings.general.heroStyle) {
-                    ForEach(HeroStyle.allCases) { Text($0.title).tag($0) }
-                }
-                #endif
                 Picker("Primary Source", selection: $model.settings.general.heroSource) {
                     ForEach(HeroSource.allCases) { Text($0.title).tag($0) }
                 }
@@ -64,9 +59,9 @@ struct ShelvesSettingsView: View {
                     ForEach(HeroSource.allCases) { Text($0.title).tag(HeroSource?.some($0)) }
                 }
             } header: {
-                Text("Hero")
+                Text("Top Pick")
             } footer: {
-                Text("Card shows a rounded carousel with peeking neighbours. Fullscreen renders the backdrop edge-to-edge.")
+                Text("When nothing is in progress, Home leads with the first title from these sources.")
             }
 
             Section {

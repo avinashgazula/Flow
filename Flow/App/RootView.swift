@@ -206,8 +206,8 @@ struct MacShell: View {
         HStack(spacing: 0) {
             sidebar
                 .frame(width: 210)
-                .background(.regularMaterial)
-            Divider().opacity(0.4)
+                .background(Theme.Palette.panel)
+            Divider().overlay(Theme.Palette.line)
             NavigationStack(path: model.path(for: model.selectedTab)) {
                 ZoomNamespaceProvider {
                     TabShell().screen(for: model.selectedTab)
@@ -230,12 +230,14 @@ struct MacShell: View {
                 .padding(.bottom, 14)
             ForEach(model.settings.general.orderedTabs) { tab in
                 Button { model.selectedTab = tab } label: {
+                    // The current section is the one place the sidebar uses the spot colour.
                     Label(tab.title, systemImage: tab.systemImage)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 13, weight: model.selectedTab == tab ? .semibold : .medium))
+                        .foregroundStyle(model.selectedTab == tab ? Theme.Palette.spot : Theme.Palette.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
-                        .background(model.selectedTab == tab ? Color.white.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .background(model.selectedTab == tab ? Theme.Palette.control : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

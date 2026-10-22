@@ -189,7 +189,8 @@ enum BundleKeys {
 extension AccentColorChoice {
     var color: Color {
         switch self {
-        case .white: return .white
+        // White was the old default; the programme's own spot pink takes its place as Flow's accent.
+        case .white: return Theme.Palette.spot
         case .blue: return .blue
         case .red: return .red
         case .orange: return .orange
@@ -202,18 +203,11 @@ extension AccentColorChoice {
 }
 
 extension AccentColorChoice {
-    /// Switches can't use a white accent: their knob is white. They turn green instead, as in Settings.
-    var switchColor: Color { self == .white ? .green : color }
+    /// Switches turn on in the accent.
+    var switchColor: Color { color }
 
-    /// The app-wide tint. On tvOS a white tint would make focused toolbar buttons white on white,
-    /// so the system's own focus colours are used instead.
-    var tint: Color? {
-        #if os(tvOS)
-        return self == .white ? nil : color
-        #else
-        return color
-        #endif
-    }
+    /// The app-wide tint: system controls, tab selection and toggles take it.
+    var tint: Color? { color }
 }
 
 #if os(iOS)

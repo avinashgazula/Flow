@@ -24,6 +24,7 @@ struct SectionHeader<Destination: Hashable>: View {
             Spacer(minLength: 0)
         }
         .font(Theme.Typeface.sectionTitle)
+        .foregroundStyle(Theme.Palette.text)
         .displayTracking()
         .padding(.horizontal, Theme.Space.gutter)
         .accessibilityAddTraits(.isHeader)
@@ -104,7 +105,7 @@ private struct PagingArrows<ID: Hashable>: ViewModifier {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.Palette.text)
                 .frame(width: 36, height: 36)
                 .flowGlass(Circle(), interactive: true)
                 .contentShape(Circle())
@@ -361,283 +362,6 @@ struct ContinueWatchingShelf: View {
     }
 }
 
-// MARK: - Hero
-
-/// The home hero: a rounded carousel with its neighbours peeking in, or the backdrop edge to edge,
-/// per Settings. Reports the visible title so Home can tint itself with its artwork.
-struct HeroCarousel: View {
-    @Binding var current: MediaItem?
-    @Environment(AppModel.self) private var model
-    @State private var items: [MediaItem] = []
-    @State private var details: [String: MediaItem] = [:]
-    @State private var currentID: String?
-    @State private var interacting = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    /// Apple TV keeps the full-bleed hero: a card would sit under the tab bar, as the TV app never does.
-    private var isCard: Bool { !Platform.isTV && model.settings.general.heroStyle == .card }
-
-    var body: some View {
-        let stretches = !isCard
-        Group {
-            if items.isEmpty {
-                placeholder
-            } else if isCard {
-                cardPager
-            } else {
-                fullscreenPager
-            }
-        }
-        .visualEffect { content, proxy in
-            // Stretch when pulled down; drift slower than the page when scrolled up. Full-bleed only: a card stays put.
-            let y = proxy.frame(in: .scrollView(axis: .vertical)).minY
-            return content
-                .scaleEffect(stretches && y > 0 ? 1 + y / max(proxy.size.height, 1) : 1, anchor: .bottom)
-                .offset(y: stretches && y < 0 ? -y * 0.35 : 0)
-        }
-        .task(id: "\(model.contentVersion)-\(model.settings.general.heroSource.rawValue)-\(model.settings.general.heroSecondarySource?.rawValue ?? "")") {
-            let loaded = await model.heroItems()
-            withAnimation(Theme.Motion.fade) { items = loaded }
-            if currentID == nil || !loaded.contains(where: { $0.id == currentID }) { currentID = loaded.first?.id }
-        }
-        // Restarts with every page, swiped or automatic, so the indicator and the timer agree.
-        .task(id: "\(items.count)-\(currentID ?? "")") { await autoAdvance() }
-        .onChange(of: currentID) { _, id in current = items.first { $0.id == id } }
-    }
-
-    @ViewBuilder
-    private var placeholder: some View {
-        if isCard {
-            RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).fill(Theme.Palette.surface)
-                .frame(height: cardHeight)
-                .padding(.horizontal, Theme.Space.gutter)
-                .padding(.top, cardTopInset)
-                .shimmering()
-        } else {
-            Rectangle().fill(Theme.Palette.surface)
-                .frame(height: height)
-                .shimmering()
-        }
-    }
-
-    private var fullscreenPager: some View {
-        ZStack(alignment: Platform.isPhone ? .bottom : .bottomTrailing) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 0) {
-                    ForEach(items) { item in
-                        HeroPage(item: details[item.id] ?? item, height: height)
-                            .containerRelativeFrame(.horizontal)
-                            .id(item.id)
-                            .task { await loadDetail(item) }
-                    }
-                }
-                .scrollTargetLayout()
-            }
-            .scrollTargetBehavior(.paging)
-            .scrollPosition(id: $currentID)
-            .onScrollPhaseChangeIfAvailable { interacting = $0 }
-            PageDots(count: items.count, index: items.firstIndex { $0.id == currentID } ?? 0, interval: advanceInterval)
-                .padding(.bottom, Platform.isPhone ? 14 : Theme.Space.l)
-                .padding(.trailing, Platform.isPhone ? 0 : Theme.Space.gutter)
-        }
-        .frame(height: height)
-    }
-
-    /// The centred card snaps in place, so the ones either side show their edges.
-    private var cardPager: some View {
-        VStack(spacing: Theme.Space.s) {
-            GeometryReader { proxy in
-                let cardWidth = min(proxy.size.width * (Platform.isPhone ? 0.86 : 0.78), 900 * Theme.scale)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: Platform.isTV ? 40 : 12) {
-                        ForEach(items) { item in
-                            HeroPage(item: details[item.id] ?? item, height: cardHeight, card: true)
-                                .frame(width: cardWidth)
-                                .id(item.id)
-                                .task { await loadDetail(item) }
-                        }
-                    }
-                    .scrollTargetLayout()
-                }
-                .contentMargins(.horizontal, max(0, (proxy.size.width - cardWidth) / 2), for: .scrollContent)
-                .scrollTargetBehavior(.viewAligned)
-                .scrollClipDisabled()
-                .scrollPosition(id: $currentID, anchor: .center)
-                .onScrollPhaseChangeIfAvailable { interacting = $0 }
-            }
-            .frame(height: cardHeight)
-            PageDots(count: items.count, index: items.firstIndex { $0.id == currentID } ?? 0, interval: advanceInterval)
-        }
-        .padding(.top, cardTopInset)
-    }
-
-    private var height: CGFloat {
-        #if os(tvOS)
-        880
-        #elseif os(macOS)
-        560
-        #else
-        Platform.isPhone ? 620 : 600
-        #endif
-    }
-
-    private var cardHeight: CGFloat {
-        #if os(tvOS)
-        660
-        #elseif os(macOS)
-        420
-        #else
-        Platform.isPhone ? 470 : 440
-        #endif
-    }
-
-    /// Clears the status bar and the settings button, since Home scrolls under them.
-    private var cardTopInset: CGFloat {
-        #if os(tvOS)
-        110
-        #elseif os(macOS)
-        12
-        #else
-        // Below the settings button, which sits at the top right over the peeking card on iPad.
-        Platform.isPhone ? 112 : 132
-        #endif
-    }
-
-    private func loadDetail(_ item: MediaItem) async {
-        guard details[item.id] == nil, let catalog = model.catalog, let id = item.ids.tmdb,
-              let detail = try? await catalog.details(item.type, id: id) else { return }
-        details[item.id] = detail.item
-    }
-
-    /// Seconds each title stays before the next slides in; nil when the hero doesn't move on by itself.
-    private var advanceInterval: TimeInterval? {
-        model.settings.general.heroAutoAdvance && !reduceMotion && items.count > 1 ? 8 : nil
-    }
-
-    private func autoAdvance() async {
-        guard let interval = advanceInterval else { return }
-        while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-            // Someone is swiping: give them another round.
-            guard !Task.isCancelled, !interacting else { continue }
-            let index = items.firstIndex { $0.id == currentID } ?? 0
-            withAnimation(Theme.Motion.gentle) { currentID = items[(index + 1) % items.count].id }
-            return
-        }
-    }
-}
-
-private struct HeroPage: View {
-    let item: MediaItem
-    let height: CGFloat
-    /// Rounded and inset, for the card carousel; otherwise the page runs edge to edge.
-    var card = false
-    @Environment(AppModel.self) private var model
-
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous) }
-
-    @ViewBuilder
-    var body: some View {
-        if card {
-            page.clipShape(shape).hairline(shape).artworkShadow(0.6)
-        } else {
-            page
-        }
-    }
-
-    private var page: some View {
-        ZStack(alignment: Platform.isPhone ? .bottom : .bottomLeading) {
-            Button { model.navigate(to: .detail(item, zoom: "hero-\(item.id)")) } label: {
-                RemoteImage(url: artworkURL, maxPixel: Platform.isPhone ? 900 : 1920, fallbackTitle: item.title)
-                    .frame(height: height)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-                    .zoomSource("hero-\(item.id)")
-            }
-            .buttonStyle(.plain)
-            #if os(tvOS)
-            .focusable(false)
-            #endif
-            .accessibilityLabel("\(item.title), details")
-
-            scrim.allowsHitTesting(false)
-
-            VStack(alignment: Platform.isPhone ? .center : .leading, spacing: Theme.Space.s) {
-                LogoOrTitle(logoPath: item.logoPath, title: item.title, maxHeight: Platform.isTV ? 170 : (Platform.isPhone ? 96 : 120),
-                            alignment: Platform.isPhone ? .center : .leading)
-                    .frame(maxWidth: Platform.isPhone ? 300 : 480, alignment: Platform.isPhone ? .center : .leading)
-                MetadataLine(item: item, certification: item.certification, showType: true)
-                if !Platform.isPhone, let overview = item.overview, !overview.isEmpty {
-                    Text(overview)
-                        .font(Theme.Typeface.body)
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                        .lineLimit(3)
-                        .frame(maxWidth: 560 * Theme.scale, alignment: .leading)
-                }
-                HeroActions(item: item)
-                    .padding(.top, Theme.Space.xs)
-            }
-            .padding(.horizontal, card ? Theme.Space.m : Theme.Space.gutter)
-            .padding(.bottom, card ? Theme.Space.l : (Platform.isPhone ? 44 : Theme.Space.xxl))
-            // The artwork has a fixed height, so text over it grows only so far; everything it
-            // says is also on the detail page, which follows the full size.
-            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-        }
-        .frame(height: height)
-    }
-
-    private var artworkURL: URL? {
-        Platform.isPhone ? TMDBImage.url(item.heroPosterPath, size: .original) : TMDBImage.url(item.backdropPath, size: .original)
-    }
-
-    private var scrim: some View {
-        ZStack {
-            LinearGradient(stops: [.init(color: .clear, location: 0.35), .init(color: .black.opacity(0.55), location: 0.7), .init(color: .black, location: 1)],
-                           startPoint: .top, endPoint: .bottom)
-            if !Platform.isPhone {
-                // Reaches across the text column, so the overview stays readable over bright skies.
-                LinearGradient(stops: [.init(color: .black.opacity(0.75), location: 0), .init(color: .black.opacity(0.45), location: 0.4),
-                                       .init(color: .clear, location: 0.75)],
-                               startPoint: .leading, endPoint: .trailing)
-            }
-            if !card {
-                // Keeps the status bar legible over bright posters.
-                LinearGradient(colors: [.black.opacity(0.45), .clear], startPoint: .top, endPoint: .init(x: 0.5, y: 0.18))
-            }
-        }
-    }
-}
-
-private struct HeroActions: View {
-    let item: MediaItem
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        GlassGroup(spacing: 10) {
-            HStack(spacing: 10) {
-                Button { Task { await model.play(item) } } label: {
-                    Label("Play", systemImage: "play.fill").labelStyle(.titleAndIcon)
-                        .frame(minWidth: Platform.isPhone ? 150 : 140)
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                Button { Task { await model.toggleWatchlist(item) } } label: {
-                    Image(systemName: model.isWatchlisted(item) ? "checkmark" : "plus")
-                        .contentTransition(.symbolEffect(.replace))
-                }
-                .buttonStyle(GlassButtonStyle(circle: true))
-                .accessibilityLabel(model.isWatchlisted(item) ? "Remove from Watchlist" : "Add to Watchlist")
-                #if os(tvOS)
-                // The card's image isn't focusable here, so this is the remote's way to the detail page.
-                // Everywhere else tapping the card opens it.
-                Button { model.navigate(to: .detail(item)) } label: { Image(systemName: "info") }
-                    .buttonStyle(GlassButtonStyle(circle: true))
-                    .accessibilityLabel("Details")
-                #endif
-            }
-        }
-    }
-}
-
 /// "★ 7.3 · 2026 · Horror, Science Fiction · 18A · Movie"
 struct MetadataLine: View {
     let item: MediaItem
@@ -652,90 +376,24 @@ struct MetadataLine: View {
             row(genres: 1)
             row(genres: 0)
         }
-        .font(.system(.footnote, weight: .medium))
-        .foregroundStyle(.white.opacity(0.85))
+        .font(.system(.subheadline).monospacedDigit())
+        .foregroundStyle(Theme.Palette.textSecondary)
         .lineLimit(1)
     }
 
+    /// Plain words in one line: no star, no outlined rating, no type pill.
     private func row(genres count: Int) -> some View {
+        var parts: [String] = []
+        if showRating, let vote = item.voteAverage, vote > 0 { parts.append("TMDB " + String(format: "%.1f", vote)) }
+        if let year = item.year { parts.append(String(year)) }
+        if let runtime = item.runtimeMinutes, runtime > 0, !showType { parts.append(Programme.duration(minutes: runtime)) }
         let genres = item.genres.prefix(count).map(\.name).joined(separator: ", ")
-        return HStack(spacing: 7) {
-            if showRating, let vote = item.voteAverage, vote > 0 {
-                HStack(spacing: 3) {
-                    Image(systemName: "star.fill").foregroundStyle(Theme.Palette.gold).imageScale(.small)
-                    Text(String(format: "%.1f", vote))
-                }
-                dot
-            }
-            if let year = item.year { Text(String(year)); dot }
-            if let runtime = item.runtimeMinutes, runtime > 0, !showType { Text(TimeFormat.runtime(runtime)); dot }
-            if !genres.isEmpty { Text(genres) }
-            if let certification, !certification.isEmpty {
-                Text(certification)
-                    .font(.system(size: 11 * Theme.scale, weight: .bold))
-                    .padding(.horizontal, 5).padding(.vertical, 1)
-                    .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(.white.opacity(0.6), lineWidth: 1))
-            }
-            if showType {
-                Text(item.type == .movie ? "Movie" : "Series")
-                    .font(.system(.caption2, weight: .semibold))
-                    .padding(.horizontal, 7).padding(.vertical, 2)
-                    .background(.white.opacity(0.14), in: Capsule())
-            }
-        }
+        if !genres.isEmpty { parts.append(genres) }
+        if let certification, !certification.isEmpty { parts.append(certification) }
+        if showType { parts.append(item.type == .movie ? "Movie" : "Series") }
         // Measured at full width so ViewThatFits can tell; the last choice may still truncate if it must.
-        .fixedSize(horizontal: count > 0, vertical: false)
-    }
-
-    private var dot: some View { Text("·").foregroundStyle(Theme.Palette.textTertiary) }
-}
-
-struct PageDots: View {
-    let count: Int
-    let index: Int
-    /// With auto-advance on, the current page's capsule fills over this many seconds, so you can see
-    /// the next title coming instead of being surprised by it.
-    var interval: TimeInterval?
-    @State private var fill: CGFloat = 0
-
-    var body: some View {
-        HStack(spacing: 6 * Theme.scale) {
-            ForEach(0..<count, id: \.self) { i in
-                if i == index {
-                    Capsule()
-                        .fill(Color.white.opacity(interval == nil ? 1 : 0.32))
-                        .overlay(alignment: .leading) {
-                            if interval != nil {
-                                GeometryReader { proxy in Capsule().fill(.white).frame(width: proxy.size.width * fill) }
-                            }
-                        }
-                        .frame(width: (interval == nil ? 18 : 26) * Theme.scale, height: 6 * Theme.scale)
-                } else {
-                    Capsule()
-                        .fill(Color.white.opacity(0.32))
-                        .frame(width: 6 * Theme.scale, height: 6 * Theme.scale)
-                }
-            }
-        }
-        .padding(.horizontal, 8).padding(.vertical, 6)
-        .animation(Theme.Motion.snappy, value: index)
-        .onAppear(perform: restart)
-        .onChange(of: index) { _, _ in restart() }
-        .onChange(of: interval) { _, _ in restart() }
-        .accessibilityElement()
-        .accessibilityLabel("Page \(index + 1) of \(count)")
-    }
-
-    private func restart() {
-        var reset = Transaction()
-        reset.disablesAnimations = true
-        withTransaction(reset) { fill = 0 }
-        guard let interval else { return }
-        // A beat after the reset, or the two changes merge and the capsule never empties.
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 60_000_000)
-            withAnimation(.linear(duration: max(0.1, interval - 0.06))) { fill = 1 }
-        }
+        return Text(parts.joined(separator: " · "))
+            .fixedSize(horizontal: count > 0, vertical: false)
     }
 }
 
@@ -778,8 +436,9 @@ struct ToastView: View {
             .font(.system(.subheadline, weight: .semibold))
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
-            .flowGlass(Capsule())
-            .shadow(color: .black.opacity(0.3), radius: 16, y: 6)
+            .foregroundStyle(Theme.Palette.text)
+            .flowGlass(Capsule(), tint: Theme.Palette.panel)
+            .overlay(Capsule().strokeBorder(Theme.Palette.lineStrong, lineWidth: 1))
             .transition(.move(edge: .top).combined(with: .opacity))
     }
 }

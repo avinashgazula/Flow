@@ -78,7 +78,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
     /// Words that make a page show up in Search Settings.
     var keywords: String {
         switch self {
-        case .general: return "accent color start tab opening tab tab order app icon light dark notifications episodes matches poster titles hero haptics specials season spoilers blur episodes left remaining"
+        case .general: return "accent color start tab opening tab tab order app icon light dark notifications episodes matches poster titles hero top pick lead haptics specials season spoilers blur episodes left remaining"
         case .account: return "trakt simkl mdblist publicmetadb tracking sync interval watchlist favourites sign in"
         case .shelves: return "home rows discover lists reorder"
         case .mediaServers: return "jellyfin emby plex server badge artwork"
