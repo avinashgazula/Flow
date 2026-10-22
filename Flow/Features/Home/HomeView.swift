@@ -361,8 +361,14 @@ struct UpNextCell: View {
     let item: MediaItem
     let width: CGFloat?
     @Environment(AppModel.self) private var model
+    /// iOS 27 asks before a removal; earlier systems remove straight away.
+    @State private var removing: ContinueWatchingBuilder.Entry?
 
     private var minutes: Int? { Reel.minutesLeft(progress: entry.progress, runtimeMinutes: item.runtimeMinutes) }
+
+    private func requestRemoval() {
+        if ItemDialogs.available { removing = entry } else { Task { await model.removeFromContinueWatching(entry) } }
+    }
 
     private var strip: EdgePrint {
         let lead = entry.episode.map { ["S\($0.season) E\($0.episode)"] } ?? []
@@ -390,9 +396,10 @@ struct UpNextCell: View {
             Button { Task { await model.setWatched(item, episodes: entry.episode.map { [$0] }, watched: true) } } label: {
                 Label("Mark as Watched", systemImage: "checkmark.circle")
             }
-            Button(role: .destructive) {
-                Task { await model.removeFromContinueWatching(entry) }
-            } label: { Label("Remove from Continue Watching", systemImage: "xmark.circle") }
+            Button(role: .destructive) { requestRemoval() } label: { Label("Remove from Continue Watching", systemImage: "xmark.circle") }
+        }
+        .flowConfirmationDialog("Remove from Continue Watching?", item: $removing) { entry in
+            Button("Remove", role: .destructive) { Task { await model.removeFromContinueWatching(entry) } }
         }
         // iOS 27: swipe the card for the same two quick actions.
         .flowSwipeActions {
@@ -400,9 +407,7 @@ struct UpNextCell: View {
                 Label("Watched", systemImage: "checkmark.circle")
             }
             .tint(Theme.Palette.stock)
-            Button(role: .destructive) {
-                Task { await model.removeFromContinueWatching(entry) }
-            } label: { Label("Remove", systemImage: "xmark.circle") }
+            Button(role: .destructive) { requestRemoval() } label: { Label("Remove", systemImage: "xmark.circle") }
         }
     }
 

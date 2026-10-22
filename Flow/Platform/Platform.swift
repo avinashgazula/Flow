@@ -425,6 +425,33 @@ private struct InactiveWindowDimming: ViewModifier {
 }
 #endif
 
+/// Whether this system asks "Remove?" with an item-bound confirmation dialog (iOS 27); earlier systems remove straight away.
+enum ItemDialogs {
+    static var available: Bool {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *) { return true }
+        #endif
+        return false
+    }
+}
+
+extension View {
+    /// iOS 27: a confirmation dialog bound to the item it is about; nothing earlier (callers check `ItemDialogs.available`).
+    @ViewBuilder
+    func flowConfirmationDialog<Item: Identifiable, Actions: View>(_ title: String, item: Binding<Item?>,
+                                                                   @ViewBuilder actions: @escaping (Item) -> Actions) -> some View {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *) {
+            self.confirmationDialog(Text(title), item: item) { entry in actions(entry) }
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+}
+
 /// The toolbar's one always-visible action: Settings, pinned to the trailing edge on iOS 27, a primary action before.
 struct SettingsToolbarItem: ToolbarContent {
     let action: () -> Void

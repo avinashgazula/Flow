@@ -261,7 +261,7 @@ struct LibraryListView: View {
                 } else if filtered.isEmpty {
                     ContentUnavailableView("Nothing Here Yet", systemImage: "tray")
                 } else {
-                    PosterGrid(items: filtered)
+                    grid
                 }
             }
             .padding(.vertical)
@@ -286,11 +286,31 @@ struct LibraryListView: View {
 
     private static let firstBatch = 24
 
+    /// The watchlist can be rearranged on iOS 27 (drag a poster); every other list, and earlier systems, are a plain grid.
+    @ViewBuilder
+    private var grid: some View {
+        #if os(iOS) && compiler(>=6.4)
+        if #available(iOS 27.0, *), list == .watchlist, filter == nil {
+            ReorderableWatchlistGrid(items: $items) { moving, target in
+                let current = items.compactMap(\.key)
+                let arranged = WatchlistOrder.moving(moving, before: target, in: current)
+                model.watchlistOrder = arranged
+                let byKey = Dictionary(items.compactMap { item in item.key.map { ($0, item) } }, uniquingKeysWith: { first, _ in first })
+                withAnimation(Theme.Motion.fade) { items = arranged.compactMap { byKey[$0] } }
+            }
+        } else {
+            PosterGrid(items: filtered)
+        }
+        #else
+        PosterGrid(items: filtered)
+        #endif
+    }
+
     private var filtered: [MediaItem] { filter.map { t in items.filter { $0.type == t } } ?? items }
 
     private var keys: [MediaKey] {
         switch list {
-        case .watchlist: return model.watchlistKeys
+        case .watchlist: return WatchlistOrder.applying(model.watchlistOrder, to: model.watchlistKeys)
         case .favourites: return model.favouriteKeys
         case .continueWatching: return model.continueWatching.map(\.key)
         case .history: return model.watchedKeys
@@ -328,3 +348,38 @@ struct CollectionView: View {
         }
     }
 }
+
+extension AppModel {
+    /// The order the viewer arranged their watchlist in, kept on this device and laid over the tracker's list.
+    var watchlistOrder: [MediaKey] {
+        get { (UserDefaults.standard.stringArray(forKey: "flow.watchlistOrder") ?? []).compactMap(MediaKey.init(string:)) }
+        set { UserDefaults.standard.set(newValue.map(\.description), forKey: "flow.watchlistOrder") }
+    }
+}
+
+#if os(iOS) && compiler(>=6.4)
+/// iOS 27: the watchlist's posters can be lifted and dropped into a new place.
+@available(iOS 27.0, *)
+private struct ReorderableWatchlistGrid: View {
+    @Binding var items: [MediaItem]
+    /// The keys being moved, and the one they land before (nil for the end).
+    let onMove: ([MediaKey], MediaKey?) -> Void
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: Platform.posterWidth, maximum: Platform.posterWidth * 1.35), spacing: 14, alignment: .top)], spacing: 22) {
+            ForEach(items) { item in
+                PosterCardFlexible(item: item, context: "watchlist")
+            }
+            .reorderable()
+        }
+        .padding(.horizontal, Theme.Space.gutter)
+        .reorderContainer(for: MediaItem.self) { difference in
+            let moving = difference.sources.compactMap(MediaKey.init(string:))
+            switch difference.destination.position {
+            case .before(let id): onMove(moving, MediaKey(string: id))
+            case .end: onMove(moving, nil)
+            }
+        }
+    }
+}
+#endif
