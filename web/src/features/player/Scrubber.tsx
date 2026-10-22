@@ -5,7 +5,7 @@ import { clock } from './format'
 import { SeekPreview, type SeekPreviewHandle } from './SeekPreview'
 import s from './Controls.module.css'
 
-/** The scrubber is an edge strip: a 4 px track (buffered, then played in yellow) with the timecode, the
+/** The scrubber is an edge strip: a row of perforations as the track (buffered, then played in yellow) with the timecode, the
  *  time left and when it would end in edge print under it. It paints itself from the
  *  video on each animation frame while the controls show, writing straight to the DOM, so playback
  *  never re-renders React. Over the bar (and while dragging) a small frame shows where you would land

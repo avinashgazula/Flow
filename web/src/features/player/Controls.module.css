@@ -1,6 +1,6 @@
 /* The player's chrome. Flat: paper icons on the picture, a warm-black scrim only where controls sit, the
    transport on ink circles, panels and notices on base-2 at 94%. No blur. The scrubber is an edge strip:
-   a 4 px track on the strip's band, with the timecode and what's left in edge print under it.
+   a row of perforations on the strip's band (the track), with the timecode and what's left in edge print under it.
    Colours and sizes come from the tokens; --margin, --panel and --ink are set on the player's root. */
 
 .controls {
@@ -175,10 +175,16 @@
   left: 0;
   right: 0;
   top: 50%;
-  height: 4px;
+  height: 9px;
   transform: translateY(-50%);
-  border-radius: 2px;
+  /* The track is a row of perforations, the same hole as on every strip (7 by 9 on an 11 px pitch, the pitch
+     stretched a hair so the row ends on a whole hole). Read-ahead and played fill the holes. The 26 px
+     track around it is the hit area, so seeking stays as precise and as easy to hit as a plain bar. */
   background: var(--base-4);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E") 0 0 / 11px 9px round no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E") 0 0 / 11px 9px round no-repeat;
+  -webkit-mask-repeat: round no-repeat;
+  mask-repeat: round no-repeat;
   overflow: hidden;
 }
 .buffered, .played {
