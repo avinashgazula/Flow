@@ -73,7 +73,7 @@ struct HomeView: View {
             } else {
                 GeometryReader { proxy in
                     ScrollView {
-                        page(wide: Self.splits(width: proxy.size.width))
+                        page(wide: Self.splits(width: proxy.size.width), width: proxy.size.width)
                     }
                     .scrollIndicators(.hidden)
                     .refreshable { await model.refreshLibrary(force: true) }
@@ -123,6 +123,9 @@ struct HomeView: View {
     private static func splits(width: CGFloat) -> Bool {
         #if os(tvOS)
         return true
+        #elseif os(macOS)
+        // A Mac window is wide even when it is not big: the lead and Up Next share it from here.
+        return width >= 760
         #else
         return width >= 900
         #endif
@@ -138,16 +141,23 @@ struct HomeView: View {
         #endif
     }
 
-    private func page(wide: Bool) -> some View {
+    /// The lead takes about 55% of a wide page, never more than 760 pt, so a big window doesn't blow it up.
+    /// Apple TV fixes it at 700 so its buttons stay on the first screen.
+    private func leadWidth(in width: CGFloat) -> CGFloat {
+        if Platform.isTV { return 700 }
+        let available = width - Theme.Space.gutter * 2 - Theme.Space.xl
+        return min(760, max(320, available * 0.55))
+    }
+
+    private func page(wide: Bool, width: CGFloat) -> some View {
         LazyVStack(alignment: .leading, spacing: Theme.Space.section) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 header
                 if wide {
                     HStack(alignment: .top, spacing: Theme.Space.xl) {
                         if let lead {
-                            // On Apple TV the lead is a fixed width so its buttons stay on the first screen.
                             LeadBlock(lead: lead)
-                                .frame(maxWidth: Platform.isTV ? 700 : .infinity, alignment: .topLeading)
+                                .frame(width: leadWidth(in: width), alignment: .topLeading)
                         }
                         if showsUpNext {
                             UpNextSection(leadEntryID: lead?.entryID, grid: true)
@@ -328,7 +338,8 @@ private struct UpNextSection: View {
                 SectionHeader("Up Next", route: .library(.continueWatching))
                     .padding(.horizontal, grid ? -Theme.Space.gutter : 0)
                 if grid {
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.m, alignment: .top), GridItem(.flexible(), spacing: Theme.Space.m, alignment: .top)],
+                    // One column when the space beside the lead is narrow, two when there is room.
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 220 * Theme.scale), spacing: Theme.Space.m, alignment: .top)],
                               alignment: .leading, spacing: Theme.Space.m) {
                         ForEach(entries.prefix(6)) { entry in
                             if let item = items[entry.key] { UpNextCell(entry: entry, item: item, width: nil) }
