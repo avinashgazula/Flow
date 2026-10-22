@@ -7,20 +7,16 @@ import init, { Remuxer } from './pkg/flow_remux.js'
 import type { AudioCodec } from '../audio/decoder'
 import type { AudioConverter } from './convert'
 import { cleanDetail, DETAIL_BYTES, detailWanted, httpFailureMessage, networkFailureMessage, PROXY_DIRECT_HEADER, PROXY_HOPS_HEADER } from './failure'
+import { AHEAD_TARGET, aheadCapFor, AheadGovernor, RateMeter } from './pacing'
 import type { FromWorker, HeaderInfo, RawCue, ToWorker } from './protocol'
+import { PieceReader, planReads } from './reader'
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope
 
 /** The first read covers the EBML header, tracks and (usually) the SeekHead in one round trip. */
 const HEAD_BYTES = 512 * 1024
-const FIRST_CHUNK = 1024 * 1024
-const CHUNK = 4 * 1024 * 1024
-/** Through the stream proxy every piece is a round trip to the Worker and on to the host, so pieces are bigger. */
-const PROXY_CHUNK = 16 * 1024 * 1024
-/** Seconds of media to keep buffered ahead of the playhead; lowered for very high bitrates and under memory pressure. */
-const AHEAD_MAX = 60
-const AHEAD_MIN = 8
-const AHEAD_BUDGET_BYTES = 96 * 1024 * 1024
+/** How often the page is told how the network is doing. */
+const STATS_EVERY_MS = 1000
 
 let url = ''
 /** The address Flow was given. `url` may move on from it to where its redirect led (see request()). */
@@ -50,8 +46,15 @@ let run: { ctl: AbortController; done: Promise<void> } | null = null
 let playhead = 0
 let produced = 0
 let hold = false
-let ahead = AHEAD_MAX
-let aheadCap = AHEAD_MAX
+/** How far ahead of the playhead to read: the budget at the file's bitrate, lowered when the browser's buffer fills (see pacing.ts). */
+const governor = new AheadGovernor(AHEAD_TARGET)
+/** The file's average bytes per second, 0 when its length or duration is unknown. */
+let bitrate = 0
+const meter = new RateMeter()
+let inFlight = 0
+/** A file is being read, so the page hears how fast. */
+let streaming = false
+let statsTimer: ReturnType<typeof setInterval> | null = null
 let wake: (() => void) | null = null
 
 const post = (message: FromWorker, transfer: Transferable[] = []) => ctx.postMessage(message, transfer)
@@ -59,6 +62,8 @@ const post = (message: FromWorker, transfer: Transferable[] = []) => ctx.postMes
 /** What the remuxer says about a file that isn't Matroska at all (an MP4, a web page the server sent instead). */
 const NOT_MATROSKA = "This isn't a Matroska file."
 class NotMatroskaError extends Error {}
+/** The server answered a range with the whole file, so nothing but the start can be read. */
+class NoSeekError extends Error {}
 
 class HttpError extends Error {
   constructor(
@@ -156,7 +161,7 @@ async function request(start: number, end: number | null, signal?: AbortSignal):
     // Through the stream proxy, which hosts answered says where the range was dropped.
     const hops = res.headers.get(PROXY_HOPS_HEADER)
     noSeek = `This server can’t seek inside the file. Try another source.${hops ? ` Hosts asked: ${hops}.` : ''}`
-    throw new Error(noSeek)
+    throw new NoSeekError(noSeek)
   }
   const detail = await readDetail(res)
   res.body?.cancel().catch(() => {})
@@ -226,12 +231,10 @@ async function open(message: Extract<ToWorker, { type: 'open' }>) {
   if (error) throw error === NOT_MATROSKA ? new NotMatroskaError(error) : new Error(error)
   for (const track of (JSON.parse(rem.headerJson()) as HeaderInfo).tracks) if (track.decode) decodes.set(track.id, track.decode)
 
-  const bytesPerSecond = (() => {
-    const info = JSON.parse(rem.headerJson()) as { duration: number | null }
-    return length && info.duration ? length / info.duration : 0
-  })()
-  if (bytesPerSecond) aheadCap = Math.min(AHEAD_MAX, Math.max(AHEAD_MIN, Math.floor(AHEAD_BUDGET_BYTES / bytesPerSecond)))
-  ahead = aheadCap
+  const info = JSON.parse(rem.headerJson()) as { duration: number | null }
+  bitrate = length && info.duration ? length / info.duration : 0
+  governor.reset(aheadCapFor(bitrate))
+  statsTimer ??= setInterval(postStats, STATS_EVERY_MS)
 
   // The index is often at the end of the file. Streaming doesn't wait for it; seeking does.
   cuesReady = (async () => {
@@ -313,9 +316,15 @@ async function useConverter(epoch: number) {
   void converter.use(convertCodec, epoch)
 }
 
-/** Backpressure: stops reading while enough is buffered ahead of the playhead. Reading less lets TCP slow the server down too. */
+function postStats() {
+  if (!streaming) return
+  post({ type: 'stats', bytesPerSecond: Math.round(meter.rate(performance.now())), bitrate: Math.round(bitrate), inFlight, ahead: Math.max(0, Math.round((produced - playhead) * 10) / 10) })
+}
+
+/** Backpressure: stops reading while enough is buffered ahead of the playhead. Pieces already on their way finish
+ *  and wait, so at most a few are held (see reader.ts), and no new ones start. */
 async function throttle(signal: AbortSignal) {
-  while (!signal.aborted && (hold || produced - playhead > ahead)) {
+  while (!signal.aborted && (hold || produced - playhead > governor.value(performance.now()))) {
     await new Promise<void>((resolve) => {
       wake = resolve
     })
@@ -329,81 +338,53 @@ const sleep = (ms: number, signal: AbortSignal) =>
     signal.addEventListener('abort', () => (clearTimeout(timer), resolve()), { once: true })
   })
 
+/** What a failed read means to the reader: a 416 is the file's end, a refusal or a server that can't seek won't improve, the rest may. */
+function classify(error: unknown): 'end' | 'fatal' | 'retry' {
+  if (error instanceof HttpError) return error.status === 416 ? 'end' : error.status < 500 ? 'fatal' : 'retry'
+  return error instanceof NoSeekError ? 'fatal' : 'retry'
+}
+
 async function stream(from: number, epoch: number, signal: AbortSignal) {
   const rem = remuxer!
   // Without a known length (or a server that ignores Range) the file is one open-ended request.
   const bounded = ranges && length > 0
-  let pos = from
-  let first = true
-  let failures = 0
-  let next: { start: number; response: Promise<Response> } | null = null
-
-  const openChunk = (start: number, size: number) => {
-    if (!ranges && start > 0) return Promise.reject(new Error(noSeek))
-    return request(start, bounded ? Math.min(start + size, length) - 1 : null, signal)
-  }
-  const dropNext = () => {
-    next?.response.then((res) => res.body?.cancel(), () => {}).catch(() => {})
-    next = null
-  }
-
-  while (!bounded || pos < length) {
-    const size = first ? FIRST_CHUNK : viaProxy ? PROXY_CHUNK : CHUNK
-    const start = pos
-    try {
-      let response: Promise<Response>
-      if (next && next.start === start) {
-        response = next.response
-        next = null
-      } else {
-        dropNext()
-        response = openChunk(start, size)
-      }
-      const res: Response = await response
-      const end: number = bounded ? Math.min(start + size, length) : Infinity
-      const reader = res.body!.getReader()
-      let prefetched = false
-      let got = 0
-      try {
-        for (;;) {
-          await throttle(signal)
-          const { done, value } = await reader.read()
-          if (done) break
-          rem.push(value)
-          pos += value.length
-          got += value.length
-          failures = 0
-          await drain(epoch)
-          // Ask for the next chunk before this one ends, so the server's round trip hides behind the last megabyte.
-          if (!prefetched && bounded && end < length && pos - start > size / 2) {
-            prefetched = true
-            const response = openChunk(end, viaProxy ? PROXY_CHUNK : CHUNK)
-            response.catch(() => {})
-            next = { start: end, response }
-          }
-        }
-      } finally {
-        reader.cancel().catch(() => {})
-      }
-      first = false
-      if (!bounded) break
-      if (got === 0 && ++failures > 4) throw new Error('The server stopped sending data. Try again.')
-    } catch (error) {
-      dropNext()
-      if (signal.aborted) return
-      if (error instanceof HttpError && error.status === 416) break
-      // A dropped connection resumes from the last byte received.
-      if ((error instanceof HttpError && error.status < 500) || ++failures > 4) throw error
-      await sleep(400 * failures, signal)
+  streaming = true
+  const reader = new PieceReader({
+    from,
+    length,
+    bounded,
+    ...planReads({ viaProxy, bitrate, bounded }),
+    open: (start, end, piece) => (!ranges && start > 0 ? Promise.reject(new NoSeekError(noSeek)) : request(start, end, piece)),
+    classify,
+    sleep,
+    onBytes: (n) => meter.add(n, performance.now()),
+    onActive: (n) => {
+      inFlight = n
+      meter.setActive(n > 0, performance.now())
+    },
+    signal,
+  })
+  try {
+    for (;;) {
+      await throttle(signal)
+      const value = await reader.next()
+      if (!value) break
+      rem.push(value)
+      await drain(epoch)
     }
+  } catch (error) {
+    if (signal.aborted) return
+    throw error
+  } finally {
+    reader.close()
   }
-  dropNext()
   if (signal.aborted) return
   rem.finish()
   await drain(epoch)
   // The converted sound's last packets are still in the encoder: they go out before the stream is called done.
   if (converter?.working) await converter.finish()
   if (signal.aborted) return
+  streaming = false
   post({ type: 'done', epoch })
 }
 
@@ -444,7 +425,9 @@ async function begin(epoch: number, at: number, floor = 0, inits: 'all' | 'audio
     produced = at
     await stream(offset, epoch, ctl.signal)
   })().catch((error) => {
-    if (!ctl.signal.aborted) void report(error)
+    if (ctl.signal.aborted) return
+    streaming = false
+    void report(error)
   })
   run = { ctl, done: task }
 }
@@ -472,11 +455,13 @@ ctx.onmessage = (event: MessageEvent<ToWorker>) => {
       wake?.()
       return
     case 'pressure':
-      ahead = Math.max(AHEAD_MIN, Math.min(ahead, Math.floor(message.ahead * 0.8)))
+      governor.pressure(message.ahead, performance.now())
       return
     case 'destroy':
       run?.ctl.abort()
       wake?.()
+      if (statsTimer) clearInterval(statsTimer)
+      statsTimer = null
       converter?.close()
       try {
         remuxer?.free()
@@ -500,7 +485,6 @@ ctx.onmessage = (event: MessageEvent<ToWorker>) => {
           break
         case 'seek':
           playhead = message.at
-          ahead = aheadCap
           await begin(message.epoch, message.at)
           break
         case 'audio':

@@ -9,6 +9,7 @@
    await session.selectAudio(id)                  rebuilds the audio from the playhead, picture untouched
    const stop = session.onSubtitleCues(id, cues => …)   text cues arrive as the file is read (SRT, ASS, WebVTT)
    await session.seek(seconds)                    or just set video.currentTime: both are handled
+   session.netStats / session.onStats(stats => …)  how fast the file is arriving (bytes per second), its average bitrate, requests in flight
    session.onError(message => …)                  mid-playback failures (the initial ones reject attachMatroska)
    session.onAudioFailed(() => …)                 converting the audio failed: the picture plays on without sound
    session.destroy()
@@ -64,6 +65,16 @@ export interface RemuxVideoInfo {
   range?: string
 }
 
+/** How the network is doing, about once a second while the file is being read. */
+export interface NetStats {
+  /** Download rate over the last few seconds, counted over the time requests were open (0 before anything arrived). */
+  bytesPerSecond: number
+  /** The file's average rate, from its length and duration; 0 when either is unknown. A file that arrives slower than this stalls. */
+  bitrate: number
+  /** Range requests open right now. */
+  inFlight: number
+}
+
 export interface RemuxSession {
   duration: number
   audioTracks: RemuxAudioTrack[]
@@ -78,6 +89,10 @@ export interface RemuxSession {
   onSubtitleCues(trackId: number, listener: (cues: SubtitleCue[]) => void): () => void
   /** Jumps to a time: the worker finds the nearest earlier keyframe through the file's index. */
   seek(seconds: number): Promise<void>
+  /** The latest network figures; null until the first second of reading has passed. */
+  readonly netStats: NetStats | null
+  /** Called with each update of `netStats`. */
+  onStats(listener: (stats: NetStats) => void): () => void
   /** Failures after playback began (the connection dropped for good, the browser refused data). */
   onError(listener: (message: string) => void): () => void
   /** The converted audio gave out (the decoder or encoder failed). The picture carries on with no sound
@@ -129,6 +144,8 @@ class Session implements RemuxSession {
   private errorListeners = new Set<(message: string) => void>()
   private audioFailedListeners = new Set<() => void>()
   private audioFailed = false
+  private stats: NetStats | null = null
+  private statsListeners = new Set<(stats: NetStats) => void>()
   private waiters: { time: number; margin: number; resolve: () => void; timer: ReturnType<typeof setTimeout> }[] = []
 
   /** Inits seen for this epoch, until the buffers exist. */
@@ -254,6 +271,10 @@ class Session implements RemuxSession {
         return
       case 'cues':
         this.takeCues(message.cues)
+        return
+      case 'stats':
+        this.stats = { bytesPerSecond: message.bytesPerSecond, bitrate: message.bitrate, inFlight: message.inFlight }
+        for (const listener of this.statsListeners) listener(this.stats)
         return
     }
     if (message.epoch !== this.epoch) return
@@ -490,6 +511,15 @@ class Session implements RemuxSession {
     return () => entry.listeners.delete(listener)
   }
 
+  get netStats(): NetStats | null {
+    return this.stats
+  }
+
+  onStats(listener: (stats: NetStats) => void): () => void {
+    this.statsListeners.add(listener)
+    return () => this.statsListeners.delete(listener)
+  }
+
   onError(listener: (message: string) => void): () => void {
     this.errorListeners.add(listener)
     return () => this.errorListeners.delete(listener)
@@ -515,6 +545,7 @@ class Session implements RemuxSession {
     this.cues.clear()
     this.errorListeners.clear()
     this.audioFailedListeners.clear()
+    this.statsListeners.clear()
   }
 }
 

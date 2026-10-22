@@ -63,6 +63,10 @@ export type FromWorker =
   /** `key`: the fragment starts on a keyframe, so the buffer before it can be trimmed safely. */
   | { type: 'fragment'; epoch: number; kind: 0 | 1; start: number; end: number; key: boolean; data: ArrayBuffer }
   | { type: 'cues'; cues: RawCue[] }
+  /** About once a second while a file is being read: how fast it is arriving (`bytesPerSecond`, over
+   *  the time requests were open), the file's average rate (`bitrate`, 0 when unknown), how many requests
+   *  are in flight, and how many seconds are buffered ahead of the playhead as the worker counts them. */
+  | { type: 'stats'; bytesPerSecond: number; bitrate: number; inFlight: number; ahead: number }
   /** The file has been read to its end. */
   | { type: 'done'; epoch: number }
   /** The audio couldn't be converted (the decoder didn't load or crashed, the encoder failed). The
