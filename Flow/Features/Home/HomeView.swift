@@ -338,8 +338,11 @@ private struct UpNextSection: View {
                 SectionHeader("Up Next", route: .library(.continueWatching))
                     .padding(.horizontal, grid ? -Theme.Space.gutter : 0)
                 if grid {
-                    // One column when the space beside the lead is narrow, two when there is room.
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 220 * Theme.scale), spacing: Theme.Space.m, alignment: .top)],
+                    // One column when the space beside the lead is narrow, two when there is room. Apple TV always
+                    // has room, and two smaller stills show more of the queue on the first screen than one big one.
+                    LazyVGrid(columns: Platform.isTV
+                                ? Array(repeating: GridItem(.flexible(), spacing: Theme.Space.m, alignment: .top), count: 2)
+                                : [GridItem(.adaptive(minimum: 220), spacing: Theme.Space.m, alignment: .top)],
                               alignment: .leading, spacing: Theme.Space.m) {
                         ForEach(entries.prefix(6)) { entry in
                             if let item = items[entry.key] { UpNextCell(entry: entry, item: item, width: nil) }
