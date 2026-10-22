@@ -33,7 +33,9 @@ jobs:
 
   apple:
     name: Build ${{ matrix.scheme }} (Xcode ${{ matrix.xcode }})
-    runs-on: macos-15
+    runs-on: ${{ matrix.runner || 'macos-15' }}
+    # The Xcode 27 legs are new: they report, and don't hold the older legs' result hostage.
+    continue-on-error: ${{ matrix.experimental == true }}
     strategy:
       fail-fast: false
       matrix:
@@ -42,9 +44,16 @@ jobs:
           - { scheme: Flow-macOS, destination: "generic/platform=macOS", xcode: "26.3" }
           - { scheme: Flow-tvOS, destination: "generic/platform=tvOS Simulator", xcode: "26.3" }
           - { scheme: Flow-iOS, destination: "generic/platform=iOS Simulator", xcode: "16.4" }
+          - { scheme: Flow-iOS, destination: "generic/platform=iOS Simulator", xcode: "27", runner: xcode-27, experimental: true }
+          - { scheme: Flow-macOS, destination: "generic/platform=macOS", xcode: "27", runner: xcode-27, experimental: true }
+          - { scheme: Flow-tvOS, destination: "generic/platform=tvOS Simulator", xcode: "27", runner: xcode-27, experimental: true }
     steps:
       - uses: actions/checkout@v4
-      - run: sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app
+      - name: Select Xcode
+        run: |
+          if [ "${{ matrix.xcode }}" != "27" ]; then sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app; fi
+          xcodebuild -version
+          swift --version
       - name: Generate project
         run: |
           brew install xcodegen
@@ -68,28 +77,40 @@ jobs:
           echo "warnings: $(grep -c 'warning:' build.log || true)"
 
   screenshots:
-    name: Screenshots (${{ matrix.platform }})
+    name: Screenshots (${{ matrix.platform }}, Xcode ${{ matrix.xcode }})
     if: github.event_name == 'push'
     needs: apple
-    runs-on: macos-15
+    runs-on: ${{ matrix.runner || 'macos-15' }}
+    continue-on-error: ${{ matrix.experimental == true }}
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         platform: [ios, ipad, tvos, macos]
+        xcode: ["26.3"]
+        include:
+          - { platform: ios, xcode: "27", runner: xcode-27, experimental: true }
+          - { platform: ipad, xcode: "27", runner: xcode-27, experimental: true }
+          - { platform: tvos, xcode: "27", runner: xcode-27, experimental: true }
+          - { platform: macos, xcode: "27", runner: xcode-27, experimental: true }
+    env:
+      FLOW_SIM_OS: ${{ matrix.xcode == '27' && '27' || '26' }}
     steps:
       - uses: actions/checkout@v4
-      - run: sudo xcode-select -s /Applications/Xcode_26.3.app
+      - name: Select Xcode
+        run: |
+          if [ "${{ matrix.xcode }}" != "27" ]; then sudo xcode-select -s /Applications/Xcode_26.3.app; fi
+          xcodebuild -version
       - name: Generate project
         run: |
           brew install xcodegen
           xcodegen generate
       - name: Run tour
-        run: scripts/screenshot-tour.sh ${{ matrix.platform }} shots/${{ matrix.platform }}
+        run: scripts/screenshot-tour.sh ${{ matrix.platform }} shots/${{ matrix.xcode == '27' && 'xcode27/' || '' }}${{ matrix.platform }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: shots-${{ matrix.platform }}
+          name: shots-${{ matrix.xcode }}-${{ matrix.platform }}
           path: shots
           if-no-files-found: ignore
 

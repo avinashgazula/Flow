@@ -79,6 +79,13 @@ public enum Programme {
         return (formatter.string(from: date), label)
     }
 
+    /// An air date for edge print: "airs Tue 12", "aired 12 Oct 2011".
+    public static func airPrint(for date: Date, now: Date = Date(), locale: Locale = .current) -> String {
+        let column = airColumn(for: date, now: now, locale: locale)
+        let words = column.label.split(separator: " ").map(String.init)
+        return ([words.first ?? "aired", column.day] + words.dropFirst()).joined(separator: " ")
+    }
+
     // MARK: Greeting
 
     /// Which part of the day Home is named for.
@@ -162,6 +169,72 @@ extension Programme {
     }
 }
 
+/// What a frame's edge strip says, like the printed edge of 35mm stock: the perforations fill with how far
+/// you've watched, the print gives the facts that decide what to watch. The time left (or NEW) is the key
+/// fact; the end time is worked out from the clock, so it is right whenever it is drawn.
+public struct EdgePrint: Equatable, Sendable {
+    public struct Segment: Equatable, Sendable {
+        public var text: String
+        /// The fact the eye should land on: drawn in the stock yellow.
+        public var isKey: Bool
+
+        public init(_ text: String, isKey: Bool = false) {
+            self.text = text
+            self.isKey = isKey
+        }
+    }
+
+    /// 0...1: how much of the strip's perforations are filled. Nil draws no perforations (a poster, a new item).
+    public var progress: Double?
+    /// Before the key fact: "S3 E7", "2024".
+    public var lead: [String]
+    /// "18 min left", "NEW EP".
+    public var key: String?
+    /// Minutes from now to the end; adds "ends 21:30".
+    public var endsInMinutes: Int?
+    /// After: the format ("2160p", "DV", "TrueHD 7.1").
+    public var tail: [String]
+
+    public init(progress: Double? = nil, lead: [String] = [], key: String? = nil, endsInMinutes: Int? = nil, tail: [String] = []) {
+        self.progress = progress
+        self.lead = lead
+        self.key = key
+        self.endsInMinutes = endsInMinutes
+        self.tail = tail
+    }
+
+    /// The print in order, with the end time as of `now`.
+    public func segments(now: Date = Date(), locale: Locale = .current, timeZone: TimeZone = .current) -> [Segment] {
+        var out = lead.filter { !$0.isEmpty }.map { Segment($0) }
+        if let key, !key.isEmpty { out.append(Segment(key, isKey: true)) }
+        if let endsInMinutes {
+            let end = Programme.endDate(from: now, minutesLeft: endsInMinutes)
+            out.append(Segment("ends " + Programme.clock(end, locale: locale, timeZone: timeZone)))
+        }
+        out += tail.filter { !$0.isEmpty }.map { Segment($0) }
+        return out
+    }
+
+    /// How many of `count` perforations are filled for `progress`. Any progress at all fills at least one,
+    /// so a title just started doesn't look unwatched.
+    public static func filledPerforations(progress: Double, of count: Int) -> Int {
+        guard count > 0, progress > 0.005 else { return 0 }
+        return min(count, max(1, Int((min(1, progress) * Double(count)).rounded(.down))))
+    }
+}
+
+extension Programme {
+    /// The format as edge print: "2160p", "DV", "TrueHD 7.1". Badges stay short here; the film-can label spells them out.
+    public static func edgeFormat(resolution: VideoResolution = .unknown, hdr: [String] = [], audioCodec: String? = nil, audioChannels: String? = nil) -> [String] {
+        var parts: [String] = []
+        if let label = resolutionLabel(resolution) { parts.append(label) }
+        parts += hdr
+        let audio = [audioCodec, audioChannels].compactMap { $0 }.joined(separator: " ")
+        if !audio.isEmpty { parts.append(audio) }
+        return parts
+    }
+}
+
 /// A plain sentence about how a version will play on this device, when there is something to say.
 public struct VersionNote: Equatable, Sendable {
     public var text: String
@@ -199,4 +272,7 @@ extension StreamTraits {
 extension LastSource {
     /// What the last playback looked like: "2160p · Dolby Vision". Empty when nothing was known.
     public var versionLine: String { Programme.versionLine(resolution: resolution, hdr: hdr) }
+
+    /// The same as edge print: ["2160p", "DV"].
+    public var edgeFormat: [String] { Programme.edgeFormat(resolution: resolution, hdr: hdr) }
 }

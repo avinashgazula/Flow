@@ -316,8 +316,8 @@ struct ConnectingView: View {
     private var loadingLine: some View {
         if session.showsLoadingProgress {
             ZStack(alignment: .leading) {
-                Capsule().fill(Theme.Palette.control)
-                Capsule().fill(Theme.Palette.spot)
+                Capsule().fill(Theme.Palette.lineStrong)
+                Capsule().fill(Theme.Palette.stock)
                     .frame(width: max(6, 160 * Theme.scale * min(1, max(0, progress))))
                     .animation(Theme.Motion.gentle, value: progress)
             }
@@ -736,10 +736,10 @@ struct Scrubber: View {
                 let width = proxy.size.width
                 let fraction = duration > 0 ? (dragging ?? current) / duration : 0
                 ZStack(alignment: .leading) {
-                    // The programme's inks: track, buffered, then the played part in the spot ("now").
-                    Capsule().fill(Theme.Palette.control)
-                    Capsule().fill(Theme.Palette.lineStrong).frame(width: width * min(1, buffered))
-                    Capsule().fill(Theme.Palette.spot).frame(width: max(0, width * min(1, fraction)))
+                    // Film stock: the track in base-4, what is buffered in base-3, the played part in yellow.
+                    Capsule().fill(Theme.Palette.lineStrong)
+                    Capsule().fill(Theme.Palette.control).frame(width: width * min(1, buffered))
+                    Capsule().fill(Theme.Palette.stock).frame(width: max(0, width * min(1, fraction)))
                     // Above the played fill, not under it: yellow stays visible once you have watched
                     // past a segment, and it is the one colour on the track that never reads as progress.
                     ZStack(alignment: .leading) {
@@ -798,8 +798,10 @@ struct Scrubber: View {
                     Text("-" + TimeFormat.clock(left) + " · ends " + Programme.clock(context.date.addingTimeInterval(left)))
                 }
             }
-            .font(.system(size: 12, weight: .semibold).monospacedDigit())
-            .foregroundStyle(Theme.Palette.textSecondary)
+            // Timecode and the end time in edge print.
+            .font(Theme.Typeface.edgePrint)
+            .edgePrint()
+            .foregroundStyle(Theme.Palette.print)
         }
         .accessibilityElement()
         .accessibilityLabel("Playback position")

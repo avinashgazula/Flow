@@ -1,8 +1,8 @@
 import SwiftUI
 import FlowKit
 
-/// A show's episodes as programme listings: the air date in the time column, a still at one size, then
-/// the title and what it is about. Seasons are a standard segmented control.
+/// A show's episodes as stills with edge strips (the air date, the runtime, perforations for what is watched),
+/// then the title and what it is about. Seasons are a standard segmented control.
 struct SeasonsSection: View {
     let show: MediaItem
     let seasons: [Season]
@@ -60,17 +60,18 @@ struct SeasonsSection: View {
             } else if episodes.isEmpty {
                 VStack(spacing: Theme.Space.s) {
                     ForEach(0..<3, id: \.self) { _ in
-                        RoundedRectangle(cornerRadius: Theme.Radius.frame, style: .continuous).fill(Theme.Palette.panel).frame(height: ProgrammeMetrics.still.height + 8)
+                        RoundedRectangle(cornerRadius: Theme.Radius.artwork, style: .continuous).fill(Theme.Palette.panel).frame(height: 100)
                     }
                 }
                 .padding(.horizontal, Theme.Space.gutter)
                 .shimmering()
             } else {
-                ProgrammeList {
+                LazyVStack(alignment: .leading, spacing: Theme.Space.m) {
                     ForEach(episodes) { episode in
                         EpisodeListing(show: show, episode: episode, libraryProviderID: libraryProviderID)
                     }
                 }
+                .padding(.horizontal, Theme.Space.gutter)
             }
         }
         .onAppear(perform: keepSelectionVisible)
@@ -107,7 +108,8 @@ struct SeasonsSection: View {
     }
 }
 
-/// One episode as a listing. Not-yet-aired episodes dim and do nothing; the rest play.
+/// One episode: its still with the edge strip, then the title and what it is about. Not-yet-aired episodes dim and
+/// do nothing; the rest play.
 struct EpisodeListing: View {
     let show: MediaItem
     let episode: Episode
@@ -118,21 +120,7 @@ struct EpisodeListing: View {
     private var aired: Bool { (episode.airDate ?? .distantFuture) <= Date() }
     private var watched: Bool { model.isEpisodeWatched(show, episode.ref) }
     private var hidden: Bool { model.hidesSpoilers(show, episode) }
-
-    private var column: ProgrammeRow.Column {
-        guard let date = episode.airDate else { return .label("–", sub: "TBA") }
-        let air = Programme.airColumn(for: date)
-        return .label(air.day, sub: air.label)
-    }
-
-    /// "46 min · Watched · What the episode is about", the last part clipped to the row.
-    private var meta: String {
-        var parts: [String] = []
-        if let runtime = episode.runtimeMinutes, runtime > 0 { parts.append(Programme.duration(minutes: runtime)) }
-        if watched { parts.append("Watched") }
-        if let overview = episode.overview, !overview.isEmpty, !hidden { parts.append(overview) }
-        return parts.joined(separator: " · ")
-    }
+    private var frameWidth: CGFloat { Platform.isTV ? 420 : (Platform.isPhone ? 168 : 240) }
 
     /// With Episode Spoilers off, an aired, unwatched episode's still stays out of sight.
     private var art: ProgrammeArt {
@@ -140,20 +128,53 @@ struct EpisodeListing: View {
         return .stillImage(url: TMDBImage.url(episode.stillPath, size: .still) ?? show.smallBackdropURL, title: episode.title)
     }
 
+    private var airText: String? { episode.airDate.map { Programme.airPrint(for: $0) } }
+
+    /// Perforations fill with how much is watched: all of them for a watched episode, none for one not yet started.
+    private var strip: EdgePrint {
+        let progress = model.progress(for: show, episode: episode.ref).map { $0.percent / 100 }
+        let fill: Double? = aired ? (watched ? 1 : (progress ?? 0)) : nil
+        let runtime = episode.runtimeMinutes.flatMap { $0 > 0 ? Programme.duration(minutes: $0) : nil }
+        return EdgePrint(progress: fill, lead: [airText ?? "TBA"], tail: runtime.map { [$0] } ?? [])
+    }
+
+    private var spoken: String {
+        var extra: [String] = []
+        if let airText { extra.append(airText) }
+        if let runtime = episode.runtimeMinutes, runtime > 0 { extra.append(Programme.spokenDuration(minutes: runtime)) }
+        if watched { extra.append("watched") }
+        return Programme.spokenListing(title: episode.title, episode: episode.ref, extra: extra)
+    }
+
     var body: some View {
-        ProgrammeRow(
-            column: column,
-            art: art,
-            title: "\(episode.number). \(episode.title)",
-            meta: meta,
-            progress: model.progress(for: show, episode: episode.ref).map { $0.percent / 100 },
-            episode: episode.ref,
-            dimmed: !aired,
-            action: {
-                guard aired else { return }
-                Task { await model.play(show, episode: episode, library: libraryProviderID) }
+        Button {
+            guard aired else { return }
+            Task { await model.play(show, episode: episode, library: libraryProviderID) }
+        } label: {
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                FilmFrame(art: art, strip: strip)
+                    .frame(width: frameWidth)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(episode.number). \(episode.title)")
+                        .font(Theme.Typeface.headline)
+                        .foregroundStyle(Theme.Palette.text)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    if let overview = episode.overview, !overview.isEmpty, !hidden {
+                        Text(overview)
+                            .font(.system(.subheadline))
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                            .lineLimit(Platform.isPhone ? 3 : 4)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+                Spacer(minLength: 0)
             }
-        )
+            .opacity(aired ? 1 : 0.55)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(spoken)
+        }
+        .buttonStyle(CardButtonStyle(lift: 1.04))
         .contextMenu { EpisodeMenu(show: show, episode: episode, libraryProviderID: libraryProviderID) }
     }
 }

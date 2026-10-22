@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// Flow's design tokens: tonight's programme. Two inks, a deep blue that owns every surface and one
-/// fluorescent pink spot, set in San Francisco. The spot marks only the next action, focus, the current
-/// selection and "now"; artwork stays small and framed, and nothing on content is glass or glow.
+/// Flow's design tokens: Film Stock. Every title is a reel of film Flow knows about, so artwork wears an
+/// edge strip (perforations that fill as you watch, edge print with the facts), set on warm film-base black
+/// with one film-stock yellow. Liquid Glass is the navigation and control layer that floats above; content
+/// (frames, strips, lists, labels) stays matte. Yellow marks only the next action, focus, selection, the
+/// watched perforations and the time left.
 enum Theme {
     /// tvOS is viewed from ten feet away; everything scales up.
     static let scale: CGFloat = Platform.isTV ? 1.9 : 1
@@ -22,12 +24,12 @@ enum Theme {
     }
 
     enum Radius {
-        /// Small artwork in a listing, printed-looking: posters, episode stills, portraits.
+        /// A frame's top corners (the strip below squares off into the same shape): stills, posters, portraits.
         static let artwork: CGFloat = Platform.isTV ? 8 : 6
-        /// Framed stills and panels.
-        static let frame: CGFloat = Platform.isTV ? 20 : 12
+        /// Panels: the film-can label, sheets, the About table.
+        static let frame: CGFloat = Platform.isTV ? 14 : 8
         static let control: CGFloat = Platform.isTV ? 16 : 10
-        // Older names, kept so every screen reads the same two radii.
+        // Older names, kept so every screen reads the same radii.
         static let poster: CGFloat = artwork
         static let card: CGFloat = frame
         static let tile: CGFloat = frame
@@ -35,41 +37,49 @@ enum Theme {
     }
 
     enum Palette {
-        /// ink-900: every screen's background.
-        static let ground = Color(hex: 0x0D1431)
-        /// ink-800: sheets, panels, the selected listing's band.
-        static let panel = Color(hex: 0x141D42)
-        /// ink-700: secondary buttons, inputs, segmented controls, progress tracks.
-        static let control = Color(hex: 0x1D2853)
-        /// ink-600: dividers when truly needed.
-        static let lineStrong = Color(hex: 0x2A3668)
-        /// A hairline between rows, used sparingly: space separates first.
-        static let line = Color(hex: 0xD6DEFF, opacity: 0.12)
+        /// base: every screen's background, a warm film-base black.
+        static let ground = Color(hex: 0x15120F)
+        /// base-2: panels, sheets, the film-can label.
+        static let panel = Color(hex: 0x1F1B17)
+        /// base-3: secondary buttons, inputs, segmented controls, tracks.
+        static let control = Color(hex: 0x2A251F)
+        /// base-4: unwatched perforations, strong dividers.
+        static let lineStrong = Color(hex: 0x3A342C)
+        /// The edge strip band, darker than the ground it sits on.
+        static let edge = Color(hex: 0x0D0B09)
+        /// A hairline, used sparingly.
+        static let line = Color(hex: 0xFFECC8, opacity: 0.10)
         /// Paper: primary text (16:1 on the ground).
-        static let text = Color(hex: 0xF3F1EA)
-        /// The blue-tinted second ink: secondary text and meta (8.5:1).
-        static let textSecondary = Color(hex: 0xA7B0D8)
-        /// Captions and labels under numbers (4.9:1; never for body copy).
-        static let textTertiary = Color(hex: 0x7983B5)
-        /// The spot: the next action, focus, selection and "now" (5.9:1 on the ground).
-        static let spot = Color(hex: 0xFF4DA6)
-        static let spotPressed = Color(hex: 0xE63E93)
-        /// Text and icons on a spot fill (5.9:1).
-        static let onSpot = Color(hex: 0x0D1431)
+        static let text = Color(hex: 0xF4EFE6)
+        /// Secondary text (9.2:1).
+        static let textSecondary = Color(hex: 0xBFB5A6)
+        /// Captions and labels (5.1:1; never for body copy).
+        static let textTertiary = Color(hex: 0x8D8476)
+        /// Edge print on the strip (12.5:1 on the edge).
+        static let print = Color(hex: 0xD9CDB6)
+        /// Film-stock yellow: the next action, focus, selection, the watched perforations, the time left.
+        static let stock = Color(hex: 0xF6B40E)
+        static let stockPressed = Color(hex: 0xDDA00A)
+        /// Text and icons on a yellow fill (10:1).
+        static let onStock = Color(hex: 0x15120F)
+        /// Live and errors.
+        static let red = Color(hex: 0xF25C45)
         /// Degraded states: "may stutter".
-        static let warn = Color(hex: 0xFFC453)
-        /// Errors and failures, distinct from the spot.
-        static let error = Color(hex: 0xFF6B57)
+        static let warn = Color(hex: 0xFF9F43)
 
-        // Older names, mapped onto the programme's inks.
+        // Older names, mapped onto Film Stock.
+        static let spot = stock
+        static let spotPressed = stockPressed
+        static let onSpot = onStock
+        static let error = red
         static let canvas = ground
         static let elevated = panel
         static let surface = panel
         static let surfaceStrong = control
         static let hairline = line
         static let gold = warn
-        /// The fill behind panels, notices and buttons that float over video: flat ink at 86%, no blur.
-        static let overPicture = Color(hex: 0x0D1431, opacity: 0.86)
+        /// Tint for the glass that floats over video (notices, panels, controls): ground ink, half strength.
+        static let overPicture = Color(hex: 0x15120F, opacity: 0.5)
     }
 
     /// State changes only: short and eased out.
@@ -89,10 +99,13 @@ enum Theme {
         static var body: Font { .system(.subheadline) }
         static var caption: Font { .system(.caption, weight: .medium) }
         static var micro: Font { .system(.caption2, weight: .semibold) }
-        /// The time column of a listing: when it ends, or its resolution.
+        /// A time, duration or resolution that should line up with its neighbours.
         static var time: Font { Font.system(.headline, weight: .semibold).monospacedDigit() }
         /// A figure with a label under it (ratings, stats).
         static var figure: Font { Font.system(.title3, weight: .semibold).monospacedDigit() }
+        /// Edge print: condensed and tabular. Only on edge strips, film-can labels and small format labels;
+        /// `.edgePrint()` adds the uppercase and the tracking.
+        static var edgePrint: Font { Font.system(.caption2, weight: .semibold).width(.condensed).monospacedDigit() }
         /// A title set as text when a film has no logo art: system, by weight and size only.
         static func artworkTitle(_ size: CGFloat) -> Font { .system(size: size, weight: .semibold) }
     }
@@ -123,6 +136,11 @@ extension View {
     /// Section/page title styling with optical tracking.
     func displayTracking() -> some View { tracking(-0.4) }
 
+    /// The edge-print voice: uppercase and tracked. Pair with `Theme.Typeface.edgePrint`.
+    func edgePrint(tracking amount: CGFloat = 1.4) -> some View {
+        textCase(.uppercase).tracking(amount)
+    }
+
     /// A thin inner stroke that separates artwork from the ground.
     func hairline<S: InsettableShape>(_ shape: S, opacity: Double = 1) -> some View {
         overlay(shape.strokeBorder(Theme.Palette.hairline.opacity(opacity), lineWidth: 1))
@@ -131,22 +149,59 @@ extension View {
     /// Artwork casts no shadow: depth belongs to the tvOS focus lift alone. Kept so call sites read the same.
     func artworkShadow(_ strength: Double = 1) -> some View { self }
 
-    /// A flat ink fill in a shape: the programme has no glass. Floating panels pass `Theme.Palette.overPicture`
-    /// so they stay readable over video; everything else gets the control ink. Name kept for its many callers.
+    /// Liquid Glass on systems that have it (the navigation and control layer: buttons and panels that float above
+    /// content or video); below 26, flat base-2. Pass `Theme.Palette.overPicture` for glass over video.
+    @ViewBuilder
     func flowGlass<S: Shape>(_ shape: S, interactive: Bool = false, tint: Color? = nil) -> some View {
-        background(tint ?? Theme.Palette.control, in: shape)
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, *) {
+            self.glassEffect(Self.glass(interactive: interactive, tint: tint), in: shape)
+        } else {
+            flatPanel(shape, tint: tint)
+        }
+        #else
+        flatPanel(shape, tint: tint)
+        #endif
+    }
+
+    /// Below 26 there is no glass: a flat base panel, the control ink for plain buttons.
+    private func flatPanel<S: Shape>(_ shape: S, tint: Color?) -> some View {
+        background(tint == nil ? Theme.Palette.control : Theme.Palette.panel.opacity(0.94), in: shape)
     }
 }
 
-/// Used to group glass shapes; with no glass left it is a plain container. Kept so call sites read the same.
+#if compiler(>=6.2)
+@available(iOS 26.0, macOS 26.0, tvOS 26.0, *)
+private extension View {
+    static func glass(interactive: Bool, tint: Color?) -> Glass {
+        var glass = Glass.regular
+        if let tint { glass = glass.tint(tint) }
+        if interactive { glass = glass.interactive() }
+        return glass
+    }
+}
+#endif
+
+/// Groups glass shapes so they blend into each other on iOS 26; a plain container elsewhere.
 struct GlassGroup<Content: View>: View {
     var spacing: CGFloat = 12
     @ViewBuilder var content: Content
 
-    var body: some View { content }
+    var body: some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, *) {
+            GlassEffectContainer(spacing: spacing) { content }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
 }
 
-/// The one next action (Resume, Play, a source's Play): the spot colour with ink text.
+/// The one next action (Resume, Play, a source's Play): film-stock yellow with ink text. On 26 and later it is
+/// glass tinted yellow, like `.glassProminent`; below, a flat yellow fill.
 struct PrimaryButtonStyle: ButtonStyle {
     /// A smaller button for use inside rows and panels, where the full-size one would dominate.
     var compact = false
@@ -164,25 +219,40 @@ private struct PrimaryButtonBody: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
-        configuration.label
-            .font(compact ? .system(.subheadline, weight: .semibold) : Theme.Typeface.headline)
-            .foregroundStyle(Theme.Palette.onSpot)
-            // Wraps between words at large text sizes, never inside one ("Pla / y").
-            .multilineTextAlignment(.center)
-            .minimumScaleFactor(0.7)
-            .padding(.horizontal, compact ? Theme.Space.m : Theme.Space.l)
-            .frame(minHeight: (compact ? 44 : 52) * Theme.scale)
-            .background(configuration.isPressed ? Theme.Palette.spotPressed : Theme.Palette.spot, in: shape)
-            // Already spot-coloured, so on Apple TV focus is a paper ring and the lift.
-            .overlay { if focused { shape.strokeBorder(Theme.Palette.text, lineWidth: 4) } }
-            .opacity(enabled ? 1 : 0.4)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(Theme.Motion.snappy, value: configuration.isPressed)
-            .modifier(FocusLift(scale: 1.04))
+        surface(shape) {
+            configuration.label
+                .font(compact ? .system(.subheadline, weight: .semibold) : Theme.Typeface.headline)
+                .foregroundStyle(Theme.Palette.onStock)
+                // Wraps between words at large text sizes, never inside one ("Pla / y").
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.7)
+                .padding(.horizontal, compact ? Theme.Space.m : Theme.Space.l)
+                .frame(minHeight: (compact ? 44 : 52) * Theme.scale)
+        }
+        // Already yellow, so on Apple TV focus is a paper ring and the lift.
+        .overlay { if focused { shape.strokeBorder(Theme.Palette.text, lineWidth: 4) } }
+        .opacity(enabled ? 1 : 0.4)
+        .scaleEffect(configuration.isPressed ? 0.98 : 1)
+        .animation(Theme.Motion.snappy, value: configuration.isPressed)
+        .modifier(FocusLift(scale: 1.04))
+    }
+
+    @ViewBuilder
+    private func surface<Content: View>(_ shape: RoundedRectangle, @ViewBuilder content: () -> Content) -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, *) {
+            content().glassEffect(.regular.tint(Theme.Palette.stock).interactive(), in: shape)
+        } else {
+            content().background(configuration.isPressed ? Theme.Palette.stockPressed : Theme.Palette.stock, in: shape)
+        }
+        #else
+        content().background(configuration.isPressed ? Theme.Palette.stockPressed : Theme.Palette.stock, in: shape)
+        #endif
     }
 }
 
-/// Secondary controls: the control ink, square-shouldered or round. On Apple TV the focused one fills with the spot.
+/// Secondary controls: glass on 26 and later, the control ink below; round or squared. On Apple TV the
+/// focused one fills with the stock yellow.
 struct GlassButtonStyle: ButtonStyle {
     var circle = false
     /// Matches `PrimaryButtonStyle(compact:)`, so the two sit level in a row.
@@ -208,19 +278,25 @@ private struct SecondaryButtonBody: View {
         }
     }
 
+    @ViewBuilder
     private func chrome<S: Shape>(_ shape: S) -> some View {
         let size = (compact ? 44 : 52) * Theme.scale
-        let fill: Color = focused ? Theme.Palette.spot : (configuration.isPressed ? Theme.Palette.lineStrong : Theme.Palette.control)
-        return configuration.label
+        let label = configuration.label
             .font(.system(size: (compact ? 15 : 17) * Theme.scale, weight: .semibold))
-            .foregroundStyle(focused ? Theme.Palette.onSpot : Theme.Palette.text)
+            .foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.text)
             .frame(minWidth: size, minHeight: size)
             .padding(.horizontal, circle ? 0 : Theme.Space.m)
-            .background(fill, in: shape)
             .contentShape(shape)
-            .opacity(enabled ? 1 : 0.4)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(Theme.Motion.snappy, value: configuration.isPressed)
-            .modifier(FocusLift(scale: 1.04))
+        Group {
+            if focused {
+                label.background(Theme.Palette.stock, in: shape)
+            } else {
+                label.flowGlass(shape, interactive: true)
+            }
+        }
+        .opacity(enabled ? 1 : 0.4)
+        .scaleEffect(configuration.isPressed ? 0.98 : 1)
+        .animation(Theme.Motion.snappy, value: configuration.isPressed)
+        .modifier(FocusLift(scale: 1.04))
     }
 }

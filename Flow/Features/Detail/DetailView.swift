@@ -85,16 +85,21 @@ struct DetailView: View {
 
     private var stillWidth: CGFloat { Platform.isTV ? 760 : min(460, width * 0.42) }
 
+    /// The still and, under it, the film-can label: one object; beside the text on wide screens, above it otherwise.
     private var masthead: some View {
-        Group {
+        let visual = VStack(alignment: .leading, spacing: Theme.Space.m) {
+            still
+            versionLabel
+        }
+        return Group {
             if wide {
                 HStack(alignment: .top, spacing: Theme.Space.xl) {
+                    visual.frame(width: stillWidth)
                     textColumn.frame(maxWidth: .infinity, alignment: .leading)
-                    still.frame(width: stillWidth)
                 }
             } else {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    still
+                    visual
                     textColumn
                 }
             }
@@ -102,20 +107,33 @@ struct DetailView: View {
         .padding(.horizontal, Theme.Space.gutter)
     }
 
-    /// The title's frame: 16:9, radius 12, never behind the text.
+    /// The title's frame with its edge strip: progress if it is started, and `2024 · 2 H 47 · ENDS 22:56`.
     private var still: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.frame, style: .continuous)
-        return Color.clear
-            .aspectRatio(16 / 9, contentMode: .fit)
-            .overlay(RemoteImage(url: current.backdropURL ?? current.smallBackdropURL, maxPixel: Platform.isTV ? 1400 : 1000, fallbackTitle: current.title))
-            .clipShape(shape)
-            .hairline(shape)
+        let progress = model.progress(for: current)
+        let started = current.type == .movie && (progress?.percent ?? 0) > 1
+        let minutes = current.type == .movie ? Programme.minutesLeft(progress: progress, runtimeMinutes: current.runtimeMinutes) : nil
+        var lead: [String] = []
+        if let year = current.year { lead.append(String(year)) }
+        if current.type == .show {
+            if let seasons = detail?.numberOfSeasons { lead.append(seasons == 1 ? "1 season" : "\(seasons) seasons") }
+        } else if !started, let runtime = current.runtimeMinutes, runtime > 0 {
+            lead.append(Programme.duration(minutes: runtime))
+        }
+        let strip = EdgePrint(progress: started ? (progress?.percent ?? 0) / 100 : nil, lead: lead,
+                              key: started ? minutes.map { Programme.left(minutes: $0) } : nil, endsInMinutes: minutes)
+        return FilmFrame(art: .still(current), strip: strip)
             .accessibilityHidden(true)
     }
 
     private var textColumn: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                let factsText = facts
+                if !factsText.isEmpty {
+                    Text(factsText)
+                        .font(.system(.subheadline).monospacedDigit())
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                }
                 Text(current.title)
                     .font(.system(.largeTitle, weight: .bold))
                     .tracking(-0.7)
@@ -127,18 +145,11 @@ struct DetailView: View {
                         withAnimation(Theme.Motion.fade) { titleCollapsed = collapsed }
                     }
                     #endif
-                let factsText = facts
-                if !factsText.isEmpty {
-                    Text(factsText)
-                        .font(.system(.subheadline).monospacedDigit())
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                }
             }
             if !ratings.isEmpty || current.voteAverage != nil {
                 RatingsRow(ratings: ratings.isEmpty ? Ratings(tmdb: current.voteAverage) : ratings, item: current)
             }
             actions
-            versionBlock
             overviewBlock
         }
     }
@@ -318,34 +329,57 @@ struct DetailView: View {
         #endif
     }
 
-    /// "Best version: 2160p · Dolby Vision · TrueHD 7.1 · 18.20 GB", with how many sources there are and, in plain
-    /// words, anything about how it will play here.
+    /// The film-can label: what will play and how, as edge print. Best version, how it plays on this device, and
+    /// the sources (which open the picker).
     @ViewBuilder
-    private var versionBlock: some View {
+    private var versionLabel: some View {
         if let best = bestVersion {
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text("Best version")
-                    .font(.system(.footnote, weight: .semibold))
-                    .foregroundStyle(Theme.Palette.textTertiary)
-                WrappingRow(spacing: Theme.Space.m, lineSpacing: 0) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                labelRow("Best version") {
                     Text(best.line.isEmpty ? "Unknown format" : best.line)
-                        .font(.system(.subheadline).monospacedDigit())
-                        .foregroundStyle(Theme.Palette.text)
-                        .frame(minHeight: 44 * Theme.scale)
-                    Button { Task { await model.play(current, library: libraryProviderID) } } label: {
-                        Text(best.count == 1 ? "1 source" : "\(best.count) sources")
+                        .foregroundStyle(Theme.Palette.print)
+                }
+                labelRow("Plays") {
+                    if let note = best.note, note.isWarning {
+                        Text(note.text).foregroundStyle(Theme.Palette.warn)
+                    } else if let note = best.note {
+                        Text("Direct · " + note.text).foregroundStyle(Theme.Palette.print)
+                    } else {
+                        Text("Direct").foregroundStyle(Theme.Palette.stock)
                     }
-                    .buttonStyle(PlainActionButtonStyle())
-                    .accessibilityHint("Opens the source list")
                 }
-                if let note = best.note {
-                    Text(note.text)
-                        .font(.system(.footnote))
-                        .foregroundStyle(note.isWarning ? Theme.Palette.warn : Theme.Palette.textSecondary)
+                Button { Task { await model.play(current, library: libraryProviderID) } } label: {
+                    labelRow("Sources") {
+                        Text(([String(best.count)] + best.providers.prefix(3)).joined(separator: " · "))
+                            .foregroundStyle(Theme.Palette.print)
+                    }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens the source list")
             }
+            .padding(Theme.Space.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Theme.Palette.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.frame, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.frame, style: .continuous).strokeBorder(Theme.Palette.line, lineWidth: 1))
             .transition(.opacity)
         }
+    }
+
+    /// One row of the label: a small tracked name, then its value in larger print.
+    private func labelRow<Value: View>(_ name: String, @ViewBuilder value: () -> Value) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+            Text(name)
+                .font(Theme.Typeface.edgePrint)
+                .edgePrint(tracking: 1.6)
+                .foregroundStyle(Theme.Palette.textTertiary)
+                .frame(width: 92 * Theme.scale, alignment: .leading)
+            value()
+                .font(Font.system(.subheadline, weight: .semibold).width(.condensed).monospacedDigit())
+                .edgePrint()
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func toggleRewatch() {

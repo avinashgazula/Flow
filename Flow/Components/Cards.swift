@@ -316,9 +316,12 @@ struct ContinueWatchingCard: View {
 
 /// Lifts cards on focus (tvOS) and compresses gently on press elsewhere.
 struct CardButtonStyle: ButtonStyle {
+    /// How far a focused card grows on Apple TV; a frame with its strip, which draws its own ring, lifts less.
+    var lift: CGFloat = 1.08
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .modifier(FocusLift())
+            .modifier(FocusLift(scale: lift))
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .animation(Theme.Motion.snappy, value: configuration.isPressed)
     }
@@ -339,6 +342,162 @@ struct FocusLift: ViewModifier {
         #else
         content
         #endif
+    }
+}
+
+// MARK: - Frame and edge strip
+
+/// The printed edge of 35mm stock under a frame: perforations that fill as you watch, then the facts that
+/// decide what to watch in edge print (condensed, uppercase, tracked), with the key one in yellow. It always
+/// carries real progress and/or real facts. The end time ticks each minute.
+struct EdgeStrip: View {
+    let print: EdgePrint
+    var focused = false
+
+    private var scale: CGFloat { Theme.scale }
+
+    var body: some View {
+        Group {
+            if print.endsInMinutes != nil {
+                TimelineView(.everyMinute) { context in strip(now: context.date) }
+            } else {
+                strip(now: Date())
+            }
+        }
+        .frame(height: 24 * scale)
+        .background(Theme.Palette.edge)
+    }
+
+    private func strip(now: Date) -> some View {
+        GeometryReader { proxy in
+            HStack(spacing: 8 * scale) {
+                if let progress = print.progress { perforations(progress, frameWidth: proxy.size.width) }
+                printText(now: now)
+                    .font(Theme.Typeface.edgePrint)
+                    .edgePrint()
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 8 * scale)
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .leading)
+        }
+    }
+
+    /// Fewer, never fewer than four, on a narrow frame so the print keeps its room.
+    private func perforations(_ progress: Double, frameWidth: CGFloat) -> some View {
+        let pitch = 11 * scale
+        let count = min(30, max(4, Int(frameWidth * 0.3 / pitch)))
+        let filled = EdgePrint.filledPerforations(progress: progress, of: count)
+        return HStack(spacing: 4 * scale) {
+            ForEach(0..<count, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 2 * scale, style: .continuous)
+                    .fill(index < filled ? Theme.Palette.stock : Theme.Palette.lineStrong)
+                    .frame(width: 7 * scale, height: 9 * scale)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func printText(now: Date) -> Text {
+        var out = AttributedString()
+        for (index, segment) in print.segments(now: now).enumerated() {
+            if index > 0 {
+                var dot = AttributedString(" · ")
+                dot.foregroundColor = Theme.Palette.textTertiary
+                out += dot
+            }
+            var part = AttributedString(segment.text)
+            // The key fact is yellow, and on Apple TV a focused frame prints all of it in yellow.
+            part.foregroundColor = (segment.isKey || focused) ? Theme.Palette.stock : Theme.Palette.print
+            out += part
+        }
+        return Text(out)
+    }
+}
+
+/// A still or poster with its edge strip attached, one object: the frame's top corners and the strip's bottom
+/// corners are the same radius. It fills the width it is given; the caller fixes the size per row.
+struct FilmFrame: View {
+    let art: ProgrammeArt
+    var strip: EdgePrint?
+    @Environment(\.isFocused) private var focused
+
+    private var aspect: CGFloat {
+        if case .posterImage = art { return 2.0 / 3.0 }
+        return 16.0 / 9.0
+    }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.artwork, style: .continuous)
+        VStack(spacing: 0) {
+            Color.clear
+                .aspectRatio(aspect, contentMode: .fit)
+                .overlay(image)
+            if let strip { EdgeStrip(print: strip, focused: focused) }
+        }
+        .clipShape(shape)
+        // Focus is a yellow outline around frame and strip together.
+        .overlay { shape.strokeBorder(focused ? Theme.Palette.stock : Theme.Palette.hairline, lineWidth: focused ? (Platform.isTV ? 4 : 2) : 1) }
+    }
+
+    @ViewBuilder
+    private var image: some View {
+        switch art {
+        case .posterImage(let url, let fallback, let title):
+            RemoteImage(url: url, maxPixel: Platform.isTV ? 600 : 420, fallbackTitle: title, fallbackURL: fallback)
+        case .stillImage(let url, let title):
+            RemoteImage(url: url, maxPixel: Platform.isTV ? 1000 : 700, fallbackTitle: title)
+        case .none:
+            Theme.Palette.control
+        }
+    }
+}
+
+/// A frame and strip with the title and one meta line under it. Wrap it in a button or link; its spoken
+/// label reads the facts naturally ("Breaking Bad, season 3 episode 7, 18 minutes left, ends 9:30 PM").
+struct FilmCard: View {
+    let art: ProgrammeArt
+    var strip: EdgePrint?
+    let title: String
+    var meta: String?
+    /// Nil fills the width the card is given (a grid column).
+    var width: CGFloat?
+    let spoken: String
+    /// The id the detail page's zoom transition grows from (iOS 18+); it grows from the frame alone.
+    var zoomID: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            FilmFrame(art: art, strip: strip)
+                .zoomSource(zoomID)
+                .frame(width: width)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Theme.Typeface.headline)
+                    .foregroundStyle(Theme.Palette.text)
+                    .lineLimit(1)
+                if let meta, !meta.isEmpty {
+                    Text(meta)
+                        .font(.system(.subheadline).monospacedDigit())
+                        .foregroundStyle(Theme.Palette.textSecondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: width ?? .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken)
+    }
+}
+
+extension MediaItem {
+    /// "2024 · Science Fiction": the short plain facts under a card's title.
+    var shortMeta: String {
+        var parts: [String] = []
+        if let year { parts.append(String(year)) }
+        if let genre = genres.first?.name { parts.append(genre) }
+        return parts.joined(separator: " · ")
     }
 }
 

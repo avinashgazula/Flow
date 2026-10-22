@@ -121,6 +121,8 @@ extension AppModel {
         var line: String
         /// Every source found, which the picker lists.
         var count: Int
+        /// Who they came from, best first.
+        var providers: [String]
         var note: VersionNote?
     }
 
@@ -139,7 +141,9 @@ extension AppModel {
         guard let best = lastSource(for: request, in: ranked) ?? ranked.first(where: \.isPlayable) else { return nil }
         let line = best.traits.versionLine(includeSize: true)
         let note = Programme.versionNote(for: best.traits, decodesAV1: Platform.decodesAV1, convertsLosslessAudio: MatroskaRemuxer.audioDecoders != nil)
-        return BestVersion(line: line, count: ranked.count, note: note)
+        var seen = Set<String>()
+        let providers = ranked.map(\.providerName).filter { seen.insert($0).inserted }
+        return BestVersion(line: line, count: ranked.count, providers: providers, note: note)
     }
 
     func shufflePlay(_ show: MediaItem) async {

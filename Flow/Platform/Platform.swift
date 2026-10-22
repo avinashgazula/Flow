@@ -189,8 +189,8 @@ enum BundleKeys {
 extension AccentColorChoice {
     var color: Color {
         switch self {
-        // White was the old default; the programme's own spot pink takes its place as Flow's accent.
-        case .white: return Theme.Palette.spot
+        // White was the old default; film-stock yellow takes its place as Flow's own accent.
+        case .white: return Theme.Palette.stock
         case .blue: return .blue
         case .red: return .red
         case .orange: return .orange

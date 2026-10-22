@@ -56,14 +56,15 @@ if [ "$platform" = "macos" ]; then
   exit 0
 fi
 
+os=${FLOW_SIM_OS:-26}   # the simulator runtime's major version; the Xcode 27 image sets 27
 if [ "$platform" = "ios" ]; then
-  udid=$(pick_device "iPhone 17 Pro" "iOS-26"); [ -z "$udid" ] && udid=$(pick_device "iPhone" "iOS-26")
+  udid=$(pick_device "iPhone 17 Pro" "iOS-$os"); [ -z "$udid" ] && udid=$(pick_device "iPhone" "iOS-$os")
   scheme=Flow-iOS; products=Debug-iphonesimulator
 elif [ "$platform" = "ipad" ]; then
-  udid=$(pick_device "iPad Pro 13" "iOS-26"); [ -z "$udid" ] && udid=$(pick_device "iPad" "iOS-26")
+  udid=$(pick_device "iPad Pro 13" "iOS-$os"); [ -z "$udid" ] && udid=$(pick_device "iPad" "iOS-$os")
   scheme=Flow-iOS; products=Debug-iphonesimulator
 else
-  udid=$(pick_device "Apple TV 4K" "tvOS-26"); [ -z "$udid" ] && udid=$(pick_device "Apple TV" "tvOS")
+  udid=$(pick_device "Apple TV 4K" "tvOS-$os"); [ -z "$udid" ] && udid=$(pick_device "Apple TV" "tvOS")
   scheme=Flow-tvOS; products=Debug-appletvsimulator
 fi
 echo "Using simulator $udid"

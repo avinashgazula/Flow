@@ -292,16 +292,16 @@ struct SourcePickerView: View {
     }
 }
 
-/// One source as a listing in a programme of sources: the resolution in the time column, the release as the
-/// title, the version (formats, size) beneath it in plain text, then the provider and languages in the third
-/// ink. The ranked-best row carries the pink Play; every row plays on tap. Only exceptions are flagged, in words.
+/// One source as a film-can label row: the resolution large in the left column, then the formats in edge print,
+/// the release name, and the size, provider and languages in the third ink. The ranked-best row carries the
+/// yellow Play; every row plays on tap. Only exceptions are flagged, in words.
 struct SourceRow: View {
     let source: StreamSource
     let appearance: SourceAppearance
     /// The provider's name heads the group, so the row leads with what tells its sources apart.
     var providerShownAbove = false
     var lastPlayed = false
-    /// The source Play would start: its row says so with the one pink control.
+    /// The source Play would start: its row says so with the one yellow control.
     var isBest = false
     var forDownload = false
     /// A hairline above this row, from the text column across, when it follows another in a list.
@@ -328,7 +328,8 @@ struct SourceRow: View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             if columnShown {
                 Text(Programme.resolutionLabel(source.traits.resolution) ?? "–")
-                    .font(Theme.Typeface.time)
+                    .font(.system(.title3, weight: .bold).monospacedDigit())
+                    .textCase(.uppercase)
                     .foregroundStyle(source.traits.resolution == .unknown ? tertiary : primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
@@ -336,6 +337,14 @@ struct SourceRow: View {
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             }
             VStack(alignment: .leading, spacing: 3) {
+                // The formats first, as printed on the can; raw add-on text replaces them when asked for.
+                if !appearance.showRawText, let formats = formatLine {
+                    Text(formats)
+                        .font(Theme.Typeface.edgePrint)
+                        .edgePrint()
+                        .foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.print)
+                        .lineLimit(2)
+                }
                 Text(title)
                     .font(Theme.Typeface.headline)
                     .foregroundStyle(primary)
@@ -350,11 +359,10 @@ struct SourceRow: View {
                             .lineLimit(appearance.compact ? 3 : 8)
                             .multilineTextAlignment(.leading)
                     }
-                } else if let version = versionLine {
-                    Text(version)
+                } else if let size = summary.size, !typeSize.isAccessibilitySize {
+                    Text(size)
                         .font(.system(.subheadline).monospacedDigit())
                         .foregroundStyle(secondary)
-                        .lineLimit(2)
                 }
                 if let words = summary.detail, !appearance.showRawText {
                     Text(words)
@@ -386,15 +394,11 @@ struct SourceRow: View {
         return ([resolution, text] + withSize).joined(separator: " · ")
     }
 
-    /// "Dolby Vision · TrueHD 7.1 · 18.20 GB": what is different about this one, as plain text. Badges off
-    /// (Settings → Source Appearance) leaves only the size.
-    private var versionLine: String? {
-        var parts: [String] = []
-        if appearance.badgePack != .none {
-            let formats = Programme.versionLine(hdr: source.traits.hdr, audioCodec: source.traits.audioCodec, audioChannels: source.traits.audioChannels)
-            if !formats.isEmpty { parts.append(formats) }
-        }
-        if let size = summary.size, !typeSize.isAccessibilitySize { parts.append(size) }
+    /// "DV · TRUEHD 7.1": what is different about this one, as edge print. Badges off (Settings → Source
+    /// Appearance) leaves it out.
+    private var formatLine: String? {
+        guard appearance.badgePack != .none else { return nil }
+        let parts = Programme.edgeFormat(hdr: source.traits.hdr, audioCodec: source.traits.audioCodec, audioChannels: source.traits.audioChannels)
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
@@ -420,10 +424,10 @@ struct SourceRow: View {
     private var playPill: some View {
         Text(forDownload ? "Download" : "Play")
             .font(.system(.subheadline, weight: .semibold))
-            .foregroundStyle(focused ? Theme.Palette.spot : Theme.Palette.onSpot)
+            .foregroundStyle(focused ? Theme.Palette.stock : Theme.Palette.onStock)
             .padding(.horizontal, Theme.Space.m)
             .frame(minHeight: 36 * Theme.scale)
-            .background(focused ? Theme.Palette.onSpot : Theme.Palette.spot, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+            .background(focused ? Theme.Palette.onStock : Theme.Palette.stock, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
             .fixedSize()
     }
 }

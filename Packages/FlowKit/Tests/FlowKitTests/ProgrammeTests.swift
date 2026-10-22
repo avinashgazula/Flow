@@ -80,6 +80,14 @@ final class ProgrammeTests: XCTestCase {
         XCTAssertEqual(later.label, "airs 2027")
     }
 
+    func testAirPrintReadsAsOneLine() {
+        let now = date("2026-10-22T12:00:00Z")
+        XCTAssertTrue(Programme.airPrint(for: date("2026-10-27T00:00:00Z"), now: now, locale: gb).hasPrefix("airs "))
+        let old = Programme.airPrint(for: date("2011-10-12T00:00:00Z"), now: now, locale: gb)
+        XCTAssertTrue(old.hasPrefix("aired "), old)
+        XCTAssertTrue(old.hasSuffix("2011"), old)
+    }
+
     func testDayPartNamesTheGreeting() {
         XCTAssertEqual(Programme.DayPart(hour: 4).title, "Tonight")
         XCTAssertEqual(Programme.DayPart(hour: 5).title, "This Morning")
@@ -131,6 +139,33 @@ final class ProgrammeTests: XCTestCase {
         XCTAssertNil(Programme.versionNote(for: traits, decodesAV1: true, convertsLosslessAudio: false))
         traits.audioCodec = "AAC"
         XCTAssertNil(Programme.versionNote(for: traits, decodesAV1: true, convertsLosslessAudio: true))
+    }
+
+    func testEdgePrintOrdersTheFactsAndKeepsTheKeyOne() {
+        let print = EdgePrint(progress: 0.6, lead: ["S3 E7"], key: "18 min left", endsInMinutes: 48, tail: ["2160p", "DV"])
+        let now = date("2026-10-22T20:42:00Z")
+        let segments = print.segments(now: now, locale: gb, timeZone: utc)
+        XCTAssertEqual(segments.map(\.text), ["S3 E7", "18 min left", "ends 21:30", "2160p", "DV"])
+        XCTAssertEqual(segments.filter(\.isKey).map(\.text), ["18 min left"])
+    }
+
+    func testEdgePrintLeavesOutWhatIsMissing() {
+        let print = EdgePrint(lead: ["", "2024"], key: nil, endsInMinutes: nil, tail: [""])
+        XCTAssertEqual(print.segments().map(\.text), ["2024"])
+    }
+
+    func testPerforationsFillWithProgress() {
+        XCTAssertEqual(EdgePrint.filledPerforations(progress: 0, of: 14), 0)
+        XCTAssertEqual(EdgePrint.filledPerforations(progress: 0.01, of: 14), 1)
+        XCTAssertEqual(EdgePrint.filledPerforations(progress: 0.5, of: 14), 7)
+        XCTAssertEqual(EdgePrint.filledPerforations(progress: 1, of: 14), 14)
+        XCTAssertEqual(EdgePrint.filledPerforations(progress: 2, of: 14), 14)
+        XCTAssertEqual(EdgePrint.filledPerforations(progress: 0.5, of: 0), 0)
+    }
+
+    func testEdgeFormatKeepsBadgesShort() {
+        XCTAssertEqual(Programme.edgeFormat(resolution: .uhd4k, hdr: ["DV"], audioCodec: "TrueHD", audioChannels: "7.1"), ["2160p", "DV", "TrueHD 7.1"])
+        XCTAssertEqual(Programme.edgeFormat(), [])
     }
 
     func testSpokenDurationHasNoLeft() {
