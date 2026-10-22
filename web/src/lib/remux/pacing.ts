@@ -8,10 +8,11 @@ export const AHEAD_MIN = 8
 /** What to aim for when the bitrate isn't known. */
 export const AHEAD_TARGET = 30
 /** What Flow expects the browser to hold ahead of the playhead, in bytes. Chrome's quota for video
- *  is about 150 MB for everything buffered, so this leaves room for some of what has been played;
- *  at 10 MB/s (an 80 Mb/s remux) that is about 12 s, at 4 MB/s a full 30. A browser that holds less
- *  says so (`pressure`) and the worker reads less far ahead; one that holds more is simply not used up. */
-export const AHEAD_BUDGET_BYTES = 128 * 1024 * 1024
+ *  is about 150 MB for everything buffered, and measured in Chrome it fills at about 128 MB of
+ *  buffer ahead (15 s of an 70 Mb/s file), so this stays under that: at 10 MB/s (an 80 Mb/s remux)
+ *  it is about 11 s, at 3 MB/s a full 30. A browser that holds less says so (`pressure`) and the
+ *  worker reads less far ahead; one that holds more is simply not used up. */
+export const AHEAD_BUDGET_BYTES = 112 * 1024 * 1024
 
 /** The most seconds worth reading ahead for a file averaging `bitrate` bytes per second (0 when unknown). */
 export function aheadCapFor(bitrate: number): number {

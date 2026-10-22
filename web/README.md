@@ -60,6 +60,17 @@ JS glue are committed in `src/lib/remux/pkg/`, so the site builds without Rust. 
 crate, run `npm run wasm` (needs Rust with the `wasm32-unknown-unknown` target and `wasm-bindgen-cli`
 0.2.129) and `cargo test` in `crates/flow-remux`.
 
+**Reading fast files.** A 4K remux at 60 to 100 Mb/s behind a stream proxy can't be read one request
+at a time: each request waits out the proxy's latency, and a capped connection never fills the pipe.
+`reader.ts` keeps three range requests in flight (through the proxy, or for any file above 25 Mb/s;
+two otherwise), starting small and doubling up to 16 MB (4 MB direct), and hands the bytes to the
+remuxer strictly in order, holding at most three pieces in memory. A piece that drops is asked for
+again from its last byte without disturbing the others. `pacing.ts` decides how far ahead to read:
+as far as the browser's buffer quota holds at the file's bitrate (about 11 s at 10 MB/s, the full
+minute for an ordinary film), lowered when the browser says its buffer is full and climbed back a
+little at a time. `session.netStats` and `session.onStats` report the download rate, the file's
+bitrate and the requests in flight about once a second.
+
 **Audio conversion.** A track the browser can't play (TrueHD, DTS, and Dolby Digital where there's
 no decoder) is handed to `src/lib/remux/convert.ts` raw, as the worker reads it. FFmpeg's decoders,
 built to a 290 KB WebAssembly module (LGPL, `src/lib/audio/pkg/flow-audio.wasm`, rebuilt with

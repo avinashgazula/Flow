@@ -9,7 +9,7 @@ describe('aheadCapFor', () => {
   })
   it('reads at least half a minute ahead of an ordinary film', () => {
     expect(aheadCapFor(1 * MB)).toBe(AHEAD_MAX)
-    expect(aheadCapFor(4 * MB)).toBeGreaterThanOrEqual(30)
+    expect(aheadCapFor(3 * MB)).toBeGreaterThanOrEqual(30)
   })
   it('reads less far ahead as the bitrate grows, so the browser’s quota holds it, but never under the floor', () => {
     expect(aheadCapFor(10 * MB)).toBeGreaterThan(10)
