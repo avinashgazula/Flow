@@ -26,8 +26,9 @@ export function FilmCan({ search, best, lastPlayed, onOpen }: { search: SearchUp
             <dt>{lastPlayed ? 'Last played' : 'Best version'}</dt>
             <dd>{waiting ? <Bar width="62%" /> : nothingPlays ? <span className={s.warn}>None plays in this browser</span> : version.length ? version.map((p, i) => (
                 <Fragment key={p}>
-                  <span className={s.part}>{p}{i < version.length - 1 && ' ·'}</span>
-                  {i < version.length - 1 && ' '}
+                  {i > 0 && ' '}
+                  {/* The dot travels with the item after it, so a wrapped line starts with one, never ends on one. */}
+                  <span className={s.part}>{i > 0 && '· '}{p}</span>
                 </Fragment>
               )) : 'Unnamed release'}</dd>
           </div>

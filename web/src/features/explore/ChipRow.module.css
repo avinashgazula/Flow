@@ -27,11 +27,12 @@
 .row[data-before] { --fade-before: calc(var(--gutter) + 72px); }
 .row[data-after] { --fade-after: calc(var(--gutter) + 72px); }
 
-/* Scroll buttons sit in the page's side margin, for a mouse only. */
+/* Scroll buttons, for a mouse only. */
 .arrow { display: none; }
 @media (hover: hover) and (pointer: fine) and (min-width: 721px) {
   /* Round with a hairline, so it reads as a control over the row and not as one more chip. */
   .arrow { display: inline-flex; position: absolute; top: 4px; border-radius: 50%; border: 1px solid var(--rule); background: var(--base-2); color: var(--paper); }
-  .back { left: 4px; }
-  .forward { right: 4px; }
+  /* Inside the page's content edge, over the faded end of the row, so they line up with everything above. */
+  .back { left: var(--gutter); }
+  .forward { right: var(--gutter); }
 }
