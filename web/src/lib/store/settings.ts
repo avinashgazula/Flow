@@ -1,5 +1,6 @@
 import type { AddonManifest } from '../sources/types'
 import { createStore, useStore } from './createStore'
+import { defaultSubtitleStyle, normaliseSubtitleStyle, type SubtitleStyle } from './subtitleStyle'
 
 export interface AddonConfig {
   /** Manifest URL, e.g. https://example.com/manifest.json */
@@ -50,6 +51,8 @@ export interface Settings {
   /** Subtitle language codes in order of preference. The first is "my language" for `subtitleMode`. */
   subtitleLanguages: string[]
   subtitleMode: SubtitleMode
+  /** How subtitles look. The keys are the apps' (`subtitles.fontScale` and the rest in FlowKit). */
+  subtitleStyle: SubtitleStyle
   autoplayNext: boolean
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
   /** The picker offers the source a title was last played from first. */
@@ -75,6 +78,7 @@ export const defaultSettings: Settings = {
   audioLanguages: ['original', browserLanguage.slice(0, 2).toLowerCase()],
   subtitleLanguages: [browserLanguage.slice(0, 2).toLowerCase()],
   subtitleMode: 'foreign',
+  subtitleStyle: defaultSubtitleStyle,
   autoplayNext: true,
   preferredQuality: '1080p',
   rememberLastSource: true,
@@ -83,6 +87,11 @@ export const defaultSettings: Settings = {
 }
 
 export const settingsStore = createStore<Settings>('settings', defaultSettings)
+
+/** Changes some of the subtitle style's fields, keeping the rest and holding each to its range. Settings
+ *  and the player both write through here, so a change in one shows in the other at once. */
+export const updateSubtitleStyle = (patch: Partial<SubtitleStyle>) =>
+  settingsStore.set((s) => ({ subtitleStyle: normaliseSubtitleStyle({ ...s.subtitleStyle, ...patch }) }))
 
 /** `?demo` in the address (or the onboarding button) turns sample data on, like -FlowDemo YES. */
 if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('demo')) {

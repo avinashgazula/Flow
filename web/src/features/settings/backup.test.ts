@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultSettings } from '../../lib/store/settings'
+import { defaultSubtitleStyle } from '../../lib/store/subtitleStyle'
 import { backupFormat, createBackup, parseBackup } from './backup'
 
 const library = { progress: {}, watchlist: [], favourites: [], history: [], watchedEpisodes: {} }
@@ -70,5 +71,40 @@ describe('settings backup', () => {
     expect(defaultSettings.audioLanguages[0]).toBe('original')
     expect(defaultSettings.audioLanguages[1]).toBe(defaultSettings.subtitleLanguages[0])
     expect(defaultSettings.subtitleMode).toBe('foreign')
+  })
+
+  describe('subtitle style', () => {
+    const parse = (subtitleStyle: unknown) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { autoplayNext: true, subtitleStyle } }))
+    const custom = { fontScale: 1.4, font: 'serif', weight: 'heavy', color: 'cyan', edgeStyle: 'outline', background: 'solid', backgroundOpacity: 0.8, verticalPosition: 0.2 }
+
+    it('matches the apps’ defaults', () => {
+      expect(defaultSettings.subtitleStyle).toEqual({ fontScale: 1, font: 'system', weight: 'semibold', color: 'white', edgeStyle: 'dropShadow', background: 'none', backgroundOpacity: 0.6, verticalPosition: 0 })
+    })
+
+    it('round-trips through a backup with the apps’ key names', () => {
+      const text = JSON.stringify(createBackup({ ...defaultSettings, subtitleStyle: custom as typeof defaultSubtitleStyle }, library))
+      expect(Object.keys(JSON.parse(text).settings.subtitleStyle).sort()).toEqual(['background', 'backgroundOpacity', 'color', 'edgeStyle', 'font', 'fontScale', 'verticalPosition', 'weight'])
+      const r = parseBackup(text)
+      expect(r.ok && r.settings.subtitleStyle).toEqual(custom)
+      expect(r.ok && r.skipped).toEqual([])
+    })
+
+    it('fills fields a backup leaves out with the defaults', () => {
+      const r = parse({ font: 'rounded', fontScale: 1.2 })
+      expect(r.ok && r.settings.subtitleStyle).toEqual({ ...defaultSubtitleStyle, font: 'rounded', fontScale: 1.2 })
+    })
+
+    it('reads the apps’ older shadow background as none', () => {
+      const r = parse({ background: 'shadow' })
+      expect(r.ok && r.settings.subtitleStyle?.background).toBe('none')
+    })
+
+    it('skips a style with a choice or a number outside the allowed ones', () => {
+      for (const bad of [{ font: 'comic' }, { weight: 'black' }, { color: 'red' }, { edgeStyle: 'glow' }, { background: 'blur' }, { fontScale: 3 }, { fontScale: 0.5 }, { backgroundOpacity: 1.5 }, { verticalPosition: 0.5 }, { verticalPosition: '0.1' }, [], 'big', null]) {
+        const r = parse(bad)
+        expect(r.ok && r.skipped).toEqual(['subtitleStyle'])
+        expect(r.ok && 'subtitleStyle' in r.settings).toBe(false)
+      }
+    })
   })
 })
