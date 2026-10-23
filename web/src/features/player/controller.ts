@@ -42,6 +42,8 @@ export interface PlayerState {
   subtitleTrack: TextTrack | null
   controls: boolean
   panel: Panel
+  /** The options panel is on its Subtitle Style page: the overlay shows a sample line, and the page clears the way for it. */
+  styling: boolean
   /** The Playback Info card is up (I, or Options). */
   info: boolean
   fit: 'contain' | 'cover'
@@ -98,6 +100,7 @@ export class PlayerController {
     subtitleTrack: null,
     controls: true,
     panel: null,
+    styling: false,
     info: false,
     fit: 'contain',
     fullscreen: false,
@@ -448,6 +451,14 @@ export class PlayerController {
     this.root?.setAttribute('data-idle', '')
   }
   toggleControls = () => (this.state.controls ? this.hideControls() : this.showControls())
+
+  /** The attribute is for the stylesheet, which moves the subtitles clear of the panel; it's written to the
+   *  element, like the idle cursor, so the screen doesn't re-render. */
+  setStyling = (styling: boolean) => {
+    if (this.state.styling === styling) return
+    this.set({ styling })
+    this.root?.toggleAttribute('data-styling', styling)
+  }
 
   setPanel = (panel: Panel) => {
     this.set({ panel })

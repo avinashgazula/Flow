@@ -18,7 +18,7 @@ const families: Record<SubtitleFont, string> = {
 const weights: Record<SubtitleWeight, number> = { regular: 400, medium: 500, semibold: 600, bold: 700, heavy: 800 }
 
 /** The apps' colours: the system's white, yellow, cyan and green. */
-const colors: Record<SubtitleColor, string> = { white: '#fff', yellow: '#ffd60a', cyan: '#64d2ff', green: '#30d158' }
+export const subtitleColorValues: Record<SubtitleColor, string> = { white: '#fff', yellow: '#ffd60a', cyan: '#64d2ff', green: '#30d158' }
 
 /** The first look subtitles had here, and still the default. */
 const softShadow = '0 1px 2px rgb(0 0 0 / 0.95), 0 0 6px rgb(0 0 0 / 0.55), 0 2px 14px rgb(0 0 0 / 0.35)'
@@ -56,7 +56,7 @@ export function subtitleCSS(style: SubtitleStyle): SubtitleCSS {
     fontFamily: families[s.font],
     fontWeight: weight,
     fontStretch: s.font === 'condensed' ? '75%' : undefined,
-    color: colors[s.color],
+    color: subtitleColorValues[s.color],
     textShadow: edges[s.edgeStyle],
     '--sub-scale': s.fontScale,
     '--sub-lift': s.verticalPosition,

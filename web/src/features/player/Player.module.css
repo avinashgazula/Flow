@@ -42,8 +42,14 @@
 
 .tapLayer { position: absolute; inset: 0; z-index: 1; }
 
-/* Subtitles: large, white and quietly shadowed, above the picture and below the controls. */
+/* Subtitles: large and quietly shadowed, above the picture and below the controls. The viewer's own choices
+   (subtitleStyle.ts) arrive as the font, weight, colour and shadow set on this element, and as custom
+   properties for what's combined here: the size, the lift and the box behind each line. The defaults are
+   what subtitles looked like before there were choices. */
 .subtitles {
+  --sub-base: clamp(19px, 2.4vw + 0.6vh, 46px);
+  /* What the viewer's lift is a fraction of: the picture, which here is the whole window. */
+  --sub-room: 100dvh;
   position: absolute;
   z-index: 2;
   left: calc(var(--inset-left) + 6%);
@@ -55,18 +61,25 @@
   gap: 0.12em;
   text-align: center;
   pointer-events: none;
-  font: 600 clamp(19px, 2.4vw + 0.6vh, 46px) / 1.22 var(--font);
+  font: 600 calc(var(--sub-base) * var(--sub-scale, 1)) / 1.22 var(--font);
   letter-spacing: 0.005em;
   color: #fff;
   text-shadow: 0 1px 2px rgb(0 0 0 / 0.95), 0 0 6px rgb(0 0 0 / 0.55), 0 2px 14px rgb(0 0 0 / 0.35);
   text-wrap: balance;
+  transform: translateY(calc(var(--sub-lift, 0) * var(--sub-room) * -1));
   transition: transform var(--dur-move) var(--ease-out);
 }
-.subtitles[data-lifted] { transform: translateY(calc(-1 * var(--lift, 96px))); }
-.subtitleLine { max-width: 100%; }
-.subtitleLine b { font-weight: 800; }
+/* With the controls up the line clears the scrubber, or stays where the viewer put it when that's higher. */
+.subtitles[data-lifted] { transform: translateY(calc(-1 * max(var(--lift, 96px), var(--sub-lift, 0) * var(--sub-room)))); }
 @media (max-height: 500px) {
-  .subtitles { --lift: 78px; font-size: clamp(17px, 2vw + 1vh, 28px); bottom: calc(var(--inset-bottom) + 16px); }
+  .subtitles { --lift: 78px; --sub-base: clamp(17px, 2vw + 1vh, 28px); bottom: calc(var(--inset-bottom) + 16px); }
+}
+
+/* The options panel is on its Subtitle Style page. Where the window is wide the panel sits on the right, so
+   the line keeps to the picture beside it; on a narrow one the panel is docked to the top (Controls.module.css)
+   and the line has the room below it. Either way the line being judged is never behind the panel. */
+@media (min-width: 900px), (max-height: 500px) {
+  .root[data-styling] .subtitles { right: calc(var(--inset-right) + var(--margin) + min(380px, 100% - 32px) + 24px); }
 }
 
 /* Keyboard feedback: a flat disc in the middle that's gone in half a second. */

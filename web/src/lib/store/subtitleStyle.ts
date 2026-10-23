@@ -1,38 +1,12 @@
 /* How subtitles look: the choices, their defaults and the rules that keep a saved value sane. The names
-   and ranges are the apps' (FlowKit's SubtitleSettings), so a setup carries across. This file is in the
-   first-load code because the settings store needs the defaults, so it holds data and nothing else:
-   the CSS lives in features/player/subtitleStyle.ts. */
+   and ranges are the apps' (FlowKit's SubtitleSettings), so a setup carries across. The defaults and
+   types live in subtitleStyleDefault.ts so the first-load code needn't carry the rest; the CSS is in
+   features/player/subtitleStyle.ts. */
 
-export type SubtitleFont = 'system' | 'rounded' | 'serif' | 'monospaced' | 'condensed'
-export type SubtitleWeight = 'regular' | 'medium' | 'semibold' | 'bold' | 'heavy'
-export type SubtitleColor = 'white' | 'yellow' | 'cyan' | 'green'
-export type SubtitleEdge = 'none' | 'dropShadow' | 'raised' | 'depressed' | 'outline'
-export type SubtitleBackground = 'none' | 'translucent' | 'solid'
+import { defaultSubtitleStyle, type SubtitleBackground, type SubtitleColor, type SubtitleEdge, type SubtitleFont, type SubtitleStyle, type SubtitleWeight } from './subtitleStyleDefault'
 
-export interface SubtitleStyle {
-  /** 1 is the usual size; 0.6 to 2. */
-  fontScale: number
-  font: SubtitleFont
-  weight: SubtitleWeight
-  color: SubtitleColor
-  edgeStyle: SubtitleEdge
-  background: SubtitleBackground
-  /** 0 to 1, for the two boxes. */
-  backgroundOpacity: number
-  /** How far the line is raised from its usual spot, as a fraction of the picture's height: 0 to 0.4. */
-  verticalPosition: number
-}
-
-export const defaultSubtitleStyle: SubtitleStyle = {
-  fontScale: 1,
-  font: 'system',
-  weight: 'semibold',
-  color: 'white',
-  edgeStyle: 'dropShadow',
-  background: 'none',
-  backgroundOpacity: 0.6,
-  verticalPosition: 0,
-}
+export { defaultSubtitleStyle }
+export type { SubtitleBackground, SubtitleColor, SubtitleEdge, SubtitleFont, SubtitleStyle, SubtitleWeight }
 
 export const subtitleScale = { min: 0.6, max: 2, step: 0.05 } as const
 export const subtitleLift = { min: 0, max: 0.4, step: 0.02 } as const
