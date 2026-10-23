@@ -11,7 +11,7 @@ struct ShelvesSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        List {
+        FilmList {
             Section {
                 ForEach($model.settings.shelves) { $shelf in
                     HStack {
@@ -51,10 +51,10 @@ struct ShelvesSettingsView: View {
             }
 
             Section {
-                Picker("Primary Source", selection: $model.settings.general.heroSource) {
+                FilmPicker("Primary Source", selection: $model.settings.general.heroSource) {
                     ForEach(HeroSource.allCases) { Text($0.title).tag($0) }
                 }
-                Picker("Secondary Source", selection: $model.settings.general.heroSecondarySource) {
+                FilmPicker("Secondary Source", selection: $model.settings.general.heroSecondarySource) {
                     Text("None").tag(HeroSource?.none)
                     ForEach(HeroSource.allCases) { Text($0.title).tag(HeroSource?.some($0)) }
                 }
@@ -180,9 +180,9 @@ struct DiscoverShelfEditor: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            FilmForm {
                 TextField("Shelf Title", text: $title)
-                Picker("Type", selection: $query.type) {
+                FilmPicker("Type", selection: $query.type) {
                     Text("Movies").tag(MediaType.movie)
                     Text("TV Shows").tag(MediaType.show)
                 }
@@ -191,7 +191,7 @@ struct DiscoverShelfEditor: View {
                     DiscoverPreview(query: query)
                 }
             }
-            .navigationTitle(shelf == nil ? "New Discover Shelf" : "Edit Shelf")
+            .flowPageTitle(shelf == nil ? "New Discover Shelf" : "Edit Shelf")
             .inlineNavigationTitle()
             .sheetDismissButton("Cancel") { dismiss() }
             .sheetSaveButton(disabled: title.trimmingCharacters(in: .whitespaces).isEmpty) { save() }
@@ -246,7 +246,7 @@ struct ListShelfPicker: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            FilmForm {
                 if model.trakt != nil {
                     Section("Trakt") {
                         ForEach(traktLists, id: \.ids.slug) { list in
@@ -277,7 +277,7 @@ struct ListShelfPicker: View {
                     Text("Connect Trakt, add an MDBList key or a media server to add list shelves.").foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Add List Shelf")
+            .flowPageTitle("Add List Shelf")
             .inlineNavigationTitle()
             .sheetDismissButton("Cancel") { dismiss() }
             .task {

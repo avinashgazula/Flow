@@ -57,7 +57,7 @@ struct CalendarView: View {
             .scrollIndicators(.hidden)
         }
         .background(AmbientBackground(url: upcomingDays.first?.entries.first?.item.smallBackdropURL, intensity: 0.55))
-        .navigationTitle("Upcoming")
+        .flowPageTitle("Upcoming", inset: Theme.Space.gutter)
         .task(id: model.contentVersion) {
             let loaded = await model.calendar()
             withAnimation(Theme.Motion.fade) { entries = loaded }
@@ -203,34 +203,33 @@ private struct DayStrip: View {
     }
 }
 
-/// iPhone: a still beside the show, episode and badge.
+/// iPhone: a framed still beside the show and episode.
 private struct CalendarRow: View {
     let entry: CalendarEntry
 
     var body: some View {
         NavigationLink(value: Route.detail(entry.item, zoom: "calendar-\(entry.id)")) {
             HStack(spacing: Theme.Space.s) {
-                CalendarStill(entry: entry, width: 128).zoomSource("calendar-\(entry.id)")
+                CalendarFrame(entry: entry).frame(width: 128).zoomSource("calendar-\(entry.id)")
                 VStack(alignment: .leading, spacing: 3) {
                     Text(entry.item.title).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
-                    Text(subtitle(for: entry))
+                    Text(entry.meta)
                         .font(.system(.footnote))
                         .foregroundStyle(Theme.Palette.textSecondary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                    CalendarBadge(entry: entry)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Theme.Palette.textTertiary)
             }
-            .padding(Theme.Space.xs)
-            .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.Palette.hairline))
             .contentShape(Rectangle())
         }
         .buttonStyle(CardButtonStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.spoken(model: model, day: nil))
+        .accessibilityAddTraits(.isButton)
         .contextMenu {
             #if !os(tvOS)
             AddToCalendarButton(item: entry.item, episode: entry.episode, date: entry.date)
@@ -238,18 +237,17 @@ private struct CalendarRow: View {
             MediaContextMenu(item: entry.item)
         }
     }
+
+    @Environment(AppModel.self) private var model
 }
 
-/// iPad, Mac, TV and Just Aired: a wide still with the details beneath. Aired episodes play straight away.
+/// iPad, Mac, TV and Just Aired: a framed still with the show and episode beneath. Aired episodes play straight away.
 private struct CalendarCard: View {
     let entry: CalendarEntry
     let dateLabel: String?
     /// Just Aired cards are in the past: nothing to put in a calendar.
     var upcoming = true
     @Environment(AppModel.self) private var model
-
-    private var width: CGFloat { Platform.landscapeWidth }
-    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Group {
@@ -259,7 +257,7 @@ private struct CalendarCard: View {
                 NavigationLink(value: Route.detail(entry.item)) { content }
             }
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(CardButtonStyle(lift: 1.04))
         .contextMenu {
             Button { model.navigate(to: .detail(entry.item)) } label: { Label("Go to Details", systemImage: "info.circle") }
             #if !os(tvOS)
@@ -271,77 +269,60 @@ private struct CalendarCard: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            CalendarStill(entry: entry, width: width)
-                .overlay {
-                    if entry.hasAired {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 15 * Theme.scale, weight: .bold))
-                            .frame(width: 38 * Theme.scale, height: 38 * Theme.scale)
-                            .flowGlass(Circle())
-                    }
-                }
-            VStack(alignment: .leading, spacing: 3) {
-                // At accessibility text sizes the day moves under the title and lines wrap, rather than "Th…  Frid…".
-                let large = typeSize.isAccessibilitySize
-                (large ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 6))) {
-                    Text(entry.item.title).font(Theme.Typeface.headline).lineLimit(large ? 3 : 1)
-                    if !large { Spacer(minLength: 0) }
-                    if let dateLabel { Text(dateLabel).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary) }
-                }
-                Text(subtitle(for: entry)).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary).lineLimit(large ? 3 : 1)
-                CalendarBadge(entry: entry)
+            CalendarFrame(entry: entry, day: dateLabel).frame(width: Platform.landscapeWidth)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.item.title).font(Theme.Typeface.headline).lineLimit(1)
+                Text(entry.meta)
+                    .font(.system(.subheadline).monospacedDigit())
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .lineLimit(1)
             }
-            .frame(width: width, alignment: .leading)
+            .frame(width: Platform.landscapeWidth, alignment: .leading)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.spoken(model: model, day: dateLabel))
     }
 }
 
-private struct CalendarStill: View {
+/// The still as a film frame: the episode, its label and the day are printed on the strip, nothing over the art.
+private struct CalendarFrame: View {
     let entry: CalendarEntry
-    let width: CGFloat
+    var day: String?
     @Environment(AppModel.self) private var model
 
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.poster, style: .continuous) }
-
     var body: some View {
-        RemoteImage(url: TMDBImage.url(entry.episode?.stillPath, size: .still) ?? entry.item.smallBackdropURL ?? entry.item.tmdbPosterURL,
-                    maxPixel: Int(width * 2.5), fallbackTitle: entry.item.title)
-            .frame(width: width, height: width * 9 / 16)
-            .clipShape(shape)
-            .hairline(shape)
-            .overlay(alignment: .bottomTrailing) {
-                if let episode = entry.episode, model.isEpisodeWatched(entry.item, episode.ref) {
-                    WatchedCheck().scaleEffect(0.85).padding(6)
-                }
-            }
-            .artworkShadow(0.4)
+        FilmFrame(art: .stillImage(url: TMDBImage.url(entry.episode?.stillPath, size: .still) ?? entry.item.smallBackdropURL ?? entry.item.tmdbPosterURL,
+                                   title: entry.item.title),
+                  strip: .calendar(episodeCode: entry.episode?.code, label: entry.label, day: day, hasAired: entry.hasAired,
+                                   watched: entry.isWatched(in: model)))
     }
 }
 
-private struct CalendarBadge: View {
-    let entry: CalendarEntry
-
-    var body: some View {
-        if let text {
-            Text(text.uppercased())
-                .font(Theme.Typeface.micro).kerning(0.6)
-                .foregroundStyle(tint)
-                .padding(.horizontal, 7).padding(.vertical, 3)
-                .background(tint.opacity(0.16), in: Capsule())
-                .padding(.top, 2)
-        }
-    }
-
-    private var text: String? {
-        guard let episode = entry.episode else { return entry.hasAired ? "Out Now" : "Release" }
+@MainActor
+private extension CalendarEntry {
+    /// What is special about it, if anything: a premiere, a film's release day, or a new episode.
+    var label: String? {
+        guard let episode else { return hasAired ? "Out Now" : "Release" }
         if episode.number == 1 { return episode.season == 1 ? "Series Premiere" : "Season Premiere" }
-        return entry.hasAired ? "New" : nil
+        return hasAired ? "New" : nil
     }
 
-    private var tint: Color { entry.episode == nil ? Theme.Palette.gold : (entry.isPremiere ? .pink : .white) }
-}
+    /// The line under the title: the episode's name, or a film's year and genre.
+    var meta: String {
+        if let episode { return episode.title }
+        return item.shortMeta
+    }
 
-private func subtitle(for entry: CalendarEntry) -> String {
-    if let episode = entry.episode { return "S\(episode.season) · E\(episode.number)  \(episode.title)" }
-    return [entry.item.year.map(String.init), entry.item.genres.first?.name].compactMap { $0 }.joined(separator: " · ")
+    func isWatched(in model: AppModel) -> Bool {
+        guard let episode else { return false }
+        return model.isEpisodeWatched(item, episode.ref)
+    }
+
+    func spoken(model: AppModel, day: String?) -> String {
+        var extra: [String] = []
+        if let label { extra.append(label) }
+        if let day { extra.append(day) }
+        if isWatched(in: model) { extra.append("watched") }
+        return Reel.spokenListing(title: item.title, episode: episode?.ref, extra: extra)
+    }
 }

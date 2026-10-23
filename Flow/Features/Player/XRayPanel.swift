@@ -341,11 +341,8 @@ struct XRayPersonSheet: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 LazyHStack(alignment: .top, spacing: 12) {
                                     ForEach(credits.prefix(20)) { item in
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            PosterArtwork(item: item).frame(width: 96 * Theme.scale)
-                                            Text(item.title).font(.system(.caption, weight: .medium)).lineLimit(1)
-                                                .frame(width: 96 * Theme.scale, alignment: .leading)
-                                        }
+                                        FilmCard(art: .poster(item), strip: model.posterPrint(for: item, runtime: item.runtimeMinutes),
+                                                 title: item.title, width: 96 * Theme.scale, spoken: item.title)
                                     }
                                 }
                             }

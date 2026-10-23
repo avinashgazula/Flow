@@ -17,7 +17,7 @@ struct AccountSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             Section {
                 ForEach(TrackerKind.allCases) { kind in
                     Button { select(kind) } label: {
@@ -111,7 +111,7 @@ struct AccountSettingsView: View {
                 if let error = model.lastSyncError, !showsSyncIssueInAccountRow {
                     Text(error).font(.caption).foregroundStyle(.orange)
                 }
-                Picker("Sync Interval", selection: $model.settings.account.syncInterval) {
+                FilmPicker("Sync Interval", selection: $model.settings.account.syncInterval) {
                     ForEach(SyncInterval.allCases) { Text($0.title).tag($0) }
                 }
                 Toggle("Scrobble While Watching", isOn: $model.settings.account.scrobble)
@@ -122,7 +122,7 @@ struct AccountSettingsView: View {
             }
 
             Section {
-                Picker("Watchlist Saved To", selection: $model.settings.account.watchlistDestination) {
+                FilmPicker("Watchlist Saved To", selection: $model.settings.account.watchlistDestination) {
                     ForEach(destinations) { Text($0.displayName).tag($0) }
                 }
             } header: {
@@ -132,7 +132,7 @@ struct AccountSettingsView: View {
             }
 
             Section {
-                Picker("Favourites Saved To", selection: $model.settings.account.favouritesDestination) {
+                FilmPicker("Favourites Saved To", selection: $model.settings.account.favouritesDestination) {
                     ForEach(destinations.filter { $0 != .simkl && $0 != .mdblist && $0 != .publicMetaDB }) { Text($0.displayName).tag($0) }
                 }
             } header: {
@@ -295,7 +295,7 @@ struct DeviceSignInView: View {
                 }
             }
             .padding(30)
-            .navigationTitle("Sign In to \(service == .trakt ? "Trakt" : "Simkl")")
+            .flowPageTitle("Sign In to \(service == .trakt ? "Trakt" : "Simkl")")
             .inlineNavigationTitle()
             .sheetDismissButton("Cancel") { dismiss() }
             .task { await run() }
@@ -336,7 +336,7 @@ struct APIKeysView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             Section {
                 OptionalTextField(title: "MDBList API Key", text: $model.credentials.mdblistAPIKey, secure: true)
                 Link("Get a key at mdblist.com", destination: URL(string: "https://mdblist.com/preferences/")!)

@@ -6,7 +6,7 @@ struct SourcesSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        List {
+        FilmList {
             Section {
                 Toggle(isOn: $model.settings.sources.useCustomOrdering) {
                     Label("Use Custom Source Ordering", systemImage: "list.number")
@@ -61,7 +61,7 @@ struct SourcesSettingsView: View {
                 }
                 Toggle("Remember Last Source", isOn: $model.settings.sources.rememberLastSource)
                 Toggle("Auto-Play Best Source", isOn: $model.settings.sources.autoPlayFirstSource)
-                Picker("Provider Timeout", selection: $model.settings.sources.timeoutSeconds) {
+                FilmPicker("Provider Timeout", selection: $model.settings.sources.timeoutSeconds) {
                     ForEach([5.0, 10, 15, 20, 30], id: \.self) { Text("\(Int($0)) seconds").tag($0) }
                 }
             } footer: {
@@ -72,7 +72,7 @@ struct SourcesSettingsView: View {
                 sortRulesSection
                 filtersSection
                 Section {
-                    Picker("Result Cap", selection: Binding(get: { model.settings.sources.resultCap ?? 0 }, set: { model.settings.sources.resultCap = $0 == 0 ? nil : $0 })) {
+                    FilmPicker("Result Cap", selection: Binding(get: { model.settings.sources.resultCap ?? 0 }, set: { model.settings.sources.resultCap = $0 == 0 ? nil : $0 })) {
                         Text("No Limit").tag(0)
                         ForEach([5, 10, 15, 20, 30, 50], id: \.self) { Text("\($0) sources").tag($0) }
                     }
@@ -126,15 +126,15 @@ struct SourcesSettingsView: View {
         return Section("Filters") {
             Toggle("Hide CAM / TS / Screeners", isOn: $model.settings.sources.filters.excludeCinemaCaptures)
             Toggle("Hide Uncached Torrents", isOn: $model.settings.sources.filters.excludeUncached)
-            Picker("Minimum Resolution", selection: $model.settings.sources.filters.minResolution) {
+            FilmPicker("Minimum Resolution", selection: $model.settings.sources.filters.minResolution) {
                 Text("Any").tag(VideoResolution.unknown)
                 ForEach([VideoResolution.sd, .hd720, .hd1080, .uhd4k]) { Text($0.label).tag($0) }
             }
-            Picker("Maximum Size", selection: Binding(get: { model.settings.sources.filters.maxSizeGB ?? 0 }, set: { model.settings.sources.filters.maxSizeGB = $0 == 0 ? nil : $0 })) {
+            FilmPicker("Maximum Size", selection: Binding(get: { model.settings.sources.filters.maxSizeGB ?? 0 }, set: { model.settings.sources.filters.maxSizeGB = $0 == 0 ? nil : $0 })) {
                 Text("No Limit").tag(0.0)
                 ForEach([2.0, 5, 10, 20, 40, 80], id: \.self) { Text("\(Int($0)) GB").tag($0) }
             }
-            Picker("Minimum Size", selection: Binding(get: { model.settings.sources.filters.minSizeGB ?? 0 }, set: { model.settings.sources.filters.minSizeGB = $0 == 0 ? nil : $0 })) {
+            FilmPicker("Minimum Size", selection: Binding(get: { model.settings.sources.filters.minSizeGB ?? 0 }, set: { model.settings.sources.filters.minSizeGB = $0 == 0 ? nil : $0 })) {
                 Text("None").tag(0.0)
                 ForEach([0.5, 1, 2, 5], id: \.self) { Text(String(format: "%g GB", $0)).tag($0) }
             }
@@ -203,13 +203,13 @@ struct SourceAppearanceView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             Section {
                 Toggle("Show Add-on Formatting", isOn: $model.settings.sources.appearance.showRawText)
-                Picker("Title", selection: $model.settings.sources.appearance.titleDisplay) {
+                FilmPicker("Title", selection: $model.settings.sources.appearance.titleDisplay) {
                     ForEach(SourceTitleDisplay.allCases) { Text($0.title).tag($0) }
                 }
-                Picker("Badges", selection: $model.settings.sources.appearance.badgePack) {
+                FilmPicker("Badges", selection: $model.settings.sources.appearance.badgePack) {
                     ForEach(BadgePack.allCases) { Text($0.rawValue.capitalized).tag($0) }
                 }
                 Toggle("Show File Size", isOn: $model.settings.sources.appearance.showSize)
@@ -240,7 +240,7 @@ struct AddonsSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        List {
+        FilmList {
             Section {
                 ForEach($model.settings.sources.addons) { $addon in
                     HStack {

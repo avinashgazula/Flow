@@ -31,40 +31,40 @@ struct SubtitleAppearanceSections: View {
     var body: some View {
         @Bindable var model = model
         Section("Appearance") {
-            Picker("Font", selection: $model.settings.subtitles.font) {
+            FilmPicker("Font", selection: $model.settings.subtitles.font) {
                 ForEach(SubtitleFont.allCases) { Text($0.title).tag($0) }
             }
-            Picker("Size", selection: $model.settings.subtitles.fontScale) {
+            FilmPicker("Size", selection: $model.settings.subtitles.fontScale) {
                 ForEach(Self.choices(Self.sizes, including: model.settings.subtitles.fontScale), id: \.self) { Text(Self.percent($0)).tag($0) }
             }
-            Picker("Weight", selection: $model.settings.subtitles.weight) {
+            FilmPicker("Weight", selection: $model.settings.subtitles.weight) {
                 ForEach(SubtitleWeight.allCases) { Text($0.title).tag($0) }
             }
-            Picker("Colour", selection: $model.settings.subtitles.color) {
+            FilmPicker("Colour", selection: $model.settings.subtitles.color) {
                 ForEach(SubtitleColor.allCases) { Text($0.title).tag($0) }
             }
         }
         Section("Style") {
-            Picker("Text Edge Style", selection: $model.settings.subtitles.edgeStyle) {
+            FilmPicker("Text Edge Style", selection: $model.settings.subtitles.edgeStyle) {
                 ForEach(SubtitleEdgeStyle.allCases) { Text($0.title).tag($0) }
             }
-            Picker("Background", selection: Binding(get: { model.settings.subtitles.background.choice }, set: { model.settings.subtitles.background = $0 })) {
+            FilmPicker("Background", selection: Binding(get: { model.settings.subtitles.background.choice }, set: { model.settings.subtitles.background = $0 })) {
                 ForEach(SubtitleBackground.choices) { Text($0.title).tag($0) }
             }
-            Picker("Opacity", selection: $model.settings.subtitles.backgroundOpacity) {
+            FilmPicker("Opacity", selection: $model.settings.subtitles.backgroundOpacity) {
                 ForEach(Self.choices(Self.opacities, including: model.settings.subtitles.backgroundOpacity), id: \.self) { Text(Self.percent($0)).tag($0) }
             }
             .disabled(!model.settings.subtitles.background.drawsBox)
         }
         Section {
-            Picker("Vertical Alignment", selection: $model.settings.subtitles.verticalPosition) {
+            FilmPicker("Vertical Alignment", selection: $model.settings.subtitles.verticalPosition) {
                 ForEach(Self.positions, id: \.self) { Text(Self.positionLabel($0)).tag($0) }
                 // The player's slider can leave any value in between.
                 if !Self.positions.contains(where: { abs($0 - model.settings.subtitles.verticalPosition) < 0.001 }) {
                     Text("Custom (+\(Int((model.settings.subtitles.verticalPosition * 100).rounded()))%)").tag(model.settings.subtitles.verticalPosition)
                 }
             }
-            Picker("Sync Offset", selection: $model.settings.subtitles.defaultOffsetSeconds) {
+            FilmPicker("Sync Offset", selection: $model.settings.subtitles.defaultOffsetSeconds) {
                 ForEach(Self.choices(Self.offsets, including: model.settings.subtitles.defaultOffsetSeconds), id: \.self) { Text(Self.offsetLabel($0)).tag($0) }
             }
         } header: {

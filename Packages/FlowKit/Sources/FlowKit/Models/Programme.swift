@@ -264,6 +264,52 @@ public struct EdgePrint: Equatable, Sendable {
     }
 }
 
+extension EdgePrint {
+    /// The print under a catalogue poster, the same on every shelf and grid: the runtime (or "Series") and the
+    /// rating, with no perforations because nothing is being watched. What the viewer has seen replaces the runtime
+    /// as plain print, never a badge on the artwork: "WATCHED" for a finished title, "3/10 EP" for a show part way.
+    public static func poster(runtimeMinutes: Int?, isSeries: Bool, rating: Double?, watched: Bool = false,
+                              episodesWatched: Int? = nil, episodesAired: Int? = nil, onServer: Bool = false) -> EdgePrint {
+        var lead: [String] = []
+        var tail: [String] = []
+        if watched {
+            lead.append("Watched")
+        } else {
+            if let watchedCount = episodesWatched, let aired = episodesAired, watchedCount > 0, aired > 0 {
+                lead.append("\(watchedCount)/\(aired) ep")
+            } else if let runtimeMinutes, runtimeMinutes > 0 {
+                lead.append(Reel.compactDuration(minutes: runtimeMinutes))
+            } else if isSeries {
+                lead.append("Series")
+            }
+            if let rating, rating > 0 { tail.append(String(format: "%.1f", rating)) }
+        }
+        // After the rating: it says where to find the title, not what it is.
+        if onServer { tail.append("Server") }
+        return EdgePrint(lead: lead, tail: tail)
+    }
+}
+
+extension EdgePrint {
+    /// The print under a calendar still: the episode ("S01E05", or "Film"), what is special about it ("Season
+    /// Premiere"), and the day when the row isn't already under one. A new episode you can play now carries its label
+    /// as the key fact; one you've seen says "WATCHED" in plain print instead.
+    public static func calendar(episodeCode: String?, label: String?, day: String? = nil, hasAired: Bool, watched: Bool = false) -> EdgePrint {
+        var lead = [episodeCode ?? "Film"]
+        var key: String?
+        var tail: [String] = []
+        if watched {
+            lead.append("Watched")
+        } else if hasAired {
+            key = label
+        } else if let label {
+            tail.append(label)
+        }
+        if let day { tail.append(day) }
+        return EdgePrint(lead: lead, key: key, tail: tail)
+    }
+}
+
 extension Reel {
     /// The format as edge print: "2160p", "DV", "TrueHD 7.1". Badges stay short here; the film-can label spells them out.
     public static func edgeFormat(resolution: VideoResolution = .unknown, hdr: [String] = [], audioCodec: String? = nil, audioChannels: String? = nil) -> [String] {

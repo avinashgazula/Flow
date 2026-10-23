@@ -1,118 +1,60 @@
 import SwiftUI
 import FlowKit
 
-/// Poster with progress, watched and media-server marks; zooms into the detail page on iOS 18+.
-struct PosterCard: View {
+/// A title as a poster frame with its print-only strip: the one poster on every shelf, grid and search result.
+/// The runtime and rating are printed on the strip's edge, and so is "WATCHED"; nothing is drawn over the artwork.
+/// The caller fixes the width per row; a grid passes nil and every column is the same.
+struct PosterFilmCard: View {
     let item: MediaItem
-    var width: CGFloat = Platform.posterWidth
     /// Distinguishes the same title appearing on several shelves, for the zoom transition.
     var context: String = "poster"
     /// The provider of the library this poster belongs to, when it's on a library's shelf.
     var libraryProviderID: String?
+    var width: CGFloat? = Platform.posterWidth
     @Environment(AppModel.self) private var model
+    /// Shelves list titles without runtimes, so each card asks for its own as it appears.
+    @State private var runtime: Int?
 
     private var zoomID: String { "\(context)-\(item.id)" }
 
+    private var spoken: String {
+        var extra: [String] = []
+        if let year = item.year { extra.append(String(year)) }
+        if let runtime { extra.append(Reel.spokenDuration(minutes: runtime)) }
+        if let vote = item.voteAverage, vote > 0 { extra.append("rated " + String(format: "%.1f", vote)) }
+        if model.isWatched(item) { extra.append("watched") }
+        return Reel.spokenListing(title: item.title, extra: extra)
+    }
+
     var body: some View {
         NavigationLink(value: Route.detail(item, zoom: zoomID, library: libraryProviderID)) {
-            PosterCardContent(item: item, width: width, zoomID: zoomID)
+            FilmCard(art: .poster(item), strip: model.posterPrint(for: item, runtime: runtime),
+                     title: model.settings.general.showPosterTitles ? item.title : nil,
+                     meta: model.settings.general.showReleaseYear ? item.year.map { String($0) } : nil,
+                     width: width, spoken: spoken, zoomID: zoomID)
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(CardButtonStyle(lift: 1.04))
         .contextMenu { MediaContextMenu(item: item, libraryProviderID: libraryProviderID) } preview: { PosterPreview(item: item) }
-        .accessibilityLabel(accessibilityText)
-    }
-
-    private var accessibilityText: String {
-        var parts = [item.title]
-        if let year = item.year { parts.append(String(year)) }
-        if model.isWatched(item) { parts.append("Watched") }
-        return parts.joined(separator: ", ")
+        .task(id: item.id) { runtime = await model.posterRuntime(for: item) }
     }
 }
 
-struct PosterCardContent: View {
-    let item: MediaItem
-    var width: CGFloat?
-    /// The zoom transition grows from the artwork alone; including the title would clip it to the poster's corners.
-    var zoomID: String?
-    @Environment(AppModel.self) private var model
-
-    private var showTitle: Bool { model.settings.general.showPosterTitles }
-    /// With titles hidden the year stands alone under the poster.
-    private var year: Int? { model.settings.general.showReleaseYear ? item.year : nil }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            PosterArtwork(item: item)
-                .frame(width: width, height: width.map { $0 * 1.5 })
-                .zoomSource(zoomID)
-            if showTitle || year != nil {
-                VStack(alignment: .leading, spacing: 1) {
-                    if showTitle {
-                        Text(item.title)
-                            .font(.system(.footnote, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.9))
-                            .lineLimit(1)
-                    }
-                    if let year {
-                        Text(String(year))
-                            .font(.system(.caption))
-                            .foregroundStyle(Theme.Palette.textSecondary)
-                            .lineLimit(1)
-                    }
-                }
-                .frame(width: width, alignment: .leading)
-            }
-        }
-    }
-}
-
-/// The artwork block shared by shelves and grids.
-struct PosterArtwork: View {
-    let item: MediaItem
-    @Environment(AppModel.self) private var model
-    @Environment(\.isFocused) private var focused
-
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.poster, style: .continuous) }
-
-    var body: some View {
-        Color.clear
-            .aspectRatio(2 / 3, contentMode: .fit)
-            .overlay(RemoteImage(url: item.posterURL, maxPixel: Platform.isTV ? 600 : 420, fallbackTitle: item.title, fallbackURL: item.tmdbPosterURL))
-            .clipShape(shape)
-            .hairline(shape)
-            // Focus is the spot colour: a ring around the poster on Apple TV, and for keyboard focus elsewhere.
-            .overlay { if focused { shape.strokeBorder(Theme.Palette.spot, lineWidth: Platform.isTV ? 5 : 2) } }
-            .overlay(alignment: .bottomTrailing) {
-                if model.settings.general.showWatchedBadges && model.isWatched(item) {
-                    WatchedCheck().padding(Theme.Space.xs)
-                }
-            }
-            .overlay(alignment: .bottomLeading) { episodeCount }
-            .overlay(alignment: .topTrailing) {
-                if model.settings.mediaServers.showBadgeOnPosters && model.isOnServer(item) {
-                    Image(systemName: "server.rack")
-                        .font(.system(size: 9 * Theme.scale, weight: .bold))
-                        .foregroundStyle(Theme.Palette.text)
-                        .frame(width: 22 * Theme.scale, height: 22 * Theme.scale)
-                        .background(Theme.Palette.overPicture, in: Circle())
-                        .padding(Theme.Space.xs)
-                }
-            }
+extension AppModel {
+    /// The print under a poster: runtime and rating, and what has been watched, as the settings allow.
+    func posterPrint(for item: MediaItem, runtime: Int?) -> EdgePrint {
+        let episodes = settings.general.showEpisodesRemaining ? episodeProgress(for: item) : nil
+        return .poster(runtimeMinutes: runtime, isSeries: item.type == .show, rating: item.voteAverage,
+                       watched: settings.general.showWatchedBadges && isWatched(item),
+                       episodesWatched: episodes?.watched, episodesAired: episodes?.aired,
+                       onServer: settings.mediaServers.showBadgeOnPosters && isOnServer(item))
     }
 
-    /// "3/10": episodes watched of those aired, where the app knows the show's watch state.
-    @ViewBuilder
-    private var episodeCount: some View {
-        if model.settings.general.showEpisodesRemaining, let p = model.episodeProgress(for: item), p.watched > 0 {
-            Text("\(p.watched)/\(p.aired)")
-                .font(.system(size: 10 * Theme.scale, weight: .bold).monospacedDigit())
-                .foregroundStyle(Theme.Palette.text)
-                .padding(.horizontal, 6).padding(.vertical, 3)
-                .background(Theme.Palette.overPicture, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                .padding(Theme.Space.xs)
-                .accessibilityLabel("\(p.watched) of \(p.aired) episodes watched")
-        }
+    /// The runtime a poster prints: the one the title carries, else a film's from its details.
+    func posterRuntime(for item: MediaItem) async -> Int? {
+        if let known = item.runtimeMinutes, known > 0 { return known }
+        guard item.type == .movie, let catalog = self.catalog, let id = item.ids.tmdb else { return nil }
+        guard let minutes = (try? await catalog.details(item.type, id: id))?.item.runtimeMinutes, minutes > 0 else { return nil }
+        return minutes
     }
 }
 
@@ -130,18 +72,6 @@ struct ProgressCapsule: View {
             }
         }
         .frame(height: height)
-    }
-}
-
-/// A plain paper check on flat ink: watched, with no badge colour.
-struct WatchedCheck: View {
-    var body: some View {
-        Image(systemName: "checkmark")
-            .font(.system(size: 11 * Theme.scale, weight: .bold))
-            .foregroundStyle(Theme.Palette.text)
-            .frame(width: 22 * Theme.scale, height: 22 * Theme.scale)
-            .background(Theme.Palette.overPicture, in: Circle())
-            .accessibilityHidden(true)
     }
 }
 
@@ -163,53 +93,6 @@ struct PosterPreview: View {
         }
         .frame(width: 320)
         .background(Theme.Palette.elevated)
-    }
-}
-
-/// Poster for the Upcoming shelf with when it arrives: "S02E05 · Thu" for an episode, the day for a film.
-struct UpcomingCard: View {
-    let entry: UpcomingEntry
-    var context: String = "upcoming"
-    @Environment(AppModel.self) private var model
-
-    private var zoomID: String { "\(context)-\(entry.id)" }
-
-    var body: some View {
-        NavigationLink(value: Route.detail(entry.item, zoom: zoomID)) {
-            VStack(alignment: .leading, spacing: 2) {
-                PosterCardContent(item: entry.item, width: Platform.posterWidth, zoomID: zoomID)
-                Text(caption)
-                    .font(.system(.caption, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(Theme.Palette.textSecondary)
-                    .lineLimit(1)
-                    .frame(width: Platform.posterWidth, alignment: .leading)
-            }
-        }
-        .buttonStyle(CardButtonStyle())
-        .contextMenu { MediaContextMenu(item: entry.item) } preview: { PosterPreview(item: entry.item) }
-        .accessibilityLabel("\(entry.item.title), \(caption)")
-    }
-
-    /// Air dates are bare days (midnight UTC), so they're written in UTC or they'd slip a day.
-    private var caption: String {
-        let day = Self.dayLabel(entry.date)
-        guard let episode = entry.episode else { return day }
-        return "\(episode.code) · \(day)"
-    }
-
-    private static func dayLabel(_ date: Date) -> String {
-        let soon = date.timeIntervalSinceNow < 6 * 86400
-        return (soon ? weekday : monthDay).string(from: date)
-    }
-
-    private static let weekday = formatter("EEE")
-    private static let monthDay = formatter("MMM d")
-
-    private static func formatter(_ format: String) -> DateFormatter {
-        let f = DateFormatter()
-        f.timeZone = TimeZone(identifier: "UTC")
-        f.setLocalizedDateFormatFromTemplate(format)
-        return f
     }
 }
 
@@ -371,7 +254,8 @@ struct FilmFrame: View {
 struct FilmCard: View {
     let art: ProgrammeArt
     var strip: EdgePrint?
-    let title: String
+    /// Nil leaves it out (Show Titles Under Posters is off), so the meta line stands alone.
+    let title: String?
     var meta: String?
     /// Nil fills the width the card is given (a grid column).
     var width: CGFloat?
@@ -384,19 +268,23 @@ struct FilmCard: View {
             FilmFrame(art: art, strip: strip)
                 .zoomSource(zoomID)
                 .frame(width: width)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(Theme.Typeface.headline)
-                    .foregroundStyle(Theme.Palette.text)
-                    .lineLimit(1)
-                if let meta, !meta.isEmpty {
-                    Text(meta)
-                        .font(.system(.subheadline).monospacedDigit())
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                        .lineLimit(1)
+            if title != nil || !(meta ?? "").isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    if let title {
+                        Text(title)
+                            .font(Theme.Typeface.headline)
+                            .foregroundStyle(Theme.Palette.text)
+                            .lineLimit(1)
+                    }
+                    if let meta, !meta.isEmpty {
+                        Text(meta)
+                            .font(.system(.subheadline).monospacedDigit())
+                            .foregroundStyle(Theme.Palette.textSecondary)
+                            .lineLimit(1)
+                    }
                 }
+                .frame(maxWidth: width ?? .infinity, alignment: .leading)
             }
-            .frame(maxWidth: width ?? .infinity, alignment: .leading)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken)

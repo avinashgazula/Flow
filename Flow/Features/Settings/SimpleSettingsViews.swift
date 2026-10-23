@@ -11,7 +11,7 @@ struct LicencesView: View {
         .filter { !$0.isEmpty }
 
     var body: some View {
-        List {
+        FilmList {
             Section("FFmpeg") {
                 Text(FFmpegLicence.notice)
             }
@@ -21,7 +21,7 @@ struct LicencesView: View {
                 }
             }
         }
-        .navigationTitle("Licences")
+        .flowPageTitle("Licences")
     }
 }
 
@@ -30,7 +30,7 @@ struct GeneralSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             #if os(iOS)
             AppIconSection()
             #endif
@@ -39,7 +39,7 @@ struct GeneralSettingsView: View {
             NotificationsSection()
             #endif
             Section("Appearance") {
-                Picker("Accent Colour", selection: $model.settings.general.accent) {
+                FilmPicker("Accent Colour", selection: $model.settings.general.accent) {
                     ForEach(AccentColorChoice.allCases) { choice in
                         Label(choice == .white ? "Flow" : choice.rawValue.capitalized, systemImage: "circle.fill").foregroundStyle(choice.color).tag(choice)
                     }
@@ -47,7 +47,7 @@ struct GeneralSettingsView: View {
                 Toggle("Show Watched Check Marks", isOn: $model.settings.general.showWatchedBadges)
             }
             Section("Home") {
-                Picker("Top Pick From", selection: $model.settings.general.heroSource) {
+                FilmPicker("Top Pick From", selection: $model.settings.general.heroSource) {
                     ForEach(HeroSource.allCases) { Text($0.title).tag($0) }
                 }
             }
@@ -63,11 +63,11 @@ struct GeneralSettingsView: View {
                 Text("About always lists the release date, runtime, director and rating at the foot of the page; this adds status, language, country, budget, revenue and production companies. Where to Watch shows streaming, rent and buy availability (JustWatch via TMDB). Reviews shows TMDB and Trakt reviews. Episode Spoilers off blurs the stills of aired episodes you haven't watched. Specials Season adds season 0 to a show's seasons.")
             }
             Section {
-                Picker("Content Shelf Length", selection: $model.settings.general.contentShelfLength) {
+                FilmPicker("Content Shelf Length", selection: $model.settings.general.contentShelfLength) {
                     ForEach([10, 20, 30, 40], id: \.self) { Text("\($0)").tag($0) }
                 }
                 Toggle("Show Continue Watching", isOn: $model.settings.general.showContinueWatching)
-                Picker("Shelf Limit", selection: $model.settings.general.continueWatchingLimit) {
+                FilmPicker("Shelf Limit", selection: $model.settings.general.continueWatchingLimit) {
                     Text("All").tag(Int?.none)
                     ForEach([5, 10, 20], id: \.self) { Text("\($0)").tag(Int?.some($0)) }
                 }
@@ -83,11 +83,11 @@ struct GeneralSettingsView: View {
                 ))
                 Toggle("Include Watchlist Premieres", isOn: $model.settings.general.includeWatchlistPremieres)
                     .disabled(!model.settings.general.showUpcoming)
-                Picker("Film Dates", selection: $model.settings.general.filmDates) {
+                FilmPicker("Film Dates", selection: $model.settings.general.filmDates) {
                     ForEach(FilmDateKind.allCases) { Text($0.title).tag($0) }
                 }
                 .disabled(!model.settings.general.showUpcoming || !model.settings.general.includeWatchlistPremieres)
-                Picker("Upcoming Within", selection: $model.settings.general.upcomingWithinDays) {
+                FilmPicker("Upcoming Within", selection: $model.settings.general.upcomingWithinDays) {
                     ForEach([3, 7, 14, 30], id: \.self) { Text("\($0) days").tag($0) }
                 }
                 .disabled(!model.settings.general.showUpcoming)
@@ -106,7 +106,7 @@ struct GeneralSettingsView: View {
                 Text("The year appears under the title, or alone when titles are hidden. Show Episodes Left adds watched/aired counts such as 3/10 to series posters and \"6 episodes left\" to Continue Watching cards.")
             }
             Section {
-                Picker("Text Size", selection: $model.settings.general.detailTextSize) {
+                FilmPicker("Text Size", selection: $model.settings.general.detailTextSize) {
                     ForEach(DetailTextSize.allCases) { Text($0.title).tag($0) }
                 }
             } header: {
@@ -151,17 +151,17 @@ struct PlaybackSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             Section {
                 #if os(iOS)
                 Toggle("Auto Rotate to Landscape", isOn: $model.settings.playback.autoRotate)
                 #endif
                 Toggle("Skip Details on Continue Watching", isOn: $model.settings.playback.skipDetailsOnContinueWatching)
-                Picker("Preferred Resolution", selection: $model.settings.playback.preferredResolutionCap) {
+                FilmPicker("Preferred Resolution", selection: $model.settings.playback.preferredResolutionCap) {
                     ForEach([VideoResolution.uhd4k, .uhd1440, .hd1080, .hd720, .sd]) { Text($0 == .uhd4k ? "Up to 4K" : "Up to \($0.label)").tag($0) }
                 }
                 #if !os(tvOS)
-                Picker("Resolution on Cellular", selection: $model.settings.playback.cellularResolutionCap) {
+                FilmPicker("Resolution on Cellular", selection: $model.settings.playback.cellularResolutionCap) {
                     ForEach([VideoResolution.uhd4k, .uhd1440, .hd1080, .hd720, .sd]) { Text($0 == .uhd4k ? "Up to 4K" : "Up to \($0.label)").tag($0) }
                 }
                 #endif
@@ -192,11 +192,11 @@ struct PlaybackSettingsView: View {
             #endif
             Section {
                 Toggle("Auto-Play Next Episode", isOn: $model.settings.playback.autoPlayNextEpisode)
-                Picker("Countdown", selection: $model.settings.playback.nextEpisodeCountdownSeconds) {
+                FilmPicker("Countdown", selection: $model.settings.playback.nextEpisodeCountdownSeconds) {
                     ForEach([5, 10, 15, 20, 30], id: \.self) { Text("\($0) seconds").tag($0) }
                 }
                 Toggle("Wait for the Episode to End", isOn: $model.settings.playback.upNextWaitsForEnd)
-                Picker("Ask If Still Watching", selection: $model.settings.playback.stillWatchingAfterEpisodes) {
+                FilmPicker("Ask If Still Watching", selection: $model.settings.playback.stillWatchingAfterEpisodes) {
                     Text("Never").tag(0)
                     ForEach([2, 3, 4, 5], id: \.self) { Text("After \($0) Episodes").tag($0) }
                 }
@@ -207,9 +207,9 @@ struct PlaybackSettingsView: View {
                 Text("Up Next counts down as the credits start, or, with Wait for the Episode to End, so the next one begins as this one finishes.")
             }
             Section {
-                Picker("Intro", selection: $model.settings.playback.skipIntro) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
-                Picker("Recap", selection: $model.settings.playback.skipRecap) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
-                Picker("Credits", selection: $model.settings.playback.skipCredits) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
+                FilmPicker("Intro", selection: $model.settings.playback.skipIntro) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
+                FilmPicker("Recap", selection: $model.settings.playback.skipRecap) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
+                FilmPicker("Credits", selection: $model.settings.playback.skipCredits) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
             } header: {
                 Text("Skip Segments")
             } footer: {
@@ -225,41 +225,41 @@ struct PlaybackSettingsView: View {
             }
             Section("Resume & Progress") {
                 Toggle("Ask Before Resuming", isOn: $model.settings.playback.askToResume)
-                Picker("Mark Watched At", selection: $model.settings.playback.watchedThresholdPercent) {
+                FilmPicker("Mark Watched At", selection: $model.settings.playback.watchedThresholdPercent) {
                     ForEach([80.0, 85, 90, 95], id: \.self) { Text("\(Int($0))%").tag($0) }
                 }
-                Picker("Skip Back", selection: $model.settings.playback.seekBackwardSeconds) {
+                FilmPicker("Skip Back", selection: $model.settings.playback.seekBackwardSeconds) {
                     ForEach([5, 10, 15, 30], id: \.self) { Text("\($0)s").tag($0) }
                 }
-                Picker("Skip Forward", selection: $model.settings.playback.seekForwardSeconds) {
+                FilmPicker("Skip Forward", selection: $model.settings.playback.seekForwardSeconds) {
                     ForEach([5, 10, 15, 30], id: \.self) { Text("\($0)s").tag($0) }
                 }
             }
             Section {
-                Picker("Audio Language", selection: Binding(get: { model.settings.playback.preferredAudioLanguage ?? "" }, set: { model.settings.playback.preferredAudioLanguage = $0.isEmpty ? nil : $0 })) {
+                FilmPicker("Audio Language", selection: Binding(get: { model.settings.playback.preferredAudioLanguage ?? "" }, set: { model.settings.playback.preferredAudioLanguage = $0.isEmpty ? nil : $0 })) {
                     Text("Default").tag("")
                     ForEach(SubtitleSettingsView.languageOptions, id: \.0) { Text($0.1).tag($0.0) }
                 }
-                Picker("Audio Fallback", selection: Binding(get: { model.settings.playback.audioFallbackLanguage ?? "" }, set: { model.settings.playback.audioFallbackLanguage = $0.isEmpty ? nil : $0 })) {
+                FilmPicker("Audio Fallback", selection: Binding(get: { model.settings.playback.audioFallbackLanguage ?? "" }, set: { model.settings.playback.audioFallbackLanguage = $0.isEmpty ? nil : $0 })) {
                     Text("None").tag("")
                     ForEach(SubtitleSettingsView.languageOptions, id: \.0) { Text($0.1).tag($0.0) }
                 }
-                Picker("Subtitle Language", selection: subtitleLanguage(at: 0)) {
+                FilmPicker("Subtitle Language", selection: subtitleLanguage(at: 0)) {
                     if model.settings.subtitles.preferredLanguages.isEmpty { Text("None").tag("") }
                     ForEach(SubtitleSettingsView.languageOptions, id: \.0) { Text($0.1).tag($0.0) }
                 }
-                Picker("Subtitle Fallback", selection: subtitleLanguage(at: 1)) {
+                FilmPicker("Subtitle Fallback", selection: subtitleLanguage(at: 1)) {
                     Text("None").tag("")
                     ForEach(SubtitleSettingsView.languageOptions, id: \.0) { Text($0.1).tag($0.0) }
                 }
                 .disabled(model.settings.subtitles.preferredLanguages.isEmpty)
-                Picker("Subtitle Type", selection: $model.settings.subtitles.subtitleType) {
+                FilmPicker("Subtitle Type", selection: $model.settings.subtitles.subtitleType) {
                     ForEach(SubtitleTypePreference.allCases) { Text($0.title).tag($0) }
                 }
-                Picker("Auto-Select Subtitles", selection: $model.settings.subtitles.autoSelect) {
+                FilmPicker("Auto-Select Subtitles", selection: $model.settings.subtitles.autoSelect) {
                     ForEach(AutoSubtitleMode.allCases) { Text($0.title).tag($0) }
                 }
-                Picker("Anime Audio", selection: $model.settings.playback.animeAudio) {
+                FilmPicker("Anime Audio", selection: $model.settings.playback.animeAudio) {
                     ForEach(AnimeAudio.allCases) { Text($0.title).tag($0) }
                 }
             } header: {
@@ -282,7 +282,7 @@ struct PlaybackSettingsView: View {
                 Toggle("Decode DTS and Dolby TrueHD", isOn: $model.settings.playback.decodeLosslessAudio)
                 Toggle("Prefer Sources With Playable Audio", isOn: $model.settings.sources.preferPlayableAudio)
                 #if os(iOS) || os(macOS)
-                Picker("MKV Files", selection: $model.settings.playback.matroskaPlayback) {
+                FilmPicker("MKV Files", selection: $model.settings.playback.matroskaPlayback) {
                     ForEach(MatroskaPlayback.allCases) { Text($0.title).tag($0) }
                 }
                 #endif
@@ -293,7 +293,7 @@ struct PlaybackSettingsView: View {
             }
             #if os(iOS) || os(macOS)
             Section {
-                Picker("Player", selection: $model.settings.playback.externalPlayer) {
+                FilmPicker("Player", selection: $model.settings.playback.externalPlayer) {
                     ForEach(Platform.externalPlayers) { Text($0.title).tag($0) }
                 }
                 #if os(iOS)
@@ -321,7 +321,7 @@ struct SubtitleSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             SubtitlePreviewSection()
             SubtitleAppearanceSections()
             Section {
@@ -351,10 +351,10 @@ struct SubtitleSettingsView: View {
                 Text("Tap in order of preference. Numbers show the order used to rank search results.")
             }
             Section("Behaviour") {
-                Picker("Auto-Select", selection: $model.settings.subtitles.autoSelect) {
+                FilmPicker("Auto-Select", selection: $model.settings.subtitles.autoSelect) {
                     ForEach(AutoSubtitleMode.allCases) { Text($0.title).tag($0) }
                 }
-                Picker("Type", selection: $model.settings.subtitles.subtitleType) {
+                FilmPicker("Type", selection: $model.settings.subtitles.subtitleType) {
                     ForEach(SubtitleTypePreference.allCases) { Text($0.title).tag($0) }
                 }
             }
@@ -378,9 +378,9 @@ struct MetadataSettingsView: View {
 
     var body: some View {
         @Bindable var model = model
-        Form {
+        FilmForm {
             Section {
-                Picker("Episode Source", selection: $model.settings.metadata.episodeSource) {
+                FilmPicker("Episode Source", selection: $model.settings.metadata.episodeSource) {
                     ForEach(EpisodeSource.allCases) { Text($0.title).tag($0) }
                 }
                 Toggle("Air Dates in My Time Zone", isOn: $model.settings.metadata.airDatesInLocalTimeZone)
@@ -397,15 +397,15 @@ struct MetadataSettingsView: View {
                 Text("Switch this off and Flow uses TMDB release dates to drop titles you can't play yet — a film with only a cinema release, or one that hasn't opened at all — from home shelves, the hero, Show All, Discover and the trending rows.\n\nRows that exist to show what's coming are left alone: watchlists, Continue Watching, Upcoming, Now Playing, Anticipated, calendars, and any Discover shelf you pointed at future dates. Search still finds everything, so you can add a title before it's out.")
             }
             Section("Source") {
-                Picker("Primary Source", selection: $model.settings.metadata.primarySource) {
+                FilmPicker("Primary Source", selection: $model.settings.metadata.primarySource) {
                     ForEach(PrimaryMetadataSource.allCases) { Text($0.title).tag($0) }
                 }
             }
             Section {
-                Picker("TMDB Language", selection: $model.settings.metadata.language) {
+                FilmPicker("TMDB Language", selection: $model.settings.metadata.language) {
                     ForEach(Self.languages, id: \.0) { Text($0.1).tag($0.0) }
                 }
-                Picker("Region", selection: $model.settings.metadata.region) {
+                FilmPicker("Region", selection: $model.settings.metadata.region) {
                     ForEach(Self.regions, id: \.self) { Text(Locale.current.localizedString(forRegionCode: $0) ?? $0).tag($0) }
                 }
                 Toggle("Include Adult Titles", isOn: $model.settings.metadata.includeAdult)
@@ -435,7 +435,7 @@ struct MetadataSettingsView: View {
                 Text("Loads sources in the background when you open a detail page so tapping Play is instant. Turn off to save bandwidth on slow connections; Play then fetches sources on demand.")
             }
             Section {
-                Picker("Poster Enhancement", selection: $model.settings.metadata.posterEnhancement) {
+                FilmPicker("Poster Enhancement", selection: $model.settings.metadata.posterEnhancement) {
                     ForEach(PosterEnhancement.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
@@ -482,7 +482,7 @@ struct RatingsShownView: View {
         let shown = model.settings.metadata.ratingsShown
         // Hidden scores sit below the shown ones, so a drag only ever reorders what's on screen.
         let ordered = shown + RatingSource.allCases.filter { !shown.contains($0) }
-        List {
+        FilmList {
             Section {
                 ForEach(ordered) { source in
                     row(source, shown: shown)
@@ -500,7 +500,7 @@ struct RatingsShownView: View {
                     .disabled(shown == RatingSource.allCases)
             }
         }
-        .navigationTitle("Ratings Shown")
+        .flowPageTitle("Ratings Shown")
         #if os(iOS)
         .environment(\.editMode, .constant(.active))
         #endif

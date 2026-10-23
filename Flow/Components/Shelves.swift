@@ -38,24 +38,16 @@ extension SectionHeader where Destination == Route {
     }
 }
 
-/// Horizontally scrolling row of posters that snaps to cards.
+/// A row of posters, each a frame with its print-only strip, snapping to cards.
 struct PosterRow: View {
     let items: [MediaItem]
     var context: String = "row"
     var libraryProviderID: String?
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
-                ForEach(items) { item in PosterCard(item: item, context: context, libraryProviderID: libraryProviderID) }
-            }
-            .padding(.horizontal, Theme.Space.gutter)
-            .padding(.vertical, Platform.isTV ? 36 : 6)
-            .scrollTargetLayout()
+        FilmScroller(ids: items.map(\.id), itemWidth: Platform.posterWidth) {
+            ForEach(items) { item in PosterFilmCard(item: item, context: context, libraryProviderID: libraryProviderID) }
         }
-        .scrollTargetBehavior(.viewAligned)
-        .scrollClipDisabled()
-        .pagingArrows(ids: items.map(\.id), itemWidth: Platform.posterWidth + 14)
     }
 }
 
@@ -139,7 +131,7 @@ struct ShelfView: View {
             if case .builtIn(let b) = shelf.source, b == .continueWatching || b == .nextUp {
                 ContinueWatchingShelf(title: shelf.title, nextUpOnly: b == .nextUp)
             } else if case .builtIn(.upcomingEpisodes) = shelf.source {
-                UpcomingShelf(shelf: shelf)
+                UpcomingRow(shelf: shelf)
             } else if case .builtIn(.streamingServices) = shelf.source {
                 StreamingServicesShelf(shelf: shelf)
             } else if case .builtIn(.genres) = shelf.source {
@@ -191,39 +183,6 @@ struct ShelfView: View {
         // Unchanged contents leave the row alone, so a reload never re-renders it.
         if let loadedItems = try? await model.shelfItems(for: shelf), loadedItems != items { items = loadedItems }
         loaded = true
-    }
-}
-
-/// The next episodes (and, optionally, premieres and films) arriving soon, each with its date.
-struct UpcomingShelf: View {
-    let shelf: ShelfConfig
-    @Environment(AppModel.self) private var model
-    @State private var entries: [UpcomingEntry] = []
-
-    var body: some View {
-        Group {
-            if !entries.isEmpty {
-                VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    SectionHeader(shelf.title, route: .shelf(shelf))
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
-                            ForEach(entries) { entry in UpcomingCard(entry: entry, context: shelf.id) }
-                        }
-                        .padding(.horizontal, Theme.Space.gutter)
-                        .padding(.vertical, Platform.isTV ? 36 : 6)
-                        .scrollTargetLayout()
-                    }
-                    .scrollTargetBehavior(.viewAligned)
-                    .scrollClipDisabled()
-                    .pagingArrows(ids: entries.map(\.id), itemWidth: Platform.posterWidth + 14)
-                }
-                .transition(.opacity)
-            }
-        }
-        .animation(Theme.Motion.fade, value: entries.isEmpty)
-        .task(id: "\(model.contentVersion)-\(model.settings.general.upcomingWithinDays)-\(model.settings.general.includeWatchlistPremieres)-\(model.settings.general.filmDates.rawValue)") {
-            entries = await model.upcoming()
-        }
     }
 }
 
@@ -390,35 +349,24 @@ struct MetadataLine: View {
     }
 }
 
-/// Grid of posters with optional infinite scrolling.
+/// Grid of posters with optional infinite scrolling. Every column is the same width, so the frames and strips match.
 struct PosterGrid: View {
     let items: [MediaItem]
     var context: String = "grid"
     var onReachEnd: (() -> Void)?
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: Platform.posterWidth, maximum: Platform.posterWidth * 1.35), spacing: Platform.isTV ? 44 : 14, alignment: .top)],
-                  spacing: Platform.isTV ? 56 : 22) {
+        LazyVGrid(columns: PosterGrid.columns, spacing: Platform.isTV ? 56 : 22) {
             ForEach(items) { item in
-                PosterCardFlexible(item: item, context: context)
+                PosterFilmCard(item: item, context: context, width: nil)
                     .onAppear { if item.id == items.last?.id { onReachEnd?() } }
             }
         }
         .padding(.horizontal, Theme.Space.gutter)
     }
-}
 
-/// Poster that fills its grid cell width.
-struct PosterCardFlexible: View {
-    let item: MediaItem
-    var context: String = "grid"
-
-    var body: some View {
-        NavigationLink(value: Route.detail(item, zoom: "\(context)-\(item.id)")) {
-            PosterCardContent(item: item, width: nil, zoomID: "\(context)-\(item.id)")
-        }
-        .buttonStyle(CardButtonStyle())
-        .contextMenu { MediaContextMenu(item: item) } preview: { PosterPreview(item: item) }
+    static var columns: [GridItem] {
+        [GridItem(.adaptive(minimum: Platform.posterWidth, maximum: Platform.posterWidth * 1.35), spacing: Platform.isTV ? 44 : 14, alignment: .top)]
     }
 }
 

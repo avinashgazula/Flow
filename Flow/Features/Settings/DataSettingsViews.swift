@@ -38,7 +38,7 @@ struct DataStorageView: View {
 
     var body: some View {
         @Bindable var model = model
-        List {
+        FilmList {
             Section {
                 Toggle("iCloud Sync", isOn: $model.settings.sync.iCloudEnabled)
                 if model.settings.sync.iCloudEnabled {
@@ -99,7 +99,7 @@ struct DataStorageView: View {
                 Section {
                     LabeledContent("Storage Used", value: ByteCountFormatter.string(fromByteCount: downloadBytes, countStyle: .file))
                     #if os(iOS)
-                    Picker("Download Location", selection: $model.settings.downloads.location) {
+                    FilmPicker("Download Location", selection: $model.settings.downloads.location) {
                         ForEach(DownloadLocation.allCases) { Text($0.title).tag($0) }
                     }
                     #endif
@@ -115,13 +115,13 @@ struct DataStorageView: View {
                 }
 
                 Section {
-                    Picker("Movies", selection: $model.settings.downloads.movieLimitGB) {
+                    FilmPicker("Movies", selection: $model.settings.downloads.movieLimitGB) {
                         ForEach(Self.sizeLimits, id: \.self) { Text(Self.limitTitle($0)).tag($0) }
                     }
-                    Picker("TV Episodes", selection: $model.settings.downloads.episodeLimitGB) {
+                    FilmPicker("TV Episodes", selection: $model.settings.downloads.episodeLimitGB) {
                         ForEach(Self.sizeLimits, id: \.self) { Text(Self.limitTitle($0)).tag($0) }
                     }
-                    Picker("Resolution", selection: $model.settings.downloads.resolution) {
+                    FilmPicker("Resolution", selection: $model.settings.downloads.resolution) {
                         ForEach(Self.resolutions) { Text($0 == .unknown ? "Highest Available" : $0.label).tag($0) }
                     }
                     Toggle("Download Automatically", isOn: $model.settings.downloads.downloadAutomatically)
@@ -236,7 +236,7 @@ struct ShareSetupView: View {
     @State private var fileURL: URL?
 
     var body: some View {
-        Form {
+        FilmForm {
             Section {
                 Toggle("Include API Keys & Passwords", isOn: $includeSecrets)
             } footer: {
@@ -283,7 +283,7 @@ struct ImportSetupView: View {
     @State private var showImporter = false
 
     var body: some View {
-        Form {
+        FilmForm {
             Section {
                 TextField("Setup link or JSON", text: $text, prompt: Text("flow://setup?d=…"), axis: .vertical)
                     .lineLimit(1...6)
@@ -315,7 +315,7 @@ struct ImportSetupView: View {
                 }
             }
         }
-        .navigationTitle("Import Setup")
+        .flowPageTitle("Import Setup")
         .onAppear {
             if let pending = model.pendingImport {
                 text = pending

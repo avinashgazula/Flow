@@ -266,7 +266,7 @@ struct LibraryListView: View {
             }
             .padding(.vertical)
         }
-        .navigationTitle(list.title)
+        .flowPageTitle(list.title, inset: Theme.Space.gutter)
         .task(id: model.contentVersion) {
             let keys = self.keys
             // The first screenful appears as soon as it's ready; the rest fills in behind it. Waiting for
@@ -340,7 +340,7 @@ struct CollectionView: View {
                 }
             }
         }
-        .navigationTitle(name)
+        .flowPageTitle(name, inset: Theme.Space.gutter)
         .task {
             failed = false
             collection = try? await model.catalog?.collection(collectionID)
@@ -366,9 +366,9 @@ private struct ReorderableWatchlistGrid: View {
     let onMove: ([MediaKey], MediaKey?) -> Void
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: Platform.posterWidth, maximum: Platform.posterWidth * 1.35), spacing: 14, alignment: .top)], spacing: 22) {
+        LazyVGrid(columns: PosterGrid.columns, spacing: 22) {
             ForEach(items) { item in
-                PosterCardFlexible(item: item, context: "watchlist")
+                PosterFilmCard(item: item, context: "watchlist", width: nil)
             }
             .reorderable()
         }

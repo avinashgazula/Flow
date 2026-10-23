@@ -129,6 +129,8 @@ final class AppModel {
     /// Navigation stacks per tab, so the app (and the screenshot tour) can drive navigation.
     var paths: [AppTab: [Route]] = [:]
     var settingsPath: [Route] = []
+    /// Bumped by the screenshot tour on the Mac, whose Settings is a window that only a view can open.
+    var settingsWindowRequest = 0
     var searchText = ""
     /// Lets the screenshot tour show the welcome screen inside demo mode.
     var previewOnboarding = false
