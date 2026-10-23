@@ -527,19 +527,28 @@ extension View {
 }
 
 #if os(tvOS)
-/// A toggle as a row with its value on the right. The system draws a toggle's label in the app's tint on Apple TV, so
-/// unfocused rows read yellow; a button row draws it in paper and keeps the system's own focus look.
+/// A toggle as a row with its value on the right. The system draws a toggle in the app's tint on Apple TV, so unfocused
+/// rows read yellow; this draws the label in paper and the value in secondary, and flips both to dark ink on the system's
+/// light focus platter, so yellow stays for the focus ring and nothing else.
 struct FilmToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
-        Button { configuration.isOn.toggle() } label: {
-            HStack {
-                configuration.label
-                Spacer(minLength: Theme.Space.m)
-                Text(configuration.isOn ? "On" : "Off").foregroundStyle(.secondary)
-            }
+        Button { configuration.isOn.toggle() } label: { FilmToggleRow(configuration: configuration) }
+            .accessibilityAddTraits(.isToggle)
+            .accessibilityValue(configuration.isOn ? "On" : "Off")
+    }
+}
+
+private struct FilmToggleRow: View {
+    let configuration: ToggleStyleConfiguration
+    @Environment(\.isFocused) private var focused
+
+    var body: some View {
+        HStack {
+            configuration.label.foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.text)
+            Spacer(minLength: Theme.Space.m)
+            Text(configuration.isOn ? "On" : "Off")
+                .foregroundStyle(focused ? Theme.Palette.onStock.opacity(0.7) : Theme.Palette.textSecondary)
         }
-        .accessibilityAddTraits(.isToggle)
-        .accessibilityValue(configuration.isOn ? "On" : "Off")
     }
 }
 #endif
