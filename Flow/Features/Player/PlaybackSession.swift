@@ -87,9 +87,10 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private(set) var scrubPreviewer: ScrubPreviewer?
     /// Set by the screenshot tour to show a scrubbing preview without a finger on the screen.
     var tourScrubPreview: Double?
-    /// Set by the screenshot tour to open a player panel: "options" or "advanced".
-    var tourPanel: String?
     #endif
+    /// Set by the screenshot tour to open a player panel: "options" or "advanced" on iPhone and iPad,
+    /// "subtitle-style" on Apple TV.
+    var tourPanel: String?
     /// Lets the screenshot tour show "Are You Still Watching?" without sitting through episodes.
     func tourAskStillWatching(_ ask: Bool) { asksStillWatching = ask }
 
@@ -485,6 +486,13 @@ final class PlaybackSession: Identifiable {
         }
         guard !attributes.isEmpty, let rule = AVTextStyleRule(textMarkupAttributes: attributes) else { return nil }
         return [rule]
+    }
+
+    /// Applies a change to the viewer's subtitle look to the stream's own subtitles straight away;
+    /// `attach` only sets it when a stream loads.
+    func refreshTextStyle() {
+        guard let settings = model?.settings.subtitles else { return }
+        player.currentItem?.textStyleRules = Self.textStyleRules(settings)
     }
 
     private func applyChapters(to item: AVPlayerItem) {

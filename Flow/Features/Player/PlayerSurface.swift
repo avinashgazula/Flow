@@ -61,7 +61,8 @@ struct TVContentOverlay: View {
 }
 
 /// The system player on tvOS: Siri Remote scrubbing, info panel, audio/subtitle menus.
-/// Flow adds skip buttons as contextual actions and a subtitle-search menu item.
+/// Flow adds skip buttons as contextual actions, a subtitle-search menu item, and info panel tabs for
+/// X-Ray, playback details and how subtitles look.
 struct TVPlayerController: UIViewControllerRepresentable {
     let session: PlaybackSession
     let model: AppModel
@@ -95,7 +96,12 @@ struct TVPlayerController: UIViewControllerRepresentable {
         xray.title = "X-Ray"
         xray.view.backgroundColor = .clear
         xray.preferredContentSize = CGSize(width: 0, height: 400)
-        controller.customInfoViewControllers = [xray, details]
+        // How subtitles look, in steps the Siri Remote can click through; the subtitles on screen follow.
+        let style = UIHostingController(rootView: SubtitleStyleTVPanel(model: model))
+        style.title = "Subtitle Style"
+        style.view.backgroundColor = .clear
+        style.preferredContentSize = CGSize(width: 0, height: 440)
+        controller.customInfoViewControllers = [xray, details, style]
         return controller
     }
 

@@ -26,7 +26,8 @@ struct SubtitleAppearanceSections: View {
     private static let opacities: [Double] = (1...10).map { Double($0) / 10 }
     /// Every half second from −5 to +5; the picker adds a stored value that falls between.
     private static let offsets: [Double] = (-10...10).map { Double($0) / 2 }
-    private static let positions: [Double] = [0, 0.1, 0.25]
+    /// The same positions the Apple TV and Mac players list.
+    private static let positions = SubtitleStyleOptions.positionSteps
 
     var body: some View {
         @Bindable var model = model
@@ -58,7 +59,7 @@ struct SubtitleAppearanceSections: View {
         }
         Section {
             FilmPicker("Vertical Alignment", selection: $model.settings.subtitles.verticalPosition) {
-                ForEach(Self.positions, id: \.self) { Text(Self.positionLabel($0)).tag($0) }
+                ForEach(Self.positions, id: \.self) { Text(SubtitleStyleOptions.positionLabel($0)).tag($0) }
                 // The player's slider can leave any value in between.
                 if !Self.positions.contains(where: { abs($0 - model.settings.subtitles.verticalPosition) < 0.001 }) {
                     Text("Custom (+\(Int((model.settings.subtitles.verticalPosition * 100).rounded()))%)").tag(model.settings.subtitles.verticalPosition)
@@ -90,20 +91,7 @@ struct SubtitleAppearanceSections: View {
     }
 
     /// Only how subtitles look; which ones load and when stay put.
-    private func reset() {
-        let defaults = SubtitleSettings()
-        var s = model.settings.subtitles
-        s.font = defaults.font
-        s.fontScale = defaults.fontScale
-        s.weight = defaults.weight
-        s.color = defaults.color
-        s.edgeStyle = defaults.edgeStyle
-        s.background = defaults.background
-        s.backgroundOpacity = defaults.backgroundOpacity
-        s.verticalPosition = defaults.verticalPosition
-        s.keepASSStyling = defaults.keepASSStyling
-        model.settings.subtitles = s
-    }
+    private func reset() { model.settings.subtitles.resetAppearance() }
 
     /// The presets, plus the stored value when it falls between them, so the picker always has a match.
     private static func choices(_ presets: [Double], including current: Double) -> [Double] {
@@ -111,10 +99,6 @@ struct SubtitleAppearanceSections: View {
     }
 
     private static func percent(_ value: Double) -> String { "\(Int((value * 100).rounded()))%" }
-
-    private static func positionLabel(_ value: Double) -> String {
-        value == 0 ? "Default" : value < 0.2 ? "Raised" : "High"
-    }
 
     private static func offsetLabel(_ seconds: Double) -> String {
         seconds == 0 ? "None" : String(format: "%+.1f s", seconds)

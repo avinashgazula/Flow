@@ -124,6 +124,8 @@
 		8CDE903B2398EB2F1A6D7404 /* SongRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C03FCBA2839B79F44732742D /* SongRecognizer.swift */; };
 		8D21A0B0F2AAA85553387D87 /* ShelvesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E5BC060EB6D6E2ABFE2898 /* ShelvesSettingsView.swift */; };
 		8D5CC8DE79A6CA50B942B21D /* SubtitlePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C5362BFE5BED6E0EB6365B /* SubtitlePickerView.swift */; };
+		F0C8E92EF2EDF2A454EA3FAD /* SubtitleStyleFields.swift in Sources */ = {isa = PBXBuildFile; fileRef = 544F0AC1C7B6558FB2F30375 /* SubtitleStyleFields.swift */; };
+		BD7FC404268B7C8C066CC817 /* SubtitleStylePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03AC1B14EE3D7432293BB39 /* SubtitleStylePanel.swift */; };
 		8D73639598B1306524A20CB7 /* SongRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C03FCBA2839B79F44732742D /* SongRecognizer.swift */; };
 		8FE70D06F663EBC40F78AF98 /* MacPlayerMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC7C9912B10C36929B230EA7 /* MacPlayerMenu.swift */; };
 		90C41ADA53E19958772FF120 /* RequestButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9B65C32FD3DCF62AB118C7 /* RequestButton.swift */; };
@@ -146,6 +148,8 @@
 		A38E263FD7230776B06913B5 /* SeasonsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A899EF832EB2F6309B4822B /* SeasonsSection.swift */; };
 		A3ABE4EC6F563604C1098B05 /* FlowKit in Frameworks */ = {isa = PBXBuildFile; productRef = FDE4C0153DD0F6B1072FB8BF /* FlowKit */; };
 		A3E849D839BA8E1B6B562F7E /* SubtitlePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C5362BFE5BED6E0EB6365B /* SubtitlePickerView.swift */; };
+		F2B271CF916EFAB0A7646053 /* SubtitleStyleFields.swift in Sources */ = {isa = PBXBuildFile; fileRef = 544F0AC1C7B6558FB2F30375 /* SubtitleStyleFields.swift */; };
+		C7843FDD2AD76ECFC8CFC754 /* SubtitleStylePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03AC1B14EE3D7432293BB39 /* SubtitleStylePanel.swift */; };
 		A44682002C622E0EF4AA7642 /* SystemIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B3B66222812A0C035066700 /* SystemIntegration.swift */; };
 		A55AE0B137700B03CB7CEC2A /* XRayPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90731A71F7EF2D132F3F4DF0 /* XRayPanel.swift */; };
 		A569B7E2A24F289614CBE5BB /* AppModel+Snapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B1E42308B468C5EABF03CD /* AppModel+Snapshot.swift */; };
@@ -165,6 +169,8 @@
 		BB88C27FF82C73C0EA2F0FE6 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0A93336F88B7099468CD68A /* AccountSettingsView.swift */; };
 		C050E6EF49B1CF01E2FFAFD5 /* FlowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */; };
 		C06EF165EB47B0CA4D01C031 /* SubtitlePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C5362BFE5BED6E0EB6365B /* SubtitlePickerView.swift */; };
+		4DC4A22742E3A4D56B17DADB /* SubtitleStyleFields.swift in Sources */ = {isa = PBXBuildFile; fileRef = 544F0AC1C7B6558FB2F30375 /* SubtitleStyleFields.swift */; };
+		5E5A4BAFB0D981F136DCF226 /* SubtitleStylePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03AC1B14EE3D7432293BB39 /* SubtitleStylePanel.swift */; };
 		C3225463ED00C0483FA2E718 /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 084557F2FC6CAB9830615AEA /* DetailView.swift */; };
 		C39B9CEEEF55124EB8BA9A8C /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65DCE0A945164A80E0C29891 /* NotificationScheduler.swift */; };
 		C5082B08EE06CC776AD82D0E /* MediaServersSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451D5176A69CC78183D18794 /* MediaServersSettingsView.swift */; };
@@ -311,6 +317,8 @@
 		4363F086802042DAC47F151B /* LiveTVUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTVUITests.swift; sourceTree = "<group>"; };
 		451D5176A69CC78183D18794 /* MediaServersSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaServersSettingsView.swift; sourceTree = "<group>"; };
 		48C5362BFE5BED6E0EB6365B /* SubtitlePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitlePickerView.swift; sourceTree = "<group>"; };
+		544F0AC1C7B6558FB2F30375 /* SubtitleStyleFields.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleStyleFields.swift; sourceTree = "<group>"; };
+		B03AC1B14EE3D7432293BB39 /* SubtitleStylePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleStylePanel.swift; sourceTree = "<group>"; };
 		4AB914167C0E60D7E61706B6 /* Flow-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Flow-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4D9B65C32FD3DCF62AB118C7 /* RequestButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestButton.swift; sourceTree = "<group>"; };
 		4DC3B9744AFF87B99DBFCBA2 /* PlayerCheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerCheck.swift; sourceTree = "<group>"; };
@@ -464,6 +472,8 @@
 				C03FCBA2839B79F44732742D /* SongRecognizer.swift */,
 				2DD737624EF9765468432FC9 /* SubtitleAutoSync.swift */,
 				48C5362BFE5BED6E0EB6365B /* SubtitlePickerView.swift */,
+				544F0AC1C7B6558FB2F30375 /* SubtitleStyleFields.swift */,
+				B03AC1B14EE3D7432293BB39 /* SubtitleStylePanel.swift */,
 				137206BE43A2C01AB4878D2D /* SuggestionsViews.swift */,
 				946540BCA40626E77468111F /* SystemVolume.swift */,
 				90731A71F7EF2D132F3F4DF0 /* XRayPanel.swift */,
@@ -1010,6 +1020,8 @@
 				2B7F18E4B0A61D40B614042E /* SubtitleAppearanceSettings.swift in Sources */,
 				B64D983919599DA5F6BE4EC5 /* SubtitleAutoSync.swift in Sources */,
 				A3E849D839BA8E1B6B562F7E /* SubtitlePickerView.swift in Sources */,
+				F2B271CF916EFAB0A7646053 /* SubtitleStyleFields.swift in Sources */,
+				C7843FDD2AD76ECFC8CFC754 /* SubtitleStylePanel.swift in Sources */,
 				30136E8905D46F576A786C71 /* SuggestionsViews.swift in Sources */,
 				A44682002C622E0EF4AA7642 /* SystemIntegration.swift in Sources */,
 				19F5F25564E0241F89F2CEAA /* SystemVolume.swift in Sources */,
@@ -1086,6 +1098,8 @@
 				4D18F0DA9465A8A1751FA0B1 /* SubtitleAppearanceSettings.swift in Sources */,
 				B6F0CE7FA65838A8D582C77D /* SubtitleAutoSync.swift in Sources */,
 				C06EF165EB47B0CA4D01C031 /* SubtitlePickerView.swift in Sources */,
+				4DC4A22742E3A4D56B17DADB /* SubtitleStyleFields.swift in Sources */,
+				5E5A4BAFB0D981F136DCF226 /* SubtitleStylePanel.swift in Sources */,
 				73BCF3A83BBE69BF34F77F77 /* SuggestionsViews.swift in Sources */,
 				CE1FCAD1F0959FCB9154AC8B /* SystemIntegration.swift in Sources */,
 				55E41FD74BA1D5217865038F /* SystemVolume.swift in Sources */,
@@ -1162,6 +1176,8 @@
 				E720E7186F769695A38E3C27 /* SubtitleAppearanceSettings.swift in Sources */,
 				5D2F0EF48A710F2C9BD03A73 /* SubtitleAutoSync.swift in Sources */,
 				8D5CC8DE79A6CA50B942B21D /* SubtitlePickerView.swift in Sources */,
+				F0C8E92EF2EDF2A454EA3FAD /* SubtitleStyleFields.swift in Sources */,
+				BD7FC404268B7C8C066CC817 /* SubtitleStylePanel.swift in Sources */,
 				7FAFDBB90A59899A1C36E845 /* SuggestionsViews.swift in Sources */,
 				E6D35872D4AF909158EDF0F5 /* SystemIntegration.swift in Sources */,
 				9A5D11A5008EF5CCD9C2BA3C /* SystemVolume.swift in Sources */,

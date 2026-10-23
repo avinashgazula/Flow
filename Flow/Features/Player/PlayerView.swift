@@ -92,12 +92,19 @@ struct PlayerView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .zIndex(5)
             }
+            #if os(tvOS)
+            if session.tourPanel == "subtitle-style" {
+                SubtitleStyleTourPanel(model: model).zIndex(8)
+            }
+            #endif
         }
         .animation(Theme.Motion.gentle, value: session.notice)
         .animation(Theme.Motion.gentle, value: session.showsSuggestions)
         .animation(Theme.Motion.snappy, value: session.showsInfo)
         .animation(Theme.Motion.gentle, value: session.showsXRay)
         .animation(Theme.Motion.gentle, value: session.asksStillWatching)
+        // Subtitles inside the stream are styled by the player item, which only reads the look when it loads.
+        .onChange(of: model.settings.subtitles) { _, _ in session.refreshTextStyle() }
         // One panel on the leading side at a time.
         .onChange(of: session.showsXRay) { _, shows in if shows { session.showsInfo = false } }
         .onChange(of: session.showsInfo) { _, shows in if shows { session.showsXRay = false } }
