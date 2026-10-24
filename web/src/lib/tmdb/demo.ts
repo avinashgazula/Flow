@@ -109,6 +109,16 @@ const services = [
   { provider_id: 337, provider_name: 'Disney Plus', logo_path: '/7rwgEs15tFwyR9NPQ5vpzxTj19Q.jpg' },
   { provider_id: 9, provider_name: 'Amazon Prime Video', logo_path: '/emthp39XA2YScoYL1p0sdbAH2WA.jpg' },
 ]
+/** The region's other subscription services, so the filter sheet has a full row to choose from. */
+const moreServices = [
+  { provider_id: 15, provider_name: 'Hulu', logo_path: '/bxBlRPEPpMVDc4jMhSrTf2339DW.jpg' },
+  { provider_id: 1899, provider_name: 'Max', logo_path: '/jbe4gVSfRlbPTdESXhEKpornsfu.jpg' },
+  { provider_id: 531, provider_name: 'Paramount Plus', logo_path: '/h5DcR0J2EESLitnhR8xLG1QymTE.jpg' },
+  { provider_id: 386, provider_name: 'Peacock Premium', logo_path: '/8VCV78prwd9QzZnEm0ReO6bERDa.jpg' },
+]
+/** What a title streams on: one of the first four, and every third title is also on one of the rest.
+ *  Fixed by the id, so the detail page and the Explore filter agree. */
+const streamsOn = (t: { id: number }) => [services[t.id % services.length]!, ...(t.id % 3 === 0 ? [moreServices[t.id % moreServices.length]!] : [])]
 const stores = [
   { provider_id: 2, provider_name: 'Apple TV', logo_path: '/peURlLlr8jggOwK53fJ5wdQl05y.jpg' },
   { provider_id: 3, provider_name: 'Google Play Movies', logo_path: '/tbEdFQDwx5LEVr8WpSeXQSIirVq.jpg' },
@@ -120,14 +130,36 @@ const ofType = (path: string) => (path.includes('/movie') ? titles.filter((t) =>
 const shuffled = <T extends { id: number }>(list: T[], seed: number) =>
   [...list].sort((a, b) => ((Math.imul(a.id, 2654435761) + seed) >>> 0) % 1000 - ((Math.imul(b.id, 2654435761) + seed) >>> 0) % 1000)
 
+const originalLanguage = (t: Title) => (t.id === 496243 ? 'ko' : 'en')
+const releaseDate = (t: Title) => (t.type === 'movie' ? `${t.year}-06-15` : `${t.year}-03-10`)
+
 function listJSON(t: Title) {
   const o: Record<string, unknown> = {
     id: t.id, overview: t.overview, poster_path: t.poster, backdrop_path: t.backdrop, vote_average: t.rating, vote_count: 12000,
-    genre_ids: t.genres, original_language: t.id === 496243 ? 'ko' : 'en', media_type: t.type === 'movie' ? 'movie' : 'tv',
+    genre_ids: t.genres, original_language: originalLanguage(t), media_type: t.type === 'movie' ? 'movie' : 'tv',
   }
-  if (t.type === 'movie') Object.assign(o, { title: t.title, release_date: `${t.year}-06-15` })
-  else Object.assign(o, { name: t.title, first_air_date: `${t.year}-03-10` })
+  if (t.type === 'movie') Object.assign(o, { title: t.title, release_date: releaseDate(t) })
+  else Object.assign(o, { name: t.title, first_air_date: releaseDate(t) })
   return o
+}
+
+/** Discover's filters, applied to the sample titles the way TMDB applies them to its own. */
+function discoverFilter(list: Title[], query: Record<string, unknown>): Title[] {
+  const date = list[0]?.type === 'show' ? 'first_air_date' : 'primary_release_date'
+  const gte = query[`${date}.gte`] ? String(query[`${date}.gte`]) : ''
+  const lte = query[`${date}.lte`] ? String(query[`${date}.lte`]) : ''
+  const rating = Number(query['vote_average.gte'] ?? 0)
+  const language = query.with_original_language ? String(query.with_original_language) : ''
+  const wanted = String(query.with_watch_providers ?? '').split('|').filter(Boolean).map(Number)
+  return list.filter((t) => {
+    const when = releaseDate(t)
+    if (gte && when < gte) return false
+    if (lte && when > lte) return false
+    if (rating && t.rating < rating) return false
+    if (language && originalLanguage(t) !== language) return false
+    if (wanted.length && !streamsOn(t).some((p) => wanted.includes(p.provider_id))) return false
+    return true
+  })
 }
 
 const page = (list: Title[], n = 1) => ({ page: n, total_pages: Math.max(1, Math.ceil(list.length / 20)), results: list.slice((n - 1) * 20, n * 20).map(listJSON) })
@@ -158,7 +190,7 @@ function detail(t: Title) {
     crew: (credited?.crew ?? []).map(([name, job]) => ({ id: personId(name), name, job })),
   }
   o.videos = { results: [{ key: 'Way9Dexny3w', name: 'Official Trailer', site: 'YouTube', type: 'Trailer', official: true }] }
-  const region: Record<string, unknown> = { link: `https://www.themoviedb.org/${t.type === 'movie' ? 'movie' : 'tv'}/${t.id}/watch?locale=US`, flatrate: [services[t.id % services.length]] }
+  const region: Record<string, unknown> = { link: `https://www.themoviedb.org/${t.type === 'movie' ? 'movie' : 'tv'}/${t.id}/watch?locale=US`, flatrate: streamsOn(t) }
   if (t.type === 'movie') Object.assign(region, { rent: stores, buy: stores })
   o['watch/providers'] = { results: { US: region } }
   const similar = shuffled(titles.filter((x) => x.type === t.type && x.id !== t.id), t.id)
@@ -215,7 +247,11 @@ export async function demoTmdb(rawPath: string, query: Record<string, unknown>):
       const sort = String(query.sort_by ?? '')
       if (sort.startsWith('vote_average')) list = [...list].sort((a, b) => b.rating - a.rating)
       if (sort.includes('date.desc')) list = [...list].sort((a, b) => b.year - a.year)
-      return page(list, n)
+      return page(discoverFilter(list, query), n)
+    }
+    case 'watch': {
+      // /watch/providers/{movie|tv}: the region's services, most used first.
+      return { results: [...services, ...moreServices].map((p, i) => ({ ...p, display_priority: i })) }
     }
     case 'search': {
       const q = String(query.query ?? '').toLowerCase()
