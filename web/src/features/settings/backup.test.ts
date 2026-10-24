@@ -51,6 +51,41 @@ describe('settings backup', () => {
     expect(defaultSettings.streamProxy).toBe('')
   })
 
+  it('round-trips Live TV providers and favourites, and the default is empty', () => {
+    const liveTV = {
+      providers: [
+        { id: 'a', name: 'Playlist', kind: 'm3u', url: 'https://iptv.example/list.m3u', epgURL: 'https://iptv.example/guide.xml.gz', enabled: true, useForVOD: true },
+        { id: 'b', name: 'Panel', kind: 'xtream', url: 'http://panel.example:8080', username: 'me', password: 'secret', enabled: false, useForVOD: false, userAgent: 'Flow/1.0' },
+      ],
+      epgRefreshHours: 6,
+      favouriteChannelIDs: ['a:bbc1:0'],
+      recentChannelIDs: [],
+      hideEmptyGroups: true,
+    }
+    const parsed = parseBackup(JSON.stringify(createBackup({ ...defaultSettings, liveTV: liveTV as never }, library)))
+    expect(parsed.ok && parsed.settings.liveTV).toEqual(liveTV)
+    expect(parsed.ok && parsed.skipped).toEqual([])
+    expect(defaultSettings.liveTV.providers).toEqual([])
+  })
+
+  it('skips Live TV settings with a provider Flow can’t use', () => {
+    const base = { epgRefreshHours: 12, favouriteChannelIDs: [], recentChannelIDs: [], hideEmptyGroups: true }
+    const provider = { id: 'a', name: 'P', kind: 'm3u', url: 'https://iptv.example/list.m3u', enabled: true, useForVOD: true }
+    for (const bad of [
+      { ...base, providers: [{ ...provider, kind: 'stalker' }] },
+      { ...base, providers: [{ ...provider, url: 'javascript:alert(1)' }] },
+      { ...base, providers: [{ ...provider, url: 'iptv.example/list.m3u' }] },
+      { ...base, providers: [{ ...provider, epgURL: 'nonsense' }] },
+      { ...base, providers: [{ ...provider, enabled: 'yes' }] },
+      { ...base, providers: [provider], epgRefreshHours: 0 },
+      { ...base, providers: [provider], favouriteChannelIDs: [1] },
+      'nope',
+    ]) {
+      const r = parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { autoplayNext: true, liveTV: bad } }))
+      expect(r.ok && r.skipped).toEqual(['liveTV'])
+    }
+  })
+
   it('skips a stream proxy that isn’t an address Flow can call', () => {
     for (const bad of [7, null, 'proxy.example.com', 'javascript:alert(1)', 'http://proxy.example.com/?url={url}']) {
       const r = parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { autoplayNext: true, streamProxy: bad } }))

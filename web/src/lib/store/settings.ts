@@ -1,3 +1,4 @@
+import { defaultLiveTV, type LiveTVSettings } from '../livetv/types'
 import type { AddonManifest } from '../sources/types'
 import { createStore, useStore } from './createStore'
 import { defaultSubtitleStyle, type SubtitleStyle } from './subtitleStyleDefault'
@@ -62,6 +63,8 @@ export interface Settings {
   /** Where files from hosts that block web pages are fetched through: a URL with `{url}` for the
    *  encoded file address. Empty means no proxy. */
   streamProxy: string
+  /** IPTV providers, the guide's refresh time and the favourite channels (FlowKit's LiveTVSettings). */
+  liveTV: LiveTVSettings
 }
 
 const browserLanguage = typeof navigator === 'undefined' ? 'en-US' : navigator.language || 'en-US'
@@ -84,6 +87,7 @@ export const defaultSettings: Settings = {
   rememberLastSource: true,
   font: 'system',
   streamProxy: '',
+  liveTV: defaultLiveTV,
 }
 
 export const settingsStore = createStore<Settings>('settings', defaultSettings)
