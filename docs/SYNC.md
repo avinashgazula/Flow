@@ -109,10 +109,12 @@ The plaintext is JSON:
   - `tmdbAPIKey`, `tvdbAPIKey`, `mdblistAPIKey`;
   - `openSubtitlesAPIKey`, `openSubtitlesUsername`, `openSubtitlesPassword`;
   - `subdlAPIKey`, `subSourceAPIKey`, `rpdbAPIKey`;
+  - `introDBAPIKey`, `publicMetaDBAPIKey`, used for Skip Intro, Recap and Credits;
   - `traktClientID`, `traktClientSecret`, `simklClientID`.
 
   The web app maps `tmdbKey` to `tmdbAPIKey`.
 - **`accounts`:** `{"trakt": token|null, "simkl": token|null}`. A token is `{"accessToken", "refreshToken", "expiresAt" (ISO 8601 or null), "redirectURI"}`.
+  - The website signs in to Trakt too and writes its token here, so a sign-in made anywhere reaches every device.
   - When a device refreshes a token, it writes the new one at once, since the old refresh token stops working.
   - Before refreshing, a device pulls first in case another device already did.
 - **`addons`:** `[{"url": "<manifest URL>", "name", "enabled"}]`, in order.
