@@ -13,6 +13,8 @@ import s from './Controls.module.css'
  *  preview picture (a phone playing a plain file, say) the video itself follows a drag a few times a second. */
 export function Scrubber({ controller }: { controller: PlayerController }) {
   const visible = usePlayer(controller, (st) => st.controls)
+  const segments = usePlayer(controller, (st) => st.segments)
+  const marks = useRef<(HTMLDivElement | null)[]>([])
   const track = useRef<HTMLDivElement>(null)
   const fill = useRef<HTMLDivElement>(null)
   const buffer = useRef<HTMLDivElement>(null)
@@ -24,6 +26,21 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
   const peeking = useRef(0)
   const drag = useRef<number | null>(null)
   const last = useRef({ t: -1, d: -1, b: -1, second: -1, minute: -1 })
+
+  /** Where each segment's mark lies along the rail, once the length is known. */
+  const placeMarks = (d: number) => {
+    segments.forEach((segment, i) => {
+      const mark = marks.current[i]
+      if (!mark) return
+      const known = !Number.isNaN(d)
+      mark.style.left = known ? `${Math.min(100, (segment.start / d) * 100)}%` : '0'
+      mark.style.width = known ? `${Math.max(0, Math.min(100, (segment.end / d) * 100) - Math.min(100, (segment.start / d) * 100))}%` : '0'
+    })
+  }
+  useEffect(() => {
+    placeMarks(controller.duration())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segments])
 
   const paint = () => {
     const video = controller.video
@@ -39,6 +56,7 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
     const minute = Math.floor(Date.now() / 60_000)
     if (t === prev.t && d === prev.d && b === prev.b && minute === prev.minute) return
     const known = !Number.isNaN(d)
+    if (d !== prev.d) placeMarks(d)
     const played = known ? Math.min(1, t / d) : 0
     fill.current!.style.transform = `scaleX(${played})`
     thumb.current!.style.left = `${played * 100}%`
@@ -151,6 +169,9 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
         <div className={s.rail}>
           <div ref={buffer} className={s.buffered} />
           <div ref={fill} className={s.played} />
+          {segments.map((segment, i) => (
+            <div key={`${segment.kind}:${segment.start}`} ref={(el) => void (marks.current[i] = el)} className={s.mark} data-kind={segment.kind} />
+          ))}
         </div>
         <div ref={thumb} className={s.thumb} />
         <SeekPreview controller={controller} ref={preview} />

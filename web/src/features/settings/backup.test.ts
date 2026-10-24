@@ -107,4 +107,22 @@ describe('settings backup', () => {
       }
     })
   })
+
+  describe('skip settings', () => {
+    const parse = (settings: unknown) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings }))
+
+    it('defaults to the apps’: buttons for intros, recaps and credits, asking after three episodes, and no keys', () => {
+      expect(defaultSettings).toMatchObject({ skipIntro: 'button', skipRecap: 'button', skipCredits: 'button', stillWatchingAfterEpisodes: 3, introDBKey: '', publicMetaDBKey: '' })
+    })
+
+    it('keeps them', () => {
+      const r = parse({ skipIntro: 'automatic', skipRecap: 'off', skipCredits: 'button', stillWatchingAfterEpisodes: 0, introDBKey: 'idb_x', publicMetaDBKey: 'pm-y' })
+      expect(r.ok && r.settings).toEqual({ skipIntro: 'automatic', skipRecap: 'off', skipCredits: 'button', stillWatchingAfterEpisodes: 0, introDBKey: 'idb_x', publicMetaDBKey: 'pm-y' })
+    })
+
+    it('skips ones that make no sense', () => {
+      const r = parse({ autoplayNext: true, skipIntro: 'sometimes', skipCredits: 2, stillWatchingAfterEpisodes: -1, introDBKey: 5 })
+      expect(r.ok && r.skipped.sort()).toEqual(['introDBKey', 'skipCredits', 'skipIntro', 'stillWatchingAfterEpisodes'])
+    })
+  })
 })

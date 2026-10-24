@@ -135,6 +135,8 @@ interface Metadata {
   Guid?: { id: string }[]
   guid?: string
   Media?: MediaDTO[]
+  /** With `includeMarkers=1`: intro and credits markers, in milliseconds. */
+  Marker?: { type: string; startTimeOffset: number; endTimeOffset: number }[]
 }
 
 interface MediaDTO {
@@ -200,6 +202,12 @@ export async function plexSources(config: ServerConfig, request: PlaybackRequest
   const full = (await get(config, `library/metadata/${ratingKey}`, {}, signal)).Metadata?.[0]
   if (!full) return []
   return mapMetadata(config, full, caps)
+}
+
+/** The intro and credits markers Plex found for an item, as the server sends them. */
+export async function markersFor(config: ServerConfig, ratingKey: string, signal?: AbortSignal): Promise<unknown> {
+  const full = (await get(config, `library/metadata/${encodeURIComponent(ratingKey)}`, { includeMarkers: '1' }, signal)).Metadata?.[0]
+  return full?.Marker ?? []
 }
 
 const videoCodecs: Record<string, string> = { h264: 'H264', hevc: 'HEVC', h265: 'HEVC', av1: 'AV1', vp9: 'VP9', mpeg4: 'XviD' }

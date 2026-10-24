@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { proxyProblem } from '../../lib/sources/proxy'
-import { settingsStore, useSettings, type Settings, type SubtitleMode } from '../../lib/store/settings'
+import { settingsStore, useSettings, type Settings, type SkipBehaviour, type SubtitleMode } from '../../lib/store/settings'
 import { Group, Note, Row, Select, Switch } from './controls'
 import { SubtitleStyleGroup } from './SubtitleStyleGroup'
 import { audioChoices, subtitleChoices, withCurrent } from './options'
@@ -89,6 +89,76 @@ function StreamProxy() {
   )
 }
 
+const skipChoices: { value: SkipBehaviour; label: string }[] = [
+  { value: 'button', label: 'Show Button' },
+  { value: 'automatic', label: 'Skip Automatically' },
+  { value: 'off', label: 'Off' },
+]
+
+const stillWatchingChoices: { value: string; label: string }[] = [
+  { value: '0', label: 'Never' },
+  ...[2, 3, 4, 5].map((n) => ({ value: String(n), label: `After ${n} Episodes` })),
+]
+
+/** The IntroDB and PublicMetaDB keys. Saved on Save (or Enter), so a half-typed key is never used. */
+function SkipServices() {
+  const savedIntro = useSettings((x) => x.introDBKey)
+  const savedMeta = useSettings((x) => x.publicMetaDBKey)
+  const [intro, setIntro] = useState(savedIntro)
+  const [meta, setMeta] = useState(savedMeta)
+  const changed = intro.trim() !== savedIntro || meta.trim() !== savedMeta
+
+  const save = () => {
+    if (changed) settingsStore.set({ introDBKey: intro.trim(), publicMetaDBKey: meta.trim() })
+  }
+  const input = (id: string, label: string, value: string, set: (v: string) => void) => (
+    <input
+      id={id}
+      className="field"
+      type="password"
+      value={value}
+      onChange={(e) => set(e.target.value)}
+      onKeyDown={(e) => e.key === 'Enter' && save()}
+      aria-label={label}
+      placeholder="Paste your key"
+      autoComplete="off"
+      autoCapitalize="off"
+      spellCheck={false}
+    />
+  )
+
+  return (
+    <Group
+      title="Skip Services"
+      footer={
+        <>
+          IntroDB and PublicMetaDB know where intros, recaps and credits are in shows your own servers don’t mark. Get a key at{' '}
+          <a href="https://introdb.app" target="_blank" rel="noreferrer">
+            introdb.app
+          </a>{' '}
+          and{' '}
+          <a href="https://publicmetadb.com" target="_blank" rel="noreferrer">
+            publicmetadb.com
+          </a>
+          . A web page can reach IntroDB only through your stream proxy below, with <code>api.introdb.app</code> in its allowed hosts. PublicMetaDB doesn’t let web pages read its answers, so on the website its key is only kept for Flow Sync and the apps.
+        </>
+      }
+    >
+      <Row label="IntroDB API Key" htmlFor="introdb-key" stacked>
+        {input('introdb-key', 'IntroDB API key', intro, setIntro)}
+      </Row>
+      <Row label="PublicMetaDB API Key" htmlFor="publicmetadb-key" stacked>
+        {input('publicmetadb-key', 'PublicMetaDB API key', meta, setMeta)}
+      </Row>
+      <div className={s.saveRow}>
+        <button className="btn btn-primary btn-compact" type="button" onClick={save} disabled={!changed}>
+          Save
+        </button>
+      </div>
+    </Group>
+  )
+}
+
 const subtitleModes: { value: SubtitleMode; label: string }[] = [
   { value: 'foreign', label: 'Foreign Audio Only' },
   { value: 'always', label: 'Always' },
@@ -101,6 +171,10 @@ export function PlaybackSection() {
   const subtitles = useSettings((x) => x.subtitleLanguages)
   const subtitleMode = useSettings((x) => x.subtitleMode)
   const autoplay = useSettings((x) => x.autoplayNext)
+  const stillWatching = useSettings((x) => x.stillWatchingAfterEpisodes)
+  const skipIntro = useSettings((x) => x.skipIntro)
+  const skipRecap = useSettings((x) => x.skipRecap)
+  const skipCredits = useSettings((x) => x.skipCredits)
   const remember = useSettings((x) => x.rememberLastSource)
   const audioFirst = audioLanguages[0] ?? ''
   const audioSecond = audioLanguages[1] ?? ''
@@ -143,11 +217,32 @@ export function PlaybackSection() {
         </Row>
       </Group>
       <SubtitleStyleGroup />
-      <Group footer="Shows start the next episode when one ends, with a countdown you can cancel.">
+      <Group footer="Shows start the next episode when one ends, with a countdown you can cancel. Up Next comes up as the credits begin when a server, a skip service or the file’s chapters say where, else in the last 30 seconds. After the number of episodes you pick played with nobody touching anything, Flow asks before the next.">
         <Row label="Autoplay Next Episode">
           <Switch label="Autoplay next episode" checked={autoplay} onChange={(on) => settingsStore.set({ autoplayNext: on })} />
         </Row>
+        <Row label="Ask If Still Watching" htmlFor="still-watching">
+          <Select
+            id="still-watching"
+            label="Ask if still watching"
+            value={String(stillWatching)}
+            onChange={(v) => settingsStore.set({ stillWatchingAfterEpisodes: Number(v) })}
+            options={stillWatchingChoices.some((c) => c.value === String(stillWatching)) ? stillWatchingChoices : [...stillWatchingChoices, { value: String(stillWatching), label: `After ${stillWatching} Episodes` }]}
+          />
+        </Row>
       </Group>
+      <Group footer="Segments come from your media server (Jellyfin media segments, Plex markers), IntroDB, PublicMetaDB or the file’s chapter names. Show Button puts a Skip button over the picture; Enter or S presses it. Skip Automatically skips as the segment begins and lets you undo it.">
+        <Row label="Intro" htmlFor="skip-intro">
+          <Select id="skip-intro" label="Skip intro" value={skipIntro} onChange={(v) => settingsStore.set({ skipIntro: v })} options={skipChoices} />
+        </Row>
+        <Row label="Recap" htmlFor="skip-recap">
+          <Select id="skip-recap" label="Skip recap" value={skipRecap} onChange={(v) => settingsStore.set({ skipRecap: v })} options={skipChoices} />
+        </Row>
+        <Row label="Credits" htmlFor="skip-credits">
+          <Select id="skip-credits" label="Skip credits" value={skipCredits} onChange={(v) => settingsStore.set({ skipCredits: v })} options={skipChoices} />
+        </Row>
+      </Group>
+      <SkipServices />
       <StreamProxy />
     </>
   )

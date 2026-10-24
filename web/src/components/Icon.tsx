@@ -9,6 +9,7 @@ const paths = {
   settings: 'M18.93 9.39 L21.39 10.00 L21.39 14.00 L18.93 14.61 L18.74 15.05 L20.05 17.22 L17.22 20.05 L15.05 18.74 L14.61 18.93 L14.00 21.39 L10.00 21.39 L9.39 18.93 L8.95 18.74 L6.78 20.05 L3.95 17.22 L5.26 15.05 L5.07 14.61 L2.61 14.00 L2.61 10.00 L5.07 9.39 L5.26 8.95 L3.95 6.78 L6.78 3.95 L8.95 5.26 L9.39 5.07 L10.00 2.61 L14.00 2.61 L14.61 5.07 L15.05 5.26 L17.22 3.95 L20.05 6.78 L18.74 8.95Z M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z',
   play: 'M7 4.8v14.4a.8.8 0 0 0 1.2.7l11.3-7.2a.8.8 0 0 0 0-1.4L8.2 4.1A.8.8 0 0 0 7 4.8z',
   pause: 'M7 4.5h3.2v15H7zM13.8 4.5H17v15h-3.2z',
+  skipForward: 'M4.5 5.3v13.4a.8.8 0 0 0 1.25.66l9.5-6.7a.8.8 0 0 0 0-1.32l-9.5-6.7A.8.8 0 0 0 4.5 5.3zM17.5 5h2.3v14h-2.3z',
   plus: 'M12 5v14M5 12h14',
   check: 'M5 12.5 10 17.5 19 7',
   heart: 'M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z',
@@ -58,7 +59,7 @@ const paths = {
 export type IconName = keyof typeof paths
 
 export function Icon({ name, size = 20, strokeWidth = 2, filled, className }: { name: IconName; size?: number; strokeWidth?: number; filled?: boolean; className?: string }) {
-  const solid = filled ?? (name === 'play' || name === 'pause' || name === 'star')
+  const solid = filled ?? (name === 'play' || name === 'pause' || name === 'star' || name === 'skipForward')
   return (
     <svg
       className={className}
