@@ -16,3 +16,9 @@ ALLOWED_HOSTS = "aiostreams.example.com,*.real-debrid.com"
 # ALLOWED_REDIRECT_HOSTS = "*.cdn.example.net"
 
 # The access token is a secret, so it isn't set here. Run `npx wrangler secret put TOKEN`.
+
+# Optional: Flow Sync. Run `npx wrangler kv namespace create SYNC`, then paste the id it prints here.
+# Leave this block out and the proxy works as before; sync answers "Sync needs a KV namespace".
+[[kv_namespaces]]
+binding = "SYNC"
+id = "PASTE_THE_ID_THAT_WRANGLER_PRINTED"
