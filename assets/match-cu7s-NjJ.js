@@ -1,0 +1,2 @@
+import{p as e}from"./rank-DNQZMYJx.js";function t(t,n){if(n.tmdb!==void 0){let e=t.find(e=>e.tmdb===n.tmdb&&e.type===n.type);if(e)return e}if(n.imdb){let e=t.find(e=>e.imdb===n.imdb);if(e)return e}let r=e(n.title);return t.find(t=>t.type===n.type&&e(t.title)===r&&(n.year===void 0||t.year===void 0||Math.abs(t.year-n.year)<=1))}export{t};
+//# sourceMappingURL=match-cu7s-NjJ.js.map

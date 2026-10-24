@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#15120f" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="Flow: an Apple-quality front end for your own media servers, add-ons and IPTV." />
+    <title>Flow</title>
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- The two hosts every first screen needs: open their connections while the script downloads. -->
+    <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
+    <link rel="preconnect" href="https://api.themoviedb.org" crossorigin />
+    <script>
+      // The typeface is a setting. Setting it on <html> now means the first paint is already in the
+      // chosen font, and the preload starts its download with the page's code. System is the device's
+      // own font: nothing to preload. Keep the names in step with Settings['font'].
+      try {
+        var files = { inter: 'inter-latin-wght-normal', geist: 'geist-latin-wght-normal', manrope: 'manrope-latin-wght-normal', ioskeley: 'ioskeley-mono-regular' }
+        var font = (JSON.parse(localStorage.getItem('flow.settings.v1') || 'null') || {}).font
+        if (!files.hasOwnProperty(font)) font = 'system'
+        document.documentElement.dataset.font = font
+        // The edge print on Home's strips is in the first viewport: start it now, on Home only.
+        if (location.pathname === '/') {
+          var e = document.createElement('link')
+          e.rel = 'preload'
+          e.as = 'font'
+          e.type = 'font/woff2'
+          e.crossOrigin = ''
+          e.href = '/fonts/barlow-condensed-latin-600-normal.woff2'
+          document.head.appendChild(e)
+        }
+        if (font !== 'system') {
+          var p = document.createElement('link')
+          p.rel = 'preload'
+          p.as = 'font'
+          p.type = 'font/woff2'
+          p.crossOrigin = ''
+          p.href = '/fonts/' + files[font] + '.woff2'
+          document.head.appendChild(p)
+        }
+      } catch (e) {}
+    </script>
+    <script>
+      // Home's lead still is its largest image. Its address from the last visit is known before any
+      // script loads, so the download starts now, alongside the app's code, not after it.
+      // `s` is the sizes string Home rendered it with (leadSizes in features/home/Featured.tsx).
+      try {
+        var h = JSON.parse(localStorage.getItem('flow.lcp') || 'null')
+        if (h && h.path === location.pathname && h.d && h.s) {
+          var l = document.createElement('link')
+          l.rel = 'preload'
+          l.as = 'image'
+          l.fetchPriority = 'high'
+          l.imageSrcset = h.d
+          l.imageSizes = h.s
+          document.head.appendChild(l)
+        } else h = null
+      } catch (e) {
+        h = null
+      }
+    </script>
+    <style>html,body{color:#f4efe6;background:#15120f;margin:0}.shell-home{padding:calc(var(--nav-height,56px) + 24px) var(--page-inset,16px) 0;font-family:var(--font,system-ui, sans-serif)}.shell-wrap{max-width:1360px;margin:0 auto}.shell-head{min-height:62px;margin-bottom:24px}.shell-title{font-weight:700;font-size:var(--fs-page-title,34px);letter-spacing:-.02em;line-height:1.1}.shell-date{color:#bfb5a6;margin-top:4px;font-size:15px;line-height:1.3}.shell-still{aspect-ratio:16/9;background:#1f1b17;border-radius:6px 6px 0 0;overflow:hidden}.shell-still img{object-fit:cover;width:100%;height:100%;display:block}.shell-strip{background:#0d0b09;border-radius:0 0 6px 6px;height:26px}@media (min-width:721px){.shell-head{align-items:baseline;gap:16px;min-height:44px;display:flex}.shell-date{margin-top:0;font-size:17px}.shell-plate{max-width:420px}}@media (min-width:1100px){.shell-home{padding-top:calc(var(--nav-height,56px) + 16px)}.shell-head{display:none}.shell-top{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);column-gap:32px;display:grid}.shell-plate{max-width:none}}</style>
+    <script type="module" crossorigin src="/assets/index-Dry-fSRw.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/compiler-runtime-BNvLG3sJ.js">
+    <link rel="modulepreload" crossorigin href="/assets/createStore-C4Kazn2d.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-DAPtKIIu.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      if (window.h) {
+        var now = new Date(), hr = now.getHours()
+        document.getElementById('root').innerHTML =
+          '<div class="shell-home" aria-hidden="true"><div class="shell-wrap"><div class="shell-head"><div class="shell-title">' +
+          (hr >= 5 && hr < 12 ? 'This Morning' : hr >= 12 && hr < 17 ? 'This Afternoon' : 'Tonight') +
+          '</div><div class="shell-date">' +
+          now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) +
+          '</div></div><div class="shell-top"><div class="shell-plate"><div class="shell-still"><img alt="" sizes="' + h.s + '" fetchpriority="high" srcset="' + h.d + '"></div><div class="shell-strip"></div></div></div></div></div>'
+      }
+    </script>
+  </body>
+</html>
