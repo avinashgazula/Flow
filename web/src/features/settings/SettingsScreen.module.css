@@ -152,6 +152,9 @@ img.logo { padding: 4px; }
 /* A group's own Save button, in a row of its own under the fields. */
 .saveRow { padding: var(--space-s) var(--space-m); }
 .inline + .pad { margin-top: -4px; }
+.padTop { padding-top: var(--space-s); }
+/* An address or key shown as data: one face, wrapping anywhere so a long one never pushes its row wide. */
+.mono { font: var(--fs-caption) / 1.45 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; color: var(--ink-2); overflow-wrap: anywhere; user-select: all; }
 
 .form { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-m); }
 .fieldLabel { margin-top: var(--space-xs); font: 600 var(--fs-caption) / 1.2 var(--font); color: var(--ink-2); }

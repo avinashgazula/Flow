@@ -223,7 +223,7 @@ export function createClient(auth: TraktAuth, fetcher: typeof fetch) {
     return { status: res.status, body: res.status === 204 ? null : await res.json().catch(() => null) }
   }
 
-  const post = (path: string, body: unknown) => request('POST', path, { body }).then(() => undefined)
+  const post = async (path: string, body: unknown): Promise<void> => void (await request('POST', path, { body }))
 
   return {
     request,
@@ -261,13 +261,12 @@ export function createClient(auth: TraktAuth, fetcher: typeof fetch) {
     async playback(): Promise<Resume[]> {
       return readPlayback((await request('GET', '/sync/playback', { query: { limit: 100, extended: 'full' } })).body)
     },
-    deletePlayback: (id: number) => request('DELETE', `/sync/playback/${id}`).then(() => undefined),
+    deletePlayback: async (id: number): Promise<void> => void (await request('DELETE', `/sync/playback/${id}`)),
 
     rate: (entries: Entry[]) => post('/sync/ratings', syncBody(entries)),
     unrate: (entries: Entry[]) => post('/sync/ratings/remove', syncBody(entries)),
 
-    scrobble: (action: Scrobble, target: Target, progress: number, keepalive = false) =>
-      request('POST', `/scrobble/${action}`, { body: scrobbleBody(target, progress), keepalive }).then(() => undefined),
+    scrobble: async (action: Scrobble, target: Target, progress: number, keepalive = false): Promise<void> => void (await request('POST', `/scrobble/${action}`, { body: scrobbleBody(target, progress), keepalive })),
   }
 }
 

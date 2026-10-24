@@ -7,11 +7,11 @@
    Everything here takes `fetch` as a parameter so the tests can stand in for Trakt. */
 
 import type { TraktToken } from '../store/settings'
+import { callbackPath } from './arrive'
 
 export const apiBase = 'https://api.trakt.tv'
 export const authorizeURLBase = 'https://trakt.tv/oauth/authorize'
-/** Where Trakt sends the browser back, relative to the site. The owner adds the full address to the Trakt app. */
-export const callbackPath = 'settings/trakt-callback'
+export { callbackPath }
 
 /** The exact Redirect URI for this site: what Settings tells the owner to add at trakt.tv/oauth/applications. */
 export function redirectURI(origin: string = location.origin, base: string = import.meta.env.BASE_URL): string {

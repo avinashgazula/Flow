@@ -33,7 +33,7 @@ function takeOffer(): Offer | null {
 // MARK: Small pieces
 
 /** "just now", "5 minutes ago", or the date once it's old. */
-function ago(iso: string | undefined, now: number): string {
+export function ago(iso: string | undefined, now: number): string {
   const at = iso ? Date.parse(iso) : NaN
   if (!Number.isFinite(at)) return 'Not yet'
   const seconds = Math.max(0, (now - at) / 1000)
