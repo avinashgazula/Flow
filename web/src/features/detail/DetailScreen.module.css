@@ -11,7 +11,7 @@
 .info { display: flex; flex-direction: column; min-width: 0; margin-top: var(--space-l); }
 @media (min-width: 1000px) { .info { margin-top: 0; } }
 
-.meta { margin-top: var(--space-xs); font-size: var(--fs-small); line-height: 1.4; color: var(--ink-2); }
+.meta { margin-top: var(--space-xs); font-size: var(--fs-small); line-height: 1.4; color: var(--ink-2); text-wrap: pretty; }
 .name { font: 700 32px / 1.08 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
 @media (min-width: 721px) { .name { font-size: 46px; line-height: 1.05; } }
 

@@ -68,7 +68,7 @@
   flex: none;
   width: 48px;
   height: 28px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--base-4);
   transition: background-color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;

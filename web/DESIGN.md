@@ -33,6 +33,24 @@ typography:
     fontWeight: 700
     lineHeight: 1.1
     letterSpacing: "-0.02em"
+  page-title:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif"
+    fontSize: "34px"
+    fontWeight: 700
+    lineHeight: 1.1
+    letterSpacing: "-0.02em"
+  title-name:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif"
+    fontSize: "46px"
+    fontWeight: 700
+    lineHeight: 1.05
+    letterSpacing: "-0.02em"
+  title3:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif"
+    fontSize: "24px"
+    fontWeight: 700
+    lineHeight: 1.2
+    letterSpacing: "-0.015em"
   headline:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif"
     fontSize: "20px"
@@ -61,11 +79,21 @@ typography:
     lineHeight: 1
     letterSpacing: "0.14em"
     fontFeature: "'tnum'"
+  edge-print-small:
+    fontFamily: "'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif"
+    fontSize: "11px"
+    fontWeight: 600
+    lineHeight: 1
+    letterSpacing: "0.1em"
+    fontFeature: "'tnum'"
 rounded:
   art: "6px"
   label: "8px"
   control: "10px"
   panel: "12px"
+  perforation: "2px"
+  hairline: "1px"
+  full: "999px"
 spacing:
   xxs: "4px"
   xs: "8px"

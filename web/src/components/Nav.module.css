@@ -25,7 +25,7 @@
   padding: var(--space-xs) 0;
 }
 
-.mark { width: 12px; height: 16px; border-radius: 2px; background: var(--stock); }
+.mark { width: 12px; height: 16px; border-radius: var(--radius-perf); background: var(--stock); }
 
 .links { display: flex; gap: var(--space-l); height: 100%; align-items: stretch; margin-right: auto; }
 .link {
@@ -45,7 +45,7 @@
   right: 0;
   bottom: 10px;
   height: 2px;
-  border-radius: 1px;
+  border-radius: var(--radius-hair);
   background: var(--stock);
 }
 

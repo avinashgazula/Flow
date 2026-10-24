@@ -1,0 +1,82 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [
+      "src/**/*.test.ts"
+    ],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          "src/styles/fonts.css"
+        ],
+        "createdAt": "2026-10-24T18:15:02.149Z",
+        "reason": "The faces a viewer can pick in Settings → Appearance. Flow's own face is the system font."
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "src/styles/fonts.css"
+        ],
+        "createdAt": "2026-10-24T18:15:02.172Z",
+        "reason": "An optional face the viewer chooses in Settings → Appearance; never the default."
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "files": [
+          "src/styles/fonts.css"
+        ],
+        "createdAt": "2026-10-24T18:15:02.190Z",
+        "reason": "An optional face the viewer chooses in Settings → Appearance; never the default."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#000",
+        "files": [
+          "src/features/player/Player.module.css"
+        ],
+        "createdAt": "2026-10-24T18:15:02.226Z",
+        "reason": "True black behind the video: letterboxing must disappear on any screen."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#fff",
+        "files": [
+          "src/features/player/Player.module.css"
+        ],
+        "createdAt": "2026-10-24T18:15:02.244Z",
+        "reason": "Default subtitle white: legibility over the picture, as every player draws it."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "0.28em",
+        "files": [
+          "src/features/player/SubtitleText.module.css"
+        ],
+        "createdAt": "2026-10-24T18:15:02.267Z",
+        "reason": "The subtitle box scales with the viewer's chosen text size."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "src/components/Swatches.module.css"
+        ],
+        "createdAt": "2026-10-24T18:15:02.311Z",
+        "reason": "A thin dark ring so a white or yellow subtitle swatch keeps its edge on the panel."
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "7px",
+        "files": [
+          "src/features/explore/Controls.module.css"
+        ],
+        "createdAt": "2026-10-24T18:15:02.337Z",
+        "reason": "Concentric with the 10px control around it (10 minus its 3px inset)."
+      }
+    ]
+  }
+}
