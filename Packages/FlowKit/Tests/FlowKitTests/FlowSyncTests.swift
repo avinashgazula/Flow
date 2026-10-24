@@ -339,6 +339,43 @@ final class FlowSyncMappingTests: XCTestCase {
         XCTAssertEqual(settings.subtitles.fontScale, 1.0)
     }
 
+    func testASignInThatArrivesSwitchesTrackingOnlyOnADeviceStillTrackingLocally() {
+        let none = Credentials()
+        var trakt = Credentials()
+        trakt.traktToken = OAuthToken(accessToken: "t")
+        var simkl = Credentials()
+        simkl.simklToken = OAuthToken(accessToken: "s")
+
+        var account = AccountSettings()
+        FlowSyncMapping.adoptTracker(&account, before: none, after: trakt)
+        XCTAssertEqual(account.tracker, .trakt)
+        XCTAssertEqual(account.watchlistDestination, .trakt)
+
+        account = AccountSettings()
+        FlowSyncMapping.adoptTracker(&account, before: none, after: simkl)
+        XCTAssertEqual(account.tracker, .simkl)
+        XCTAssertEqual(account.watchlistDestination, .simkl)
+
+        // A choice already made stays.
+        account = AccountSettings()
+        account.tracker = .mdblist
+        FlowSyncMapping.adoptTracker(&account, before: none, after: trakt)
+        XCTAssertEqual(account.tracker, .mdblist)
+        XCTAssertEqual(account.watchlistDestination, .local)
+
+        // A sign-in that was already here, refreshed or changed, doesn't pull a device back from Local.
+        account = AccountSettings()
+        FlowSyncMapping.adoptTracker(&account, before: trakt, after: trakt)
+        XCTAssertEqual(account.tracker, .local)
+
+        // Both at once: Trakt first.
+        var both = trakt
+        both.simklToken = simkl.simklToken
+        account = AccountSettings()
+        FlowSyncMapping.adoptTracker(&account, before: none, after: both)
+        XCTAssertEqual(account.tracker, .trakt)
+    }
+
     func testChangeDetectionSeesOnlySyncedValues() {
         var settings = AppSettings()
         var changed = settings

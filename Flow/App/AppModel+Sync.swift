@@ -99,6 +99,7 @@ extension AppModel {
             FlowSyncMapping.apply(data, to: name, credentials: &newCredentials, settings: &newSettings)
             applied.append(name)
         }
+        FlowSyncMapping.adoptTracker(&newSettings.account, before: credentials, after: newCredentials)
         applyingSync = true
         if newCredentials != credentials { credentials = newCredentials }
         if newSettings != settings { settings = newSettings }

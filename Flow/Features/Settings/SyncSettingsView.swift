@@ -127,7 +127,13 @@ struct SyncSettingsView: View {
         }
 
         Section {
-            Button("Turn Off Sync") { turnOff(erase: false) }
+            // Not the accent: yellow marks the next action, and this one is a way out.
+            Button { turnOff(erase: false) } label: {
+                Text("Turn Off Sync")
+                    #if !os(tvOS)
+                    .foregroundStyle(Theme.Palette.text)
+                    #endif
+            }
             Button("Turn Off and Erase", role: .destructive) { confirmErase = true }
             if let failure { Text(failure).font(.footnote).foregroundStyle(Theme.Palette.red) }
         } footer: {

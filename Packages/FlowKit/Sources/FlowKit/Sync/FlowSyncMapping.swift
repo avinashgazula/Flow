@@ -229,6 +229,20 @@ public enum FlowSyncMapping {
         }
     }
 
+    /// Signing in once should sign in everywhere: when a Trakt or Simkl sign-in arrives through Sync on a device
+    /// that still tracks only on itself, tracking and the watchlist move to that service, as the sign-in sheet would.
+    /// A device that already chose a tracker keeps it, and so does one whose sign-in was there before.
+    public static func adoptTracker(_ account: inout AccountSettings, before: Credentials, after: Credentials) {
+        guard account.tracker == .local else { return }
+        if before.traktToken == nil, after.traktToken != nil {
+            account.tracker = .trakt
+            account.watchlistDestination = .trakt
+        } else if before.simklToken == nil, after.simklToken != nil {
+            account.tracker = .simkl
+            account.watchlistDestination = .simkl
+        }
+    }
+
     // MARK: Comparing
 
     /// What a section reads back as once this version has applied it: the shape the local mapping produces.
