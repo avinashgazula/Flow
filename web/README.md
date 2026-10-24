@@ -51,6 +51,28 @@ npm test             # unit tests (Vitest)
 - State that changes often (playback time) lives in refs or the DOM, not in React state that
   re-renders a screen.
 
+## Installing and offline
+
+Flow is an installable web app (`public/manifest.webmanifest`: Film Base colours, maskable icons, shortcuts for Continue
+Watching, Upcoming and Search) and opens with no network. `scripts/pwa.ts` runs after the build: it lists the hashed code
+and styles (Vite's output, without sourcemaps, wasm or anything over 300 KB, which is hls.js), adds the page, the offline
+page, the manifest, the icon and the edge-print font, and builds `src/sw/sw.ts` with that list into `dist/sw.js`. The cache
+is named after a fingerprint of its contents, so a deploy that changes any file replaces the whole cache.
+
+- **What it caches** is decided by `src/sw/rules.ts` and its tests: Flow's own origin and base path only, GET only, nothing
+  with a Range header or a media extension, never `samples/`. TMDB, add-ons, servers, the stream proxy and artwork are other
+  origins, so the worker never sees them as anything but a request to let through. Chunks that weren't precached (hls.js, a
+  typeface) are stored the first time they load.
+- **Page loads** go to the network first and fall back to the saved shell after 4 s or when offline, so a new deploy shows
+  at once and an old connection still opens Flow. `offline.html` is the last resort.
+- **Updates wait.** A new worker never takes over by itself (a film isn't swapped to new code half way through); the page
+  shows "Flow was updated" with Reload, and Reload tells the worker to take over and reloads. Registered in production
+  builds only (`lib/pwa/update.ts`).
+- **Address bar search.** The build writes `opensearch.xml` (`search?q={searchTerms}`) with absolute addresses, from
+  `FLOW_SITE_URL`, `PAGES_DOMAIN` or the GitHub repository; a local build gets relative ones, which browsers ignore.
+- **Install.** Settings → About has Install Flow where the browser sends `beforeinstallprompt`, and one sentence about Share
+  → Add to Home Screen on iPhone and iPad. Nothing asks unprompted.
+
 ## Matroska
 
 Browsers can't play `.mkv`, so `src/lib/remux` does it: a Rust crate (`crates/flow-remux`, 130 KB of

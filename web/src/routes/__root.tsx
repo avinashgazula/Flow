@@ -1,6 +1,7 @@
 import { Outlet, createRootRouteWithContext, useRouterState } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { Nav } from '../components/Nav'
+import { Notices } from '../components/Notices'
 import { Welcome } from '../features/onboarding/Welcome'
 import { hasCatalog, useSettings } from '../lib/store/settings'
 
@@ -19,10 +20,18 @@ function Root() {
   const onboarded = useSettings((s) => s.onboarded)
   const path = useRouterState({ select: (r) => r.location.pathname })
   // Settings stays reachable before onboarding, so a key can be pasted there too.
-  if ((!ready || !onboarded) && !path.startsWith('/settings')) return <Welcome />
+  if ((!ready || !onboarded) && !path.startsWith('/settings')) {
+    return (
+      <>
+        <Welcome />
+        <Notices />
+      </>
+    )
+  }
   return (
     <>
       <Nav />
+      <Notices />
       <main data-tabbar={path.startsWith('/watch') ? undefined : ''}>
         <Outlet />
       </main>

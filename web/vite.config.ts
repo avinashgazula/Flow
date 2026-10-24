@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import { pwa } from './scripts/pwa.ts'
 
 // FLOW_BASE is the path the site is served from: "/" locally, "/Flow/" on GitHub Pages.
 export default defineConfig({
@@ -12,6 +13,8 @@ export default defineConfig({
     react(),
     // The React Compiler memoises components and hooks, so scrolling shelves never re-renders the page.
     babel({ presets: [reactCompilerPreset()] }),
+    // The service worker and the address-bar search descriptor, written after the site is built.
+    pwa(),
   ],
   define: {
     // Shown in error details, so a report says which build it came from.
