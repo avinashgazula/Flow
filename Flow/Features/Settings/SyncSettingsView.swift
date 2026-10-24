@@ -44,8 +44,8 @@ struct SyncSettingsView: View {
     @ViewBuilder
     private var offSections: some View {
         Section {
-            TextField("Worker Address", text: $server, prompt: Text("https://your-worker.workers.dev")).syncField(url: true)
-            SecureField("Token", text: $token, prompt: Text("The Worker's token")).syncField()
+            TextField("Worker Address", text: $server, prompt: Text(verbatim: "https://your-worker.workers.dev")).syncField(url: true)
+            SecureField("Token", text: $token, prompt: Text(verbatim: "The Worker's token")).syncField()
             Button {
                 turnOn()
             } label: {
@@ -93,7 +93,7 @@ struct SyncSettingsView: View {
             }
             LabeledContent("Last Synced") {
                 if let last = model.syncLastSynced {
-                    Text(last, style: .relative) + Text(" ago")
+                    Text(last, format: .relative(presentation: .numeric, unitsStyle: .wide))
                 } else {
                     Text("Not yet")
                 }
@@ -278,7 +278,7 @@ struct SyncJoinView: View {
         FilmForm {
             #if !os(tvOS)
             Section {
-                TextField("Pairing Link", text: $link, prompt: Text("flow://sync?k=…"), axis: .vertical)
+                TextField("Pairing Link", text: $link, prompt: Text(verbatim: "flow://sync?k=…"), axis: .vertical)
                     .lineLimit(1...4)
                     .syncField(url: true)
                 Button("Paste") { link = Platform.pasteboardString() ?? "" }
@@ -291,11 +291,11 @@ struct SyncJoinView: View {
             #endif
 
             Section {
-                TextField("Sync Key", text: $keyText, prompt: Text("0000-0000-0000-0000-0000-0000-00"))
+                TextField("Sync Key", text: $keyText, prompt: Text(verbatim: "0000-0000-0000-0000-0000-0000-00"))
                     .font(.system(.body, design: .monospaced))
                     .syncField()
-                TextField("Worker Address", text: $server, prompt: Text("https://your-worker.workers.dev")).syncField(url: true)
-                SecureField("Token", text: $token, prompt: Text("The Worker's token")).syncField()
+                TextField("Worker Address", text: $server, prompt: Text(verbatim: "https://your-worker.workers.dev")).syncField(url: true)
+                SecureField("Token", text: $token, prompt: Text(verbatim: "The Worker's token")).syncField()
             } header: {
                 Text(Platform.isTV ? "Key, Server and Token" : "Or Type Them In")
             } footer: {
@@ -323,8 +323,8 @@ struct SyncJoinView: View {
                 }
             }
         }
-        .flowPageTitle("Join a Sync")
-        .inlineNavigationTitle()
+        // Pushed from Settings, the page already has its title; as a sheet it needs its own.
+        .modifier(JoinTitle(isSheet: isSheet))
         .onChange(of: link) { _, _ in fillFromLink() }
         .task(id: initialLink) { if let initialLink { link = initialLink; fillFromLink() } }
         #if !os(tvOS)
@@ -379,4 +379,16 @@ struct SyncJoinView: View {
     }
 
     private static func describe(_ error: Error) -> String { AppModel.syncMessage(error) }
+}
+
+private struct JoinTitle: ViewModifier {
+    let isSheet: Bool
+
+    func body(content: Content) -> some View {
+        if isSheet {
+            content.flowPageTitle("Join a Sync").inlineNavigationTitle()
+        } else {
+            content
+        }
+    }
 }
