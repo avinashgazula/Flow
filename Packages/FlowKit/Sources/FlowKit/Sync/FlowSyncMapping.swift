@@ -232,10 +232,12 @@ public enum FlowSyncMapping {
     // MARK: Comparing
 
     /// What a section reads back as once this version has applied it: the shape the local mapping produces.
-    /// Two devices that agree on a section agree on this, whatever extra fields the data carries.
-    public static func normalized(_ data: JSONValue, section: String) -> JSONValue {
+    /// Two devices that agree on a section agree on this, whatever extra fields the data carries. `base` is how the
+    /// device had the section before, for data that only carries some of its fields (the website writes one key).
+    public static func normalized(_ data: JSONValue, section: String, over base: JSONValue? = nil) -> JSONValue {
         var credentials = Credentials()
         var settings = AppSettings()
+        if let base { apply(base, to: section, credentials: &credentials, settings: &settings) }
         apply(data, to: section, credentials: &credentials, settings: &settings)
         return sections(credentials: credentials, settings: settings)[section] ?? data
     }

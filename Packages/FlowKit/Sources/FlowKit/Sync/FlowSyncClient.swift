@@ -109,7 +109,8 @@ public struct FlowSyncClient: Sendable {
         case 409:
             guard let body = try? JSONDecoder().decode(RecordBody.self, from: data) else { throw FlowSyncError.unexpectedResponse }
             return .conflict(body.record)
-        case 404: throw FlowSyncError.unexpectedResponse
+        // A write on top of a record that is gone: it was erased elsewhere, and writing it back would undo that.
+        case 404: throw FlowSyncError.erased
         default: throw Self.failure(status: status)
         }
     }

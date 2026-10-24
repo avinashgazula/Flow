@@ -418,6 +418,30 @@ final class FlowSyncMergeTests: XCTestCase {
         XCTAssertEqual(result.payload.sections["keys"]?.device, "iPhone")
     }
 
+    func testAChangeInTheSameSecondAsTheLastIsStampedASecondLater() {
+        let before = local(tmdb: "old")
+        let result = FlowSyncMerge.merge(local: local(tmdb: "typed"), state: state(before, at: t1), remote: remote(["keys": (t1, keys("old"))]), device: "iPhone", now: t1)
+        XCTAssertEqual(result.payload.sections["keys"]?.updatedAt, t1.addingTimeInterval(1))
+        XCTAssertEqual(result.payload.sections["keys"]?.data, keys("typed"))
+    }
+
+    func testDataThatCarriesOnlySomeKeysLeavesTheRestAlone() {
+        // The website writes a keys section with its TMDB key alone; the others on this device are not cleared.
+        var mine = Credentials()
+        mine.tmdbAPIKey = "old"
+        mine.mdblistAPIKey = "keep"
+        let local = FlowSyncMapping.keysData(mine)
+        let theirs = FlowSyncJSON.object(["tmdbAPIKey": .string("web")])
+        var expected = mine
+        expected.tmdbAPIKey = "web"
+        XCTAssertEqual(FlowSyncMapping.normalized(theirs, section: "keys", over: local), FlowSyncMapping.keysData(expected))
+        // Same key as here: nothing to apply, so no needless write comes of it.
+        let same = FlowSyncJSON.object(["tmdbAPIKey": .string("old")])
+        let result = FlowSyncMerge.merge(local: ["keys": local], state: FlowSyncState(), remote: FlowSyncPayload(sections: ["keys": FlowSyncSection(updatedAt: t2, device: "Web", data: same)]), device: "Mac", now: t3)
+        XCTAssertTrue(result.apply.isEmpty)
+        XCTAssertEqual(result.stamps["keys"]?.dataHash, FlowSyncJSON.hash(local))
+    }
+
     func testALocalChangeLosesToANewerServerCopy() {
         let before = local(tmdb: "old")
         let now = local(tmdb: "typed")
@@ -566,6 +590,10 @@ final class FakeSyncWorker: HTTPTransport, @unchecked Sendable {
         guard request.value(forHTTPHeaderField: "X-Flow-Token") == token else { return reply(401, "The token is missing or wrong.") }
         let auth = (request.value(forHTTPHeaderField: "Authorization") ?? "").replacingOccurrences(of: "Bearer ", with: "")
         let hash = FlowSyncKDF.sha256Hex(Data(auth.utf8))
+        func putNew(_ hash: String, _ blob: String) -> (Data, HTTPURLResponse) {
+            record = Record(authHash: hash, rev: 1, blob: blob)
+            return reply(200, #"{"rev":1}"#)
+        }
         func body(_ r: Record) -> String { #"{"rev":\#(r.rev),"blob":"\#(r.blob)","updatedAt":"2026-10-24T18:00:00Z"}"# }
         switch request.httpMethod {
         case "GET":
@@ -581,7 +609,10 @@ final class FakeSyncWorker: HTTPTransport, @unchecked Sendable {
                 let other = interferences.removeFirst()
                 record = Record(authHash: hash, rev: (record?.rev ?? 0) + 1, blob: other)
             }
-            if (record?.rev ?? 0) != rev { return reply(409, body(record!)) }
+            guard let current = record else {
+                return rev == 0 ? putNew(hash, blob) : reply(404, "This sync was erased from another device. Turn sync on again to start a new one.")
+            }
+            if current.rev != rev { return reply(409, body(current)) }
             record = Record(authHash: hash, rev: rev + 1, blob: blob)
             return reply(200, #"{"rev":\#(rev + 1)}"#)
         case "DELETE":
@@ -663,6 +694,16 @@ final class FlowSyncClientTests: XCTestCase {
         do { _ = try await c.get(); XCTFail() } catch { XCTAssertEqual(error as? FlowSyncError, .unreachable) }
         let offline = try FlowSyncClient(pairing: pairing, http: HTTPClient(transport: OfflineTransport()), sealer: FakeSealer())
         do { _ = try await offline.get(); XCTFail() } catch { XCTAssertEqual((error as? FlowError)?.errorDescription, "You're offline. Check your connection and try again.") }
+    }
+
+    func testAWriteOnAnErasedRecordIsTold() async throws {
+        let worker = FakeSyncWorker()
+        let c = try client(worker)
+        do { _ = try await c.put(rev: 3, blob: "x"); XCTFail() } catch { XCTAssertEqual(error as? FlowSyncError, .erased) }
+        XCTAssertNil(worker.record)
+        XCTAssertEqual(FlowSyncError.erased.errorDescription, "This sync was erased from another device. Turn sync on again to start a new one.")
+        let created = try await c.put(rev: 0, blob: "x")
+        XCTAssertEqual(created, .written(rev: 1))
     }
 
     func testDeleteRemovesTheRecord() async throws {

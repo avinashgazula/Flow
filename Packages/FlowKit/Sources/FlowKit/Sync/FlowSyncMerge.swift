@@ -57,7 +57,8 @@ public enum FlowSyncMerge {
                     localTime = stamp.updatedAt
                     localDevice = stamp.device ?? device
                 } else {
-                    localTime = now
+                    // Times are to the second, so a change right after the last one would tie with it and lose.
+                    localTime = max(now, stamp.updatedAt.addingTimeInterval(1))
                 }
             } else if let remoteSection, !FlowSyncMapping.isBlank(remoteSection.data, section: name) {
                 localTime = .distantPast
@@ -75,7 +76,7 @@ public enum FlowSyncMerge {
             }
 
             let carried = overlay(data, onto: remoteSection.data)
-            let normalized = FlowSyncMapping.normalized(remoteSection.data, section: name)
+            let normalized = FlowSyncMapping.normalized(remoteSection.data, section: name, over: data)
             let remoteTime = remoteSection.updatedAt
             let remoteWins: Bool
             if remoteTime > localTime {

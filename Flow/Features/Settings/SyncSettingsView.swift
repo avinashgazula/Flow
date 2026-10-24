@@ -55,7 +55,8 @@ struct SyncSettingsView: View {
                 }
             }
             .disabled(working || server.nonEmpty == nil || token.nonEmpty == nil)
-            if let failure { Text(failure).font(.footnote).foregroundStyle(Theme.Palette.red) }
+            // Also what turned Sync off by itself, like an erase from another device.
+            if let message = failure ?? model.syncError { Text(message).font(.footnote).foregroundStyle(Theme.Palette.red) }
         } header: {
             Text("Turn On Sync")
         } footer: {

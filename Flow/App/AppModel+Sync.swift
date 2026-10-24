@@ -69,6 +69,11 @@ extension AppModel {
             syncError = nil
         } catch is CancellationError {
         } catch FlowError.cancelled {
+        } catch FlowSyncError.erased {
+            // Erased from another device: sync turns itself off here (the settings stay), and says why.
+            guard syncPairing == pairing else { return }
+            forgetSyncLocally()
+            syncError = FlowSyncError.erased.errorDescription
         } catch {
             if syncPairing == pairing { syncError = Self.syncMessage(error) }
         }
@@ -162,6 +167,11 @@ extension AppModel {
             }
         }
         while let running = syncInFlight { await running.value }
+        forgetSyncLocally()
+        return nil
+    }
+
+    private func forgetSyncLocally() {
         syncPushTask?.cancel()
         syncPairing = nil
         syncPairingStore.save(nil)
@@ -170,7 +180,6 @@ extension AppModel {
         Self.persistence.async { store.remove("sync-state") }
         syncLastSynced = nil
         syncError = nil
-        return nil
     }
 
     /// A fixed, made-up sync for the screenshot tour. Nothing is stored and, in demo mode, nothing is ever sent.
@@ -178,6 +187,13 @@ extension AppModel {
         guard isDemo else { return }
         syncPairing = FlowSyncPairing(keyText: "000G40R40M30E209185GR38E1W", server: "https://flow-sync.example.workers.dev", token: "demo-token")
         syncLastSynced = Date().addingTimeInterval(-120)
+        syncError = nil
+    }
+
+    func hideDemoSync() {
+        guard isDemo else { return }
+        syncPairing = nil
+        syncLastSynced = nil
         syncError = nil
     }
 }
