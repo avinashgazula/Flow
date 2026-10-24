@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore, type FormEvent } from 'react
 import { Icon } from '../../components/Icon'
 import { settingsStore, useSettings } from '../../lib/store/settings'
 import { syncStatus } from '../../lib/sync/engine'
+import { callbackPath } from '../../lib/trakt/arrive'
 import { redirectURI } from '../../lib/trakt/oauth'
 import { beginSignIn, checkClientID, finishingSignIn, signOut } from '../../lib/trakt/session'
 import { useTrakt } from '../../lib/trakt/store'
@@ -53,7 +54,7 @@ function AppGroup() {
           <a href="https://trakt.tv/oauth/applications" target="_blank" rel="noreferrer">
             trakt.tv/oauth/applications
           </a>{' '}
-          and add the Redirect URI above to it, alongside the one it already lists (the Apple apps use <code>flow://trakt-callback</code>). Trakt no longer issues a client secret, and Flow doesn’t need one.
+          and add the Redirect URI above to it, alongside the one it already lists (the Apple apps use flow://trakt-callback). Trakt no longer issues a client secret, and Flow doesn’t need one.
         </>
       }
     >
@@ -81,7 +82,13 @@ function AppGroup() {
           <Note tone={state.kind}>{state.text}</Note>
         </div>
       )}
-      <Row label="Redirect URI" detail={<code className={s.mono}>{redirect}</code>}>
+      <Row label="Redirect URI" detail={
+          <span className={s.address}>
+            {redirect.slice(0, -callbackPath.length)}
+            <wbr />
+            <span className={s.whole}>{callbackPath}</span>
+          </span>
+        }>
         <button
           type="button"
           className="btn btn-secondary btn-compact"
