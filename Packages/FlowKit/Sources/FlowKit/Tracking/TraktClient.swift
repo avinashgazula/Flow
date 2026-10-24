@@ -13,9 +13,13 @@ public actor TraktClient: TrackingService, ListService {
     private var refreshTask: Task<OAuthToken, Error>?
     private let http: HTTPClient
     private let onTokenChange: @Sendable (OAuthToken?) -> Void
+    /// Asked just before a refresh with the token about to be spent. Flow Sync answers with a newer token another
+    /// device already got (a refresh token works once), and the refresh is skipped.
+    private let tokenBeforeRefresh: (@Sendable (OAuthToken) async -> OAuthToken?)?
     private let base = "https://api.trakt.tv"
 
-    public init(clientID: String, clientSecret: String? = nil, token: OAuthToken?, http: HTTPClient = HTTPClient(), onTokenChange: @escaping @Sendable (OAuthToken?) -> Void = { _ in }) {
+    public init(clientID: String, clientSecret: String? = nil, token: OAuthToken?, http: HTTPClient = HTTPClient(), onTokenChange: @escaping @Sendable (OAuthToken?) -> Void = { _ in }, tokenBeforeRefresh: (@Sendable (OAuthToken) async -> OAuthToken?)? = nil) {
+        self.tokenBeforeRefresh = tokenBeforeRefresh
         self.clientID = clientID
         self.clientSecret = TraktOAuth.normalized(secret: clientSecret)
         self.token = token
@@ -94,7 +98,9 @@ public actor TraktClient: TrackingService, ListService {
         do {
             response = try await http.json(Response.self, r)
         } catch FlowError.unauthorized {
-            // Nobody is signed in yet: a refusal here is about the app's client ID, not a session.
+            // Nobody is signed in yet: a refusal here is about the app, not a session. Without a client secret
+            // it is the code sign-in itself that Trakt turns away; with one, the client ID is the likelier fault.
+            if clientSecret == nil { throw FlowError.unsupported(TraktOAuth.deviceSignInRefused) }
             throw FlowError.unsupported("Trakt didn't accept this app's client ID. Check the Trakt Client ID in Settings → Account → API Keys.")
         }
         return DeviceCode(deviceCode: response.device_code, userCode: response.user_code, verificationURL: URL(string: response.verification_url) ?? URL(string: "https://trakt.tv/activate")!, expiresIn: response.expires_in, interval: response.interval)
@@ -117,6 +123,8 @@ public actor TraktClient: TrackingService, ListService {
                 return t
             case 400: break // pending
             case 429: interval += 1
+            // Trakt turns the code step away when the app has no client secret to prove itself with.
+            case 401, 403: throw FlowError.unsupported(TraktOAuth.deviceSignInRefused)
             case 404, 409, 410, 418: throw FlowError.unauthorized
             default: throw FlowError.http(status: response.statusCode, body: nil)
             }
@@ -135,6 +143,11 @@ public actor TraktClient: TrackingService, ListService {
 
     /// No client secret is needed when the app has none: the refresh token itself is the proof.
     private func performRefresh(_ current: OAuthToken) async throws -> OAuthToken {
+        if let newer = await tokenBeforeRefresh?(current), newer != current, !newer.isExpired {
+            token = newer
+            onTokenChange(newer)
+            return newer
+        }
         let redirect = TraktOAuth.refreshRedirectURI(for: current, hasSecret: clientSecret != nil)
         var r = try HTTPRequest(.post, base + "/oauth/token", headers: ["Content-Type": "application/json"])
         try r.setJSONBody(TraktOAuth.RefreshBody(refresh_token: current.refreshToken ?? "", client_id: clientID, client_secret: clientSecret, redirect_uri: redirect))
