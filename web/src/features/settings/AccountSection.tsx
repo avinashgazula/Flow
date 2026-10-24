@@ -143,7 +143,7 @@ function SignInGroup() {
     return (
       <>
         <Group title="Trakt" footer={footer}>
-          <Row label="Sign In to Trakt" detail={finishing ? 'Finishing with Trakt…' : clientID ? 'Opens Trakt to approve Flow' : 'Add a Trakt Client ID above first'}>
+          <Row label="Not Signed In" detail={finishing ? 'Finishing with Trakt…' : clientID ? 'Opens Trakt to approve Flow' : 'Add a Trakt Client ID above first'}>
             <button type="button" className="btn btn-primary btn-compact" onClick={() => void signIn()} disabled={!clientID || busy === 'sign-in' || finishing}>
               {busy === 'sign-in' ? 'Opening Trakt…' : 'Sign In to Trakt'}
             </button>

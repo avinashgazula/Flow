@@ -7,7 +7,9 @@ import type { Reading } from '../../lib/trakt/scrobble'
  *  `read` says what is playing and how far in (the player keeps those in refs), and null before there is anything. */
 export function useTraktScrobble(video: RefObject<HTMLVideoElement | null>, active: boolean, read: () => Reading | null) {
   useEffect(() => {
-    if (!active || !settingsStore.get().traktAccount) return
+    // Sample streams are not something to tell Trakt about.
+    const s = settingsStore.get()
+    if (!active || !s.traktAccount || s.demo) return
     let stop: (() => void) | undefined
     let gone = false
     void import('../../lib/trakt/scrobble').then(({ startScrobbling }) => {

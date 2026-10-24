@@ -36,6 +36,7 @@ npm test             # unit tests (Vitest)
 | `src/components/` | Shared pieces: `Artwork`, `Frame` (frame + edge strip: the signature), `Cards`, `Shelf`, `Nav`, `Icon`. |
 | `src/lib/tmdb/` | TMDB client (normalises responses into `types.ts`), images, sample data. |
 | `src/lib/store/` | Settings and library (watchlist, progress, history) in localStorage. |
+| `src/lib/trakt/` | Trakt: PKCE sign-in, the API client, the library sync and the player's scrobbler (see Trakt below). |
 | `src/lib/sources/` | Stream add-ons, Jellyfin/Emby and Plex, and source ranking. |
 | `src/features/player/` | The player. |
 | `proxy/` | The stream proxy: a Cloudflare Worker that makes blocked file hosts readable. |
@@ -140,6 +141,33 @@ file), where the picture follows the finger a few times a second as before. Wher
   phones or with Data Saver on.
 - **Jellyfin 10.9+:** the server's trickplay tiles, whatever the engine; no decoding at all.
 
+## Trakt
+
+Settings → Account signs the website in to the owner's own Trakt app, with the Client ID alone: the sign-in is the
+authorization-code flow with PKCE (no client secret, as in the apps). Trakt's API sends CORS headers
+(`access-control-allow-origin: *`, and it echoes the headers a preflight asks for), so the page talks to
+`api.trakt.tv` directly and no proxy is involved.
+
+- **Redirect URI.** `<site origin><base>settings/trakt-callback`, shown in Settings → Account with a Copy button. The
+  owner adds exactly that to the Trakt app at trakt.tv/oauth/applications, next to the apps' `flow://trakt-callback`.
+  The address isn't a screen: `lib/trakt/arrive.ts` sends the browser to Settings → Account before the router reads
+  it and finishes the sign-in in the background, so a failure is told in Account.
+- **Through Flow Sync.** The Client ID travels in the `keys` section (`traktClientID`, `simklClientID`) and the token in
+  `accounts.trakt` in the apps' shape, with the `redirectURI` it was issued against; Simkl's entry is never touched. A
+  sign-in, a refreshed token and a sign-out are pushed at once, and a token pulled from another device signs the site
+  in with no prompt. Before refreshing, Sync is pulled first, since another device may have rotated the token (and
+  again if the refresh is refused). A refresh quotes the redirect the token was issued against.
+- **Library.** While signed in, the watchlist, recent history, watched episodes and resume points come in on sign-in,
+  when the tab returns and every five minutes (`lib/trakt/merge.ts` holds the rules), and what changes on the website
+  (watchlist, marked watched, a dismissed resume point) goes up a couple of seconds later from a queue that survives a
+  reload. The watchlist is two-way; history is additions only. Signed out, the library works as it always has. Sample
+  data is never sent.
+- **Scrobbling.** The player starts, pauses and stops a scrobble with how far in (`features/player/useTraktScrobble.ts`
+  hooks it up). A stop at 80 % or more is Trakt's watch and also marks the title watched here.
+- **Ratings.** There's no rating screen yet. `rateTitle(item, 1–10 | null)` in `lib/trakt/engine.ts` is the hook:
+  the screen that adds stars calls it and the change is queued and sent like the rest.
+- **Budget.** `lib/trakt/boot.ts` is the only part in the first load; the sign-in, sync and scrobbler are lazy chunks.
+
 ## Sample data
 
 `?demo` in the address, or **Explore with Sample Data** on the welcome screen, fills every screen
@@ -149,7 +177,7 @@ from `src/lib/tmdb/demo.ts` with no key. The same catalogue as the apps' Demo mo
 
 - **Mixed content:** a page served over HTTPS can't reach an `http://` server. Use HTTPS for your
   Jellyfin/Emby/Plex server, or run Flow locally (`npm run preview`) to reach one on your network.
-- **CORS:** TMDB, Stremio add-ons, Jellyfin, Emby and Plex all allow browser requests. Some IPTV
+- **CORS:** TMDB, Trakt, Stremio add-ons, Jellyfin, Emby and Plex all allow browser requests. Some IPTV
   playlists and file hosts don't (most debrid download servers send no CORS headers), and those can't
   be read from a web page. Settings → Playback has a **Stream Proxy** field: a proxy you run fetches
   such files for Flow and adds the headers. `proxy/` holds a Cloudflare Worker for it

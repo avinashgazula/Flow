@@ -116,6 +116,18 @@ describe('signing in', () => {
   })
 })
 
+describe('sample data', () => {
+  it('never goes to Trakt, signed in or not', async () => {
+    m.settingsStore.set({ demo: true })
+    m.startTrakt()
+    await m.syncTrakt()
+    m.library.toggleWatchlist(item('movie', 5))
+    await quiet()
+    expect(calls).toEqual([])
+    expect(m.traktStore.get().ops).toEqual([])
+  })
+})
+
 describe('changes made here', () => {
   it('go to Trakt a couple of seconds later, as one request however many taps', async () => {
     await started()

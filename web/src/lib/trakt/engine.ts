@@ -41,7 +41,8 @@ let lastRun = 0
 let running: Promise<void> | undefined
 let again = false
 
-const signedIn = () => currentToken() !== null && clientID() !== ''
+/** Sample data is a made-up library; it never goes to someone's real Trakt account. */
+const signedIn = () => currentToken() !== null && clientID() !== '' && !settingsStore.get().demo
 
 // MARK: Going up
 
