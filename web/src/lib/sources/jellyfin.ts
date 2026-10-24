@@ -250,6 +250,13 @@ export async function findItem(config: ServerConfig, request: PlaybackRequest, s
   return pickItem(bySearch.Items, request)
 }
 
+/** Jellyfin 10.10+ media segments for an item (intro, outro, recap, preview, commercial), as the server sends
+ *  them. Emby has none, and an older Jellyfin answers 404: both throw, and the player goes on without. */
+export function mediaSegmentsFor(config: ServerConfig, itemId: string, signal?: AbortSignal): Promise<unknown> {
+  if (config.kind !== 'jellyfin') return Promise.reject(new SourceError('This server has no media segments.'))
+  return get<unknown>(config, `MediaSegments/${encodeURIComponent(itemId)}`, {}, signal)
+}
+
 export async function jellyfinSources(config: ServerConfig, request: PlaybackRequest, caps: Capabilities, signal?: AbortSignal): Promise<Source[]> {
   const found = await findItem(config, request, signal)
   if (!found) return []

@@ -19,6 +19,8 @@ export interface Backup {
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 
+const isSkipBehaviour = (v: unknown) => ['off', 'button', 'automatic'].includes(v as string)
+
 /** The settings' keys that import accepts, with the type each must have. Anything else in the file is ignored. */
 const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   tmdbKey: (v) => typeof v === 'string',
@@ -35,6 +37,12 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   // The apps' keys (fontScale, font, weight, color, edgeStyle, background, backgroundOpacity, verticalPosition).
   subtitleStyle: isSubtitleStyle,
   autoplayNext: (v) => typeof v === 'boolean',
+  stillWatchingAfterEpisodes: (v) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 10,
+  skipIntro: isSkipBehaviour,
+  skipRecap: isSkipBehaviour,
+  skipCredits: isSkipBehaviour,
+  introDBKey: (v) => typeof v === 'string',
+  publicMetaDBKey: (v) => typeof v === 'string',
   preferredQuality: (v) => ['2160p', '1080p', '720p', 'any'].includes(v as string),
   rememberLastSource: (v) => typeof v === 'boolean',
   font: (v) => typefaces.some((f) => f.value === v),
