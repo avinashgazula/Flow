@@ -324,7 +324,7 @@ export function SyncGroup() {
             fromProxy && !typed ? (
               // Change sits in the sentence, so on a phone the row keeps one button and its words room to breathe.
               <>
-                Uses your stream proxy’s Worker, {hostOf(fromProxy.server)}.{' '}
+                Uses your stream proxy’s Worker: <span className={s.host}>{hostOf(fromProxy.server)}</span>{' '}
                 <button type="button" className={s.inlineLink} onClick={() => setTyped(fromProxy)}>
                   Change
                 </button>
@@ -334,7 +334,8 @@ export function SyncGroup() {
             )
           }
         >
-          <button type="button" className="btn btn-primary btn-compact" onClick={() => void start()} disabled={busy !== undefined}>
+          {/* One yellow action at a time: while the paste form is open, Join is the next step. */}
+          <button type="button" className={`btn ${joining ? 'btn-secondary' : 'btn-primary'} btn-compact`} onClick={() => void start()} disabled={busy !== undefined}>
             {busy === 'on' ? 'Turning On…' : 'Turn On Sync'}
           </button>
         </Row>

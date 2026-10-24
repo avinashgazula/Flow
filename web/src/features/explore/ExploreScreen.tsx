@@ -170,8 +170,8 @@ function FilterSummary({ type, filters, onClear }: { type: MediaType; filters: E
         <span className="sr-only">Filters: </span>
         {text}
       </p>
-      <button type="button" className="btn btn-quiet btn-compact" onClick={onClear} aria-label="Clear filters">
-        Clear
+      <button type="button" className="btn btn-quiet btn-compact" onClick={onClear} aria-label="Reset filters">
+        Reset
       </button>
     </div>
   )

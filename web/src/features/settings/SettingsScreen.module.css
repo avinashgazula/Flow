@@ -119,6 +119,10 @@
 /* A word inside a row's detail that acts, like "Change": reads as part of the sentence. */
 .inlineLink { padding: 0; border: 0; background: none; font: inherit; color: var(--paper); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; cursor: pointer; }
 .inlineLink:hover { text-decoration-color: var(--paper); }
+/* The padding grows the tap area to 32px tall without moving the word. */
+.inlineLink { padding: 8px 6px; margin: -8px -6px; }
+/* A host name on a line of its own, so a phone breaks the sentence before it rather than at its hyphens. */
+.host { display: inline-block; overflow-wrap: anywhere; color: var(--ink-2); }
 
 /* An add-on or server: icon, name and detail, then its controls. */
 .item {

@@ -126,9 +126,9 @@ describe('filtersToSearch', () => {
 })
 
 describe('summarizeFilters', () => {
-  const names = new Map([[8, 'Netflix'], [337, 'Disney Plus']])
+  const names = new Map([[8, 'Netflix'], [337, 'Disney+']])
   it('is one line, parts in the sheet’s order', () => {
-    expect(summarizeFilters(filters({ yearFrom: 2020, yearTo: 2024, minRating: 7, language: 'ja', providers: [8, 337] }), names)).toBe('2020–2024 · Rated 7+ · Japanese · Netflix, Disney Plus')
+    expect(summarizeFilters(filters({ yearFrom: 2020, yearTo: 2024, minRating: 7, language: 'ja', providers: [8, 337] }), names)).toBe('2020–2024 · Rated 7+ · Japanese · Netflix, Disney+')
   })
 
   it('words open and single years, and windows', () => {
