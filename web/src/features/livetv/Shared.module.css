@@ -1,0 +1,28 @@
+/* A channel's logo: a plate a little wider than tall, with the logo contained on it and the initials in
+   the interface face when there is none. Logos are drawn for light or dark grounds, so the plate is a
+   mid base and the picture is padded, never cropped. */
+.logo {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 36px;
+  border-radius: var(--radius-art);
+  background: var(--base-3);
+  box-shadow: 0 0 0 1px var(--rule);
+  overflow: hidden;
+}
+.logo[data-size='s'] { width: 40px; height: 26px; }
+.logo img { width: 100%; height: 100%; padding: 4px; object-fit: contain; }
+.monogram { font: 700 var(--fs-small) / 1 var(--font); letter-spacing: 0.02em; color: var(--ink-2); }
+.logo[data-size='s'] .monogram { font-size: var(--fs-caption); }
+
+/* Live: a red dot and the word, no badge. Red means live and nothing else. */
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 var(--fs-caption) / 1 var(--font);
+  color: var(--paper);
+}
+.live::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--red); }

@@ -4,6 +4,7 @@
 
 import type { HlsConfig } from 'hls.js'
 import type { Source } from '../../lib/sources'
+import { proxyLoader } from '../../lib/sources/hlsProxy'
 import { needsProxy, proxied, rememberBlocked, streamProxy } from '../../lib/sources/proxy'
 import { hlsErrorMessage, PlaybackError } from './errors'
 import { trackLabel } from './format'
@@ -222,6 +223,8 @@ async function attachHls(video: HTMLVideoElement, source: Source, options: Attac
     startPosition: options.startAt ?? -1,
     xhrSetup: headers ? (xhr) => Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v)) : undefined,
   }
+  // Live TV from a provider that sends no CORS headers: every request goes through the stream proxy (lib/sources/hlsProxy).
+  if (source.viaProxy) config.loader = proxyLoader(Hls.DefaultConfig.loader)
   const hls = new Hls(config)
   // Subtitle cues land on hidden tracks; the player draws them in its own overlay.
   hls.subtitleDisplay = false

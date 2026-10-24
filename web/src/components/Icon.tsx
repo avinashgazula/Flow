@@ -51,6 +51,7 @@ const paths = {
   warning: 'M12 4.2 20.8 19.5H3.2zM12 10v4.2M12 16.9v.1',
   chevronUp: 'M5.5 14.5 12 8l6.5 6.5',
   upload: 'M12 15V4M7.5 8.5 12 4l4.5 4.5M5 20h14',
+  list: 'M8.5 6.5H20M8.5 12H20M8.5 17.5H20M4.2 6.5h.1M4.2 12h.1M4.2 17.5h.1',
   copy: 'M9 9h10.5v10.5H9zM15 9V4.5H4.5V15H9',
 } as const
 

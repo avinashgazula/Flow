@@ -7,7 +7,7 @@ import type { GuideRequest, GuideResponse } from './epg.worker'
 import { parseM3U } from './m3u'
 import { fetchPlanned, LiveTVError } from './net'
 import { emptyEPG, type Channel, type EPG, type IPTVProviderConfig } from './types'
-import { parseXMLTV } from './xmltv'
+import { parseXMLTV, readXMLTV } from './xmltv'
 import { XtreamClient } from './xtream'
 
 /* Loads channels and the guide from every enabled provider, as the apps' LiveTVStore does: playlists
@@ -78,7 +78,6 @@ async function loadGuide(url: string, keep: { from: number; to: number; channels
 
 async function runGuide(request: GuideRequest, signal: AbortSignal): Promise<GuideResponse> {
   if (typeof Worker === 'undefined') {
-    const { readXMLTV } = await import('./xmltv')
     try {
       const fetched = await fetchPlanned(request.url, { attempts: request.attempts }, { signal, timeoutMs: 120_000 })
       const epg = await readXMLTV(fetched.response.body!, { ...request.keep, channels: request.keep.channels ? new Set(request.keep.channels) : undefined }, signal)

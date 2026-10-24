@@ -4,6 +4,7 @@ import { AddonsSection } from './AddonsSection'
 import { AppearanceSection } from './AppearanceSection'
 import { CatalogueSection } from './CatalogueSection'
 import { DataSection } from './DataSection'
+import { LiveTVSection } from './LiveTVSection'
 import { PlaybackSection } from './PlaybackSection'
 import { ServersSection } from './ServersSection'
 import s from './SettingsScreen.module.css'
@@ -13,6 +14,7 @@ const sections: { id: string; title: string; body: ReactNode }[] = [
   { id: 'catalogue', title: 'Catalogue', body: <CatalogueSection /> },
   { id: 'addons', title: 'Stream Add-ons', body: <AddonsSection /> },
   { id: 'servers', title: 'Media Servers', body: <ServersSection /> },
+  { id: 'livetv', title: 'Live TV', body: <LiveTVSection /> },
   { id: 'playback', title: 'Playback', body: <PlaybackSection /> },
   { id: 'data', title: 'Data', body: <DataSection /> },
   { id: 'about', title: 'About', body: <AboutSection /> },
