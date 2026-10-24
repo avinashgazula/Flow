@@ -9,6 +9,7 @@ import { settingsStore } from '../../lib/store/settings'
 import { ownTracks, type Engine, type Track } from './engine'
 import { pickAudio, pickSubtitle, releaseLanguage, trackLanguage } from './languages'
 import { prefs, titleChoices } from './session'
+import type { SkipSegment } from './segments'
 import { parseSubtitles } from './subtitles'
 
 export type Panel = 'options' | 'tracks' | 'episodes' | null
@@ -51,6 +52,11 @@ export interface PlayerState {
   pip: boolean
   /** How the picture can go to another screen here: AirPlay in Safari, Remote Playback (Cast) in Chrome. */
   cast: 'airplay' | 'remote' | null
+  /** What can be skipped in this stream (an intro, a recap, the credits), in time order; empty until a
+   *  server, a service or the file's chapters say. */
+  segments: SkipSegment[]
+  /** The Up Next card is on screen, so the Skip button leaves that corner to it. */
+  upNext: boolean
 }
 
 const hideAfter = 3000
@@ -106,6 +112,8 @@ export class PlayerController {
     fullscreen: false,
     pip: false,
     cast: null,
+    segments: [],
+    upNext: false,
   }
   private listeners = new Set<() => void>()
   private feedbackListeners = new Set<(f: Feedback) => void>()
@@ -337,6 +345,25 @@ export class PlayerController {
     this.video.defaultPlaybackRate = rate
   }
   setFit = (fit: PlayerState['fit']) => this.set({ fit })
+
+  // MARK: Skipping
+
+  setSegments = (segments: SkipSegment[]) => this.set({ segments })
+  setUpNextShown = (upNext: boolean) => this.set({ upNext })
+
+  /** What S and Enter do right now, by who offers it (the Skip button, the Up Next card). */
+  private skipActions = new Map<string, () => void>()
+  registerSkip(owner: string, action: (() => void) | null) {
+    if (action) this.skipActions.set(owner, action)
+    else this.skipActions.delete(owner)
+  }
+  /** Does the skip on offer, if there is one. */
+  skipNow(): boolean {
+    const action = this.skipActions.values().next().value
+    if (!action) return false
+    action()
+    return true
+  }
   toggleInfo = () => this.set({ info: !this.state.info })
 
   // MARK: Tracks
