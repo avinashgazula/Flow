@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { exploreSource } from './source'
-import { filterParams, filtersToSearch, isFiltered, looksAhead, noFilters, parseFilters, shiftDay, summarizeFilters, type ExploreFilters } from './filters'
+import { filterParams, looksAhead, shiftDay, summarizeFilters } from './filterQuery'
+import { filtersToSearch, isFiltered, noFilters, parseFilters, type ExploreFilters } from './filters'
 
 const today = '2026-10-18'
 const now = new Date('2026-10-18T12:00:00Z')
@@ -106,6 +107,10 @@ describe('filtersToSearch', () => {
 
   it('writes providers as one comma-separated value', () => {
     expect(filtersToSearch(filters({ providers: [8, 337], minRating: 7 }))).toEqual({ providers: '8,337', rating: 7 })
+  })
+
+  it('writes one provider as a number, so the router doesn’t quote it', () => {
+    expect(filtersToSearch(filters({ providers: [8] }))).toEqual({ providers: 8 })
   })
 
   it('writes a window, not the years behind it', () => {
