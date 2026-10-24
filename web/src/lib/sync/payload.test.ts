@@ -151,7 +151,7 @@ describe('merging with the record', () => {
     const accounts = section(1, { trakt: { accessToken: 'a', refreshToken: 'r', expiresAt: null, redirectURI: 'flow://trakt' }, simkl: null })
     const remote = record(
       {
-        keys: { ...section(2, { tmdbAPIKey: 'old', tvdbAPIKey: 'tvdb', rpdbAPIKey: null, futureKey: 1 }), extraOnSection: true },
+        keys: { ...section(2, { tmdbAPIKey: 'old', tvdbAPIKey: 'tvdb', rpdbAPIKey: null, introDBAPIKey: 'intro', publicMetaDBAPIKey: 'pmdb', traktClientID: 'tc', futureKey: 1 }), extraOnSection: true },
         accounts,
         collections: section(3, ['x']),
         servers: section(2, [{ ...server, extra: 'kept', machineId: 'm' }, { id: 'w1', kind: 'webdav', name: 'NAS', url: 'https://nas.example.com' }]),
@@ -173,7 +173,7 @@ describe('merging with the record', () => {
     expect(payload.futureTopLevel).toEqual({ a: 1 })
     expect(payload.sections.accounts).toEqual(accounts)
     expect(payload.sections.collections).toEqual(remote.sections.collections)
-    expect(payload.sections.keys).toEqual({ updatedAt: iso(20), device: 'Web', extraOnSection: true, data: { tmdbAPIKey: 'new', tvdbAPIKey: 'tvdb', rpdbAPIKey: null, futureKey: 1 } })
+    expect(payload.sections.keys).toEqual({ updatedAt: iso(20), device: 'Web', extraOnSection: true, data: { tmdbAPIKey: 'new', tvdbAPIKey: 'tvdb', rpdbAPIKey: null, introDBAPIKey: 'intro', publicMetaDBAPIKey: 'pmdb', traktClientID: 'tc', futureKey: 1 } })
     const servers = payload.sections.servers!.data as Record<string, unknown>[]
     expect(servers.map((v) => v.id)).toEqual(['s1', 's2', 'w1'])
     expect(servers[0]).toMatchObject({ extra: 'kept', machineId: 'm' })

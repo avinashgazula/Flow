@@ -15,6 +15,10 @@ export function CatalogueSection() {
   const [state, setState] = useState<{ kind: 'idle' | 'checking' } | { kind: 'ok' | 'error'; text: string }>({ kind: 'idle' })
   const check = useRef<AbortController | undefined>(undefined)
   useEffect(() => () => check.current?.abort(), [])
+  // A key that arrives from another device (Flow Sync) shows here at once.
+  useEffect(() => {
+    setKey(saved)
+  }, [saved])
 
   async function submit(event: FormEvent) {
     event.preventDefault()

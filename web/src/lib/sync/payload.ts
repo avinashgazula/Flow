@@ -1,7 +1,7 @@
 /* What Flow Sync carries and how two copies are merged (docs/SYNC.md, Payload). Pure functions over the
    web's settings, so the rules are tested without a browser or a server.
 
-   The record holds sections. The web understands five of them: keys (only the TMDB key), add-ons, servers,
+   The record holds sections. The web understands five of them: keys (only the TMDB key; the rest travel through), add-ons, servers,
    the stream proxy and playback. Everything else in the record (sign-in tokens, the other keys, sections a
    newer app added, fields a newer app added inside these) is carried through unchanged. */
 
@@ -65,73 +65,66 @@ function readable(section: unknown): Section | undefined {
 
 // MARK: The web's view of each section
 
-/** What the web owns of a section, built from its settings. Also what a section's snapshot is made of. */
-export function localValue(name: SectionName, s: Settings): unknown {
-  switch (name) {
-    case 'keys':
-      // The key baked into a build is the site's, not the person's: it isn't theirs to sync.
-      return { tmdbAPIKey: s.tmdbKey && s.tmdbKey !== defaultSettings.tmdbKey ? s.tmdbKey : null }
-    case 'addons':
-      return s.addons.map((a) => ({ url: a.url, name: a.name, enabled: a.enabled }))
-    case 'servers':
-      return s.servers.map((v) => ({ id: v.id, kind: v.kind, name: v.name, url: v.url, token: v.token, ...(v.userId ? { userId: v.userId } : {}), ...(v.username ? { username: v.username } : {}), ...(v.machineId ? { machineId: v.machineId } : {}) }))
-    case 'streamProxy':
-      return { template: s.streamProxy.trim() }
-    case 'playback':
-      return { audioLanguages: s.audioLanguages, subtitleLanguages: s.subtitleLanguages, subtitleStyle: s.subtitleStyle }
-  }
-}
-
-/** Whether a value is what a fresh install has, so a device that was never set up doesn't write it. */
-function isEmpty(name: SectionName, value: unknown): boolean {
-  return JSON.stringify(value) === JSON.stringify(localValue(name, defaultSettings))
+/* One entry in `defs` per section the web takes part in. To carry another field or section:
+     - a field of an existing section (a new key in `keys`, say): add it to that entry's `value` (what this
+       browser writes) and `patch` (what it does with one that arrives). `overlay` already keeps every other
+       field of the section as the record had it, which is how introDBAPIKey, publicMetaDBAPIKey, the
+       Trakt and Simkl client ids and the rest travel through today without the web reading them;
+     - a new section (accounts, once the website signs in to Trakt): add its name to SectionName and
+       webSections, and an entry here. For `accounts` the entry's `overlay` should replace only `trakt` and
+       leave `simkl` as the record has it.
+   Everything else (timestamps, merging, unknown sections) is shared. */
+interface SectionDef {
+  /** What this browser owns of the section, built from its settings. Also what the section's snapshot is made of. */
+  value(s: Settings): unknown
+  /** The section's data to write: this browser's value laid over what the record already held. */
+  overlay(base: unknown, value: unknown): unknown
+  /** The settings a section's data sets here, or null when it can't be applied. */
+  patch(data: unknown, current: Settings): Partial<Settings> | null
 }
 
 const asKnownServer = (v: unknown): v is Json & { id: string; kind: ServerConfig['kind']; url: string } =>
   isObject(v) && isString(v.id) && isString(v.url) && (v.kind === 'jellyfin' || v.kind === 'emby' || v.kind === 'plex')
 const asKnownAddon = (v: unknown): v is Json & { url: string; name: string } => isObject(v) && isString(v.url) && v.url.length > 0 && isString(v.name)
 
-/** The section's data to write: the web's values laid over what the record already held, so fields the web
- *  doesn't know stay, on the section and on each add-on and server. Items the web can't represent stay at
- *  the end. */
-export function overlay(name: SectionName, base: unknown, value: unknown): unknown {
-  const before = isObject(base) ? base : {}
-  switch (name) {
-    case 'keys':
-    case 'streamProxy':
-      return { ...before, ...(value as Json) }
-    case 'playback': {
-      const v = value as Json
-      return { ...before, ...v, subtitleStyle: { ...(isObject(before.subtitleStyle) ? before.subtitleStyle : {}), ...(v.subtitleStyle as Json) } }
-    }
-    case 'addons':
-    case 'servers': {
-      const old = Array.isArray(base) ? base : []
-      const known = name === 'addons' ? asKnownAddon : asKnownServer
-      const key = (item: Json) => (name === 'addons' ? item.url : item.id)
-      const kept = new Map(old.filter(known).map((item) => [key(item), item]))
-      const items = (value as Json[]).map((item) => ({ ...kept.get(key(item)), ...item }))
-      return [...items, ...old.filter((item) => !known(item))]
-    }
-  }
+/** The web's fields laid over an object the record already held: fields the web doesn't know stay. */
+const overObject = (base: unknown, value: unknown) => ({ ...(isObject(base) ? base : {}), ...(value as Json) })
+
+/** A list laid over the record's: each item keeps the fields the web doesn't know, and items the web can't
+ *  represent (a server kind it has no client for) stay at the end. */
+function overList(base: unknown, value: unknown, known: (v: unknown) => boolean, key: (item: Json) => unknown): unknown {
+  const old = Array.isArray(base) ? base : []
+  const kept = new Map(old.filter(known).map((item) => [key(item), item]))
+  const items = (value as Json[]).map((item) => ({ ...kept.get(key(item)), ...item }))
+  return [...items, ...old.filter((item) => !known(item))]
 }
 
-/** The settings a section's data sets, or null when it can't be applied here. */
-export function settingsPatch(name: SectionName, data: unknown, current: Settings): Partial<Settings> | null {
-  switch (name) {
-    case 'keys': {
+const defs: Record<SectionName, SectionDef> = {
+  keys: {
+    // The key baked into a build is the site's, not the person's: it isn't theirs to sync.
+    value: (s) => ({ tmdbAPIKey: s.tmdbKey && s.tmdbKey !== defaultSettings.tmdbKey ? s.tmdbKey : null }),
+    overlay: overObject,
+    patch(data, current) {
       if (!isObject(data)) return null
       const key = isString(data.tmdbAPIKey) ? data.tmdbAPIKey.trim() : ''
       // A key from another device is a way in: a browser that hasn't been set up needn't ask again.
       return { tmdbKey: key || defaultSettings.tmdbKey, ...(key && !current.onboarded ? { onboarded: true } : {}) }
-    }
-    case 'addons': {
+    },
+  },
+  addons: {
+    value: (s) => s.addons.map((a) => ({ url: a.url, name: a.name, enabled: a.enabled })),
+    overlay: (base, value) => overList(base, value, asKnownAddon, (item) => item.url),
+    patch(data, current) {
       if (!Array.isArray(data)) return null
       const have = new Map(current.addons.map((a) => [a.url, a]))
       const addons: AddonConfig[] = data.filter(asKnownAddon).map((a) => ({ ...(have.get(a.url)?.manifest ? { manifest: have.get(a.url)!.manifest } : {}), url: a.url, name: a.name, enabled: a.enabled !== false }))
       return { addons }
-    }
-    case 'servers': {
+    },
+  },
+  servers: {
+    value: (s) => s.servers.map((v) => ({ id: v.id, kind: v.kind, name: v.name, url: v.url, token: v.token, ...(v.userId ? { userId: v.userId } : {}), ...(v.username ? { username: v.username } : {}), ...(v.machineId ? { machineId: v.machineId } : {}) })),
+    overlay: (base, value) => overList(base, value, asKnownServer, (item) => item.id),
+    patch(data, current) {
       if (!Array.isArray(data)) return null
       const have = new Map(current.servers.map((v) => [v.id, v]))
       const servers: ServerConfig[] = data.filter(asKnownServer).map((v) => ({
@@ -146,13 +139,25 @@ export function settingsPatch(name: SectionName, data: unknown, current: Setting
         ...(isString(v.machineId) && v.machineId ? { machineId: v.machineId } : {}),
       }))
       return { servers }
-    }
-    case 'streamProxy': {
+    },
+  },
+  streamProxy: {
+    value: (s) => ({ template: s.streamProxy.trim() }),
+    overlay: overObject,
+    patch(data, _current) {
       if (!isObject(data) || !isString(data.template)) return null
       // A template this page can't call (plain http from an https page) is left alone.
       return proxyProblem(data.template) === undefined ? { streamProxy: data.template.trim() } : null
-    }
-    case 'playback': {
+    },
+  },
+  playback: {
+    value: (s) => ({ audioLanguages: s.audioLanguages, subtitleLanguages: s.subtitleLanguages, subtitleStyle: s.subtitleStyle }),
+    overlay(base, value) {
+      const before = isObject(base) ? base : {}
+      const v = value as Json
+      return { ...before, ...v, subtitleStyle: { ...(isObject(before.subtitleStyle) ? before.subtitleStyle : {}), ...(v.subtitleStyle as Json) } }
+    },
+    patch(data, current) {
       if (!isObject(data)) return null
       const languages = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => isString(x) && x.length > 0) : undefined)
       const audio = languages(data.audioLanguages)
@@ -163,9 +168,20 @@ export function settingsPatch(name: SectionName, data: unknown, current: Setting
         ...(isSubtitleStyle(data.subtitleStyle) ? { subtitleStyle: normaliseSubtitleStyle({ ...current.subtitleStyle, ...(data.subtitleStyle as Json) }) } : {}),
       }
       return Object.keys(patch).length ? patch : null
-    }
-  }
+    },
+  },
 }
+
+/** What the web owns of a section, built from its settings. */
+export const localValue = (name: SectionName, s: Settings): unknown => defs[name].value(s)
+export const overlay = (name: SectionName, base: unknown, value: unknown): unknown => defs[name].overlay(base, value)
+export const settingsPatch = (name: SectionName, data: unknown, current: Settings): Partial<Settings> | null => defs[name].patch(data, current)
+
+/** Whether a value is what a fresh install has, so a device that was never set up doesn't write it. */
+function isEmpty(name: SectionName, value: unknown): boolean {
+  return JSON.stringify(value) === JSON.stringify(localValue(name, defaultSettings))
+}
+
 
 // MARK: Merging
 
