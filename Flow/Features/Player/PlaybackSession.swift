@@ -482,7 +482,7 @@ final class PlaybackSession: Identifiable {
         }
         if let edge { attributes[kCMTextMarkupAttribute_CharacterEdgeStyle as String] = edge as String }
         if s.background.drawsBox {
-            attributes[kCMTextMarkupAttribute_CharacterBackgroundColorARGB as String] = [min(max(s.backgroundOpacity, 0), 1), 0, 0, 0]
+            attributes[kCMTextMarkupAttribute_CharacterBackgroundColorARGB as String] = [s.background.boxOpacity(s.backgroundOpacity), 0, 0, 0]
         }
         guard !attributes.isEmpty, let rule = AVTextStyleRule(textMarkupAttributes: attributes) else { return nil }
         return [rule]

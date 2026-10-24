@@ -55,7 +55,8 @@ struct SubtitleAppearanceSections: View {
             FilmPicker("Opacity", selection: $model.settings.subtitles.backgroundOpacity) {
                 ForEach(Self.choices(Self.opacities, including: model.settings.subtitles.backgroundOpacity), id: \.self) { Text(Self.percent($0)).tag($0) }
             }
-            .disabled(!model.settings.subtitles.background.drawsBox)
+            // Only the translucent box fades; a solid one is solid.
+            .disabled(model.settings.subtitles.background != .translucent)
         }
         Section {
             FilmPicker("Vertical Alignment", selection: $model.settings.subtitles.verticalPosition) {

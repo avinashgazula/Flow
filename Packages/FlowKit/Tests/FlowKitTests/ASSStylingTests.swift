@@ -159,4 +159,12 @@ final class ASSStylingTests: XCTestCase {
         XCTAssertFalse(SubtitleBackground.shadow.drawsBox)
         XCTAssertEqual(SubtitleColor.cyan.title, "Cyan")
     }
+
+    func testOnlyTheTranslucentBoxFollowsTheOpacity() {
+        XCTAssertEqual(SubtitleBackground.solid.boxOpacity(0.3), 1)
+        XCTAssertEqual(SubtitleBackground.translucent.boxOpacity(0.3), 0.3)
+        XCTAssertEqual(SubtitleBackground.translucent.boxOpacity(4), 1)
+        XCTAssertEqual(SubtitleBackground.none.boxOpacity(0.6), 0)
+        XCTAssertEqual(SubtitleBackground.shadow.boxOpacity(0.6), 0)
+    }
 }

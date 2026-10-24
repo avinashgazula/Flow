@@ -496,7 +496,7 @@ struct SubtitleOverlay: View {
         return glyphs(text, font: font(size: size, weight: weight, italic: style?.italic == true), color: color, size: size, alignment: alignment)
             .padding(.horizontal, 10)
             .padding(.vertical, settings.background.drawsBox ? 3 : 0)
-            .background(settings.background.drawsBox ? Color.black.opacity(min(max(settings.backgroundOpacity, 0), 1)) : .clear,
+            .background(settings.background.drawsBox ? Color.black.opacity(settings.background.boxOpacity(settings.backgroundOpacity)) : .clear,
                         in: RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 
