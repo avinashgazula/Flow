@@ -2,6 +2,7 @@ import { lastSourceStore } from '../../lib/sources/lastSource'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { defaultSettings, settingsStore, type Settings } from '../../lib/store/settings'
 import { libraryStore, type Library } from '../../lib/store/library'
+import { isSubtitleStyle, normaliseSubtitleStyle } from '../../lib/store/subtitleStyle'
 import { typefaces } from './options'
 
 /* Export and import of everything Flow keeps in this browser, as one JSON file. */
@@ -31,6 +32,8 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   audioLanguages: (v) => Array.isArray(v) && v.every((x) => typeof x === 'string' && x.length > 0),
   subtitleLanguages: (v) => Array.isArray(v) && v.every((x) => typeof x === 'string'),
   subtitleMode: (v) => ['off', 'foreign', 'always'].includes(v as string),
+  // The apps' keys (fontScale, font, weight, color, edgeStyle, background, backgroundOpacity, verticalPosition).
+  subtitleStyle: isSubtitleStyle,
   autoplayNext: (v) => typeof v === 'boolean',
   preferredQuality: (v) => ['2160p', '1080p', '720p', 'any'].includes(v as string),
   rememberLastSource: (v) => typeof v === 'boolean',
@@ -69,8 +72,9 @@ export function parseBackup(text: string): { ok: true; settings: Partial<Setting
   if (isObject(data.settings)) {
     for (const [key, valid] of Object.entries(settingTypes)) {
       if (!(key in data.settings)) continue
-      if (valid(data.settings[key])) settings[key] = data.settings[key]
-      else skipped.push(key)
+      if (!valid(data.settings[key])) skipped.push(key)
+      // A style missing some fields takes their defaults, and the apps' older "shadow" background reads as none.
+      else settings[key] = key === 'subtitleStyle' ? normaliseSubtitleStyle(data.settings[key]) : data.settings[key]
     }
   }
   if (isObject(data.library)) {

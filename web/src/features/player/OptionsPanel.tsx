@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Icon, type IconName } from '../../components/Icon'
 import type { Source } from '../../lib/sources'
@@ -6,11 +6,12 @@ import { useSettings } from '../../lib/store/settings'
 import { usePlayer, type PlayerController } from './controller'
 import { keepFocus } from './Controls'
 import { fileSize, speedLabel, speeds } from './format'
+import { StylePage } from './StylePage'
 import s from './Controls.module.css'
 
-type Page = 'root' | 'tracks' | 'audio' | 'subtitles' | 'speed' | 'source'
+type Page = 'root' | 'tracks' | 'audio' | 'subtitles' | 'style' | 'speed' | 'source'
 
-const titles: Record<Page, string> = { root: 'Options', tracks: 'Audio and Subtitles', audio: 'Audio', subtitles: 'Subtitles', speed: 'Speed', source: 'Source' }
+const titles: Record<Page, string> = { root: 'Options', tracks: 'Audio and Subtitles', audio: 'Audio', subtitles: 'Subtitles', style: 'Subtitle Style', speed: 'Speed', source: 'Source' }
 
 interface Row {
   id: string
@@ -55,6 +56,12 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   const fit = usePlayer(controller, (st) => st.fit)
   const info = usePlayer(controller, (st) => st.info)
   const close = () => controller.setPanel(null)
+  // The Subtitle Style page changes what's on screen as you go, so the player shows a sample line and keeps
+  // it clear of this panel while the page is open.
+  useEffect(() => {
+    controller.setStyling(page === 'style')
+    return () => controller.setStyling(false)
+  }, [controller, page])
   const back = () => setPage(start === 'tracks' && page !== 'root' ? 'tracks' : 'root')
 
   const proxy = useSettings((st) => st.streamProxy) !== ''
@@ -126,12 +133,14 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
     })),
   ]
 
-  let groups: Group[]
+  const styleRow: Row = { id: 'style', icon: 'text', title: 'Subtitle Style', chevron: true, action: () => setPage('style') }
+  let groups: Group[] = []
   switch (page) {
     case 'root': {
       const rows: Row[] = []
       rows.push({ id: 'audio', icon: 'music', title: currentAudio?.label ?? audioGroup(noop).rows[0]!.title, chevron: true, action: () => setPage('audio') })
       rows.push({ id: 'subtitles', icon: 'subtitles', title: currentSubtitle ? currentSubtitle.label : 'Subtitles Off', chevron: true, action: () => setPage('subtitles') })
+      rows.push(styleRow)
       rows.push({
         id: 'source',
         icon: 'stack',
@@ -151,13 +160,15 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
       break
     }
     case 'tracks':
-      groups = [audioGroup(noop, 'Audio'), { title: 'Subtitles', rows: subtitleRows(close) }]
+      groups = [audioGroup(noop, 'Audio'), { title: 'Subtitles', rows: subtitleRows(close) }, { rows: [styleRow] }]
       break
     case 'audio':
       groups = [audioGroup(back)]
       break
     case 'subtitles':
       groups = [{ rows: subtitleRows(back) }]
+      break
+    case 'style':
       break
     case 'speed':
       groups = [{ rows: speeds.map((r) => ({ id: `r${r}`, title: speedLabel(r), checked: r === rate, action: () => (controller.setRate(r), back()) })) }]
@@ -186,7 +197,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
 
   const showHeader = page !== 'root' && page !== start
   return (
-    <div className={`${s.panel} ${s.interactive}`} role="dialog" aria-label={titles[page]} onPointerEnter={() => (controller.hovering = true)} onPointerLeave={() => (controller.hovering = false)}>
+    <div className={`${s.panel} ${s.interactive}`} data-page={page} role="dialog" aria-label={titles[page]} onPointerEnter={() => (controller.hovering = true)} onPointerLeave={() => (controller.hovering = false)}>
       {showHeader && (
         <button className={s.panelHeader} onClick={back} onMouseDown={keepFocus} aria-label={`Back to ${titles[start === 'tracks' ? 'tracks' : 'root']}`}>
           <Icon name="chevronLeft" size={16} strokeWidth={2.6} />
@@ -194,6 +205,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
         </button>
       )}
       <div className={s.panelScroll}>
+        {page === 'style' && <StylePage />}
         {groups.map((g, i) => (
           <div key={g.title ?? i} role="group" aria-label={g.title}>
             {g.title && <p className={s.groupTitle}>{g.title}</p>}

@@ -2,15 +2,22 @@ import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { SkipGlyph } from './Controls'
 import { usePlayer, type Feedback, type PlayerController } from './controller'
+import { useSettings } from '../../lib/store/settings'
+import { SubtitleLines, plainLines } from './SubtitleText'
+import { subtitleCSS, sampleSubtitle } from './subtitleStyle'
 import { cueSegments, type Segment } from './subtitles'
 import s from './Player.module.css'
 
 /** Subtitles drawn by Flow rather than the browser: browsers style cues differently and ignore
  *  most of what WebVTT asks for, and this way every engine's subtitles look the same. Raised clear
- *  of the scrubber while the controls show, as in Apple's TV app. */
+ *  of the scrubber while the controls show, as in Apple's TV app. The viewer's style (Settings, or the
+ *  options panel's Subtitle Style) is applied here, and while that panel is open a sample line stands in
+ *  whenever no real one is on screen, so there is always something to judge a change by. */
 export function SubtitleOverlay({ controller }: { controller: PlayerController }) {
   const track = usePlayer(controller, (st) => st.subtitleTrack)
   const lifted = usePlayer(controller, (st) => st.controls)
+  const styling = usePlayer(controller, (st) => st.styling)
+  const style = useSettings((st) => st.subtitleStyle)
   const [lines, setLines] = useState<Segment[][]>([])
 
   useEffect(() => {
@@ -32,17 +39,11 @@ export function SubtitleOverlay({ controller }: { controller: PlayerController }
     return () => track.removeEventListener('cuechange', update)
   }, [track])
 
-  if (lines.length === 0) return null
+  const shown = lines.length > 0 ? lines : styling ? plainLines(sampleSubtitle) : lines
+  if (shown.length === 0) return null
   return (
-    <div className={s.subtitles} data-lifted={lifted ? '' : undefined} aria-live="off">
-      {lines.map((line, i) => (
-        <span key={i} className={s.subtitleLine}>
-          {line.map((seg, j) => {
-            const content = seg.bold ? <b>{seg.text}</b> : seg.text
-            return seg.italic ? <i key={j}>{content}</i> : <span key={j}>{content}</span>
-          })}
-        </span>
-      ))}
+    <div className={s.subtitles} style={subtitleCSS(style)} data-lifted={lifted ? '' : undefined} aria-live="off">
+      <SubtitleLines lines={shown} />
     </div>
   )
 }

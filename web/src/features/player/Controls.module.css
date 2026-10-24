@@ -244,6 +244,22 @@
   animation: panel var(--dur-state) var(--ease-out);
 }
 @keyframes panel { from { opacity: 0; } }
+/* Subtitle Style, on a narrow window: the panel hangs from the top instead of standing on the buttons, so the
+   subtitle line it's changing stays in view underneath (Player.module.css moves the line clear on wide ones). */
+@media (max-width: 899px) and (min-height: 501px) {
+  .panel[data-page='style'] {
+    top: calc(var(--inset-top) + 64px);
+    bottom: auto;
+    max-height: min(46%, calc(100% - var(--inset-top) - var(--inset-bottom) - 64px - 240px));
+  }
+  .controls[data-styling] .transport { visibility: hidden; }
+}
+/* A phone held sideways has little height: this page takes all of it above the scrubber, over the volume, and
+   its rows (StylePage.module.css) are a little tighter. The volume steps aside rather than show through it. */
+@media (max-height: 500px) {
+  .panel[data-page='style'] { max-height: calc(100% - var(--inset-top) - var(--inset-bottom) - var(--bottom-band) - 20px); }
+  .controls[data-styling] .volume { visibility: hidden; }
+}
 .panelHeader {
   display: flex;
   align-items: center;

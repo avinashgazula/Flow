@@ -27,6 +27,7 @@ export interface ControlsProps {
 export function Controls({ controller, title, line, onClose, sources, source, onPickSource, onMoreSources, episodes }: ControlsProps) {
   const visible = usePlayer(controller, (st) => st.controls)
   const panel = usePlayer(controller, (st) => st.panel)
+  const styling = usePlayer(controller, (st) => st.styling)
   const toggle = (p: Exclude<Panel, null>) => controller.setPanel(panel === p ? null : p)
   const hover = {
     onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && (controller.hovering = true),
@@ -40,7 +41,7 @@ export function Controls({ controller, title, line, onClose, sources, source, on
     <>
       {/* Its own layer under the subtitles, so the scrim never dims them. */}
       <div className={s.scrim} data-visible={visible ? '' : undefined} aria-hidden="true" />
-      <div className={s.controls} data-visible={visible ? '' : undefined} data-panel={panel ?? undefined}>
+      <div className={s.controls} data-visible={visible ? '' : undefined} data-panel={panel ?? undefined} data-styling={styling ? '' : undefined}>
         <div className={s.top}>
           <Cluster {...hover}>
             <ClusterButton icon="close" label="Close Player" onClick={onClose} />

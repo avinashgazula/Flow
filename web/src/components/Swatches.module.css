@@ -1,0 +1,19 @@
+/* Round colour chips. The hit area is larger than the drawing (the pseudo-element), the ring sits outside the
+   chip so it shows on every colour, and focus is the yellow ring like everywhere else. */
+.swatches { display: inline-flex; gap: 10px; }
+.swatch {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--on-stock);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-state) var(--ease-out);
+}
+.swatch::before { content: ''; position: absolute; inset: -8px -5px; }
+.swatch:active { transform: scale(0.92); }
+.swatch[aria-checked='true'] { outline: 2px solid var(--paper); outline-offset: 3px; }
+.swatch:focus-visible { outline: 2px solid var(--stock); outline-offset: 3px; }

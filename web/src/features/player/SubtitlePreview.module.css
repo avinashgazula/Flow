@@ -1,0 +1,31 @@
+/* Settings' stand-in for the picture: light at the top, dark at the bottom, so a lifted line shows how its
+   edge holds up on a bright scene too. The line is set up like the player's (Player.module.css), with a fixed
+   base size and the preview's own height as what the lift is a fraction of. */
+.preview {
+  --sub-base: 20px;
+  --sub-room: 200px;
+  position: relative;
+  height: var(--sub-room);
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--ink-3), var(--base-3) 55%, var(--edge));
+}
+.line {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12em;
+  text-align: center;
+  font-size: calc(var(--sub-base) * var(--sub-scale, 1));
+  line-height: 1.22;
+  letter-spacing: 0.005em;
+  text-wrap: balance;
+  transform: translateY(calc(var(--sub-lift, 0) * var(--sub-room) * -1));
+  transition: transform var(--dur-move) var(--ease-out);
+}
+@media (max-width: 560px) {
+  .preview { --sub-base: 17px; }
+}

@@ -1,0 +1,12 @@
+/* One line of a subtitle, shared by the player and Settings' preview. The font, colour and shadow are set on
+   the element that holds the lines (subtitleStyle.ts) and inherited here; the box is the inner span, so a
+   line that wraps gets a box around each of its rows. */
+.line { max-width: 100%; }
+.box {
+  padding: var(--sub-pad, 0);
+  border-radius: 0.28em;
+  background: var(--sub-box, transparent);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.line b { font-weight: var(--sub-bold, 800); }

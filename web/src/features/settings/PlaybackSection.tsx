@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { settingsStore, useSettings, type Settings, type SubtitleMode } from '../../lib/store/settings'
 import { Group, Note, Row, Select, Switch } from './controls'
+import { SubtitleStyleGroup } from './SubtitleStyleGroup'
 import { audioChoices, subtitleChoices, withCurrent } from './options'
 import s from './SettingsScreen.module.css'
 
@@ -137,6 +138,7 @@ export function PlaybackSection() {
           <Select id="subtitle-2" label="Second choice for subtitles" value={second} onChange={(v) => setSubtitles(first, v)} options={options(second)} disabled={!first} />
         </Row>
       </Group>
+      <SubtitleStyleGroup />
       <Group footer="Shows start the next episode when one ends, with a countdown you can cancel.">
         <Row label="Autoplay Next Episode">
           <Switch label="Autoplay next episode" checked={autoplay} onChange={(on) => settingsStore.set({ autoplayNext: on })} />

@@ -100,6 +100,11 @@
 }
 .select:disabled { opacity: 0.4; cursor: default; }
 
+/* A slider with its value beside it, in a row's control. The value has a fixed width so the track doesn't
+   change length as the number does. */
+.slide { display: inline-flex; align-items: center; gap: var(--space-s); width: min(260px, 52vw); }
+.slideValue { flex: none; width: 52px; text-align: right; font: 500 var(--fs-small) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
 /* Destructive actions read red; the armed state is a solid red button beside Cancel. */
 .danger { color: var(--red); }
 .dangerSolid { background: var(--red); color: var(--on-stock); }
