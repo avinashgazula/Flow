@@ -146,6 +146,8 @@ img.logo { padding: 4px; }
 .inline { display: flex; gap: var(--space-s); padding: var(--space-s) var(--space-m); }
 .inline .field { flex: 1; min-width: 0; height: 40px; background: var(--base-3); }
 .pad { padding: 0 var(--space-m) var(--space-s); }
+/* A group's own Save button, in a row of its own under the fields. */
+.saveRow { padding: var(--space-s) var(--space-m); }
 .inline + .pad { margin-top: -4px; }
 
 .form { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-m); }
