@@ -50,6 +50,18 @@ struct MacPlayerMenu: View {
                     Button("Turn Off") { session.sleepTimer = nil }
                 }
             }
+            // The video stays in view while the menu is open, so each change shows on the subtitles at once.
+            Menu("Subtitle Style") {
+                ForEach(SubtitleStyleField.allCases) { field in
+                    Picker(field.title, selection: Binding(get: { field.currentID(model.settings.subtitles) },
+                                                           set: { field.select($0, &model.settings.subtitles) })) {
+                        ForEach(field.choices) { Text($0.title).tag($0.id) }
+                    }
+                    .pickerStyle(.menu)
+                }
+                Divider()
+                Button("Reset to Default") { model.settings.subtitles.resetAppearance() }
+            }
             if session.subtitle != nil {
                 Menu("Subtitle Timing") {
                     Text(String(format: "Delay %+.2f s", session.subtitleOffset))
