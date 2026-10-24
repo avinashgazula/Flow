@@ -25,6 +25,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public func migrated() -> AppSettings {
         var copy = self
         copy.subtitles.migrateLegacy()
+        copy.account.migrateSkipBaseURLs()
         return copy
     }
 }
@@ -228,9 +229,24 @@ public struct AccountSettings: Codable, Hashable, Sendable {
     public var favouritesDestination: ListDestination = .local
     public var scrobble = true
     /// Base URLs for services whose deployments vary. Overridable in Settings.
-    public var publicMetaDBBaseURL = "https://api.publicmetadb.com/v1"
-    public var introDBBaseURL = "https://api.introdb.app/v1"
+    public var publicMetaDBBaseURL = AccountSettings.defaultPublicMetaDBBaseURL
+    public var introDBBaseURL = AccountSettings.defaultIntroDBBaseURL
     public init() {}
+
+    public static let defaultPublicMetaDBBaseURL = "https://publicmetadb.com"
+    public static let defaultIntroDBBaseURL = "https://api.introdb.app"
+
+    /// Earlier versions saved addresses that no longer answer. Those are swapped for the working
+    /// ones; an address the person typed is left alone.
+    public mutating func migrateSkipBaseURLs() {
+        func isLegacy(_ url: String, _ legacy: String) -> Bool {
+            var trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            while trimmed.hasSuffix("/") { trimmed.removeLast() }
+            return trimmed == legacy
+        }
+        if isLegacy(publicMetaDBBaseURL, "https://api.publicmetadb.com/v1") { publicMetaDBBaseURL = Self.defaultPublicMetaDBBaseURL }
+        if isLegacy(introDBBaseURL, "https://api.introdb.app/v1") { introDBBaseURL = Self.defaultIntroDBBaseURL }
+    }
 }
 
 /// Secrets. Stored in the Keychain on device and only included in a setup export on request.

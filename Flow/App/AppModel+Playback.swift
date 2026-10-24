@@ -54,7 +54,11 @@ extension AppModel {
 
     func skipProviders() -> [SkipSegmentProvider] {
         var providers: [SkipSegmentProvider] = []
-        if let key = credentials.introDBAPIKey?.nonEmpty { providers.append(KeyedSegmentsClient.introDB(baseURL: settings.account.introDBBaseURL, apiKey: key)) }
+        // IntroDB can be read without a key, so it's asked whenever a skip button or automatic skip is on. A key is sent when there is one.
+        let playback = settings.playback
+        if [playback.skipIntro, playback.skipRecap, playback.skipCredits].contains(where: { $0 != .off }) {
+            providers.append(KeyedSegmentsClient.introDB(baseURL: settings.account.introDBBaseURL, apiKey: credentials.introDBAPIKey?.nonEmpty ?? ""))
+        }
         if let key = credentials.publicMetaDBAPIKey?.nonEmpty { providers.append(KeyedSegmentsClient.publicMetaDB(baseURL: settings.account.publicMetaDBBaseURL, apiKey: key)) }
         return providers
     }
