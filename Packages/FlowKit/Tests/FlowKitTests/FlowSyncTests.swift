@@ -187,6 +187,7 @@ final class FlowSyncMappingTests: XCTestCase {
         c.tmdbAPIKey = "tmdb"; c.tvdbAPIKey = "tvdb"; c.mdblistAPIKey = "mdb"
         c.openSubtitlesAPIKey = "os"; c.openSubtitlesUsername = "user"; c.openSubtitlesPassword = "pw"
         c.subdlAPIKey = "subdl"; c.subSourceAPIKey = "subsource"; c.rpdbAPIKey = "rpdb"
+        c.introDBAPIKey = "intro"; c.publicMetaDBAPIKey = "pmdb"
         c.traktClientID = "tid"; c.traktClientSecret = "tsecret"; c.simklClientID = "sid"
         c.traktToken = OAuthToken(accessToken: "ta", refreshToken: "tr", expiresAt: Date(timeIntervalSince1970: 1_800_000_000), redirectURI: "flow://trakt-callback")
         c.simklToken = OAuthToken(accessToken: "sa")
@@ -202,23 +203,28 @@ final class FlowSyncMappingTests: XCTestCase {
             FlowSyncMapping.apply(sections[name]!, to: name, credentials: &restored, settings: &settings)
         }
         XCTAssertEqual(restored, credentials)
-        XCTAssertEqual(sections["keys"]?.object?.keys.sorted(), ["mdblistAPIKey", "openSubtitlesAPIKey", "openSubtitlesPassword", "openSubtitlesUsername", "rpdbAPIKey", "simklClientID", "subSourceAPIKey", "subdlAPIKey", "traktClientID", "traktClientSecret", "tmdbAPIKey", "tvdbAPIKey"].sorted())
+        XCTAssertEqual(sections["keys"]?.object?.keys.sorted(), ["introDBAPIKey", "mdblistAPIKey", "openSubtitlesAPIKey", "openSubtitlesPassword", "openSubtitlesUsername", "publicMetaDBAPIKey", "rpdbAPIKey", "simklClientID", "subSourceAPIKey", "subdlAPIKey", "traktClientID", "traktClientSecret", "tmdbAPIKey", "tvdbAPIKey"].sorted())
         XCTAssertEqual(sections["accounts"]?["trakt"]?["accessToken"], .string("ta"))
         XCTAssertEqual(sections["accounts"]?["trakt"]?["expiresAt"], .string("2027-01-15T08:00:00Z"))
         XCTAssertEqual(sections["accounts"]?["simkl"]?["refreshToken"], .null)
     }
 
-    func testKeysThatAreNotSyncedStayLocal() {
+    func testSkipSegmentKeysSyncBothWays() {
         var local = Credentials()
         local.publicMetaDBAPIKey = "pmdb"
         local.introDBAPIKey = "intro"
-        local.tmdbAPIKey = "old"
+        let data = FlowSyncMapping.keysData(local)
+        XCTAssertEqual(data["introDBAPIKey"], .string("intro"))
+        XCTAssertEqual(data["publicMetaDBAPIKey"], .string("pmdb"))
+        var other = Credentials()
         var settings = AppSettings()
-        FlowSyncMapping.apply(FlowSyncJSON.object(["tmdbAPIKey": .string("new")]), to: "keys", credentials: &local, settings: &settings)
-        XCTAssertEqual(local.tmdbAPIKey, "new")
-        XCTAssertEqual(local.publicMetaDBAPIKey, "pmdb")
-        XCTAssertEqual(local.introDBAPIKey, "intro")
-        XCTAssertNil(FlowSyncMapping.keysData(local).object?["publicMetaDBAPIKey"])
+        FlowSyncMapping.apply(data, to: "keys", credentials: &other, settings: &settings)
+        XCTAssertEqual(other.introDBAPIKey, "intro")
+        XCTAssertEqual(other.publicMetaDBAPIKey, "pmdb")
+        // A key a field is missing for is left as it was.
+        FlowSyncMapping.apply(FlowSyncJSON.object(["tmdbAPIKey": .string("new")]), to: "keys", credentials: &other, settings: &settings)
+        XCTAssertEqual(other.tmdbAPIKey, "new")
+        XCTAssertEqual(other.introDBAPIKey, "intro")
     }
 
     func testClearingAKeyIsAChangeButAbsenceIsNot() {
@@ -346,7 +352,9 @@ final class FlowSyncMappingTests: XCTestCase {
 
         var credentials = Credentials()
         var other = credentials
-        other.introDBAPIKey = "not synced"
+        other.openSubtitlesAPIKey = "synced"
+        XCTAssertTrue(FlowSyncMapping.changed(from: credentials, to: other))
+        credentials = other
         XCTAssertFalse(FlowSyncMapping.changed(from: credentials, to: other))
         credentials.traktToken = OAuthToken(accessToken: "a")
         XCTAssertTrue(FlowSyncMapping.changed(from: other, to: credentials))
