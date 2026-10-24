@@ -20,7 +20,12 @@ import { episodeLine } from './format'
 import { NoSoundNotice } from './NoSound'
 import { PlaybackInfo } from './PlaybackInfo'
 import { Buffering, FeedbackFlash, SubtitleOverlay, TapLayer } from './Overlays'
+import { demoSegments, segmentsFromChapters, type SkipSegment } from './segments'
+import { lookupSegments } from './segmentSources'
 import { lastSources, matchSource, nextEpisode, nextSource, resolutionHeight, resumePosition } from './session'
+import { Skip } from './Skip'
+import { StillWatchingPrompt } from './StillWatchingPrompt'
+import type { StillWatching } from './stillWatching'
 import { StruggleNotice } from './Struggle'
 import { UpNext } from './UpNext'
 import s from './Player.module.css'
@@ -60,11 +65,13 @@ export interface PlayerScreenProps {
   /** The element that goes full screen: it outlives this screen, so moving to the next episode
    *  stays full screen. */
   root: RefObject<HTMLDivElement | null>
+  /** Counts episodes played one after another with nobody there. It outlives each episode's screen, so Player holds it. */
+  binge: StillWatching
 }
 
 /** One title or episode, from finding a source to the last frame: the source picker or the
  *  remembered source, the connecting screen, the engine, the controls, progress and Up Next. */
-export function PlayerScreen({ type, id, season, episode, sourceId, root }: PlayerScreenProps) {
+export function PlayerScreen({ type, id, season, episode, sourceId, root, binge }: PlayerScreenProps) {
   const navigate = useNavigate()
   const router = useRouter()
   const key = mediaKey(type, id)
@@ -113,6 +120,15 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
   const [convertFailed, setConvertFailed] = useState(false)
   /** The No Sound notice is on screen, so the struggling notice waits. */
   const [noSoundUp, setNoSoundUp] = useState(false)
+  /** What a server, IntroDB or PublicMetaDB (or the sample data) say can be skipped, and what the file's chapter
+   *  names say; the first wins, as in the apps. */
+  const [looked, setLooked] = useState<SkipSegment[]>([])
+  const [chapterSegments, setChapterSegments] = useState<SkipSegment[]>([])
+  /** "Are You Still Watching?" is up, so the next episode waits for an answer. */
+  const [asking, setAsking] = useState(false)
+  const askingRef = useRef(false)
+  /** The next episode has been asked for: Up Next's countdown and the stream ending can both say so. */
+  const advanced = useRef(false)
 
   const tried = useRef(new Set<string>())
   const startAt = useRef<number | undefined>(undefined)
@@ -125,6 +141,34 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
   useLayoutEffect(() => {
     latest.current = { item, epRef, current, source, sources, phase, resumeAt, next, title }
   })
+
+  /** Goes on to the next episode. `automatic` is for the countdown running out, the credits being skipped by
+   *  themselves or the stream ending: after enough of those in a row it asks before going on. */
+  const advance = (automatic: boolean) => {
+    const target = latest.current.next
+    if (!target || askingRef.current || advanced.current) return
+    if (automatic) {
+      if (binge.shouldAsk(settingsStore.get().stillWatchingAfterEpisodes)) {
+        askingRef.current = true
+        setAsking(true)
+        controller.pause()
+        return
+      }
+      binge.noteAutomaticAdvance()
+    }
+    advanced.current = true
+    playEpisode(target)
+  }
+
+  const keepWatching = () => {
+    const target = latest.current.next
+    binge.noteInteraction()
+    askingRef.current = false
+    setAsking(false)
+    if (!target) return
+    advanced.current = true
+    playEpisode(target)
+  }
 
   const save = () => {
     const { item: it, epRef: ep, current: cur } = latest.current
@@ -311,6 +355,10 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
         }
       }
     }
+    // Someone pausing is someone there; the stream ending on its own, or the question being asked, isn't.
+    const paused = () => {
+      if (started.current && !askingRef.current) binge.notePause(el.currentTime, controller.duration())
+    }
     const timeupdate = () => {
       if (!started.current) return
       position.current = el.currentTime
@@ -329,6 +377,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
       ['canplay', canplay],
       ['playing', playing],
       ['timeupdate', timeupdate],
+      ['pause', paused],
       ['error', onError],
     ]
     for (const [name, fn] of events) el.addEventListener(name, fn)
@@ -360,6 +409,8 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
         engine = e
         controller.setEngine(e, source)
         setBlocked(e.fallback === 'blocked')
+        // Chapters named "Opening" or "Ending" stand in when no server or service knows this episode.
+        setChapterSegments(segmentsFromChapters(e.chapters?.() ?? [], e.duration()))
       })
       .catch((err: Error) => {
         if (abort.signal.aborted || err.name === 'AbortError') return
@@ -369,9 +420,47 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
       abort.abort()
       engine?.destroy()
       controller.setEngine(null, null)
+      setChapterSegments([])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source, attempt])
+
+  // What can be skipped: the server the file plays from, then IntroDB and PublicMetaDB if they have keys, then
+  // the file's chapters. Asked as soon as the source is known, so an intro at the very start has its button.
+  // Sample data has its own, set once the length is known. No answer means no button.
+  const ready = !!detail && !isPlaceholderData
+  const playing = phase === 'playing'
+  useEffect(() => {
+    setLooked((now) => (now.length ? [] : now))
+    if (!source || !detail || !ready || source.origin === 'demo') return
+    const abort = new AbortController()
+    const { servers, introDBKey, publicMetaDBKey } = settingsStore.get()
+    void lookupSegments({ source, request: requestFor(detail, type, epRef), servers, introDBKey, publicMetaDBKey, signal: abort.signal }).then((found) => {
+      if (!abort.signal.aborted) setLooked(found)
+    })
+    return () => abort.abort()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source?.id, ready])
+  useEffect(() => {
+    if (source?.origin === 'demo' && playing) setLooked(demoSegments(controller.duration()))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source?.id, playing])
+  useEffect(() => {
+    controller.setSegments(looked.length ? looked : chapterSegments)
+  }, [controller, looked, chapterSegments])
+
+  // Any sign of someone there starts the count of unattended episodes again.
+  useEffect(() => {
+    const container = root.current
+    const there = () => binge.noteInteraction()
+    container?.addEventListener('pointerdown', there)
+    window.addEventListener('keydown', there)
+    return () => {
+      container?.removeEventListener('pointerdown', there)
+      window.removeEventListener('keydown', there)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Progress: every ten seconds while playing, on pause, when the page goes away and on close.
   useEffect(() => {
@@ -418,13 +507,14 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
         // Some browsers reject a position state mid-seek.
       }
     }
+    // The media keys count as someone being there.
     const handlers: [MediaSessionAction, MediaSessionActionHandler | null][] = [
       ['play', () => controller.play()],
       ['pause', () => controller.pause()],
-      ['seekbackward', (d) => controller.seekBy(-(d.seekOffset ?? 10))],
-      ['seekforward', (d) => controller.seekBy(d.seekOffset ?? 10)],
-      ['seekto', (d) => d.seekTime !== undefined && controller.seekTo(d.seekTime)],
-      ['nexttrack', next ? () => playEpisode(next) : null],
+      ['seekbackward', (d) => (binge.noteInteraction(), controller.seekBy(-(d.seekOffset ?? 10)))],
+      ['seekforward', (d) => (binge.noteInteraction(), controller.seekBy(d.seekOffset ?? 10))],
+      ['seekto', (d) => d.seekTime !== undefined && (binge.noteInteraction(), controller.seekTo(d.seekTime))],
+      ['nexttrack', next ? () => (binge.noteInteraction(), playEpisode(next)) : null],
     ]
     for (const [action, handler] of handlers) {
       try {
@@ -465,6 +555,14 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
       const el = c.video
       if (!el) return
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key
+      if (askingRef.current) {
+        // "Are You Still Watching?" takes the keys: its buttons answer, and Escape stops.
+        if (key === 'Escape') {
+          e.preventDefault()
+          close()
+        }
+        return
+      }
       switch (key) {
         case ' ':
         case 'k':
@@ -495,6 +593,13 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
           c.flash(v === 0 ? 'mute' : 'volume', `${v}%`)
           break
         }
+        case 's':
+        case 'Enter':
+          // Skip what the button on screen skips (or play the next episode, when its card is up). On a focused
+          // control, Enter presses that control instead; with nothing to skip the key is left alone.
+          if (key === 'Enter' && target.closest('button, a, summary')) return
+          if (!c.skipNow()) return
+          break
         case 'm':
           c.toggleMute()
           c.flash(el.muted ? 'mute' : 'volume', el.muted ? 'Muted' : `${Math.round(el.volume * 100)}%`)
@@ -587,8 +692,10 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root }: Play
             onTryAnother={tryPlayable}
           />
           {infoOpen && <PlaybackInfo controller={controller} source={source} />}
-          {next && <UpNext key={next.id} controller={controller} next={next} autoplay={autoplayNext} fallbackStill={item?.backdrop} onPlay={() => playEpisode(next)} />}
+          <Skip controller={controller} hasNext={!!next} onNext={advance} />
+          {next && !asking && <UpNext key={next.id} controller={controller} next={next} autoplay={autoplayNext} fallbackStill={item?.backdrop} onPlay={advance} />}
           <FeedbackFlash controller={controller} />
+          {asking && next && <StillWatchingPrompt next={next} onKeepWatching={keepWatching} onStop={close} />}
         </>
       )}
       {connectingShown && phase !== 'error' && (

@@ -60,7 +60,8 @@ export type ToWorker =
   | { type: 'destroy' }
 
 export type FromWorker =
-  | { type: 'header'; json: string; length: number; ranges: boolean }
+  /** `chapters`: the names and times the file's chapter list holds, when it sits in the bytes read first (chapters.ts). */
+  | { type: 'header'; json: string; length: number; ranges: boolean; chapters: { title: string; start: number }[] }
   /** A converted audio track's init is kind 1 with codec 'opus'. */
   | { type: 'init'; epoch: number; kind: 0 | 1; codec: string; data: ArrayBuffer }
   /** `key`: the fragment starts on a keyframe, so the buffer before it can be trimmed safely. */

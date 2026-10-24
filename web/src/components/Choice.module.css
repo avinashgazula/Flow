@@ -15,7 +15,7 @@
 }
 .segment:hover { color: var(--paper); }
 .segment[aria-checked='true'] { background: var(--base-4); color: var(--paper); }
-.segment[aria-checked='true']::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: 3px; height: 2px; border-radius: 1px; background: var(--stock); }
+.segment[aria-checked='true']::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: 3px; height: 2px; border-radius: var(--radius-hair); background: var(--stock); }
 .segment:focus-visible { outline-offset: -2px; }
 
 .select { display: inline-flex; }

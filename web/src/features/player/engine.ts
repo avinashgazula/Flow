@@ -43,6 +43,8 @@ export interface Engine {
   /** Where the seek preview's pictures come from, made the first time it is asked for (the scrubber
    *  asks on the first hover); null when this engine can't give any. Torn down with the engine. */
   preview?(): PreviewSource | null
+  /** The stream's chapter names, for engines that read them (the remuxer): where "Opening" and "Ending" begin. */
+  chapters?(): { title: string; start: number }[]
   audio(): { tracks: Track[]; selected?: string }
   selectAudio(id: string): void | Promise<void>
   /** Subtitles inside the stream. External files are the controller's job. */
@@ -386,6 +388,7 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
     preview: () => (remux.thumbnailsSupported === false ? null : (preview ??= new BitmapPreview(remux, remux.video && remux.video.height > 0 ? remux.video.width / remux.video.height : undefined))),
     // The session measures the download itself (the reader in lib/remux); an older one has nothing to say.
     netStats: () => (remux as { netStats?: NetStats | null }).netStats ?? null,
+    chapters: () => remux.chapters,
     videoInfo: () => (remux.video ? { codec: remux.video.codec, range: remux.video.range } : undefined),
     audio: () => ({
       tracks: remux.audioTracks.map((t) => ({

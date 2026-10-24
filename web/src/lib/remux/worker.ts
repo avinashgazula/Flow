@@ -8,6 +8,7 @@ import type { AudioCodec } from '../audio/decoder'
 import type { AudioConverter } from './convert'
 import { cleanDetail, DETAIL_BYTES, detailWanted, httpFailureMessage, networkFailureMessage, PROXY_DIRECT_HEADER, PROXY_HOPS_HEADER } from './failure'
 import { AHEAD_TARGET, aheadCapFor, AheadGovernor, RateMeter } from './pacing'
+import { parseChapters } from './chapters'
 import type { FromWorker, HeaderInfo, RawCue, ToWorker } from './protocol'
 import { PieceReader, planReads } from './reader'
 import { CACHE_SIZE, firstRead, type Found, Lru, readKeyframe, thumbSize } from './thumbs'
@@ -246,7 +247,7 @@ async function open(message: Extract<ToWorker, { type: 'open' }>) {
     }
   })().catch(() => {})
 
-  post({ type: 'header', json: rem.headerJson(), length, ranges })
+  post({ type: 'header', json: rem.headerJson(), length, ranges, chapters: parseChapters(head) })
 }
 
 // MARK: Streaming

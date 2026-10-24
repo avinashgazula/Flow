@@ -52,6 +52,12 @@ export interface RemuxSubtitleTrack {
   forced: boolean
 }
 
+export interface RemuxChapter {
+  title: string
+  /** Seconds. */
+  start: number
+}
+
 export interface SubtitleCue {
   start: number
   end: number
@@ -88,6 +94,8 @@ export interface RemuxSession {
   duration: number
   audioTracks: RemuxAudioTrack[]
   subtitleTracks: RemuxSubtitleTrack[]
+  /** The file's chapters, when its chapter list is among the first bytes (see chapters.ts); none otherwise. */
+  chapters: RemuxChapter[]
   /** The picture, when the file has one. */
   video?: RemuxVideoInfo
   /** The audio track playing now. */
@@ -148,6 +156,7 @@ class Session implements RemuxSession {
   private declared = 0
   audioTracks: RemuxAudioTrack[] = []
   subtitleTracks: RemuxSubtitleTrack[] = []
+  chapters: RemuxChapter[] = []
   video?: RemuxVideoInfo
   audioId: number | null = null
 
@@ -182,6 +191,7 @@ class Session implements RemuxSession {
   private restartAt = 0
   private eof = false
   private headerReceived!: (info: HeaderInfo) => void
+  private headerChapters: RemuxChapter[] = []
   private firstReady: (() => void) | null = null
 
   private cues = new Map<number, { list: SubtitleCue[]; seen: Set<string>; listeners: Set<(cues: SubtitleCue[]) => void> }>()
@@ -250,6 +260,7 @@ class Session implements RemuxSession {
 
     this.plan = makePlan(info, typeSupported, canConvertAudio())
     this.declared = info.duration ?? 0
+    this.chapters = this.headerChapters
     this.audioTracks = this.plan.audio.map(({ mime: _mime, ...track }) => track)
     this.subtitleTracks = this.plan.subtitles
     this.audioId = this.plan.defaultAudio
@@ -283,6 +294,7 @@ class Session implements RemuxSession {
     if (this.destroyed) return
     switch (message.type) {
       case 'header':
+        this.headerChapters = message.chapters ?? []
         this.headerReceived(parseHeader(message.json))
         return
       case 'error':

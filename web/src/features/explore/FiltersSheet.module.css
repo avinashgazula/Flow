@@ -1,0 +1,133 @@
+/* The filter sheet: a flat base-2 panel over a dark scrim, no blur. A side panel on a desktop, a bottom sheet on
+   a phone. Yellow appears once, as the ring on a chosen streaming service (and on Show Results, the next
+   action); a chosen chip is a lighter base, as everywhere else. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+  animation: fade var(--dur-move) ease;
+}
+.scrim { position: absolute; inset: 0; background: var(--overlay); }
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(440px, 100%);
+  height: 100%;
+  background: var(--base-2);
+  box-shadow: -1px 0 0 var(--rule);
+  animation: slide var(--dur-move) var(--ease-out);
+}
+.panel:focus-visible { outline: none; }
+
+.header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-m); padding: var(--space-l) var(--space-l) var(--space-s); }
+.title { font: 700 var(--fs-title3) / 1.2 var(--font-display); letter-spacing: -0.015em; }
+
+.body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-xs) var(--space-l) var(--space-l); }
+
+.section { min-width: 0; margin: 0; padding: var(--space-m) 0 var(--space-l); border: 0; border-bottom: 1px solid var(--rule); }
+.section:last-child { border-bottom: 0; padding-bottom: var(--space-s); }
+.legend { float: left; width: 100%; padding: 0; margin-bottom: var(--space-s); font: 600 var(--fs-small) / 1.2 var(--font); color: var(--paper); }
+.legend + * { clear: both; }
+.region { margin-left: var(--space-xs); color: var(--ink-3); font-weight: 400; font-size: var(--fs-footnote); letter-spacing: 0.04em; }
+
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-s); margin-top: var(--space-m); }
+.field { display: grid; gap: 6px; min-width: 0; }
+.fieldLabel { color: var(--ink-3); font-size: var(--fs-footnote); }
+/* The shared Select, stretched to the field. */
+.select { display: flex; }
+.select select { width: 100%; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: var(--space-s) var(--space-xs); }
+
+.tile {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 0 2px;
+  border-radius: var(--radius-control);
+  color: var(--ink-3);
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-state) ease;
+}
+.tile:hover { color: var(--ink-2); }
+.tile[aria-pressed='true'] { color: var(--paper); }
+/* Keyboard focus sits outside the chosen ring, so both show at once. */
+.tile:focus-visible { outline-offset: 2px; }
+
+.logo {
+  display: block;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-control);
+  background: var(--base-3);
+  overflow: hidden;
+  /* The ring: a gap of base, then paper, only when chosen. Paper, not yellow, so a choice never looks like
+     keyboard focus (which is the yellow ring) and two chosen services don't read as two focused ones. */
+  box-shadow: 0 0 0 0 transparent;
+  transition: box-shadow var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
+}
+.logo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tile:active .logo { transform: scale(0.96); }
+.tile[aria-pressed='true'] .logo { box-shadow: 0 0 0 2px var(--base-2), 0 0 0 4px var(--paper); }
+.initial { display: grid; place-items: center; width: 100%; height: 100%; font: 700 var(--fs-headline) / 1 var(--font-display); color: var(--ink-2); }
+
+.name {
+  max-width: 100%;
+  font-size: var(--fs-caption);
+  line-height: 1.25;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.check { display: inline-block; vertical-align: -1px; margin-right: 3px; color: var(--paper); }
+
+.skeleton { justify-self: center; width: 56px; height: 56px; margin: 4px 0 24px; border-radius: var(--radius-control); background: var(--base-3); animation: pulse 1.4s ease-in-out infinite; }
+.more { margin-top: var(--space-s); }
+.note { color: var(--ink-2); font-size: var(--fs-small); line-height: 1.5; }
+.link { color: var(--paper); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+.footer {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-s);
+  padding: var(--space-m) var(--space-l) calc(var(--space-m) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--rule);
+}
+
+@keyframes fade { from { opacity: 0; } }
+@keyframes slide { from { opacity: 0; transform: translateX(24px); } }
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } }
+@keyframes pulse { 50% { opacity: 0.5; } }
+
+/* Phones: a bottom sheet, as tall as its content up to most of the screen. */
+@media (max-width: 720px) {
+  .overlay { align-items: flex-end; justify-content: stretch; }
+  .panel {
+    width: 100%;
+    height: auto;
+    max-height: min(88vh, 88dvh);
+    border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+    box-shadow: 0 -1px 0 var(--rule);
+    animation-name: rise;
+  }
+  .header { padding: var(--space-m) var(--space-m) var(--space-xs); }
+  .body { padding: 0 var(--space-m) var(--space-m); }
+  .footer { padding: var(--space-s) var(--space-m) calc(var(--space-s) + env(safe-area-inset-bottom)); }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}

@@ -51,6 +51,10 @@
   --radius-label: 8px;
   --radius-panel: 12px;
   --radius-control: 10px;
+  /* Perforations, slider tracks and the nav mark; underlines; bars and skeleton lines that end round. */
+  --radius-perf: 2px;
+  --radius-hair: 1px;
+  --radius-full: 999px;
 
   /* Type, fixed (not fluid). Titles are set by weight and size in the interface face, never condensed. The
      condensed face is the edge print (--font-edge) and nothing else. Times, durations, sizes, ratings and

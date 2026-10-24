@@ -100,6 +100,27 @@ source that plays, keeping the position, and "Keep Watching" is remembered per t
 Options → Playback Info) for a card with the picture size, codec, engine, dropped frames, buffer and
 download rate.
 
+## Skipping and binge watching
+
+The player has what the apps have for watching a series (`features/player/segments.ts`, `segmentSources.ts`,
+`stillWatching.ts`, each with the apps' own test cases):
+
+- **Skip Intro, Skip Recap, Skip Credits** as a yellow button bottom right above the scrubber while the segment plays
+  (Enter or **S** presses it). Settings → Playback sets each to Show Button, Skip Automatically (skips once as the
+  segment begins and says "Skipped intro" with Undo) or Off. The scrubber draws the segments as dimmer perforations.
+- **Where segments come from**, first answer wins: the server the file plays from (Jellyfin media segments, Plex
+  markers), IntroDB, PublicMetaDB (each only with a key), then the file's chapter names ("Opening", "Ending"), read
+  from the first bytes of an MKV by `lib/remux/chapters.ts`. No answer means no button, never an error.
+- **CORS.** IntroDB's CORS header allows only introdb.app, so from the website it is asked through the stream proxy
+  (with `api.introdb.app` in its `ALLOWED_HOSTS`). PublicMetaDB sends no CORS headers and needs an Authorization header
+  the proxy doesn't forward, so it can't be read from a web page; its key is kept for Flow Sync and the apps. A refused
+  service isn't asked again until the page reloads.
+- **Next Episode.** Up Next comes up as the credits begin when a segment says where (else in the last 30 seconds), with
+  a Next Episode button. Credits that run to the end of an episode with another after it are skipped to that episode.
+- **Are You Still Watching?** After the number of episodes in Settings (3, as in the apps) play one after another
+  with no click, key or pause, the next episode waits behind "Keep Watching" and "Stop".
+- Sample data (`?demo`) has an intro at 0:05 to 0:20 and credits for the last 18 seconds of any sample stream.
+
 ## Seek previews
 
 Hovering or dragging the scrubber, or pressing an arrow key, shows a small frame (`SeekPreview.tsx`) of where you

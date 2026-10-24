@@ -88,12 +88,12 @@
 }
 .slider::-webkit-slider-runnable-track {
   height: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-perf);
   background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), var(--base-4) 0);
 }
 .slider::-moz-range-track {
   height: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-perf);
   background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), var(--base-4) 0);
 }
 .slider::-webkit-slider-thumb {
@@ -197,6 +197,19 @@
 /* Read-ahead is the lighter of the two greys; the yellow is how far you are. */
 .buffered { background: var(--ink-3); opacity: 0.55; }
 .played { background: var(--stock); }
+/* An intro, recap or the credits: a stretch of the rail's holes drawn dimmer (the edge colour over them), so it
+   reads as a part to skip and never as read-ahead, which is the lighter tone. It lies over the played fill too. Its
+   holes are the rail's: the mask is on the rail. */
+.mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  background: var(--edge);
+  opacity: 0.55;
+  pointer-events: none;
+}
 /* The thumb is only there when you are using the bar: under the pointer, while dragging, or on focus. */
 .thumb {
   position: absolute;
@@ -410,7 +423,7 @@
   color: var(--paper);
 }
 .upNextFrame { position: relative; display: block; }
-.upNextText { width: 168px; display: flex; flex-direction: column; gap: 3px; padding-top: 2px; }
+.upNextText { width: 188px; display: flex; flex-direction: column; gap: 3px; padding-top: 2px; }
 .upNextLabel {
   font: 600 var(--fs-caption) / 1.2 var(--font-edge);
   letter-spacing: 0.14em;
@@ -426,13 +439,88 @@
   overflow: hidden;
 }
 .upNextMeta { font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--ink-2); }
+.upNextActions { display: flex; align-items: center; gap: 4px; margin: 6px 0 0 -2px; }
 .upNextCancel {
-  align-self: flex-start;
-  margin-top: 4px;
+  height: 36px;
+  padding: 0 6px;
+  border-radius: var(--radius-label);
   font: 600 var(--fs-caption) / 1 var(--font);
   color: var(--ink-2);
 }
 .upNextCancel:hover { color: var(--paper); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Skip Intro, Skip Recap, Skip Credits: bottom right above the scrubber, where Up Next also comes (never both).
+   The one yellow fill on the screen is the next action. It rides up with the controls and fades after its segment. */
+.skipLayer {
+  --bottom-band: 124px;
+  position: absolute;
+  z-index: 4;
+  right: calc(var(--inset-right) + var(--margin));
+  bottom: calc(var(--inset-bottom) + 24px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  transition: transform var(--dur-move) var(--ease-out);
+}
+.skipLayer[data-lifted] { transform: translateY(calc(-1 * (var(--bottom-band) - 24px + 6px))); }
+@keyframes skipIn { from { opacity: 0; translate: 0 6px; } }
+.skipLayer .skipButton {
+  animation: skipIn var(--dur-move) var(--ease-out);
+  transition: opacity var(--dur-move) ease, transform var(--dur-state) var(--ease-out), background-color var(--dur-state) ease;
+}
+.skipLayer .skipButton[data-leaving] { opacity: 0; pointer-events: none; }
+.skipButton svg { width: 16px; height: 16px; }
+/* "Skipped intro" with Undo, after Skip Automatically: flat, on the panel colour, quiet. */
+.skipNote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 6px 0 16px;
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  font: 600 var(--fs-small) / 1 var(--font);
+  animation: skipIn var(--dur-move) var(--ease-out);
+}
+.skipUndo {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-label);
+  color: var(--paper);
+  font: 600 var(--fs-small) / 1 var(--font);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: background-color var(--dur-state) ease;
+}
+.skipUndo:hover { background: var(--base-3); }
+
+/* Are You Still Watching?: over the paused picture, one question and two answers. */
+.ask {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--inset-top) + 16px) calc(var(--inset-right) + 16px) calc(var(--inset-bottom) + 16px) calc(var(--inset-left) + 16px);
+  background: color-mix(in srgb, var(--edge) 82%, transparent);
+  animation: panel var(--dur-state) var(--ease-out);
+}
+.askCard {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 28px 24px 24px;
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  text-align: center;
+}
+.askTitle { font: 700 var(--fs-title3) / 1.15 var(--font); letter-spacing: -0.015em; text-wrap: balance; }
+.askNext { font: 400 var(--fs-footnote) / 1.4 var(--font); color: var(--ink-2); text-wrap: balance; }
+.askActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
 
 /* Notices (No Sound, Couldn't Convert the Audio, Playback Is Struggling): under the title row, so
    neither the controls nor the subtitles are behind them. */
@@ -522,7 +610,8 @@
 /* Phones and short windows: tighter, and the transport shrinks to fit a landscape iPhone. */
 @media (max-width: 720px), (max-height: 500px) {
   .controls { --bottom-band: 112px; }
-  .upNext { --bottom-band: 112px; }
+  .upNext, .skipLayer { --bottom-band: 112px; }
+  .upNextStill { --w: 112px; }
   /* A phone's width holds one card: a notice (No Sound, Playback Is Struggling) takes it. */
   .noSound ~ .info { display: none; }
   /* As wide as the notices, and dense enough to stay above the transport in the middle. */
@@ -565,7 +654,6 @@
   .shelfRow { gap: 12px; padding-top: 4px; }
   .shelfRow > li { width: 152px; }
   .episodeName { font-size: var(--fs-caption); }
-  .upNextText { width: 140px; }
   /* A panel is as tall as the picture here, so the transport steps aside rather than sit behind it. */
   .controls[data-panel] .transport { visibility: hidden; }
 }

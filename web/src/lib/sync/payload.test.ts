@@ -228,6 +228,12 @@ describe('applying a section here', () => {
     expect(settingsPatch('keys', null, settings())).toBeNull()
   })
 
+  it('carries the skip-segment keys both ways, without a blank browser clearing them', () => {
+    expect(localValue('keys', settings({ introDBKey: 'intro', publicMetaDBKey: 'pmdb' }))).toEqual({ tmdbAPIKey: null, introDBAPIKey: 'intro', publicMetaDBAPIKey: 'pmdb' })
+    expect(localValue('keys', settings())).toEqual({ tmdbAPIKey: null })
+    expect(settingsPatch('keys', { tmdbAPIKey: null, introDBAPIKey: ' intro ', publicMetaDBAPIKey: 'pmdb' }, settings())).toEqual({ tmdbKey: '', introDBKey: 'intro', publicMetaDBKey: 'pmdb' })
+  })
+
   it('keeps an add-on’s saved manifest and a server’s on/off switch', () => {
     const manifest = { id: 'a', name: 'A', version: '1', resources: ['stream'] }
     const local = settings({ addons: [{ url: 'u1', name: 'A', enabled: true, manifest }], servers: [{ ...server, enabled: false }] })

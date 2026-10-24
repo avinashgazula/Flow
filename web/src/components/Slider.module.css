@@ -13,12 +13,12 @@
 }
 .slider::-webkit-slider-runnable-track {
   height: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-perf);
   background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), var(--base-4) 0);
 }
 .slider::-moz-range-track {
   height: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-perf);
   background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), var(--base-4) 0);
 }
 .slider::-webkit-slider-thumb {

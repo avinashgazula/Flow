@@ -89,7 +89,7 @@
 .warn { color: var(--warn); }
 
 .placeholder .row { cursor: default; }
-.bar { display: block; border-radius: 999px; background: var(--base-3); animation: pulse 1.4s ease-in-out infinite; }
+.bar { display: block; border-radius: var(--radius-full); background: var(--base-3); animation: pulse 1.4s ease-in-out infinite; }
 .placeholder .content { gap: 9px; }
 
 .empty { display: grid; justify-items: center; gap: var(--space-xs); padding: var(--space-xxl) var(--space-l); text-align: center; color: var(--ink-2); }

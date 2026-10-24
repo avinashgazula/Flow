@@ -35,6 +35,10 @@ export type FontChoice = 'system' | 'inter' | 'geist' | 'manrope' | 'ioskeley'
  *  language (the first subtitle language), or for every title. */
 export type SubtitleMode = 'off' | 'foreign' | 'always'
 
+/** What happens when an intro, recap or the credits begins: a Skip button, skipping by itself, or nothing.
+ *  As FlowKit's SkipBehaviour. */
+export type SkipBehaviour = 'off' | 'button' | 'automatic'
+
 export interface Settings {
   /** TMDB v3 API key or v4 read-access token. */
   tmdbKey: string
@@ -55,6 +59,16 @@ export interface Settings {
   /** How subtitles look. The keys are the apps' (`subtitles.fontScale` and the rest in FlowKit). */
   subtitleStyle: SubtitleStyle
   autoplayNext: boolean
+  /** After this many episodes play one after another with nobody touching anything, Flow asks
+   *  before starting the next. Zero never asks. As the apps' `stillWatchingAfterEpisodes`. */
+  stillWatchingAfterEpisodes: number
+  skipIntro: SkipBehaviour
+  skipRecap: SkipBehaviour
+  skipCredits: SkipBehaviour
+  /** IntroDB and PublicMetaDB API keys: where skip times come from for titles your servers don't
+   *  mark. Named as in Flow Sync (`introDBAPIKey`, `publicMetaDBAPIKey`). Empty means not asked. */
+  introDBKey: string
+  publicMetaDBKey: string
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
   /** The picker offers the source a title was last played from first. */
   rememberLastSource: boolean
@@ -83,6 +97,12 @@ export const defaultSettings: Settings = {
   subtitleMode: 'foreign',
   subtitleStyle: defaultSubtitleStyle,
   autoplayNext: true,
+  stillWatchingAfterEpisodes: 3,
+  skipIntro: 'button',
+  skipRecap: 'button',
+  skipCredits: 'button',
+  introDBKey: '',
+  publicMetaDBKey: '',
   preferredQuality: '1080p',
   rememberLastSource: true,
   font: 'system',

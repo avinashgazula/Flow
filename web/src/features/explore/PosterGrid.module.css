@@ -19,4 +19,4 @@
 .ghostArt, .ghostStrip, .ghostLine { background: var(--base-2); }
 .ghostArt { aspect-ratio: 2 / 3; border-radius: var(--radius-art) var(--radius-art) 0 0; }
 .ghostStrip { height: 22px; background: var(--edge); border-radius: 0 0 var(--radius-art) var(--radius-art); }
-.ghostLine { width: 70%; height: 12px; margin-top: var(--space-s); border-radius: 4px; }
+.ghostLine { width: 70%; height: 12px; margin-top: var(--space-s); border-radius: var(--radius-full); }

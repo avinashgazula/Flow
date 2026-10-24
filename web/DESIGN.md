@@ -33,6 +33,24 @@ typography:
     fontWeight: 700
     lineHeight: 1.1
     letterSpacing: "-0.02em"
+  page-title:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif"
+    fontSize: "34px"
+    fontWeight: 700
+    lineHeight: 1.1
+    letterSpacing: "-0.02em"
+  title-name:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif"
+    fontSize: "46px"
+    fontWeight: 700
+    lineHeight: 1.05
+    letterSpacing: "-0.02em"
+  title3:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif"
+    fontSize: "24px"
+    fontWeight: 700
+    lineHeight: 1.2
+    letterSpacing: "-0.015em"
   headline:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif"
     fontSize: "20px"
@@ -61,11 +79,21 @@ typography:
     lineHeight: 1
     letterSpacing: "0.14em"
     fontFeature: "'tnum'"
+  edge-print-small:
+    fontFamily: "'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif"
+    fontSize: "11px"
+    fontWeight: 600
+    lineHeight: 1
+    letterSpacing: "0.1em"
+    fontFeature: "'tnum'"
 rounded:
   art: "6px"
   label: "8px"
   control: "10px"
   panel: "12px"
+  perforation: "2px"
+  hairline: "1px"
+  full: "999px"
 spacing:
   xxs: "4px"
   xs: "8px"
@@ -281,8 +309,13 @@ Solid Film Base bar, 64px (56px on phones), wordmark with a small yellow mark, l
 ### Player Chrome and Scrubber
 Chrome is flat: panels and notices on Film Base 2 at 94% with a Rule border, transport on base-at-70% circles, no blur. The scrubber is an edge strip: a 9px row of perforations on the band, read-ahead as a lighter Ink 3 at 55%, played in yellow, with a 14px Paper thumb that appears only under the pointer, while dragging or on focus. Under it the time row prints the timecode, time left in yellow and the end time. The seek preview is a small frame with its strip, four perforations filling to where you would land and the time in print.
 
+**Over the picture, one action at a time.** The Skip Intro, Skip Recap or Next Episode button is the primary yellow button, bottom right above the scrubber, and rides up with the controls. An automatic skip leaves a short Film Base 2 note ("Skipped intro") with a quiet Undo. Are You Still Watching? is a Film Base 2 card with Keep Watching (primary, focused) and Stop. The Up Next card leads with the episode's still and title; its countdown lives only on the strip.
+
 ### Sheets and Panels
-The source picker is a flat Film Base 2 sheet (12px radius, hairline ring) over the overlay scrim; each source is a film-can row. Panels fade in over 150ms; the sheet rises over 220ms.
+The source picker is a flat Film Base 2 sheet (12px radius, hairline ring) over the overlay scrim; each source is a film-can row. Panels fade in over 150ms; the sheet rises over 220ms. Explore's Filters sheet is the same material: a side panel on wide screens and a bottom sheet on phones. Its choices are chips (current is Film Base 4); a chosen streaming service gets a 2px Paper ring outside its logo plus a drawn check by its name, so a choice never looks like keyboard focus.
+
+### Settings Rows
+Grouped Film Base 2 lists with a Rule between rows and a sentence-case footer under each group. Yellow appears only on a switch that is on, the one primary action of the group, and focus. Destructive actions (Clear Cache, Reset Everything, Turn Off and Erase) are secondary buttons with Signal Red text and a confirm step. The sync key is set in the system monospace face, grouped in fours, because it is typed by hand and 0 must never be read as O; it's the one place a monospace face appears.
 
 ## Do's and Don'ts
 

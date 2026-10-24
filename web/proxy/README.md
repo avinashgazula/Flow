@@ -124,6 +124,12 @@ Other debrid services work the same way: allow their download hosts (`*.alldebri
 `*.premiumize.me`, `*.torbox.app`, `*.debrid-link.com`, `*.offcloud.com`, or whatever host the
 redirect lands on). If a file fails, the Worker's answer says which host it refused.
 
+### Skip times
+
+Flow's skip buttons also use the proxy for IntroDB, whose answers a web page can't read directly. Add
+`api.introdb.app` to `ALLOWED_HOSTS` and give Flow its key in **Settings → Playback → Skip Services**. (PublicMetaDB
+needs a sign-in header, which the proxy never forwards, so it isn't reachable from a web page.)
+
 ## Use it in Flow
 
 Open Flow's **Settings → Playback → Stream Proxy** and paste the Worker's address with `{url}` where
