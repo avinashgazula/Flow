@@ -15,7 +15,7 @@ describe('normalizeProviders', () => {
 
   it('orders by the region’s display priority and numbers the ranks', () => {
     const list = normalizeProviders(raw, 'US')
-    expect(list.map((p) => p.name)).toEqual(['Netflix', 'Apple TV+', 'Disney Plus'])
+    expect(list.map((p) => p.name)).toEqual(['Netflix', 'Apple TV+', 'Disney+'])
     expect(list.map((p) => p.rank)).toEqual([0, 1, 2])
   })
 
