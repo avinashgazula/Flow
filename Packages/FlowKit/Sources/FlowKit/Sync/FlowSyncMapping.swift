@@ -27,6 +27,28 @@ public enum FlowSyncMapping {
         ]
     }
 
+    /// Whether a change to credentials touched anything that syncs, so the app can skip a round for the rest.
+    public static func changed(from old: Credentials, to new: Credentials) -> Bool {
+        keysData(old) != keysData(new) || accountsData(old) != accountsData(new)
+    }
+
+    /// The same for settings, without encoding all of them: the add-ons, servers, languages and subtitle style.
+    public static func changed(from old: AppSettings, to new: AppSettings) -> Bool {
+        old.sources.addons != new.sources.addons
+            || old.mediaServers.servers != new.mediaServers.servers
+            || old.playback.preferredAudioLanguage != new.playback.preferredAudioLanguage
+            || old.playback.audioFallbackLanguage != new.playback.audioFallbackLanguage
+            || old.subtitles.preferredLanguages != new.subtitles.preferredLanguages
+            || old.subtitles.fontScale != new.subtitles.fontScale
+            || old.subtitles.font != new.subtitles.font
+            || old.subtitles.weight != new.subtitles.weight
+            || old.subtitles.color != new.subtitles.color
+            || old.subtitles.edgeStyle != new.subtitles.edgeStyle
+            || old.subtitles.background != new.subtitles.background
+            || old.subtitles.backgroundOpacity != new.subtitles.backgroundOpacity
+            || old.subtitles.verticalPosition != new.subtitles.verticalPosition
+    }
+
     // MARK: keys
 
     static func keyFields() -> [(String, WritableKeyPath<Credentials, String?>)] {

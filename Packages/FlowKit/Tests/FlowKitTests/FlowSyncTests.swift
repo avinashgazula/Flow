@@ -1,5 +1,8 @@
 import XCTest
 @testable import FlowKit
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 #if canImport(CryptoKit)
 import CryptoKit
 #endif
@@ -328,6 +331,25 @@ final class FlowSyncMappingTests: XCTestCase {
         XCTAssertEqual(settings.subtitles.font, .system)
         XCTAssertEqual(settings.subtitles.color, .cyan)
         XCTAssertEqual(settings.subtitles.fontScale, 1.0)
+    }
+
+    func testChangeDetectionSeesOnlySyncedValues() {
+        var settings = AppSettings()
+        var changed = settings
+        changed.playback.autoPlayNextEpisode.toggle()
+        changed.general.haptics.toggle()
+        XCTAssertFalse(FlowSyncMapping.changed(from: settings, to: changed))
+        changed.subtitles.verticalPosition = 0.3
+        XCTAssertTrue(FlowSyncMapping.changed(from: settings, to: changed))
+        settings.sources.addons = [AddonConfig(manifestURL: URL(string: "https://a.example/manifest.json")!, name: "A")]
+        XCTAssertTrue(FlowSyncMapping.changed(from: AppSettings(), to: settings))
+
+        var credentials = Credentials()
+        var other = credentials
+        other.introDBAPIKey = "not synced"
+        XCTAssertFalse(FlowSyncMapping.changed(from: credentials, to: other))
+        credentials.traktToken = OAuthToken(accessToken: "a")
+        XCTAssertTrue(FlowSyncMapping.changed(from: other, to: credentials))
     }
 
     func testNormalizedIgnoresWhatThisVersionDoesNotKnow() {
@@ -745,6 +767,19 @@ final class FlowSyncEngineTests: XCTestCase {
             XCTAssertEqual(error as? FlowSyncError, .erased)
         }
         XCTAssertNil(worker.record)
+    }
+
+    func testJoiningAKeyWithNoRecordIsRefusedInsteadOfStartingAnotherSync() async throws {
+        let worker = FakeSyncWorker()
+        let tv = try engine(worker, device: "Apple TV")
+        do {
+            _ = try await tv.sync(local: sections(tmdb: "mine"), state: FlowSyncState(), createIfMissing: false, now: t1)
+            XCTFail("expected it to refuse")
+        } catch {
+            XCTAssertEqual(error as? FlowSyncError, .noSuchSync)
+        }
+        XCTAssertNil(worker.record)
+        XCTAssertEqual(worker.puts, 0)
     }
 
     #if canImport(CryptoKit)

@@ -154,8 +154,11 @@ public struct FlowSyncEngine: Sendable {
     }
 
     /// `local` is every known section's data on this device (see `FlowSyncMapping.sections`).
-    public func sync(local: [String: JSONValue], state: FlowSyncState, now: Date = Date()) async throws -> FlowSyncOutcome {
+    /// `createIfMissing` is false when joining someone else's sync: a key with no record is a mistyped key,
+    /// and writing one would quietly start a second, empty sync.
+    public func sync(local: [String: JSONValue], state: FlowSyncState, createIfMissing: Bool = true, now: Date = Date()) async throws -> FlowSyncOutcome {
         var record = try await client.get()
+        if record == nil && !createIfMissing { throw FlowSyncError.noSuchSync }
         // A record that was there before and is gone was erased on another device: writing it back would undo that.
         if record == nil && state.rev > 0 { throw FlowSyncError.erased }
 

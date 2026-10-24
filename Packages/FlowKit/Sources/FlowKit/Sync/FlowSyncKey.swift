@@ -12,6 +12,7 @@ public enum FlowSyncError: Error, LocalizedError, Equatable, Sendable {
     case tooManyConflicts
     case unreadable
     case erased
+    case noSuchSync
     case unexpectedResponse
     case server(status: Int)
     case cryptoUnavailable
@@ -28,6 +29,7 @@ public enum FlowSyncError: Error, LocalizedError, Equatable, Sendable {
         case .tooManyConflicts: return "Another device kept changing the synced settings. Flow will try again in a moment."
         case .unreadable: return "Couldn't read the synced settings. Update Flow on this device, or turn sync off and on again."
         case .erased: return "Sync was erased from another device. Turn it off here, then turn it on again to keep syncing."
+        case .noSuchSync: return "No sync was found for that key. Check the key against your other device, and the server address and token."
         case .unexpectedResponse: return "The sync server answered with something Flow didn't expect. Check that the address is your Worker."
         case .server(let status): return "The sync server answered with status \(status). Try again in a moment."
         case .cryptoUnavailable: return "Sync encryption isn't available on this platform."
