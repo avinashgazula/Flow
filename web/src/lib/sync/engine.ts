@@ -226,6 +226,17 @@ async function run(options: Options): Promise<void> {
 /** Sync Now, and the pull at load, on coming back to the tab, and every five minutes. */
 export const syncNow = () => run({ fresh: true })
 
+/** Writes now instead of three seconds from now. A sign-in or a refreshed Trakt token has to reach the other
+ *  devices before they try the refresh token it replaced. Resolves when the write has finished (or failed;
+ *  the status says which). Does nothing when sync is off. */
+export function pushNow(): Promise<void> {
+  clearTimeout(timer)
+  return run({ fresh: false })
+}
+
+/** Whether this browser has a sync key. */
+export const syncIsOn = () => loadConfig() !== null
+
 function onSettingsChange() {
   const config = loadConfig()
   if (!config) return

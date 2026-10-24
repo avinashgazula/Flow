@@ -40,9 +40,25 @@ export type SubtitleMode = 'off' | 'foreign' | 'always'
  *  As FlowKit's SkipBehaviour. */
 export type SkipBehaviour = 'off' | 'button' | 'automatic'
 
+/** A Trakt sign-in in the shape Flow Sync and the apps keep it (docs/SYNC.md, accounts). `redirectURI` is the
+ *  one the token was issued against; a refresh quotes it back. */
+export interface TraktToken {
+  accessToken: string
+  refreshToken: string | null
+  /** ISO 8601, or null when Trakt gave no lifetime. */
+  expiresAt: string | null
+  redirectURI: string | null
+}
+
 export interface Settings {
   /** TMDB v3 API key or v4 read-access token. */
   tmdbKey: string
+  /** The Client ID of the owner's own Trakt app. Trakt issues no secret for PKCE apps, so this is all it takes. */
+  traktClientID: string
+  /** Simkl's Client ID. The website doesn't sign in to Simkl yet; the field keeps the apps' value through Sync. */
+  simklClientID: string
+  /** Who the website is signed in to Trakt as. Travels through Flow Sync, so any device's sign-in arrives here. */
+  traktAccount: TraktToken | null
   /** Sample data: every screen fills without keys or accounts. */
   demo: boolean
   onboarded: boolean
@@ -89,6 +105,9 @@ const browserLanguage = typeof navigator === 'undefined' ? 'en-US' : navigator.l
 
 export const defaultSettings: Settings = {
   tmdbKey: import.meta.env.VITE_TMDB_KEY ?? '',
+  traktClientID: '',
+  simklClientID: '',
+  traktAccount: null,
   demo: false,
   onboarded: false,
   language: browserLanguage.includes('-') ? browserLanguage : `${browserLanguage}-US`,

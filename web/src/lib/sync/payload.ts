@@ -1,16 +1,17 @@
 /* What Flow Sync carries and how two copies are merged (docs/SYNC.md, Payload). Pure functions over the
    web's settings, so the rules are tested without a browser or a server.
 
-   The record holds sections. The web understands five of them: keys (the TMDB, IntroDB and PublicMetaDB keys; the rest travel through), add-ons, servers,
-   the stream proxy and playback. Everything else in the record (sign-in tokens, the other keys, sections a
-   newer app added, fields a newer app added inside these) is carried through unchanged. */
+   The record holds sections. The web understands six of them: keys (the TMDB, IntroDB, PublicMetaDB, Trakt and Simkl
+   keys; the rest travel through), accounts (the Trakt sign-in; Simkl's travels through), add-ons, servers, the stream
+   proxy and playback. Everything else in the record (the other keys, Simkl's token, sections a newer app added,
+   fields a newer app added inside these) is carried through unchanged. */
 
 import { proxyProblem } from '../sources/proxy'
-import { defaultSettings, type AddonConfig, type ServerConfig, type Settings } from '../store/settings'
+import { defaultSettings, type AddonConfig, type ServerConfig, type Settings, type TraktToken } from '../store/settings'
 import { isSubtitleStyle, normaliseSubtitleStyle } from '../store/subtitleStyle'
 
-export type SectionName = 'keys' | 'addons' | 'servers' | 'streamProxy' | 'playback'
-export const webSections: readonly SectionName[] = ['keys', 'addons', 'servers', 'streamProxy', 'playback']
+export type SectionName = 'keys' | 'accounts' | 'addons' | 'servers' | 'streamProxy' | 'playback'
+export const webSections: readonly SectionName[] = ['keys', 'accounts', 'addons', 'servers', 'streamProxy', 'playback']
 
 type Json = Record<string, unknown>
 
@@ -69,18 +70,22 @@ function readable(section: unknown): Section | undefined {
      - a field of an existing section (a new key in `keys`, say): add it to that entry's `value` (what this
        browser writes) and `patch` (what it does with one that arrives). `overlay` already keeps every other
        field of the section as the record had it, which is how introDBAPIKey, publicMetaDBAPIKey, the
-       Trakt and Simkl client ids and the rest travel through today without the web reading them;
-     - a new section (accounts, once the website signs in to Trakt): add its name to SectionName and
-       webSections, and an entry here. For `accounts` the entry's `overlay` should replace only `trakt` and
-       leave `simkl` as the record has it.
+       OpenSubtitles keys and the rest travel through without the web reading them;
+     - a new section: add its name to SectionName and webSections, and an entry here. `accounts` is the
+       example: its `overlay` replaces only `trakt` and leaves `simkl` as the record has it.
    Everything else (timestamps, merging, unknown sections) is shared. */
 interface SectionDef {
   /** What this browser owns of the section, built from its settings. Also what the section's snapshot is made of. */
   value(s: Settings): unknown
-  /** The section's data to write: this browser's value laid over what the record already held. */
-  overlay(base: unknown, value: unknown): unknown
+  /** The section's data to write: this browser's value laid over what the record already held. `before` is
+   *  this browser's value when it last synced the section (undefined if never), so a field it never had
+   *  isn't written as a blank over one another device set. */
+  overlay(base: unknown, value: unknown, before?: unknown): unknown
   /** The settings a section's data sets here, or null when it can't be applied. */
   patch(data: unknown, current: Settings): Partial<Settings> | null
+  /** Joining a sync normally takes the record's section over this browser's. True when the record's data
+   *  would throw away something this browser holds and the record has nothing to say about it. */
+  keepOnJoin?(data: unknown, current: Settings): boolean
 }
 
 const asKnownServer = (v: unknown): v is Json & { id: string; kind: ServerConfig['kind']; url: string } =>
@@ -99,29 +104,77 @@ function overList(base: unknown, value: unknown, known: (v: unknown) => boolean,
   return [...items, ...old.filter((item) => !known(item))]
 }
 
+/** A Trakt token as the document writes it: the apps' field names, and a time to the second. */
+function tokenOut(t: TraktToken): Json {
+  const expires = time(t.expiresAt)
+  return { accessToken: t.accessToken, refreshToken: t.refreshToken, expiresAt: Number.isFinite(expires) ? stamp(new Date(expires)) : null, redirectURI: t.redirectURI }
+}
+
+/** A Trakt token from the record, or undefined when it has no access token. */
+export function readToken(v: unknown): TraktToken | undefined {
+  if (!isObject(v) || !isString(v.accessToken) || !v.accessToken) return undefined
+  return {
+    accessToken: v.accessToken,
+    refreshToken: isString(v.refreshToken) && v.refreshToken ? v.refreshToken : null,
+    expiresAt: Number.isFinite(time(v.expiresAt)) ? (v.expiresAt as string) : null,
+    redirectURI: isString(v.redirectURI) && v.redirectURI ? v.redirectURI : null,
+  }
+}
+
 const defs: Record<SectionName, SectionDef> = {
   keys: {
     // The key baked into a build is the site's, not the person's: it isn't theirs to sync.
     // The skip-segment keys go up only once this browser has one, so a browser that never set them can't
-    // clear the apps' copy; clearing one on the website therefore stays local.
+    // clear the apps' copy; clearing one on the website therefore stays local. The client ids are the other
+    // way: written as null so a cleared one travels, except that the overlay below drops a null this browser
+    // never had a value for.
     value: (s) => ({
       tmdbAPIKey: s.tmdbKey && s.tmdbKey !== defaultSettings.tmdbKey ? s.tmdbKey : null,
       ...(s.introDBKey ? { introDBAPIKey: s.introDBKey } : {}),
       ...(s.publicMetaDBKey ? { publicMetaDBAPIKey: s.publicMetaDBKey } : {}),
+      traktClientID: s.traktClientID.trim() || null,
+      simklClientID: s.simklClientID.trim() || null,
     }),
-    overlay: overObject,
+    overlay(base, value, before) {
+      const mine = { ...(value as Json) }
+      const was = isObject(before) ? before : {}
+      // Only a client id this browser had and has since cleared is a deliberate blank.
+      for (const field of ['traktClientID', 'simklClientID']) if (mine[field] === null && was[field] == null) delete mine[field]
+      return overObject(base, mine)
+    },
     patch(data, current) {
       if (!isObject(data)) return null
       const key = isString(data.tmdbAPIKey) ? data.tmdbAPIKey.trim() : ''
       const text = (v: unknown) => (isString(v) ? v.trim() : '')
+      // A client id the record doesn't mention at all (an older app wrote it) is left as it is here.
+      const clientID = (field: 'traktClientID' | 'simklClientID') => (field in data ? { [field]: text(data[field]) } : {})
       // A key from another device is a way in: a browser that hasn't been set up needn't ask again.
       return {
         tmdbKey: key || defaultSettings.tmdbKey,
         ...(text(data.introDBAPIKey) ? { introDBKey: text(data.introDBAPIKey) } : {}),
         ...(text(data.publicMetaDBAPIKey) ? { publicMetaDBKey: text(data.publicMetaDBAPIKey) } : {}),
+        ...clientID('traktClientID'),
+        ...clientID('simklClientID'),
         ...(key && !current.onboarded ? { onboarded: true } : {}),
       }
     },
+  },
+  accounts: {
+    value: (s) => ({ trakt: s.traktAccount ? tokenOut(s.traktAccount) : null }),
+    overlay(base, value) {
+      const before = isObject(base) ? base : {}
+      const trakt = (value as Json).trakt
+      // Simkl, and anything else in the section, stays as the record had it; so do fields on the Trakt token the web doesn't know.
+      return { ...before, trakt: trakt === null ? null : { ...(isObject(before.trakt) ? before.trakt : {}), ...(trakt as Json) } }
+    },
+    patch(data) {
+      if (!isObject(data) || !('trakt' in data)) return null
+      if (data.trakt === null) return { traktAccount: null }
+      const token = readToken(data.trakt)
+      return token ? { traktAccount: token } : null
+    },
+    // A sign-out recorded elsewhere is news; "no Trakt in the record" on joining is not.
+    keepOnJoin: (data, current) => current.traktAccount !== null && !(isObject(data) && readToken(data.trakt)),
   },
   addons: {
     value: (s) => s.addons.map((a) => ({ url: a.url, name: a.name, enabled: a.enabled })),
@@ -186,8 +239,27 @@ const defs: Record<SectionName, SectionDef> = {
 
 /** What the web owns of a section, built from its settings. */
 export const localValue = (name: SectionName, s: Settings): unknown => defs[name].value(s)
-export const overlay = (name: SectionName, base: unknown, value: unknown): unknown => defs[name].overlay(base, value)
+export const overlay = (name: SectionName, base: unknown, value: unknown, before?: unknown): unknown => defs[name].overlay(base, value, before)
 export const settingsPatch = (name: SectionName, data: unknown, current: Settings): Partial<Settings> | null => defs[name].patch(data, current)
+
+/** A snapshot without its null fields. A field added to a section later (the Trakt client id) reads as null
+ *  on a device that never set it, which isn't a change from a snapshot made before the field existed. */
+function withoutNulls(snapshot: string): string {
+  try {
+    const v: unknown = JSON.parse(snapshot)
+    return isObject(v) ? JSON.stringify(Object.fromEntries(Object.entries(v).filter(([, x]) => x !== null))) : snapshot
+  } catch {
+    return snapshot
+  }
+}
+
+const parsed = (snapshot: string | undefined): unknown => {
+  try {
+    return snapshot === undefined ? undefined : JSON.parse(snapshot)
+  } catch {
+    return undefined
+  }
+}
 
 /** Whether a value is what a fresh install has, so a device that was never set up doesn't write it. */
 function isEmpty(name: SectionName, value: unknown): boolean {
@@ -206,7 +278,7 @@ export function detectChanges(settings: Settings, metas: Metas, now: Date, devic
     const value = localValue(name, settings)
     const snapshot = JSON.stringify(value)
     const meta = next[name]
-    if (meta ? snapshot !== meta.snapshot : !isEmpty(name, value)) {
+    if (meta ? withoutNulls(snapshot) !== withoutNulls(meta.snapshot) : !isEmpty(name, value)) {
       // Times are to the second, so a change made right after the last one would tie with it and lose.
       // Mine is always at least a second after what it replaces.
       const after = meta ? time(meta.updatedAt) + 1000 : 0
@@ -235,7 +307,8 @@ export function merge(remote: Payload | null, settings: Settings, metas: Metas, 
   const known: Metas = { ...metas }
   if (adopt) {
     for (const name of webSections) {
-      if (!known[name] && readable(remote?.sections[name])) known[name] = { updatedAt: new Date(0).toISOString(), device: '', snapshot: JSON.stringify(localValue(name, settings)) }
+      const theirs = readable(remote?.sections[name])
+      if (!known[name] && theirs && !defs[name].keepOnJoin?.(theirs.data, settings)) known[name] = { updatedAt: new Date(0).toISOString(), device: '', snapshot: JSON.stringify(localValue(name, settings)) }
     }
   }
   const detected = detectChanges(settings, known, now, device)
@@ -254,7 +327,7 @@ export function merge(remote: Payload | null, settings: Settings, metas: Metas, 
       patch = { ...patch, ...change }
       nextMetas[name] = { updatedAt: theirs.updatedAt, device: isString(theirs.device) ? theirs.device : '', snapshot: JSON.stringify(localValue(name, working)) }
     } else if (mine && (!theirs || time(mine.updatedAt) > time(theirs.updatedAt))) {
-      sections[name] = { ...theirs, updatedAt: mine.updatedAt, device: mine.device, data: overlay(name, theirs?.data, localValue(name, working)) }
+      sections[name] = { ...theirs, updatedAt: mine.updatedAt, device: mine.device, data: overlay(name, theirs?.data, localValue(name, working), parsed(known[name]?.snapshot)) }
     }
   }
   return { payload: { ...remote, v: 1, sections }, patch, metas: nextMetas }

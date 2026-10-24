@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { AboutSection } from './AboutSection'
+import { AccountSection } from './AccountSection'
 import { AddonsSection } from './AddonsSection'
 import { AppearanceSection } from './AppearanceSection'
 import { CatalogueSection } from './CatalogueSection'
@@ -16,6 +17,7 @@ const sections: { id: string; title: string; body: ReactNode }[] = [
   { id: 'servers', title: 'Media Servers', body: <ServersSection /> },
   { id: 'livetv', title: 'Live TV', body: <LiveTVSection /> },
   { id: 'playback', title: 'Playback', body: <PlaybackSection /> },
+  { id: 'account', title: 'Account', body: <AccountSection /> },
   { id: 'data', title: 'Data', body: <DataSection /> },
   { id: 'about', title: 'About', body: <AboutSection /> },
 ]
