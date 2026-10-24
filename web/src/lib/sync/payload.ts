@@ -1,7 +1,7 @@
 /* What Flow Sync carries and how two copies are merged (docs/SYNC.md, Payload). Pure functions over the
    web's settings, so the rules are tested without a browser or a server.
 
-   The record holds sections. The web understands five of them: keys (only the TMDB key; the rest travel through), add-ons, servers,
+   The record holds sections. The web understands five of them: keys (the TMDB, IntroDB and PublicMetaDB keys; the rest travel through), add-ons, servers,
    the stream proxy and playback. Everything else in the record (sign-in tokens, the other keys, sections a
    newer app added, fields a newer app added inside these) is carried through unchanged. */
 
@@ -102,13 +102,25 @@ function overList(base: unknown, value: unknown, known: (v: unknown) => boolean,
 const defs: Record<SectionName, SectionDef> = {
   keys: {
     // The key baked into a build is the site's, not the person's: it isn't theirs to sync.
-    value: (s) => ({ tmdbAPIKey: s.tmdbKey && s.tmdbKey !== defaultSettings.tmdbKey ? s.tmdbKey : null }),
+    // The skip-segment keys go up only once this browser has one, so a browser that never set them can't
+    // clear the apps' copy; clearing one on the website therefore stays local.
+    value: (s) => ({
+      tmdbAPIKey: s.tmdbKey && s.tmdbKey !== defaultSettings.tmdbKey ? s.tmdbKey : null,
+      ...(s.introDBKey ? { introDBAPIKey: s.introDBKey } : {}),
+      ...(s.publicMetaDBKey ? { publicMetaDBAPIKey: s.publicMetaDBKey } : {}),
+    }),
     overlay: overObject,
     patch(data, current) {
       if (!isObject(data)) return null
       const key = isString(data.tmdbAPIKey) ? data.tmdbAPIKey.trim() : ''
+      const text = (v: unknown) => (isString(v) ? v.trim() : '')
       // A key from another device is a way in: a browser that hasn't been set up needn't ask again.
-      return { tmdbKey: key || defaultSettings.tmdbKey, ...(key && !current.onboarded ? { onboarded: true } : {}) }
+      return {
+        tmdbKey: key || defaultSettings.tmdbKey,
+        ...(text(data.introDBAPIKey) ? { introDBKey: text(data.introDBAPIKey) } : {}),
+        ...(text(data.publicMetaDBAPIKey) ? { publicMetaDBKey: text(data.publicMetaDBAPIKey) } : {}),
+        ...(key && !current.onboarded ? { onboarded: true } : {}),
+      }
     },
   },
   addons: {
