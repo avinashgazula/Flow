@@ -58,6 +58,7 @@ struct AccountSettingsView: View {
                 } else {
                     #if os(tvOS)
                     Button("Sign In to Trakt") { signIn = .trakt }
+                    NavigationLink(value: Route.settings(.sync)) { Text("Bring a Sign-In with Sync") }
                     #else
                     Button {
                         Task { await signInToTrakt() }
@@ -76,9 +77,9 @@ struct AccountSettingsView: View {
                 if let traktError {
                     Text(traktError).foregroundStyle(.red)
                 } else if Platform.isTV, model.credentials.traktToken == nil, model.traktClientID != nil {
-                    // Apple TV signs in with a code. Credentials sync through iCloud Keychain, so a sign-in
-                    // made on another device usually shows up here without any code at all.
-                    Text("Already signed in to Trakt on your iPhone, iPad or Mac? iCloud Keychain brings that sign-in to Apple TV.")
+                    // Apple TV signs in with a code. A sign-in made on another device arrives through Flow Sync, or through
+                    // iCloud Keychain where the build can use it, without any code at all.
+                    Text("Already signed in to Trakt or Simkl on your iPhone, iPad, Mac or the website? Flow Sync, or iCloud Keychain, brings that sign-in to Apple TV.")
                 }
             }
 
