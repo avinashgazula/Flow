@@ -304,18 +304,21 @@ A frame item is one link: plate, a 15px/600 title (one line, ellipsis) and one 1
 The title page's "how this plays" answer. A Film Base 2 panel with a hairline and 8px radius, rows of key and value in edge print: keys in Ink 3 (12px), values in Paper (15px, 0.08em). Direct play is yellow, compromises amber, quiet states Ink 3. The version row wraps only between parts, with the separator dot leading the next part. The sources row is a whole-line control with an underline and a chevron.
 
 ### Navigation
-Solid Film Base bar, 64px (56px on phones), wordmark with a small yellow mark, links 15px at 500 in Ink 2; the current link is Paper at 600 with a 2px yellow underline. On phones the links give way to a Film Base 2 tab bar where the current tab is yellow.
+Solid Film Base bar, 64px (56px on phones), wordmark with a small yellow mark, links 15px at 500 in Ink 2; the current link is Paper at 600 with a 2px yellow underline. On phones the links give way to a Film Base 2 tab bar where the current tab is yellow. The order of both is a setting (Settings → Appearance → Tab Order, up and down buttons); a section the saved order doesn't know takes its default place.
 
 ### Player Chrome and Scrubber
 Chrome is flat: panels and notices on Film Base 2 at 94% with a Rule border, transport on base-at-70% circles, no blur. The scrubber is an edge strip: a 9px row of perforations on the band, read-ahead as a lighter Ink 3 at 55%, played in yellow, with a 14px Paper thumb that appears only under the pointer, while dragging or on focus. Under it the time row prints the timecode, time left in yellow and the end time. The seek preview is a small frame with its strip, four perforations filling to where you would land and the time in print.
 
 **Over the picture, one action at a time.** The Skip Intro, Skip Recap or Next Episode button is the primary yellow button, bottom right above the scrubber, and rides up with the controls. An automatic skip leaves a short Film Base 2 note ("Skipped intro") with a quiet Undo. Are You Still Watching? is a Film Base 2 card with Keep Watching (primary, focused) and Stop. The Up Next card leads with the episode's still and title; its countdown lives only on the strip.
 
+### App Notes
+Two quiet notes about Flow itself: "You're offline. Flow needs a connection to reach your sources." while the browser has no connection, and "Flow was updated." with a secondary Reload and a dismiss. Flat Film Base 2 panels with a hairline ring, 12px radius, 15px Paper text; bottom left on a wide screen, full width just above the tab bar on a phone, rising in over 220ms. Neither is yellow (Reload is not the screen's next action), neither blocks anything, and neither shows during playback. `offline.html` is the same words on the film-base ground with one primary Try Again, for the case where even the saved page is gone.
+
 ### Sheets and Panels
 The source picker is a flat Film Base 2 sheet (12px radius, hairline ring) over the overlay scrim; each source is a film-can row. Panels fade in over 150ms; the sheet rises over 220ms. Explore's Filters sheet is the same material: a side panel on wide screens and a bottom sheet on phones. Its choices are chips (current is Film Base 4); a chosen streaming service gets a 2px Paper ring outside its logo plus a drawn check by its name, so a choice never looks like keyboard focus.
 
 ### Settings Rows
-Grouped Film Base 2 lists with a Rule between rows and a sentence-case footer under each group. Yellow appears only on a switch that is on, the one primary action of the group, and focus. Destructive actions (Clear Cache, Reset Everything, Turn Off and Erase) are secondary buttons with Signal Red text and a confirm step. The sync key is set in the system monospace face, grouped in fours, because it is typed by hand and 0 must never be read as O; it's the one place a monospace face appears.
+Grouped Film Base 2 lists with a Rule between rows and a sentence-case footer under each group. Yellow appears only on a switch that is on, the one primary action of the group, and focus. Destructive actions (Clear Cache, Reset Everything, Turn Off and Erase) are secondary buttons with Signal Red text and a confirm step. The sync key is set in the system monospace face, grouped in fours, because it is typed by hand and 0 must never be read as O; it's the one place a monospace face appears. About offers Install Flow as a secondary compact button only where the browser can install it (an iPhone or iPad gets one sentence about Share instead), and nothing once it is installed.
 
 ## Do's and Don'ts
 

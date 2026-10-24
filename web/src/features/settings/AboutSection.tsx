@@ -23,7 +23,7 @@ export function AboutSection() {
           </button>
         </Row>
       )}
-      {install === 'ios' && <Row label="Install Flow" detail="Tap Share, then Add to Home Screen, and Flow opens from your Home Screen like an app." />}
+      {install === 'ios' && <Row label="Install Flow" detail="In Safari, tap Share, then Add to Home Screen." />}
       {used && <Row label="Stored in This Browser" detail="Cache, library and settings">{used}</Row>}
       <Row label="Metadata">
         <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer">
