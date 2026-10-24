@@ -17,6 +17,16 @@ export interface WatchProvider extends Provider {
   rank: number
 }
 
+/** TMDB spells some services out ("Disney Plus"); Flow writes them the way they brand themselves. */
+const brandNames: Record<string, string> = {
+  'Disney Plus': 'Disney+',
+  'Paramount Plus': 'Paramount+',
+  'Apple TV Plus': 'Apple TV+',
+  'Paramount Plus Apple TV Channel': 'Paramount+ Apple TV Channel',
+  'Peacock Premium': 'Peacock',
+}
+export const brandName = (name: string) => brandNames[name] ?? name
+
 /** The raw `/watch/providers/{movie|tv}` answer as a clean, ordered list: services without a name are
  *  dropped, an id listed twice keeps its first entry, and the order is TMDB's display priority for the
  *  region (ties and unranked services fall back to the order they came in). */
@@ -30,7 +40,7 @@ export function normalizeProviders(raw: unknown, region: string): WatchProvider[
     if (!Number.isInteger(id) || id <= 0 || !name || seen.has(id)) return
     seen.add(id)
     const priority = Number(r.display_priorities?.[region] ?? r.display_priority)
-    list.push({ provider: { id, name, logo: r.logo_path ?? undefined }, priority: Number.isFinite(priority) ? priority : Infinity, index })
+    list.push({ provider: { id, name: brandName(name), logo: r.logo_path ?? undefined }, priority: Number.isFinite(priority) ? priority : Infinity, index })
   })
   list.sort((a, b) => (a.priority === b.priority ? a.index - b.index : a.priority - b.priority))
   return list.map((x, rank) => ({ ...x.provider, rank }))
