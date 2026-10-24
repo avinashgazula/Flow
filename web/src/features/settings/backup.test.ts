@@ -125,4 +125,15 @@ describe('settings backup', () => {
       expect(r.ok && r.skipped.sort()).toEqual(['introDBKey', 'skipCredits', 'skipIntro', 'stillWatchingAfterEpisodes'])
     })
   })
+
+  it('carries the Trakt Client ID and sign-in, and skips a sign-in without an access token', () => {
+    const token = { accessToken: 'a', refreshToken: 'r', expiresAt: '2026-11-01T00:00:00Z', redirectURI: 'https://flow.example.com/settings/trakt-callback' }
+    const parse = (traktAccount: unknown) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { traktClientID: 'cid', simklClientID: '', traktAccount } }))
+    const good = parse(token)
+    expect(good.ok && good.settings).toEqual({ traktClientID: 'cid', simklClientID: '', traktAccount: token })
+    expect(parse(null).ok && (parse(null) as { settings: object }).settings).toMatchObject({ traktAccount: null })
+    const bad = parse({ accessToken: '', refreshToken: null, expiresAt: null, redirectURI: null })
+    expect(bad.ok && bad.skipped).toEqual(['traktAccount'])
+    expect(defaultSettings.traktAccount).toBeNull()
+  })
 })

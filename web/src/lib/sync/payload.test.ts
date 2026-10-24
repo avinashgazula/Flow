@@ -17,8 +17,18 @@ function pull(remote: Payload | null, local: Settings, metas: Metas, minutes: nu
 
 describe('what the web puts in each section', () => {
   it('maps the TMDB key to tmdbAPIKey, and nothing to null', () => {
-    expect(localValue('keys', settings({ tmdbKey: 'abc' }))).toEqual({ tmdbAPIKey: 'abc' })
-    expect(localValue('keys', settings({ tmdbKey: '' }))).toEqual({ tmdbAPIKey: null })
+    expect(localValue('keys', settings({ tmdbKey: 'abc' }))).toEqual({ tmdbAPIKey: 'abc', traktClientID: null, simklClientID: null })
+    expect(localValue('keys', settings({ tmdbKey: '' }))).toEqual({ tmdbAPIKey: null, traktClientID: null, simklClientID: null })
+  })
+
+  it('maps the Trakt and Simkl client ids to the keys section', () => {
+    expect(localValue('keys', settings({ traktClientID: ' tc ', simklClientID: 'sc' }))).toMatchObject({ traktClientID: 'tc', simklClientID: 'sc' })
+  })
+
+  it('writes the Trakt sign-in in the apps’ shape, with the time to the second', () => {
+    const traktAccount = { accessToken: 'a', refreshToken: 'r', expiresAt: '2026-11-01T10:00:00.123Z', redirectURI: 'https://flow.example.com/settings/trakt-callback' }
+    expect(localValue('accounts', settings({ traktAccount }))).toEqual({ trakt: { accessToken: 'a', refreshToken: 'r', expiresAt: '2026-11-01T10:00:00Z', redirectURI: 'https://flow.example.com/settings/trakt-callback' } })
+    expect(localValue('accounts', settings())).toEqual({ trakt: null })
   })
 
   it('writes add-ons, servers, the proxy and playback in the document’s shapes', () => {
@@ -42,7 +52,7 @@ describe('what the web puts in each section', () => {
   })
 })
 
-const webValues = (s: Settings) => (['keys', 'addons', 'servers', 'streamProxy', 'playback'] as const).map((n) => localValue(n, s))
+const webValues = (s: Settings) => (['keys', 'accounts', 'addons', 'servers', 'streamProxy', 'playback'] as const).map((n) => localValue(n, s))
 
 describe('noticing a local change', () => {
   it('writes nothing for a browser nobody has set up', () => {
@@ -208,6 +218,90 @@ describe('merging with the record', () => {
   })
 })
 
+const nativeToken = { accessToken: 'native-a', refreshToken: 'native-r', expiresAt: '2026-11-02T00:00:00Z', redirectURI: 'flow://trakt-callback' }
+
+describe('the Trakt sign-in and client ids through Sync', () => {
+  it('signs the website in from a token another device wrote, keeping the redirect URI it was issued against', () => {
+    const out = pull(record({ accounts: section(5, { trakt: nativeToken, simkl: { accessToken: 'sk' } }) }), settings(), {}, 9)
+    expect(out.settings.traktAccount).toEqual(nativeToken)
+    // Applying isn't changing: nothing is sent back, and the record is as it was.
+    expect(out.payload.sections.accounts).toEqual(section(5, { trakt: nativeToken, simkl: { accessToken: 'sk' } }))
+    expect(out.metas.accounts).toMatchObject({ updatedAt: iso(5), device: 'iPhone' })
+  })
+
+  it('signs the website out when another device signed out, and a newer token replaces an older one', () => {
+    const signedIn = settings({ traktAccount: nativeToken })
+    const first = pull(record({ accounts: section(5, { trakt: nativeToken, simkl: null }) }), signedIn, {}, 6)
+    const out = pull(record({ accounts: section(8, { trakt: null, simkl: null }) }), first.settings, first.metas, 9)
+    expect(out.settings.traktAccount).toBeNull()
+    const rotated = { ...nativeToken, accessToken: 'newer', refreshToken: 'newer-r' }
+    expect(pull(record({ accounts: section(12, { trakt: rotated, simkl: null }) }), first.settings, first.metas, 13).settings.traktAccount).toEqual(rotated)
+  })
+
+  it('writes a sign-in made here and leaves Simkl and unknown fields as the record had them', () => {
+    const remote = record({ accounts: section(1, { trakt: null, simkl: { accessToken: 'sk', refreshToken: null }, future: 1 }) })
+    const mine = settings({ traktAccount: { accessToken: 'web', refreshToken: 'web-r', expiresAt: null, redirectURI: 'https://flow.example.com/settings/trakt-callback' } })
+    const metas: Metas = { accounts: { updatedAt: iso(1), device: 'iPhone', snapshot: JSON.stringify({ trakt: null }) } }
+    const { payload } = merge(remote, mine, metas, t(4), 'Web')
+    expect(payload.sections.accounts).toEqual({ updatedAt: iso(4), device: 'Web', data: { trakt: { accessToken: 'web', refreshToken: 'web-r', expiresAt: null, redirectURI: 'https://flow.example.com/settings/trakt-callback' }, simkl: { accessToken: 'sk', refreshToken: null }, future: 1 } })
+  })
+
+  it('writes a refreshed token over the old one, keeping fields the web does not know on it', () => {
+    const remote = record({ accounts: section(1, { trakt: { ...nativeToken, scope: 'public' }, simkl: null }) })
+    const refreshed = { ...nativeToken, accessToken: 'fresh', refreshToken: 'fresh-r' }
+    const metas: Metas = { accounts: { updatedAt: iso(1), device: 'iPhone', snapshot: JSON.stringify({ trakt: nativeToken }) } }
+    const { payload } = merge(remote, settings({ traktAccount: refreshed }), metas, t(3), 'Web')
+    expect((payload.sections.accounts!.data as { trakt: unknown }).trakt).toEqual({ ...refreshed, scope: 'public' })
+    expect(payload.sections.accounts!.updatedAt).toBe(iso(3))
+  })
+
+  it('writes a sign-out as a null token, and Simkl stays', () => {
+    const remote = record({ accounts: section(1, { trakt: nativeToken, simkl: { accessToken: 'sk' } }) })
+    const metas: Metas = { accounts: { updatedAt: iso(1), device: 'iPhone', snapshot: JSON.stringify({ trakt: nativeToken }) } }
+    const { payload } = merge(remote, settings(), metas, t(3), 'Web')
+    expect(payload.sections.accounts!.data).toEqual({ trakt: null, simkl: { accessToken: 'sk' } })
+  })
+
+  it('ignores an accounts section with no readable Trakt entry', () => {
+    expect(settingsPatch('accounts', { simkl: null }, settings())).toBeNull()
+    expect(settingsPatch('accounts', { trakt: { refreshToken: 'x' } }, settings())).toBeNull()
+    expect(settingsPatch('accounts', { trakt: { accessToken: 'a' } }, settings())).toEqual({ traktAccount: { accessToken: 'a', refreshToken: null, expiresAt: null, redirectURI: null } })
+  })
+
+  it('keeps a sign-in made here when joining a sync whose record has none, but takes the record’s when it has one', () => {
+    const mine = settings({ traktAccount: { accessToken: 'web', refreshToken: 'r', expiresAt: null, redirectURI: 'u' } })
+    const none = pull(record({ accounts: section(5, { trakt: null, simkl: null }) }), mine, {}, 9, true)
+    expect(none.settings.traktAccount?.accessToken).toBe('web')
+    expect((none.payload.sections.accounts!.data as { trakt: { accessToken: string } }).trakt.accessToken).toBe('web')
+    const has = pull(record({ accounts: section(5, { trakt: nativeToken, simkl: null }) }), mine, {}, 9, true)
+    expect(has.settings.traktAccount).toEqual(nativeToken)
+    expect(has.payload.sections.accounts).toEqual(section(5, { trakt: nativeToken, simkl: null }))
+  })
+
+  it('takes client ids from the record, clears them on null, and leaves them when the record does not mention them', () => {
+    expect(settingsPatch('keys', { tmdbAPIKey: 'k', traktClientID: ' tc ', simklClientID: 'sc' }, settings())).toMatchObject({ traktClientID: 'tc', simklClientID: 'sc' })
+    expect(settingsPatch('keys', { tmdbAPIKey: 'k', traktClientID: null }, settings({ traktClientID: 'old' }))).toMatchObject({ traktClientID: '' })
+    expect(settingsPatch('keys', { tmdbAPIKey: 'k' }, settings({ traktClientID: 'mine' }))).not.toHaveProperty('traktClientID')
+  })
+
+  it('does not write a blank client id over one another device set, but does write a deliberate clear', () => {
+    const remote = record({ keys: section(2, { tmdbAPIKey: 'old', traktClientID: 'from-phone', simklClientID: 'sk' }) })
+    // This browser has never had a Trakt client id and only changed its TMDB key.
+    const typed = merge(remote, settings({ tmdbKey: 'new' }), { keys: { updatedAt: iso(0), device: 'Web', snapshot: JSON.stringify({ tmdbAPIKey: 'old' }) } }, t(5), 'Web')
+    expect(typed.payload.sections.keys!.data).toEqual({ tmdbAPIKey: 'new', traktClientID: 'from-phone', simklClientID: 'sk' })
+    // It had one, and cleared it.
+    const before = { tmdbAPIKey: 'new', traktClientID: 'from-phone', simklClientID: 'sk' }
+    const cleared = merge(remote, settings({ tmdbKey: 'new', simklClientID: 'sk' }), { keys: { updatedAt: iso(0), device: 'Web', snapshot: JSON.stringify(before) } }, t(5), 'Web')
+    expect(cleared.payload.sections.keys!.data).toEqual({ tmdbAPIKey: 'new', traktClientID: null, simklClientID: 'sk' })
+  })
+
+  it('does not take a section’s new null fields for a change on a browser that synced before they existed', () => {
+    const old: Metas = { keys: { updatedAt: iso(2), device: 'Web', snapshot: JSON.stringify({ tmdbAPIKey: 'abc' }) } }
+    expect(detectChanges(settings({ tmdbKey: 'abc' }), old, t(9), 'Web')).toEqual({ metas: old, changed: false })
+    expect(detectChanges(settings({ tmdbKey: 'abc', traktClientID: 'tc' }), old, t(9), 'Web').changed).toBe(true)
+  })
+})
+
 describe('a change right after another', () => {
   it('is at least a second after the time it replaces, so it never ties and loses', () => {
     const first = detectChanges(settings({ tmdbKey: 'a' }), {}, t(1), 'Web').metas
@@ -229,8 +323,8 @@ describe('applying a section here', () => {
   })
 
   it('carries the skip-segment keys both ways, without a blank browser clearing them', () => {
-    expect(localValue('keys', settings({ introDBKey: 'intro', publicMetaDBKey: 'pmdb' }))).toEqual({ tmdbAPIKey: null, introDBAPIKey: 'intro', publicMetaDBAPIKey: 'pmdb' })
-    expect(localValue('keys', settings())).toEqual({ tmdbAPIKey: null })
+    expect(localValue('keys', settings({ introDBKey: 'intro', publicMetaDBKey: 'pmdb' }))).toMatchObject({ tmdbAPIKey: null, introDBAPIKey: 'intro', publicMetaDBAPIKey: 'pmdb' })
+    expect(localValue('keys', settings())).toEqual({ tmdbAPIKey: null, traktClientID: null, simklClientID: null })
     expect(settingsPatch('keys', { tmdbAPIKey: null, introDBAPIKey: ' intro ', publicMetaDBAPIKey: 'pmdb' }, settings())).toEqual({ tmdbKey: '', introDBKey: 'intro', publicMetaDBKey: 'pmdb' })
   })
 

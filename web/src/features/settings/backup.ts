@@ -24,6 +24,9 @@ const isSkipBehaviour = (v: unknown) => ['off', 'button', 'automatic'].includes(
 /** The settings' keys that import accepts, with the type each must have. Anything else in the file is ignored. */
 const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   tmdbKey: (v) => typeof v === 'string',
+  traktClientID: (v) => typeof v === 'string',
+  simklClientID: (v) => typeof v === 'string',
+  traktAccount: (v) => v === null || (isObject(v) && typeof v.accessToken === 'string' && v.accessToken.length > 0 && [v.refreshToken, v.expiresAt, v.redirectURI].every((x) => x === null || typeof x === 'string')),
   demo: (v) => typeof v === 'boolean',
   onboarded: (v) => typeof v === 'boolean',
   language: (v) => typeof v === 'string' && v.length > 0,
