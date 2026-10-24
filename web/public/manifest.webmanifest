@@ -2,13 +2,40 @@
   "name": "Flow",
   "short_name": "Flow",
   "description": "An Apple-quality front end for your own media servers, add-ons and IPTV.",
+  "lang": "en",
+  "categories": ["entertainment", "video"],
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#15120f",
+  "theme_color": "#15120f",
+  "launch_handler": { "client_mode": ["navigate-existing", "auto"] },
+  "handle_links": "preferred",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Continue Watching",
+      "short_name": "Continue",
+      "description": "Pick up where you left off",
+      "url": "library?list=continue",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Upcoming",
+      "description": "What’s next in your library",
+      "url": "library",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Search",
+      "description": "Search movies, shows and people",
+      "url": "search",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
   ]
 }
