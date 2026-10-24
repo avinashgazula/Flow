@@ -40,6 +40,11 @@ struct RootView: View {
                 .switchTint(model.settings.general.accent)
                 .environment(model)
         }
+        .flowModal(isPresented: Binding(get: { model.pendingSyncLink != nil }, set: { if !$0 { model.pendingSyncLink = nil } })) {
+            NavigationStack { SyncJoinView(initialLink: model.pendingSyncLink, isSheet: true) }
+                .switchTint(model.settings.general.accent)
+                .environment(model)
+        }
         .flowModal(item: $model.sourcePickerRequest) { request in
             SourcePickerView(request: request)
                 .environment(model)

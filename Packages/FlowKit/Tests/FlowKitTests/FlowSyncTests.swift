@@ -605,17 +605,20 @@ final class FlowSyncClientTests: XCTestCase {
     func testRequestsCarryTheDocumentedHeadersAndPath() async throws {
         let worker = FakeSyncWorker()
         let c = try client(worker)
-        XCTAssertNil(try await c.get())
+        let none = try await c.get()
+        XCTAssertNil(none)
         let request = try XCTUnwrap(worker.requests.first)
         XCTAssertEqual(request.url?.absoluteString, "https://sync.example.workers.dev/sync/625ee37823f4fad87a1591ef9038d5c6")
         XCTAssertEqual(request.httpMethod, "GET")
         XCTAssertEqual(request.value(forHTTPHeaderField: "X-Flow-Token"), "tok")
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer MF8YRcz1DFlJqMdCJgMOrexYxSLXV50cYLJsfg2ts50")
-        XCTAssertEqual(try await c.put(rev: 0, blob: "abc"), .written(rev: 1))
+        let written = try await c.put(rev: 0, blob: "abc")
+        XCTAssertEqual(written, .written(rev: 1))
         let put = try XCTUnwrap(worker.requests.last)
         XCTAssertEqual(put.value(forHTTPHeaderField: "Content-Type"), "application/json")
         XCTAssertEqual((try JSONSerialization.jsonObject(with: put.httpBody!) as? [String: Any])?["rev"] as? Int, 0)
-        XCTAssertEqual(try await c.get(), FlowSyncRecord(rev: 1, blob: "abc", updatedAt: "2026-10-24T18:00:00Z"))
+        let read = try await c.get()
+        XCTAssertEqual(read, FlowSyncRecord(rev: 1, blob: "abc", updatedAt: "2026-10-24T18:00:00Z"))
         XCTAssertEqual(worker.record?.authHash, "4c921fbf5d2aa65f33ff2423208ef4628a74ddb6f96196e2ff212c073cbd02b0")
     }
 

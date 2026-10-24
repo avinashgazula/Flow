@@ -5,6 +5,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
     case general, account, shelves, mediaServers, webDAV, liveTV, sources, dataStorage, shareSetup, importSetup
     case playback, subtitles, metadata, about
     case sourceAppearance, apiKeys, addons
+    case sync, syncPairing, syncJoin
 
     var id: String { rawValue }
 
@@ -27,6 +28,9 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .sourceAppearance: return "Source Appearance"
         case .apiKeys: return "API Keys"
         case .addons: return "Stream Add-ons"
+        case .sync: return "Sync"
+        case .syncPairing: return "Pairing Link"
+        case .syncJoin: return "Join a Sync"
         }
     }
 
@@ -49,6 +53,9 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .sourceAppearance: return "textformat"
         case .apiKeys: return "key"
         case .addons: return "puzzlepiece.extension"
+        case .sync: return "arrow.triangle.2.circlepath"
+        case .syncPairing: return "qrcode"
+        case .syncJoin: return "arrow.down.circle"
         }
     }
 
@@ -72,6 +79,8 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .sourceAppearance: return .orange
         case .apiKeys: return .blue
         case .addons: return .purple
+        case .sync: return .teal
+        case .syncPairing, .syncJoin: return .teal
         }
     }
 
@@ -95,10 +104,13 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .sourceAppearance: return "badges formatting title"
         case .apiKeys: return "keys opensubtitles subdl introdb sports spoilers scores channel"
         case .addons: return "stremio manifest addon"
+        case .sync: return "flow sync devices share keys api keys sideload sideloaded iphone ipad mac apple tv website cloudflare worker kv pairing link qr code key encrypted end-to-end trakt simkl add-ons servers subtitles languages without icloud"
+        case .syncPairing: return "qr code pairing link share copy sync key join another device"
+        case .syncJoin: return "join sync pairing link paste key server token"
         }
     }
 
-    static let primary: [SettingsPage] = [.general, .account, .shelves, .mediaServers, .webDAV, .liveTV, .sources, .dataStorage, .shareSetup, .importSetup]
+    static let primary: [SettingsPage] = [.general, .account, .sync, .shelves, .mediaServers, .webDAV, .liveTV, .sources, .dataStorage, .shareSetup, .importSetup]
     static let secondary: [SettingsPage] = [.playback, .subtitles, .metadata]
 }
 
@@ -199,6 +211,9 @@ struct SettingsPageView: View {
             case .sourceAppearance: SourceAppearanceView()
             case .apiKeys: APIKeysView()
             case .addons: AddonsSettingsView()
+            case .sync: SyncSettingsView()
+            case .syncPairing: SyncPairingView()
+            case .syncJoin: SyncJoinView()
             }
         }
         .flowPageTitle(page.title)

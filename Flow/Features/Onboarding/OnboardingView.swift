@@ -8,6 +8,7 @@ struct OnboardingView: View {
     @State private var checking = false
     @State private var error: String?
     @State private var importing = false
+    @State private var joiningSync = false
     @State private var appeared = false
 
     var body: some View {
@@ -44,6 +45,10 @@ struct OnboardingView: View {
                                 .font(Theme.Typeface.body)
                                 .foregroundStyle(Theme.Palette.textSecondary)
                                 .buttonStyle(.plain)
+                            Button("Join Flow Sync") { joiningSync = true }
+                                .font(Theme.Typeface.body)
+                                .foregroundStyle(Theme.Palette.textSecondary)
+                                .buttonStyle(.plain)
                         }
                         .opacity(appeared ? 1 : 0)
                     }
@@ -55,6 +60,9 @@ struct OnboardingView: View {
             .background(Theme.Palette.canvas)
             .flowModal(isPresented: $importing) {
                 NavigationStack { ImportSetupView() }.environment(model)
+            }
+            .flowModal(isPresented: $joiningSync) {
+                NavigationStack { SyncJoinView(isSheet: true) }.environment(model)
             }
             .onAppear { withAnimation(.easeOut(duration: 1.1)) { appeared = true } }
         }
