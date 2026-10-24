@@ -80,6 +80,11 @@ All routes sit under `/sync/<id>`, where `id` is 32 lowercase hex characters; an
   - The first `PUT` stores `authHash = sha256hex(auth)` with the record.
   - From then on, every request whose auth hashes differently gets `403 "This sync key doesn't match."`.
   - A `GET` of a missing record is a 404 whatever the auth.
+- **Errors:**
+  - A missing or malformed `Authorization` header, or a missing or wrong token, gets `401`. The token check comes before the 501 check.
+  - `OPTIONS` answers `204` even without KV. A `DELETE` of a missing record is `204`.
+  - Error bodies are plain text.
+- **Erased records:** a `PUT` with a non-zero `rev` on a missing record gets `404` "This sync was erased from another device…" and doesn't recreate it, which keeps Erase meaningful. Clients show that and turn sync off; only `rev` 0 creates a record.
 - **Size:** a blob over 256 KB gets `413`.
 - **No KV binding:** without a KV binding called `SYNC`, every sync route answers `501 "Sync needs a KV namespace bound as SYNC. See web/proxy/README.md."`.
 - **Storage:** KV value `{"authHash", "rev", "blob", "updatedAt"}`.
@@ -123,6 +128,7 @@ The plaintext is JSON:
 - **`playback`:** `{"audioLanguages": [...], "subtitleLanguages": [...], "subtitleStyle": { native SubtitleSettings key names: fontScale, font, weight, color, edgeStyle, background, backgroundOpacity, verticalPosition }}`.
 
 **Merge rules:**
+- **Timestamps** are ISO 8601 UTC. Write them to the second (`2026-10-24T18:00:00Z`) and read them with or without fractional seconds. A local change made within the same second as the section's stored time is stamped one second later, so it can't tie and lose.
 - **Section by section, the newer `updatedAt` wins.** A device bumps a section's `updatedAt` (to now, UTC) only when its own value of that section changes. Pulling and applying a section doesn't bump it.
 - **Keep what you don't understand.** Unknown sections, and unknown fields inside known sections, are kept as received and written back untouched. The apps carry `streamProxy`, and a newer app can add sections without an older one dropping them.
 - **Clearing is a change.** A cleared value, null or an empty list, is a change like any other and wins when it's newer.

@@ -116,6 +116,9 @@
 .note[data-tone='error'] { color: var(--red); }
 .note[data-tone='warning'] { color: var(--warn); }
 .note a { text-decoration: underline; text-underline-offset: 0.2em; }
+/* A word inside a row's detail that acts, like "Change": reads as part of the sentence. */
+.inlineLink { padding: 0; border: 0; background: none; font: inherit; color: var(--paper); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; cursor: pointer; }
+.inlineLink:hover { text-decoration-color: var(--paper); }
 
 /* An add-on or server: icon, name and detail, then its controls. */
 .item {

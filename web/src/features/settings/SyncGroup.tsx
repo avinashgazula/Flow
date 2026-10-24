@@ -105,7 +105,7 @@ function PairingPanel({ link, keyText }: { link: string; keyText: string }) {
   }, [copied])
   return (
     <div className={s.pairing}>
-      <p className={s.hint}>Open this link on your other devices, or scan the code with the Flow app. Anyone who has it can read and change your synced settings, so keep it to yourself.</p>
+      <p className={s.hint}>Open this link on your other devices, or scan the code with a phone’s camera. Anyone who has it can read and change your synced settings, so keep it to yourself.</p>
       <div className={s.linkRow}>
         <input className="field" readOnly value={link} aria-label="Pairing link" onFocus={(e) => e.currentTarget.select()} spellCheck={false} />
         <button
@@ -318,12 +318,22 @@ export function SyncGroup() {
     <>
       <Group title="Sync" footer={whatSyncs}>
         {(!fromProxy || typed) && <ServerFields server={where.server} token={where.token} onChange={setTyped} />}
-        <Row label="Turn On Sync" detail={fromProxy && !typed ? `Uses your stream proxy’s Worker, ${hostOf(fromProxy.server)}` : 'Makes a sync key for your devices'}>
-          {fromProxy && !typed && (
-            <button type="button" className="btn btn-quiet btn-compact" onClick={() => setTyped(fromProxy)}>
-              Change
-            </button>
-          )}
+        <Row
+          label="Turn On Sync"
+          detail={
+            fromProxy && !typed ? (
+              // Change sits in the sentence, so on a phone the row keeps one button and its words room to breathe.
+              <>
+                Uses your stream proxy’s Worker, {hostOf(fromProxy.server)}.{' '}
+                <button type="button" className={s.inlineLink} onClick={() => setTyped(fromProxy)}>
+                  Change
+                </button>
+              </>
+            ) : (
+              'Makes a sync key for your devices'
+            )
+          }
+        >
           <button type="button" className="btn btn-primary btn-compact" onClick={() => void start()} disabled={busy !== undefined}>
             {busy === 'on' ? 'Turning On…' : 'Turn On Sync'}
           </button>
