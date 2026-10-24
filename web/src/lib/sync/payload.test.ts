@@ -202,9 +202,20 @@ describe('merging with the record', () => {
   })
 
   it('ignores a section whose time or data it cannot read', () => {
-    const remote = record({ keys: { updatedAt: 'yesterday', data: { tmdbAPIKey: 'x' } }, addons: { updatedAt: iso(5) }, servers: section(5, 'nonsense') })
+    const remote = record({ keys: { updatedAt: 'yesterday', data: { tmdbAPIKey: 'x' } }, addons: { updatedAt: iso(5) } as never, servers: section(5, 'nonsense') })
     const out = pull(remote, settings(), {}, 9)
     expect(out.patch).toEqual({})
+  })
+})
+
+describe('a change right after another', () => {
+  it('is at least a second after the time it replaces, so it never ties and loses', () => {
+    const first = detectChanges(settings({ tmdbKey: 'a' }), {}, t(1), 'Web').metas
+    const second = detectChanges(settings({ tmdbKey: 'ab' }), first, new Date(t(1).getTime() + 200), 'Web').metas
+    expect(second.keys!.updatedAt).toBe('2026-10-24T18:01:01Z')
+    // Even after a remote change stamped a little ahead by a fast clock.
+    const ahead: Metas = { keys: { updatedAt: iso(30), device: 'iPhone', snapshot: JSON.stringify({ tmdbAPIKey: 'a' }) } }
+    expect(detectChanges(settings({ tmdbKey: 'ab' }), ahead, t(1), 'Web').metas.keys!.updatedAt).toBe('2026-10-24T18:30:01Z')
   })
 })
 

@@ -179,7 +179,10 @@ export function detectChanges(settings: Settings, metas: Metas, now: Date, devic
     const snapshot = JSON.stringify(value)
     const meta = next[name]
     if (meta ? snapshot !== meta.snapshot : !isEmpty(name, value)) {
-      next[name] = { updatedAt: stamp(now), device, snapshot }
+      // Times are to the second, so a change made right after the last one would tie with it and lose.
+      // Mine is always at least a second after what it replaces.
+      const after = meta ? time(meta.updatedAt) + 1000 : 0
+      next[name] = { updatedAt: stamp(new Date(Math.max(now.getTime(), after))), device, snapshot }
       changed = true
     }
   }

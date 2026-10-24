@@ -95,7 +95,7 @@ describe('the blob', () => {
     await expect(decrypt(other, vector.blob)).rejects.toThrow()
     await expect(decrypt({ ...keys, id: 'f'.repeat(32) }, vector.blob)).rejects.toThrow()
     const bytes = fromBase64url(vector.blob)
-    bytes[20] ^= 1
+    bytes[20] = bytes[20]! ^ 1
     await expect(decrypt(keys, base64url(bytes))).rejects.toThrow()
     await expect(decrypt(keys, 'AAAA')).rejects.toThrow()
   })

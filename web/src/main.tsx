@@ -58,6 +58,14 @@ void checkConvertAudio()
 const whenIdle = window.requestIdleCallback ? (run: () => void) => window.requestIdleCallback(run, { timeout: 2000 }) : (run: () => void) => setTimeout(run, 300)
 whenIdle(() => void checkSmoothVideo())
 
+// A browser with Flow Sync on pulls at load. The sync code is its own chunk, fetched only when the
+// setup is there (lib/sync/config.ts names the same key), so a browser without sync never downloads it.
+try {
+  if (localStorage.getItem('flow.sync.v1')) void import('./lib/sync/engine').then(({ startSync }) => startSync())
+} catch {
+  // Blocked storage means no sync setup to find.
+}
+
 // Sample data comes with a lived-in library, as on the other platforms.
 if (settingsStore.get().demo && Object.keys(libraryStore.get().progress).length === 0 && libraryStore.get().watchlist.length === 0) {
   void import('./lib/tmdb/demo').then(({ seedDemo }) => seedDemo())
