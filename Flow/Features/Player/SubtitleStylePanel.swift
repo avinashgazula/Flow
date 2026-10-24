@@ -41,6 +41,8 @@ struct SubtitleStyleTVPanel: View {
                     .focused($focus, equals: .reset)
                     .accessibilityLabel("Reset to Default")
                 }
+                // Takes whatever the preview leaves, so the tiles are wide enough for "Translucent Box".
+                .frame(maxWidth: .infinity)
                 .focusSection()
             }
             Text(SubtitleStyleField.footer)
@@ -64,8 +66,8 @@ struct SubtitleStyleTVPanel: View {
     /// Flow's own overlay at the size it has on the screen, shrunk to fit beside the buttons. Its
     /// margins are those of a full picture, so the text sits where it would on the television.
     private func preview(_ settings: SubtitleSettings) -> some View {
-        let scale: CGFloat = 0.65
-        let size = CGSize(width: 1000, height: 415)
+        let scale: CGFloat = 0.6
+        let size = CGSize(width: 1000, height: 455)
         return SubtitleOverlay(text: "Subtitles look like this.", settings: settings)
             .frame(width: size.width, height: size.height)
             .background(LinearGradient(colors: [.gray, .black], startPoint: .top, endPoint: .bottom))
@@ -104,7 +106,7 @@ private struct StyleTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             HStack {
-                Text(title).font(Theme.Typeface.caption)
+                Text(title).font(Theme.Typeface.caption).lineLimit(1)
                 Spacer(minLength: 0)
                 Image(systemName: symbol).font(.system(size: 18, weight: .bold))
             }
@@ -114,7 +116,7 @@ private struct StyleTile: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
-        .padding(.horizontal, Theme.Space.m)
+        .padding(.horizontal, Theme.Space.s)
         .frame(maxWidth: .infinity, minHeight: SubtitleStyleTVPanel.tileHeight, alignment: .leading)
     }
 }
