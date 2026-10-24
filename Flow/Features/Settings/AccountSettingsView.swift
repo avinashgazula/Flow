@@ -350,7 +350,7 @@ struct APIKeysView: View {
             Section {
                 OptionalTextField(title: "IntroDB API Key", text: $model.credentials.introDBAPIKey, secure: true)
                 TextField("Base URL", text: $model.settings.account.introDBBaseURL).autocorrectionDisabled()
-            } header: { Text("IntroDB") } footer: { Text("Intro, recap and credits timestamps for the Skip button.") }
+            } header: { Text("IntroDB") } footer: { Text("Intro, recap and credits timestamps for the Skip button. A key isn't needed to read them; add one if you have it.") }
 
             Section {
                 OptionalTextField(title: "RPDB API Key", text: $model.credentials.rpdbAPIKey, secure: true)
