@@ -38,6 +38,7 @@ npm test             # unit tests (Vitest)
 | `src/lib/store/` | Settings and library (watchlist, progress, history) in localStorage. |
 | `src/lib/sources/` | Stream add-ons, Jellyfin/Emby and Plex, and source ranking. |
 | `src/features/player/` | The player. |
+| `src/features/livetv/`, `src/lib/livetv/` | Live TV: the channel list, the timeline guide and the live player; the M3U, Xtream Codes and XMLTV code behind them. |
 | `proxy/` | The stream proxy: a Cloudflare Worker that makes blocked file hosts readable. |
 
 ## Rules for speed
@@ -161,6 +162,32 @@ file), where the picture follows the finger a few times a second as before. Wher
   with the same address, seeked on hover and shown in the frame, so it needs no CORS. Created on the first hover; not on
   phones or with Data Saver on.
 - **Jellyfin 10.9+:** the server's trickplay tiles, whatever the engine; no decoding at all.
+
+## Live TV
+
+Home, Explore, Library, **Live TV**, Search. Live TV is the apps' Live TV on the web: IPTV providers (an
+M3U/M3U8 playlist, or an Xtream Codes login) are added in Settings → Live TV, with an optional XMLTV guide
+address. `?demo` brings the sample **Flow Live** provider.
+
+- **Parsers** (`src/lib/livetv/`, tests ported from FlowKit's): `m3u.ts` (tvg-id, tvg-name, tvg-logo,
+  tvg-chno, group-title, catch-up flags, per-channel user agents; VOD entries kept apart), `xtream.ts`
+  (categories, live streams, account, short guide, stream addresses with the login escaped), `xmltv.ts` (a
+  streaming reader: gzip unpacked on the way in, only the playlist's channels and the next day and a half
+  kept) and `epg.worker.ts` (runs it off the main thread). Channels and the guide are kept in IndexedDB
+  until the refresh time in Settings passes (`cache.ts`, `load.ts`).
+- **Network:** most IPTV hosts send no CORS headers and many are `http://`. Playlist, guide and API
+  requests go direct first, then through the **Stream Proxy** (Settings → Playback) if that fails, and
+  straight through it for a host already known to be blocked or one a page can't call at all. Live
+  streams are opened the same way: hls.js is given a loader that sends the manifest and every segment
+  through the proxy (`lib/sources/hlsProxy.ts`). Errors name the host, never the address (it carries the
+  login), and say what to do. The Worker in `proxy/` fetches only https on port 443, so a provider on
+  `http://` or `:8080` needs a proxy that allows it, such as MediaFlow Proxy.
+- **Playing:** `LivePlayer` reuses the film player's engine (hls.js; Safari plays HLS itself) and
+  controller. A raw MPEG-TS address is tried as HLS first (as the apps do); a browser can't play raw
+  MPEG-TS, so a channel only available that way says so.
+- **Not yet:** the providers aren't part of Flow Sync (a follow-up: the sync payload would carry
+  `liveTV`, with logins encrypted like the server tokens), and the browser can't send a custom
+  User-Agent.
 
 ## Sample data
 

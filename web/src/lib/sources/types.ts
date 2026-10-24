@@ -10,7 +10,7 @@ export interface PlaybackRequest {
   episode?: number
 }
 
-export type SourceOrigin = 'addon' | 'jellyfin' | 'emby' | 'plex' | 'demo'
+export type SourceOrigin = 'addon' | 'jellyfin' | 'emby' | 'plex' | 'demo' | 'iptv'
 
 /** How the player should open a source. */
 export type PlaybackEngine =
@@ -55,6 +55,9 @@ export interface Source {
   url: string
   /** Request headers the stream needs (rarely; most hosts take none). */
   headers?: Record<string, string>
+  /** HLS only: the manifest and every segment it names are fetched through the stream proxy (Live TV, for
+   *  providers that send no CORS headers or are on http). */
+  viaProxy?: boolean
   engine: PlaybackEngine
   /** Parsed from the name or reported by the server. */
   resolution?: '2160p' | '1440p' | '1080p' | '720p' | '480p' | 'SD'

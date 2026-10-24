@@ -1,3 +1,4 @@
+import { isLiveTVSettings } from '../../lib/livetv/validate'
 import { lastSourceStore } from '../../lib/sources/lastSource'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { defaultSettings, settingsStore, type Settings } from '../../lib/store/settings'
@@ -50,6 +51,8 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   tabOrder: isTabOrder,
   // Empty clears the proxy; anything else has to be an address Flow can call.
   streamProxy: (v) => typeof v === 'string' && proxyProblem(v) === undefined,
+  // Providers (with their logins), the guide's refresh time and the favourite channels, as the apps keep them.
+  liveTV: isLiveTVSettings,
 }
 
 const libraryTypes: { [K in keyof Library]: (v: unknown) => boolean } = {

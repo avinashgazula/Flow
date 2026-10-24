@@ -4,7 +4,7 @@ import type { IconName } from '../components/Icon'
    list and the saved order (Settings → Appearance → Tab Order), so a new section is one entry here: someone
    whose saved order doesn't know it yet gets it at its default position. */
 
-export type TabPath = '/' | '/explore' | '/library' | '/search'
+export type TabPath = '/' | '/explore' | '/library' | '/live' | '/search'
 
 export interface Tab {
   /** Stable name saved in Settings. Never the label or the address, which can change. */
@@ -18,6 +18,7 @@ export const tabs: readonly Tab[] = [
   { id: 'home', to: '/', label: 'Home', icon: 'home' },
   { id: 'explore', to: '/explore', label: 'Explore', icon: 'explore' },
   { id: 'library', to: '/library', label: 'Library', icon: 'library' },
+  { id: 'live', to: '/live', label: 'Live TV', icon: 'live' },
   { id: 'search', to: '/search', label: 'Search', icon: 'search' },
 ]
 
