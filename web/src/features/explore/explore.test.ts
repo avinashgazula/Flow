@@ -57,20 +57,20 @@ describe('shouldLoadMore', () => {
 describe('exploreSource', () => {
   const today = '2026-10-18'
   it('maps the plain sorts to trending and TMDB’s fixed lists', () => {
-    expect(exploreSource('movie', 'trending', undefined, today)).toEqual({ kind: 'list', list: 'trending' })
-    expect(exploreSource('show', 'popular', undefined, today)).toEqual({ kind: 'list', list: 'popular' })
-    expect(exploreSource('movie', 'top', undefined, today)).toEqual({ kind: 'list', list: 'top_rated' })
+    expect(exploreSource('movie', 'trending', undefined, undefined, { today })).toEqual({ kind: 'list', list: 'trending' })
+    expect(exploreSource('show', 'popular', undefined, undefined, { today })).toEqual({ kind: 'list', list: 'popular' })
+    expect(exploreSource('movie', 'top', undefined, undefined, { today })).toEqual({ kind: 'list', list: 'top_rated' })
   })
 
   it('sends a genre through Discover, since the lists can’t filter', () => {
-    expect(exploreSource('movie', 'trending', 878, today)).toEqual({ kind: 'discover', params: { with_genres: 878, sort_by: 'popularity.desc' } })
-    expect(exploreSource('show', 'top', 35, today)).toEqual({ kind: 'discover', params: { with_genres: 35, sort_by: 'vote_average.desc', 'vote_count.gte': 300 } })
+    expect(exploreSource('movie', 'trending', 878, undefined, { today })).toEqual({ kind: 'discover', params: { with_genres: 878, sort_by: 'popularity.desc' } })
+    expect(exploreSource('show', 'top', 35, undefined, { today })).toEqual({ kind: 'discover', params: { with_genres: 35, sort_by: 'vote_average.desc', 'vote_count.gte': 300 } })
   })
 
   it('sorts Newest by the type’s own date field, released titles only', () => {
-    expect(exploreSource('movie', 'new', undefined, today).kind).toBe('discover')
-    expect(exploreSource('movie', 'new', undefined, today)).toMatchObject({ params: { sort_by: 'primary_release_date.desc', 'primary_release_date.lte': today } })
-    expect(exploreSource('show', 'new', 18, today)).toMatchObject({ params: { with_genres: 18, sort_by: 'first_air_date.desc', 'first_air_date.lte': today } })
+    expect(exploreSource('movie', 'new', undefined, undefined, { today }).kind).toBe('discover')
+    expect(exploreSource('movie', 'new', undefined, undefined, { today })).toMatchObject({ params: { sort_by: 'primary_release_date.desc', 'primary_release_date.lte': today } })
+    expect(exploreSource('show', 'new', 18, undefined, { today })).toMatchObject({ params: { with_genres: 18, sort_by: 'first_air_date.desc', 'first_air_date.lte': today } })
   })
 
   it('reads unknown sorts as trending', () => {
