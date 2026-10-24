@@ -72,8 +72,8 @@
 }
 .chrome[data-visible] { opacity: 1; visibility: visible; transition: opacity var(--dur-state) ease, visibility 0s; }
 .chrome[data-visible] :is(button, .card) { pointer-events: auto; }
-/* With the channel list open its panel sits over the cluster and the channel buttons, so they step aside. */
-.chrome[data-list] :is(.cluster, .zap) { visibility: hidden; }
+/* With the channel list open its panel sits over the cluster, the card and the channel buttons, so they step aside and only the panel reads. */
+.chrome[data-list] :is(.cluster, .zap, .card) { visibility: hidden; }
 
 .top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); }
 .back { background: var(--over-video); }
