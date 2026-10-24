@@ -232,13 +232,13 @@ export function PlaybackSection() {
         </Row>
       </Group>
       <Group footer="Segments come from your media server (Jellyfin media segments, Plex markers), IntroDB, PublicMetaDB or the file’s chapter names. Show Button puts a Skip button over the picture; Enter or S presses it. Skip Automatically skips as the segment begins and lets you undo it.">
-        <Row label="Intro" htmlFor="skip-intro">
+        <Row label="Skip Intro" htmlFor="skip-intro">
           <Select id="skip-intro" label="Skip intro" value={skipIntro} onChange={(v) => settingsStore.set({ skipIntro: v })} options={skipChoices} />
         </Row>
-        <Row label="Recap" htmlFor="skip-recap">
+        <Row label="Skip Recap" htmlFor="skip-recap">
           <Select id="skip-recap" label="Skip recap" value={skipRecap} onChange={(v) => settingsStore.set({ skipRecap: v })} options={skipChoices} />
         </Row>
-        <Row label="Credits" htmlFor="skip-credits">
+        <Row label="Skip Credits" htmlFor="skip-credits">
           <Select id="skip-credits" label="Skip credits" value={skipCredits} onChange={(v) => settingsStore.set({ skipCredits: v })} options={skipChoices} />
         </Row>
       </Group>

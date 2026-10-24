@@ -69,13 +69,14 @@
   border-radius: var(--radius-control);
   background: var(--base-3);
   overflow: hidden;
-  /* The ring: a gap of base, then the yellow, only when chosen. */
+  /* The ring: a gap of base, then paper, only when chosen. Paper, not yellow, so a choice never looks like
+     keyboard focus (which is the yellow ring) and two chosen services don't read as two focused ones. */
   box-shadow: 0 0 0 0 transparent;
   transition: box-shadow var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
 }
 .logo img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .tile:active .logo { transform: scale(0.96); }
-.tile[aria-pressed='true'] .logo { box-shadow: 0 0 0 2px var(--base-2), 0 0 0 4px var(--stock); }
+.tile[aria-pressed='true'] .logo { box-shadow: 0 0 0 2px var(--base-2), 0 0 0 4px var(--paper); }
 .initial { display: grid; place-items: center; width: 100%; height: 100%; font: 700 var(--fs-headline) / 1 var(--font-display); color: var(--ink-2); }
 
 .name {

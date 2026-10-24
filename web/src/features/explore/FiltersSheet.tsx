@@ -95,15 +95,15 @@ export default function FiltersSheet({ type, filters, onChange, onClose }: { typ
             <div className={s.pair}>
               <div className={s.field}>
                 <span className={s.fieldLabel} aria-hidden>
-                  From year
+                  From Year
                 </span>
-                <Select className={s.select} label="From year" options={yearOptions} value={filters.yearFrom ? String(filters.yearFrom) : ''} onChange={(v) => set({ yearFrom: v ? Number(v) : undefined, window: undefined })} />
+                <Select className={s.select} label="From Year" options={yearOptions} value={filters.yearFrom ? String(filters.yearFrom) : ''} onChange={(v) => set({ yearFrom: v ? Number(v) : undefined, window: undefined })} />
               </div>
               <div className={s.field}>
                 <span className={s.fieldLabel} aria-hidden>
-                  To year
+                  To Year
                 </span>
-                <Select className={s.select} label="To year" options={yearOptions} value={filters.yearTo ? String(filters.yearTo) : ''} onChange={(v) => set({ yearTo: v ? Number(v) : undefined, window: undefined })} />
+                <Select className={s.select} label="To Year" options={yearOptions} value={filters.yearTo ? String(filters.yearTo) : ''} onChange={(v) => set({ yearTo: v ? Number(v) : undefined, window: undefined })} />
               </div>
             </div>
           </fieldset>
@@ -126,9 +126,9 @@ export default function FiltersSheet({ type, filters, onChange, onClose }: { typ
             <legend className={s.legend}>Language</legend>
             <div className={s.field}>
               <span className={s.fieldLabel} aria-hidden>
-                Original language
+                Original Language
               </span>
-              <Select className={s.select} label="Original language" options={languages} value={filters.language ?? ''} onChange={(v) => set({ language: v || undefined })} />
+              <Select className={s.select} label="Original Language" options={languages} value={filters.language ?? ''} onChange={(v) => set({ language: v || undefined })} />
             </div>
           </fieldset>
 
