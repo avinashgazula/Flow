@@ -105,6 +105,18 @@ export function corsHeaders(origin, allowedOrigins) {
   }
 }
 
+/** CORS for the sync routes: the same origin rule, with the methods and headers sync uses. */
+export function syncCorsHeaders(origin, allowedOrigins) {
+  const headers = corsHeaders(origin, allowedOrigins)
+  if (!headers['Access-Control-Allow-Origin']) return headers
+  return {
+    ...headers,
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Flow-Token',
+    'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
+    'Access-Control-Expose-Headers': 'Content-Type',
+  }
+}
+
 const userAgent = 'Mozilla/5.0 (compatible; FlowStreamProxy)'
 
 /** What goes to the file's host: the Range the page asked for and a plain User-Agent. Never the

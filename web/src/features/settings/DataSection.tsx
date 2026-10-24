@@ -5,7 +5,9 @@ import { queryClient } from '../../lib/queryClient'
 import { library, libraryStore } from '../../lib/store/library'
 import { settingsStore } from '../../lib/store/settings'
 import { applyBackup, createBackup, parseBackup, resetEverything } from './backup'
+import { turnOff } from '../../lib/sync/engine'
 import { ConfirmButton, Group, Note, Row } from './controls'
+import { SyncGroup } from './SyncGroup'
 
 export function DataSection() {
   const file = useRef<HTMLInputElement>(null)
@@ -47,6 +49,8 @@ export function DataSection() {
   }
 
   async function reset() {
+    // A reset would otherwise count as clearing every setting, and sync would carry that to your other devices.
+    turnOff()
     resetEverything()
     await clearCache()
     setNote({ tone: 'ok', text: 'Flow is back to a fresh start.' })
@@ -54,6 +58,7 @@ export function DataSection() {
 
   return (
     <>
+      <SyncGroup />
       <Group footer="Settings, sign-ins, your watchlist, favourites and progress, as one JSON file. Import replaces what the file contains and leaves the rest alone.">
         <Row label="Export" detail="Settings and library">
           <button type="button" className="btn btn-secondary btn-compact" onClick={exportBackup}>
@@ -67,7 +72,7 @@ export function DataSection() {
           <input ref={file} type="file" accept="application/json,.json" hidden onChange={(e) => void importBackup(e.target.files?.[0])} />
         </Row>
       </Group>
-      <Group footer="The cache holds shelves, title details and search results so screens open at once. Clearing it never touches your library.">
+      <Group footer="The cache holds shelves, title details and search results so screens open at once. Clearing it never touches your library. Reset Everything also turns sync off on this device, and leaves what is synced alone.">
         <Row label="Clear Cache">
           <ConfirmButton label="Clear Cache" confirm="Clear" onConfirm={() => void clearCache()} />
         </Row>

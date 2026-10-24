@@ -116,6 +116,9 @@
 .note[data-tone='error'] { color: var(--red); }
 .note[data-tone='warning'] { color: var(--warn); }
 .note a { text-decoration: underline; text-underline-offset: 0.2em; }
+/* A word inside a row's detail that acts, like "Change": reads as part of the sentence. */
+.inlineLink { padding: 0; border: 0; background: none; font: inherit; color: var(--paper); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; cursor: pointer; }
+.inlineLink:hover { text-decoration-color: var(--paper); }
 
 /* An add-on or server: icon, name and detail, then its controls. */
 .item {
@@ -251,4 +254,21 @@ img.logo { padding: 4px; }
   .inline { flex-wrap: wrap; }
   .inline .field { flex-basis: 100%; }
   .inline button { flex: 1; }
+}
+
+/* Flow Sync: the pairing link, its QR code and the key. The code sits on a paper tile, because a scanner
+   needs dark modules on a light ground. */
+.pairing { display: flex; flex-direction: column; gap: var(--space-s); padding: var(--space-m); background: var(--base); }
+.linkRow { display: flex; gap: var(--space-s); }
+.linkRow .field { flex: 1; min-width: 0; height: 40px; font-size: var(--fs-footnote); text-overflow: ellipsis; }
+.pairingBody { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-m) var(--space-l); }
+.qr { flex: none; width: 184px; height: 184px; padding: 6px; border-radius: var(--radius-control); background: var(--paper); }
+.qr svg { display: block; width: 100%; height: 100%; fill: var(--base); }
+.keyBlock { display: flex; flex-direction: column; gap: var(--space-xs); flex: 1 1 200px; min-width: 0; }
+.keyBlock .codeValue { font-size: var(--fs-title3); letter-spacing: 0.1em; overflow-wrap: anywhere; line-height: 1.3; }
+
+@media (max-width: 560px) {
+  .linkRow { flex-wrap: wrap; }
+  .linkRow .field { flex-basis: 100%; }
+  .linkRow button { flex: 1; }
 }

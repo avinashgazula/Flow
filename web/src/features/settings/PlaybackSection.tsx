@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { settingsStore, useSettings, type Settings, type SubtitleMode } from '../../lib/store/settings'
 import { Group, Note, Row, Select, Switch } from './controls'
@@ -23,6 +23,10 @@ function StreamProxy() {
   const saved = useSettings((x) => x.streamProxy)
   const [value, setValue] = useState(saved)
   const [problem, setProblem] = useState<string>()
+  // An address that arrives from another device (Flow Sync) shows here at once.
+  useEffect(() => {
+    setValue(saved)
+  }, [saved])
 
   function submit(event: FormEvent) {
     event.preventDefault()

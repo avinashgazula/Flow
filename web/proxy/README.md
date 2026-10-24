@@ -56,6 +56,49 @@ You need a free [Cloudflare](https://dash.cloudflare.com/sign-up) account and No
    Type a long random value when it asks. Without a token, anyone who finds the Worker's address
    can use it to download from the hosts you allow, and the bandwidth is yours.
 
+## Flow Sync (optional)
+
+The same Worker can keep your keys, sign-ins, add-ons, servers and playback settings the same on
+every device, so you don't type an API key on each one. Flow encrypts everything on your device
+before it is sent, with a key only your devices hold. The Worker stores one scrambled record and
+cannot read it. Setting it up takes three steps, once:
+
+1. Make the place the record is kept (a Cloudflare KV namespace). In `web/proxy` run:
+
+   ```bash
+   npx wrangler kv namespace create SYNC
+   ```
+
+   Wrangler prints an `id`, a long string of letters and numbers. Copy it.
+
+2. Tell the Worker about it. In your `wrangler.toml`, add this at the end, with your own id:
+
+   ```toml
+   [[kv_namespaces]]
+   binding = "SYNC"
+   id = "the-id-wrangler-printed"
+   ```
+
+   The name must be exactly `SYNC`. `wrangler.toml.example` has the same block.
+
+3. Deploy again:
+
+   ```bash
+   npx wrangler deploy
+   ```
+
+Set a `TOKEN` too (step 4 above). Sync uses the same token as the proxy, and without one anyone who
+finds the Worker's address could store data in your account. Don't commit `wrangler.toml` with a
+real id in it; it is yours alone.
+
+Then, in Flow's **Settings → Data → Sync**, choose **Turn On Sync**. Flow makes a sync key and shows
+a pairing link and a QR code. Open the link on your other devices, or choose **Join a Sync** and paste
+it. The Apple apps pair the same way. If sync says "Sync needs a KV namespace", one of the steps above
+was missed: check that the binding is called `SYNC` and that you deployed after adding it.
+
+Sync uses the free KV allowance: Flow writes only when something changed, about three seconds after
+you stop typing. A record is capped at 256 KB. **Turn Off and Erase** in Flow deletes the record.
+
 ## Which hosts to allow
 
 `ALLOWED_HOSTS` is a comma-separated list of host names. `*.` at the start matches any subdomain, so
@@ -97,7 +140,8 @@ https://flow-stream-proxy.example.workers.dev/?url={url}&token=YOUR_TOKEN
 ```
 
 If you leave out `{url}`, Flow adds `url=` and the encoded address to the end for you. The setting
-stays in your browser (and in Flow's backup file, so keep that private if it holds a token).
+stays in your browser (and in Flow's backup file, so keep that private if it holds a token). With
+Flow Sync on, it is also kept, encrypted, in your Worker, so your other devices pick it up.
 
 ## What it does
 
@@ -110,6 +154,12 @@ stays in your browser (and in Flow's backup file, so keep that private if it hol
   `Content-Length`, `Accept-Ranges` and `Content-Type` headers. Other statuses, such as a 404, come
   back with a short message instead of the host's page: which host answered with what, and the
   first 160 characters of its reason when it gave one as plain text or JSON.
+- Answers `GET`, `PUT`, `DELETE` and `OPTIONS` on `/sync/<id>` for Flow Sync, ahead of the proxy
+  route. It checks the `TOKEN` (`X-Flow-Token` or `?token=`), then that the request's
+  `Authorization: Bearer` key is the one the record was created with (`403` if not), refuses a write
+  based on an old revision (`409`, with the stored record so the device can merge) or a record over
+  256 KB (`413`), and answers `501` when no KV namespace is bound as `SYNC`. The contract is
+  `docs/SYNC.md`.
 - Adds `X-Flow-Proxy-Hops` (hosts and statuses only) to the answers it fetched, and logs one line a
   request for `wrangler tail`.
 
@@ -168,5 +218,5 @@ cd web
 npm test
 ```
 
-`match.test.js` covers the host and header rules, and `worker.test.js` runs the Worker against a
-stand-in for the network.
+`match.test.js` covers the host and header rules, `worker.test.js` runs the Worker against a
+stand-in for the network, and `sync.test.js` runs the sync routes against an in-memory stand-in for KV.
