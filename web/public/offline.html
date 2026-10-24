@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#15120f" />
+    <meta name="color-scheme" content="dark" />
+    <title>Flow Is Offline</title>
+    <style>
+      /* What opens when Flow can't be reached and its saved copy is missing too. Plain on purpose: no script,
+         no fonts to download, the same film-base black, paper type and one yellow action as the app. */
+      html { background: #15120f; color: #f4efe6; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: max(24vh, 48px) clamp(16px, 4vw, 48px) 48px;
+        font: 400 17px / 1.5 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif;
+        -webkit-text-size-adjust: 100%;
+      }
+      main { max-width: 62ch; }
+      .mark { display: block; width: 12px; height: 16px; margin-bottom: 24px; border-radius: 2px; background: #f6b40e; }
+      h1 { margin: 0; font-size: 34px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
+      p { margin: 12px 0 0; color: #bfb5a6; text-wrap: pretty; }
+      a {
+        display: inline-flex;
+        align-items: center;
+        height: 44px;
+        margin-top: 32px;
+        padding: 0 20px;
+        border-radius: 10px;
+        background: #f6b40e;
+        color: #15120f;
+        font-weight: 600;
+        font-size: 15px;
+        line-height: 1;
+        text-decoration: none;
+      }
+      a:hover { background: #ffc233; }
+      a:active { background: #dda00a; }
+      a:focus-visible { outline: 2px solid #f6b40e; outline-offset: 3px; }
+      @media (min-width: 721px) { h1 { font-size: 40px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="mark" aria-hidden="true"></span>
+      <h1>You’re offline</h1>
+      <p>Flow needs a connection to reach your sources.</p>
+      <a href=".">Try Again</a>
+    </main>
+  </body>
+</html>

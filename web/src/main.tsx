@@ -7,6 +7,8 @@ import { ErrorScreen } from './components/ErrorScreen'
 import { cacheBuster, persister, queryClient } from './lib/queryClient'
 import { checkConvertAudio } from './lib/audio/support'
 import { checkSmoothVideo } from './lib/sources/smooth'
+import { listenForInstall } from './lib/pwa/install'
+import { registerServiceWorker } from './lib/pwa/update'
 import { settingsStore } from './lib/store/settings'
 import { libraryStore } from './lib/store/library'
 import './styles/global.css'
@@ -48,6 +50,11 @@ window.addEventListener('vite:preloadError', (event) => {
   location.reload()
 })
 window.addEventListener('load', () => setTimeout(() => sessionStorage.removeItem('flow.reloadedForDeploy'), 10_000))
+
+// Flow works offline once it has loaded (src/sw/sw.ts), and can be installed as an app. The browser's
+// install event comes once and early, so it is caught here and kept for Settings.
+registerServiceWorker()
+listenForInstall()
 
 // Ask the browser's audio encoder what it takes, so source ranking knows whether audio it can't
 // decode can be converted. Nothing waits on the answer.

@@ -1,15 +1,9 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useSettings } from '../lib/store/settings'
-import { Icon, type IconName } from './Icon'
+import { orderTabs } from '../lib/tabs'
+import { Icon } from './Icon'
 import s from './Nav.module.css'
-
-const tabs: { to: '/' | '/explore' | '/library' | '/search'; label: string; icon: IconName }[] = [
-  { to: '/', label: 'Home', icon: 'home' },
-  { to: '/explore', label: 'Explore', icon: 'explore' },
-  { to: '/library', label: 'Library', icon: 'library' },
-  { to: '/search', label: 'Search', icon: 'search' },
-]
 
 /** A top bar on every width: the yellow mark and "Flow" wordmark, the sections as plain text (the current
  *  one in paper with the yellow underline), and Settings at the right. On phones the sections move to a
@@ -18,6 +12,8 @@ export function Nav() {
   const path = useRouterState({ select: (r) => r.location.pathname })
   const [scrolled, setScrolled] = useState(false)
   const sample = useSettings((x) => x.demo)
+  const saved = useSettings((x) => x.tabOrder)
+  const tabs = orderTabs(saved)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)

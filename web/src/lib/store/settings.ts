@@ -1,4 +1,5 @@
 import type { AddonManifest } from '../sources/types'
+import { defaultTabOrder } from '../tabs'
 import { createStore, useStore } from './createStore'
 import { defaultSubtitleStyle, type SubtitleStyle } from './subtitleStyleDefault'
 
@@ -73,6 +74,9 @@ export interface Settings {
   rememberLastSource: boolean
   /** The typeface the whole site is set in; System is the device's own and downloads nothing. */
   font: FontChoice
+  /** The order of the sections in the top bar and the phone's tab bar, by id (lib/tabs.ts). A section this
+   *  list doesn't name yet takes its default place. */
+  tabOrder: string[]
   /** Where files from hosts that block web pages are fetched through: a URL with `{url}` for the
    *  encoded file address. Empty means no proxy. */
   streamProxy: string
@@ -103,6 +107,7 @@ export const defaultSettings: Settings = {
   preferredQuality: '1080p',
   rememberLastSource: true,
   font: 'system',
+  tabOrder: [...defaultTabOrder],
   streamProxy: '',
 }
 

@@ -178,6 +178,10 @@ img.logo { padding: 4px; }
 }
 .codeValue { font: 700 var(--fs-title2) / 1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.18em; color: var(--paper); }
 
+/* A tab in the Tab Order list: its icon beside its name, in the colour of the text. */
+.tabName { display: inline-flex; align-items: center; gap: var(--space-s); }
+.tabName svg { flex: none; color: var(--ink-2); }
+
 /* Typeface cards: a sample in the card's own font above its name. The chosen card is lighter (base-3)
    with a paper ring and a check, so it never rests on colour alone. */
 .faces { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: var(--space-s); }
