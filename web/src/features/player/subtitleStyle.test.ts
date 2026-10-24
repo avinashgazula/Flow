@@ -51,18 +51,18 @@ describe('subtitleCSS', () => {
     expect(outline).not.toContain('px')
   })
 
-  it('draws a box behind each line only when asked, at the chosen opacity', () => {
+  it('draws a box behind each line only when asked: solid, or translucent at the chosen opacity', () => {
     for (const b of subtitleBackgrounds) {
       const css = subtitleCSS(style({ background: b.value, backgroundOpacity: 0.4 }))
       if (b.value === 'none') {
         expect(css['--sub-box']).toBe('transparent')
         expect(css['--sub-pad']).toBe('0')
       } else {
-        expect(css['--sub-box']).toBe('rgb(0 0 0 / 0.4)')
+        expect(css['--sub-box']).toBe(b.value === 'solid' ? 'rgb(0 0 0 / 1)' : 'rgb(0 0 0 / 0.4)')
         expect(css['--sub-pad']).not.toBe('0')
       }
     }
-    expect(subtitleCSS(style({ background: 'solid', backgroundOpacity: 1 }))['--sub-box']).toBe('rgb(0 0 0 / 1)')
+    expect(subtitleCSS(style({ background: 'solid', backgroundOpacity: 0.2 }))['--sub-box']).toBe('rgb(0 0 0 / 1)')
     expect(subtitleCSS(style({ background: 'translucent', backgroundOpacity: 0 }))['--sub-box']).toBe('rgb(0 0 0 / 0)')
   })
 

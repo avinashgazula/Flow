@@ -5,7 +5,7 @@ import { subtitleColorValues } from '../player/subtitleStyle'
 import { defaultSubtitleStyle, isDefaultSubtitleStyle, subtitleBackgrounds, subtitleColors, subtitleEdges, subtitleFonts, subtitleLift, subtitleOpacity, subtitleScale, subtitleWeights } from '../../lib/store/subtitleStyle'
 import { settingsStore, useSettings } from '../../lib/store/settings'
 import { updateSubtitleStyle } from '../../lib/store/updateSubtitleStyle'
-import { ConfirmButton, Group, Row, Select } from './controls'
+import { Group, Row, Select } from './controls'
 import s from './SettingsScreen.module.css'
 
 const percent = (fraction: number) => `${Math.round(fraction * 100)}%`
@@ -46,7 +46,7 @@ export function SubtitleStyleGroup() {
       <Row label="Background" htmlFor="sub-background">
         <Select id="sub-background" label="Subtitle background" value={style.background} onChange={(v) => updateSubtitleStyle({ background: v })} options={[...subtitleBackgrounds]} />
       </Row>
-      {style.background !== 'none' && (
+      {style.background === 'translucent' && (
         <Row label="Opacity" htmlFor="sub-opacity">
           <span className={s.slide}>
             <Slider id="sub-opacity" label="Subtitle background opacity" value={style.backgroundOpacity} min={subtitleOpacity.min} max={subtitleOpacity.max} step={subtitleOpacity.step} valueText={percent(style.backgroundOpacity)} onChange={(v) => updateSubtitleStyle({ backgroundOpacity: v })} />
@@ -66,7 +66,10 @@ export function SubtitleStyleGroup() {
       </Row>
       {!isDefaultSubtitleStyle(style) && (
         <Row label="Reset to Defaults" detail="Size, font, colour, edge, background and position">
-          <ConfirmButton label="Reset" confirm="Reset Style" onConfirm={() => settingsStore.set({ subtitleStyle: defaultSubtitleStyle })} />
+          {/* A quiet button, no confirm step: the style is a few taps to set again and the preview shows the result. */}
+          <button type="button" className="btn btn-secondary btn-compact" onClick={() => settingsStore.set({ subtitleStyle: defaultSubtitleStyle })}>
+            Reset
+          </button>
         </Row>
       )}
     </Group>

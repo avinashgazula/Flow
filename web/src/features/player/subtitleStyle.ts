@@ -61,7 +61,8 @@ export function subtitleCSS(style: SubtitleStyle): SubtitleCSS {
     '--sub-scale': s.fontScale,
     '--sub-lift': s.verticalPosition,
     '--sub-bold': Math.max(800, weight + 100),
-    '--sub-box': boxed ? `rgb(0 0 0 / ${Number(s.backgroundOpacity.toFixed(2))})` : 'transparent',
+    // Solid is a solid box; the opacity setting is for the translucent one.
+    '--sub-box': !boxed ? 'transparent' : s.background === 'solid' ? 'rgb(0 0 0 / 1)' : `rgb(0 0 0 / ${Number(s.backgroundOpacity.toFixed(2))})`,
     '--sub-pad': boxed ? '0.04em 0.45em' : '0',
   }
 }

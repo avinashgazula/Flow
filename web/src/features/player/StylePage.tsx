@@ -62,7 +62,7 @@ export function StylePage() {
       <Field label="Background" htmlFor="style-background">
         <Pick id="style-background" label="Subtitle background" value={style.background} options={subtitleBackgrounds} onChange={(v) => updateSubtitleStyle({ background: v })} />
       </Field>
-      {style.background !== 'none' && (
+      {style.background === 'translucent' && (
         <Field label="Opacity" htmlFor="style-opacity">
           <Slider id="style-opacity" label="Subtitle background opacity" value={style.backgroundOpacity} min={subtitleOpacity.min} max={subtitleOpacity.max} step={subtitleOpacity.step} valueText={percent(style.backgroundOpacity)} onChange={(v) => updateSubtitleStyle({ backgroundOpacity: v })} />
           <span className={s.value}>{percent(style.backgroundOpacity)}</span>
