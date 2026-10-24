@@ -13,6 +13,18 @@
 }
 .types { min-width: 240px; }
 
+/* The type picker and the Filters button read as one group. Filters is a button like the sort menu: flat base-3,
+   and a lighter base while filters are on (never yellow; the summary below says which). */
+.modes { display: flex; align-items: center; gap: var(--space-s); min-width: 0; }
+.filtersButton { height: 40px; padding: 0 var(--space-m) 0 14px; flex: none; }
+.filtersButton[data-active], .filtersButton[data-active]:hover { background: var(--base-4); }
+
+/* One line for the filters in force, quiet, with Clear at its end. */
+.summary { display: flex; align-items: center; gap: var(--space-xs); margin: calc(-1 * var(--space-s)) 0 var(--space-m); min-width: 0; }
+.summaryText { flex: 1; min-width: 0; color: var(--ink-2); font-size: var(--fs-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Clear's label lines up with the page's right edge, not its padding. */
+.summary :global(.btn) { flex: none; margin-right: -12px; }
+
 .results { min-height: 60vh; }
 
 .more {
@@ -27,5 +39,7 @@
 @media (max-width: 720px) {
   .sortMenu { display: inline-flex; }
   .sorts { display: none; }
-  .types { flex: 1; }
+  .controls { justify-content: flex-start; }
+  .modes { flex: 1; }
+  .types { flex: 1; min-width: 0; }
 }
