@@ -46,7 +46,8 @@ describe('Flow Sync: the record', () => {
     expect(await res.json()).toEqual({ rev: 1 })
     const record = stored(env)
     expect(record).toMatchObject({ authHash, rev: 1, blob })
-    expect(new Date(record.updatedAt).toISOString()).toBe(record.updatedAt)
+    // ISO 8601 to the second, so strict parsers on the Apple side read it.
+    expect(record.updatedAt).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/)
   })
 
   it('reads back rev, blob and updatedAt, and never the hash', async () => {

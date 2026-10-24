@@ -115,7 +115,7 @@ export async function handleSync(request, env) {
     // erased can't be handed back, and writing it again would undo the erase, so that is a 404.
     return stored ? json(409, shown(stored), cors) : reply(404, 'This sync was erased from another device. Turn sync on again to start a new one.', cors)
   }
-  const next = { authHash: stored ? stored.authHash : await sha256hex(auth), rev: currentRev + 1, blob: body.blob, updatedAt: new Date().toISOString() }
+  const next = { authHash: stored ? stored.authHash : await sha256hex(auth), rev: currentRev + 1, blob: body.blob, updatedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') }
   await kv.put(id, JSON.stringify(next))
   return json(200, { rev: next.rev }, cors)
 }
