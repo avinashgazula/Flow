@@ -57,7 +57,7 @@ export function failureMessage(channel: Pick<Channel, 'name'>, last: PlaybackErr
   }
   if (/networkError|timed out/i.test(last.detail ?? '')) {
     return proxySet
-      ? `${channel.name} didn’t start, directly or through your stream proxy. It may be off air, or the proxy can’t reach it: the Worker in web/proxy fetches only https addresses on the standard port, so a provider on http or a port such as :8080 needs a proxy that allows it, such as MediaFlow Proxy.`
+      ? `${channel.name} didn’t start, directly or through your stream proxy. It may be off air, or the proxy can’t reach it. A provider on http:// or a port such as :8080 needs a proxy that allows it, such as MediaFlow Proxy; the Worker in web/proxy doesn’t.`
       : `${channel.name} didn’t start. It may be off air, or its provider doesn’t let web pages play it (it sends no CORS headers, or it is http:// on an https page). Add a stream proxy in Settings → Playback to try it that way.`
   }
   return last.message
@@ -281,7 +281,8 @@ export function LivePlayer({ channel, lineup, epg, onTune, onClose }: { channel:
   const extra = useShortGuide(channel, epg, phase.kind === 'playing')
   const guide = useMemo(() => (extra ? mergeEPG(epg, extra) : epg), [epg, extra])
   const { now: on, next } = nowAndNext(guide, channel.epgID ?? extraKey(channel), now)
-  const show = controls || phase.kind !== 'playing' || paused
+  // Controls stay up while connecting or paused; a failure has its own screen and nothing under it.
+  const show = phase.kind !== 'failed' && (controls || phase.kind !== 'playing' || paused)
 
   return (
     <div ref={root} className={s.root} tabIndex={-1} data-fullscreen={fullscreen ? '' : undefined} onPointerMove={controller.poke} role="region" aria-label={`Live: ${channel.name}`}>

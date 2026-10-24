@@ -25,4 +25,4 @@
   font: 600 var(--fs-caption) / 1 var(--font);
   color: var(--paper);
 }
-.live::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+.live::before { content: ''; width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--red); }

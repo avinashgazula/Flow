@@ -36,7 +36,9 @@ export const usePhone = () =>
 /** A channel's logo on a plate, or its initials when there is none (or it fails to load). */
 export function ChannelLogo({ channel, size = 'm' }: { channel: Pick<Channel, 'name' | 'logoURL'>; size?: 's' | 'm' }) {
   const [failed, setFailed] = useState(false)
-  useEffect(() => setFailed(false), [channel.logoURL])
+  useEffect(() => {
+    setFailed(false)
+  }, [channel.logoURL])
   return (
     <span className={s.logo} data-size={size} aria-hidden="true">
       {channel.logoURL && !failed ? (

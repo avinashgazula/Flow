@@ -49,10 +49,10 @@
 
 .centre { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; }
 .centre > * { pointer-events: auto; }
-.bigPlay { width: 72px; height: 72px; border-radius: 50%; background: var(--over-video); }
+.bigPlay { width: 72px; height: 72px; border-radius: var(--radius-full); background: var(--over-video); }
 .bigPlay svg { width: 28px; height: 28px; }
 /* Buffering: a ring in paper that turns, because the stream is moving and not yet showing. */
-.buffering { width: 40px; height: 40px; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--paper) 25%, transparent); border-top-color: var(--paper); animation: turn 0.9s linear infinite; }
+.buffering { width: 40px; height: 40px; border-radius: var(--radius-full); border: 3px solid color-mix(in srgb, var(--paper) 25%, transparent); border-top-color: var(--paper); animation: turn 0.9s linear infinite; }
 @keyframes turn { to { transform: rotate(360deg); } }
 
 /* The chrome: back and the cluster along the top, the card along the bottom, a scrim behind each. */
@@ -85,7 +85,7 @@
   flex: none;
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   color: var(--paper);
   background: var(--over-video);
   transition: background-color var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
@@ -111,7 +111,7 @@
 .channelName { font: 600 var(--fs-small) / 1.2 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .programme { font: 600 var(--fs-headline) / 1.25 var(--font); letter-spacing: -0.005em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .times { display: flex; align-items: center; gap: var(--space-s); font-size: var(--fs-footnote); color: var(--ink-2); }
-.bar { flex: 1; height: 3px; border-radius: 2px; background: var(--base-4); overflow: hidden; }
+.bar { flex: 1; height: 3px; border-radius: var(--radius-perf); background: var(--base-4); overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--red); }
 .next { font-size: var(--fs-footnote); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .noGuide { font-size: var(--fs-footnote); color: var(--ink-2); }
@@ -171,7 +171,7 @@
   background: var(--overlay);
   text-align: center;
 }
-.failedIcon { color: var(--warn); }
+.failedIcon { color: var(--red); }
 .failedTitle { font: 700 var(--fs-title3) / 1.2 var(--font-display); letter-spacing: -0.015em; text-wrap: balance; }
 .failedMessage { max-width: 56ch; font-size: var(--fs-small); line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
 .failedActions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xs); margin-top: var(--space-xs); }

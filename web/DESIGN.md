@@ -252,7 +252,7 @@ A single column of content on a 4-point scale (4, 8, 12, 16, 24, 32, 48, 64) wit
 
 Rows have one artwork scale each. Posters are 112px wide in a phone's scrolling row, five across on a tablet and seven across from 1100px; stills are 240px (phone) or 280px in a scroll row, and two across in a grid beside the lead. From 1100px the home first screen is the lead (1.25fr) beside Up Next (1fr) with 32px between; below that the lead stacks, or sits beside its facts at 420px on a tablet. The wall of posters wraps at 140px minimum. Breakpoints that matter are 720/721px (phone to tablet) and 1100px (desktop).
 
-Phones swap the top links for a four-tab bar (56px plus the safe-area inset) and the nav shrinks from 64px to 56px. Rows that scroll sideways bleed to the screen edge so the cut-off item says it scrolls.
+Phones swap the top links for a five-tab bar (56px plus the safe-area inset) and the nav shrinks from 64px to 56px. Rows that scroll sideways bleed to the screen edge so the cut-off item says it scrolls.
 
 ## Elevation & Depth
 
@@ -310,6 +310,9 @@ Solid Film Base bar, 64px (56px on phones), wordmark with a small yellow mark, l
 Chrome is flat: panels and notices on Film Base 2 at 94% with a Rule border, transport on base-at-70% circles, no blur. The scrubber is an edge strip: a 9px row of perforations on the band, read-ahead as a lighter Ink 3 at 55%, played in yellow, with a 14px Paper thumb that appears only under the pointer, while dragging or on focus. Under it the time row prints the timecode, time left in yellow and the end time. The seek preview is a small frame with its strip, four perforations filling to where you would land and the time in print.
 
 **Over the picture, one action at a time.** The Skip Intro, Skip Recap or Next Episode button is the primary yellow button, bottom right above the scrubber, and rides up with the controls. An automatic skip leaves a short Film Base 2 note ("Skipped intro") with a quiet Undo. Are You Still Watching? is a Film Base 2 card with Keep Watching (primary, focused) and Stop. The Up Next card leads with the episode's still and title; its countdown lives only on the strip.
+
+### Live TV
+Live TV fills the window under the nav: title and tools, group chips, then one base-2 panel that scrolls inside itself. The **channel list** is rows divided by a hairline: logo plate, number and name, what is on with the time left, a 2px red line for how far through it is, then "Next". The **guide** is a timeline: a sticky ruler of half hours in tabular figures, a sticky channel column, programmes as blocks as long as they run in Film Base with a hairline, the one on now in Film Base 3 outlined 2px yellow (it is the current place), and a 2px red now-line with a dot in the ruler. Red means live and nothing else; the LIVE mark is a red dot and the word, not a badge. A programme's details dock under the guide in a base-2 panel (a modal would hide the guide it describes), with Watch Now as the one yellow fill. The **live player** is flat like the film player: paper controls on the picture over the edge scrim, a now-and-next card on base-2 at 94% with a red progress line, channel up and down as circles, and the channel list as a side panel (a bottom sheet on phones).
 
 ### Sheets and Panels
 The source picker is a flat Film Base 2 sheet (12px radius, hairline ring) over the overlay scrim; each source is a film-can row. Panels fade in over 150ms; the sheet rises over 220ms. Explore's Filters sheet is the same material: a side panel on wide screens and a bottom sheet on phones. Its choices are chips (current is Film Base 4); a chosen streaming service gets a 2px Paper ring outside its logo plus a drawn check by its name, so a choice never looks like keyboard focus.

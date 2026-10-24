@@ -123,7 +123,7 @@ export function LiveScreen({ search }: { search: LiveSearch }) {
           <label className={s.search} data-open={searching ? '' : undefined}>
             <span className="sr-only">Search channels</span>
             <Icon name="search" size={16} strokeWidth={2.4} />
-            <input type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder="Channels" autoComplete="off" spellCheck={false} />
+            <input type="text" role="searchbox" enterKeyHint="search" value={text} onChange={(e) => setText(e.target.value)} placeholder="Channels" autoComplete="off" spellCheck={false} />
           </label>
         </header>
         {live.channels.length > 0 && (
