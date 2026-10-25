@@ -36,7 +36,11 @@ struct FlowApp: App {
                     #endif
                 }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { model.scheduleNotificationRefresh() }
+                    model.appIsActive = phase == .active
+                    if phase == .active {
+                        model.scheduleNotificationRefresh()
+                        model.syncNow()
+                    }
                     if phase == .background { model.flushSettings(waits: true) }
                 }
                 #if os(macOS)
@@ -51,6 +55,14 @@ struct FlowApp: App {
                     while !Task.isCancelled {
                         try? await Task.sleep(nanoseconds: 300_000_000_000)
                         await model.refreshMatchResults()
+                    }
+                }
+                // Another device's changes arrive while Flow is open, so look every five minutes.
+                .task(id: model.syncPairing?.keyText) {
+                    guard model.syncPairing != nil else { return }
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: 300_000_000_000)
+                        if model.appIsActive { await model.runSync() }
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: IntentInbox.arrived)) { _ in IntentInbox.drain(into: model) }
@@ -122,6 +134,7 @@ extension AppModel {
             selectedTab = .search
             searchText = query
         case .setup(let link): pendingImport = link
+        case .sync(let link): pendingSyncLink = link
         case nil: break
         }
     }

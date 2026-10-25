@@ -145,6 +145,10 @@ enum ScreenshotTour {
             Step(name: "settings-servers") { m in m.settingsPath = [.settings(.mediaServers)] },
             Step(name: "settings-webdav") { m in m.settingsPath = [.settings(.webDAV)] },
             Step(name: "settings-livetv") { m in m.settingsPath = [.settings(.liveTV)] },
+            // Sync turned on with a made-up key and server. Demo mode never sends anything, so it is only a picture.
+            Step(name: "settings-sync") { m in m.showDemoSync(); m.settingsPath = [.settings(.sync)] },
+            Step(name: "settings-sync-off") { m in m.hideDemoSync(); m.settingsPath = [.settings(.sync)] },
+            Step(name: "settings-sync-join") { m in m.settingsPath = [.settings(.sync), .settings(.syncJoin)] },
         ]
         #else
         // The Mac's Settings is its own window; the pages open inside it.
@@ -161,7 +165,16 @@ enum ScreenshotTour {
             Step(name: "settings-playback") { m in m.settingsPath = [.settings(.playback)] },
             Step(name: "settings-subtitles") { m in m.settingsPath = [.settings(.subtitles)] },
             Step(name: "settings-metadata") { m in m.settingsPath = [.settings(.metadata)] },
+            Step(name: "settings-sync") { m in m.showDemoSync(); m.settingsPath = [.settings(.sync)] },
+            Step(name: "settings-sync-pairing") { m in m.settingsPath = [.settings(.sync), .settings(.syncPairing)] },
+            Step(name: "settings-sync-off") { m in m.hideDemoSync(); m.settingsPath = [.settings(.sync)] },
+            Step(name: "settings-sync-join") { m in m.settingsPath = [.settings(.sync), .settings(.syncJoin)] },
         ]
+        #endif
+        #if os(iOS)
+        if let index = steps.firstIndex(where: { $0.name == "settings-sync" }) {
+            steps.insert(Step(name: "settings-sync-pairing") { m in m.settingsPath = [.settings(.sync), .settings(.syncPairing)] }, at: index + 1)
+        }
         #endif
         return steps
     }
