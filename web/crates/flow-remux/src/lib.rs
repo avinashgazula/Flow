@@ -63,6 +63,13 @@ impl Remuxer {
         Remuxer { core: Core::new(length), fragment: None, codec: String::new(), thumb: Vec::new(), thumb_description: Vec::new() }
     }
 
+    /// Plays Dolby Vision files as their HDR10 picture ("Never Use Dolby Vision"): call before the first
+    /// `headerFeed`. Profile 5, which has no HDR10 picture, stays Dolby Vision.
+    #[wasm_bindgen(js_name = setHdr10Only)]
+    pub fn set_hdr10_only(&mut self, on: bool) {
+        self.core.reader.hdr10_only = on;
+    }
+
     /// [offset, length] of the next header read, or an empty array when the header is done (or failed).
     #[wasm_bindgen(js_name = headerNeed)]
     pub fn header_need(&mut self) -> Vec<f64> {

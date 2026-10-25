@@ -130,9 +130,30 @@ describe('history', () => {
     expect(short.push.map((o) => (o.kind === 'watched' ? o.id : 0))).toEqual([1, 2, 3])
   })
 
+  it('does not bring back an episode that was marked unwatched here and is still waiting to be removed there', () => {
+    const remote = [{ tmdb: 5, title: 'S', episodes: [{ season: 1, episode: 1, at: 1 }, { season: 1, episode: 2, at: 2 }] }]
+    const pending: Op[] = [{ kind: 'unwatched', type: 'show', id: 5, season: 1, episode: 1 }]
+    expect(mergeWatchedEpisodes({}, remote, pending)).toEqual({ 'show:5:s1e2': 2 })
+  })
+
   it('adds only the watched episodes this browser does not already have', () => {
     const add = mergeWatchedEpisodes({ 'show:5:s1e1': 7 }, [{ tmdb: 5, title: 'S', episodes: [{ season: 1, episode: 1, at: 1 }, { season: 1, episode: 2, at: 2 }] }])
     expect(add).toEqual({ 'show:5:s1e2': 2 })
+  })
+})
+
+describe('marking unwatched', () => {
+  const watched = (episode: number, at: string): Op => ({ kind: 'watched', type: 'show', id: 5, season: 1, episode, at })
+  const unwatched = (episode: number): Op => ({ kind: 'unwatched', type: 'show', id: 5, season: 1, episode })
+
+  it('queues one removal for each episode, not one for the show', () => {
+    const ops = enqueue(enqueue([], unwatched(1)), unwatched(2))
+    expect(ops).toEqual([unwatched(1), unwatched(2)])
+  })
+
+  it('lets the last word win while both wait: a play then its removal is just the removal, and back again', () => {
+    expect(enqueue([watched(1, 'a'), watched(2, 'a')], unwatched(1))).toEqual([watched(2, 'a'), unwatched(1)])
+    expect(enqueue([unwatched(1), unwatched(2)], watched(1, 'b'))).toEqual([unwatched(2), watched(1, 'b')])
   })
 })
 

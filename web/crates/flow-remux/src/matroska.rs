@@ -188,6 +188,8 @@ pub struct HeaderReader {
     chapters_raw: Vec<u8>,
     /// The SeekHead, Info and Tracks elements as they were read, so a later visit can skip reading them.
     raw_head: Vec<Vec<u8>>,
+    /// Play Dolby Vision as its HDR10 picture; set before the header is read (see `codecs::hdr10_only`).
+    pub hdr10_only: bool,
 }
 
 /// What the reader needs next.
@@ -214,6 +216,7 @@ impl HeaderReader {
             chapters_last: None,
             chapters_raw: Vec::new(),
             raw_head: Vec::new(),
+            hdr10_only: false,
         }
     }
 
@@ -348,7 +351,12 @@ impl HeaderReader {
                 self.seek_positions.extend(entries);
             }
             id::INFO => parse_info(b, e, &mut self.header).map_err(|_| damaged)?,
-            id::TRACKS => self.header.tracks = parse_tracks(b, e).map_err(|_| damaged)?,
+            id::TRACKS => {
+                self.header.tracks = parse_tracks(b, e).map_err(|_| damaged)?;
+                if self.hdr10_only {
+                    self.header.tracks.iter_mut().for_each(crate::codecs::hdr10_only);
+                }
+            }
             id::CUES => {
                 if let Some(end) = e.end_within(b.len()) {
                     self.cues_raw = b[e.start..end].to_vec();
@@ -536,18 +544,19 @@ impl HeaderReader {
     /// Takes the blob `export` made for this same file (the worker keys it by the file's identity). Leaves the reader
     /// untouched and says false when the blob isn't one, or doesn't describe a playable file.
     pub fn import(&mut self, raw: &[u8]) -> bool {
-        let Some(imported) = Self::imported(self.length, raw) else { return false };
+        let Some(imported) = Self::imported(self.length, self.hdr10_only, raw) else { return false };
         *self = imported;
         true
     }
 
-    fn imported(length: Option<u64>, raw: &[u8]) -> Option<HeaderReader> {
+    fn imported(length: Option<u64>, hdr10_only: bool, raw: &[u8]) -> Option<HeaderReader> {
         let fixed = CACHE_MAGIC.len() + 8 * 3 + 1;
         if raw.len() < fixed || &raw[..4] != CACHE_MAGIC {
             return None;
         }
         let number = |at: usize| u64::from_be_bytes(raw[at..at + 8].try_into().unwrap_or_default());
         let mut r = HeaderReader::new(length);
+        r.hdr10_only = hdr10_only;
         r.header.segment_data_start = number(4);
         r.header.segment_end = Some(number(12)).filter(|&e| e > 0);
         r.header.first_cluster = Some(number(20));

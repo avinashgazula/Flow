@@ -40,6 +40,7 @@ export const remuxer_reset: (a: number, b: number, c: number) => void;
 export const remuxer_seekTarget: (a: number, b: number, c: number) => void;
 export const remuxer_select: (a: number, b: number, c: number, d: number) => void;
 export const remuxer_selectPicture: (a: number, b: number) => void;
+export const remuxer_setHdr10Only: (a: number, b: number) => void;
 export const remuxer_setVideoFloor: (a: number, b: number) => void;
 export const remuxer_takeCues: (a: number, b: number) => void;
 export const remuxer_takePictureCues: (a: number, b: number) => void;

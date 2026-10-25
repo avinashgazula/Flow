@@ -73,12 +73,21 @@ function onLibrary() {
   scheduleFlush()
 }
 
-/** The hook for star ratings: the website has no rating screen yet, and the one that adds it calls this. Sends the
+/** The hook for star ratings, called by the library's `rate`. Sends the
  *  viewer's 1 to 10 score for a title, or removes it with null. Does nothing when signed out. */
 export function rateTitle(item: Pick<MediaItem, 'type' | 'id'>, rating: number | null) {
   if (!signedIn()) return
   const score = rating === null ? null : Math.min(10, Math.max(1, Math.round(rating)))
   traktStore.set({ ops: enqueue(traktStore.get().ops, { kind: 'rate', type: item.type, id: item.id, rating: score }) })
+  scheduleFlush()
+}
+
+/** Removes a play from Trakt's history: one episode, or a film (no season and episode). Called by the library's
+ *  mark-unwatched actions, since the library can't tell "unwatched" from "history cleared", which never reaches
+ *  Trakt. Does nothing when signed out. */
+export function unwatchTitle(item: Pick<MediaItem, 'type' | 'id'>, episode?: { season: number; episode: number }) {
+  if (!signedIn()) return
+  traktStore.set({ ops: enqueue(traktStore.get().ops, { kind: 'unwatched', type: item.type, id: item.id, ...(episode ?? {}) }) })
   scheduleFlush()
 }
 
@@ -103,7 +112,7 @@ async function pull(): Promise<void> {
   const watchlist = mergeWatchlist({ local: lib.watchlist, remote: list, baseline: state.watchlistBaseline, pending: traktStore.get().ops })
   const history = mergeHistory({ local: lib.history, remote: plays, firstSync: first, limit: historyLimit })
   const progress = mergeProgress({ local: lib.progress, remote: resumes, history: lib.history })
-  const episodes = shows ? mergeWatchedEpisodes(lib.watchedEpisodes, shows) : {}
+  const episodes = shows ? mergeWatchedEpisodes(lib.watchedEpisodes, shows, traktStore.get().ops) : {}
 
   applying = true
   try {

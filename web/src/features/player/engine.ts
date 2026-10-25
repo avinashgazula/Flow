@@ -6,6 +6,7 @@ import type { HlsConfig } from 'hls.js'
 import type { Source } from '../../lib/sources'
 import { proxyLoader } from '../../lib/sources/hlsProxy'
 import { needsProxy, proxied, rememberBlocked, streamProxy } from '../../lib/sources/proxy'
+import { settingsStore } from '../../lib/store/settings'
 import { hlsErrorMessage, PlaybackError } from './errors'
 import { trackLabel } from './format'
 import { BitmapPreview, canPreviewWithVideo, type PreviewSource, TilePreview, VideoPreview } from './preview'
@@ -338,7 +339,9 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
   // Through the stream proxy a host that sends no CORS headers can be read. An add-on's request
   // headers are meant for the host, not the proxy, and the proxy forwards only Range, so a proxied
   // attempt sends none.
-  const open = (viaProxy: boolean) => attachMatroska(video, viaProxy ? proxied(source.url) : source.url, { headers: viaProxy ? undefined : source.headers, viaProxy, startAt, signal })
+  // "Never Use Dolby Vision" plays a Dolby Vision file as its HDR10 picture: the remuxer leaves out its configuration.
+  const hdr10Only = settingsStore.get().neverUseDolbyVision
+  const open = (viaProxy: boolean) => attachMatroska(video, viaProxy ? proxied(source.url) : source.url, { headers: viaProxy ? undefined : source.headers, viaProxy, hdr10Only, startAt, signal })
   const failedWith = (error: unknown, name: string) => (error as Error).name === name
 
   let session

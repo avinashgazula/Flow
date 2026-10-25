@@ -28,4 +28,4 @@ export const persister = createAsyncStoragePersister({
 })
 
 /** Bumped when normalised shapes change, so an old cache is dropped instead of misread. */
-export const cacheBuster = 'v2'
+export const cacheBuster = 'v3'

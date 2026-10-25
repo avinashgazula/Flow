@@ -10,6 +10,7 @@ import { createStore, useStore } from '../store/createStore'
 export type Op =
   | { kind: 'watchlist'; type: MediaType; id: number; on: boolean }
   | { kind: 'watched'; type: MediaType; id: number; season?: number; episode?: number; at: string }
+  | { kind: 'unwatched'; type: MediaType; id: number; season?: number; episode?: number }
   | { kind: 'unplayback'; type: MediaType; id: number }
   | { kind: 'rate'; type: MediaType; id: number; rating: number | null }
 

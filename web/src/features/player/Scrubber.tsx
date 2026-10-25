@@ -169,10 +169,10 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
         <div className={s.rail}>
           <div ref={buffer} className={s.buffered} />
           <div ref={fill} className={s.played} />
-          {segments.map((segment, i) => (
-            <div key={`${segment.kind}:${segment.start}`} ref={(el) => void (marks.current[i] = el)} className={s.mark} data-kind={segment.kind} />
-          ))}
         </div>
+        {segments.map((segment, i) => (
+          <div key={`${segment.kind}:${segment.start}`} ref={(el) => void (marks.current[i] = el)} className={s.mark} data-kind={segment.kind} />
+        ))}
         <div ref={thumb} className={s.thumb} />
         <SeekPreview controller={controller} ref={preview} />
       </div>

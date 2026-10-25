@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProviderState, Source } from '../../lib/sources'
-import { bestSource, playsFirst, episodePrint, isNew, metaLine, playFacts, playLabel, sourcesSummary, titlePrint, versionParts } from './logic'
+import { aboutRows, airedRefs, bestSource, cardOf, playsFirst, episodePrint, isNew, metaLine, playFacts, playLabel, realSeasons, runtimeText, sourcesSummary, starsOf, statusLabel, titlePrint, todayOf, versionParts } from './logic'
 import { toFacts } from '../../components/stripLayout'
 import type { PrintPart } from '../../components/stripLayout'
 
@@ -107,5 +107,81 @@ describe('episodes', () => {
     expect(plain(episodePrint({ runtime: 47, airDate: '2026-10-15' }, { aired: true, watched: true, now }))).toEqual(['47 min'])
     expect(plain(episodePrint({ runtime: 47, airDate: '2027-01-01' }, { aired: false, watched: false, now }))).toEqual(['Not yet aired'])
     expect(plain(episodePrint({}, { aired: true, watched: false, now }))).toEqual([])
+  })
+})
+
+describe('about', () => {
+  const dune = {
+    type: 'movie' as const,
+    date: '2024-02-27',
+    runtime: 167,
+    seasons: [],
+    crew: [{ id: 1, name: 'Denis Villeneuve', role: 'Director' }, { id: 2, name: 'Hans Zimmer', role: 'Original Music Composer' }],
+    certification: 'PG-13',
+    status: 'Released',
+    originalLanguage: 'en',
+    originCountries: ['US', 'CA'],
+    budget: 190_000_000,
+    revenue: 714_444_358,
+    productionCompanies: ['Legendary Pictures', 'Warner Bros. Pictures'],
+    networks: [],
+  }
+
+  it('always lists the essentials, in the apps’ order', () => {
+    expect(aboutRows(dune, { full: false, locale: 'en-GB' })).toEqual([
+      { label: 'Released', value: '27 Feb 2024' },
+      { label: 'Runtime', value: '2 h 47 min' },
+      { label: 'Director', value: 'Denis Villeneuve' },
+      { label: 'Rated', value: 'PG-13' },
+    ])
+  })
+
+  it('adds status, language, countries, money and companies when About is on', () => {
+    const rows = aboutRows(dune, { full: true, locale: 'en-GB' })
+    expect(rows.slice(4)).toEqual([
+      { label: 'Status', value: 'Released' },
+      { label: 'Original Language', value: 'English' },
+      { label: 'Countries', value: 'United States, Canada' },
+      { label: 'Budget', value: '$190M' },
+      { label: 'Revenue', value: '$714.4M' },
+      { label: 'Production', value: 'Legendary Pictures, Warner Bros. Pictures', wide: true },
+    ])
+  })
+
+  it('names a series by its creators, seasons and network, and leaves out what TMDB does not have', () => {
+    const show = { ...dune, type: 'show' as const, status: 'Returning Series', runtime: 47, budget: undefined, revenue: undefined, productionCompanies: [], originCountries: ['US'], networks: ['HBO'], seasons: [{ number: 0, name: 'Specials', episodeCount: 2 }, { number: 1, name: 'S1', episodeCount: 8 }], crew: [{ id: 3, name: 'Vince Gilligan', role: 'Creator' }] }
+    const rows = aboutRows(show, { full: true, locale: 'en-GB' })
+    expect(rows.map((r) => `${r.label}: ${r.value}`)).toEqual(['First Aired: 27 Feb 2024', 'Runtime: 47 min', 'Seasons: 1', 'Created By: Vince Gilligan', 'Rated: PG-13', 'Status: Returning', 'Original Language: English', 'Country: United States', 'Network: HBO'])
+  })
+
+  it('prints runtimes and statuses the way the apps do', () => {
+    expect(runtimeText(60)).toBe('1 h')
+    expect(runtimeText(45)).toBe('45 min')
+    expect(statusLabel('Returning Series')).toBe('Returning')
+    expect(statusLabel('Ended')).toBe('Ended')
+  })
+})
+
+describe('series helpers', () => {
+  it('lists Specials last, and not at all when they are turned off', () => {
+    const seasons = [{ number: 0 }, { number: 2 }, { number: 1 }]
+    expect(realSeasons(seasons).map((x) => x.number)).toEqual([1, 2, 0])
+    expect(realSeasons(seasons, false).map((x) => x.number)).toEqual([1, 2])
+  })
+
+  it('counts an episode as aired only when it has a date that is today or earlier', () => {
+    const today = todayOf(Date.UTC(2026, 9, 24, 12))
+    expect(today).toBe('2026-10-24')
+    expect(airedRefs([{ season: 1, number: 1, airDate: '2026-10-24' }, { season: 1, number: 2, airDate: '2026-10-25' }, { season: 1, number: 3 }], today)).toEqual([{ season: 1, episode: 1 }])
+  })
+
+  it('keeps a library entry small', () => {
+    const entry = cardOf({ type: 'show', id: 1, title: 'A', overview: 'x', genres: [1], poster: '/p', cast: [1, 2, 3] } as never)
+    expect(Object.keys(entry)).not.toContain('cast')
+    expect(entry.poster).toBe('/p')
+  })
+
+  it('turns a 1 to 10 score into whole stars, two points each', () => {
+    expect([undefined, 1, 2, 7, 10].map(starsOf)).toEqual([0, 0, 1, 3, 5])
   })
 })

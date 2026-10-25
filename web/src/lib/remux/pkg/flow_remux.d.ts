@@ -133,6 +133,11 @@ export class Remuxer {
      */
     select(video: number, audio: number, raw: boolean): void;
     /**
+     * Plays Dolby Vision files as their HDR10 picture ("Never Use Dolby Vision"): call before the first
+     * `headerFeed`. Profile 5, which has no HDR10 picture, stays Dolby Vision.
+     */
+    setHdr10Only(on: boolean): void;
+    /**
      * Drops video fragments that end before `seconds`, while audio is rebuilt under a picture
      * that's already buffered.
      */
@@ -218,6 +223,7 @@ export interface InitOutput {
     readonly remuxer_seekTarget: (a: number, b: number, c: number) => void;
     readonly remuxer_select: (a: number, b: number, c: number, d: number) => void;
     readonly remuxer_selectPicture: (a: number, b: number) => void;
+    readonly remuxer_setHdr10Only: (a: number, b: number) => void;
     readonly remuxer_setVideoFloor: (a: number, b: number) => void;
     readonly remuxer_takeCues: (a: number, b: number) => void;
     readonly remuxer_takePictureCues: (a: number, b: number) => void;
