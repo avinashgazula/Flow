@@ -18,7 +18,7 @@ const tail = 30
  *  (or is too short for any of these). */
 export function upNextDueAt(duration: number, creditsAt: number | undefined, waitsForEnd = false): number | undefined {
   if (Number.isNaN(duration)) return undefined
-  if (waitsForEnd) return duration > 60 ? duration - countdownFrom - 1 : undefined
+  if (waitsForEnd) return duration > tail ? duration - countdownFrom - 1 : undefined
   if (creditsAt !== undefined) return duration > tail ? creditsAt : undefined
   return duration > 60 ? duration - tail : undefined
 }

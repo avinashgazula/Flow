@@ -270,7 +270,7 @@ export function PlaybackSection() {
         </Row>
       </Group>
       {platform && (
-        <Group title="Player" footer="Options → Open in lists these apps, with this one first. Another app gets the stream’s link (Infuse also the resume point), only for files it can fetch by their address alone. Flow tracks progress only in its own player.">
+        <Group title="External Player" footer="Options → Open in lists these apps, with this one first. Another app gets the stream’s link (Infuse also the resume point), only for files it can fetch by their address alone. Flow tracks progress only in its own player.">
           <Row label="Player" htmlFor="external-player">
             <Select
               id="external-player"

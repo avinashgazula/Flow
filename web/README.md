@@ -131,7 +131,7 @@ The player has what the apps have for watching a series (`features/player/segmen
 
 - **Skip Intro, Skip Recap, Skip Credits** as a yellow button bottom right above the scrubber while the segment plays
   (Enter or **S** presses it). Settings → Playback sets each to Show Button, Skip Automatically (skips once as the
-  segment begins and says "Skipped intro" with Undo) or Off. The scrubber draws the segments as dimmer perforations.
+  segment begins and says "Skipped intro" with Undo) or Off. The scrubber marks each segment with a thin tick under the holes.
 - **Where segments come from**, first answer wins: the server the file plays from (Jellyfin media segments, Plex
   markers), IntroDB, PublicMetaDB (each only with a key), then the file's chapter names ("Opening", "Ending"), read
   from the first bytes of an MKV by `lib/remux/chapters.ts`. No answer means no button, never an error.
@@ -143,7 +143,35 @@ The player has what the apps have for watching a series (`features/player/segmen
   a Next Episode button. Credits that run to the end of an episode with another after it are skipped to that episode.
 - **Are You Still Watching?** After the number of episodes in Settings (3, as in the apps) play one after another
   with no click, key or pause, the next episode waits behind "Keep Watching" and "Stop".
+- **Wait for the Episode to End** (Settings → Playback) brings Up Next up so its countdown ends as the episode does, instead of at the credits.
 - Sample data (`?demo`) has an intro at 0:05 to 0:20 and credits for the last 18 seconds of any sample stream.
+
+## Player extras
+
+What the apps' player has beyond that, each with the apps' words and defaults (pure logic in its own module with a test):
+
+- **Sleep Timer** (Options): 15, 30, 45 minutes, 1 hour, 90 minutes or End of Episode or Movie (`sleepTimer.ts`). The sound fades over the last 30
+  seconds, then the picture pauses (where a browser won't let a page set the volume, iPhone and iPad, it just pauses). The timer carries
+  on into the next episode; End of Episode lets this one finish and closes the player.
+- **Hold for 2×:** a finger held on the picture for 0.45 s plays at double speed until it lifts (a wander of 40 px cancels); on a keyboard, hold **X**.
+- **What Did They Say?** (Options, **W**, or a finger held on Back 10 Seconds) goes back ten seconds and shows subtitles for just that stretch
+  even when they are off, then puts them back (`replay.ts`).
+- **Subtitle Delay** (Options, beside Subtitle Style): -10 to +10 seconds in tenths, positive later. It shifts every cue Flow draws, is remembered for
+  the title until the page closes, and has a Reset (`subtitleDelay.ts`).
+- **Never Use Dolby Vision** (Settings → Playback): the remuxer leaves out the Dolby Vision configuration, so the file plays as its HDR10 picture
+  (profile 5, which has none, stays Dolby Vision). It is in the Rust crate (`codecs::hdr10_only`), rebuilt into `src/lib/remux/pkg`.
+- **Volume Boost** (Options): up to 12 dB through a Web Audio gain and a limiter (`volumeBoost.ts`). It is offered only where routing the
+  video through Web Audio can't silence it (the remuxer's and hls.js's own MediaSource streams, and same-origin files), and the graph is built
+  only once the audio context is running.
+- **Screen kept awake** while the picture plays, with the Screen Wake Lock API; let go on pause and when the page hides, taken again when it shows (`wakeLock.ts`).
+- **Open in** (Options, and a preferred app in Settings → Playback): the apps' list for the platform (Infuse, VLC, Outplayer, SenPlayer, VidHub, CineUltra
+  and Moon Player on iPhone and iPad; Infuse, VidHub, IINA and mpv on a Mac), by their link schemes (`externalPlayers.ts`). Offered only for a plain web
+  address that needs no request headers, so not for the remuxed or proxied copy the page plays. Infuse gets the resume point. It is never opened by itself:
+  a page can't tell whether the app is installed.
+- **Post-Credits Scene Alert** and **Because You Watched** (Settings → Playback, on): as a film's credits begin, a quiet note says if TMDB's keywords
+  (`duringcreditsstinger`, `aftercreditsstinger`) name a scene to stay for, and such credits are never skipped by themselves. Otherwise a few of its
+  recommendations come up beside the credits (closing them gives back Skip Credits), and where the film ends they fill the screen. The keywords
+  are asked for once the film is playing (`/movie/{id}/keywords`), so the title page's request is unchanged. Films of half an hour or more only.
 
 ## Seek previews
 

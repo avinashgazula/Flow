@@ -24,9 +24,10 @@ describe('Wait for the Episode to End', () => {
     expect(upNextDueAt(2700, undefined, true)).toBe(2689)
   })
 
-  it('still waits for the length, and for something longer than a minute', () => {
+  it('still waits for the length, and for a stream long enough to have a tail', () => {
     expect(upNextDueAt(Number.NaN, 2600, true)).toBeUndefined()
-    expect(upNextDueAt(45, 30, true)).toBeUndefined()
+    expect(upNextDueAt(25, 10, true)).toBeUndefined()
+    expect(upNextDueAt(60, undefined, true)).toBe(49)
   })
 
   it('counts what is left of the episode, ten seconds at most', () => {

@@ -672,7 +672,8 @@
   flex-direction: column;
   gap: 10px;
   padding: 12px 14px 14px;
-  background: var(--panel);
+  /* Solid, not the 94% panel colour: the subtitle line runs behind this corner and would show through the card. */
+  background: var(--base-2);
   border: 1px solid var(--rule);
   border-radius: var(--radius-panel);
   transition: transform var(--dur-move) var(--ease-out);
@@ -727,7 +728,8 @@
   align-items: flex-start;
   gap: var(--space-m);
   padding: calc(var(--inset-top) + 16px) calc(var(--inset-right) + var(--margin)) calc(var(--inset-bottom) + var(--margin)) calc(var(--inset-left) + var(--margin));
-  background: color-mix(in srgb, var(--edge) 94%, transparent);
+  /* Solid: the controls under it are still there, and none of them should show. */
+  background: var(--edge);
   animation: panel var(--dur-state) var(--ease-out);
 }
 .suggestEndHead {
