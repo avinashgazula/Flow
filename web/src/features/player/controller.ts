@@ -542,7 +542,7 @@ export class PlayerController {
    *  a tap or key press, which `gesture` says. A boost that can't start says so and goes back to Off. */
   async applyBoost(gesture: boolean) {
     const boost = this.boost
-    const db = settingsStore.get().volumeBoostDB
+    const db = settingsStore.get().volumeBoostDB ?? 0
     if (!boost || !this.state.boostable || (db === 0 && !boost.active)) return
     if (!gesture && !boost.active && navigator.userActivation?.hasBeenActive === false) return
     await boost.set(db)

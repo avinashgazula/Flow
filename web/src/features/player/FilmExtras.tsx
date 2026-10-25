@@ -17,7 +17,7 @@ type Card = 'hidden' | 'credits' | 'end'
  *  after them, and Because You Watched, a few films like it, as they roll and where the film ends. It watches the
  *  clock itself and draws nothing until there is something to say. `short` lets a sample clip count as a film. */
 export function FilmExtras({ controller, film, scenes, short, onOpen, onClose }: { controller: PlayerController; film: MediaDetail | undefined; scenes: CreditsScenes | undefined; short: boolean; onOpen: (item: MediaItem) => void; onClose: () => void }) {
-  const wanted = useSettings((st) => st.becauseYouWatched)
+  const wanted = useSettings((st) => st.becauseYouWatched !== false)
   const segments = usePlayer(controller, (st) => st.segments)
   const segmentsRef = useRef(segments)
   useEffect(() => {

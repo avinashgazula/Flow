@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Icon, type IconName } from '../../components/Icon'
+import { PlayerIcon, type PlayerIconName } from './playerIcons'
 import type { Source } from '../../lib/sources'
 import { useSettings } from '../../lib/store/settings'
 import { usePlayer, type PlayerController } from './controller'
@@ -32,7 +33,7 @@ const titles: Record<Page, string> = {
 
 interface Row {
   id: string
-  icon?: IconName
+  icon?: IconName | PlayerIconName
   title: string
   detail?: string
   value?: string
@@ -75,8 +76,8 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   const sleep = usePlayer(controller, (st) => st.sleep)
   const delay = usePlayer(controller, (st) => st.subtitleDelay)
   const boostable = usePlayer(controller, (st) => st.boostable)
-  const boost = useSettings((st) => st.volumeBoostDB)
-  const preferred = useSettings((st) => st.externalPlayer)
+  const boost = useSettings((st) => st.volumeBoostDB ?? 0)
+  const preferred = useSettings((st) => st.externalPlayer ?? 'none')
   const close = () => controller.setPanel(null)
   // The Subtitle Style page changes what's on screen as you go, so the player shows a sample line and keeps
   // it clear of this panel while the page is open.
@@ -280,7 +281,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
               <button key={row.id} className={s.row} data-plain={row.plain ? '' : undefined} onClick={row.action} onMouseDown={keepFocus} disabled={row.disabled} role={row.checked !== undefined ? 'menuitemradio' : 'menuitem'} aria-checked={row.checked}>
                 {row.icon && (
                   <span className={s.rowIcon}>
-                    <Icon name={row.icon} size={18} strokeWidth={2} />
+                    <PlayerIcon name={row.icon} size={18} strokeWidth={2} />
                   </span>
                 )}
                 <span className={s.rowText}>

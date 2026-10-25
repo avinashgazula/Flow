@@ -177,11 +177,11 @@ export function PlaybackSection() {
   const skipRecap = useSettings((x) => x.skipRecap)
   const skipCredits = useSettings((x) => x.skipCredits)
   const remember = useSettings((x) => x.rememberLastSource)
-  const waitsForEnd = useSettings((x) => x.upNextWaitsForEnd)
-  const neverDolbyVision = useSettings((x) => x.neverUseDolbyVision)
-  const postCredits = useSettings((x) => x.postCreditsAlert)
-  const becauseYouWatched = useSettings((x) => x.becauseYouWatched)
-  const externalPlayer = useSettings((x) => x.externalPlayer)
+  const waitsForEnd = useSettings((x) => x.upNextWaitsForEnd ?? false)
+  const neverDolbyVision = useSettings((x) => x.neverUseDolbyVision ?? false)
+  const postCredits = useSettings((x) => x.postCreditsAlert !== false)
+  const becauseYouWatched = useSettings((x) => x.becauseYouWatched !== false)
+  const externalPlayer = useSettings((x) => x.externalPlayer ?? 'none')
   // The apps exist on iPhone, iPad and Mac only; elsewhere the setting would have nothing to choose.
   const platform = typeof navigator === 'undefined' ? undefined : detectPlatform(navigator.userAgent, navigator.maxTouchPoints)
   const audioFirst = audioLanguages[0] ?? ''

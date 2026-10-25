@@ -198,8 +198,6 @@ function detail(t: Title) {
   o.similar = page(similar.slice(-6))
   o.images = { logos: [] }
   if (t.type === 'movie') {
-    // Every third film has a scene after its credits and every third a scene during them, so both notes can be seen.
-    o.keywords = { keywords: t.id % 3 === 2 ? [{ id: 1, name: 'aftercreditsstinger' }] : t.id % 3 === 1 ? [{ id: 2, name: 'duringcreditsstinger' }] : [] }
     o.runtime = t.runtime
     o.release_dates = { results: [{ iso_3166_1: 'US', release_dates: [{ certification: t.certification, type: 3 }] }] }
   } else {
@@ -283,6 +281,8 @@ export async function demoTmdb(rawPath: string, query: Record<string, unknown>):
       if (!t) throw new Error('Not in the sample data')
       if (parts.length === 2) return detail(t)
       if (parts[2] === 'season') return season(t, Number(parts[3] ?? 1))
+      // Every third film has a scene after its credits and every third a scene during them, so both notes can be seen.
+      if (parts[2] === 'keywords') return { keywords: t.id % 3 === 2 ? [{ id: 1, name: 'aftercreditsstinger' }] : t.id % 3 === 1 ? [{ id: 2, name: 'duringcreditsstinger' }] : [] }
       if (parts[2] === 'external_ids') return { imdb_id: t.imdb, tvdb_id: t.id + 70000 }
       throw new Error('Not in the sample data')
     }

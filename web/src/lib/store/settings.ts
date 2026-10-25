@@ -82,8 +82,10 @@ export interface Settings {
   /** After this many episodes play one after another with nobody touching anything, Flow asks
    *  before starting the next. Zero never asks. As the apps' `stillWatchingAfterEpisodes`. */
   stillWatchingAfterEpisodes: number
-  /** Up Next waits for the episode to end instead of counting down as its credits start. */
-  upNextWaitsForEnd: boolean
+  /** Absent means off, except for the post-credits alert and Because You Watched, where it means on (these six are
+   *  left out of the defaults to keep the first visit's code small).
+   *  Up Next waits for the episode to end instead of counting down as its credits start. */
+  upNextWaitsForEnd?: boolean
   skipIntro: SkipBehaviour
   skipRecap: SkipBehaviour
   skipCredits: SkipBehaviour
@@ -92,15 +94,15 @@ export interface Settings {
   introDBKey: string
   publicMetaDBKey: string
   /** Say so as a film's credits begin when it has a scene during or after them (TMDB's stinger keywords). */
-  postCreditsAlert: boolean
+  postCreditsAlert?: boolean
   /** Suggest films like it as a film's credits roll, and when it ends. */
-  becauseYouWatched: boolean
+  becauseYouWatched?: boolean
   /** Play Dolby Vision files as their HDR10 picture (MKV files Flow plays itself). */
-  neverUseDolbyVision: boolean
+  neverUseDolbyVision?: boolean
   /** Extra loudness in whole decibels, 0 to 12 (the apps' `volumeBoostDB`); played through a Web Audio gain where the browser allows it. */
-  volumeBoostDB: number
+  volumeBoostDB?: number
   /** The app "Open in" leads with in the player's options. It is never opened by itself: a web page can't tell whether the app is installed. */
-  externalPlayer: ExternalPlayerId
+  externalPlayer?: ExternalPlayerId
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
   /** The picker offers the source a title was last played from first. */
   rememberLastSource: boolean
@@ -136,17 +138,11 @@ export const defaultSettings: Settings = {
   subtitleStyle: defaultSubtitleStyle,
   autoplayNext: true,
   stillWatchingAfterEpisodes: 3,
-  upNextWaitsForEnd: false,
   skipIntro: 'button',
   skipRecap: 'button',
   skipCredits: 'button',
   introDBKey: '',
   publicMetaDBKey: '',
-  postCreditsAlert: true,
-  becauseYouWatched: true,
-  neverUseDolbyVision: false,
-  volumeBoostDB: 0,
-  externalPlayer: 'none',
   preferredQuality: '1080p',
   rememberLastSource: true,
   font: 'system',

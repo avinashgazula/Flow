@@ -8,6 +8,7 @@ import { lastSourceStore, matchLastSource } from '../../lib/sources/lastSource'
 import { hasPlayableAudio } from '../../lib/sources/rank'
 import { library, libraryStore, mediaKey, type EpisodeRef } from '../../lib/store/library'
 import { settingsStore, useSettings } from '../../lib/store/settings'
+import { filmCreditsScenes } from '../../lib/tmdb/creditsScenes'
 import { imageURL } from '../../lib/tmdb/images'
 import type { Episode, MediaDetail, MediaItem, MediaType } from '../../lib/tmdb/types'
 import { SourcePicker } from '../sources/SourcePicker'
@@ -88,9 +89,6 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   const current: Episode | undefined = seasonEpisodes?.find((e) => e.number === episode)
   const next = epRef ? nextEpisode(epRef, seasonEpisodes, nextSeasonEpisodes) : undefined
   const autoplayNext = useSettings((st) => st.autoplayNext)
-  // A film's scene during or after its credits (TMDB keywords): the note at the credits, and credits that hide one
-  // are never skipped by themselves.
-  const creditsScenes = useSettings((st) => st.postCreditsAlert) && type === 'movie' ? detail?.creditsScenes : undefined
 
   useEffect(warmEngines, [])
 
@@ -116,6 +114,12 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   const [sources, setSources] = useState<Source[]>([])
   const [error, setError] = useState<PlaybackError | null>(null)
   const [progress, setProgress] = useState(0)
+  // A film's scene during or after its credits (TMDB keywords): the note at the credits, and credits that hide one
+  // are never skipped by themselves. Asked for once the film is playing, and kept for good.
+  const alertScenes = useSettings((st) => st.postCreditsAlert !== false) && type === 'movie'
+  const { data: scenesFound } = useQuery({ queryKey: ['creditsScenes', id], queryFn: () => filmCreditsScenes(id), enabled: alertScenes && phase === 'playing', staleTime: Infinity, retry: false })
+  const creditsScenes = scenesFound ?? undefined
+
   const [resumeAt, setResumeAt] = useState<number | null>(null)
   const [picker, setPicker] = useState(false)
   const [connectingShown, setConnectingShown] = useState(true)

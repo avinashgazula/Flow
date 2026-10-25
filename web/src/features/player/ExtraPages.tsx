@@ -1,4 +1,5 @@
 import { Icon } from '../../components/Icon'
+import { PlayerIcon } from './playerIcons'
 import { Slider } from '../../components/Slider'
 import { useSettings } from '../../lib/store/settings'
 import { usePlayer, type PlayerController } from './controller'
@@ -18,7 +19,7 @@ export function DelayPage({ controller }: { controller: PlayerController }) {
     <>
       <div className={s.stepper}>
         <button className={s.step} aria-label="Show Subtitles Earlier" title="Show Subtitles Earlier" onClick={() => nudge(-delayRange.step)} onMouseDown={keepFocus} disabled={delay <= delayRange.min}>
-          <Icon name="minus" size={18} strokeWidth={2.4} />
+          <PlayerIcon name="minus" size={18} strokeWidth={2.4} />
         </button>
         <output className={s.big} aria-live="polite">
           {delayLabel(delay)}
@@ -45,7 +46,7 @@ export function DelayPage({ controller }: { controller: PlayerController }) {
 
 /** The options panel's Volume Boost page: extra loudness in whole decibels, from Off to 12. */
 export function BoostPage({ controller }: { controller: PlayerController }) {
-  const db = useSettings((st) => st.volumeBoostDB)
+  const db = useSettings((st) => st.volumeBoostDB ?? 0)
   return (
     <>
       <div className={s.stepper} data-single="">

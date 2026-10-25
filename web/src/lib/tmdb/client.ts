@@ -1,6 +1,5 @@
 import { settingsStore } from '../store/settings'
 import type { CastMember, Episode, Genre, MediaDetail, MediaItem, MediaType, Page, Person, Provider, SearchResult, Video } from './types'
-import { creditsScenesFrom } from './creditsScenes'
 import { tmdbPath } from './types'
 
 /* TMDB v3, as FlowKit's TMDBClient: either a v3 API key or a v4 read-access token. Responses are
@@ -172,7 +171,7 @@ export const api = {
     const lang = s.language.slice(0, 2)
     const append =
       type === 'movie'
-        ? 'credits,videos,recommendations,similar,release_dates,external_ids,images,watch/providers,keywords'
+        ? 'credits,videos,recommendations,similar,release_dates,external_ids,images,watch/providers'
         : 'aggregate_credits,credits,videos,recommendations,similar,content_ratings,external_ids,images,watch/providers'
     const raw = await tmdb(`/${tmdbPath(type)}/${id}`, { append_to_response: append, include_image_language: `${lang},en,null` })
     const base = item({ ...raw, media_type: tmdbPath(type) }, type)!
@@ -208,8 +207,6 @@ export const api = {
       networks: (raw.networks ?? []).map((n: any) => n.name),
       voteCount: raw.vote_count,
       collection: raw.belongs_to_collection ? { id: raw.belongs_to_collection.id, name: raw.belongs_to_collection.name } : undefined,
-      // Movies list their keywords under "keywords", shows under "results"; only films have credits scenes to stay for.
-      creditsScenes: type === 'movie' ? creditsScenesFrom((raw.keywords?.keywords ?? []).map((k: { name: string }) => k.name)) : undefined,
     }
   },
 
