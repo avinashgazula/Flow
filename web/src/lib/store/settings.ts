@@ -1,4 +1,5 @@
 import { defaultLiveTV, type LiveTVSettings } from '../livetv/types'
+import type { SourceOrdering } from '../sources/sourceSettings'
 import type { AddonManifest } from '../sources/types'
 import { defaultTabOrder } from '../tabs'
 import { createStore, useStore } from './createStore'
@@ -89,6 +90,10 @@ export interface Settings {
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
   /** The picker offers the source a title was last played from first. */
   rememberLastSource: boolean
+  /** How found sources are ordered, filtered and shown (Settings → Sources), as FlowKit's `sources` settings.
+   *  Absent until the viewer changes something; read it through `normaliseSourceOrdering`, which supplies the
+   *  defaults. That keeps the defaults out of the code that loads first. */
+  sources?: SourceOrdering
   /** The typeface the whole site is set in; System is the device's own and downloads nothing. */
   font: FontChoice
   /** The order of the sections in the top bar and the phone's tab bar, by id (lib/tabs.ts). A section this

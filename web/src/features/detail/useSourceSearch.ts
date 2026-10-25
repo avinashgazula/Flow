@@ -10,9 +10,10 @@ const idle: SearchUpdate = { sources: [], providers: [], torrents: 0, finished: 
 const keep = 5 * 60_000
 const answers = new Map<string, { at: number; update: SearchUpdate }>()
 
+// The viewer's Sources settings are part of the key: a different order or filter is a different answer.
 const keyOf = (r: PlaybackRequest) => {
   const s = settingsStore.get()
-  return [s.demo ? 'demo' : 'live', r.type, r.tmdbId, r.season ?? '', r.episode ?? ''].join(':')
+  return [s.demo ? 'demo' : 'live', r.type, r.tmdbId, r.season ?? '', r.episode ?? '', JSON.stringify(s.sources)].join(':')
 }
 
 /** The cached, finished answer for this request, if there is one. */
