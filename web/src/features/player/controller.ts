@@ -6,6 +6,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Source } from '../../lib/sources'
 import { settingsStore } from '../../lib/store/settings'
+import { learn, planFor } from '../../lib/subtitles/reach'
 import { credentialsOf, normaliseSubtitleOptions, usableProviders } from '../../lib/subtitles/options'
 import type { ProviderOutcome, SearchOutcome } from '../../lib/subtitles/search'
 import { providerNames, SubtitleError, type Credentials, type ProviderId, type SubtitleQuery, type SubtitleResult } from '../../lib/subtitles/types'
@@ -818,7 +819,7 @@ export class PlayerController {
     if (!video) throw new SubtitleError('The player isn’t ready yet. Try again in a moment.')
     const known = [...this.online.values()].find((o) => o.result.id === result.id)
     if (known) return this.selectSubtitle(known.info.id, remember)
-    const [{ downloadSubtitle }, { planFor, learn }] = await Promise.all([import('../../lib/subtitles/download'), import('../../lib/livetv/access')])
+    const { downloadSubtitle } = await import('../../lib/subtitles/download')
     const title = this.title
     const episode = title?.season !== undefined && title.episode !== undefined ? { season: title.season, episode: title.episode } : undefined
     const got = await downloadSubtitle(result, credentialsOf(settingsStore.get()), { plan: planFor, learn, episode, signal })

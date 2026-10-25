@@ -6,7 +6,7 @@ import { decodeSubtitleBytes, subtitleFormat } from './decode'
 import { downloadSubtitle, type Plan } from './download'
 import { unpackSubtitle, zipEntries } from './zip'
 import type { SubtitleResult } from './types'
-import { planFetch } from '../livetv/plan'
+import { planAttempts } from './reach'
 
 const fixture = (name: string) => new Uint8Array(readFileSync(new URL(`./__fixtures__/${name}`, import.meta.url)))
 const encode = (s: string) => new TextEncoder().encode(s)
@@ -75,7 +75,7 @@ describe('reading the text', () => {
 describe('downloading a result', () => {
   const found: SubtitleResult = { id: 'subdl-/subtitle/1-1.zip', provider: 'subdl', language: 'en', languageName: 'English', release: '', hearingImpaired: false, token: '/subtitle/1-1.zip' }
   const reply = (bytes: Uint8Array, status = 200) => new Response(bytes as BodyInit, { status })
-  const plan = (proxy = '', blocked = false) => (url: string): Plan => planFetch(url, { proxy, blocked, pageProtocol: 'https:' })
+  const plan = (proxy = '', blocked = false) => (url: string): Plan => planAttempts(url, { proxy, blocked, mixed: false })
 
   it('fetches the zip from dl.subdl.com, unpacks it and reads the text', async () => {
     const urls: string[] = []

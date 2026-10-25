@@ -3,8 +3,12 @@
    settings; `planFor` and `learn` in lib/livetv/access.ts, which do, are handed in by the caller. */
 
 import { hostOf, withTimeout } from '../sources/http'
-import { episodeRef } from '../sources/parser'
-import type { Attempt } from '../livetv/net'
+import { episodeIn } from './episode'
+/** One request to make: the address, and whether it goes through the proxy. */
+export interface Attempt {
+  url: string
+  viaProxy: boolean
+}
 import { decodeSubtitleBytes, subtitleFormat } from './decode'
 import { providers, type Io } from './providers'
 import { unpackSubtitle } from './zip'
@@ -97,7 +101,7 @@ export async function downloadSubtitle(result: SubtitleResult, credentials: Cred
   const raw = await fetchFile(where.url, where.headers, options)
   const { episode } = options
   const { bytes, name } = await unpackSubtitle(raw, episode ? (file) => {
-    const ref = episodeRef(file)
+    const ref = episodeIn(file)
     return ref?.season === episode.season && ref.episode === episode.episode
   } : undefined)
   const text = decodeSubtitleBytes(bytes)

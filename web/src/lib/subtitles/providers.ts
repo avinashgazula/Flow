@@ -13,7 +13,7 @@
    - SubSource sends no Access-Control-Allow-Origin at all, and its key is a header the stream proxy
      doesn't pass on, so a web page can't read it. It is asked anyway, and says so when the browser refuses. */
 
-import { episodeRef } from '../sources/parser'
+import { episodeIn } from './episode'
 import { languageCodeOf, subtitleLanguageName } from './names'
 import { hasCredentials } from './options'
 import { SubtitleError, providerNames, type Credentials, type Fetch, type ProviderId, type SubtitleQuery, type SubtitleResult } from './types'
@@ -287,7 +287,7 @@ export function parseSubSource(json: unknown, language: string, episode?: { seas
     const id = text(e.subtitleId)
     if (!id) continue
     const release = text(e.releaseInfo) ?? text(e.release_info) ?? ''
-    const named = episode ? episodeRef(release) : undefined
+    const named = episode ? episodeIn(release) : undefined
     if (episode && named && (named.season !== episode.season || named.episode !== episode.episode)) continue
     out.push({
       id: `subsource-${id}`,
