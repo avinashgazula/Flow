@@ -75,13 +75,14 @@ export function Lead({ slides, auto }: { slides: LeadItem[]; auto: boolean }) {
 
   // A series started also says how many of its aired episodes are still to watch.
   const marks = useLibrary((x) => x.watchedEpisodes)
+  const rewatches = useLibrary((x) => x.rewatches)
   const showLeft = useSettings((x) => x.showEpisodesRemaining)
-  const left = progress && item.type === 'show' && detail.data ? showStatus(watchedShowsOf(marks).get(item.id) ?? [], detail.data, now).left : 0
+  const left = progress && item.type === 'show' && detail.data ? showStatus(watchedShowsOf(marks, rewatches).get(item.id) ?? [], detail.data, now).left : 0
   const leftPrint: PrintPart[] = showLeft && left > 0 ? [{ text: episodesLeftText(left), rank: rank.episodesLeft }] : []
   // A pick the viewer has already seen says so on its strip, as a poster does.
   const history = useLibrary((x) => x.history)
   const showWatched = useSettings((x) => x.showWatchedBadges)
-  const seen = progress ? undefined : posterMarks(item, { movies: watchedMovieKeys(history), shows: watchedShowsOf(marks) }, detail.data, now, { watched: showWatched, episodes: false })
+  const seen = progress ? undefined : posterMarks(item, { movies: watchedMovieKeys(history), shows: watchedShowsOf(marks, rewatches) }, detail.data, now, { watched: showWatched, episodes: false })
   const print = progress ? resumePrint(progress, now, last, userLocale, leftPrint) : [...(seen?.parts ?? []), ...pickPrint(item, detail.data?.runtime ? detail.data : undefined, now, { ends: true, locale: userLocale })]
   const season = progress?.episode ? { season: progress.episode.season } : undefined
   const many = slides.length > 1

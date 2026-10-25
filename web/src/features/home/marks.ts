@@ -1,5 +1,6 @@
 import { rank, type PrintPart } from '../../components/stripLayout'
-import type { EpisodeRef, HistoryEntry } from '../../lib/store/library'
+import type { EpisodeRef, HistoryEntry, Library } from '../../lib/store/library'
+import { parseCode } from '../../lib/watching'
 import type { MediaItem } from '../../lib/tmdb/types'
 import { showStatus, watchedByShow, type AiringDetail } from './continue'
 
@@ -20,14 +21,28 @@ export function watchedMovieKeys(history: readonly HistoryEntry[]): ReadonlySet<
 }
 
 const showMaps = new WeakMap<object, Map<number, EpisodeRef[]>>()
-/** Each show's watched episodes, cached per marks object for the same reason. */
-export function watchedShowsOf(marks: Record<string, number>): ReadonlyMap<number, EpisodeRef[]> {
+const rewatchMaps = new WeakMap<object, WeakMap<object, Map<number, EpisodeRef[]>>>()
+/** Each show's watched episodes, cached per marks object for the same reason. During a rewatch only the episodes
+ *  watched again count, as on the title page (lib/watching.ts), so Up Next follows the rewatch. */
+export function watchedShowsOf(marks: Record<string, number>, rewatches?: Library['rewatches']): ReadonlyMap<number, EpisodeRef[]> {
   let map = showMaps.get(marks)
   if (!map) {
     map = watchedByShow(marks)
     showMaps.set(marks, map)
   }
-  return map
+  if (!rewatches || Object.keys(rewatches).length === 0) return map
+  let byRewatch = rewatchMaps.get(marks)
+  if (!byRewatch) rewatchMaps.set(marks, (byRewatch = new WeakMap()))
+  let merged = byRewatch.get(rewatches)
+  if (!merged) {
+    merged = new Map(map)
+    for (const [key, rewatch] of Object.entries(rewatches)) {
+      const id = /^show:(\d+)$/.exec(key)?.[1]
+      if (id) merged.set(Number(id), rewatch.watched.flatMap((c) => parseCode(c) ?? []))
+    }
+    byRewatch.set(rewatches, merged)
+  }
+  return merged
 }
 
 export interface PosterMarks {

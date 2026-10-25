@@ -42,9 +42,10 @@ export function PosterItem({ item, meta, sizes = posterSizes, children }: { item
   const [itemRef, detail] = useSeenDetail(item)
   const history = useLibrary((l) => l.history)
   const episodes = useLibrary((l) => l.watchedEpisodes)
+  const rewatches = useLibrary((l) => l.rewatches)
   const showWatched = useSettings((x) => x.showWatchedBadges)
   const showEpisodes = useSettings((x) => x.showEpisodesRemaining)
-  const marks = posterMarks(item, { movies: watchedMovieKeys(history), shows: watchedShowsOf(episodes) }, detail, now, { watched: showWatched, episodes: showEpisodes })
+  const marks = posterMarks(item, { movies: watchedMovieKeys(history), shows: watchedShowsOf(episodes, rewatches) }, detail, now, { watched: showWatched, episodes: showEpisodes })
   return (
     <FrameCard
       link={{ to: '/title/$type/$id', params: { type: item.type, id: item.id } }}

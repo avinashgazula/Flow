@@ -270,6 +270,7 @@ function UpcomingShelf({ title }: { title: string }) {
   const history = useLibrary((l) => l.history)
   const watchlist = useLibrary((l) => l.watchlist)
   const marks = useLibrary((l) => l.watchedEpisodes)
+  const rewatches = useLibrary((l) => l.rewatches)
   const withinDays = useSettings((x) => x.upcomingWithinDays)
   const premieres = useSettings((x) => x.includeWatchlistPremieres)
   const now = useMinuteTick()
@@ -280,7 +281,7 @@ function UpcomingShelf({ title }: { title: string }) {
   const candidates = [...followed.map((f) => f.item), ...listed.map((e) => e.item)]
   const details = useQueries({ queries: candidates.map((item) => ({ ...q.detail('show', item.id), enabled: near })) })
   const onWatchlist = new Set(watchlist.map((e) => e.key))
-  const watched = watchedShowsOf(marks)
+  const watched = watchedShowsOf(marks, rewatches)
 
   const shows: UpcomingShow[] = candidates.flatMap((item, i) => {
     const detail = details[i]?.data

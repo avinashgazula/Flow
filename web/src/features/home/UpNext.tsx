@@ -24,6 +24,7 @@ export function UpNext({ leadKey }: { leadKey?: string }) {
   const progress = useLibrary((l) => l.progress)
   const history = useLibrary((l) => l.history)
   const marks = useLibrary((l) => l.watchedEpisodes)
+  const rewatches = useLibrary((l) => l.rewatches)
   const limit = useSettings((x) => x.continueWatchingLimit)
   const now = useMinuteTick()
 
@@ -31,7 +32,7 @@ export function UpNext({ leadKey }: { leadKey?: string }) {
   const followed = followedShows(history, new Set(resumes.map((p) => p.key)), 6)
   // The next episode needs the series' seasons: its detail (cached for a day), asked for the few most recent.
   const details = useQueries({ queries: followed.map((f) => q.detail('show', f.item.id)) })
-  const watched = watchedShowsOf(marks)
+  const watched = watchedShowsOf(marks, rewatches)
   const nexts = followed.flatMap((f, i) => {
     const detail = details[i]?.data
     const seen = watched.get(f.item.id)
@@ -65,6 +66,7 @@ function ContinueCard({ entry }: { entry: ContinueEntry }) {
   const [near, itemRef] = useNearScreen<HTMLLIElement>()
   const last = useStore(lastSourceStore, (st) => st.byTitle[entry.key])
   const marks = useLibrary((l) => l.watchedEpisodes)
+  const rewatches = useLibrary((l) => l.rewatches)
   const showLeft = useSettings((x) => x.showEpisodesRemaining)
   const isShow = item.type === 'show'
   const detail = useQuery({ ...q.detail(item.type, item.id), enabled: near && isShow })
@@ -72,7 +74,7 @@ function ContinueCard({ entry }: { entry: ContinueEntry }) {
   const season = useQuery({ ...q.season(item.id, episode?.season ?? 1), enabled: near && entry.nextUp && !!episode })
   const ep = entry.nextUp ? season.data?.find((e) => e.number === episode?.episode) : undefined
 
-  const left = isShow && detail.data ? showStatus(watchedShowsOf(marks).get(item.id) ?? [], detail.data, now).left : 0
+  const left = isShow && detail.data ? showStatus(watchedShowsOf(marks, rewatches).get(item.id) ?? [], detail.data, now).left : 0
   const leftPrint: PrintPart[] = showLeft && left > 0 ? [{ text: episodesLeftText(left), rank: rank.episodesLeft }] : []
 
   let print: PrintPart[]

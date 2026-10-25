@@ -51,6 +51,16 @@ describe('watched marks on a poster', () => {
     const marks = { 'show:1:s1e1': 1 }
     expect(watchedShowsOf(marks)).toBe(watchedShowsOf(marks))
   })
+
+  it('counts only the episodes watched again during a rewatch, as the title page does', () => {
+    const marks = { 'show:1:s1e1': 1, 'show:1:s1e2': 1, 'show:2:s1e1': 1 }
+    const rewatches = { 'show:1': { watched: ['s1e1'] } } as never
+    const shows = watchedShowsOf(marks, rewatches)
+    expect(shows.get(1)).toEqual([{ season: 1, episode: 1 }])
+    expect(shows.get(2)).toEqual([{ season: 1, episode: 1 }])
+    expect(watchedShowsOf(marks, rewatches)).toBe(shows)
+    expect(watchedShowsOf(marks, {})).toBe(watchedShowsOf(marks))
+  })
 })
 
 describe('folder rows', () => {
