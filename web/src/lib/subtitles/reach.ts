@@ -21,8 +21,19 @@ export function planAttempts(url: string, { proxy, blocked, mixed }: { proxy: st
   return { attempts: [direct] }
 }
 
+/** Hosts that hand out subtitle files without CORS headers (checked against the live service), so the proxy goes first
+ *  and no request is spent finding that out. */
+const withoutCORS = ['www.opensubtitles.com']
+export const sendsNoCORS = (url: string): boolean => {
+  try {
+    return withoutCORS.includes(new URL(url).hostname)
+  } catch {
+    return false
+  }
+}
+
 /** The plan for this address with the viewer's settings and what Flow has learned about the host. */
-export const planFor = (url: string): Plan => planAttempts(url, { proxy: streamProxy(), blocked: isKnownBlocked(url), mixed: isMixedContent(url) })
+export const planFor = (url: string): Plan => planAttempts(url, { proxy: streamProxy(), blocked: isKnownBlocked(url) || sendsNoCORS(url), mixed: isMixedContent(url) })
 
 /** After a download: a host that had to be reached through the proxy is remembered, so next time the proxy goes first. */
 export function learn(url: string, result: { viaProxy: boolean; directBlocked: boolean }) {

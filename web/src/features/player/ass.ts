@@ -1,17 +1,18 @@
 /* ASS and SSA subtitles drawn the way their author styled them (Settings → Playback → Keep Original ASS
-   Styling), by libass compiled to WebAssembly through JASSUB. It is the same renderer family the apps'
-   "Keep original ASS styling" stands for (colours, weights, sizes, placement, borders, blur, signs and
-   karaoke, where the apps skip the last two), and writing one's own would mean a partial libass.
+   Styling), by libass compiled to WebAssembly through JASSUB. Writing a renderer of our own would be writing
+   part of libass (styles, overrides, borders and blur, clips, drawings, karaoke), and the apps' own ASS parser
+   skips most of that; JASSUB is that work done and kept up.
 
-   What it costs: JASSUB 2.5.18 is about 11 KB of script plus a 79 KB worker, a 2.1 MB WebAssembly module
-   (SIMD build; 2.1 MB without) and a 146 KB default font. All of it sits in one lazy chunk that only this
-   file imports, and this file is only imported when an ASS track is shown with the setting on, so a first
-   visit, a film without ASS and everyone who leaves the setting off download none of it. The service
-   worker never precaches it (over 300 KB, and wasm); it is stored the first time it is used.
+   What it costs, from the production build: JASSUB 2.5.18 (pinned; released well over two weeks ago) is 11 KB of
+   script, a 30 KB worker, a 2.2 MB WebAssembly module (SIMD build; 2.1 MB for browsers without SIMD) and a 146 KB
+   default font: about 1.1 MB over the wire gzipped, for the first ASS track shown with the setting on. All of it
+   sits in chunks that only this file imports, and this file is only imported then, so a first visit, a film
+   without ASS and everyone who leaves the setting off download none of it. The service worker doesn't precache
+   it (it is over 300 KB, and wasm); it is stored the first time it is used.
 
-   Fonts: only the default one is shipped. Local fonts are not queried (Chrome asks the viewer for
-   permission when a page does), so a script that names a font the browser can't supply is drawn in the
-   default font, with its colours, size, borders and placement intact. */
+   Fonts: only the default one is shipped. Local fonts are not queried (Chrome asks the viewer for permission
+   when a page does), so a script that names a font the browser can't supply is drawn in the default font, with
+   its colours, size, borders and placement intact. */
 
 export interface AssHandle {
   /** Shifts the subtitles later by this many seconds (negative is earlier), for the player's subtitle delay. */

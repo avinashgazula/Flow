@@ -219,14 +219,14 @@ export function PlaybackSection() {
           <Switch label="Never use Dolby Vision" checked={neverDolbyVision} onChange={(on) => settingsStore.set({ neverUseDolbyVision: on })} />
         </Row>
       </Group>
-      <Group footer="Flow starts each title on the first of these it has, and never on commentary. Original Language is the one the title was made in. A track you choose in the player is remembered for that title or show.">
+      <Group footer="Flow starts each title on the first of these it has, and never on commentary. Original Language is the one the title was made in. A track you choose in the player is remembered for that title or show. For anime, Sub plays Japanese audio with subtitles and Dub plays your audio language without them.">
         <Row label="Audio Language" htmlFor="audio-1">
           <Select id="audio-1" label="Audio language" value={audioFirst} onChange={(v) => setAudio(v, v ? audioSecond : '')} options={audioOptions(audioFirst, 'Stream Default')} />
         </Row>
         <Row label="Second Choice" htmlFor="audio-2">
           <Select id="audio-2" label="Second choice for audio" value={audioSecond} onChange={(v) => setAudio(audioFirst, v)} options={audioOptions(audioSecond, 'None')} disabled={!audioFirst} />
         </Row>
-        <Row label="Anime Audio" htmlFor="anime-audio" detail="Sub plays Japanese audio with subtitles; Dub plays your audio language without them">
+        <Row label="Anime Audio" htmlFor="anime-audio">
           <Select id="anime-audio" label="Anime audio" value={extras.animeAudio} onChange={(v) => setExtras({ animeAudio: v })} options={animeAudios} />
         </Row>
       </Group>
@@ -245,7 +245,7 @@ export function PlaybackSection() {
         </Row>
       </Group>
       <SubtitleStyleGroup />
-      <Group footer="Draw ASS and SSA subtitles the way their author styled them (colour, weight, size and placement) instead of the style above. Mostly matters for anime, whose subtitles style each sign and speaker differently. It loads a 2 MB drawing engine the first time such a subtitle shows, and only then. Applies to ASS files Flow reads itself (from a source or a search), not to ones inside an MKV; a font the browser doesn’t have is drawn in a stand-in.">
+      <Group footer="Draw ASS and SSA subtitles the way their author styled them (colour, weight, size and placement) instead of the style above. Mostly matters for anime, whose subtitles style each sign and speaker differently. It downloads a drawing engine of about 1 MB the first time such a subtitle shows, and only then. Applies to ASS files Flow reads itself (from a source or a search), not to ones inside an MKV; a font the browser doesn’t have is drawn in a stand-in.">
         <Row label="Keep Original ASS Styling">
           <Switch label="Keep original ASS styling" checked={extras.keepASSStyling} onChange={(on) => setExtras({ keepASSStyling: on })} />
         </Row>

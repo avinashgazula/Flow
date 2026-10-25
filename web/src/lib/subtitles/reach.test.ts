@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { planFetch } from '../livetv/plan'
-import { planAttempts } from './reach'
+import { planAttempts, sendsNoCORS } from './reach'
 
 const url = 'https://www.opensubtitles.com/download/abc/subfile/x.srt'
 const proxy = 'https://proxy.example/?url={url}'
@@ -19,6 +19,12 @@ describe('reaching a subtitle file', () => {
   it('cannot call an http address from an https page, and says what to add', () => {
     expect(planAttempts(url.replace('https', 'http'), { proxy, blocked: false, mixed: true }).attempts).toEqual([{ url: proxy.replace('{url}', encodeURIComponent(url.replace('https', 'http'))), viaProxy: true }])
     expect(planAttempts('http://x.example/a.srt', { proxy: '', blocked: false, mixed: true })).toMatchObject({ attempts: [], problem: expect.stringContaining('stream proxy') })
+  })
+
+  it('knows OpenSubtitles’ download host sends no CORS headers', () => {
+    expect(sendsNoCORS(url)).toBe(true)
+    expect(sendsNoCORS('https://dl.opensubtitles.org/en/download/file/1')).toBe(false)
+    expect(sendsNoCORS('not a url')).toBe(false)
   })
 
   it('makes the same plan as the Live TV code does', () => {
