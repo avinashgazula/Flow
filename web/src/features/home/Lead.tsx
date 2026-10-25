@@ -14,7 +14,7 @@ import type { MediaDetail, MediaItem } from '../../lib/tmdb/types'
 import { rank, type PrintPart } from '../../components/stripLayout'
 import { episodesLeftText, showStatus } from './continue'
 import { pickMeta, pickPrint, resumePrint, watchedFraction } from './logic'
-import { watchedShowsOf } from './marks'
+import { posterMarks, watchedMovieKeys, watchedShowsOf } from './marks'
 import { advancesByItself } from './shelfQuery'
 import s from './Lead.module.css'
 
@@ -78,7 +78,11 @@ export function Lead({ slides, auto }: { slides: LeadItem[]; auto: boolean }) {
   const showLeft = useSettings((x) => x.showEpisodesRemaining)
   const left = progress && item.type === 'show' && detail.data ? showStatus(watchedShowsOf(marks).get(item.id) ?? [], detail.data, now).left : 0
   const leftPrint: PrintPart[] = showLeft && left > 0 ? [{ text: episodesLeftText(left), rank: rank.episodesLeft }] : []
-  const print = progress ? resumePrint(progress, now, last, userLocale, leftPrint) : pickPrint(item, detail.data?.runtime ? detail.data : undefined, now, { ends: true, locale: userLocale })
+  // A pick the viewer has already seen says so on its strip, as a poster does.
+  const history = useLibrary((x) => x.history)
+  const showWatched = useSettings((x) => x.showWatchedBadges)
+  const seen = progress ? undefined : posterMarks(item, { movies: watchedMovieKeys(history), shows: watchedShowsOf(marks) }, detail.data, now, { watched: showWatched, episodes: false })
+  const print = progress ? resumePrint(progress, now, last, userLocale, leftPrint) : [...(seen?.parts ?? []), ...pickPrint(item, detail.data?.runtime ? detail.data : undefined, now, { ends: true, locale: userLocale })]
   const season = progress?.episode ? { season: progress.episode.season } : undefined
   const many = slides.length > 1
 
@@ -99,7 +103,7 @@ export function Lead({ slides, auto }: { slides: LeadItem[]; auto: boolean }) {
       onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setHold(false)}
     >
       <Link key={key} to="/title/$type/$id" params={{ type: item.type, id: item.id }} search={season} className={s.plate} onPointerEnter={() => prefetchDetail(item)} viewTransition tabIndex={-1} aria-hidden="true">
-        <Plate shape="still" artPath={item.backdrop} sizes={leadSizes} priority={at === 0} progress={progress ? watchedFraction(progress) : undefined} print={print} stripSize="lead" fallback={item.title} />
+        <Plate shape="still" artPath={item.backdrop} sizes={leadSizes} priority={at === 0} progress={progress ? watchedFraction(progress) : seen?.progress} print={print} stripSize="lead" fallback={item.title} />
       </Link>
       <div className={s.info}>
         {/* Every slide's words sit in one cell of a grid, so the block is as tall as the tallest and nothing

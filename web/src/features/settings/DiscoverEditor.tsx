@@ -91,7 +91,7 @@ export function DiscoverEditor({ shelf, onSave, onCancel }: { shelf?: ShelfConfi
           Genres
         </span>
         <div className={s.chips} role="group" aria-labelledby="shelf-genres">
-          {Object.entries(genres).map(([id, name]) => (
+          {Object.entries(genres).sort(([, a], [, b]) => a.localeCompare(b)).map(([id, name]) => (
             <button key={id} type="button" className="chip" aria-pressed={query.genres.includes(Number(id))} onClick={() => patch({ genres: toggle(query.genres, Number(id)) })}>
               {name}
             </button>

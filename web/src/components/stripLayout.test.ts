@@ -119,3 +119,19 @@ describe('what an edge strip can say', () => {
     expect(print(facts)).toBe('S1 E1 · 5m left · ends 9:00')
   })
 })
+
+describe('episodes left', () => {
+  const series: Fact[] = [fact('S2 E4', rank.episode), fact('up next', rank.left), fact('5 episodes left', rank.episodesLeft), fact('ends 7:11 AM', rank.ends)]
+
+  it('outranks the end time, so a narrow still keeps how much of the series is left', () => {
+    expect(rank.left).toBeLessThan(rank.episodesLeft)
+    expect(rank.episodesLeft).toBeLessThan(rank.ends)
+    const narrow = composeStrip({ width: 212, facts: series, kind: 'still' })
+    expect(texts(narrow.facts)).toContain('5 episodes left')
+    expect(texts(narrow.facts)).not.toContain('S2 E4')
+  })
+
+  it('shows everything on a wide strip', () => {
+    expect(texts(composeStrip({ width: 640, facts: series, kind: 'lead' }).facts)).toEqual(['S2 E4', 'up next', '5 episodes left', 'ends 7:11 AM'])
+  })
+})
