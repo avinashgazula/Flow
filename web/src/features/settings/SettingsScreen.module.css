@@ -156,6 +156,10 @@ img.logo { padding: 4px; }
 /* A group's own Save button, in a row of its own under the fields. */
 .saveRow { padding: var(--space-s) var(--space-m); }
 .inline + .pad { margin-top: -4px; }
+.padTop { padding-top: var(--space-s); }
+/* An address shown as data (the Redirect URI): the interface face at caption size, wrapping anywhere so a long one never pushes its row wide, and selected whole on a click. */
+.whole { white-space: nowrap; }
+.address { font: var(--fs-caption) / 1.45 var(--font); color: var(--ink-2); overflow-wrap: anywhere; user-select: all; }
 
 .form { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-m); }
 .fieldLabel { margin-top: var(--space-xs); font: 600 var(--fs-caption) / 1.2 var(--font); color: var(--ink-2); }

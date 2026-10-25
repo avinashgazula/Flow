@@ -208,6 +208,38 @@ describe('pushing', () => {
     expect(((await readRecord())!.sections.keys!.data as Record<string, unknown>).tmdbAPIKey).toBe('tmdb')
   })
 
+  it('pushes a Trakt sign-in at once, in the apps’ shape, without waiting for the delay', async () => {
+    await m.turnOn(origin, 's3cret')
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const redirectURI = 'https://flow.example.com/settings/trakt-callback'
+    m.settingsStore.set({ traktClientID: 'cid', traktAccount: { accessToken: 'a', refreshToken: 'r', expiresAt: '2030-01-01T00:00:00Z', redirectURI } })
+    await m.pushNow()
+    const record = (await readRecord())!
+    expect(record.sections.accounts!.data).toEqual({ trakt: { accessToken: 'a', refreshToken: 'r', expiresAt: '2030-01-01T00:00:00Z', redirectURI } })
+    expect(record.sections.keys!.data).toMatchObject({ traktClientID: 'cid' })
+    // The delayed push that the change scheduled has nothing left to send.
+    const before = puts()
+    await vi.advanceTimersByTimeAsync(m.pushDelay * 2)
+    expect(puts()).toBe(before)
+  })
+
+  it('signs the website in to Trakt from a token another device pushed, with no prompt', async () => {
+    await m.turnOn(origin, 's3cret')
+    await otherDevice((p) => {
+      p.sections.keys = { updatedAt: future(1), device: 'iPhone', data: { tmdbAPIKey: 'k', traktClientID: 'phone-cid', traktClientSecret: 'secret' } }
+      p.sections.accounts = { updatedAt: future(1), device: 'iPhone', data: { trakt: { accessToken: 'phone-a', refreshToken: 'phone-r', expiresAt: '2030-01-01T00:00:00Z', redirectURI: 'flow://trakt-callback' }, simkl: { accessToken: 'sk' } } }
+    })
+    await m.syncNow()
+    expect(m.settingsStore.get().traktClientID).toBe('phone-cid')
+    expect(m.settingsStore.get().traktAccount).toEqual({ accessToken: 'phone-a', refreshToken: 'phone-r', expiresAt: '2030-01-01T00:00:00Z', redirectURI: 'flow://trakt-callback' })
+    // Signing out here travels too, and the client secret and Simkl are not touched.
+    m.settingsStore.set({ traktAccount: null })
+    await m.pushNow()
+    const record = (await readRecord())!
+    expect(record.sections.accounts!.data).toEqual({ trakt: null, simkl: { accessToken: 'sk' } })
+    expect(record.sections.keys!.data).toMatchObject({ traktClientSecret: 'secret' })
+  })
+
   it('stamps the time of the change, not of the upload', async () => {
     await m.turnOn(origin, 's3cret')
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })

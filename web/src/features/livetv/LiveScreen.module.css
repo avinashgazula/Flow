@@ -1,0 +1,60 @@
+/* Live TV fills the window under the nav: the title and tools, the group chips, then one panel (the list or the
+   guide) that takes the rest of the height and scrolls inside itself, so the guide's ruler and channel column
+   can stick. */
+.screen {
+  box-sizing: border-box;
+  height: calc(100dvh - var(--tabbar-height));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+  padding: calc(var(--nav-height) + var(--space-m)) var(--page-inset) var(--space-m);
+}
+
+.inner { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: inherit; }
+.head { display: flex; align-items: center; gap: var(--space-m); flex-wrap: wrap; }
+.title { margin: 0 auto 0 0; }
+.search { order: 1; }
+.tools { order: 2; display: flex; align-items: center; gap: var(--space-xs); }
+.views { order: 3; }
+.screen .chips > * { margin-bottom: 0; }
+
+.search { position: relative; display: flex; align-items: center; width: 220px; color: var(--ink-2); }
+.search svg { position: absolute; left: 12px; pointer-events: none; }
+.search input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px 0 36px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--base-3);
+  color: var(--paper);
+  transition: background-color var(--dur-state) ease;
+}
+.search input:hover { background: var(--base-4); }
+.search input:focus-visible { outline-offset: 2px; }
+.search input::placeholder { color: var(--ink-2); }
+.searchToggle { display: none; }
+
+.chipStar { margin-right: 6px; flex: none; }
+
+.warning { display: flex; align-items: flex-start; gap: var(--space-xs); font-size: var(--fs-footnote); line-height: 1.4; color: var(--warn); max-width: 80ch; text-wrap: pretty; }
+.warning[data-tone='error'] { color: var(--red); }
+.warning svg { flex: none; margin-top: 1px; }
+
+.body { flex: 1; min-height: 0; }
+.loading { padding: var(--space-xl) 0; }
+
+/* Behind the player while its code loads, or when the channel it was opened on isn't in the list. */
+.curtain { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: var(--base); }
+
+@media (max-width: 720px) {
+  .screen { padding-top: calc(var(--nav-height) + var(--space-xs)); gap: var(--space-xs); }
+  .head { gap: var(--space-xs); }
+  .tools { order: 1; }
+  .searchToggle { display: inline-flex; }
+  /* The view switch has a line of its own, the width of the screen. */
+  .views { order: 2; display: grid; flex-basis: 100%; }
+  /* The search field opens on a line under it. */
+  .search { display: none; order: 3; }
+  .search[data-open] { display: flex; flex-basis: 100%; width: auto; }
+}

@@ -1,3 +1,4 @@
+import { isLiveTVSettings } from '../../lib/livetv/validate'
 import { lastSourceStore } from '../../lib/sources/lastSource'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { isSourceOrdering, normaliseSourceOrdering } from '../../lib/sources/sourceSettings'
@@ -26,6 +27,9 @@ const isSkipBehaviour = (v: unknown) => ['off', 'button', 'automatic'].includes(
 /** The settings' keys that import accepts, with the type each must have. Anything else in the file is ignored. */
 const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   tmdbKey: (v) => typeof v === 'string',
+  traktClientID: (v) => typeof v === 'string',
+  simklClientID: (v) => typeof v === 'string',
+  traktAccount: (v) => v === null || (isObject(v) && typeof v.accessToken === 'string' && v.accessToken.length > 0 && [v.refreshToken, v.expiresAt, v.redirectURI].every((x) => x === null || typeof x === 'string')),
   demo: (v) => typeof v === 'boolean',
   onboarded: (v) => typeof v === 'boolean',
   language: (v) => typeof v === 'string' && v.length > 0,
@@ -53,6 +57,8 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   tabOrder: isTabOrder,
   // Empty clears the proxy; anything else has to be an address Flow can call.
   streamProxy: (v) => typeof v === 'string' && proxyProblem(v) === undefined,
+  // Providers (with their logins), the guide's refresh time and the favourite channels, as the apps keep them.
+  liveTV: isLiveTVSettings,
 }
 
 const libraryTypes: { [K in keyof Library]: (v: unknown) => boolean } = {

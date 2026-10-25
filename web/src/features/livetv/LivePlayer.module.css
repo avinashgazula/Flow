@@ -1,0 +1,188 @@
+/* The live player: black, the whole window, the picture edge to edge. Flat like the film player: the chrome is
+   paper on the picture over a warm-black scrim, panels sit on the base at 94% with a hairline, no blur.
+   The same custom properties as the film player (--margin, --panel, --over-video) are set here. */
+.root {
+  --inset-top: env(safe-area-inset-top, 0px);
+  --inset-right: env(safe-area-inset-right, 0px);
+  --inset-bottom: env(safe-area-inset-bottom, 0px);
+  --inset-left: env(safe-area-inset-left, 0px);
+  --margin: 28px;
+  --panel: color-mix(in srgb, var(--base-2) 94%, transparent);
+  --over-video: color-mix(in srgb, var(--base) 70%, transparent);
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  height: 100dvh;
+  overflow: hidden;
+  background: #000;
+  color: var(--paper);
+  isolation: isolate;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+.root[data-idle] { cursor: none; }
+@media (max-width: 720px), (max-height: 500px) {
+  .root { --margin: 16px; }
+}
+
+.video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.tap { position: absolute; inset: 0; z-index: 1; touch-action: none; }
+
+/* Opening the stream: the channel's logo and name on the flat base. */
+.connecting {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-m);
+  background: var(--base);
+  pointer-events: none;
+}
+.connectingText { font: 400 var(--fs-body) / 1.4 var(--font); color: var(--ink-2); }
+.connectingText strong { color: var(--paper); font-weight: 600; }
+
+.centre { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; }
+.centre > * { pointer-events: auto; }
+.bigPlay { width: 72px; height: 72px; border-radius: var(--radius-full); background: var(--over-video); }
+.bigPlay svg { width: 28px; height: 28px; }
+/* Buffering: a ring in paper that turns, because the stream is moving and not yet showing. */
+.buffering { width: 40px; height: 40px; border-radius: var(--radius-full); border: 3px solid color-mix(in srgb, var(--paper) 25%, transparent); border-top-color: var(--paper); animation: turn 0.9s linear infinite; }
+@keyframes turn { to { transform: rotate(360deg); } }
+
+/* The chrome: back and the cluster along the top, the card along the bottom, a scrim behind each. */
+.chrome {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: calc(var(--inset-top) + 12px) calc(var(--inset-right) + var(--margin)) calc(var(--inset-bottom) + 20px) calc(var(--inset-left) + var(--margin));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--edge) 62%, transparent) 0%, transparent 22%, transparent 52%, color-mix(in srgb, var(--edge) 80%, transparent) 100%);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--dur-move) ease, visibility 0s linear var(--dur-move);
+}
+.chrome[data-visible] { opacity: 1; visibility: visible; transition: opacity var(--dur-state) ease, visibility 0s; }
+.chrome[data-visible] :is(button, .card) { pointer-events: auto; }
+/* With the channel list open its panel sits over the cluster, the card and the channel buttons, so they step aside and only the panel reads. */
+.chrome[data-list] :is(.cluster, .zap, .card) { visibility: hidden; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); }
+.back { background: var(--over-video); }
+.back:hover { background: var(--panel); }
+.cluster { display: flex; align-items: center; gap: 4px; }
+.round {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  color: var(--paper);
+  background: var(--over-video);
+  transition: background-color var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+.round:hover { background: var(--panel); }
+.round:active { transform: scale(0.96); }
+.round[aria-pressed='true'] { background: var(--base-4); }
+
+.bottom { display: flex; align-items: flex-end; gap: var(--space-m); }
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(480px, 100%);
+  padding: var(--space-m) var(--space-m) 14px;
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--rule);
+}
+.cardHead { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; }
+.number { font: 600 var(--fs-small) / 1 var(--font); color: var(--ink-2); }
+.channelName { font: 600 var(--fs-small) / 1.2 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.programme { font: 600 var(--fs-headline) / 1.25 var(--font); letter-spacing: -0.005em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.times { display: flex; align-items: center; gap: var(--space-s); font-size: var(--fs-footnote); color: var(--ink-2); }
+.bar { flex: 1; height: 3px; border-radius: var(--radius-perf); background: var(--base-4); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--red); }
+.next { font-size: var(--fs-footnote); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.noGuide { font-size: var(--fs-footnote); color: var(--ink-2); }
+.zap { display: flex; flex-direction: column; gap: var(--space-xs); margin-left: auto; }
+
+/* The channel list: right side on a wide window, the bottom of a phone's. */
+.panel {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(380px, 100%);
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--inset-top);
+  padding-right: var(--inset-right);
+  background: var(--panel);
+  box-shadow: -1px 0 0 var(--rule);
+  animation: slide var(--dur-move) var(--ease-out);
+}
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } }
+@keyframes slide { from { opacity: 0; transform: translateX(16px); } }
+.panelHead { display: flex; align-items: center; justify-content: space-between; padding: var(--space-s) var(--space-s) var(--space-xs) var(--space-m); }
+.panelTitle { font: 600 var(--fs-headline) / 1.25 var(--font); }
+.panelList { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: var(--inset-bottom); }
+.panelItem { position: absolute; inset: 0 0 auto; }
+.panelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  width: 100%;
+  height: 100%;
+  padding: 0 var(--space-m);
+  text-align: left;
+  transition: background-color var(--dur-state) ease;
+}
+.panelRow:hover { background: var(--base-3); }
+.panelRow[aria-current='true'] { background: var(--base-4); }
+.panelRow:focus-visible { outline-offset: -3px; }
+.panelText { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.panelName { display: flex; align-items: baseline; gap: 8px; font: 600 var(--fs-small) / 1.25 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panelNumber { font-size: var(--fs-caption); color: var(--ink-2); }
+.panelNow { font-size: var(--fs-footnote); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* A stream that wouldn't play: what happened and what to do, over the flat base. */
+.failed {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-s);
+  padding: var(--space-l) var(--margin);
+  background: var(--overlay);
+  text-align: center;
+}
+.failedIcon { color: var(--red); }
+.failedTitle { font: 700 var(--fs-title3) / 1.2 var(--font-display); letter-spacing: -0.015em; text-wrap: balance; }
+.failedMessage { max-width: 56ch; font-size: var(--fs-small); line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
+.failedActions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xs); margin-top: var(--space-xs); }
+.failedDetail { font-size: var(--fs-caption); color: var(--ink-3); }
+
+@media (max-width: 720px) {
+  .card { width: 100%; padding: var(--space-s) var(--space-s) 12px; }
+  .programme { font-size: var(--fs-body); }
+  .panel { top: auto; left: 0; width: 100%; height: min(70dvh, 520px); padding-right: 0; border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: 0 -1px 0 var(--rule); animation-name: rise; }
+}
+@media (max-height: 500px) {
+  .card { padding: 10px 14px; gap: 4px; }
+  .programme { font-size: var(--fs-small); }
+}

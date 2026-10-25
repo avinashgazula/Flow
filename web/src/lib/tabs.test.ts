@@ -4,49 +4,52 @@ import { defaultSettings } from './store/settings'
 import { defaultTabOrder, isDefaultOrder, isTabOrder, moveTab, orderTabs, tabs, type Tab } from './tabs'
 
 const ids = (list: readonly Tab[]) => list.map((t) => t.id)
-// A fifth section, as another change adds with Live TV: slotted in the middle by its default position.
-const withLive: Tab[] = [...tabs.slice(0, 3), { id: 'live', to: '/search', label: 'Live TV', icon: 'live' }, tabs[3]!]
+// Live TV came after the first four: a saved order from before it has never heard of it.
+const defaults = ['home', 'explore', 'library', 'live', 'search']
+const beforeLive = ['home', 'explore', 'library', 'search']
 
 describe('tab order', () => {
-  it('is Home, Explore, Library, Search by default, and saved that way', () => {
-    expect(ids(orderTabs(defaultTabOrder))).toEqual(['home', 'explore', 'library', 'search'])
-    expect(defaultSettings.tabOrder).toEqual(['home', 'explore', 'library', 'search'])
-    expect(ids(orderTabs([]))).toEqual(['home', 'explore', 'library', 'search'])
+  it('is Home, Explore, Library, Live TV, Search by default, and saved that way', () => {
+    expect(ids(orderTabs(defaultTabOrder))).toEqual(defaults)
+    expect(defaultSettings.tabOrder).toEqual(defaults)
+    expect(ids(orderTabs([]))).toEqual(defaults)
   })
 
   it('follows the saved order', () => {
-    expect(ids(orderTabs(['search', 'library', 'home', 'explore']))).toEqual(['search', 'library', 'home', 'explore'])
+    expect(ids(orderTabs(['search', 'library', 'home', 'explore', 'live']))).toEqual(['search', 'library', 'home', 'explore', 'live'])
   })
 
   it('puts a tab the saved order has never heard of at its default position', () => {
-    expect(ids(orderTabs(['home', 'explore', 'library', 'search'], withLive))).toEqual(['home', 'explore', 'library', 'live', 'search'])
-    // The person had moved things about: the new tab still lands at index 3, among what they chose.
-    expect(ids(orderTabs(['search', 'library', 'explore', 'home'], withLive))).toEqual(['search', 'library', 'explore', 'live', 'home'])
+    expect(ids(orderTabs(beforeLive))).toEqual(defaults)
+    // The person had moved things about: Live TV still lands at index 3, among what they chose.
+    expect(ids(orderTabs(['search', 'library', 'explore', 'home']))).toEqual(['search', 'library', 'explore', 'live', 'home'])
     // A short saved list: each missing tab goes to its default position, or to the end when that is past it.
-    expect(ids(orderTabs(['search'], withLive))).toEqual(['home', 'explore', 'library', 'live', 'search'])
-    expect(ids(orderTabs(['live'], withLive))).toEqual(['home', 'explore', 'library', 'live', 'search'])
+    expect(ids(orderTabs(['search']))).toEqual(defaults)
+    expect(ids(orderTabs(['live']))).toEqual(defaults)
   })
 
   it('ignores ids that don’t exist and counts a repeated one once', () => {
-    expect(ids(orderTabs(['nope', 'search', 'search', 'home', '']))).toEqual(['search', 'explore', 'library', 'home'])
+    expect(ids(orderTabs(['nope', 'search', 'search', 'home', '']))).toEqual(['search', 'explore', 'library', 'live', 'home'])
   })
 
   it('moves a tab up or down one place, and stops at the ends', () => {
-    expect(moveTab(defaultTabOrder, 'library', -1)).toEqual(['home', 'library', 'explore', 'search'])
-    expect(moveTab(defaultTabOrder, 'home', 1)).toEqual(['explore', 'home', 'library', 'search'])
+    expect(moveTab(defaultTabOrder, 'library', -1)).toEqual(['home', 'library', 'explore', 'live', 'search'])
+    expect(moveTab(defaultTabOrder, 'home', 1)).toEqual(['explore', 'home', 'library', 'live', 'search'])
     expect(moveTab(defaultTabOrder, 'home', -1)).toEqual(defaultTabOrder)
     expect(moveTab(defaultTabOrder, 'search', 1)).toEqual(defaultTabOrder)
     expect(moveTab(defaultTabOrder, 'unknown', 1)).toEqual(defaultTabOrder)
   })
 
   it('moves within the order a person sees, including a tab they were never asked about', () => {
-    expect(moveTab(['home', 'explore', 'library', 'search'], 'live', -1, withLive)).toEqual(['home', 'explore', 'live', 'library', 'search'])
+    expect(moveTab(beforeLive, 'live', -1)).toEqual(['home', 'explore', 'live', 'library', 'search'])
   })
 
   it('knows when the order is the default', () => {
     expect(isDefaultOrder(defaultTabOrder)).toBe(true)
     expect(isDefaultOrder([])).toBe(true)
     expect(isDefaultOrder(['search', 'home', 'explore', 'library'])).toBe(false)
+    // A saved order from before Live TV is the default order, with Live TV in its place.
+    expect(isDefaultOrder(beforeLive)).toBe(true)
   })
 
   it('has one entry per id', () => {

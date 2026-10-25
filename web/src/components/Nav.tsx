@@ -10,6 +10,8 @@ import s from './Nav.module.css'
  *  flat tab bar at the bottom, current one in yellow, like the system tab bar. No pill, no glass. */
 export function Nav() {
   const path = useRouterState({ select: (r) => r.location.pathname })
+  // The live player is full screen too, and is reached by ?play= on the Live TV page.
+  const liveFull = useRouterState({ select: (r) => r.location.pathname === '/live' && typeof (r.location.search as Record<string, unknown>).play === 'string' })
   const [scrolled, setScrolled] = useState(false)
   const sample = useSettings((x) => x.demo)
   const saved = useSettings((x) => x.tabOrder)
@@ -22,7 +24,7 @@ export function Nav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  if (path.startsWith('/watch')) return null
+  if (path.startsWith('/watch') || liveFull) return null
   const current = (to: string) => (to === '/' ? path === '/' : path.startsWith(to))
 
   return (
