@@ -61,10 +61,11 @@ export function formatSpoken(last?: Format): string | undefined {
 
 /** The edge print of something started: "S3 E7 · 18M LEFT · ENDS 21:30 · 2160P · DV". The time left is
  *  the one fact in yellow. */
-export function resumePrint(p: Progress, now: number, last?: Format, locale?: string): PrintPart[] {
+export function resumePrint(p: Progress, now: number, last?: Format, locale?: string, extra: PrintPart[] = []): PrintPart[] {
   const left = secondsLeft(p)
   const episode = episodeShort(p.episode)
-  return [...(episode ? [{ text: episode, rank: rank.episode }] : []), leftPart(left), endsPart(left, now, locale), ...formatParts(last)]
+  // `extra` (a series' episodes left) goes right after the time left, where its rank puts it.
+  return [...(episode ? [{ text: episode, rank: rank.episode }] : []), leftPart(left), ...extra, endsPart(left, now, locale), ...formatParts(last)]
 }
 
 /** The part of a title's detail edge print needs. */

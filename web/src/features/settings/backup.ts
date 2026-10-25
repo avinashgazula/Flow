@@ -6,6 +6,7 @@ import { defaultSettings, settingsStore, type ExternalPlayerId, type Settings } 
 import { externalPlayerIds } from '../player/externalPlayers'
 import { libraryStore, type Library } from '../../lib/store/library'
 import { isTabOrder } from '../../lib/tabs'
+import { isShelfList } from '../../lib/shelves'
 import { isSubtitleStyle, normaliseSubtitleStyle } from '../../lib/store/subtitleStyle'
 import { typefaces } from './options'
 
@@ -23,6 +24,7 @@ export interface Backup {
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 
+const isHeroSource = (v: unknown) => ['trending', 'popular', 'watchlist'].includes(v as string)
 const isSkipBehaviour = (v: unknown) => ['off', 'button', 'automatic'].includes(v as string)
 
 /** The settings' keys that import accepts, with the type each must have. Anything else in the file is ignored. */
@@ -66,6 +68,19 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   streamProxy: (v) => typeof v === 'string' && proxyProblem(v) === undefined,
   // Providers (with their logins), the guide's refresh time and the favourite channels, as the apps keep them.
   liveTV: isLiveTVSettings,
+  // Home: the shelf list (the apps' ShelfConfig, in the website's shape) and the switches around it.
+  shelves: isShelfList,
+  heroSource: isHeroSource,
+  heroSecondarySource: (v) => v === null || isHeroSource(v),
+  heroAutoAdvance: (v) => typeof v === 'boolean',
+  contentShelfLength: (v) => [10, 20, 30, 40].includes(v as number),
+  showContinueWatching: (v) => typeof v === 'boolean',
+  continueWatchingLimit: (v) => v === null || [5, 10, 20].includes(v as number),
+  showUpcoming: (v) => typeof v === 'boolean',
+  includeWatchlistPremieres: (v) => typeof v === 'boolean',
+  upcomingWithinDays: (v) => [3, 7, 14, 30].includes(v as number),
+  showWatchedBadges: (v) => typeof v === 'boolean',
+  showEpisodesRemaining: (v) => typeof v === 'boolean',
 }
 
 const libraryTypes: { [K in keyof Library]: (v: unknown) => boolean } = {

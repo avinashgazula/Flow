@@ -3,7 +3,7 @@
    composed to fit instead. The facts have a priority and the lowest go first. Every fact has one spelling at
    every width ("1h44 left", "18m left"), so the same time never reads two ways on one screen.
 
-   Priority, highest first: time left, end time, format, episode code, rating, then year, runtime, seasons.
+   Priority, highest first: time left, episodes left (a series only), end time, format, episode code, rating, then year, runtime, seasons.
    Everything here is a pure function of the width, so it is tested without a browser; the component measures
    the strip and calls it. */
 
@@ -19,7 +19,7 @@ export interface Fact {
 export type PrintPart = string | { key: string; rank?: number } | { text: string; rank?: number }
 
 /** The priorities, so every screen ranks the same facts the same way: `facts` is a runtime or a season count. */
-export const rank = { left: 0, ends: 1, format: 2, episode: 3, rating: 4, facts: 5, year: 6 } as const
+export const rank = { left: 0, episodesLeft: 0.5, ends: 1, format: 2, episode: 3, rating: 4, facts: 5, year: 6 } as const
 
 export function toFacts(parts: PrintPart[]): Fact[] {
   return parts

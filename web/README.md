@@ -32,6 +32,7 @@ npm test             # unit tests (Vitest)
 | Path | What's there |
 | --- | --- |
 | `src/routes/` | One file per screen; `__root.tsx` holds the navigation and onboarding gate. |
+| `src/lib/shelves.ts` | Home's shelf list, as the apps' `ShelfConfig`: built-in rows, Discover shelves, room for Trakt and server lists, and the apps' JSON for Copy and Paste in Settings → Shelves. |
 | `src/features/<area>/` | Each screen's components and CSS. |
 | `src/components/` | Shared pieces: `Artwork`, `Frame` (frame + edge strip: the signature), `Cards`, `Shelf`, `Nav`, `Icon`. |
 | `src/lib/tmdb/` | TMDB client (normalises responses into `types.ts`), images, sample data. |

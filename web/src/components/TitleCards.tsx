@@ -3,10 +3,12 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { prefetchDetail, q } from '../lib/queries'
 import { lastSourceStore } from '../lib/sources/lastSource'
 import { useStore } from '../lib/store/createStore'
-import type { Progress } from '../lib/store/library'
+import { useLibrary, type Progress } from '../lib/store/library'
+import { useSettings } from '../lib/store/settings'
 import { formatLeft, userLocale, useMinuteTick } from '../lib/time'
 import type { MediaItem } from '../lib/tmdb/types'
 import { useNearScreen } from '../lib/useNearScreen'
+import { posterMarks, watchedMovieKeys, watchedShowsOf } from '../features/home/marks'
 import { episodeLine, pickPrint, resumePrint, secondsLeft, spokenPick, spokenResume, watchedFraction, type PickDetail } from '../features/home/logic'
 import { FrameCard } from './Frame'
 
@@ -32,11 +34,17 @@ export function useSeenDetail(item: Pick<MediaItem, 'type' | 'id'>) {
   return [ref, detail] as const
 }
 
-/** A title you haven't started: poster, and print only (runtime and rating, or seasons and rating, or NEW EP
- *  when an episode just aired), then the title and an optional line of facts under it. */
+/** A title: poster, and print only (runtime and rating, or seasons and rating, or NEW EP when an episode just
+ *  aired), then the title and an optional line of facts under it. A film that has been watched prints WATCHED
+ *  first and fills its perforations; a series prints how many of its aired episodes are watched, as the apps do. */
 export function PosterItem({ item, meta, sizes = posterSizes, children }: { item: MediaItem; meta?: string; sizes?: string; children?: ReactNode }) {
   const now = useMinuteTick()
   const [itemRef, detail] = useSeenDetail(item)
+  const history = useLibrary((l) => l.history)
+  const episodes = useLibrary((l) => l.watchedEpisodes)
+  const showWatched = useSettings((x) => x.showWatchedBadges)
+  const showEpisodes = useSettings((x) => x.showEpisodesRemaining)
+  const marks = posterMarks(item, { movies: watchedMovieKeys(history), shows: watchedShowsOf(episodes) }, detail, now, { watched: showWatched, episodes: showEpisodes })
   return (
     <FrameCard
       link={{ to: '/title/$type/$id', params: { type: item.type, id: item.id } }}
@@ -44,10 +52,11 @@ export function PosterItem({ item, meta, sizes = posterSizes, children }: { item
       shape="poster"
       artPath={item.poster}
       sizes={sizes}
-      print={pickPrint(item, detail, now)}
+      progress={marks.progress}
+      print={[...marks.parts, ...pickPrint(item, detail, now)]}
       title={item.title}
       meta={meta}
-      label={spokenPick(item, detail)}
+      label={[spokenPick(item, detail), marks.spoken].filter(Boolean).join(', ')}
       fallback={item.title}
       onIntent={() => prefetchDetail(item)}
     >
