@@ -1,5 +1,6 @@
 import { isLiveTVSettings } from '../../lib/livetv/validate'
 import { lastSourceStore } from '../../lib/sources/lastSource'
+import { ratingSources } from '../../lib/ratings/sources'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { isSourceOrdering, normaliseSourceOrdering } from '../../lib/sources/sourceSettings'
 import { defaultSettings, settingsStore, type ExternalPlayerId, type Settings } from '../../lib/store/settings'
@@ -53,6 +54,14 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   skipCredits: isSkipBehaviour,
   introDBKey: (v) => typeof v === 'string',
   publicMetaDBKey: (v) => typeof v === 'string',
+  mdblistKey: (v) => typeof v === 'string',
+  tvdbKey: (v) => typeof v === 'string',
+  rpdbKey: (v) => typeof v === 'string',
+  episodeSource: (v) => ['tvdb', 'tmdb', 'trakt'].includes(v as string),
+  ratingsShown: (v) => Array.isArray(v) && v.every((x) => (ratingSources as readonly unknown[]).includes(x)),
+  tapRatingOpensReviews: (v) => typeof v === 'boolean',
+  posterEnhancement: (v) => v === 'off' || v === 'rpdb',
+  seerr: (v) => isObject(v) && typeof v.url === 'string' && typeof v.key === 'string',
   postCreditsAlert: (v) => typeof v === 'boolean',
   becauseYouWatched: (v) => typeof v === 'boolean',
   neverUseDolbyVision: (v) => typeof v === 'boolean',
@@ -145,7 +154,8 @@ export function applyBackup(parsed: { settings: Partial<Settings>; library: Part
 
 /** Back to a fresh install: settings, library and remembered sources. The caller clears the query cache. */
 export function resetEverything() {
-  settingsStore.set({ ...defaultSettings })
+  // Fields left out of the defaults are cleared by name, or a reset would keep the keys and the Seerr sign-in.
+  settingsStore.set({ ...defaultSettings, mdblistKey: undefined, tvdbKey: undefined, rpdbKey: undefined, episodeSource: undefined, ratingsShown: undefined, tapRatingOpensReviews: undefined, posterEnhancement: undefined, seerr: undefined })
   libraryStore.set({ progress: {}, watchlist: [], favourites: [], history: [], watchedEpisodes: {}, ratings: {}, rewatches: {}, shuffled: {} })
   lastSourceStore.set({ byTitle: {} })
 }

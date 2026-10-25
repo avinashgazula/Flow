@@ -318,7 +318,9 @@ describe('applying a section here', () => {
     expect(settingsPatch('keys', { tmdbAPIKey: ' abc ' }, settings())).toEqual({ tmdbKey: 'abc', onboarded: true })
     expect(settingsPatch('keys', { tmdbAPIKey: 'abc' }, settings({ onboarded: true }))).toEqual({ tmdbKey: 'abc' })
     expect(settingsPatch('keys', { tmdbAPIKey: null }, settings())).toEqual({ tmdbKey: '' })
-    expect(settingsPatch('keys', { tvdbAPIKey: 'only' }, settings())).toEqual({ tmdbKey: '' })
+    // Keys the web has no field for travel through untouched; the ones it has are read.
+    expect(settingsPatch('keys', { openSubtitlesAPIKey: 'only' }, settings())).toEqual({ tmdbKey: '' })
+    expect(settingsPatch('keys', { tvdbAPIKey: 'only' }, settings())).toEqual({ tmdbKey: '', tvdbKey: 'only' })
     expect(settingsPatch('keys', null, settings())).toBeNull()
   })
 
@@ -326,6 +328,28 @@ describe('applying a section here', () => {
     expect(localValue('keys', settings({ introDBKey: 'intro', publicMetaDBKey: 'pmdb' }))).toMatchObject({ tmdbAPIKey: null, introDBAPIKey: 'intro', publicMetaDBAPIKey: 'pmdb' })
     expect(localValue('keys', settings())).toEqual({ tmdbAPIKey: null, traktClientID: null, simklClientID: null })
     expect(settingsPatch('keys', { tmdbAPIKey: null, introDBAPIKey: ' intro ', publicMetaDBAPIKey: 'pmdb' }, settings())).toEqual({ tmdbKey: '', introDBKey: 'intro', publicMetaDBKey: 'pmdb' })
+  })
+
+  it('carries the MDBList, TVDB and RatingPosterDB keys both ways, trimmed, without a blank browser clearing them', () => {
+    expect(localValue('keys', settings({ mdblistKey: ' md ', tvdbKey: 'tv', rpdbKey: 'rp' }))).toMatchObject({ mdblistAPIKey: 'md', tvdbAPIKey: 'tv', rpdbAPIKey: 'rp' })
+    // Unset, blank or only spaces: nothing is written under the name.
+    const none = localValue('keys', settings({ mdblistKey: '  ', tvdbKey: '' })) as Record<string, unknown>
+    expect(Object.keys(none)).toEqual(['tmdbAPIKey', 'traktClientID', 'simklClientID'])
+    expect(settingsPatch('keys', { tmdbAPIKey: null, mdblistAPIKey: ' md ', tvdbAPIKey: 'tv', rpdbAPIKey: 'rp' }, settings())).toEqual({ tmdbKey: '', mdblistKey: 'md', tvdbKey: 'tv', rpdbKey: 'rp' })
+    // A null or empty key in the record leaves this browser's own as it is.
+    expect(settingsPatch('keys', { mdblistAPIKey: null, tvdbAPIKey: '', rpdbAPIKey: '  ' }, settings({ mdblistKey: 'mine' }))).toEqual({ tmdbKey: '' })
+  })
+
+  it('writes the keys over the record’s only once set, so a blank browser leaves the apps’ copies', () => {
+    const remote = record({ keys: section(2, { tmdbAPIKey: 'k', mdblistAPIKey: 'apps-md', tvdbAPIKey: 'apps-tv', rpdbAPIKey: 'apps-rp' }) })
+    const metas: Metas = { keys: { updatedAt: iso(0), device: 'Web', snapshot: '{}' } }
+    // Web changed only the TMDB key: the three the apps hold stay as they were.
+    const blank = merge(remote, settings({ tmdbKey: 'new' }), metas, t(10), 'Web')
+    expect(blank.payload.sections.keys!.data).toEqual({ tmdbAPIKey: 'new', mdblistAPIKey: 'apps-md', tvdbAPIKey: 'apps-tv', rpdbAPIKey: 'apps-rp' })
+    // Once the web has its own, its value wins.
+    const set = merge(remote, settings({ tmdbKey: 'new', mdblistKey: 'web-md' }), metas, t(10), 'Web')
+    expect((set.payload.sections.keys!.data as Record<string, unknown>).mdblistAPIKey).toBe('web-md')
+    expect((set.payload.sections.keys!.data as Record<string, unknown>).tvdbAPIKey).toBe('apps-tv')
   })
 
   it('keeps an add-on’s saved manifest and a server’s on/off switch', () => {
