@@ -20,7 +20,8 @@ interface Next {
 /** Skips the segment: to its end, or, for credits that run to the end of an episode with another after it, on to that
  *  episode. Returns whether it moved within this stream. */
 function skipSegment(controller: PlayerController, segment: SkipSegment, { hasNext, onNext }: Next, automatic: boolean): boolean {
-  if (segment.kind === 'credits' && hasNext && creditsRunToEnd(segment, controller.duration())) {
+  // With the sleep timer on "End of Episode or Movie" the credits play out and the player closes: the next episode isn't started.
+  if (segment.kind === 'credits' && hasNext && creditsRunToEnd(segment, controller.duration()) && !controller.sleepHold) {
     onNext(automatic)
     return false
   }
@@ -33,7 +34,7 @@ function skipSegment(controller: PlayerController, segment: SkipSegment, { hasNe
  *  begins and says so for a few seconds, with Undo. Credits that lead into a next episode are the Up Next card's
  *  to offer ("Next Episode"), so here they only skip by themselves. It watches the clock itself and re-renders
  *  only when something comes or goes. */
-export function Skip({ controller, hasNext, onNext }: { controller: PlayerController; hasNext: boolean; onNext: (automatic: boolean) => void }) {
+export function Skip({ controller, hasNext, onNext, hidesCredits }: { controller: PlayerController; hasNext: boolean; onNext: (automatic: boolean) => void; hidesCredits?: boolean }) {
   const segments = usePlayer(controller, (st) => st.segments)
   const lifted = usePlayer(controller, (st) => st.controls)
   const panel = usePlayer(controller, (st) => st.panel)
@@ -48,9 +49,9 @@ export function Skip({ controller, hasNext, onNext }: { controller: PlayerContro
   const [note, setNote] = useState<{ kind: SkipKind; from: number } | null>(null)
   // Segments already skipped by themselves: a viewer who goes back into one gets the button, not a second skip.
   const done = useRef(new Set<number>())
-  const latest = useRef({ hasNext, onNext, intro, recap, credits })
+  const latest = useRef({ hasNext, onNext, intro, recap, credits, hidesCredits })
   useEffect(() => {
-    latest.current = { hasNext, onNext, intro, recap, credits }
+    latest.current = { hasNext, onNext, intro, recap, credits, hidesCredits }
   })
 
   useEffect(() => {
@@ -59,7 +60,9 @@ export function Skip({ controller, hasNext, onNext }: { controller: PlayerContro
     const check = () => {
       const settings = latest.current
       const found = activeSegment(segments, video.currentTime)
-      const behaviour = found && behaviourFor(found.kind, { skipIntro: settings.intro, skipRecap: settings.recap, skipCredits: settings.credits })
+      let behaviour = found && behaviourFor(found.kind, { skipIntro: settings.intro, skipRecap: settings.recap, skipCredits: settings.credits })
+      // Credits that hide a scene are never skipped by themselves (the post-credits alert says why).
+      if (found?.kind === 'credits' && settings.hidesCredits && behaviour === 'automatic') behaviour = 'button'
       if (found && behaviour === 'automatic' && !done.current.has(found.start)) {
         done.current.add(found.start)
         const from = controller.currentTime()

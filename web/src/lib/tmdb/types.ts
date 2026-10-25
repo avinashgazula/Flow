@@ -1,3 +1,5 @@
+import type { CreditsScenes } from './creditsScenes'
+
 export type MediaType = 'movie' | 'show'
 
 export const tmdbPath = (type: MediaType) => (type === 'movie' ? 'movie' : 'tv')
@@ -80,6 +82,8 @@ export interface MediaDetail extends MediaItem {
   networks: string[]
   voteCount?: number
   collection?: { id: number; name: string }
+  /** A film's scenes during or after its credits (TMDB keywords); the player says so as they begin. Films only. */
+  creditsScenes?: CreditsScenes
 }
 
 export interface Person {

@@ -198,6 +198,8 @@ function detail(t: Title) {
   o.similar = page(similar.slice(-6))
   o.images = { logos: [] }
   if (t.type === 'movie') {
+    // Every third film has a scene after its credits and every third a scene during them, so both notes can be seen.
+    o.keywords = { keywords: t.id % 3 === 2 ? [{ id: 1, name: 'aftercreditsstinger' }] : t.id % 3 === 1 ? [{ id: 2, name: 'duringcreditsstinger' }] : [] }
     o.runtime = t.runtime
     o.release_dates = { results: [{ iso_3166_1: 'US', release_dates: [{ certification: t.certification, type: 3 }] }] }
   } else {

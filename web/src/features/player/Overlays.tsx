@@ -5,6 +5,7 @@ import { usePlayer, type Feedback, type PlayerController } from './controller'
 import { useSettings } from '../../lib/store/settings'
 import { SubtitleLines, plainLines } from './SubtitleText'
 import { subtitleCSS, sampleSubtitle } from './subtitleStyle'
+import { activeCueText } from './subtitleDelay'
 import { cueSegments, type Segment } from './subtitles'
 import s from './Player.module.css'
 
@@ -12,11 +13,14 @@ import s from './Player.module.css'
  *  most of what WebVTT asks for, and this way every engine's subtitles look the same. Raised clear
  *  of the scrubber while the controls show, as in Apple's TV app. The viewer's style (Settings, or the
  *  options panel's Subtitle Style) is applied here, and while that panel is open a sample line stands in
- *  whenever no real one is on screen, so there is always something to judge a change by. */
+ *  whenever no real one is on screen, so there is always something to judge a change by. With a subtitle delay
+ *  the browser's own cue changes (which know nothing of it) aren't used: the clock is read as it plays and the
+ *  cues are looked up shifted. */
 export function SubtitleOverlay({ controller }: { controller: PlayerController }) {
   const track = usePlayer(controller, (st) => st.subtitleTrack)
   const lifted = usePlayer(controller, (st) => st.controls)
   const styling = usePlayer(controller, (st) => st.styling)
+  const delay = usePlayer(controller, (st) => st.subtitleDelay)
   const style = useSettings((st) => st.subtitleStyle)
   const [lines, setLines] = useState<Segment[][]>([])
 
@@ -26,20 +30,55 @@ export function SubtitleOverlay({ controller }: { controller: PlayerController }
       return
     }
     let last = ''
-    const update = () => {
-      const text = Array.from(track.activeCues ?? [])
-        .map((c) => (c as VTTCue).text)
-        .join('\n')
+    const show = (text: string) => {
       if (text === last) return
       last = text
       setLines(text ? cueSegments(text) : [])
     }
+    const video = controller.video
+    if (delay === 0 || !video) {
+      const update = () =>
+        show(
+          Array.from(track.activeCues ?? [])
+            .map((c) => (c as VTTCue).text)
+            .join('\n'),
+        )
+      update()
+      track.addEventListener('cuechange', update)
+      return () => track.removeEventListener('cuechange', update)
+    }
+    // Shifted: look the cues up on every frame while playing (a quarter-second tick would show a line late by up
+    // to that much, which is the very thing being corrected), and once on each pause or seek.
+    const update = () => show(activeCueText((track.cues ?? []) as unknown as ArrayLike<{ startTime: number; endTime: number; text: string }>, video.currentTime, delay))
+    let frame = 0
+    const loop = () => {
+      update()
+      frame = requestAnimationFrame(loop)
+    }
+    const start = () => {
+      if (!frame) loop()
+    }
+    const stop = () => {
+      cancelAnimationFrame(frame)
+      frame = 0
+      update()
+    }
+    const events: [string, () => void][] = [
+      ['playing', start],
+      ['pause', stop],
+      ['seeked', update],
+      ['timeupdate', update],
+    ]
+    for (const [name, fn] of events) video.addEventListener(name, fn)
     update()
-    track.addEventListener('cuechange', update)
-    return () => track.removeEventListener('cuechange', update)
-  }, [track])
+    if (!video.paused) start()
+    return () => {
+      for (const [name, fn] of events) video.removeEventListener(name, fn)
+      cancelAnimationFrame(frame)
+    }
+  }, [track, delay, controller])
 
-  const shown = lines.length > 0 ? lines : styling ? plainLines(sampleSubtitle) : lines
+  const shown = lines.length > 0 ? lines : styling === 'style' ? plainLines(sampleSubtitle) : lines
   if (shown.length === 0) return null
   return (
     <div className={s.subtitles} style={subtitleCSS(style)} data-lifted={lifted ? '' : undefined} aria-live="off">
@@ -86,6 +125,45 @@ export function FeedbackFlash({ controller }: { controller: PlayerController }) 
   )
 }
 
+/** How long a notice stays, as in the apps. */
+const noticeMs = 7000
+
+/** Quiet words over the picture, top centre: "2×" while a hold plays at double speed, and the player's notices
+ *  (the sleep timer, a scene to stay for, an app being opened). One line at a time, flat, on the panel colour. */
+export function Notes({ controller }: { controller: PlayerController }) {
+  const fast = usePlayer(controller, (st) => st.fast)
+  const [notice, setNotice] = useState<{ id: number; text: string } | null>(null)
+  useEffect(() => {
+    let timer = 0
+    let id = 0
+    const off = controller.onNotice((text) => {
+      setNotice({ id: ++id, text })
+      clearTimeout(timer)
+      timer = window.setTimeout(() => setNotice(null), noticeMs)
+    })
+    return () => {
+      off()
+      clearTimeout(timer)
+    }
+  }, [controller])
+  if (!fast && !notice) return null
+  return (
+    <div className={s.notes} role="status">
+      {fast ? (
+        <span key="fast" className={s.note} data-fast="">
+          <Icon name="skipForward" size={14} />
+          <span aria-hidden="true">2×</span>
+          <span className="sr-only">Playing at double speed</span>
+        </span>
+      ) : (
+        <span key={notice!.id} className={s.note}>
+          {notice!.text}
+        </span>
+      )}
+    </div>
+  )
+}
+
 /** Buffering, shown only while the controls are away (the play button is the centre otherwise): a row of
  *  perforations filling in yellow, on a flat card. */
 export function Buffering({ controller }: { controller: PlayerController }) {
@@ -97,23 +175,56 @@ export function Buffering({ controller }: { controller: PlayerController }) {
   ) : null
 }
 
+/** How long a finger rests on the picture before it plays at double speed (the apps' 0.45 seconds), and how far it
+ *  may wander meanwhile (their 40 points). */
+const holdMs = 450
+const holdSlop = 40
+
 /** The picture itself: click to play or pause and double-click for full screen with a mouse; with
- *  a finger, tap to show or hide the controls and double-tap either half to skip ten seconds. A tap
- *  outside an open panel closes it. */
+ *  a finger, tap to show or hide the controls, double-tap either half to skip ten seconds, and hold to play at 2× until
+ *  you let go. A tap outside an open panel closes it. */
 export function TapLayer({ controller }: { controller: PlayerController }) {
   const lastTap = useRef({ at: 0, side: '' })
   const single = useRef(0)
   const touchedAt = useRef(0)
+  // A finger held on the picture plays at double speed until it lifts, and that lift is not a tap.
+  const press = useRef({ timer: 0, x: 0, y: 0, held: false })
 
-  useEffect(() => () => clearTimeout(single.current), [])
+  useEffect(
+    () => () => {
+      clearTimeout(single.current)
+      clearTimeout(press.current.timer)
+    },
+    [],
+  )
+
+  /** Lets go of a hold, or of a press that was never long enough to be one. Returns whether it was a hold. */
+  const release = () => {
+    clearTimeout(press.current.timer)
+    const wasHeld = press.current.held
+    press.current.held = false
+    if (wasHeld) controller.holdFast(false)
+    return wasHeld
+  }
 
   return (
     <div
       className={s.tapLayer}
-      onPointerMove={(e) => e.pointerType === 'mouse' && controller.poke()}
+      onPointerDown={(e) => {
+        if (e.pointerType === 'mouse' || controller.get().panel) return
+        press.current = { timer: window.setTimeout(() => (press.current.held = controller.holdFast(true)), holdMs), x: e.clientX, y: e.clientY, held: false }
+      }}
+      onPointerMove={(e) => {
+        if (e.pointerType === 'mouse') return controller.poke()
+        // A finger that slides away is scrolling or dragging, not holding.
+        if (!press.current.held && Math.hypot(e.clientX - press.current.x, e.clientY - press.current.y) > holdSlop) clearTimeout(press.current.timer)
+      }}
+      onPointerCancel={release}
+      onContextMenu={(e) => e.preventDefault()}
       onPointerUp={(e) => {
         if (e.pointerType === 'mouse') return
         touchedAt.current = performance.now()
+        if (release()) return
         if (controller.get().panel) {
           controller.setPanel(null)
           return

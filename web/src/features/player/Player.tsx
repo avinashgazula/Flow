@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MediaType } from '../../lib/tmdb/types'
 import { PlayerScreen } from './PlayerScreen'
+import { sleepTimer } from './sleepTimer'
 import { StillWatching } from './stillWatching'
 import s from './Player.module.css'
 
@@ -16,6 +17,8 @@ export function Player({ type, id, season, episode, source }: { type: MediaType;
     document.body.style.overflow = 'hidden'
     return () => {
       document.body.style.overflow = overflow
+      // The sleep timer counts through episodes, but not past the player being closed.
+      sleepTimer.clear()
     }
   }, [])
 

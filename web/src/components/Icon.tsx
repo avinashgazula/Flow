@@ -54,6 +54,11 @@ const paths = {
   chevronUp: 'M5.5 14.5 12 8l6.5 6.5',
   upload: 'M12 15V4M7.5 8.5 12 4l4.5 4.5M5 20h14',
   copy: 'M9 9h10.5v10.5H9zM15 9V4.5H4.5V15H9',
+  moon: 'M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z',
+  replay: 'M4 12a8 8 0 1 0 2.4-5.7M4 4v4.8h4.8M10 11h5M10 14.5h3',
+  external: 'M13.5 4.5h6v6M19.5 4.5l-8 8M17 14v5.5H4.5V7H10',
+  minus: 'M5 12h14',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
 } as const
 
 export type IconName = keyof typeof paths
