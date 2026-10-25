@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { Icon, type IconName } from '../../components/Icon'
 import type { Source } from '../../lib/sources'
 import type { Episode } from '../../lib/tmdb/types'
@@ -156,11 +156,40 @@ function Volume({ controller, hover }: { controller: PlayerController; hover: Ho
   )
 }
 
+/** A finger held on Back 10 Seconds asks "What Did They Say?" (the apps do the same); the lift that ends the hold isn't a tap. */
+const askMs = 500
+
 function Transport({ controller, hover }: { controller: PlayerController; hover: Hover }) {
   const paused = usePlayer(controller, (st) => st.paused)
+  const held = useRef({ timer: 0, asked: false })
   return (
     <div className={s.transport}>
-      <button className={`${s.round} ${s.skip} ${s.interactive}`} aria-label="Back 10 Seconds" onClick={() => controller.seekBy(-10)} onMouseDown={keepFocus} {...hover}>
+      <button
+        className={`${s.round} ${s.skip} ${s.interactive}`}
+        aria-label="Back 10 Seconds"
+        onClick={() => {
+          if (held.current.asked) held.current.asked = false
+          else controller.seekBy(-10)
+        }}
+        onPointerDown={(e) => {
+          if (e.pointerType === 'mouse') return
+          held.current.asked = false
+          clearTimeout(held.current.timer)
+          held.current.timer = window.setTimeout(() => {
+            held.current.asked = true
+            controller.replayWithSubtitles()
+          }, askMs)
+        }}
+        onPointerUp={() => clearTimeout(held.current.timer)}
+        onPointerCancel={() => clearTimeout(held.current.timer)}
+        onContextMenu={(e) => e.preventDefault()}
+        onMouseDown={keepFocus}
+        {...hover}
+        onPointerLeave={() => {
+          clearTimeout(held.current.timer)
+          hover.onPointerLeave()
+        }}
+      >
         <SkipGlyph forward={false} />
       </button>
       <button className={`${s.round} ${s.play} ${s.interactive}`} aria-label={paused ? 'Play' : 'Pause'} onClick={controller.togglePlay} onMouseDown={keepFocus} {...hover}>

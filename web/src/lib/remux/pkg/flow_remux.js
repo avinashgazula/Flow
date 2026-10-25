@@ -448,6 +448,14 @@ export class Remuxer {
         wasm.remuxer_select(this.__wbg_ptr, video, audio, raw);
     }
     /**
+     * Plays Dolby Vision files as their HDR10 picture ("Never Use Dolby Vision"): call before the first
+     * `headerFeed`. Profile 5, which has no HDR10 picture, stays Dolby Vision.
+     * @param {boolean} on
+     */
+    setHdr10Only(on) {
+        wasm.remuxer_setHdr10Only(this.__wbg_ptr, on);
+    }
+    /**
      * Drops video fragments that end before `seconds`, while audio is rebuilt under a picture
      * that's already buffered.
      * @param {number} seconds

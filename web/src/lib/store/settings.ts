@@ -41,6 +41,9 @@ export type SubtitleMode = 'off' | 'foreign' | 'always'
  *  As FlowKit's SkipBehaviour. */
 export type SkipBehaviour = 'off' | 'button' | 'automatic'
 
+/** The apps that take a stream's link (ExternalPlayer in the apps' settings): "none" is Flow's own player. */
+export type ExternalPlayerId = 'none' | 'infuse' | 'vlc' | 'outplayer' | 'senPlayer' | 'vidHub' | 'cineUltra' | 'moonPlayer' | 'iina' | 'mpv'
+
 /** A Trakt sign-in in the shape Flow Sync and the apps keep it (docs/SYNC.md, accounts). `redirectURI` is the
  *  one the token was issued against; a refresh quotes it back. */
 export interface TraktToken {
@@ -80,6 +83,10 @@ export interface Settings {
   /** After this many episodes play one after another with nobody touching anything, Flow asks
    *  before starting the next. Zero never asks. As the apps' `stillWatchingAfterEpisodes`. */
   stillWatchingAfterEpisodes: number
+  /** Absent means off, except for the post-credits alert and Because You Watched, where it means on (these six are
+   *  left out of the defaults to keep the first visit's code small).
+   *  Up Next waits for the episode to end instead of counting down as its credits start. */
+  upNextWaitsForEnd?: boolean
   skipIntro: SkipBehaviour
   skipRecap: SkipBehaviour
   skipCredits: SkipBehaviour
@@ -87,6 +94,16 @@ export interface Settings {
    *  mark. Named as in Flow Sync (`introDBAPIKey`, `publicMetaDBAPIKey`). Empty means not asked. */
   introDBKey: string
   publicMetaDBKey: string
+  /** Say so as a film's credits begin when it has a scene during or after them (TMDB's stinger keywords). */
+  postCreditsAlert?: boolean
+  /** Suggest films like it as a film's credits roll, and when it ends. */
+  becauseYouWatched?: boolean
+  /** Play Dolby Vision files as their HDR10 picture (MKV files Flow plays itself). */
+  neverUseDolbyVision?: boolean
+  /** Extra loudness in whole decibels, 0 to 12 (the apps' `volumeBoostDB`); played through a Web Audio gain where the browser allows it. */
+  volumeBoostDB?: number
+  /** The app "Open in" leads with in the player's options. It is never opened by itself: a web page can't tell whether the app is installed. */
+  externalPlayer?: ExternalPlayerId
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
   /** The picker offers the source a title was last played from first. */
   rememberLastSource: boolean

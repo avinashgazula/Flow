@@ -131,6 +131,8 @@ export interface RemuxOptions {
   /** The address is the stream proxy's. A failure then says what the proxy answered (the host that
    *  refused it, and why) or that it didn't answer, and is never `BlockedError`. */
   viaProxy?: boolean
+  /** Play Dolby Vision as its HDR10 picture alone (profile 5, which has none, stays Dolby Vision). */
+  hdr10Only?: boolean
   startAt?: number
   signal?: AbortSignal
 }
@@ -252,7 +254,7 @@ class Session implements RemuxSession {
     this.cleanups.push(() => options.signal?.removeEventListener('abort', onAbort))
     if (options.signal?.aborted) throw new DOMException('Stopped', 'AbortError')
 
-    this.send({ type: 'open', url: this.url, headers: options.headers ?? {}, viaProxy: options.viaProxy ?? false })
+    this.send({ type: 'open', url: this.url, headers: options.headers ?? {}, viaProxy: options.viaProxy ?? false, hdr10Only: options.hdr10Only ?? false })
     const opened = this.sink.open()
     opened.catch((error: Error) => this.fail(error.message))
     const info = await Promise.race([header, failed])
