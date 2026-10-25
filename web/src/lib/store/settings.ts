@@ -1,4 +1,6 @@
+import { defaultLiveTV, type LiveTVSettings } from '../livetv/types'
 import type { AddonManifest } from '../sources/types'
+import { defaultTabOrder } from '../tabs'
 import { createStore, useStore } from './createStore'
 import { defaultSubtitleStyle, type SubtitleStyle } from './subtitleStyleDefault'
 
@@ -41,9 +43,25 @@ export type SkipBehaviour = 'off' | 'button' | 'automatic'
 /** The apps that take a stream's link (ExternalPlayer in the apps' settings): "none" is Flow's own player. */
 export type ExternalPlayerId = 'none' | 'infuse' | 'vlc' | 'outplayer' | 'senPlayer' | 'vidHub' | 'cineUltra' | 'moonPlayer' | 'iina' | 'mpv'
 
+/** A Trakt sign-in in the shape Flow Sync and the apps keep it (docs/SYNC.md, accounts). `redirectURI` is the
+ *  one the token was issued against; a refresh quotes it back. */
+export interface TraktToken {
+  accessToken: string
+  refreshToken: string | null
+  /** ISO 8601, or null when Trakt gave no lifetime. */
+  expiresAt: string | null
+  redirectURI: string | null
+}
+
 export interface Settings {
   /** TMDB v3 API key or v4 read-access token. */
   tmdbKey: string
+  /** The Client ID of the owner's own Trakt app. Trakt issues no secret for PKCE apps, so this is all it takes. */
+  traktClientID: string
+  /** Simkl's Client ID. The website doesn't sign in to Simkl yet; the field keeps the apps' value through Sync. */
+  simklClientID: string
+  /** Who the website is signed in to Trakt as. Travels through Flow Sync, so any device's sign-in arrives here. */
+  traktAccount: TraktToken | null
   /** Sample data: every screen fills without keys or accounts. */
   demo: boolean
   onboarded: boolean
@@ -88,15 +106,23 @@ export interface Settings {
   rememberLastSource: boolean
   /** The typeface the whole site is set in; System is the device's own and downloads nothing. */
   font: FontChoice
+  /** The order of the sections in the top bar and the phone's tab bar, by id (lib/tabs.ts). A section this
+   *  list doesn't name yet takes its default place. */
+  tabOrder: string[]
   /** Where files from hosts that block web pages are fetched through: a URL with `{url}` for the
    *  encoded file address. Empty means no proxy. */
   streamProxy: string
+  /** IPTV providers, the guide's refresh time and the favourite channels (FlowKit's LiveTVSettings). */
+  liveTV: LiveTVSettings
 }
 
 const browserLanguage = typeof navigator === 'undefined' ? 'en-US' : navigator.language || 'en-US'
 
 export const defaultSettings: Settings = {
   tmdbKey: import.meta.env.VITE_TMDB_KEY ?? '',
+  traktClientID: '',
+  simklClientID: '',
+  traktAccount: null,
   demo: false,
   onboarded: false,
   language: browserLanguage.includes('-') ? browserLanguage : `${browserLanguage}-US`,
@@ -124,7 +150,9 @@ export const defaultSettings: Settings = {
   preferredQuality: '1080p',
   rememberLastSource: true,
   font: 'system',
+  tabOrder: [...defaultTabOrder],
   streamProxy: '',
+  liveTV: defaultLiveTV,
 }
 
 export const settingsStore = createStore<Settings>('settings', defaultSettings)

@@ -7,9 +7,16 @@ import { ErrorScreen } from './components/ErrorScreen'
 import { cacheBuster, persister, queryClient } from './lib/queryClient'
 import { checkConvertAudio } from './lib/audio/support'
 import { checkSmoothVideo } from './lib/sources/smooth'
+import { listenForInstall } from './lib/pwa/install'
+import { registerServiceWorker } from './lib/pwa/update'
 import { settingsStore } from './lib/store/settings'
 import { libraryStore } from './lib/store/library'
+import { arriveFromTrakt } from './lib/trakt/arrive'
+import { bootTrakt } from './lib/trakt/boot'
 import './styles/global.css'
+
+// Trakt sends the browser back to an address that isn't a screen: point it at Settings before the router reads it.
+arriveFromTrakt()
 
 export const router = createRouter({
   routeTree,
@@ -49,6 +56,11 @@ window.addEventListener('vite:preloadError', (event) => {
 })
 window.addEventListener('load', () => setTimeout(() => sessionStorage.removeItem('flow.reloadedForDeploy'), 10_000))
 
+// Flow works offline once it has loaded (src/sw/sw.ts), and can be installed as an app. The browser's
+// install event comes once and early, so it is caught here and kept for Settings.
+registerServiceWorker()
+listenForInstall()
+
 // Ask the browser's audio encoder what it takes, so source ranking knows whether audio it can't
 // decode can be converted. Nothing waits on the answer.
 void checkConvertAudio()
@@ -65,6 +77,10 @@ try {
 } catch {
   // Blocked storage means no sync setup to find.
 }
+
+// A browser signed in to Trakt (here, or through Sync) keeps its library in step with it. The code is a separate
+// chunk, fetched only once there is a sign-in.
+bootTrakt()
 
 // Sample data comes with a lived-in library, as on the other platforms.
 if (settingsStore.get().demo && Object.keys(libraryStore.get().progress).length === 0 && libraryStore.get().watchlist.length === 0) {

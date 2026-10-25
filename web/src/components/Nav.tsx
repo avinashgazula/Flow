@@ -1,23 +1,21 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useSettings } from '../lib/store/settings'
-import { Icon, type IconName } from './Icon'
+import { orderTabs } from '../lib/tabs'
+import { Icon } from './Icon'
 import s from './Nav.module.css'
-
-const tabs: { to: '/' | '/explore' | '/library' | '/search'; label: string; icon: IconName }[] = [
-  { to: '/', label: 'Home', icon: 'home' },
-  { to: '/explore', label: 'Explore', icon: 'explore' },
-  { to: '/library', label: 'Library', icon: 'library' },
-  { to: '/search', label: 'Search', icon: 'search' },
-]
 
 /** A top bar on every width: the yellow mark and "Flow" wordmark, the sections as plain text (the current
  *  one in paper with the yellow underline), and Settings at the right. On phones the sections move to a
  *  flat tab bar at the bottom, current one in yellow, like the system tab bar. No pill, no glass. */
 export function Nav() {
   const path = useRouterState({ select: (r) => r.location.pathname })
+  // The live player is full screen too, and is reached by ?play= on the Live TV page.
+  const liveFull = useRouterState({ select: (r) => r.location.pathname === '/live' && typeof (r.location.search as Record<string, unknown>).play === 'string' })
   const [scrolled, setScrolled] = useState(false)
   const sample = useSettings((x) => x.demo)
+  const saved = useSettings((x) => x.tabOrder)
+  const tabs = orderTabs(saved)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
@@ -26,7 +24,7 @@ export function Nav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  if (path.startsWith('/watch')) return null
+  if (path.startsWith('/watch') || liveFull) return null
   const current = (to: string) => (to === '/' ? path === '/' : path.startsWith(to))
 
   return (

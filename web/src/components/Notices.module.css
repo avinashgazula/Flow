@@ -1,0 +1,42 @@
+/* Notes about the app itself. Flat panels on base-2 with a hairline ring, as the player's notices are: no
+   shadow, no blur. Bottom left on a wide screen; on a phone they sit just above the tab bar. */
+.stack {
+  position: fixed;
+  z-index: 60;
+  left: var(--page-inset);
+  bottom: calc(var(--tabbar-height) + var(--space-m));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  max-width: min(420px, calc(100vw - 2 * var(--gutter)));
+  /* The stack takes no clicks itself, so it never covers a control it doesn't draw over. */
+  pointer-events: none;
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  margin: 0;
+  padding: var(--space-s) var(--space-m);
+  border-radius: var(--radius-panel);
+  background: var(--base-2);
+  box-shadow: 0 0 0 1px var(--rule);
+  color: var(--paper);
+  font: 500 var(--fs-small) / 1.35 var(--font);
+  text-wrap: pretty;
+  pointer-events: auto;
+  animation: rise var(--dur-move) var(--ease-out);
+}
+.text { flex: 1; }
+.note button:last-child { margin-right: -8px; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+@media (max-width: 720px) {
+  .stack { right: var(--gutter); max-width: none; }
+  .note { width: 100%; box-sizing: border-box; }
+}

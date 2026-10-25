@@ -36,8 +36,10 @@ npm test             # unit tests (Vitest)
 | `src/components/` | Shared pieces: `Artwork`, `Frame` (frame + edge strip: the signature), `Cards`, `Shelf`, `Nav`, `Icon`. |
 | `src/lib/tmdb/` | TMDB client (normalises responses into `types.ts`), images, sample data. |
 | `src/lib/store/` | Settings and library (watchlist, progress, history) in localStorage. |
+| `src/lib/trakt/` | Trakt: PKCE sign-in, the API client, the library sync and the player's scrobbler (see Trakt below). |
 | `src/lib/sources/` | Stream add-ons, Jellyfin/Emby and Plex, and source ranking. |
 | `src/features/player/` | The player. |
+| `src/features/livetv/`, `src/lib/livetv/` | Live TV: the channel list, the timeline guide and the live player; the M3U, Xtream Codes and XMLTV code behind them. |
 | `proxy/` | The stream proxy: a Cloudflare Worker that makes blocked file hosts readable. |
 
 ## Rules for speed
@@ -49,6 +51,28 @@ npm test             # unit tests (Vitest)
 - Off-screen sections use `content-visibility: auto`; long lists are virtualised.
 - State that changes often (playback time) lives in refs or the DOM, not in React state that
   re-renders a screen.
+
+## Installing and offline
+
+Flow is an installable web app (`public/manifest.webmanifest`: Film Base colours, maskable icons, shortcuts for Continue
+Watching, Upcoming and Search) and opens with no network. `scripts/pwa.ts` runs after the build: it lists the hashed code
+and styles (Vite's output, without sourcemaps, wasm or anything over 300 KB, which is hls.js), adds the page, the offline
+page, the manifest, the icon and the edge-print font, and builds `src/sw/sw.ts` with that list into `dist/sw.js`. The cache
+is named after a fingerprint of its contents, so a deploy that changes any file replaces the whole cache.
+
+- **What it caches** is decided by `src/sw/rules.ts` and its tests: Flow's own origin and base path only, GET only, nothing
+  with a Range header or a media extension, never `samples/`. TMDB, add-ons, servers, the stream proxy and artwork are other
+  origins, so the worker never sees them as anything but a request to let through. Chunks that weren't precached (hls.js, a
+  typeface) are stored the first time they load.
+- **Page loads** go to the network first and fall back to the saved shell after 4 s or when offline, so a new deploy shows
+  at once and an old connection still opens Flow. `offline.html` is the last resort.
+- **Updates wait.** A new worker never takes over by itself (a film isn't swapped to new code half way through); the page
+  shows "Flow was updated" with Reload, and Reload tells the worker to take over and reloads. Registered in production
+  builds only (`lib/pwa/update.ts`).
+- **Address bar search.** The build writes `opensearch.xml` (`search?q={searchTerms}`) with absolute addresses, from
+  `FLOW_SITE_URL`, `PAGES_DOMAIN` or the GitHub repository; a local build gets relative ones, which browsers ignore.
+- **Install.** Settings → About has Install Flow where the browser sends `beforeinstallprompt`, and one sentence about Share
+  → Add to Home Screen on iPhone and iPad. Nothing asks unprompted.
 
 ## Matroska
 
@@ -140,6 +164,59 @@ file), where the picture follows the finger a few times a second as before. Wher
   phones or with Data Saver on.
 - **Jellyfin 10.9+:** the server's trickplay tiles, whatever the engine; no decoding at all.
 
+## Live TV
+
+Home, Explore, Library, **Live TV**, Search. Live TV is the apps' Live TV on the web: IPTV providers (an
+M3U/M3U8 playlist, or an Xtream Codes login) are added in Settings → Live TV, with an optional XMLTV guide
+address. `?demo` brings the sample **Flow Live** provider.
+
+- **Parsers** (`src/lib/livetv/`, tests ported from FlowKit's): `m3u.ts` (tvg-id, tvg-name, tvg-logo,
+  tvg-chno, group-title, catch-up flags, per-channel user agents; VOD entries kept apart), `xtream.ts`
+  (categories, live streams, account, short guide, stream addresses with the login escaped), `xmltv.ts` (a
+  streaming reader: gzip unpacked on the way in, only the playlist's channels and the next day and a half
+  kept) and `epg.worker.ts` (runs it off the main thread). Channels and the guide are kept in IndexedDB
+  until the refresh time in Settings passes (`cache.ts`, `load.ts`).
+- **Network:** most IPTV hosts send no CORS headers and many are `http://`. Playlist, guide and API
+  requests go direct first, then through the **Stream Proxy** (Settings → Playback) if that fails, and
+  straight through it for a host already known to be blocked or one a page can't call at all. Live
+  streams are opened the same way: hls.js is given a loader that sends the manifest and every segment
+  through the proxy (`lib/sources/hlsProxy.ts`). Errors name the host, never the address (it carries the
+  login), and say what to do. The Worker in `proxy/` fetches only https on port 443, so a provider on
+  `http://` or `:8080` needs a proxy that allows it, such as MediaFlow Proxy.
+- **Playing:** `LivePlayer` reuses the film player's engine (hls.js; Safari plays HLS itself) and
+  controller. A raw MPEG-TS address is tried as HLS first (as the apps do); a browser can't play raw
+  MPEG-TS, so a channel only available that way says so.
+- **Not yet:** the providers aren't part of Flow Sync (a follow-up: the sync payload would carry
+  `liveTV`, with logins encrypted like the server tokens), and the browser can't send a custom
+  User-Agent.
+
+## Trakt
+
+Settings → Account signs the website in to the owner's own Trakt app, with the Client ID alone: the sign-in is the
+authorization-code flow with PKCE (no client secret, as in the apps). Trakt's API sends CORS headers
+(`access-control-allow-origin: *`, and it echoes the headers a preflight asks for), so the page talks to
+`api.trakt.tv` directly and no proxy is involved.
+
+- **Redirect URI.** `<site origin><base>settings/trakt-callback`, shown in Settings → Account with a Copy button. The
+  owner adds exactly that to the Trakt app at trakt.tv/oauth/applications, next to the apps' `flow://trakt-callback`.
+  The address isn't a screen: `lib/trakt/arrive.ts` sends the browser to Settings → Account before the router reads
+  it and finishes the sign-in in the background, so a failure is told in Account.
+- **Through Flow Sync.** The Client ID travels in the `keys` section (`traktClientID`, `simklClientID`) and the token in
+  `accounts.trakt` in the apps' shape, with the `redirectURI` it was issued against; Simkl's entry is never touched. A
+  sign-in, a refreshed token and a sign-out are pushed at once, and a token pulled from another device signs the site
+  in with no prompt. Before refreshing, Sync is pulled first, since another device may have rotated the token (and
+  again if the refresh is refused). A refresh quotes the redirect the token was issued against.
+- **Library.** While signed in, the watchlist, recent history, watched episodes and resume points come in on sign-in,
+  when the tab returns and every five minutes (`lib/trakt/merge.ts` holds the rules), and what changes on the website
+  (watchlist, marked watched, a dismissed resume point) goes up a couple of seconds later from a queue that survives a
+  reload. The watchlist is two-way; history is additions only. Signed out, the library works as it always has. Sample
+  data is never sent.
+- **Scrobbling.** The player starts, pauses and stops a scrobble with how far in (`features/player/useTraktScrobble.ts`
+  hooks it up). A stop at 80 % or more is Trakt's watch and also marks the title watched here.
+- **Ratings.** There's no rating screen yet. `rateTitle(item, 1–10 | null)` in `lib/trakt/engine.ts` is the hook:
+  the screen that adds stars calls it and the change is queued and sent like the rest.
+- **Budget.** `lib/trakt/boot.ts` is the only part in the first load; the sign-in, sync and scrobbler are lazy chunks.
+
 ## Sample data
 
 `?demo` in the address, or **Explore with Sample Data** on the welcome screen, fills every screen
@@ -149,7 +226,7 @@ from `src/lib/tmdb/demo.ts` with no key. The same catalogue as the apps' Demo mo
 
 - **Mixed content:** a page served over HTTPS can't reach an `http://` server. Use HTTPS for your
   Jellyfin/Emby/Plex server, or run Flow locally (`npm run preview`) to reach one on your network.
-- **CORS:** TMDB, Stremio add-ons, Jellyfin, Emby and Plex all allow browser requests. Some IPTV
+- **CORS:** TMDB, Trakt, Stremio add-ons, Jellyfin, Emby and Plex all allow browser requests. Some IPTV
   playlists and file hosts don't (most debrid download servers send no CORS headers), and those can't
   be read from a web page. Settings → Playback has a **Stream Proxy** field: a proxy you run fetches
   such files for Flow and adds the headers. `proxy/` holds a Cloudflare Worker for it

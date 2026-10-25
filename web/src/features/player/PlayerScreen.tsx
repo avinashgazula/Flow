@@ -29,6 +29,7 @@ import { StillWatchingPrompt } from './StillWatchingPrompt'
 import type { StillWatching } from './stillWatching'
 import { StruggleNotice } from './Struggle'
 import { UpNext } from './UpNext'
+import { useTraktScrobble } from './useTraktScrobble'
 import s from './Player.module.css'
 
 type Phase = 'finding' | 'picking' | 'connecting' | 'playing' | 'error'
@@ -492,6 +493,12 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase === 'playing'])
+
+  // Trakt, for a viewer signed in to it. Declared after the progress effect so a close saves progress first.
+  useTraktScrobble(video, phase === 'playing', () => {
+    const { item: it, epRef: ep } = latest.current
+    return started.current && it ? { item: it, episode: ep, position: position.current, duration: length.current } : null
+  })
 
   // The tab's title, and the system's Now Playing (lock screen, media keys, Control Centre).
   useEffect(() => {
