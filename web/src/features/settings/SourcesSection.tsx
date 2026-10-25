@@ -283,7 +283,7 @@ export function SourcesSection() {
             <ListField id="exclude-codecs" label="Exclude Codecs" values={f.excludedCodecs} placeholder="AV1" onChange={(v) => changeFilters({ excludedCodecs: v })} />
           </Group>
 
-          <Group title="Result Cap" footer="Shows at most this many sources after sorting and filtering.">
+          <Group footer="Shows at most this many sources after sorting and filtering.">
             <Row label="Result Cap" htmlFor="result-cap">
               <Select id="result-cap" value={o.resultCap ? String(o.resultCap) : ''} label="Result cap" options={capOptions(o.resultCap)} onChange={(v) => change((c) => ({ ...c, resultCap: v ? Number(v) : null }))} />
             </Row>
