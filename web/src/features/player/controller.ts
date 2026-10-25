@@ -12,9 +12,15 @@ import { providerNames, SubtitleError, type Credentials, type ProviderId, type S
 import type { AssHandle } from './ass'
 import { ownTracks, type Engine, type Track } from './engine'
 import { animeRule, audioLanguagesFor, decideSubtitle, isAnime, isForced, pickAudio, pickSubtitle, releaseLanguage, trackLanguage } from './languages'
+import { detectPlatform, launchURL, streamLink, externalPlayerTitle, type ExternalPlayerId } from './externalPlayers'
+import { planReplay, replayDone, replaySeconds } from './replay'
 import { prefs, titleChoices } from './session'
 import type { SkipSegment } from './segments'
+import { sleepDoneNotice, sleepSetNotice, sleepTimer, type SleepChoice } from './sleepTimer'
+import { clampDelay, rememberDelay, rememberedDelay } from './subtitleDelay'
 import { parseSubtitles, type SubtitleFormat } from './subtitles'
+import { canBoost, clampBoost, VolumeBoost } from './volumeBoost'
+import { ScreenAwake, wantsWakeLock } from './wakeLock'
 
 export type Panel = 'options' | 'tracks' | 'episodes' | null
 
@@ -71,8 +77,9 @@ export interface PlayerState {
   subtitleTrack: TextTrack | null
   controls: boolean
   panel: Panel
-  /** The options panel is on its Subtitle Style page: the overlay shows a sample line, and the page clears the way for it. */
-  styling: boolean
+  /** The options panel is on a page that changes the subtitles on screen, and clears the way for them: Subtitle Style (the
+   *  overlay also shows a sample line) or Subtitle Delay (the real line, moving). */
+  styling: 'style' | 'delay' | null
   /** The Playback Info card is up (I, or Options). */
   info: boolean
   fit: 'contain' | 'cover'
@@ -83,8 +90,16 @@ export interface PlayerState {
   /** What can be skipped in this stream (an intro, a recap, the credits), in time order; empty until a
    *  server, a service or the file's chapters say. */
   segments: SkipSegment[]
-  /** The Up Next card is on screen, so the Skip button leaves that corner to it. */
+  /** The Up Next card (or Because You Watched) is on screen, so the Skip button leaves that corner to it. */
   upNext: boolean
+  /** The sleep timer: minutes, or "end" for the end of this episode or film. */
+  sleep: SleepChoice | null
+  /** Playing at double speed while a finger or a key is held. */
+  fast: boolean
+  /** Seconds the subtitles Flow draws are shifted by (positive is later), kept per title for this visit. */
+  subtitleDelay: number
+  /** Volume Boost can be offered: this stream goes through Web Audio without being silenced (see volumeBoost.ts). */
+  boostable: boolean
 }
 
 const hideAfter = 3000
@@ -134,7 +149,7 @@ export class PlayerController {
     subtitleTrack: null,
     controls: true,
     panel: null,
-    styling: false,
+    styling: null,
     info: false,
     fit: 'contain',
     fullscreen: false,
@@ -142,10 +157,25 @@ export class PlayerController {
     cast: null,
     segments: [],
     upNext: false,
+    sleep: null,
+    fast: false,
+    subtitleDelay: 0,
+    boostable: false,
   }
   private listeners = new Set<() => void>()
   private feedbackListeners = new Set<(f: Feedback) => void>()
   private peekListeners = new Set<(time: number) => void>()
+  private noticeListeners = new Set<(text: string) => void>()
+  private sleepEndListeners = new Set<() => void>()
+  /** The sleep timer is fading the sound: the volume it fades from. */
+  private fade: { base: number } | null = null
+  /** The speed to go back to when a hold for double speed lets go. */
+  private held: number | null = null
+  /** The video ended while the sleep timer was set to end with it, so nothing may carry on to the next episode. */
+  private endedBySleep = false
+  /** What What Did They Say? turned on, until it turns it off again. */
+  private replay: { id: string; until: number; startedAt: number; last: string | null; timer: number } | null = null
+  private boost: VolumeBoost | null = null
   private hideTimer = 0
   private previewTimer = 0
   private previewAt = 0
@@ -214,8 +244,25 @@ export class PlayerController {
       this.set({ fullscreen: !!(d.fullscreenElement ?? d.webkitFullscreenElement) })
     }
     const airplay = (e: Event) => this.set({ cast: (e as Event & { availability?: string }).availability === 'available' ? 'airplay' : null })
+    // The screen stays awake while the picture plays and the page shows.
+    const awake = new ScreenAwake()
+    const keepAwake = () => void awake.update(wantsWakeLock({ paused: video.paused, ended: video.ended, hidden: document.hidden }))
+    const ended = () => {
+      if (sleepTimer.choice === 'end') {
+        // "End of Episode or Movie": this one finishes, and nothing starts after it.
+        this.endedBySleep = true
+        sleepTimer.clear()
+        this.sleepEndListeners.forEach((l) => l())
+      }
+    }
     const events: [EventTarget, string, EventListener][] = [
       [video, 'play', onPlay],
+      [video, 'play', keepAwake],
+      [video, 'pause', keepAwake],
+      [video, 'ended', keepAwake],
+      [video, 'ended', ended],
+      [video, 'play', () => this.boost?.resume()],
+      [document, 'visibilitychange', keepAwake],
       [video, 'pause', onPause],
       [video, 'volumechange', sync],
       [video, 'ratechange', sync],
@@ -242,11 +289,31 @@ export class PlayerController {
         .catch(() => {})
     }
     sync()
+
+    // The sleep timer is the player's, not this episode's: it is looked at once a second, here.
+    this.endedBySleep = false
+    if (sleepTimer.choice === 'end') sleepTimer.clear()
+    this.set({ sleep: sleepTimer.choice })
+    const offSleep = sleepTimer.subscribe(() => this.set({ sleep: sleepTimer.choice }))
+    const sleepClock = window.setInterval(() => this.tickSleep(), 1000)
+    this.boost = new VolumeBoost(video)
+    // Web Audio starts only after a tap or key press, so a boost that couldn't start with the stream does at the next.
+    const retryBoost = () => void this.applyBoost(false)
+    window.addEventListener('pointerdown', retryBoost, true)
+    window.addEventListener('keydown', retryBoost, true)
+    keepAwake()
     return () => {
       for (const [target, name, fn] of events) target.removeEventListener(name, fn)
       if (watch !== undefined) v.remote?.cancelWatchAvailability(watch).catch(() => {})
       clearTimeout(this.hideTimer)
       clearTimeout(this.previewTimer)
+      clearInterval(sleepClock)
+      offSleep()
+      window.removeEventListener('pointerdown', retryBoost, true)
+      window.removeEventListener('keydown', retryBoost, true)
+      this.endReplay()
+      this.holdFast(false)
+      void awake.release()
       this.cancelAutoSearch()
       this.stopAss()
     }
@@ -265,8 +332,11 @@ export class PlayerController {
     this.cancelAutoSearch()
     this.autoSearch = { key: '', timer: 0, ran: false }
     this.subtitleToken++
+    this.endReplay()
     this.set({ audio: [], audioId: undefined, blocked: engine?.fallback === 'blocked', proxyError: engine?.proxyError, subtitles: [], subtitleId: null, subtitleTrack: null })
     if (engine) this.refreshTracks()
+    this.set({ boostable: !!engine && !!source && !!this.boost?.supported && canBoost({ engine: engine.kind, blocked: engine.fallback === 'blocked', url: source.url, origin: location.origin }) })
+    void this.applyBoost(false)
   }
 
   /** Which title is playing. The original language can arrive after the tracks do (the details are
@@ -274,6 +344,7 @@ export class PlayerController {
   setContext(key: string, original?: string) {
     const late = original !== this.context.original
     this.context = { key, original }
+    this.set({ subtitleDelay: rememberedDelay(key) })
     if (late && this.engine && !this.manual.audio) {
       this.applied = { audio: false }
       this.applyPreferences()
@@ -409,6 +480,8 @@ export class PlayerController {
     const v = Math.min(1, Math.max(0, volume))
     if (volumeSettable) video.volume = v
     video.muted = v === 0
+    // A volume chosen while the sleep timer fades the sound is what it fades from.
+    if (this.fade) this.fade.base = v
     prefs.set({ volume: v || prefs.get().volume, muted: video.muted })
   }
   toggleMute = () => {
@@ -424,6 +497,165 @@ export class PlayerController {
     this.video.defaultPlaybackRate = rate
   }
   setFit = (fit: PlayerState['fit']) => this.set({ fit })
+
+  // MARK: Hold for double speed
+
+  /** Plays at 2× while held (a finger on the picture, or the X key), then goes back to the speed it was at. Does
+   *  nothing while paused, as in the apps. Returns whether it started. */
+  holdFast(on: boolean): boolean {
+    const video = this.video
+    if (!video) return false
+    if (on) {
+      if (this.held !== null || video.paused) return false
+      this.held = video.playbackRate
+      video.playbackRate = 2
+      this.set({ fast: true })
+      return true
+    }
+    if (this.held === null) return false
+    video.playbackRate = this.held
+    this.held = null
+    this.set({ fast: false })
+    return true
+  }
+
+  // MARK: Sleep timer
+
+  /** After this long, or at the end of this episode or film. The sound fades over the last 30 seconds, then the
+   *  picture pauses. Where the browser won't let a page set the volume (iPhone and iPad) it just pauses. */
+  setSleep(choice: SleepChoice | null) {
+    this.restoreFade()
+    sleepTimer.set(choice)
+    this.notify(choice === null ? 'Sleep timer off.' : sleepSetNotice(choice))
+  }
+  private restoreFade() {
+    if (this.fade && this.video && volumeSettable) this.video.volume = this.fade.base
+    this.fade = null
+  }
+  private tickSleep() {
+    const video = this.video
+    const check = sleepTimer.check()
+    if (!video || !check) return
+    if (check.fire) {
+      this.restoreFade()
+      sleepTimer.clear()
+      if (!video.paused) {
+        video.pause()
+        this.notify(sleepDoneNotice)
+      }
+      return
+    }
+    if (check.level < 1 && volumeSettable && !video.paused) {
+      this.fade ??= { base: video.volume }
+      video.volume = this.fade.base * check.level
+    }
+  }
+  /** The sleep timer says this episode is the last (End of Episode or Movie): the next one isn't to start by itself. */
+  get sleepHold(): boolean {
+    return this.endedBySleep || sleepTimer.choice === 'end'
+  }
+  /** Called when the video ends with the sleep timer waiting for that: the screen closes the player. */
+  onSleepEnd(listener: () => void) {
+    this.sleepEndListeners.add(listener)
+    return () => void this.sleepEndListeners.delete(listener)
+  }
+
+  // MARK: What did they say?
+
+  /** Ten seconds back, with subtitles showing just for that stretch even if they are off, then as they were. */
+  replayWithSubtitles() {
+    const video = this.video
+    if (!video) return
+    const until = video.currentTime
+    this.seekTo(until - replaySeconds)
+    this.flash('back10')
+    this.poke()
+    const { subtitles, subtitleId } = this.state
+    // Asked again while the first replay's subtitles are still up: it is the same replay, from the new moment.
+    if (this.replay && subtitleId === this.replay.id) {
+      this.replay.until = until
+      this.replay.startedAt = performance.now()
+      return
+    }
+    const { subtitleLanguages } = settingsStore.get()
+    const plan = planReplay(subtitles, subtitleId, subtitleLanguages.length ? subtitleLanguages : [navigator.language])
+    if (plan.kind === 'seek') return
+    if (plan.kind === 'none') {
+      this.notify('This video has no subtitles to show.')
+      return
+    }
+    const id = plan.track.id
+    const last = this.lastSubtitle
+    this.endReplay()
+    const replay = { id, until, startedAt: performance.now(), last, timer: 0 }
+    this.replay = replay
+    void this.selectSubtitle(id, false).then(() => {
+      // Choosing them for a moment isn't choosing them: C still brings back what was picked before.
+      this.lastSubtitle = last
+    })
+    replay.timer = window.setInterval(() => {
+      if (!replayDone({ startedAt: replay.startedAt, now: performance.now(), time: video.currentTime, until: replay.until })) return
+      // The viewer picking something themselves in the meantime stands.
+      if (this.state.subtitleId === id) void this.selectSubtitle(null, false)
+      this.endReplay()
+    }, 250)
+  }
+  private endReplay() {
+    if (!this.replay) return
+    clearInterval(this.replay.timer)
+    this.replay = null
+  }
+
+  // MARK: Subtitle delay
+
+  /** Shifts the subtitles Flow draws; positive shows them later. Remembered for the title until the page closes. */
+  setSubtitleDelay(seconds: number) {
+    const delay = clampDelay(seconds)
+    rememberDelay(this.context.key, delay)
+    this.set({ subtitleDelay: delay })
+    this.ass?.setDelay(delay)
+  }
+
+  // MARK: Volume Boost
+
+  /** Applies Settings' boost to this stream, once it can: where the stream allows it, and (the first time) from
+   *  a tap or key press, which `gesture` says. A boost that can't start says so and goes back to Off. */
+  async applyBoost(gesture: boolean) {
+    const boost = this.boost
+    const db = settingsStore.get().volumeBoostDB ?? 0
+    if (!boost || !this.state.boostable || (db === 0 && !boost.active)) return
+    if (!gesture && !boost.active && navigator.userActivation?.hasBeenActive === false) return
+    await boost.set(db)
+    if (gesture && db > 0 && !boost.active) {
+      settingsStore.set({ volumeBoostDB: 0 })
+      this.notify('Volume Boost couldn’t start in this browser.')
+    }
+  }
+  setVolumeBoost(db: number) {
+    settingsStore.set({ volumeBoostDB: clampBoost(db) })
+    void this.applyBoost(true)
+  }
+
+  // MARK: Open in another app
+
+  /** What "Open in" can offer for the stream on screen: the apps on this platform and the address they would get. */
+  externalLink(): { platform: NonNullable<ReturnType<typeof detectPlatform>>; address: string } | undefined {
+    const platform = detectPlatform(navigator.userAgent, navigator.maxTouchPoints)
+    const address = this.source && streamLink(this.source, platform)
+    return platform && address ? { platform, address } : undefined
+  }
+  /** Pauses (which saves the place) and hands the stream to another app, with the resume point where it takes one. */
+  openExternally(id: ExternalPlayerId) {
+    const link = this.externalLink()
+    const video = this.video
+    if (!link || !video) return
+    const position = video.currentTime > 30 ? video.currentTime : undefined
+    const url = launchURL(id, link.address, { position, filename: this.source?.filename })
+    if (!url) return
+    video.pause()
+    this.notify(`Opening ${externalPlayerTitle(id)}. If nothing happens, it isn’t installed on this device.`)
+    window.location.href = url
+  }
 
   // MARK: Skipping
 
@@ -530,7 +762,7 @@ export class PlayerController {
     if (!script || !video || !normaliseSubtitleOptions(settingsStore.get().subtitleOptions).keepASSStyling) return
     try {
       const { startAss } = await import('./ass')
-      const handle = await startAss(video, script)
+      const handle = await startAss(video, script, this.state.subtitleDelay)
       if (token !== this.subtitleToken) {
         handle.destroy()
         return
@@ -689,10 +921,10 @@ export class PlayerController {
 
   /** The attribute is for the stylesheet, which moves the subtitles clear of the panel; it's written to the
    *  element, like the idle cursor, so the screen doesn't re-render. */
-  setStyling = (styling: boolean) => {
+  setStyling = (styling: PlayerState['styling']) => {
     if (this.state.styling === styling) return
     this.set({ styling })
-    this.root?.toggleAttribute('data-styling', styling)
+    this.root?.toggleAttribute('data-styling', styling !== null)
   }
 
   setPanel = (panel: Panel) => {
@@ -702,6 +934,15 @@ export class PlayerController {
   }
 
   // MARK: Feedback
+
+  /** A short sentence over the picture, as the apps' notices are: a few seconds, then gone. */
+  onNotice(listener: (text: string) => void) {
+    this.noticeListeners.add(listener)
+    return () => void this.noticeListeners.delete(listener)
+  }
+  notify(text: string) {
+    this.noticeListeners.forEach((l) => l(text))
+  }
 
   onFeedback(listener: (f: Feedback) => void) {
     this.feedbackListeners.add(listener)

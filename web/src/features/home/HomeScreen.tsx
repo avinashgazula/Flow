@@ -1,34 +1,54 @@
-import { useQuery, type UseQueryOptions } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { useEffect } from 'react'
-import { FrameCard } from '../../components/Frame'
-import { PosterItem, ResumeItem } from '../../components/TitleCards'
-import { prefetchDetail, q } from '../../lib/queries'
-import { mediaKey, useLibrary, type Progress } from '../../lib/store/library'
+import { lazy, Suspense, useEffect } from 'react'
+import { q } from '../../lib/queries'
+import { mediaKey, useLibrary } from '../../lib/store/library'
+import { useSettings } from '../../lib/store/settings'
 import { formatWeekdayDate, greetingTitle, userLocale, useMinuteTick } from '../../lib/time'
 import { srcSet } from '../../lib/tmdb/images'
-import type { MediaItem, MediaType, Page } from '../../lib/tmdb/types'
-import { useNearScreen } from '../../lib/useNearScreen'
+import type { MediaItem } from '../../lib/tmdb/types'
 import { Lead, LeadGhost, leadSizes, type LeadItem } from './Lead'
-import { firstWithStill, inProgress, pickMeta, pickPrint, spokenPick } from './logic'
+import { inProgress } from './logic'
+import { heroPicks, maxSlides } from './shelfQuery'
+import { UpNext } from './UpNext'
 import s from './HomeScreen.module.css'
 
-/** Home, by the hour: the greeting title and date, the lead item with its yellow Resume, Up Next beside it
- *  (framed stills, perforations for progress, edge print for the facts), and rows of posters to pick from,
- *  each with a print-only strip. Everything is a Frame (components/Frame). */
+/** The shelves are under the fold: their code arrives beside the page's first data, not ahead of the first paint. */
+const Shelves = lazy(() => import('./Shelves'))
+
+/** Home, by the hour: the greeting title and date, the lead (what's in progress with its yellow Resume, or the
+ *  day's top picks, turning through up to ten), Up Next beside it (framed stills, perforations for progress, edge
+ *  print for the facts), and then the viewer's shelves in the order Settings → Shelves keeps, each a row of posters
+ *  or stills with a print-only strip. Everything is a Frame (components/Frame). */
 export function HomeScreen() {
   const now = useMinuteTick()
   const progress = useLibrary((l) => l.progress)
   const watchlist = useLibrary((l) => l.watchlist)
-  const trending = useQuery(q.trending('all', 'day'))
+  const shelves = useSettings((x) => x.shelves)
+  const showContinue = useSettings((x) => x.showContinueWatching)
+  const primary = useSettings((x) => x.heroSource)
+  const secondary = useSettings((x) => x.heroSecondarySource)
+  const auto = useSettings((x) => x.heroAutoAdvance)
 
-  const resumes = inProgress(progress)
-  const pick = firstWithStill(trending.data?.results)
-  // The most recent resume item leads; with nothing in progress, the top pick does.
-  const lead: LeadItem | undefined = resumes[0] ? { item: resumes[0].item, progress: resumes[0] } : pick ? { item: pick } : undefined
+  // The sources of the top picks. Each is asked for only if it is chosen; trending is the one Home paints from.
+  const uses = (source: string) => primary === source || secondary === source
+  const trending = useQuery({ ...q.trending('all', 'day'), enabled: uses('trending') })
+  const popular = useQuery({ ...q.list('movie', 'popular'), enabled: uses('popular') })
+  const from = (source: string): MediaItem[] => (source === 'trending' ? trending.data?.results : source === 'popular' ? popular.data?.results : watchlist.map((e) => e.item as MediaItem)) ?? []
+  const picks = heroPicks(from(primary), secondary && secondary !== primary ? from(secondary) : undefined)
+  const pending = (uses('trending') && trending.isPending) || (uses('popular') && popular.isPending)
+  const failed = (uses('trending') && trending.isError) || (uses('popular') && popular.isError)
+
+  // What's in progress leads, when Continue Watching is on; the picks follow it.
+  const resume = showContinue ? inProgress(progress)[0] : undefined
+  const resumeKey = resume && mediaKey(resume.item.type, resume.item.id)
+  const slides: LeadItem[] = [
+    ...(resume ? [{ item: resume.item, progress: resume }] : []),
+    ...picks.filter((m) => mediaKey(m.type, m.id) !== resumeKey).map((item) => ({ item })),
+  ].slice(0, maxSlides)
 
   // The next visit's HTML paints this still before any script runs, and preloads it (index.html).
-  const still = lead?.item.backdrop
+  const still = slides[0]?.item.backdrop
   useEffect(() => {
     if (!still) return
     try {
@@ -38,15 +58,8 @@ export function HomeScreen() {
     }
   }, [still])
 
-  // Up Next: the rest of what's in progress, then what's on the watchlist.
-  const leadKey = lead && mediaKey(lead.item.type, lead.item.id)
-  const started = new Set(resumes.map((p) => p.key))
-  const upNext: { key: string; resume?: Progress; item: MediaItem }[] = [
-    ...resumes.slice(lead?.progress ? 1 : 0).map((p) => ({ key: p.key, resume: p, item: p.item })),
-    ...watchlist.filter((e) => e.key !== leadKey && !started.has(e.key)).map((e) => ({ key: e.key, item: e.item as MediaItem })),
-  ].slice(0, 6)
-
-  const none = !lead && !trending.isPending
+  const upNext = showContinue && shelves.some((sh) => sh.enabled && sh.source.kind === 'builtIn' && (sh.source.id === 'continueWatching' || sh.source.id === 'nextUp'))
+  const none = slides.length === 0 && !pending && failed
 
   return (
     <div className={s.home}>
@@ -56,98 +69,20 @@ export function HomeScreen() {
           <p className={`${s.date} num`}>{formatWeekdayDate(now, userLocale)}</p>
         </header>
         {none ? (
-          <Setup error={trending.isError} />
+          <Setup error />
         ) : (
           <>
-            <div className={s.top}>
-              {lead ? <Lead lead={lead} /> : <LeadGhost />}
-              <section className={s.side} aria-labelledby="up-next">
-                <h2 id="up-next" className={s.sectionTitle}>
-                  Up Next
-                </h2>
-                {upNext.length ? (
-                  <ul className={s.stills}>
-                    {upNext.map((u) => (u.resume ? <ResumeItem key={u.key} p={u.resume} sizes={stillSizes} /> : <WatchCard key={u.key} item={u.item} />))}
-                  </ul>
-                ) : (
-                  <p className={s.teach}>Start a film or an episode and it waits here, with how long is left and when it would finish if you carried on now.</p>
-                )}
-              </section>
+            <div className={s.top} data-lead={slides.length || pending ? undefined : 'none'}>
+              {slides.length ? <Lead slides={slides} auto={auto} /> : pending ? <LeadGhost /> : null}
+              {upNext && <UpNext leadKey={resume && resumeKey} />}
             </div>
-            <section className={s.picks} aria-labelledby="pick-new">
-              <h2 id="pick-new" className={s.sectionTitle}>
-                Pick Something New
-              </h2>
-              <PosterRow title="Trending Films" query={q.trending('movie')} seeAll={{ type: 'movie', sort: 'trending' }} />
-              <PosterRow title="Trending Series" query={q.trending('show')} seeAll={{ type: 'show', sort: 'trending' }} />
-              <PosterRow title="Science Fiction" query={q.discover('movie', { with_genres: 878, sort_by: 'popularity.desc' })} seeAll={{ type: 'movie', genre: 878 }} />
-              <PosterRow title="Comedy Series" query={q.discover('show', { with_genres: 35, sort_by: 'popularity.desc' })} seeAll={{ type: 'show', genre: 35 }} />
-              <PosterRow title="Top Rated Films" query={q.list('movie', 'top_rated')} seeAll={{ type: 'movie', sort: 'top' }} />
-            </section>
+            <Suspense fallback={null}>
+              <Shelves />
+            </Suspense>
           </>
         )}
       </div>
     </div>
-  )
-}
-
-const stillSizes = '(min-width: 1100px) 22vw, (min-width: 721px) 30vw, 240px'
-
-/** A watchlist title, as a still with print only: nothing watched yet, so no perforations. */
-function WatchCard({ item }: { item: MediaItem }) {
-  const now = useMinuteTick()
-  const [near, itemRef] = useNearScreen<HTMLLIElement>()
-  const { data } = useQuery({ ...q.detail(item.type, item.id), enabled: near })
-  const detail = data && (data.runtime || data.seasons.length) ? data : undefined
-  return (
-    <FrameCard
-      link={{ to: '/title/$type/$id', params: { type: item.type, id: item.id } }}
-      itemRef={itemRef}
-      shape="still"
-      artPath={item.backdrop}
-      sizes={stillSizes}
-      print={pickPrint(item, detail, now, { ends: true, locale: userLocale })}
-      title={item.title}
-      meta={pickMeta(item)}
-      label={`${spokenPick(item, detail)}, on your watchlist`}
-      fallback={item.title}
-      onIntent={() => prefetchDetail(item)}
-    />
-  )
-}
-
-/** A row of posters from one of the catalogue's lists, all one size. */
-function PosterRow({
-  title,
-  query,
-  seeAll,
-}: {
-  title: string
-  query: UseQueryOptions<Page<MediaItem>, Error, Page<MediaItem>, any>
-  seeAll: { type: MediaType; sort?: string; genre?: number }
-}) {
-  const { data, isPending, isError } = useQuery(query)
-  if (isError || (data && data.results.length === 0)) return null
-  return (
-    <section className={s.rowSection} aria-labelledby={`row-${title}`}>
-      <div className={s.rowHead}>
-        <h3 id={`row-${title}`} className={s.rowTitle}>
-          {title}
-        </h3>
-        <Link to="/explore" search={seeAll} className={s.seeAll}>
-          See all
-        </Link>
-      </div>
-      <ul className={s.row} aria-busy={isPending || undefined}>
-        {isPending
-          ? Array.from({ length: 7 }, (_, i) => (
-              <li key={i} className={s.ghost} aria-hidden="true">
-                <span />
-              </li>
-            ))
-          : data?.results.slice(0, 12).map((item) => <PosterItem key={`${item.type}${item.id}`} item={item} sizes="(max-width: 720px) 112px, 180px" />)}
-      </ul>
-    </section>
   )
 }
 

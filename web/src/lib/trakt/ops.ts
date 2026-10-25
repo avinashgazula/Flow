@@ -8,7 +8,7 @@ import type { Op } from './store'
 
 const keyOf = (o: { type: string; id: number }) => `${o.type}:${o.id}`
 
-type Api = Pick<TraktClient, 'addToWatchlist' | 'removeFromWatchlist' | 'addHistory' | 'rate' | 'unrate' | 'playback' | 'deletePlayback'>
+type Api = Pick<TraktClient, 'addToWatchlist' | 'removeFromWatchlist' | 'addHistory' | 'removeHistory' | 'rate' | 'unrate' | 'playback' | 'deletePlayback'>
 
 export interface FlushResult {
   /** What is still to send. */
@@ -39,12 +39,13 @@ export async function flushOps(api: Api, ops: Op[], known: Record<string, number
 
   const entries = (group: Op[]): Entry[] =>
     group.flatMap((o) =>
-      o.kind === 'watchlist' ? [{ type: o.type, id: o.id }] : o.kind === 'watched' ? [{ type: o.type, id: o.id, season: o.season, episode: o.episode, at: o.at }] : o.kind === 'rate' ? [{ type: o.type, id: o.id, rating: o.rating ?? undefined }] : [],
+      o.kind === 'watchlist' ? [{ type: o.type, id: o.id }] : o.kind === 'watched' ? [{ type: o.type, id: o.id, season: o.season, episode: o.episode, at: o.at }] : o.kind === 'unwatched' ? [{ type: o.type, id: o.id, season: o.season, episode: o.episode }] : o.kind === 'rate' ? [{ type: o.type, id: o.id, rating: o.rating ?? undefined }] : [],
     )
 
   const adds = ops.filter((o) => o.kind === 'watchlist' && o.on)
   const removes = ops.filter((o) => o.kind === 'watchlist' && !o.on)
   const watched = ops.filter((o) => o.kind === 'watched')
+  const unwatched = ops.filter((o) => o.kind === 'unwatched')
   const rated = ops.filter((o) => o.kind === 'rate' && o.rating !== null)
   const unrated = ops.filter((o) => o.kind === 'rate' && o.rating === null)
   const unplay = ops.filter((o) => o.kind === 'unplayback')
@@ -53,6 +54,7 @@ export async function flushOps(api: Api, ops: Op[], known: Record<string, number
     [adds, () => api.addToWatchlist(entries(adds))],
     [removes, () => api.removeFromWatchlist(entries(removes))],
     [watched, () => api.addHistory(entries(watched))],
+    [unwatched, () => api.removeHistory(entries(unwatched))],
     [rated, () => api.rate(entries(rated))],
     [unrated, () => api.unrate(entries(unrated))],
   ]

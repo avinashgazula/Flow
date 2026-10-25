@@ -207,4 +207,17 @@ describe('settings backup', () => {
     expect(bad.ok && bad.skipped).toEqual(['traktAccount'])
     expect(defaultSettings.traktAccount).toBeNull()
   })
+
+  it('keeps Home’s shelves and the switches around them, and skips ones Home could not use', () => {
+    const shelves = [
+      { id: 'watchlist', title: 'Watchlist', source: { kind: 'builtIn', id: 'watchlist' }, enabled: true, style: 'poster' },
+      { id: 'a', title: 'Anime', source: { kind: 'discover', query: { type: 'show', genres: [16], excludedGenres: [], sort: 'popularity.desc', watchProviders: [] } }, enabled: false, style: 'poster' },
+    ]
+    const r = parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { shelves, heroSource: 'popular', heroSecondarySource: null, continueWatchingLimit: 10, upcomingWithinDays: 14, contentShelfLength: 30 } }))
+    expect(r.ok && r.skipped).toEqual([])
+    expect(r.ok && r.settings.shelves).toEqual(shelves)
+    expect(r.ok && r.settings.heroSecondarySource).toBeNull()
+    const bad = parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { autoplayNext: true, shelves: [{ ...shelves[0], source: { kind: 'builtIn', id: 'nope' } }], heroSource: 'random', continueWatchingLimit: 7, upcomingWithinDays: 5, contentShelfLength: 99 } }))
+    expect(bad.ok && bad.skipped.sort()).toEqual(['contentShelfLength', 'continueWatchingLimit', 'heroSource', 'shelves', 'upcomingWithinDays'])
+  })
 })

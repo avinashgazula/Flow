@@ -26,6 +26,8 @@ let given = ''
 let headers: Record<string, string> = {}
 /** The address is the stream proxy's, so a failure is the proxy's to explain. */
 let viaProxy = false
+/** Dolby Vision plays as its HDR10 picture (Settings → Playback → Never Use Dolby Vision). */
+let hdr10Only = false
 let remuxer: Remuxer | null = null
 let length = 0
 let ranges = true
@@ -202,6 +204,7 @@ async function open(message: Extract<ToWorker, { type: 'open' }>) {
   given = message.url
   headers = message.headers
   viaProxy = message.viaProxy
+  hdr10Only = message.hdr10Only
   await init()
   const res = await request(0, HEAD_BYTES - 1)
   length = totalLength(res)
@@ -227,6 +230,7 @@ async function open(message: Extract<ToWorker, { type: 'open' }>) {
   }
 
   const rem = new Remuxer(length)
+  rem.setHdr10Only(hdr10Only)
   remuxer = rem
   for (let need = rem.headerNeed(); need.length; need = rem.headerNeed()) {
     rem.headerFeed(need[0]!, await readRange(need[0]!, need[1]!))

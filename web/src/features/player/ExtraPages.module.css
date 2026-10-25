@@ -1,0 +1,35 @@
+/* The options panel's Subtitle Delay and Volume Boost pages: a big number between its two nudges, a slider
+   under it, the same 48px rows and 16px inset as the rest of the panel. */
+.stepper {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 4px;
+}
+.stepper[data-single] { grid-template-columns: 1fr; }
+.big {
+  text-align: center;
+  font: 700 var(--fs-title3) / 1.2 var(--font);
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+}
+.step {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-control);
+  background: var(--base-3);
+  color: var(--paper);
+  transition: background-color var(--dur-state) ease, transform var(--dur-state) ease;
+}
+.step:hover:not(:disabled) { background: var(--base-4); }
+.step:active:not(:disabled) { transform: scale(0.98); }
+.step:disabled { color: var(--ink-3); cursor: default; }
+.slide { padding: 8px 16px 12px; }
+.slide input { width: 100%; }
+@media (max-height: 500px) {
+  .stepper { padding-top: 6px; }
+  .slide { padding-block: 4px 8px; }
+}

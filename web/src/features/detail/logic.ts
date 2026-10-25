@@ -3,7 +3,9 @@ import { formatBytes } from '../../lib/sources/parser'
 import { resolutionText } from '../sources/labels'
 import type { ProviderState, Source } from '../../lib/sources'
 import { endTime, formatClock, formatLeft, formatRuntime } from '../../lib/time'
-import type { Episode, MediaDetail } from '../../lib/tmdb/types'
+import { compactMoney } from '../../lib/reviewText'
+import type { Episode, MediaDetail, MediaItem } from '../../lib/tmdb/types'
+import { isAired } from '../../lib/watching'
 import { endsPart, leftPart, secondsLeft } from '../home/logic'
 
 /* What the title page says, as plain functions: the strip under the still, and the film-can label's rows. */
@@ -130,5 +132,81 @@ export function formatDay(date?: string, locale?: string): string | undefined {
   return Number.isNaN(d.getTime()) ? undefined : d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-/** Seasons worth listing: real ones, specials last. */
-export const realSeasons = <T extends { number: number }>(seasons: T[]): T[] => [...seasons].sort((a, b) => (a.number === 0 ? 1 : b.number === 0 ? -1 : a.number - b.number))
+/** Seasons worth listing: real ones in order, and Specials last when Settings → Specials Season is on. */
+export const realSeasons = <T extends { number: number }>(seasons: T[], specials = true): T[] =>
+  [...seasons].filter((x) => specials || x.number > 0).sort((a, b) => (a.number === 0 ? 1 : b.number === 0 ? -1 : a.number - b.number))
+
+/** Today as the calendar day TMDB's air dates are written in. */
+export const todayOf = (now: number) => new Date(now).toISOString().slice(0, 10)
+
+/** The aired episodes among a show's, as the references the library and Next Up work in. An episode with no air
+ *  date is not yet scheduled, so it is not one of them (as the apps count). */
+export function airedRefs(episodes: Pick<Episode, 'season' | 'number' | 'airDate'>[], today: string): { season: number; episode: number }[] {
+  return episodes.filter((e) => isAired(e.airDate, today)).map((e) => ({ season: e.season, episode: e.number }))
+}
+
+/** TMDB says "Returning Series"; the row's label already says it is a show. */
+export const statusLabel = (status: string) => (status === 'Returning Series' ? 'Returning' : status)
+
+/** "2 h 47 min", "45 min": a runtime as a sentence. */
+export const runtimeText = (minutes: number) => (minutes >= 60 ? `${Math.floor(minutes / 60)} h${minutes % 60 ? ` ${minutes % 60} min` : ''}` : `${minutes} min`)
+
+export interface AboutRow {
+  label: string
+  value: string
+  /** A long list sits across two columns. */
+  wide?: boolean
+}
+
+type AboutFacts = Pick<MediaDetail, 'type' | 'date' | 'runtime' | 'seasons' | 'crew' | 'certification' | 'status' | 'originalLanguage' | 'originCountries' | 'budget' | 'revenue' | 'productionCompanies' | 'networks'>
+
+/** The About table, row for row as the apps list it: the essentials (release, runtime, seasons, director, rating)
+ *  always, and with About on in Settings the rest (status, language, country, money, companies, network). A row
+ *  with nothing to say is left out. */
+export function aboutRows(d: AboutFacts, opts: { full: boolean; locale?: string }): AboutRow[] {
+  const rows: AboutRow[] = []
+  const add = (label: string, value: string | undefined, wide?: boolean) => value && rows.push({ label, value, ...(wide ? { wide } : {}) })
+  const names = (type: 'language' | 'region', code: string) => {
+    try {
+      return new Intl.DisplayNames([opts.locale ?? 'en'], { type }).of(code) ?? code
+    } catch {
+      return code
+    }
+  }
+  add(d.type === 'movie' ? 'Released' : 'First Aired', formatDay(d.date, opts.locale))
+  add('Runtime', d.runtime && d.runtime > 0 ? runtimeText(d.runtime) : undefined)
+  const seasons = d.seasons.filter((x) => x.number > 0).length
+  add('Seasons', seasons ? String(seasons) : undefined)
+  const directors = d.crew.filter((c) => c.role === 'Director' || c.role === 'Creator').map((c) => c.name)
+  add(d.type === 'movie' ? (directors.length > 1 ? 'Directors' : 'Director') : 'Created By', directors.join(', '), directors.length > 2)
+  add('Rated', d.certification)
+  if (!opts.full) return rows
+  add('Status', d.status ? statusLabel(d.status) : undefined)
+  add('Original Language', d.originalLanguage ? names('language', d.originalLanguage) : undefined)
+  const countries = (d.originCountries ?? []).map((c) => names('region', c))
+  add(countries.length > 1 ? 'Countries' : 'Country', countries.join(', '), countries.length > 2)
+  add('Budget', d.budget && d.budget > 0 ? compactMoney(d.budget) : undefined)
+  add('Revenue', d.revenue && d.revenue > 0 ? compactMoney(d.revenue) : undefined)
+  const companies = d.productionCompanies ?? []
+  add('Production', companies.join(', '), companies.length > 1)
+  add(d.networks.length > 1 ? 'Networks' : 'Network', d.networks.join(', '), d.networks.length > 2)
+  return rows
+}
+
+/** A 1 to 10 score as whole stars, two points each (as the apps' RatingStars): 7 is three stars. */
+export const starsOf = (score: number | undefined) => Math.floor((score ?? 0) / 2)
+
+/** Only what a library entry needs: a full detail would store its cast and recommendations. */
+export const cardOf = (d: MediaItem): MediaItem => ({
+  type: d.type,
+  id: d.id,
+  title: d.title,
+  year: d.year,
+  date: d.date,
+  overview: d.overview,
+  poster: d.poster,
+  backdrop: d.backdrop,
+  rating: d.rating,
+  genres: d.genres,
+  originalLanguage: d.originalLanguage,
+})

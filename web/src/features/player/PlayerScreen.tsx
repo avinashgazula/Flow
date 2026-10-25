@@ -8,6 +8,7 @@ import { lastSourceStore, matchLastSource } from '../../lib/sources/lastSource'
 import { hasPlayableAudio } from '../../lib/sources/rank'
 import { library, libraryStore, mediaKey, type EpisodeRef } from '../../lib/store/library'
 import { settingsStore, useSettings } from '../../lib/store/settings'
+import { filmCreditsScenes } from '../../lib/tmdb/creditsScenes'
 import { imageURL } from '../../lib/tmdb/images'
 import type { Episode, MediaDetail, MediaItem, MediaType } from '../../lib/tmdb/types'
 import { SourcePicker } from '../sources/SourcePicker'
@@ -19,7 +20,8 @@ import { mediaErrorMessage, PlaybackError } from './errors'
 import { episodeLine } from './format'
 import { NoSoundNotice } from './NoSound'
 import { PlaybackInfo } from './PlaybackInfo'
-import { Buffering, FeedbackFlash, SubtitleOverlay, TapLayer } from './Overlays'
+import { FilmExtras } from './FilmExtras'
+import { Buffering, FeedbackFlash, Notes, SubtitleOverlay, TapLayer } from './Overlays'
 import { demoSegments, segmentsFromChapters, type SkipSegment } from './segments'
 import { lookupSegments } from './segmentSources'
 import { lastSources, matchSource, nextEpisode, nextSource, resolutionHeight, resumePosition } from './session'
@@ -120,6 +122,12 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   const [sources, setSources] = useState<Source[]>([])
   const [error, setError] = useState<PlaybackError | null>(null)
   const [progress, setProgress] = useState(0)
+  // A film's scene during or after its credits (TMDB keywords): the note at the credits, and credits that hide one
+  // are never skipped by themselves. Asked for once the film is playing, and kept for good.
+  const alertScenes = useSettings((st) => st.postCreditsAlert !== false) && type === 'movie'
+  const { data: scenesFound } = useQuery({ queryKey: ['creditsScenes', id], queryFn: () => filmCreditsScenes(id), enabled: alertScenes && phase === 'playing', staleTime: Infinity, retry: false })
+  const creditsScenes = scenesFound ?? undefined
+
   const [resumeAt, setResumeAt] = useState<number | null>(null)
   const [picker, setPicker] = useState(false)
   const [connectingShown, setConnectingShown] = useState(true)
@@ -156,6 +164,8 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   const advance = (automatic: boolean) => {
     const target = latest.current.next
     if (!target || askingRef.current || advanced.current) return
+    // The sleep timer's "End of Episode or Movie": this one finishes and the player closes (see onSleepEnd).
+    if (automatic && controller.sleepHold) return
     if (automatic) {
       if (binge.shouldAsk(settingsStore.get().stillWatchingAfterEpisodes)) {
         askingRef.current = true
@@ -213,6 +223,12 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     if (router.history.canGoBack()) router.history.back()
     else void navigate({ to: '/title/$type/$id', params: { type, id }, replace: true })
   }
+
+  // The sleep timer's "End of Episode or Movie": the stream has ended, so the player closes as the apps' does.
+  useEffect(() => {
+    return controller.onSleepEnd(close)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const tryAnother = () => {
     const { sources: list, source: cur } = latest.current
@@ -625,6 +641,13 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
         case 'c':
           c.toggleSubtitles()
           break
+        case 'w':
+          c.replayWithSubtitles()
+          break
+        case 'x':
+          // Hold for 2×: it lasts as long as the key is down (the keyup below).
+          if (!e.repeat) c.holdFast(true)
+          break
         case 'i':
           c.toggleInfo()
           break
@@ -653,10 +676,24 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
       }
       e.preventDefault()
     }
+    const letGo = (e: KeyboardEvent) => e.key.toLowerCase() === 'x' && controller.holdFast(false)
+    const letGoAll = () => controller.holdFast(false)
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keyup', letGo)
+    window.addEventListener('blur', letGoAll)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keyup', letGo)
+      window.removeEventListener('blur', letGoAll)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picker])
+
+  // A suggested film's page; this one's place is saved first.
+  const openSuggestion = (film: MediaItem) => {
+    save()
+    void navigate({ to: '/title/$type/$id', params: { type: film.type, id: film.id }, replace: true })
+  }
 
   const answerResume = (resume: boolean) => {
     setResumeAt(null)
@@ -682,6 +719,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
           <TapLayer controller={controller} />
           <SubtitleOverlay controller={controller} />
           <Buffering controller={controller} />
+          <Notes controller={controller} />
           <Controls
             controller={controller}
             title={title}
@@ -707,7 +745,8 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
             onTryAnother={tryPlayable}
           />
           {infoOpen && <PlaybackInfo controller={controller} source={source} />}
-          <Skip controller={controller} hasNext={!!next} onNext={advance} />
+          <Skip controller={controller} hasNext={!!next} onNext={advance} hidesCredits={!!creditsScenes} />
+          {type === 'movie' && <FilmExtras controller={controller} film={ready ? detail : undefined} scenes={creditsScenes} short={source?.origin === 'demo'} onOpen={openSuggestion} onClose={close} />}
           {next && !asking && <UpNext key={next.id} controller={controller} next={next} autoplay={autoplayNext} fallbackStill={item?.backdrop} onPlay={advance} />}
           <FeedbackFlash controller={controller} />
           {asking && next && <StillWatchingPrompt next={next} onKeepWatching={keepWatching} onStop={close} />}

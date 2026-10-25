@@ -2,6 +2,7 @@ import { defaultLiveTV, type LiveTVSettings } from '../livetv/types'
 import type { SourceOrdering } from '../sources/sourceSettings'
 import type { SubtitleOptions } from '../subtitles/options'
 import type { AddonManifest } from '../sources/types'
+import { defaultShelves, type HeroSource, type ShelfConfig } from '../shelfDefaults'
 import { defaultTabOrder } from '../tabs'
 import { createStore, useStore } from './createStore'
 import { defaultSubtitleStyle, type SubtitleStyle } from './subtitleStyleDefault'
@@ -43,6 +44,9 @@ export type SubtitleMode = 'off' | 'foreign' | 'always' | 'forced'
  *  As FlowKit's SkipBehaviour. */
 export type SkipBehaviour = 'off' | 'button' | 'automatic'
 
+/** The apps that take a stream's link (ExternalPlayer in the apps' settings): "none" is Flow's own player. */
+export type ExternalPlayerId = 'none' | 'infuse' | 'vlc' | 'outplayer' | 'senPlayer' | 'vidHub' | 'cineUltra' | 'moonPlayer' | 'iina' | 'mpv'
+
 /** A Trakt sign-in in the shape Flow Sync and the apps keep it (docs/SYNC.md, accounts). `redirectURI` is the
  *  one the token was issued against; a refresh quotes it back. */
 export interface TraktToken {
@@ -52,6 +56,9 @@ export interface TraktToken {
   expiresAt: string | null
   redirectURI: string | null
 }
+
+/** How large a title page's text is set, as the apps' DetailTextSize (Default is the page's own size). */
+export type DetailTextSize = 'small' | 'standard' | 'large' | 'extraLarge'
 
 export interface Settings {
   /** TMDB v3 API key or v4 read-access token. */
@@ -82,6 +89,10 @@ export interface Settings {
   /** After this many episodes play one after another with nobody touching anything, Flow asks
    *  before starting the next. Zero never asks. As the apps' `stillWatchingAfterEpisodes`. */
   stillWatchingAfterEpisodes: number
+  /** Absent means off, except for the post-credits alert and Because You Watched, where it means on (these six are
+   *  left out of the defaults to keep the first visit's code small).
+   *  Up Next waits for the episode to end instead of counting down as its credits start. */
+  upNextWaitsForEnd?: boolean
   skipIntro: SkipBehaviour
   skipRecap: SkipBehaviour
   skipCredits: SkipBehaviour
@@ -102,6 +113,16 @@ export interface Settings {
   /** Subtitle Type, Anime Audio, Keep Original ASS Styling and which services are on. Absent until the viewer
    *  changes something; read it through `normaliseSubtitleOptions`. */
   subtitleOptions?: SubtitleOptions
+  /** Say so as a film's credits begin when it has a scene during or after them (TMDB's stinger keywords). */
+  postCreditsAlert?: boolean
+  /** Suggest films like it as a film's credits roll, and when it ends. */
+  becauseYouWatched?: boolean
+  /** Play Dolby Vision files as their HDR10 picture (MKV files Flow plays itself). */
+  neverUseDolbyVision?: boolean
+  /** Extra loudness in whole decibels, 0 to 12 (the apps' `volumeBoostDB`); played through a Web Audio gain where the browser allows it. */
+  volumeBoostDB?: number
+  /** The app "Open in" leads with in the player's options. It is never opened by itself: a web page can't tell whether the app is installed. */
+  externalPlayer?: ExternalPlayerId
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
   /** The picker offers the source a title was last played from first. */
   rememberLastSource: boolean
@@ -117,8 +138,36 @@ export interface Settings {
   /** Where files from hosts that block web pages are fetched through: a URL with `{url}` for the
    *  encoded file address. Empty means no proxy. */
   streamProxy: string
+  /** Title pages, as the apps' Detail Views: About adds status, language, country, money and companies to the
+   *  essentials (which are always there); Where to Watch and Reviews are sections; Episode Spoilers off blurs the
+   *  still and hides the synopsis of an aired episode not yet watched; Specials Season lists season 0. */
+  showAboutSection: boolean
+  showWhereToWatch: boolean
+  showReviews: boolean
+  showEpisodeSpoilers: boolean
+  showSpecialsSeason: boolean
+  detailTextSize: DetailTextSize
   /** IPTV providers, the guide's refresh time and the favourite channels (FlowKit's LiveTVSettings). */
   liveTV: LiveTVSettings
+  /** Home's shelves, in order: built-in rows, Discover shelves and (later) lists, as the apps' `shelves`. */
+  shelves: ShelfConfig[]
+  /** Where Home's top pick comes from when nothing is in progress, and a second source mixed in. */
+  heroSource: HeroSource
+  heroSecondarySource: HeroSource | null
+  /** The lead turns through its picks by itself (never while something is in progress, or with reduced motion). */
+  heroAutoAdvance: boolean
+  /** How many titles each catalogue shelf holds. */
+  contentShelfLength: number
+  showContinueWatching: boolean
+  /** Most recent kept in Continue Watching; null keeps all. */
+  continueWatchingLimit: number | null
+  showUpcoming: boolean
+  /** Upcoming also lists season premieres of shows on the watchlist. */
+  includeWatchlistPremieres: boolean
+  upcomingWithinDays: number
+  /** WATCHED on a poster's strip, and the episodes of a series left. */
+  showWatchedBadges: boolean
+  showEpisodesRemaining: boolean
 }
 
 const browserLanguage = typeof navigator === 'undefined' ? 'en-US' : navigator.language || 'en-US'
@@ -151,7 +200,25 @@ export const defaultSettings: Settings = {
   font: 'system',
   tabOrder: [...defaultTabOrder],
   streamProxy: '',
+  showAboutSection: true,
+  showWhereToWatch: true,
+  showReviews: true,
+  showEpisodeSpoilers: true,
+  showSpecialsSeason: true,
+  detailTextSize: 'standard',
   liveTV: defaultLiveTV,
+  shelves: defaultShelves,
+  heroSource: 'trending',
+  heroSecondarySource: null,
+  heroAutoAdvance: true,
+  contentShelfLength: 20,
+  showContinueWatching: true,
+  continueWatchingLimit: null,
+  showUpcoming: true,
+  includeWatchlistPremieres: false,
+  upcomingWithinDays: 7,
+  showWatchedBadges: true,
+  showEpisodesRemaining: true,
 }
 
 export const settingsStore = createStore<Settings>('settings', defaultSettings)

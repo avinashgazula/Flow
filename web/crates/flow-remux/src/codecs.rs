@@ -180,6 +180,21 @@ pub fn output(t: &Track, first_frame: Option<&[u8]>) -> Option<Output> {
     }
 }
 
+/// Plays a Dolby Vision file as its HDR10 picture alone ("Never Use Dolby Vision"): the configuration box
+/// is dropped, so every browser takes the stream as plain HEVC, and the colour the record implies is kept
+/// for files whose Matroska header doesn't state any. Profile 5 has no HDR10 base layer (its picture only
+/// makes sense through Dolby Vision), so it is left as it is, as in the apps.
+pub fn hdr10_only(t: &mut Track) {
+    let Some((dv, _)) = &t.dolby_vision else { return };
+    if dv.len() < 4 || dv[2] >> 1 == 5 {
+        return;
+    }
+    if !t.colour.as_ref().is_some_and(|c| c.primaries.is_some() || c.transfer.is_some()) {
+        t.colour = colour_from_dolby_vision(t).or(t.colour.take());
+    }
+    t.dolby_vision = None;
+}
+
 pub fn video_output(t: &Track, codec: Codec, first_frame: Option<&[u8]>) -> Option<Output> {
     let p = &t.codec_private;
     let mut children = Vec::new();
@@ -879,6 +894,38 @@ mod tests {
         assert_eq!(codec_of(&dts), (Codec::Unsupported, "DTS audio"));
         let truehd = Track { kind: AUDIO, codec_id: "A_TRUEHD".into(), ..Track::new() };
         assert_eq!(codec_of(&truehd).0, Codec::Unsupported);
+    }
+
+    #[test]
+    fn hdr10_only_drops_the_dolby_vision_box() {
+        // A dvcC record: version 1.0, the profile in the top seven bits of byte 2, level 6, compatibility ID 1 (HDR10).
+        let record = |profile: u8| vec![1, 0, profile << 1, 6 << 3, 1 << 4, 0, 0, 0];
+        let hevc = |profile: u8| {
+            let mut hvcc = vec![1, 0x02, 0x20, 0, 0, 0, 0xB0, 0, 0, 0, 0, 0, 153];
+            hvcc.resize(23, 0);
+            Track { kind: VIDEO, codec_id: "V_MPEGH/ISO/HEVC".into(), codec_private: hvcc, width: 3840, height: 2160, dolby_vision: Some((record(profile), *b"dvcC")), ..Track::new() }
+        };
+        let contains = |bytes: &[u8], what: &[u8]| bytes.windows(what.len()).any(|w| w == what);
+
+        let p8 = hevc(8);
+        assert!(contains(&output(&p8, None).unwrap().sample_entry, b"dvcC"), "profile 8 is signalled by default");
+
+        let mut only = p8.clone();
+        hdr10_only(&mut only);
+        assert!(only.dolby_vision.is_none());
+        let after = output(&only, None).unwrap();
+        assert!(!contains(&after.sample_entry, b"dvcC") && contains(&after.sample_entry, b"hvcC"));
+        assert!(after.codec_string.starts_with("hvc1."), "{}", after.codec_string);
+        // The header said nothing of colour, so the HDR10 base layer's comes from the Dolby Vision record.
+        let colour = only.colour.as_ref().unwrap();
+        assert_eq!((colour.primaries, colour.transfer, colour.matrix), (Some(9), Some(16), Some(9)));
+        assert!(contains(&after.sample_entry, b"colr"));
+
+        // Profile 5 has no HDR10 picture to fall back to.
+        let mut p5 = hevc(5);
+        hdr10_only(&mut p5);
+        assert!(p5.dolby_vision.is_some());
+        assert!(output(&p5, None).unwrap().codec_string.starts_with("dvh1.05"));
     }
 
     #[test]

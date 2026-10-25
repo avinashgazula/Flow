@@ -6,6 +6,7 @@ import { SubtitleServicesGroup } from './SubtitleServicesGroup'
 import { SubtitleStyleGroup } from './SubtitleStyleGroup'
 import { animeAudios, normaliseSubtitleOptions, subtitleTypes } from '../../lib/subtitles/options'
 import { audioChoices, subtitleChoices, withCurrent } from './options'
+import { detectPlatform, externalPlayerTitle, playersFor } from '../player/externalPlayers'
 import s from './SettingsScreen.module.css'
 
 const qualities: { value: Settings['preferredQuality']; label: string }[] = [
@@ -182,6 +183,13 @@ export function PlaybackSection() {
   const subtitleOptions = useSettings((x) => x.subtitleOptions)
   const extras = normaliseSubtitleOptions(subtitleOptions)
   const setExtras = (patch: Partial<typeof extras>) => settingsStore.set({ subtitleOptions: { ...extras, ...patch } })
+  const waitsForEnd = useSettings((x) => x.upNextWaitsForEnd ?? false)
+  const neverDolbyVision = useSettings((x) => x.neverUseDolbyVision ?? false)
+  const postCredits = useSettings((x) => x.postCreditsAlert !== false)
+  const becauseYouWatched = useSettings((x) => x.becauseYouWatched !== false)
+  const externalPlayer = useSettings((x) => x.externalPlayer ?? 'none')
+  // The apps exist on iPhone, iPad and Mac only; elsewhere the setting would have nothing to choose.
+  const platform = typeof navigator === 'undefined' ? undefined : detectPlatform(navigator.userAgent, navigator.maxTouchPoints)
   const audioFirst = audioLanguages[0] ?? ''
   const audioSecond = audioLanguages[1] ?? ''
   const first = subtitles[0] ?? ''
@@ -201,6 +209,14 @@ export function PlaybackSection() {
         </Row>
         <Row label="Remember Last Source" detail="Offer the source a title was last played from first">
           <Switch label="Remember last source" checked={remember} onChange={(on) => settingsStore.set({ rememberLastSource: on })} />
+        </Row>
+      </Group>
+      <Group
+        title="Dolby Vision"
+        footer="Never Use Dolby Vision plays its HDR10 picture instead (profile 5, which has none, still plays as Dolby Vision). Applies to MKV files Flow plays itself, from the next time one starts."
+      >
+        <Row label="Never Use Dolby Vision">
+          <Switch label="Never use Dolby Vision" checked={neverDolbyVision} onChange={(on) => settingsStore.set({ neverUseDolbyVision: on })} />
         </Row>
       </Group>
       <Group footer="Flow starts each title on the first of these it has, and never on commentary. Original Language is the one the title was made in. A track you choose in the player is remembered for that title or show.">
@@ -235,9 +251,12 @@ export function PlaybackSection() {
         </Row>
       </Group>
       <SubtitleServicesGroup />
-      <Group footer="Shows start the next episode when one ends, with a countdown you can cancel. Up Next comes up as the credits begin when a server, a skip service or the file’s chapters say where, else in the last 30 seconds. After the number of episodes you pick played with nobody touching anything, Flow asks before the next.">
+      <Group footer="Shows start the next episode when one ends, with a countdown you can cancel. Up Next counts down as the credits begin when a server, a skip service or the file’s chapters say where, else in the last 30 seconds; with Wait for the Episode to End, so the next one begins as this one finishes. After the number of episodes you pick played with nobody touching anything, Flow asks before the next.">
         <Row label="Autoplay Next Episode">
           <Switch label="Autoplay next episode" checked={autoplay} onChange={(on) => settingsStore.set({ autoplayNext: on })} />
+        </Row>
+        <Row label="Wait for the Episode to End">
+          <Switch label="Wait for the episode to end" checked={waitsForEnd} onChange={(on) => settingsStore.set({ upNextWaitsForEnd: on })} disabled={!autoplay} />
         </Row>
         <Row label="Ask If Still Watching" htmlFor="still-watching">
           <Select
@@ -260,6 +279,27 @@ export function PlaybackSection() {
           <Select id="skip-credits" label="Skip credits" value={skipCredits} onChange={(v) => settingsStore.set({ skipCredits: v })} options={skipChoices} />
         </Row>
       </Group>
+      <Group footer="When a film has a scene during or after its credits, Flow says so as they begin and won’t skip them by itself. Because You Watched suggests what to watch next as the credits roll, and when the film ends.">
+        <Row label="Post-Credits Scene Alert">
+          <Switch label="Post-credits scene alert" checked={postCredits} onChange={(on) => settingsStore.set({ postCreditsAlert: on })} />
+        </Row>
+        <Row label="Because You Watched">
+          <Switch label="Because you watched" checked={becauseYouWatched} onChange={(on) => settingsStore.set({ becauseYouWatched: on })} />
+        </Row>
+      </Group>
+      {platform && (
+        <Group title="External Player" footer="Options → Open in lists these apps, with this one first. Another app gets the stream’s link (Infuse also the resume point), only for files it can fetch by their address alone. Flow tracks progress only in its own player.">
+          <Row label="Player" htmlFor="external-player">
+            <Select
+              id="external-player"
+              label="External player"
+              value={externalPlayer}
+              onChange={(v) => settingsStore.set({ externalPlayer: v })}
+              options={[{ value: 'none', label: externalPlayerTitle('none') }, ...playersFor(platform).map((id) => ({ value: id, label: externalPlayerTitle(id) }))]}
+            />
+          </Row>
+        </Group>
+      )}
       <SkipServices />
       <StreamProxy />
     </>

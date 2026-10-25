@@ -33,9 +33,12 @@ export function enqueue(ops: Op[], op: Op): Op[] {
   const same = (o: Op) => {
     if (o.kind !== op.kind) return false
     if (op.kind === 'watched') return o.kind === 'watched' && watchKey(o) === watchKey(op) && o.at === op.at
+    if (op.kind === 'unwatched') return o.kind === 'unwatched' && watchKey(o) === watchKey(op)
     return o.type === op.type && o.id === op.id
   }
-  return [...ops.filter((o) => !same(o)), op]
+  // A play and its removal cancel each other while both wait; the last word on an episode or film is the one sent.
+  const opposite = (o: Op) => ((op.kind === 'watched' && o.kind === 'unwatched') || (op.kind === 'unwatched' && o.kind === 'watched')) && watchKey(o) === watchKey(op)
+  return [...ops.filter((o) => !same(o) && !opposite(o)), op]
 }
 
 export const enqueueAll = (ops: Op[], more: Op[]) => more.reduce(enqueue, ops)
@@ -149,13 +152,15 @@ export function mergeHistory(args: { local: HistoryEntry[]; remote: Watch[]; fir
   return { add, push }
 }
 
-/** Episodes Trakt says were watched that this browser doesn't know, with the time Trakt has. */
-export function mergeWatchedEpisodes(local: Record<string, number>, remote: ShowWatched[]): Record<string, number> {
+/** Episodes Trakt says were watched that this browser doesn't know, with the time Trakt has. `pending` is the queue:
+ *  an episode marked unwatched here whose removal Trakt hasn't heard yet is not brought back by its old play. */
+export function mergeWatchedEpisodes(local: Record<string, number>, remote: ShowWatched[], pending: Op[] = []): Record<string, number> {
   const add: Record<string, number> = {}
+  const removing = new Set(pending.flatMap((o) => (o.kind === 'unwatched' && o.type === 'show' && o.season !== undefined && o.episode !== undefined ? [episodeKey(o.id, { season: o.season, episode: o.episode })] : [])))
   for (const show of remote) {
     for (const e of show.episodes) {
       const key = episodeKey(show.tmdb, e)
-      if (!(key in local)) add[key] = e.at
+      if (!(key in local) && !removing.has(key)) add[key] = e.at
     }
   }
   return add

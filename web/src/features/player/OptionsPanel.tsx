@@ -1,22 +1,41 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Icon, type IconName } from '../../components/Icon'
+import { PlayerIcon, type PlayerIconName } from './playerIcons'
 import type { Source } from '../../lib/sources'
 import { useSettings } from '../../lib/store/settings'
 import { usePlayer, type PlayerController } from './controller'
 import { keepFocus } from './Controls'
+import { externalPlayerTitle, playersFor } from './externalPlayers'
+import { BoostPage, DelayPage } from './ExtraPages'
 import { fileSize, speedLabel, speeds } from './format'
+import { sleepChoices, sleepTitle } from './sleepTimer'
+import { delayLabel } from './subtitleDelay'
 import { StylePage } from './StylePage'
 import { SubtitleSearchPage } from './SubtitleSearch'
+import { boostLabel } from './volumeBoost'
 import s from './Controls.module.css'
 
-type Page = 'root' | 'tracks' | 'audio' | 'subtitles' | 'search' | 'style' | 'speed' | 'source'
+type Page = 'root' | 'tracks' | 'audio' | 'subtitles' | 'search' | 'style' | 'delay' | 'speed' | 'sleep' | 'boost' | 'external' | 'source'
 
-const titles: Record<Page, string> = { root: 'Options', tracks: 'Audio and Subtitles', audio: 'Audio', subtitles: 'Subtitles', search: 'Search Subtitles', style: 'Subtitle Style', speed: 'Speed', source: 'Source' }
+const titles: Record<Page, string> = {
+  root: 'Options',
+  tracks: 'Audio and Subtitles',
+  audio: 'Audio',
+  subtitles: 'Subtitles',
+  search: 'Search Subtitles',
+  style: 'Subtitle Style',
+  delay: 'Subtitle Delay',
+  speed: 'Speed',
+  sleep: 'Sleep Timer',
+  boost: 'Volume Boost',
+  external: 'Open in',
+  source: 'Source',
+}
 
 interface Row {
   id: string
-  icon?: IconName
+  icon?: IconName | PlayerIconName
   title: string
   detail?: string
   value?: string
@@ -56,12 +75,17 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   const rate = usePlayer(controller, (st) => st.rate)
   const fit = usePlayer(controller, (st) => st.fit)
   const info = usePlayer(controller, (st) => st.info)
+  const sleep = usePlayer(controller, (st) => st.sleep)
+  const delay = usePlayer(controller, (st) => st.subtitleDelay)
+  const boostable = usePlayer(controller, (st) => st.boostable)
+  const boost = useSettings((st) => st.volumeBoostDB ?? 0)
+  const preferred = useSettings((st) => st.externalPlayer ?? 'none')
   const close = () => controller.setPanel(null)
   // The Subtitle Style page changes what's on screen as you go, so the player shows a sample line and keeps
   // it clear of this panel while the page is open.
   useEffect(() => {
-    controller.setStyling(page === 'style')
-    return () => controller.setStyling(false)
+    controller.setStyling(page === 'style' || page === 'delay' ? page : null)
+    return () => controller.setStyling(null)
   }, [controller, page])
   // Search Subtitles opens from the subtitle list, in Options or in Audio and Subtitles, and goes back to it.
   const [searchFrom, setSearchFrom] = useState<Page>('subtitles')
@@ -139,6 +163,11 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
 
   const searchRow = (from: Page): Row => ({ id: 'search', icon: 'search', title: 'Search Subtitles…', chevron: true, action: () => (setSearchFrom(from), setPage('search')) })
   const styleRow: Row = { id: 'style', icon: 'text', title: 'Subtitle Style', chevron: true, action: () => setPage('style') }
+  const delayRow: Row = { id: 'delay', icon: 'clock', title: `Subtitle Delay · ${delayLabel(delay)}`, chevron: true, action: () => setPage('delay') }
+  // "Open in" is offered where an app can take the stream by its address (see externalPlayers.ts).
+  const external = controller.externalLink()
+  const apps = external ? playersFor(external.platform, preferred) : []
+  const lead = apps.find((id) => id === preferred)
   let groups: Group[] = []
   switch (page) {
     case 'root': {
@@ -146,6 +175,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
       rows.push({ id: 'audio', icon: 'music', title: currentAudio?.label ?? audioGroup(noop).rows[0]!.title, chevron: true, action: () => setPage('audio') })
       rows.push({ id: 'subtitles', icon: 'subtitles', title: currentSubtitle ? currentSubtitle.label : 'Subtitles Off', chevron: true, action: () => setPage('subtitles') })
       rows.push(styleRow)
+      rows.push(delayRow)
       rows.push({
         id: 'source',
         icon: 'stack',
@@ -154,18 +184,34 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
         action: () => setPage('source'),
       })
       rows.push({ id: 'speed', icon: 'gauge', title: `Speed · ${speedLabel(rate)}`, chevron: true, action: () => setPage('speed') })
+      rows.push({ id: 'sleep', icon: 'moon', title: `Sleep Timer · ${sleep === null ? 'Off' : sleepTitle(sleep)}`, chevron: true, action: () => setPage('sleep') })
+      if (boostable) rows.push({ id: 'boost', icon: 'volume', title: `Volume Boost · ${boostLabel(boost)}`, chevron: true, action: () => setPage('boost') })
       rows.push({
         id: 'zoom',
         icon: fit === 'cover' ? 'exitFullscreen' : 'fullscreen',
         title: `Zoom · ${fit === 'cover' ? 'Fill' : 'Fit'}`,
         action: () => controller.setFit(fit === 'cover' ? 'contain' : 'cover'),
       })
-      rows.push({ id: 'info', icon: 'info', title: 'Playback Info', value: info ? 'On' : 'Off', action: controller.toggleInfo })
-      groups = [{ rows }]
+      const more: Row[] = [
+        {
+          id: 'replay',
+          icon: 'replay',
+          title: 'What Did They Say?',
+          detail: 'Back 10 seconds, with subtitles',
+          action: () => {
+            close()
+            controller.replayWithSubtitles()
+          },
+        },
+      ]
+      if (lead) more.push({ id: 'open-lead', icon: 'external', title: `Open in ${externalPlayerTitle(lead)}`, action: () => controller.openExternally(lead) })
+      if (apps.length > (lead ? 1 : 0)) more.push({ id: 'open', icon: 'external', title: lead ? 'Open in Another App…' : 'Open in…', chevron: true, action: () => setPage('external') })
+      more.push({ id: 'info', icon: 'info', title: 'Playback Info', value: info ? 'On' : 'Off', action: controller.toggleInfo })
+      groups = [{ rows: rows.slice(0, 4) }, { rows: rows.slice(4) }, { rows: more }]
       break
     }
     case 'tracks':
-      groups = [audioGroup(noop, 'Audio'), { title: 'Subtitles', rows: subtitleRows(close) }, { rows: [searchRow('tracks'), styleRow] }]
+      groups = [audioGroup(noop, 'Audio'), { title: 'Subtitles', rows: subtitleRows(close) }, { rows: [searchRow('tracks'), styleRow, delayRow] }]
       break
     case 'audio':
       groups = [audioGroup(back)]
@@ -175,6 +221,27 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
       break
     case 'search':
     case 'style':
+    case 'delay':
+    case 'boost':
+      break
+    case 'sleep':
+      groups = [
+        {
+          rows: [
+            { id: 'sleep-off', title: 'Off', checked: sleep === null, action: () => (controller.setSleep(null), back()) },
+            ...sleepChoices.map((choice) => ({ id: `sleep-${choice}`, title: sleepTitle(choice), checked: sleep === choice, action: () => (controller.setSleep(choice), back()) })),
+          ],
+          footer: 'The sound fades over the last 30 seconds, then the picture pauses. End of Episode or Movie lets this one finish and closes the player instead of starting the next.',
+        },
+      ]
+      break
+    case 'external':
+      groups = [
+        {
+          rows: apps.map((id) => ({ id: `app-${id}`, icon: 'external' as const, title: externalPlayerTitle(id), action: () => (close(), controller.openExternally(id)) })),
+          footer: 'Another player gets the stream’s link (Infuse also the resume point). Flow tracks progress only in its own player, and playback pauses here.',
+        },
+      ]
       break
     case 'speed':
       groups = [{ rows: speeds.map((r) => ({ id: `r${r}`, title: speedLabel(r), checked: r === rate, action: () => (controller.setRate(r), back()) })) }]
@@ -213,6 +280,8 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
       <div className={s.panelScroll}>
         {page === 'style' && <StylePage />}
         {page === 'search' && <SubtitleSearchPage controller={controller} onDone={close} />}
+        {page === 'delay' && <DelayPage controller={controller} />}
+        {page === 'boost' && <BoostPage controller={controller} />}
         {groups.map((g, i) => (
           <div key={g.title ?? i} role="group" aria-label={g.title}>
             {g.title && <p className={s.groupTitle}>{g.title}</p>}
@@ -220,7 +289,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
               <button key={row.id} className={s.row} data-plain={row.plain ? '' : undefined} onClick={row.action} onMouseDown={keepFocus} disabled={row.disabled} role={row.checked !== undefined ? 'menuitemradio' : 'menuitem'} aria-checked={row.checked}>
                 {row.icon && (
                   <span className={s.rowIcon}>
-                    <Icon name={row.icon} size={18} strokeWidth={2} />
+                    <PlayerIcon name={row.icon} size={18} strokeWidth={2} />
                   </span>
                 )}
                 <span className={s.rowText}>

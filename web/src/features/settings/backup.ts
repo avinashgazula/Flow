@@ -3,9 +3,11 @@ import { lastSourceStore } from '../../lib/sources/lastSource'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { isSourceOrdering, normaliseSourceOrdering } from '../../lib/sources/sourceSettings'
 import { isSubtitleOptions, normaliseSubtitleOptions } from '../../lib/subtitles/options'
-import { defaultSettings, settingsStore, type Settings } from '../../lib/store/settings'
+import { defaultSettings, settingsStore, type ExternalPlayerId, type Settings } from '../../lib/store/settings'
+import { externalPlayerIds } from '../player/externalPlayers'
 import { libraryStore, type Library } from '../../lib/store/library'
 import { isTabOrder } from '../../lib/tabs'
+import { isShelfList } from '../../lib/shelves'
 import { isSubtitleStyle, normaliseSubtitleStyle } from '../../lib/store/subtitleStyle'
 import { typefaces } from './options'
 
@@ -23,6 +25,7 @@ export interface Backup {
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 
+const isHeroSource = (v: unknown) => ['trending', 'popular', 'watchlist'].includes(v as string)
 const isSkipBehaviour = (v: unknown) => ['off', 'button', 'automatic'].includes(v as string)
 
 /** The settings' keys that import accepts, with the type each must have. Anything else in the file is ignored. */
@@ -45,6 +48,7 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   subtitleStyle: isSubtitleStyle,
   autoplayNext: (v) => typeof v === 'boolean',
   stillWatchingAfterEpisodes: (v) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 10,
+  upNextWaitsForEnd: (v) => typeof v === 'boolean',
   skipIntro: isSkipBehaviour,
   skipRecap: isSkipBehaviour,
   skipCredits: isSkipBehaviour,
@@ -58,6 +62,11 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   wyzieKey: (v) => typeof v === 'string',
   // Subtitle Type, Anime Audio, Keep Original ASS Styling and the services that are on; fields a backup lacks take their defaults.
   subtitleOptions: isSubtitleOptions,
+  postCreditsAlert: (v) => typeof v === 'boolean',
+  becauseYouWatched: (v) => typeof v === 'boolean',
+  neverUseDolbyVision: (v) => typeof v === 'boolean',
+  volumeBoostDB: (v) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 12,
+  externalPlayer: (v) => externalPlayerIds.includes(v as ExternalPlayerId),
   preferredQuality: (v) => ['2160p', '1080p', '720p', 'any'].includes(v as string),
   rememberLastSource: (v) => typeof v === 'boolean',
   // Fields a backup lacks take their defaults, so a file from before this setting (or from the apps) still imports.
@@ -66,8 +75,27 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   tabOrder: isTabOrder,
   // Empty clears the proxy; anything else has to be an address Flow can call.
   streamProxy: (v) => typeof v === 'string' && proxyProblem(v) === undefined,
+  showAboutSection: (v) => typeof v === 'boolean',
+  showWhereToWatch: (v) => typeof v === 'boolean',
+  showReviews: (v) => typeof v === 'boolean',
+  showEpisodeSpoilers: (v) => typeof v === 'boolean',
+  showSpecialsSeason: (v) => typeof v === 'boolean',
+  detailTextSize: (v) => ['small', 'standard', 'large', 'extraLarge'].includes(v as string),
   // Providers (with their logins), the guide's refresh time and the favourite channels, as the apps keep them.
   liveTV: isLiveTVSettings,
+  // Home: the shelf list (the apps' ShelfConfig, in the website's shape) and the switches around it.
+  shelves: isShelfList,
+  heroSource: isHeroSource,
+  heroSecondarySource: (v) => v === null || isHeroSource(v),
+  heroAutoAdvance: (v) => typeof v === 'boolean',
+  contentShelfLength: (v) => [10, 20, 30, 40].includes(v as number),
+  showContinueWatching: (v) => typeof v === 'boolean',
+  continueWatchingLimit: (v) => v === null || [5, 10, 20].includes(v as number),
+  showUpcoming: (v) => typeof v === 'boolean',
+  includeWatchlistPremieres: (v) => typeof v === 'boolean',
+  upcomingWithinDays: (v) => [3, 7, 14, 30].includes(v as number),
+  showWatchedBadges: (v) => typeof v === 'boolean',
+  showEpisodesRemaining: (v) => typeof v === 'boolean',
 }
 
 const libraryTypes: { [K in keyof Library]: (v: unknown) => boolean } = {
@@ -76,6 +104,9 @@ const libraryTypes: { [K in keyof Library]: (v: unknown) => boolean } = {
   favourites: Array.isArray,
   history: Array.isArray,
   watchedEpisodes: isObject,
+  ratings: isObject,
+  rewatches: isObject,
+  shuffled: isObject,
 }
 
 export function createBackup(settings: Settings, library: Library, now = new Date()): Backup {
@@ -124,6 +155,6 @@ export function applyBackup(parsed: { settings: Partial<Settings>; library: Part
 /** Back to a fresh install: settings, library and remembered sources. The caller clears the query cache. */
 export function resetEverything() {
   settingsStore.set({ ...defaultSettings })
-  libraryStore.set({ progress: {}, watchlist: [], favourites: [], history: [], watchedEpisodes: {} })
+  libraryStore.set({ progress: {}, watchlist: [], favourites: [], history: [], watchedEpisodes: {}, ratings: {}, rewatches: {}, shuffled: {} })
   lastSourceStore.set({ byTitle: {} })
 }

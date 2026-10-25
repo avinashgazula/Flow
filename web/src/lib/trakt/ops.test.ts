@@ -17,6 +17,7 @@ function fakeApi(fail: Record<string, TraktError> = {}, playback: Resume[] = [])
       addToWatchlist: call('addToWatchlist'),
       removeFromWatchlist: call('removeFromWatchlist'),
       addHistory: call('addHistory'),
+      removeHistory: call('removeHistory'),
       rate: call('rate'),
       unrate: call('unrate'),
       deletePlayback: call('deletePlayback'),
@@ -51,6 +52,16 @@ describe('sending changes', () => {
     expect(out.error?.kind).toBe('network')
     expect(out.remaining.map((o) => o.kind)).toEqual(['watched', 'rate', 'rate'])
     expect(trakt.calls.map(([name]) => name)).toEqual(['addToWatchlist', 'removeFromWatchlist', 'addHistory'])
+  })
+
+  it('removes plays by episode or film in one request', async () => {
+    const trakt = fakeApi()
+    const out = await flushOps(trakt.api, [
+      { kind: 'unwatched', type: 'show', id: 4, season: 1, episode: 2 },
+      { kind: 'unwatched', type: 'movie', id: 8 },
+    ])
+    expect(out.remaining).toEqual([])
+    expect(trakt.calls).toEqual([['removeHistory', [{ type: 'show', id: 4, season: 1, episode: 2 }, { type: 'movie', id: 8 }]]])
   })
 
   it('drops a change Trakt rejects, so it does not block the ones behind it', async () => {

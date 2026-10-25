@@ -197,17 +197,17 @@
 /* Read-ahead is the lighter of the two greys; the yellow is how far you are. */
 .buffered { background: var(--ink-3); opacity: 0.55; }
 .played { background: var(--stock); }
-/* An intro, recap or the credits: a stretch of the rail's holes drawn dimmer (the edge colour over them), so it
-   reads as a part to skip and never as read-ahead, which is the lighter tone. It lies over the played fill too. Its
-   holes are the rail's: the mask is on the rail. */
+/* An intro, recap or the credits: a thin tick under the perforation row, in the warm second ink, across the stretch
+   that can be skipped. It sits beneath the holes, not over them, so a played hole stays pure film-stock yellow and
+   the row keeps meaning progress. It belongs to the track, not the rail, so the rail's hole mask doesn't cut it. */
 .mark {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: calc(50% + 7px);
+  height: 2px;
   left: 0;
   width: 0;
-  background: var(--edge);
-  opacity: 0.55;
+  border-radius: 1px;
+  background: var(--ink-2);
   pointer-events: none;
 }
 /* The thumb is only there when you are using the bar: under the pointer, while dragging, or on focus. */
@@ -260,7 +260,7 @@
 /* Subtitle Style, on a narrow window: the panel hangs from the top instead of standing on the buttons, so the
    subtitle line it's changing stays in view underneath (Player.module.css moves the line clear on wide ones). */
 @media (max-width: 899px) and (min-height: 501px) {
-  .panel[data-page='style'] {
+  .panel:is([data-page='style'], [data-page='delay']) {
     top: calc(var(--inset-top) + 64px);
     bottom: auto;
     max-height: min(46%, calc(100% - var(--inset-top) - var(--inset-bottom) - 64px - 240px));
@@ -270,7 +270,7 @@
 /* A phone held sideways has little height: this page takes all of it above the scrubber, over the volume, and
    its rows (StylePage.module.css) are a little tighter. The volume steps aside rather than show through it. */
 @media (max-height: 500px) {
-  .panel[data-page='style'] { max-height: calc(100% - var(--inset-top) - var(--inset-bottom) - var(--bottom-band) - 20px); }
+  .panel:is([data-page='style'], [data-page='delay']) { max-height: calc(100% - var(--inset-top) - var(--inset-bottom) - var(--bottom-band) - 20px); }
   .controls[data-styling] .volume { visibility: hidden; }
 }
 .panelHeader {
@@ -283,6 +283,8 @@
   text-align: left;
 }
 .panelScroll { overflow-y: auto; padding: 4px 0; overscroll-behavior: contain; scrollbar-width: thin; }
+/* The root page's rows come in three groups: what is heard and read, how it plays, and what to do about it. Space, not rules. */
+.panelScroll > [role='group'] + [role='group'] { margin-top: 8px; }
 /* Plain headings: a sentence-case label, not a kicker. */
 .groupTitle {
   padding: 12px 16px 4px;
@@ -424,13 +426,6 @@
 }
 .upNextFrame { position: relative; display: block; }
 .upNextText { width: 188px; display: flex; flex-direction: column; gap: 3px; padding-top: 2px; }
-.upNextLabel {
-  font: 600 var(--fs-caption) / 1.2 var(--font-edge);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-variant-numeric: tabular-nums;
-  color: var(--print);
-}
 .upNextName {
   font: 600 var(--fs-small) / 1.25 var(--font);
   display: -webkit-box;
@@ -661,4 +656,103 @@
 @media (max-width: 520px) and (orientation: portrait) {
   .volume { display: none; }
   .transport { gap: 28px; }
+}
+
+/* Because You Watched, beside a film's credits: a few films like it, bottom right where Up Next stands (it takes
+   the Skip button's corner too, until it is closed). Flat, on the panel colour. */
+.suggest {
+  --bottom-band: 124px;
+  --w: 148px;
+  position: absolute;
+  z-index: 4;
+  right: calc(var(--inset-right) + var(--margin));
+  bottom: calc(var(--inset-bottom) + 24px);
+  max-width: calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--margin));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  /* Solid, not the 94% panel colour: the subtitle line runs behind this corner and would show through the card. */
+  background: var(--base-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
+  transition: transform var(--dur-move) var(--ease-out);
+  animation: upNext var(--dur-move) var(--ease-out);
+}
+.suggest[data-lifted] { transform: translateY(calc(-1 * (var(--bottom-band) - 24px + 6px))); }
+.suggestHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.suggestHead h2 {
+  min-width: 0;
+  font: 600 var(--fs-small) / 1.25 var(--font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.suggestHead h2 span, .suggestEndHead span { color: var(--ink-2); font-weight: 500; }
+.suggestClose {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin: -6px -6px -6px 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-label);
+  color: var(--ink-2);
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+}
+.suggestClose:hover { background: var(--base-3); color: var(--paper); }
+.suggestRow { display: flex; gap: 10px; }
+.suggestRow > li { width: var(--w); flex: none; }
+/* Where the film ends: the film just finished as one quiet line, then Because You Watched, its row of stills and Done,
+   in the middle of the screen on the flat edge colour over the last frame. Matte: no backdrop, no blur. */
+.suggestEnd {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: calc(var(--inset-top) + 16px) 0 calc(var(--inset-bottom) + 16px) calc(var(--inset-left) + var(--margin));
+  /* Solid: the controls under it are still there, and none of them should show. */
+  background: var(--edge);
+  overflow-y: auto;
+  animation: panel var(--dur-state) var(--ease-out);
+}
+.suggestEndBlock { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-m); min-width: 0; margin: auto 0; }
+/* The film just finished: its name and how it ended, in one quiet line. */
+.suggestEndDone {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding-right: var(--margin);
+  font: 600 var(--fs-small) / 1.3 var(--font);
+  color: var(--ink-2);
+}
+.suggestEndDone span:first-child { color: var(--paper); }
+.suggestEndDone span + span { font-weight: 400; font-variant-numeric: tabular-nums; }
+.suggestEndHead {
+  font: 700 var(--fs-title3) / 1.15 var(--font-display);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.suggestEndRow {
+  display: flex;
+  gap: var(--space-m);
+  align-self: stretch;
+  /* Room for the focus ring and the hover lift, and the row bleeds to the edge so the cut-off one says it scrolls. */
+  padding: 6px var(--margin) 10px 4px;
+  margin-left: -4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.suggestEndRow > li { width: 240px; flex: none; }
+@media (max-width: 720px), (max-height: 500px) {
+  .suggest { --bottom-band: 112px; --w: 112px; }
+  .suggestEndRow > li { width: 168px; }
+}
+@media (max-height: 500px) {
+  .suggest { padding: 8px 12px 10px; gap: 6px; }
+  .suggestEndBlock { gap: var(--space-s); }
+  .suggestEndHead { font-size: var(--fs-headline); }
+  .suggestEndRow > li { width: 150px; }
 }

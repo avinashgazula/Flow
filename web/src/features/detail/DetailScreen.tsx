@@ -9,18 +9,27 @@ import { genreNames } from '../../lib/genres'
 import { q } from '../../lib/queries'
 import { lastSourceFor, type PlaybackRequest, type Source } from '../../lib/sources'
 import { lastSources, matchSource } from '../player/session'
-import { library, mediaKey, useLibrary } from '../../lib/store/library'
+import { library, libraryStore, mediaKey, useLibrary } from '../../lib/store/library'
+import { titleLibrary } from '../../lib/store/titleLibrary'
 import { useSettings } from '../../lib/store/settings'
 import { userLocale, useMinuteTick } from '../../lib/time'
-import type { MediaDetail, MediaItem, MediaType } from '../../lib/tmdb/types'
+import type { MediaDetail, MediaType } from '../../lib/tmdb/types'
+import { useNearScreen } from '../../lib/useNearScreen'
+import { allWatched, nextUp, pickShuffle, watchedEpisodes } from '../../lib/watching'
 import { watchedFraction } from '../home/logic'
+import { About } from './About'
 import { Episodes } from './Episodes'
 import { FilmCan } from './FilmCan'
-import { formatDay, metaLine, playLabel, playsFirst, titlePrint } from './logic'
+import { airedRefs, cardOf, metaLine, playLabel, playsFirst, titlePrint, todayOf } from './logic'
+import { fetchEpisodes, useShowEpisodes } from './shows'
+import { StarRating, useRating } from './StarRating'
+import { TitleName } from './TitleName'
 import { useSourceSearch } from './useSourceSearch'
+import { hasProviders, WhereToWatch } from './WhereToWatch'
 import s from './DetailScreen.module.css'
 
 const TrailerSheet = lazy(() => import('./TrailerSheet'))
+const Reviews = lazy(() => import('./Reviews'))
 const SourcePicker = lazy(() => import('../sources/SourcePicker').then((m) => ({ default: m.SourcePicker })))
 
 /** The still's width at each layout, for `srcset`: two columns from 1000px, one below. */
@@ -36,20 +45,37 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   const [trailer, setTrailer] = useState(false)
   const [picker, setPicker] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [note, setNote] = useState('')
   const key = mediaKey(type, id)
   const progress = useLibrary((l) => l.progress[key])
   const inWatchlist = useLibrary((l) => l.watchlist.some((e) => e.key === key))
   const isFavourite = useLibrary((l) => l.favourites.some((e) => e.key === key))
   const watched = useLibrary((l) => l.history.some((e) => e.key === key && !e.episode))
+  const watchedMap = useLibrary((l) => l.watchedEpisodes)
+  const rewatch = useLibrary((l) => l.rewatches?.[key])
+  const score = useRating({ type, id })
   const remember = useSettings((x) => x.rememberLastSource)
+  const textSize = useSettings((x) => x.detailTextSize)
+  const showWhere = useSettings((x) => x.showWhereToWatch)
+  const showReviews = useSettings((x) => x.showReviews)
+  const [nearReviews, reviewsRef] = useNearScreen<HTMLDivElement>()
+  const today = todayOf(now)
 
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [])
 
-  // What Play starts: the episode being watched, else the first one of a series.
+  // A series' aired episodes, from every season, for what is next, Shuffle and marking the show watched.
+  const loaded = !!d && !isPlaceholderData
+  const episodes = useShowEpisodes(d, type === 'show' && loaded, today)
+  const seen = useMemo(() => watchedEpisodes({ watchedEpisodes: watchedMap, rewatches: rewatch ? { [key]: rewatch } : {} }, id), [watchedMap, rewatch, key, id])
+  const showDone = type === 'show' && episodes.ready && allWatched(episodes.aired, seen)
+
+  // What Play starts: the episode being watched, else the next one not watched (a rewatch counts its own), else
+  // the first one of a series.
   const firstEpisode = type === 'show' ? { season: d?.seasons.find((x) => x.number > 0)?.number ?? 1, episode: 1 } : undefined
-  const target = progress?.episode ?? firstEpisode
+  const upNext = type === 'show' ? (nextUp(episodes.aired, seen) ?? firstEpisode) : undefined
+  const target = progress?.episode ?? upNext
 
   const play = (episode?: { season: number; episode: number }, source?: Source) => {
     const at = episode ?? target
@@ -68,7 +94,9 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [d?.id, d?.imdb, d?.title, type, target?.season, target?.episode],
   )
-  const search = useSourceSearch(request, !!d && !isPlaceholderData)
+  // A series that has watched episodes and no resume point waits for its episodes: the one to search for is the next.
+  const knowsTarget = type !== 'show' || !!progress?.episode || seen.length === 0 || episodes.ready
+  const search = useSourceSearch(request, loaded && knowsTarget)
   // What Play opens: the player's own memory of this title (it plays that source again, whatever the ranking
   // says), then the picker's, then the best that plays. The label under the still says which, so it matches.
   const playerLast = useMemo(() => {
@@ -93,14 +121,34 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   }
   if (!d) return <Ghost />
 
-  const label = playLabel(d, progress, firstEpisode, now, userLocale)
+  const label = playLabel(d, progress, upNext, now, userLocale)
   const rated = d.rating ? d.rating.toFixed(1) : undefined
   const tmdbPage = `https://www.themoviedb.org/${type === 'movie' ? 'movie' : 'tv'}/${d.id}`
-  const hasProviders = d.providers.stream.length > 0 || d.providers.rent.length > 0
+  const card = cardOf(d)
+  const trailers = d.trailers ?? []
+  const isWatched = type === 'movie' ? watched : showDone
+  const ready = loaded && (type === 'movie' || episodes.ready)
+
+  /** Shuffle: a random episode, one not yet picked this round, preferring one not yet watched. */
+  async function shuffle() {
+    const all = await fetchEpisodes(d!)
+    const lib = libraryStore.get()
+    const pick = pickShuffle(airedRefs(all, today), lib.shuffled?.[key] ?? [], watchedEpisodes(lib, id))
+    if (!pick) {
+      setNote('Nothing to shuffle yet.')
+      return
+    }
+    titleLibrary.rememberShuffled(card, pick.played)
+    play(pick.pick)
+  }
+  const toggleWatched = () => {
+    if (type === 'movie') return watched ? titleLibrary.markUnwatched(card) : library.markWatched(card)
+    return showDone ? titleLibrary.markUnwatched(card, episodes.aired) : titleLibrary.markEpisodesWatched(card, episodes.aired)
+  }
 
   return (
     <article className="page">
-     <div className={s.wrap}>
+     <div className={s.wrap} data-text={textSize === 'standard' ? undefined : textSize}>
       <div className={s.top}>
         <div className={s.still}>
           <div style={{ viewTransitionName: 'title-art' }}>
@@ -119,7 +167,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
         </div>
 
         <div className={s.info}>
-          <h1 className={s.name}>{d.title}</h1>
+          <TitleName title={d.title} logo={d.logo} />
           <p className={s.meta}>{metaLine(d, genreNames(d.genres, type))}</p>
 
           {rated && (
@@ -137,17 +185,19 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
             <button className="btn btn-primary btn-large" onClick={() => play()} aria-label={label.spoken}>
               <Icon name="play" size={18} /> {label.text}
             </button>
-            {d.trailer && (
-              <button className="btn btn-secondary btn-large" onClick={() => setTrailer(true)}>
+            {trailers.length > 0 && (
+              <button className="btn btn-secondary btn-large" onClick={() => setTrailer(true)} aria-haspopup="dialog">
                 <Icon name="trailer" size={18} /> Trailer
               </button>
             )}
           </div>
 
           <div className={s.textActions} role="group" aria-label="Your list">
-            <TextAction label="Watchlist" on={inWatchlist} onClick={() => library.toggleWatchlist(d)} />
-            {type === 'movie' && <TextAction label="Watched" on={watched} onClick={() => library.markWatched(d)} />}
-            <TextAction label="Favourite" on={isFavourite} onClick={() => library.toggleFavourite(d)} />
+            <TextAction label="Watchlist" on={inWatchlist} onClick={() => library.toggleWatchlist(card)} />
+            <TextAction label="Watched" on={isWatched} onClick={toggleWatched} disabled={!ready} />
+            <TextAction label="Favourite" on={isFavourite} onClick={() => library.toggleFavourite(card)} />
+            {type === 'show' && <TextAction label="Shuffle" onClick={() => void shuffle()} disabled={!ready} />}
+            {type === 'show' && <TextAction plain label={rewatch ? 'End Rewatch' : 'Rewatch'} on={!!rewatch} onClick={() => (rewatch ? titleLibrary.endRewatch(card) : titleLibrary.startRewatch(card))} />}
             <TextAction
               label={copied ? 'Link copied' : 'Share'}
               onClick={() =>
@@ -159,6 +209,17 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
               }
             />
           </div>
+
+          {(isWatched || score !== undefined) && (
+            <div className={s.rating}>
+              <span className={s.ratingLabel}>Your Rating</span>
+              <StarRating item={card} />
+            </div>
+          )}
+          {rewatch && <p className={s.status}>Rewatching: Next Up restarts from S1 E1.</p>}
+          <p className={s.status} role="status">
+            {note}
+          </p>
 
           {d.tagline && <p className={s.tagline}>{d.tagline}</p>}
           {d.overview && <p className={s.overview}>{d.overview}</p>}
@@ -183,27 +244,26 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
 
       {type === 'show' && d.seasons.length > 0 && !isPlaceholderData && <Episodes detail={d} initial={initialSeason ?? progress?.episode?.season} onPlay={(e) => play(e)} />}
 
-      {hasProviders && (
-        <section className={s.section} aria-labelledby="where-title">
-          <h2 id="where-title" className={s.sectionTitle}>
-            Where to Watch
-          </h2>
-          <dl className={s.providers}>
-            {d.providers.stream.length > 0 && <Providers kind="Stream" names={d.providers.stream.map((p) => p.name)} href={d.providers.link} />}
-            {d.providers.rent.length > 0 && <Providers kind="Rent" names={d.providers.rent.slice(0, 4).map((p) => p.name)} href={d.providers.link} />}
-          </dl>
-          <p className={s.attribution}>Data from JustWatch</p>
-        </section>
+      {showWhere && hasProviders(d.providers) && <WhereToWatch providers={d.providers} />}
+
+      {showReviews && loaded && (
+        <div ref={reviewsRef}>
+          {nearReviews && (
+            <Suspense fallback={null}>
+              <Reviews type={type} id={id} imdb={d.imdb} />
+            </Suspense>
+          )}
+        </div>
       )}
 
       <PosterRow title="You Might Also Like" items={d.recommendations} now={now} />
       <PosterRow title="Similar" items={d.similar} now={now} />
 
-      {!isPlaceholderData && <Info detail={d} />}
+      {!isPlaceholderData && <About detail={d} />}
 
-      {trailer && d.trailer && (
+      {trailer && trailers.length > 0 && (
         <Suspense fallback={null}>
-          <TrailerSheet video={d.trailer} title={d.title} onClose={() => setTrailer(false)} />
+          <TrailerSheet videos={trailers} title={d.title} onClose={() => setTrailer(false)} />
         </Suspense>
       )}
       {picker && request && (
@@ -224,25 +284,19 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   )
 }
 
-/** Only what a library entry needs: a full detail would store its cast and recommendations. */
-const cardOf = (d: MediaItem): MediaItem => ({
-  type: d.type,
-  id: d.id,
-  title: d.title,
-  year: d.year,
-  date: d.date,
-  overview: d.overview,
-  poster: d.poster,
-  backdrop: d.backdrop,
-  rating: d.rating,
-  genres: d.genres,
-  originalLanguage: d.originalLanguage,
-})
-
 /** A quiet text action: plain ink-2, paper when on, with a check so "on" isn't told by colour alone. */
-function TextAction({ label, on, onClick }: { label: string; on?: boolean; onClick: () => void }) {
+function TextAction({ label, on, onClick, disabled, plain }: { label: string; on?: boolean; onClick: () => void; disabled?: boolean; plain?: boolean }) {
   return (
-    <button type="button" className={s.textAction} onClick={onClick} aria-pressed={on} aria-live={on === undefined ? 'polite' : undefined}>
+    <button
+      type="button"
+      className={s.textAction}
+      onClick={disabled ? undefined : onClick}
+      // A label that changes with the state (End Rewatch) says it already; a constant one is a toggle.
+      aria-pressed={plain ? undefined : on}
+      data-on={on ? '' : undefined}
+      aria-live={on === undefined ? 'polite' : undefined}
+      aria-disabled={disabled || undefined}
+    >
       {on && <Icon name="check" size={14} strokeWidth={2.8} />}
       {label}
     </button>
@@ -275,69 +329,6 @@ function Cast({ cast }: { cast: MediaDetail['cast'] }) {
           {all ? 'Show fewer' : `Show all ${Math.min(cast.length, 30)}`}
         </button>
       )}
-    </section>
-  )
-}
-
-function Providers({ kind, names, href }: { kind: string; names: string[]; href?: string }) {
-  const text = names.join(' · ')
-  return (
-    <div>
-      <dt>{kind}</dt>
-      <dd>
-        {href ? (
-          <a href={href} target="_blank" rel="noreferrer">
-            {text}
-          </a>
-        ) : (
-          text
-        )}
-      </dd>
-    </div>
-  )
-}
-
-function Info({ detail: d }: { detail: MediaDetail }) {
-  const rows: [string, string | undefined][] = [
-    ['Status', d.status],
-    ['Released', formatDay(d.date, userLocale)],
-    ['Original language', d.originalLanguage ? new Intl.DisplayNames(['en'], { type: 'language' }).of(d.originalLanguage) : undefined],
-    ['Network', d.networks.join(', ') || undefined],
-    ['Seasons', d.seasons.length ? String(d.seasons.filter((x) => x.number > 0).length) : undefined],
-    ['Next episode', d.nextEpisode ? `S${d.nextEpisode.season} E${d.nextEpisode.number} · ${formatDay(d.nextEpisode.airDate, userLocale) ?? 'soon'}` : undefined],
-    ['Collection', d.collection?.name],
-  ]
-  return (
-    <section className={s.section} aria-labelledby="info-title">
-      <h2 id="info-title" className={s.sectionTitle}>
-        Information
-      </h2>
-      <dl className={s.facts}>
-        {rows
-          .filter(([, v]) => v)
-          .map(([k, v]) => (
-            <div key={k}>
-              <dt>{k}</dt>
-              <dd>{v}</dd>
-            </div>
-          ))}
-        {d.imdb && (
-          <div>
-            <dt>Links</dt>
-            <dd className={s.links}>
-              <a href={`https://www.imdb.com/title/${d.imdb}/`} target="_blank" rel="noreferrer">
-                IMDb
-              </a>
-              <a href={`https://www.themoviedb.org/${d.type === 'movie' ? 'movie' : 'tv'}/${d.id}`} target="_blank" rel="noreferrer">
-                TMDB
-              </a>
-              <a href={`https://trakt.tv/search/tmdb/${d.id}?id_type=${d.type === 'movie' ? 'movie' : 'show'}`} target="_blank" rel="noreferrer">
-                Trakt
-              </a>
-            </dd>
-          </div>
-        )}
-      </dl>
     </section>
   )
 }
