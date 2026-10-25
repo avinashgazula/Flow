@@ -18,12 +18,9 @@ export const hasProviders = (p: MediaDetail['providers']) => kinds.some((k) => (
 export function WhereToWatch({ providers }: { providers: MediaDetail['providers'] }) {
   return (
     <section className={s.section} aria-labelledby="where-title">
-      <div className={s.sectionHead}>
-        <h2 id="where-title" className={s.sectionTitle}>
-          Where to Watch
-        </h2>
-        <p className={s.attribution}>Data from JustWatch</p>
-      </div>
+      <h2 id="where-title" className={s.sectionTitle}>
+        Where to Watch
+      </h2>
       <dl className={s.providers}>
         {kinds.map(({ key, label }) => {
           const list = providers[key] ?? []
@@ -43,6 +40,7 @@ export function WhereToWatch({ providers }: { providers: MediaDetail['providers'
           ) : null
         })}
       </dl>
+      <p className={s.attribution}>Data from JustWatch</p>
     </section>
   )
 }

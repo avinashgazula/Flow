@@ -92,11 +92,9 @@
 .more:hover { color: var(--paper); text-decoration-color: var(--paper); }
 
 /* Where to watch: a row of small square logos for each way to watch (subscription, free, rent, buy). */
-.sectionHead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--space-m); margin-bottom: var(--space-s); }
-.sectionHead .sectionTitle { margin-bottom: 0; }
 .providers { display: grid; gap: var(--space-m); margin: 0; }
-.providers > div { display: grid; grid-template-columns: minmax(0, 96px) minmax(0, 1fr); align-items: center; gap: var(--space-m); }
-.providers dt { font-size: var(--fs-small); line-height: 1.3; color: var(--ink-2); }
+.providers > div { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); align-items: center; gap: var(--space-m); font-size: var(--fs-small); }
+.providers dt { line-height: 1.3; color: var(--ink-2); }
 .providers dd { margin: 0; }
 .services { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 .service {
@@ -114,12 +112,12 @@
 .serviceName { padding: 4px; font: 600 10px / 1.1 var(--font); text-align: center; color: var(--ink-2); overflow-wrap: anywhere; }
 @media (hover: hover) { a.service:hover { transform: translateY(-2px); } }
 @media (prefers-reduced-motion: reduce) { a.service:hover { transform: none; } }
-.attribution { font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); }
+.attribution { margin-top: var(--space-m); font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); }
 @media (max-width: 480px) { .providers > div { grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); } }
 
 .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-m) var(--space-xl); margin: 0; }
 .facts dt { font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); }
-.facts dd { margin: 2px 0 0; font-size: var(--fs-small); line-height: 1.4; }
+.facts dd { margin: 2px 0 0; font-size: var(--fs-small); line-height: 1.4; text-wrap: pretty; }
 .facts > [data-wide] { grid-column: span 2; }
 @media (max-width: 480px) { .facts > [data-wide] { grid-column: auto; } }
 .links { display: flex; gap: var(--space-m); }

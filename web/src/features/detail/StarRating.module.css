@@ -1,9 +1,9 @@
 /* Five stars, paper when chosen and ink-3 outlines when not (yellow is for the next action, not for a score). */
-.stars { display: inline-flex; margin-left: -10px; }
+.stars { display: inline-flex; margin-left: -7px; }
 .star {
   display: grid;
   place-items: center;
-  width: 44px;
+  width: 36px;
   height: 44px;
   color: var(--ink-3);
   -webkit-tap-highlight-color: transparent;
