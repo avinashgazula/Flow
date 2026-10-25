@@ -55,6 +55,20 @@ export function normaliseSubtitleOptions(saved: unknown): SubtitleOptions {
   }
 }
 
+/** What each service needs: a key. (Wyzie used to need none; it asks for a free one now.) */
+const needs: Record<ProviderId, (c: Credentials) => string | undefined> = {
+  opensubtitles: (c) => c.openSubtitlesKey,
+  subdl: (c) => c.subdlKey,
+  wyzie: (c) => c.wyzieKey,
+  subsource: (c) => c.subSourceKey,
+}
+
+/** True when the viewer has given this service what it needs. */
+export const hasCredentials = (id: ProviderId, c: Credentials): boolean => !!needs[id](c)?.trim()
+
+/** The services the viewer turned on and has a key for, in the apps' order. */
+export const usableProviders = (c: Credentials, enabled: readonly ProviderId[] = providerIds): ProviderId[] => providerIds.filter((id) => enabled.includes(id) && hasCredentials(id, c))
+
 /** The keys and logins as the search wants them. */
 export const credentialsOf = (s: Settings): Credentials => ({
   openSubtitlesKey: s.openSubtitlesKey,

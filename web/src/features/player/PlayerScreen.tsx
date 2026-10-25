@@ -103,6 +103,14 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   useLayoutEffect(() => {
     controller.setContext(key, originalLanguage)
   }, [controller, key, originalLanguage])
+  // The subtitle services are asked about this title or episode by its ids, and Anime Audio needs its genres.
+  const imdbId = detail?.imdb
+  const genres = item?.genres
+  const epSeason = epRef?.season
+  const epNumber = epRef?.episode
+  useLayoutEffect(() => {
+    controller.setTitle({ type: isShow ? 'show' : 'movie', tmdbId: id, imdbId, season: epSeason, episode: epNumber, genres: genres ?? [], original: originalLanguage })
+  }, [controller, isShow, id, imdbId, epSeason, epNumber, genres, originalLanguage])
   const fit = usePlayer(controller, (st) => st.fit)
   const infoOpen = usePlayer(controller, (st) => st.info)
   const video = useRef<HTMLVideoElement>(null)

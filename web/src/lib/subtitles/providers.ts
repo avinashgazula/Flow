@@ -15,6 +15,7 @@
 
 import { episodeRef } from '../sources/parser'
 import { languageCodeOf, subtitleLanguageName } from './names'
+import { hasCredentials } from './options'
 import { SubtitleError, providerNames, type Credentials, type Fetch, type ProviderId, type SubtitleQuery, type SubtitleResult } from './types'
 
 type Json = Record<string, unknown>
@@ -131,7 +132,7 @@ export function parseOpenSubtitlesLink(json: unknown): string {
 
 const openSubtitles: Provider = {
   id: 'opensubtitles',
-  ready: (c) => !!c.openSubtitlesKey?.trim(),
+  ready: (c) => hasCredentials('opensubtitles', c),
   async search(q, c, io) {
     const json = await call('opensubtitles', io, openSubtitlesSearchURL(q), { headers: { 'Api-Key': c.openSubtitlesKey!.trim(), Accept: 'application/json' } })
     return parseOpenSubtitles(json)
@@ -189,7 +190,7 @@ export function parseSubDL(json: unknown): SubtitleResult[] {
 
 const subdl: Provider = {
   id: 'subdl',
-  ready: (c) => !!c.subdlKey?.trim(),
+  ready: (c) => hasCredentials('subdl', c),
   async search(q, c, io) {
     const json = await call('subdl', io, subdlSearchURL(q, c.subdlKey!.trim()))
     // A title SubDL doesn't know comes back as status false with a sentence, not as an empty list.
@@ -243,7 +244,7 @@ export function parseWyzie(json: unknown): SubtitleResult[] {
 
 const wyzie: Provider = {
   id: 'wyzie',
-  ready: (c) => !!c.wyzieKey?.trim(),
+  ready: (c) => hasCredentials('wyzie', c),
   async search(q, c, io) {
     const url = wyzieSearchURL(q, c.wyzieKey?.trim() ?? '')
     if (!url) return []
@@ -304,7 +305,7 @@ export function parseSubSource(json: unknown, language: string, episode?: { seas
 
 const subsource: Provider = {
   id: 'subsource',
-  ready: (c) => !!c.subSourceKey?.trim(),
+  ready: (c) => hasCredentials('subsource', c),
   async search(q, c, io) {
     if (!q.imdbId) return []
     const headers = { 'X-API-Key': c.subSourceKey!.trim(), Accept: 'application/json' }

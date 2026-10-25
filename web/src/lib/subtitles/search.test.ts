@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import opensubtitlesSearch from './__fixtures__/opensubtitles-search.json'
 import subdlSearch from './__fixtures__/subdl-search.json'
 import wyzieSearch from './__fixtures__/wyzie-search.json'
-import { forgetRefused, rankResults, searchSubtitles, usableProviders } from './search'
+import { usableProviders } from './options'
+import { forgetRefused, rankResults, searchSubtitles } from './search'
 import type { SubtitleQuery, SubtitleResult } from './types'
 
 const movie: SubtitleQuery = { type: 'movie', tmdbId: 693134, imdbId: 'tt15239678', languages: ['en', 'pt'] }
@@ -94,6 +95,12 @@ describe('searching', () => {
     const { results, outcomes } = await searchSubtitles(movie, { openSubtitlesKey: 'a', subdlKey: 'b' }, { fetch: slow, timeoutMs: 20 })
     expect(results).toHaveLength(3)
     expect(outcomes[1]).toMatchObject({ provider: 'subdl', kind: 'network', error: expect.stringMatching(/took too long/) })
+  })
+
+  it('tells a screen as each service answers', async () => {
+    const told: string[] = []
+    await searchSubtitles(movie, { openSubtitlesKey: 'a', subdlKey: 'b' }, { fetch, onProgress: (o) => told.push(`${o.provider}:${o.count}`) })
+    expect(told.sort()).toEqual(['opensubtitles:3', 'subdl:3'])
   })
 
   it('asks nobody when no service has a key', async () => {

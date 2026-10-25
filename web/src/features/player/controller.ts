@@ -6,13 +6,41 @@
 import { useSyncExternalStore } from 'react'
 import type { Source } from '../../lib/sources'
 import { settingsStore } from '../../lib/store/settings'
+import { credentialsOf, normaliseSubtitleOptions, usableProviders } from '../../lib/subtitles/options'
+import type { ProviderOutcome, SearchOutcome } from '../../lib/subtitles/search'
+import { providerNames, SubtitleError, type Credentials, type ProviderId, type SubtitleQuery, type SubtitleResult } from '../../lib/subtitles/types'
+import type { AssHandle } from './ass'
 import { ownTracks, type Engine, type Track } from './engine'
-import { pickAudio, pickSubtitle, releaseLanguage, trackLanguage } from './languages'
+import { animeRule, audioLanguagesFor, decideSubtitle, isAnime, isForced, pickAudio, pickSubtitle, releaseLanguage, trackLanguage } from './languages'
 import { prefs, titleChoices } from './session'
 import type { SkipSegment } from './segments'
-import { parseSubtitles } from './subtitles'
+import { parseSubtitles, type SubtitleFormat } from './subtitles'
 
 export type Panel = 'options' | 'tracks' | 'episodes' | null
+
+/** A subtitle track as the options panel lists it: one from the file or its source, or one downloaded from a service. */
+export type SubtitleTrack = Track & { online?: boolean; hearingImpaired?: boolean }
+
+/** Which title is playing, as the subtitle services want to be asked about it. */
+export interface TitleInfo {
+  type: 'movie' | 'show'
+  tmdbId: number
+  imdbId?: string
+  season?: number
+  episode?: number
+  genres: number[]
+  /** The language it was made in; with the Animation genre this is what makes a title anime. */
+  original?: string
+}
+
+/** What a search needs, or why it can't be made. */
+export type SubtitleSearchPlan = { query: SubtitleQuery; credentials: Credentials; enabled: ProviderId[]; preferSDH: boolean } | { problem: 'title' | 'services' }
+
+interface OnlineEntry {
+  info: SubtitleTrack
+  result: SubtitleResult
+  track: TextTrack
+}
 
 export type FeedbackIcon = 'play' | 'pause' | 'back10' | 'forward10' | 'volume' | 'mute' | 'subtitles' | 'fullscreen' | 'exitFullscreen'
 
@@ -37,7 +65,7 @@ export interface PlayerState {
   blocked: boolean
   /** With `blocked`: why the stream proxy couldn't open the file, when one was tried. */
   proxyError?: string
-  subtitles: Track[]
+  subtitles: SubtitleTrack[]
   subtitleId: string | null
   /** The track whose cues the overlay draws. */
   subtitleTrack: TextTrack | null
@@ -132,6 +160,20 @@ export class PlayerController {
   /** The title the stream belongs to (a show counts once), for remembering picks, and its original
    *  language, for "Original Language" in Settings. */
   private context: { key?: string; original?: string } = {}
+  /** The title as the subtitle services know it, and whether it is anime (Anime Audio applies to those). */
+  private title: TitleInfo | null = null
+  private anime = false
+  /** Subtitles downloaded from a service for this title. They outlive a change of source (the viewer chose them),
+   *  not a change of title. */
+  private online = new Map<string, OnlineEntry>()
+  private onlineCount = 0
+  /** The text of ASS tracks, kept for libass when Keep Original ASS Styling is on. */
+  private scripts = new Map<string, string>()
+  private ass: AssHandle | null = null
+  private lastSearch: { key: string; outcome: Promise<SearchOutcome> } | null = null
+  /** The automatic search for a title whose file lacks the subtitles Settings ask for: which languages, when it
+   *  starts, and whether it has run (it runs once for each). */
+  private autoSearch = { key: '', timer: 0, ran: false }
 
   get = () => this.state
   subscribe = (listener: () => void) => {
@@ -205,6 +247,8 @@ export class PlayerController {
       if (watch !== undefined) v.remote?.cancelWatchAvailability(watch).catch(() => {})
       clearTimeout(this.hideTimer)
       clearTimeout(this.previewTimer)
+      this.cancelAutoSearch()
+      this.stopAss()
     }
   }
 
@@ -214,7 +258,12 @@ export class PlayerController {
     this.applied = { audio: false }
     this.manual = { audio: false, subtitles: false }
     for (const track of this.external.values()) track.mode = 'disabled'
+    for (const { track } of this.online.values()) track.mode = 'disabled'
     this.external.clear()
+    this.scripts.clear()
+    this.stopAss()
+    this.cancelAutoSearch()
+    this.autoSearch = { key: '', timer: 0, ran: false }
     this.subtitleToken++
     this.set({ audio: [], audioId: undefined, blocked: engine?.fallback === 'blocked', proxyError: engine?.proxyError, subtitles: [], subtitleId: null, subtitleTrack: null })
     if (engine) this.refreshTracks()
@@ -231,13 +280,36 @@ export class PlayerController {
     }
   }
 
+  /** Which title is playing. A different one drops the subtitles downloaded for the last. */
+  setTitle(title: TitleInfo) {
+    const before = this.title
+    const same = before && before.type === title.type && before.tmdbId === title.tmdbId && before.season === title.season && before.episode === title.episode
+    if (before && !same) this.forgetOnline()
+    this.title = title
+    const anime = isAnime(title.genres, title.original ?? this.context.original)
+    const changed = anime !== this.anime
+    this.anime = anime
+    // Anime Audio decides the audio and subtitles, so a title found to be anime after the tracks came is worked out again.
+    if (changed && this.engine && !this.manual.audio) {
+      this.applied = { audio: false }
+      this.applyPreferences()
+    }
+  }
+
+  private forgetOnline() {
+    for (const { track } of this.online.values()) track.mode = 'disabled'
+    this.online.clear()
+    this.lastSearch = null
+  }
+
   refreshTracks = () => {
     const engine = this.engine
     if (!engine) return
     const { tracks: audio, selected } = engine.audio()
     const inside = engine.subtitles().map((t) => ({ ...t, id: `in:${t.id}` }))
     const outside = (this.source?.subtitles ?? []).map((s, i): Track => ({ id: `ext:${i}`, label: s.label, language: s.language }))
-    this.set({ audio, audioId: selected, subtitles: [...inside, ...outside] })
+    const downloaded = [...this.online.values()].map((o) => o.info)
+    this.set({ audio, audioId: selected, subtitles: [...inside, ...outside, ...downloaded] })
     this.applyPreferences()
   }
 
@@ -246,20 +318,27 @@ export class PlayerController {
   private applyPreferences() {
     const { audio, audioId, subtitles } = this.state
     const settings = settingsStore.get()
+    const options = normaliseSubtitleOptions(settings.subtitleOptions)
+    // Anime Audio: Sub tries Japanese audio first and always shows subtitles; Dub shows none.
+    const rule = animeRule(this.anime, options.animeAudio)
     const choice = this.context.key ? titleChoices.get(this.context.key) : undefined
     let heard = audio.find((t) => t.id === audioId)
     if (!this.applied.audio && !this.manual.audio && audio.length > 0) {
       this.applied.audio = true
-      const wanted = pickAudio(audio, { languages: settings.audioLanguages, original: this.context.original, choice })
+      const wanted = pickAudio(audio, { languages: audioLanguagesFor(settings.audioLanguages, rule), original: this.context.original, choice })
       if (wanted && wanted.id !== audioId) {
         void this.selectAudio(wanted.id, false)
         heard = wanted
       }
     }
-    if (this.manual.subtitles || subtitles.length === 0) return
+    if (this.manual.subtitles) return
     const audioLanguage = (heard && trackLanguage(heard)) ?? releaseLanguage(this.source?.languages)
-    const pick = pickSubtitle(subtitles, { audioLanguage, preferences: settings, choice })
+    const decision = decideSubtitle(subtitles, { audioLanguage, preferences: { subtitleLanguages: settings.subtitleLanguages, subtitleMode: settings.subtitleMode, subtitleType: options.type }, choice, anime: rule })
+    const pick = decision.kind === 'track' ? decision.track : decision.kind === 'search' ? decision.fallback : null
     if ((pick?.id ?? null) !== this.state.subtitleId) void this.selectSubtitle(pick?.id ?? null, false)
+    // The file has none of the subtitles Settings ask for: look online, once the tracks have settled.
+    if (decision.kind === 'search') this.scheduleAutoSearch(decision.languages)
+    else this.cancelAutoSearch()
   }
 
   // MARK: Transport
@@ -383,6 +462,7 @@ export class PlayerController {
 
   async selectSubtitle(id: string | null, remember = true) {
     const token = ++this.subtitleToken
+    this.stopAss()
     const previous = this.state.subtitleTrack
     if (previous && ownTracks.has(previous)) previous.mode = 'disabled'
     const info = id ? this.state.subtitles.find((t) => t.id === id) : undefined
@@ -401,6 +481,9 @@ export class PlayerController {
       if (id.startsWith('ext:')) {
         await this.engine?.selectSubtitle(null)
         track = await this.loadExternal(id)
+      } else if (id.startsWith('dl:')) {
+        await this.engine?.selectSubtitle(null)
+        track = this.online.get(id)?.track ?? null
       } else {
         track = (await this.engine?.selectSubtitle(id.slice(3))) ?? null
       }
@@ -414,6 +497,7 @@ export class PlayerController {
     if (token !== this.subtitleToken) return
     if (track) track.mode = 'hidden'
     this.set({ subtitleTrack: track })
+    void this.showStyled(id, token)
   }
 
   /** C: subtitles off, or back on with the last ones chosen (else ones in the viewer's languages). */
@@ -435,6 +519,128 @@ export class PlayerController {
     this.flash('subtitles', pick.label)
   }
 
+  // MARK: Online subtitles
+
+  /** Keep Original ASS Styling: an ASS track is drawn by libass (ass.ts, loaded now and not before) instead of by the
+   *  overlay, so its colours, sizes and placement are the author's. The overlay shows the plain lines until libass is
+   *  ready, then steps aside; if libass can't run, they stay. */
+  private async showStyled(id: string, token: number) {
+    const script = this.scripts.get(id)
+    const video = this.video
+    if (!script || !video || !normaliseSubtitleOptions(settingsStore.get().subtitleOptions).keepASSStyling) return
+    try {
+      const { startAss } = await import('./ass')
+      const handle = await startAss(video, script)
+      if (token !== this.subtitleToken) {
+        handle.destroy()
+        return
+      }
+      this.ass = handle
+      this.set({ subtitleTrack: null })
+    } catch {
+      if (token === this.subtitleToken) this.flash('subtitles', 'Couldn’t draw the original styling')
+    }
+  }
+
+  private stopAss() {
+    this.ass?.destroy()
+    this.ass = null
+  }
+
+  /** What a search for this title would ask, or why it can't be made: the title isn't known yet, or no service has a key. */
+  subtitleSearchPlan(languages?: string[]): SubtitleSearchPlan {
+    const title = this.title
+    if (!title) return { problem: 'title' }
+    const settings = settingsStore.get()
+    const options = normaliseSubtitleOptions(settings.subtitleOptions)
+    const credentials = credentialsOf(settings)
+    const enabled = usableProviders(credentials, options.providers)
+    if (enabled.length === 0) return { problem: 'services' }
+    const mine = languages ?? settings.subtitleLanguages
+    return {
+      query: { type: title.type, tmdbId: title.tmdbId, imdbId: title.imdbId, season: title.season, episode: title.episode, languages: mine.length ? mine : [navigator.language.slice(0, 2).toLowerCase()] },
+      credentials,
+      enabled,
+      preferSDH: options.type === 'sdh',
+    }
+  }
+
+  /** Asks every service that has a key. The last answer is kept, so reopening the page is instant. */
+  async searchSubtitles(plan: Extract<SubtitleSearchPlan, { query: SubtitleQuery }>, signal?: AbortSignal, onProgress?: (outcome: ProviderOutcome) => void): Promise<SearchOutcome> {
+    const key = JSON.stringify([plan.query, plan.enabled, plan.preferSDH, plan.credentials])
+    if (this.lastSearch?.key === key) return this.lastSearch.outcome
+    const { searchSubtitles } = await import('../../lib/subtitles/search')
+    const outcome = searchSubtitles(plan.query, plan.credentials, { enabled: plan.enabled, preferSDH: plan.preferSDH, signal, onProgress })
+    this.lastSearch = { key, outcome }
+    // A search that was cancelled or failed outright isn't worth keeping.
+    outcome.catch(() => {
+      if (this.lastSearch?.key === key) this.lastSearch = null
+    })
+    return outcome
+  }
+
+  /** Downloads a result and makes it a track of its own, then shows it. `remember` is false for the automatic search, so
+   *  a subtitle the viewer didn't ask for isn't remembered as their choice. */
+  async addSubtitle(result: SubtitleResult, remember = true, signal?: AbortSignal): Promise<void> {
+    const video = this.video
+    if (!video) throw new SubtitleError('The player isn’t ready yet. Try again in a moment.')
+    const known = [...this.online.values()].find((o) => o.result.id === result.id)
+    if (known) return this.selectSubtitle(known.info.id, remember)
+    const [{ downloadSubtitle }, { planFor, learn }] = await Promise.all([import('../../lib/subtitles/download'), import('../../lib/livetv/access')])
+    const title = this.title
+    const episode = title?.season !== undefined && title.episode !== undefined ? { season: title.season, episode: title.episode } : undefined
+    const got = await downloadSubtitle(result, credentialsOf(settingsStore.get()), { plan: planFor, learn, episode, signal })
+    const cues = parseSubtitles(got.text, got.format as SubtitleFormat)
+    if (cues.length === 0) throw new SubtitleError('That subtitle file has no lines Flow can read. Choose another.')
+    const id = `dl:${++this.onlineCount}`
+    const label = result.hearingImpaired ? `${result.languageName} (SDH)` : result.languageName
+    const track = video.addTextTrack('subtitles', label, result.language)
+    ownTracks.add(track)
+    track.mode = 'hidden'
+    for (const cue of cues) track.addCue(new VTTCue(cue.start, cue.end, cue.text))
+    if (got.format === 'ass') this.scripts.set(id, got.text)
+    this.online.set(id, { info: { id, label, language: result.language, online: true, hearingImpaired: result.hearingImpaired, note: `Downloaded from ${providerNames[result.provider]}` }, result, track })
+    // Picked by hand, so the list rebuilding below mustn't give the choice back to Settings.
+    if (remember) this.manual.subtitles = true
+    this.refreshTracks()
+    await this.selectSubtitle(id, remember)
+  }
+
+  /** The id of the track a downloaded result became, when it has become one. */
+  trackForResult = (resultId: string): string | undefined => [...this.online.values()].find((o) => o.result.id === resultId)?.info.id
+
+  /** Waits for the stream's tracks to settle, then fetches what Settings ask for and the file lacks. */
+  private scheduleAutoSearch(languages: string[]) {
+    const key = languages.join(',')
+    if (this.autoSearch.key === key) return
+    clearTimeout(this.autoSearch.timer)
+    this.autoSearch = { key, ran: false, timer: window.setTimeout(() => void this.runAutoSearch(languages), 2500) }
+  }
+
+  private cancelAutoSearch() {
+    clearTimeout(this.autoSearch.timer)
+    if (!this.autoSearch.ran) this.autoSearch.key = ''
+  }
+
+  private async runAutoSearch(languages: string[]) {
+    this.autoSearch.ran = true
+    const plan = this.subtitleSearchPlan(languages)
+    if ('problem' in plan) return
+    const token = this.subtitleToken
+    try {
+      const { results } = await this.searchSubtitles(plan)
+      const { languageKey } = await import('../../lib/subtitles/names')
+      const wanted = new Set(languages.map(languageKey))
+      const best = results.find((r) => wanted.has(languageKey(r.language)))
+      // The viewer may have chosen something while this ran; and a forced-only track shown meanwhile may be replaced.
+      const showing = this.state.subtitles.find((t) => t.id === this.state.subtitleId)
+      if (!best || this.manual.subtitles || token !== this.subtitleToken || (showing && !isForced(showing))) return
+      await this.addSubtitle(best, false)
+    } catch {
+      // Unasked for, so unreported: the search page says what went wrong when the viewer opens it.
+    }
+  }
+
   /** An external SRT, WebVTT or ASS file, read into cues on a hidden text track of our own. */
   private async loadExternal(id: string): Promise<TextTrack | null> {
     const cached = this.external.get(id)
@@ -444,7 +650,9 @@ export class PlayerController {
     if (!sub || !video) return null
     const response = await fetch(sub.url)
     if (!response.ok) throw new Error(`Subtitles answered ${response.status}`)
-    const cues = parseSubtitles(await response.text(), sub.format)
+    const text = await response.text()
+    if (sub.format === 'ass') this.scripts.set(id, text)
+    const cues = parseSubtitles(text, sub.format)
     const track = video.addTextTrack('subtitles', sub.label, sub.language ?? '')
     ownTracks.add(track)
     track.mode = 'hidden'

@@ -3,8 +3,9 @@
    then the most downloaded. A service that fails doesn't spoil the others: it is reported beside them. */
 
 import { languageKey } from './names'
+import { usableProviders } from './options'
 import { providers, type Io } from './providers'
-import { providerIds, providerNames, SubtitleError, type Credentials, type Fetch, type ProviderId, type SubtitleFailure, type SubtitleQuery, type SubtitleResult } from './types'
+import { providerNames, SubtitleError, type Credentials, type Fetch, type ProviderId, type SubtitleFailure, type SubtitleQuery, type SubtitleResult } from './types'
 
 export interface ProviderOutcome {
   provider: ProviderId
@@ -17,11 +18,6 @@ export interface ProviderOutcome {
 export interface SearchOutcome {
   results: SubtitleResult[]
   outcomes: ProviderOutcome[]
-}
-
-/** The services the viewer turned on and has what they need (a key, or for the keyless ones nothing). */
-export function usableProviders(credentials: Credentials, enabled: readonly ProviderId[] = providerIds): ProviderId[] {
-  return providerIds.filter((id) => enabled.includes(id) && providers[id].ready(credentials))
 }
 
 /** Preferred languages first (in the order given), then the preferred kind, then the most downloaded. */
@@ -68,6 +64,8 @@ export interface SearchOptions {
   /** Prefer SDH subtitles over standard ones (Settings → Subtitle Type). */
   preferSDH?: boolean
   timeoutMs?: number
+  /** Told as each service answers or fails, so a screen can show who is still being waited for. */
+  onProgress?: (outcome: ProviderOutcome) => void
 }
 
 export async function searchSubtitles(query: SubtitleQuery, credentials: Credentials, options: SearchOptions = {}): Promise<SearchOutcome> {
@@ -75,16 +73,20 @@ export async function searchSubtitles(query: SubtitleQuery, credentials: Credent
   const asked = usableProviders(credentials, options.enabled)
   const outcomes = await Promise.all(
     asked.map(async (id): Promise<{ outcome: ProviderOutcome; results: SubtitleResult[] }> => {
+      const done = (outcome: ProviderOutcome, results: SubtitleResult[]) => {
+        options.onProgress?.(outcome)
+        return { outcome, results }
+      }
       const known = refused.get(id)
-      if (known) return { outcome: { provider: id, count: 0, error: known, kind: 'blocked' }, results: [] }
+      if (known) return done({ provider: id, count: 0, error: known, kind: 'blocked' }, [])
       try {
         const results = await within(providers[id].search(query, credentials, io), options.timeoutMs ?? 15000)
-        return { outcome: { provider: id, count: results.length }, results }
+        return done({ provider: id, count: results.length }, results)
       } catch (error) {
         if (options.signal?.aborted) throw error
         const e = error instanceof SubtitleError ? error : new SubtitleError(`${providerNames[id]} ${(error as Error)?.message ?? 'didn’t answer'}.`, 'network')
         if (e.kind === 'blocked') refused.set(id, e.message)
-        return { outcome: { provider: id, count: 0, error: e.message, kind: e.kind }, results: [] }
+        return done({ provider: id, count: 0, error: e.message, kind: e.kind }, [])
       }
     }),
   )
