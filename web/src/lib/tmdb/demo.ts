@@ -310,9 +310,25 @@ export function seededLibrary() {
     history: [
       { key: key(872585), item: it(872585), watchedAt: now - 2 * 86400e3 },
       { key: key(155), item: it(155), watchedAt: now - 5 * 86400e3 },
+      ...followed.map(([id, days]) => ({ key: key(id), item: it(id), episode: { season: 1, episode: 1 }, watchedAt: now - days * 86400e3 })),
     ],
-    watchedEpisodes: {},
+    watchedEpisodes,
   }
+}
+
+/** The series the sample viewer has been watching: how far through each (whole seasons, then episodes of the
+ *  next), so Up Next has next episodes and episodes left, Upcoming has caught-up shows, and posters have
+ *  something to say about what is watched. Breaking Bad and The Last of Us are part way through an episode. */
+const progressThrough: [id: number, wholeSeasons: number, then: number][] = [
+  [1396, 2, 6], [100088, 1, 2], [66732, 3, 3], [94997, 1, 4], [119051, 1, 6], [76331, 1, 3],
+]
+const followed: [id: number, daysAgo: number][] = [[66732, 6], [94997, 7], [119051, 8], [76331, 9]]
+const episodesIn = (id: number, n: number) => 8 + ((n + id) % 5)
+const watchedEpisodes: Record<string, number> = {}
+for (const [id, whole, then] of progressThrough) {
+  const at = Date.now() - 3 * 86400e3
+  for (let sn = 1; sn <= whole; sn++) for (let e = 1; e <= episodesIn(id, sn); e++) watchedEpisodes[`show:${id}:s${sn}e${e}`] = at
+  for (let e = 1; e <= then; e++) watchedEpisodes[`show:${id}:s${whole + 1}e${e}`] = at
 }
 
 /** The release the sample add-on offers as its 4K row, remembered as played for the titles in progress, so

@@ -55,7 +55,7 @@ describe('the lead’s titles', () => {
   const item = (id: number, backdrop = '/b.jpg'): MediaItem => ({ type: 'movie', id, title: `T${id}`, overview: '', genres: [], backdrop: backdrop || undefined })
 
   it('alternates two lists', () => {
-    expect(interleave([1, 2, 3], ['a'])).toEqual([1, 'a', 2, 3])
+    expect(interleave<number | string>([1, 2, 3], ['a'])).toEqual([1, 'a', 2, 3])
   })
 
   it('takes the primary source, mixes in the secondary, and keeps each title once', () => {
