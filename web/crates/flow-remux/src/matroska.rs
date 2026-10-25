@@ -170,6 +170,8 @@ pub struct HeaderReader {
     pub error: Option<String>,
     /// The raw Cues element, kept so the worker can cache it.
     pub cues_raw: Vec<u8>,
+    /// Play Dolby Vision as its HDR10 picture; set before the header is read (see `codecs::hdr10_only`).
+    pub hdr10_only: bool,
 }
 
 /// What the reader needs next.
@@ -192,6 +194,7 @@ impl HeaderReader {
             last_request: None,
             error: None,
             cues_raw: Vec::new(),
+            hdr10_only: false,
         }
     }
 
@@ -323,7 +326,12 @@ impl HeaderReader {
                 self.seek_positions.extend(entries);
             }
             id::INFO => parse_info(b, e, &mut self.header).map_err(|_| damaged)?,
-            id::TRACKS => self.header.tracks = parse_tracks(b, e).map_err(|_| damaged)?,
+            id::TRACKS => {
+                self.header.tracks = parse_tracks(b, e).map_err(|_| damaged)?;
+                if self.hdr10_only {
+                    self.header.tracks.iter_mut().for_each(crate::codecs::hdr10_only);
+                }
+            }
             id::CUES => {
                 if let Some(end) = e.end_within(b.len()) {
                     self.cues_raw = b[e.start..end].to_vec();

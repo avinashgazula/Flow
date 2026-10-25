@@ -347,6 +347,8 @@ export async function demoTmdb(rawPath: string, query: Record<string, unknown>):
       if (parts.length === 2) return detail(t)
       if (parts[2] === 'season') return season(t, Number(parts[3] ?? 1))
       if (parts[2] === 'reviews') return { page: 1, total_pages: 1, results: sampleReviews.map(({ rating, ...r }) => ({ ...r, author_details: { rating: rating ?? null } })) }
+      // Every third film has a scene after its credits and every third a scene during them, so both notes can be seen.
+      if (parts[2] === 'keywords') return { keywords: t.id % 3 === 2 ? [{ id: 1, name: 'aftercreditsstinger' }] : t.id % 3 === 1 ? [{ id: 2, name: 'duringcreditsstinger' }] : [] }
       if (parts[2] === 'external_ids') return { imdb_id: t.imdb, tvdb_id: t.id + 70000 }
       throw new Error('Not in the sample data')
     }

@@ -56,7 +56,7 @@ export function StylePage() {
       <Field label="Colour">
         <Swatches label="Subtitle colour" options={swatches} value={style.color} onChange={(v) => updateSubtitleStyle({ color: v })} />
       </Field>
-      <Field label="Edge" htmlFor="style-edge">
+      <Field label="Text Edge" htmlFor="style-edge">
         <Pick id="style-edge" label="Subtitle text edge" value={style.edgeStyle} options={subtitleEdges} onChange={(v) => updateSubtitleStyle({ edgeStyle: v })} />
       </Field>
       <Field label="Background" htmlFor="style-background">

@@ -126,8 +126,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   color: var(--paper);
   transition: background-color var(--dur-state) ease;
 }
-.field:hover { background: var(--base-4); }
-.field:focus-visible { background: var(--base-3); outline-offset: 2px; }
+.field:hover { background-color: var(--base-4); }
+.field:focus-visible { background-color: var(--base-3); outline-offset: 2px; }
 
 /* A filter or toggle in a row of choices. Current is a lighter base and paper text, never yellow. */
 .chip {

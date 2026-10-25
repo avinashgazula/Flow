@@ -2,7 +2,8 @@ import { isLiveTVSettings } from '../../lib/livetv/validate'
 import { lastSourceStore } from '../../lib/sources/lastSource'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { isSourceOrdering, normaliseSourceOrdering } from '../../lib/sources/sourceSettings'
-import { defaultSettings, settingsStore, type Settings } from '../../lib/store/settings'
+import { defaultSettings, settingsStore, type ExternalPlayerId, type Settings } from '../../lib/store/settings'
+import { externalPlayerIds } from '../player/externalPlayers'
 import { libraryStore, type Library } from '../../lib/store/library'
 import { isTabOrder } from '../../lib/tabs'
 import { isSubtitleStyle, normaliseSubtitleStyle } from '../../lib/store/subtitleStyle'
@@ -44,11 +45,17 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   subtitleStyle: isSubtitleStyle,
   autoplayNext: (v) => typeof v === 'boolean',
   stillWatchingAfterEpisodes: (v) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 10,
+  upNextWaitsForEnd: (v) => typeof v === 'boolean',
   skipIntro: isSkipBehaviour,
   skipRecap: isSkipBehaviour,
   skipCredits: isSkipBehaviour,
   introDBKey: (v) => typeof v === 'string',
   publicMetaDBKey: (v) => typeof v === 'string',
+  postCreditsAlert: (v) => typeof v === 'boolean',
+  becauseYouWatched: (v) => typeof v === 'boolean',
+  neverUseDolbyVision: (v) => typeof v === 'boolean',
+  volumeBoostDB: (v) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 12,
+  externalPlayer: (v) => externalPlayerIds.includes(v as ExternalPlayerId),
   preferredQuality: (v) => ['2160p', '1080p', '720p', 'any'].includes(v as string),
   rememberLastSource: (v) => typeof v === 'boolean',
   // Fields a backup lacks take their defaults, so a file from before this setting (or from the apps) still imports.
