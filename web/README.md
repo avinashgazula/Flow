@@ -124,6 +124,19 @@ source that plays, keeping the position, and "Keep Watching" is remembered per t
 Options → Playback Info) for a card with the picture size, codec, engine, dropped frames, buffer and
 download rate.
 
+## Ordering and showing sources
+
+Settings → Sources has the apps' source settings (`lib/sources/sourceSettings.ts`, `order.ts`, with the apps' test
+cases in `order.test.ts`): category order and each category's provider order, which always apply; with Use Custom
+Source Ordering on, sort rules (cached, resolution, quality, size, seeders, HDR, language, each best first or lowest
+first), filters (CAM and screeners, uncached, minimum resolution, size bounds, required and excluded keywords,
+excluded codecs) and a result cap; and Source Appearance (add-on text or a parsed summary, which title a row leads
+with, badges, file size, compact rows, with a live preview). The scoring in `rank.ts` still runs first and decides
+ties, so the smooth-decode, HDR and audio-language ranking holds wherever a setting doesn't say otherwise; a source
+this browser can't play, or is known to stutter on, goes last whatever the rules. The picker's chips (resolution,
+provider) are session-only and sit on top of the saved filters, and the picker says how many sources they hid.
+The settings are stored as `sources` and are left out of the defaults on purpose, so nothing here loads with the app.
+
 ## Skipping and binge watching
 
 The player has what the apps have for watching a series (`features/player/segments.ts`, `segmentSources.ts`,

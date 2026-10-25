@@ -117,6 +117,9 @@ public enum TraktOAuth {
     /// What the device-code sign-in on Apple TV used before, and still what older tokens were issued against.
     public static let legacyRedirectURI = "urn:ietf:wg:oauth:2.0:oob"
 
+    /// What Apple TV says when Trakt won't finish the code sign-in, which PKCE-only Trakt apps can't do.
+    public static let deviceSignInRefused = "Trakt didn't finish the Apple TV sign-in. Sign in on your iPhone, iPad, Mac or the website and turn on Sync to bring it here."
+
     public static func authorizeURL(clientID: String, pkce: PKCE, state: String) -> URL {
         var components = URLComponents(string: "https://trakt.tv/oauth/authorize")!
         components.queryItems = [

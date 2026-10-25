@@ -17,6 +17,21 @@ describe('settings backup', () => {
     }
   })
 
+  it('imports source ordering, filling in what a file lacks and skipping what is wrong', () => {
+    const backup = (sources: unknown) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { sources } }))
+    const good = backup({ useCustomOrdering: true, sortRules: [{ key: 'size', descending: false }], filters: { maxSizeGB: 10 }, resultCap: 20, appearance: { badgePack: 'colored' } })
+    expect(good.ok && good.skipped).toEqual([])
+    if (good.ok) {
+      expect(good.settings.sources).toMatchObject({ useCustomOrdering: true, resultCap: 20, sortRules: [{ key: 'size', descending: false }], appearance: { badges: 'all', showSize: true } })
+      expect(good.settings.sources!.filters).toMatchObject({ maxSizeGB: 10, excludeCinemaCaptures: true, excludedKeywords: [] })
+      expect(good.settings.sources!.categoryOrder).toEqual(['mediaServers', 'webDAV', 'iptv', 'addons'])
+    }
+    for (const bad of [{ useCustomOrdering: 'yes' }, { sortRules: [{ key: 'nonsense' }] }, { filters: { excludedKeywords: [1] } }, { resultCap: -5 }, { categoryOrder: ['plugins'] }, { appearance: { titleDisplay: 'poem' } }, 'text']) {
+      const r = backup(bad)
+      expect(r.ok === false || r.skipped.includes('sources')).toBe(true)
+    }
+  })
+
   it('rejects files that are not backups', () => {
     expect(parseBackup('nope').ok).toBe(false)
     expect(parseBackup('{"hello":1}').ok).toBe(false)

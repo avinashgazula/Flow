@@ -12,6 +12,7 @@ export function FilmCan({ search, best, lastPlayed, onOpen }: { search: SearchUp
   const { sources, providers, finished } = search
   const noProviders = finished && providers.length === 0
   const failed = providers.filter((p) => p.state === 'failed').length
+  const hidden = search.hidden ?? 0
   const waiting = !finished && sources.length === 0
   const nothingPlays = finished && sources.length > 0 && !best
   const facts = best ? playFacts(best) : undefined
@@ -66,12 +67,14 @@ export function FilmCan({ search, best, lastPlayed, onOpen }: { search: SearchUp
             <span className={s.quiet}>Looking…</span>
           ) : sources.length === 0 ? (
             <button type="button" className={s.open} onClick={onOpen}>
-              None found{failed ? ` · ${failed} didn’t answer` : ''}
+              {hidden > 0 ? `None shown · ${hidden} hidden by your settings` : 'None found'}
+              {failed ? ` · ${failed} didn’t answer` : ''}
               <Icon name="chevronRight" size={14} strokeWidth={2.6} />
             </button>
           ) : (
             <button type="button" className={s.open} onClick={onOpen} aria-label={`${sources.length} sources from ${providers.filter((p) => p.state === 'done' && p.count > 0).map((p) => p.name).join(' and ')}. Choose one.`}>
               {sourcesSummary(sources.length, providers)}
+              {hidden > 0 && ` · ${hidden} hidden`}
               {!finished && ' · still looking'}
               {failed > 0 && ` · ${failed} didn’t answer`}
               <Icon name="chevronRight" size={14} strokeWidth={2.6} />
