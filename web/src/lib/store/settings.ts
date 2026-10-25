@@ -1,5 +1,6 @@
 import { defaultLiveTV, type LiveTVSettings } from '../livetv/types'
 import type { SourceOrdering } from '../sources/sourceSettings'
+import type { SubtitleOptions } from '../subtitles/options'
 import type { AddonManifest } from '../sources/types'
 import { defaultTabOrder } from '../tabs'
 import { createStore, useStore } from './createStore'
@@ -34,8 +35,9 @@ export interface ServerConfig {
 export type FontChoice = 'system' | 'inter' | 'geist' | 'manrope' | 'ioskeley'
 
 /** When subtitles turn on by themselves: never, only when the audio isn't in the viewer's own
- *  language (the first subtitle language), or for every title. */
-export type SubtitleMode = 'off' | 'foreign' | 'always'
+ *  language (the first subtitle language), for every title, or only the forced ones the file carries.
+ *  As FlowKit's AutoSubtitleMode (automatic, always, forcedOnly, never). */
+export type SubtitleMode = 'off' | 'foreign' | 'always' | 'forced'
 
 /** What happens when an intro, recap or the credits begins: a Skip button, skipping by itself, or nothing.
  *  As FlowKit's SkipBehaviour. */
@@ -87,6 +89,19 @@ export interface Settings {
    *  mark. Named as in Flow Sync (`introDBAPIKey`, `publicMetaDBAPIKey`). Empty means not asked. */
   introDBKey: string
   publicMetaDBKey: string
+  /** The subtitle services' keys and logins (Settings → Playback), named as in Flow Sync (`openSubtitlesAPIKey`,
+   *  `openSubtitlesUsername`, `openSubtitlesPassword`, `subdlAPIKey`, `subSourceAPIKey`). Absent until set, which keeps
+   *  them out of the code that loads first; the website sends no login to OpenSubtitles (see lib/subtitles/providers.ts). */
+  openSubtitlesKey?: string
+  openSubtitlesUsername?: string
+  openSubtitlesPassword?: string
+  subdlKey?: string
+  subSourceKey?: string
+  /** Wyzie asks for a free key now. The apps have no field for it, so it stays on this device. */
+  wyzieKey?: string
+  /** Subtitle Type, Anime Audio, Keep Original ASS Styling and which services are on. Absent until the viewer
+   *  changes something; read it through `normaliseSubtitleOptions`. */
+  subtitleOptions?: SubtitleOptions
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
   /** The picker offers the source a title was last played from first. */
   rememberLastSource: boolean

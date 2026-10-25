@@ -1,0 +1,41 @@
+{
+  "status": true,
+  "results": [{ "sd_id": 5231176, "type": "movie", "name": "Dune: Part Two", "imdb_id": "tt15239678", "tmdb_id": 693134, "first_air_date": null, "release_date": "2024-02-27", "year": 2024 }],
+  "subtitles": [
+    {
+      "release_name": "Dune.Part.Two.2024.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX",
+      "name": "SUBDL::Dune.Part.Two.2024.1080p.WEB-DL.DDP5.1.Atmos.H.264-FLUX",
+      "lang": "english",
+      "author": "someone",
+      "url": "/subtitle/3417622-3417622.zip",
+      "subtitlePage": "/s/info/3417622",
+      "season": 0,
+      "episode": 0,
+      "language": "EN",
+      "hi": false,
+      "episode_from": null,
+      "episode_end": null,
+      "full_season": false
+    },
+    {
+      "release_name": "Dune.Part.Two.2024.2160p.UHD.BluRay.x265",
+      "name": "SUBDL::Dune.Part.Two.2024.2160p.UHD.BluRay.x265",
+      "lang": "english",
+      "url": "/subtitle/3417700-3417700.zip",
+      "language": "EN",
+      "hi": true
+    },
+    {
+      "release_name": "Dune.Part.Two.2024.1080p.WEB-DL",
+      "lang": "spanish",
+      "url": "/subtitle/3417811-3417811.zip",
+      "language": "ES",
+      "hi": false
+    },
+    {
+      "release_name": "No download path",
+      "lang": "english",
+      "language": "EN"
+    }
+  ]
+}

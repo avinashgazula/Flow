@@ -176,6 +176,27 @@ describe('settings backup', () => {
     })
   })
 
+  describe('subtitle services and options', () => {
+    const parse = (settings: unknown) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings }))
+
+    it('start with no keys and no saved options, so nothing of them loads with the first page', () => {
+      expect(defaultSettings).not.toHaveProperty('openSubtitlesKey')
+      expect(defaultSettings).not.toHaveProperty('subtitleOptions')
+    })
+
+    it('keep the keys, logins and Forced Only', () => {
+      const r = parse({ subtitleMode: 'forced', openSubtitlesKey: 'os', openSubtitlesUsername: 'me', openSubtitlesPassword: 'pw', subdlKey: 'sd', subSourceKey: 'ss', wyzieKey: 'wz' })
+      expect(r.ok && r.settings).toEqual({ subtitleMode: 'forced', openSubtitlesKey: 'os', openSubtitlesUsername: 'me', openSubtitlesPassword: 'pw', subdlKey: 'sd', subSourceKey: 'ss', wyzieKey: 'wz' })
+    })
+
+    it('fill the options a backup lacks and skip ones that make no sense', () => {
+      const r = parse({ subtitleOptions: { type: 'sdh', providers: ['subdl'] } })
+      expect(r.ok && r.settings.subtitleOptions).toEqual({ type: 'sdh', animeAudio: 'noPreference', keepASSStyling: false, providers: ['subdl'] })
+      const bad = parse({ autoplayNext: true, subtitleOptions: { type: 'loud' }, subdlKey: 4 })
+      expect(bad.ok && bad.skipped.sort()).toEqual(['subdlKey', 'subtitleOptions'])
+    })
+  })
+
   it('carries the Trakt Client ID and sign-in, and skips a sign-in without an access token', () => {
     const token = { accessToken: 'a', refreshToken: 'r', expiresAt: '2026-11-01T00:00:00Z', redirectURI: 'https://flow.example.com/settings/trakt-callback' }
     const parse = (traktAccount: unknown) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { traktClientID: 'cid', simklClientID: '', traktAccount } }))
