@@ -62,6 +62,15 @@ export const q = {
   season: (showId: number, season: number) =>
     queryOptions({ queryKey: [...scope(), 'season', showId, season], queryFn: () => api.season(showId, season), staleTime: day }),
 
+  /** TMDB's reviews with Trakt's most-liked comments, newest first. The code is a chunk of its own. */
+  reviews: (type: MediaType, id: number, imdb?: string) =>
+    queryOptions({
+      // Trakt's part needs the Client ID, so the answer is a different one with and without it.
+      queryKey: [...scope(), 'reviews', type, id, !!settingsStore.get().traktClientID.trim()],
+      queryFn: () => import('./reviews').then((m) => m.fetchReviews(type, id, imdb)),
+      staleTime: day,
+    }),
+
   person: (id: number) => queryOptions({ queryKey: [...scope(), 'person', id], queryFn: () => api.person(id).then((p) => (seed({ results: p.credits }), p)), staleTime: day }),
 }
 

@@ -1,6 +1,5 @@
 import { settingsStore } from '../store/settings'
-import { cleanReview } from '../reviewText'
-import type { CastMember, Episode, Genre, MediaDetail, MediaItem, MediaType, Page, Person, Provider, Review, SearchResult, Video } from './types'
+import type { Episode, Genre, MediaDetail, MediaItem, MediaType, Page, Person, SearchResult } from './types'
 import { tmdbPath } from './types'
 
 /* TMDB v3, as FlowKit's TMDBClient: either a v3 API key or a v4 read-access token. Responses are
@@ -64,17 +63,13 @@ export function item(raw: any, fallbackType?: MediaType): MediaItem | undefined 
   }
 }
 
-const items = (list: any[] | undefined, type?: MediaType): MediaItem[] => (list ?? []).map((r) => item(r, type)).filter((x): x is MediaItem => !!x)
+export const items = (list: any[] | undefined, type?: MediaType): MediaItem[] => (list ?? []).map((r) => item(r, type)).filter((x): x is MediaItem => !!x)
 
 function page(raw: any, type?: MediaType): Page<MediaItem> {
   return { page: raw.page ?? 1, totalPages: Math.min(raw.total_pages ?? 1, 500), results: items(raw.results, type) }
 }
 
-function provider(raw: any): Provider {
-  return { id: raw.provider_id, name: raw.provider_name, logo: raw.logo_path ?? undefined }
-}
-
-function episode(raw: any): Episode {
+export function episode(raw: any): Episode {
   return {
     id: raw.id ?? raw.season_number * 1000 + raw.episode_number,
     season: raw.season_number,
@@ -86,82 +81,6 @@ function episode(raw: any): Episode {
     runtime: raw.runtime ?? undefined,
     rating: raw.vote_average || undefined,
   }
-}
-
-function bestLogo(logos: any[] | undefined, language: string): string | undefined {
-  if (!logos?.length) return undefined
-  const score = (l: any) => (l.iso_639_1 === language ? 3 : l.iso_639_1 === 'en' ? 2 : l.iso_639_1 == null ? 1 : 0) + (l.vote_average ?? 0) / 100
-  return [...logos].sort((a, b) => score(b) - score(a))[0]?.file_path
-}
-
-function certification(raw: any, type: MediaType, region: string): string | undefined {
-  if (type === 'movie') {
-    const pick = (r: any) => r?.release_dates?.map((d: any) => d.certification).find((c: string) => c)
-    const results: any[] = raw.release_dates?.results ?? []
-    return pick(results.find((r) => r.iso_3166_1 === region)) ?? pick(results.find((r) => r.iso_3166_1 === 'US'))
-  }
-  const results: any[] = raw.content_ratings?.results ?? []
-  return (results.find((r) => r.iso_3166_1 === region) ?? results.find((r) => r.iso_3166_1 === 'US'))?.rating || undefined
-}
-
-/** Every YouTube video, best first, as FlowKit's `trailers`: official trailers, trailers, official teasers,
- *  teasers, then clips and the rest. The sort is stable, so TMDB's own order breaks ties. */
-export function trailers(raw: any): Video[] {
-  const rank = (v: Video) => (v.type === 'Trailer' ? 0 : v.type === 'Teaser' ? 1 : 2) * 2 + (v.official ? 0 : 1)
-  return (raw.videos?.results ?? [])
-    .filter((v: any) => typeof v.site === 'string' && v.site.toLowerCase() === 'youtube' && v.key)
-    .map((v: any): Video => ({ key: v.key, name: v.name || v.type || 'Video', site: v.site, type: v.type, official: !!v.official }))
-    .sort((a: Video, b: Video) => rank(a) - rank(b))
-    .slice(0, 12)
-}
-
-/** Providers in the region's own display order, as FlowKit sorts them. */
-function providersIn(list: any[] | undefined): Provider[] {
-  return [...(list ?? [])].sort((a, b) => (a.display_priority ?? 999) - (b.display_priority ?? 999)).map(provider)
-}
-
-function review(raw: any): Review | undefined {
-  const text = cleanReview(typeof raw.content === 'string' ? raw.content : '')
-  if (!text) return undefined
-  const rating = raw.author_details?.rating
-  const at = Date.parse(raw.created_at ?? '')
-  return {
-    id: `tmdb:${raw.id}`,
-    source: 'tmdb',
-    author: (typeof raw.author === 'string' && raw.author.trim()) || 'Anonymous',
-    text,
-    ...(typeof rating === 'number' ? { rating: Math.round(rating) } : {}),
-    ...(Number.isFinite(at) ? { date: at } : {}),
-    spoiler: false,
-  }
-}
-
-/** Where it was made: a show names its countries, a film lists its production countries. */
-function countries(raw: any): string[] {
-  const list: string[] = raw.origin_country ?? (raw.production_countries ?? []).map((c: any) => c.iso_3166_1)
-  return list.filter(Boolean)
-}
-
-function credits(raw: any, type: MediaType): { cast: CastMember[]; crew: CastMember[] } {
-  const castRaw: any[] = type === 'show' && raw.aggregate_credits?.cast?.length ? raw.aggregate_credits.cast : raw.credits?.cast ?? []
-  const cast = castRaw.slice(0, 200).map((c) => ({
-    id: c.id,
-    name: c.name,
-    role: c.character ?? c.roles?.[0]?.character ?? '',
-    profile: c.profile_path ?? undefined,
-  }))
-  const key = new Set(['Director', 'Creator', 'Screenplay', 'Writer', 'Original Music Composer', 'Director of Photography', 'Producer'])
-  const crewRaw: any[] = raw.credits?.crew ?? []
-  const creators: CastMember[] = (raw.created_by ?? []).map((c: any) => ({ id: c.id, name: c.name, role: 'Creator', profile: c.profile_path ?? undefined }))
-  const seen = new Set<number>(creators.map((c) => c.id))
-  const crew = [
-    ...creators,
-    ...crewRaw
-      .filter((c) => key.has(c.job))
-      .filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)))
-      .map((c) => ({ id: c.id, name: c.name, role: c.job, profile: c.profile_path ?? undefined })),
-  ].slice(0, 12)
-  return { cast, crew }
 }
 
 // MARK: Endpoints
@@ -201,61 +120,14 @@ export const api = {
 
   detail: async (type: MediaType, id: number): Promise<MediaDetail> => {
     const s = settingsStore.get()
-    const lang = s.language.slice(0, 2)
     const append =
       type === 'movie'
         ? 'credits,videos,recommendations,similar,release_dates,external_ids,images,watch/providers'
         : 'aggregate_credits,credits,videos,recommendations,similar,content_ratings,external_ids,images,watch/providers'
-    const raw = await tmdb(`/${tmdbPath(type)}/${id}`, { append_to_response: append, include_image_language: `${lang},en,null` })
-    const base = item({ ...raw, media_type: tmdbPath(type) }, type)!
-    // The viewer's own region only: another country's services would be a promise it can't keep.
-    const region = raw['watch/providers']?.results?.[s.region] ?? {}
-    const videos = trailers(raw)
-    const { cast, crew } = credits(raw, type)
-    return {
-      ...base,
-      genres: (raw.genres ?? []).map((g: Genre) => g.id),
-      genreNames: (raw.genres ?? []).map((g: Genre) => g.name),
-      tagline: raw.tagline || undefined,
-      status: raw.status,
-      runtime: raw.runtime || raw.episode_run_time?.[0] || undefined,
-      certification: certification(raw, type, s.region),
-      cast,
-      crew,
-      trailer: videos[0],
-      trailers: videos,
-      recommendations: items(raw.recommendations?.results, type),
-      similar: items(raw.similar?.results, type),
-      seasons: (raw.seasons ?? [])
-        .filter((x: any) => x.season_number > 0 || (raw.seasons ?? []).length === 1)
-        .map((x: any) => ({ number: x.season_number, name: x.name, episodeCount: x.episode_count, airDate: x.air_date ?? undefined, poster: x.poster_path ?? undefined })),
-      imdb: raw.imdb_id ?? raw.external_ids?.imdb_id ?? undefined,
-      tvdb: raw.external_ids?.tvdb_id ?? undefined,
-      logo: bestLogo(raw.images?.logos, lang),
-      providers: {
-        link: region.link,
-        stream: providersIn(region.flatrate),
-        // Free with ads counts as free, as in the apps.
-        free: providersIn([...(region.free ?? []), ...(region.ads ?? [])]),
-        rent: providersIn(region.rent),
-        buy: providersIn(region.buy),
-      },
-      nextEpisode: raw.next_episode_to_air ? episode(raw.next_episode_to_air) : undefined,
-      lastEpisode: raw.last_episode_to_air ? episode(raw.last_episode_to_air) : undefined,
-      networks: (raw.networks ?? []).map((n: any) => n.name),
-      voteCount: raw.vote_count,
-      collection: raw.belongs_to_collection ? { id: raw.belongs_to_collection.id, name: raw.belongs_to_collection.name } : undefined,
-      originCountries: countries(raw),
-      budget: raw.budget > 0 ? raw.budget : undefined,
-      revenue: raw.revenue > 0 ? raw.revenue : undefined,
-      productionCompanies: (raw.production_companies ?? []).map((c: any) => c.name).filter(Boolean),
-    }
-  },
-
-  /** Written reviews, in the order TMDB returns them. */
-  reviews: async (type: MediaType, id: number): Promise<Review[]> => {
-    const raw = await tmdb(`/${tmdbPath(type)}/${id}/reviews`)
-    return (raw.results ?? []).map(review).filter((r: Review | undefined): r is Review => !!r)
+    // Turning the answer into a title page's details is a chunk of its own, fetched alongside the request, so
+    // pages that never open a title don't carry it.
+    const [raw, { buildDetail }] = await Promise.all([tmdb(`/${tmdbPath(type)}/${id}`, { append_to_response: append, include_image_language: `${s.language.slice(0, 2)},en,null` }), import('./detail')])
+    return buildDetail(type, raw, s.language.slice(0, 2), s.region)
   },
 
   season: async (showId: number, season: number): Promise<Episode[]> => ((await tmdb(`/tv/${showId}/season/${season}`)).episodes ?? []).map(episode),

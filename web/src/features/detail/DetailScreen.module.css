@@ -12,8 +12,33 @@
 @media (min-width: 1000px) { .info { margin-top: 0; } }
 
 .meta { margin-top: var(--space-xs); font-size: var(--fs-small); line-height: 1.4; color: var(--ink-2); text-wrap: pretty; }
-.name { font: 700 32px / 1.08 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
-@media (min-width: 721px) { .name { font-size: 46px; line-height: 1.05; } }
+.name { font: 700 calc(32px * var(--ts, 1)) / 1.08 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
+@media (min-width: 721px) { .name { font-size: calc(46px * var(--ts, 1)); line-height: 1.05; } }
+/* Logo art stands in for the words: as tall as two lines of the title would be, as wide as the column allows. The
+   box keeps that height until the image has arrived, so nothing below it moves. */
+.name[data-logo] { display: flex; align-items: flex-end; min-height: 84px; }
+@media (min-width: 721px) { .name[data-logo] { min-height: 112px; } }
+.logo { display: block; width: auto; max-width: min(100%, 420px); max-height: 84px; object-fit: contain; object-position: left bottom; opacity: 0; transition: opacity var(--dur-move) ease; }
+@media (min-width: 721px) { .logo { max-height: 112px; } }
+.logo[data-loaded] { opacity: 1; }
+
+/* Text size (Settings → Title Pages): the page's own type steps are scaled together, so spacing set in them follows. */
+.wrap[data-text='small'] { --ts: 0.92; }
+.wrap[data-text='large'] { --ts: 1.18; }
+.wrap[data-text='extraLarge'] { --ts: 1.35; }
+.wrap[data-text] {
+  --fs-caption: calc(12px * var(--ts));
+  --fs-footnote: calc(13px * var(--ts));
+  --fs-small: calc(15px * var(--ts));
+  --fs-body: calc(17px * var(--ts));
+  --fs-headline: calc(20px * var(--ts));
+  --fs-title3: calc(24px * var(--ts));
+}
+
+.rating { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-s); margin-top: var(--space-xxs); }
+.ratingLabel { font-size: var(--fs-footnote); line-height: 1.3; color: var(--ink-2); }
+.status { margin-top: var(--space-xxs); font-size: var(--fs-footnote); line-height: 1.4; color: var(--ink-2); }
+.status:empty { margin: 0; }
 
 /* Ratings: aligned numbers with the source's name under each, tapping opens the site. */
 .ratings { display: flex; flex-wrap: wrap; gap: var(--space-m) var(--space-xl); margin-top: var(--space-m); }
@@ -40,7 +65,8 @@
   -webkit-tap-highlight-color: transparent;
 }
 .textAction:hover { color: var(--paper); }
-.textAction[aria-pressed='true'] { color: var(--paper); font-weight: 600; }
+.textAction[aria-pressed='true'], .textAction[data-on] { color: var(--paper); font-weight: 600; }
+.textAction[aria-disabled='true'] { color: var(--ink-3); cursor: default; }
 
 .tagline { margin-top: var(--space-m); font: 600 var(--fs-body) / 1.4 var(--font); max-width: var(--measure); text-wrap: pretty; }
 .overview { margin-top: var(--space-s); max-width: var(--measure); font-size: var(--fs-body); line-height: 1.55; color: var(--ink-2); text-wrap: pretty; }
@@ -65,18 +91,37 @@
 .more { margin-top: var(--space-s); height: 36px; padding-right: 8px; font: 500 var(--fs-small) / 1 var(--font); color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.25em; }
 .more:hover { color: var(--paper); text-decoration-color: var(--paper); }
 
-/* Where to watch: two lines of plain text. */
-.providers { display: grid; gap: var(--space-xs); margin: 0; }
-.providers > div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: var(--space-m); font-size: var(--fs-small); line-height: 1.5; }
-.providers dt { color: var(--ink-3); }
-.providers dd { margin: 0; color: var(--ink-2); }
-.providers a { text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
-.providers a:hover { color: var(--paper); text-decoration-color: var(--paper); }
-.attribution { margin-top: var(--space-xs); font-size: var(--fs-caption); color: var(--ink-3); }
+/* Where to watch: a row of small square logos for each way to watch (subscription, free, rent, buy). */
+.sectionHead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--space-m); margin-bottom: var(--space-s); }
+.sectionHead .sectionTitle { margin-bottom: 0; }
+.providers { display: grid; gap: var(--space-m); margin: 0; }
+.providers > div { display: grid; grid-template-columns: minmax(0, 96px) minmax(0, 1fr); align-items: center; gap: var(--space-m); }
+.providers dt { font-size: var(--fs-small); line-height: 1.3; color: var(--ink-2); }
+.providers dd { margin: 0; }
+.services { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.service {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: var(--radius-art);
+  background: var(--base-2);
+  box-shadow: 0 0 0 1px var(--rule);
+  transition: transform var(--dur-state) var(--ease-out);
+}
+.service img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.serviceName { padding: 4px; font: 600 10px / 1.1 var(--font); text-align: center; color: var(--ink-2); overflow-wrap: anywhere; }
+@media (hover: hover) { a.service:hover { transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { a.service:hover { transform: none; } }
+.attribution { font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); }
+@media (max-width: 480px) { .providers > div { grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); } }
 
 .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-m) var(--space-xl); margin: 0; }
 .facts dt { font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); }
 .facts dd { margin: 2px 0 0; font-size: var(--fs-small); line-height: 1.4; }
+.facts > [data-wide] { grid-column: span 2; }
+@media (max-width: 480px) { .facts > [data-wide] { grid-column: auto; } }
 .links { display: flex; gap: var(--space-m); }
 .links a { text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
 .links a:hover { text-decoration-color: var(--paper); }
