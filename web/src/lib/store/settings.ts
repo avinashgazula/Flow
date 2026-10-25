@@ -1,5 +1,6 @@
 import { defaultLiveTV, type LiveTVSettings } from '../livetv/types'
 import type { AddonManifest } from '../sources/types'
+import { defaultShelves, type HeroSource, type ShelfConfig } from '../shelfDefaults'
 import { defaultTabOrder } from '../tabs'
 import { createStore, useStore } from './createStore'
 import { defaultSubtitleStyle, type SubtitleStyle } from './subtitleStyleDefault'
@@ -99,6 +100,25 @@ export interface Settings {
   streamProxy: string
   /** IPTV providers, the guide's refresh time and the favourite channels (FlowKit's LiveTVSettings). */
   liveTV: LiveTVSettings
+  /** Home's shelves, in order: built-in rows, Discover shelves and (later) lists, as the apps' `shelves`. */
+  shelves: ShelfConfig[]
+  /** Where Home's top pick comes from when nothing is in progress, and a second source mixed in. */
+  heroSource: HeroSource
+  heroSecondarySource: HeroSource | null
+  /** The lead turns through its picks by itself (never while something is in progress, or with reduced motion). */
+  heroAutoAdvance: boolean
+  /** How many titles each catalogue shelf holds. */
+  contentShelfLength: number
+  showContinueWatching: boolean
+  /** Most recent kept in Continue Watching; null keeps all. */
+  continueWatchingLimit: number | null
+  showUpcoming: boolean
+  /** Upcoming also lists season premieres of shows on the watchlist. */
+  includeWatchlistPremieres: boolean
+  upcomingWithinDays: number
+  /** WATCHED on a poster's strip, and the episodes of a series left. */
+  showWatchedBadges: boolean
+  showEpisodesRemaining: boolean
 }
 
 const browserLanguage = typeof navigator === 'undefined' ? 'en-US' : navigator.language || 'en-US'
@@ -132,6 +152,18 @@ export const defaultSettings: Settings = {
   tabOrder: [...defaultTabOrder],
   streamProxy: '',
   liveTV: defaultLiveTV,
+  shelves: defaultShelves,
+  heroSource: 'trending',
+  heroSecondarySource: null,
+  heroAutoAdvance: true,
+  contentShelfLength: 20,
+  showContinueWatching: true,
+  continueWatchingLimit: null,
+  showUpcoming: true,
+  includeWatchlistPremieres: false,
+  upcomingWithinDays: 7,
+  showWatchedBadges: true,
+  showEpisodesRemaining: true,
 }
 
 export const settingsStore = createStore<Settings>('settings', defaultSettings)
