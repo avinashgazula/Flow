@@ -1,6 +1,10 @@
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Plate } from '../../components/Frame'
+import { FrameCard, rank } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
+import { prefetchDetail, q } from '../../lib/queries'
+import { formatRuntime, useMinuteTick } from '../../lib/time'
+import { pickMeta, pickPrint, spokenPick } from '../home/logic'
 import { libraryStore, mediaKey } from '../../lib/store/library'
 import { useSettings } from '../../lib/store/settings'
 import { creditsAlert, type CreditsScenes } from '../../lib/tmdb/creditsScenes'
@@ -83,25 +87,7 @@ export function FilmExtras({ controller, film, scenes, short, onOpen, onClose }:
   }, [controller, beside])
   if (card === 'hidden' || suggestions.length === 0) return null
 
-  if (card === 'end') {
-    return (
-      <section className={s.suggestEnd} aria-label="Because You Watched">
-        <h2 className={s.suggestEndHead}>
-          Because You Watched <span>{title}</span>
-        </h2>
-        <ul className={s.suggestEndRow}>
-          {suggestions.map((m, i) => (
-            <li key={m.id}>
-              <SuggestionItem item={m} sizes="240px" autoFocus={i === 0} onOpen={onOpen} />
-            </li>
-          ))}
-        </ul>
-        <button className="btn btn-secondary" onClick={onClose} onMouseDown={keepFocus}>
-          Done
-        </button>
-      </section>
-    )
-  }
+  if (card === 'end') return <EndScreen film={film} suggestions={suggestions} onOpen={onOpen} onClose={onClose} />
   // Beside the credits: a few of them, out of the way of an open panel.
   if (panel) return null
   return (
@@ -116,20 +102,63 @@ export function FilmExtras({ controller, film, scenes, short, onOpen, onClose }:
       </div>
       <ul className={s.suggestRow}>
         {suggestions.slice(0, 3).map((m) => (
-          <li key={m.id}>
-            <SuggestionItem item={m} sizes="148px" onOpen={onOpen} />
-          </li>
+          <Suggestion key={m.id} item={m} sizes="148px" onOpen={onOpen} />
         ))}
       </ul>
     </aside>
   )
 }
 
-function SuggestionItem({ item, sizes, autoFocus, onOpen }: { item: MediaItem; sizes: string; autoFocus?: boolean; onOpen: (item: MediaItem) => void }) {
+/** Where the film ends: the film just finished as one quiet line, then Because You Watched, the row and Done,
+ *  centred on the flat edge colour over the last frame. */
+function EndScreen({ film, suggestions, onOpen, onClose }: { film: MediaDetail | undefined; suggestions: MediaItem[]; onOpen: (item: MediaItem) => void; onClose: () => void }) {
+  const section = useRef<HTMLElement>(null)
+  // The first film is where the keyboard starts.
+  useEffect(() => {
+    section.current?.querySelector('button')?.focus()
+  }, [])
+  const length = film?.runtime ? formatRuntime(film.runtime * 60) : undefined
   return (
-    <button className={s.suggestItem} onClick={() => onOpen(item)} onMouseDown={keepFocus} autoFocus={autoFocus} aria-label={item.year ? `${item.title}, ${item.year}` : item.title}>
-      <Plate className={s.suggestPlate} shape="still" artPath={item.backdrop} artKind="backdrop" sizes={sizes} stripSize="still" fallback={item.title} />
-      <span className={s.suggestTitle}>{item.title}</span>
-    </button>
+    <section ref={section} className={s.suggestEnd} aria-label="Because You Watched">
+      <div className={s.suggestEndBlock}>
+        <p className={s.suggestEndDone}>
+          <span>{film?.title}</span>
+          <span>{['Ended', length].filter(Boolean).join(' · ')}</span>
+        </p>
+        <h2 className={s.suggestEndHead}>Because You Watched</h2>
+        <ul className={s.suggestEndRow}>
+          {suggestions.map((m) => (
+            <Suggestion key={m.id} item={m} sizes="240px" detailed onOpen={onOpen} />
+          ))}
+        </ul>
+        <button className="btn btn-secondary" onClick={onClose} onMouseDown={keepFocus}>
+          Done
+        </button>
+      </div>
+    </section>
+  )
+}
+
+/** One suggested film, as a still anywhere else in Flow is: its frame and edge strip (year, runtime and rating
+ *  through the same strip layout), the title and a line of facts under it. `detailed` asks for the runtime. */
+function Suggestion({ item, sizes, detailed, onOpen }: { item: MediaItem; sizes: string; detailed?: boolean; onOpen: (item: MediaItem) => void }) {
+  const now = useMinuteTick()
+  const { data } = useQuery({ ...q.detail(item.type, item.id), enabled: !!detailed })
+  const detail = data && data.runtime ? data : undefined
+  const print = [...pickPrint(item, detail, now), ...(item.year ? [{ text: String(item.year), rank: rank.year }] : [])]
+  return (
+    <FrameCard
+      shape="still"
+      artPath={item.backdrop}
+      artKind="backdrop"
+      sizes={sizes}
+      print={print}
+      title={item.title}
+      meta={pickMeta(item)}
+      label={spokenPick(item, detail)}
+      fallback={item.title}
+      onSelect={() => onOpen(item)}
+      onIntent={() => prefetchDetail(item)}
+    />
   )
 }

@@ -703,37 +703,34 @@
 .suggestClose:hover { background: var(--base-3); color: var(--paper); }
 .suggestRow { display: flex; gap: 10px; }
 .suggestRow > li { width: var(--w); flex: none; }
-.suggestItem { display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; }
-.suggestItem:focus-visible { outline: none; }
-.suggestItem:focus-visible .suggestPlate { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }
-.suggestPlate { display: block; }
-.suggestTitle {
-  font: 600 var(--fs-footnote) / 1.25 var(--font);
-  color: var(--ink-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color var(--dur-state) ease;
-}
-.suggestItem:hover .suggestTitle, .suggestItem:focus-visible .suggestTitle { color: var(--paper); }
-
-/* Where the film ends: the suggestions are the whole screen, on the flat edge colour, over its last frame. */
+/* Where the film ends: the film just finished as one quiet line, then Because You Watched, its row of stills and Done,
+   in the middle of the screen on the flat edge colour over the last frame. Matte: no backdrop, no blur. */
 .suggestEnd {
   position: absolute;
   z-index: 6;
   inset: 0;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  align-items: flex-start;
-  gap: var(--space-m);
-  padding: calc(var(--inset-top) + 16px) calc(var(--inset-right) + var(--margin)) calc(var(--inset-bottom) + var(--margin)) calc(var(--inset-left) + var(--margin));
+  justify-content: center;
+  padding: calc(var(--inset-top) + 16px) 0 calc(var(--inset-bottom) + 16px) calc(var(--inset-left) + var(--margin));
   /* Solid: the controls under it are still there, and none of them should show. */
   background: var(--edge);
+  overflow-y: auto;
   animation: panel var(--dur-state) var(--ease-out);
 }
+.suggestEndBlock { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-m); min-width: 0; margin: auto 0; }
+/* The film just finished: its name and how it ended, in one quiet line. */
+.suggestEndDone {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding-right: var(--margin);
+  font: 600 var(--fs-small) / 1.3 var(--font);
+  color: var(--ink-2);
+}
+.suggestEndDone span:first-child { color: var(--paper); }
+.suggestEndDone span + span { font-weight: 400; font-variant-numeric: tabular-nums; }
 .suggestEndHead {
-  max-width: 100%;
   font: 700 var(--fs-title3) / 1.15 var(--font-display);
   letter-spacing: -0.015em;
   text-wrap: balance;
@@ -741,9 +738,10 @@
 .suggestEndRow {
   display: flex;
   gap: var(--space-m);
-  max-width: 100%;
-  padding: 6px 4px 8px;
-  margin: 0 -4px;
+  align-self: stretch;
+  /* Room for the focus ring and the hover lift, and the row bleeds to the edge so the cut-off one says it scrolls. */
+  padding: 6px var(--margin) 10px 4px;
+  margin-left: -4px;
   overflow-x: auto;
   scrollbar-width: thin;
 }
@@ -754,7 +752,7 @@
 }
 @media (max-height: 500px) {
   .suggest { padding: 8px 12px 10px; gap: 6px; }
-  .suggestEnd { gap: var(--space-s); }
+  .suggestEndBlock { gap: var(--space-s); }
   .suggestEndHead { font-size: var(--fs-headline); }
   .suggestEndRow > li { width: 150px; }
 }
