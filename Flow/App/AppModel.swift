@@ -53,6 +53,17 @@ final class AppModel {
     /// A settings change is waiting for its debounced upload, so the local settings are newer than iCloud's copy.
     @ObservationIgnored private var cloudSettingsDirty = false
 
+    /// Flow Sync's key, server and token. Kept apart from `secretStore` and never in iCloud Keychain: it is
+    /// what lets a sideloaded build share keys without iCloud.
+    @ObservationIgnored let syncPairingStore: FlowSyncPairingStore
+    @ObservationIgnored var syncState = FlowSyncState()
+    @ObservationIgnored var syncPushTask: Task<Void, Never>?
+    @ObservationIgnored var syncInFlight: Task<Void, Never>?
+    @ObservationIgnored var syncAgain = false
+    /// Set while a pull is being put into settings, so applying it doesn't count as a local change.
+    @ObservationIgnored var applyingSync = false
+    @ObservationIgnored var appIsActive = true
+
     @ObservationIgnored private var settingsSaveTask: Task<Void, Never>?
     /// Settings and library writes, one at a time and in order, so an older copy never lands last.
     static let persistence = DispatchQueue(label: "app.flow.persistence", qos: .utility)
@@ -70,6 +81,7 @@ final class AppModel {
             guard credentials != oldValue else { return }
             secretStore.save(credentials)
             rebuildServices()
+            if FlowSyncMapping.changed(from: oldValue, to: credentials) { scheduleSyncPush() }
         }
     }
 
@@ -109,6 +121,17 @@ final class AppModel {
     /// The last upload to iCloud failed, so Data & Storage shows its rows red.
     var cloudWriteFailed = false
 
+    // MARK: Flow Sync
+
+    /// Present while Flow Sync is on.
+    var syncPairing: FlowSyncPairing?
+    var syncLastSynced: Date?
+    /// The last sync's problem, in words; nil after a good one.
+    var syncError: String?
+    var isSyncingNow = false
+    /// A flow://sync link waiting on the Join screen.
+    var pendingSyncLink: String?
+
     // MARK: Presentation
 
     var selectedTab: AppTab
@@ -147,6 +170,7 @@ final class AppModel {
             secretStore = FileSecretStore(store: sandbox)
             cache = ResponseCache(store: .caches("FlowDemoResponses"))
             cloud = CloudSync(store: InMemoryKeyValueStore())
+            syncPairingStore = InMemoryFlowSyncPairingStore()
             http = HTTPClient(transport: DemoTransport(), userAgent: "Flow/1.0")
             settings = Self.demoSettings()
             selectedTab = .home
@@ -159,8 +183,10 @@ final class AppModel {
             store = JSONFileStore.applicationSupport()
             #if canImport(Security)
             secretStore = KeychainSecretStore()
+            syncPairingStore = KeychainFlowSyncPairingStore()
             #else
             secretStore = FileSecretStore(store: .applicationSupport())
+            syncPairingStore = FileFlowSyncPairingStore(store: .applicationSupport())
             #endif
             #if os(iOS) || os(macOS) || os(tvOS)
             cloud = CloudSync(store: UbiquitousKeyValueStore())
@@ -189,6 +215,9 @@ final class AppModel {
             selectedTab = loaded.general.startTab
             credentials = secretStore.load()
             localLibrary = store.load(LocalLibrary.self, "library") ?? LocalLibrary()
+            syncPairing = syncPairingStore.load()
+            syncState = store.load(FlowSyncState.self, "sync-state") ?? FlowSyncState()
+            syncLastSynced = syncState.lastSyncedAt
         }
         rebuildServices()
         configureImageCache()
@@ -241,6 +270,8 @@ final class AppModel {
     func start() async {
         observeCloud()
         if settings.sync.iCloudEnabled { pullFromCloud(silent: true) }
+        // Not waited for: a slow Worker shouldn't hold the library back. Keys that arrive reload it.
+        syncNow()
         await refreshLibrary(force: false)
         await refreshServerIndex()
     }
@@ -300,6 +331,7 @@ final class AppModel {
         }
         // Everything iCloud carries, not just shelves, servers and General: a change that never went up would be
         // replaced by the cloud copy on the next pull.
+        if FlowSyncMapping.changed(from: old, to: settings) { scheduleSyncPush() }
         if settings.sync.iCloudEnabled, old.shelves != settings.shelves || old.mediaServers.servers != settings.mediaServers.servers
             || CloudSync.portableSettings(old) != CloudSync.portableSettings(settings) {
             scheduleCloudPush(settingsChanged: true)
@@ -337,15 +369,25 @@ final class AppModel {
         }
 
         if let id = traktClientID {
-            trakt = TraktClient(clientID: id, clientSecret: traktClientSecret, token: credentials.traktToken, http: http) { [weak self] token in
-                Task { @MainActor in self?.credentials.traktToken = token }
-            }
+            // A refreshed token goes up at once, since the old refresh token stops working; and before spending one,
+            // ask Sync whether another device already did.
+            trakt = TraktClient(clientID: id, clientSecret: traktClientSecret, token: credentials.traktToken, http: http, onTokenChange: { [weak self] token in
+                Task { @MainActor in
+                    self?.credentials.traktToken = token
+                    self?.syncNow()
+                }
+            }, tokenBeforeRefresh: { [weak self] current in
+                await self?.traktTokenAfterPull(current)
+            })
         } else {
             trakt = nil
         }
         if let id = simklClientID {
             simkl = SimklClient(clientID: id, token: credentials.simklToken, http: http) { [weak self] token in
-                Task { @MainActor in self?.credentials.simklToken = token }
+                Task { @MainActor in
+                    self?.credentials.simklToken = token
+                    self?.syncNow()
+                }
             }
         } else {
             simkl = nil

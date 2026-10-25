@@ -8,6 +8,7 @@ import { DataSection } from './DataSection'
 import { LiveTVSection } from './LiveTVSection'
 import { PlaybackSection } from './PlaybackSection'
 import { ServersSection } from './ServersSection'
+import { SourcesSection } from './SourcesSection'
 import s from './SettingsScreen.module.css'
 
 /** The shelf editor (and its JSON, filters and preview) loads when Settings is opened, not with the page. */
@@ -19,6 +20,7 @@ const sections: { id: string; title: string; body: ReactNode }[] = [
   { id: 'shelves', title: 'Shelves', body: <Suspense fallback={<p className={s.hint}>Loading shelves…</p>}><ShelvesSection /></Suspense> },
   { id: 'addons', title: 'Stream Add-ons', body: <AddonsSection /> },
   { id: 'servers', title: 'Media Servers', body: <ServersSection /> },
+  { id: 'sources', title: 'Sources', body: <SourcesSection /> },
   { id: 'livetv', title: 'Live TV', body: <LiveTVSection /> },
   { id: 'playback', title: 'Playback', body: <PlaybackSection /> },
   { id: 'account', title: 'Account', body: <AccountSection /> },

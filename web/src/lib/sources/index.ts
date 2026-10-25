@@ -6,7 +6,8 @@ import { addonSources } from './addons'
 import { browserCapabilities, type Capabilities } from './capabilities'
 import { demoProviderId, demoSources } from './demo'
 import { SourceError, withTimeout } from './http'
-import { dedupe, dedupeKey, rankSources } from './rank'
+import { dedupe, dedupeKey, orderedSources } from './rank'
+import { normaliseSourceOrdering } from './sourceSettings'
 import type { PlaybackRequest, Source } from './types'
 
 export type { PlaybackRequest, Source, ExternalSubtitle, PlaybackEngine, SourceOrigin, Trickplay } from './types'
@@ -36,8 +37,10 @@ export type ProviderState = { id: string; name: string; kind: Provider['kind'] }
 )
 
 export interface SearchUpdate {
-  /** Everything found so far, ranked best first. */
+  /** Everything found so far, in the viewer's order (Settings → Sources), best first. */
   sources: Source[]
+  /** How many sources the viewer's filters and result cap left out of `sources`. */
+  hidden?: number
   providers: ProviderState[]
   /** Torrent-only results skipped, across every provider. */
   torrents: number
@@ -90,10 +93,14 @@ export async function searchSources(
   const providers = options.providers ?? enabledProviders(settings)
   const caps = options.capabilities ?? browserCapabilities()
   const prefs = { preferredQuality: settings.preferredQuality, kind: request.type, audioLanguage: resolveAudioLanguages(settings.audioLanguages, request.item.originalLanguage)[0] }
+  const arrangement = { ordering: normaliseSourceOrdering(settings.sources), providers: providers.map((p) => ({ id: p.id, kind: p.kind })) }
   const states = new Map<string, ProviderState>(providers.map((p) => [p.id, { id: p.id, name: p.name, kind: p.kind, state: 'loading' }]))
+  // Everything found, unfiltered: a provider that answers later can lift a source the cap had cut.
+  let all: Source[] = []
   let found: Source[] = []
+  let hidden = 0
   let torrents = 0
-  const snapshot = (finished: boolean): SearchUpdate => ({ sources: found, providers: [...states.values()], torrents, finished })
+  const snapshot = (finished: boolean): SearchUpdate => ({ sources: found, hidden, providers: [...states.values()], torrents, finished })
 
   options.onUpdate?.(snapshot(providers.length === 0))
   if (providers.length === 0) return snapshot(true)
@@ -106,7 +113,8 @@ export async function searchSources(
         const result = await provider.search(full, caps, signal)
         if (options.signal?.aborted) return
         torrents += result.torrents ?? 0
-        found = rankSources(dedupe([...found, ...result.sources]), prefs, caps)
+        all = dedupe([...all, ...result.sources])
+        ;({ sources: found, hidden } = orderedSources(all, prefs, caps, arrangement))
         states.set(provider.id, { id: provider.id, name: provider.name, kind: provider.kind, state: 'done', count: result.sources.length, torrents: result.torrents ?? 0 })
       } catch (error) {
         if (options.signal?.aborted) return

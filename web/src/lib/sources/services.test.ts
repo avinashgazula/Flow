@@ -282,7 +282,8 @@ describe('findSources', () => {
       onUpdate: (u) => updates.push(u.providers.map((p) => `${p.id}:${p.state}`).join(',')),
     })
     expect(result.finished).toBe(true)
-    expect(result.sources.map((s) => s.id)).toEqual(['dup', 'b', 'a'])
+    // Each provider's sources stay together, in the order Settings lists the providers (here, as asked).
+    expect(result.sources.map((s) => s.id)).toEqual(['dup', 'a', 'b'])
     expect(result.torrents).toBe(3)
     expect(result.providers.find((p) => p.id === 'slow')).toMatchObject({ state: 'failed', error: 'Didn’t answer in time.' })
     expect(updates[0]).toBe('fast:loading,second:loading,slow:loading')

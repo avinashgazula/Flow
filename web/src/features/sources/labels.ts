@@ -1,5 +1,6 @@
 import { formatBytes } from '../../lib/sources/parser'
 import type { Source } from '../../lib/sources'
+import type { SourceAppearance } from '../../lib/sources/sourceSettings'
 
 /* The words a source is shown with, as the native picker's SourceSummary and PremiumBadge. */
 
@@ -37,9 +38,10 @@ export function playDescription(s: Source): string {
   return [resolutionLabel(s), ...premiumBadges(s).map((b) => b.text), sizeLabel(s), s.provider].filter(Boolean).join(' · ')
 }
 
-/** The format line in edge print: "Dolby Vision · TrueHD · HEVC · 7.1 · REMUX". Only what the release says. */
-export function formatLine(s: Source): string {
-  return [...premiumBadges(s).map((b) => b.text), plainFormats(s), s.quality].filter(Boolean).join(' · ')
+/** The format line in edge print: "Dolby Vision · TrueHD · HEVC · 7.1 · REMUX". Only what the release says.
+ *  `quality: false` leaves the release type off, for a row that already leads with it. */
+export function formatLine(s: Source, quality = true): string {
+  return [...premiumBadges(s).map((b) => b.text), plainFormats(s), quality ? s.quality : undefined].filter(Boolean).join(' · ')
 }
 
 /** Size, provider, languages and release group, plain: "18.20 GB · AIOStreams · English, Spanish · FLUX". */
@@ -52,9 +54,43 @@ export function metaLine(s: Source): string {
   return [s.provider, s.languages?.join(' · '), s.releaseGroup?.toUpperCase()].filter(Boolean).join(' · ')
 }
 
-/** "1080p WEB-DL, AIOStreams, 3.98 GB, English, Dolby Vision", for screen readers. */
-export function spokenLabel(s: Source, lastPlayed: boolean): string {
-  const parts = [[resolutionLabel(s), s.quality].filter(Boolean).join(' '), s.provider, sizeLabel(s), s.languages?.join(' and '), ...premiumBadges(s).map((b) => b.text)]
+/** What a row says in Settings → Sources → Appearance's terms: the release type or name as its title, the format
+ *  print above it, the facts below it, and the add-on's own lines when it is shown as the add-on wrote it. */
+export interface RowText {
+  title: string
+  /** Edge print, or nothing when badges are off or the add-on's own text is shown. */
+  formats?: string
+  /** Size, provider, languages and release group, plain. */
+  meta?: string
+  /** The add-on's own lines after its first, kept as written, when "Show Add-on Formatting" is on. */
+  raw: string[]
+}
+
+/** `providerAbove`: the provider's name heads the group the row sits in, so the row needn't say it. As the
+ *  apps' SourceSummary: with Provider Name the heading carries it and the row leads with the release type. */
+export function rowText(s: Source, a: SourceAppearance, providerAbove: boolean): RowText {
+  const size = a.showSize ? sizeLabel(s) : undefined
+  const lines = (s.detail ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
+  const byProvider = a.titleDisplay === 'provider'
+  let title: string | undefined
+  if (byProvider) title = providerAbove ? (s.quality ?? (size ? undefined : (s.filename ?? s.provider))) : s.provider
+  else if (a.titleDisplay === 'filename') title = s.filename ?? s.title
+  else title = lines[0] ?? s.provider
+  title ??= s.filename ?? s.title ?? s.provider
+  const qualityIsTitle = title === s.quality
+  const meta = [size, providerAbove || title === s.provider ? undefined : s.provider, s.languages?.join(', '), s.releaseGroup?.toUpperCase()].filter(Boolean).join(' · ')
+  // The add-on's first line is usually its name, which the title or the group heading already says.
+  const raw = lines.filter((l, i) => !(i === 0 && (l === title || l === s.provider)))
+  let formats: string | undefined
+  if (!a.showRawText && a.badges === 'all') formats = formatLine(s, !qualityIsTitle)
+  else if (!a.showRawText && a.badges === 'minimal') formats = premiumBadges(s).slice(0, 2).map((b) => b.text).join(' · ')
+  return { title, formats: formats || undefined, meta: meta || undefined, raw: a.showRawText ? raw : [] }
+}
+
+/** "1080p WEB-DL, AIOStreams, 3.98 GB, English, Dolby Vision", for screen readers. `show` leaves out what the
+ *  row doesn't print: the provider when a heading says it, the size when Show File Size is off. */
+export function spokenLabel(s: Source, lastPlayed: boolean, show: { provider?: boolean; size?: boolean } = {}): string {
+  const parts = [[resolutionLabel(s), s.quality].filter(Boolean).join(' '), show.provider === false ? undefined : s.provider, show.size === false ? undefined : sizeLabel(s), s.languages?.join(' and '), ...premiumBadges(s).map((b) => b.text)]
   if (s.cached) parts.push('Cached')
   if (s.unsupported) parts.push(s.unsupported)
   else if (s.note) parts.push(s.note)

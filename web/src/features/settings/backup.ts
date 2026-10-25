@@ -1,6 +1,7 @@
 import { isLiveTVSettings } from '../../lib/livetv/validate'
 import { lastSourceStore } from '../../lib/sources/lastSource'
 import { proxyProblem } from '../../lib/sources/proxy'
+import { isSourceOrdering, normaliseSourceOrdering } from '../../lib/sources/sourceSettings'
 import { defaultSettings, settingsStore, type Settings } from '../../lib/store/settings'
 import { libraryStore, type Library } from '../../lib/store/library'
 import { isTabOrder } from '../../lib/tabs'
@@ -52,6 +53,8 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   publicMetaDBKey: (v) => typeof v === 'string',
   preferredQuality: (v) => ['2160p', '1080p', '720p', 'any'].includes(v as string),
   rememberLastSource: (v) => typeof v === 'boolean',
+  // Fields a backup lacks take their defaults, so a file from before this setting (or from the apps) still imports.
+  sources: isSourceOrdering,
   font: (v) => typefaces.some((f) => f.value === v),
   tabOrder: isTabOrder,
   // Empty clears the proxy; anything else has to be an address Flow can call.
@@ -105,7 +108,7 @@ export function parseBackup(text: string): { ok: true; settings: Partial<Setting
       if (!(key in data.settings)) continue
       if (!valid(data.settings[key])) skipped.push(key)
       // A style missing some fields takes their defaults, and the apps' older "shadow" background reads as none.
-      else settings[key] = key === 'subtitleStyle' ? normaliseSubtitleStyle(data.settings[key]) : data.settings[key]
+      else settings[key] = key === 'subtitleStyle' ? normaliseSubtitleStyle(data.settings[key]) : key === 'sources' ? normaliseSourceOrdering(data.settings[key]) : data.settings[key]
     }
   }
   if (isObject(data.library)) {

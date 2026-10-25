@@ -184,7 +184,7 @@ export function DiscoverEditor({ shelf, onSave, onCancel }: { shelf?: ShelfConfi
         <span className={s.fieldLabel} id="shelf-preview">
           Preview
         </span>
-        <div className={s.preview} aria-labelledby="shelf-preview" role="group" aria-busy={preview.isPending || undefined}>
+        <div className={s.shelfPreview} aria-labelledby="shelf-preview" role="group" aria-busy={preview.isPending || undefined}>
           {preview.isPending ? (
             <span className={s.hint}>Loading…</span>
           ) : preview.data && preview.data.results.length > 0 ? (
