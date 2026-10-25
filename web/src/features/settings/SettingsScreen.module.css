@@ -286,3 +286,6 @@ img.logo { padding: 4px; }
   .linkRow .field { flex-basis: 100%; }
   .linkRow button { flex: 1; }
 }
+
+/* Source Appearance preview: the picker's own row on the group's surface, not interactive. */
+.preview { padding: 0 var(--space-xs) var(--space-xs); pointer-events: none; }

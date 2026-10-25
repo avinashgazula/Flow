@@ -58,7 +58,7 @@ struct DataStorageView: View {
             } header: {
                 Text("iCloud")
             } footer: {
-                Text("Keeps playback progress, settings, rewatch state, shuffle history and your on-device watchlist, watch history and favourites the same on all your devices. Anything you remove stays removed everywhere.")
+                Text("Keeps playback progress, settings, rewatch state, shuffle history and your on-device watchlist, watch history and favourites the same on all your devices. Anything you remove stays removed everywhere. Builds installed without a developer account can't use iCloud: Flow Sync (in Settings) shares your keys, add-ons, servers and playback preferences through your own Worker instead.")
             }
 
             Section {

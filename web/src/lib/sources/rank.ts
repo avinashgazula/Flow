@@ -9,9 +9,11 @@
 import { languageName } from '../language'
 import type { Capabilities } from './capabilities'
 import { losslessCinemaAudio } from './capabilities'
+import { arrangeSources, categoryOf, type Arranged, type ProviderRef } from './order'
 import { isCinemaCapture, releaseQualities, type ParsedQuality, type ResolutionClass, type StreamTraits } from './parser'
 import { isReadable } from './proxy'
 import { isHDR } from './smooth'
+import type { SourceOrdering } from './sourceSettings'
 import type { PlaybackEngine, ReleaseQuality, Source, SourceOrigin } from './types'
 
 export interface BuildInput {
@@ -307,6 +309,25 @@ export function rankSources(list: Source[], prefs: RankPreferences, caps: Capabi
     .map((s, i) => ({ s: withDecodeNote({ ...s, score: Math.round(scoreSource(s, prefs, caps)) }, caps), i }))
     .sort((a, b) => b.s.score! - a.s.score! || a.i - b.i)
     .map((x) => x.s)
+}
+
+/** How the viewer wants the ranked list arranged (Settings → Sources), and who is being asked. */
+export interface Arrangement {
+  ordering: SourceOrdering
+  providers: { id: string; kind: SourceOrigin }[]
+}
+
+/** The ranked list, then arranged by the viewer's category and provider order and, with custom ordering on,
+ *  their filters, sort rules and result cap. The score decides ties, so the smooth-decode, HDR and
+ *  audio-language ranking above still shapes the order wherever the settings don't say otherwise. */
+export function orderedSources(list: Source[], prefs: RankPreferences, caps: Capabilities, arrangement: Arrangement): Arranged {
+  const providers: ProviderRef[] = arrangement.providers.map((p) => ({ id: p.id, category: categoryOf(p.kind) }))
+  return arrangeSources(rankSources(list, prefs, caps), arrangement.ordering, {
+    providers,
+    audioLanguage: prefs.audioLanguage,
+    hdrScreen: caps.hdr,
+    resolutionFit: (s) => resolutionScore(s.resolution, prefs.preferredQuality),
+  })
 }
 
 /** Says in the picker that a source is known to stutter here, after any note it already has
