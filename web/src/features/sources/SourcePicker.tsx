@@ -7,8 +7,9 @@ import type { PlaybackRequest, Source } from '../../lib/sources'
 import { searchSources, type SearchUpdate } from '../../lib/sources/index'
 import { lastSourceFor, rememberSource } from '../../lib/sources/lastSource'
 import { useSettings } from '../../lib/store/settings'
-import { playFacts } from '../detail/logic'
-import { detailLine, formatLine, resolutionText, spokenLabel } from './labels'
+import { categoryOf } from '../../lib/sources/order'
+import { categoryNames, normaliseSourceOrdering, type SourceAppearance } from '../../lib/sources/sourceSettings'
+import { optionId, SourceRow } from './SourceRow'
 import s from './SourcePicker.module.css'
 
 type Filter = { kind: 'all' } | { kind: 'resolution'; value: NonNullable<Source['resolution']> } | { kind: 'provider'; value: string }
@@ -39,6 +40,8 @@ export function SourcePicker({ request, seed, onPick, onClose }: { request: Play
   const [filter, setFilter] = useState<Filter>({ kind: 'all' })
   const [activeId, setActiveId] = useState<string>()
   const remember = useSettings((x) => x.rememberLastSource)
+  const saved = useSettings((x) => x.sources)
+  const appearance = useMemo(() => normaliseSourceOrdering(saved).appearance, [saved])
   const listRef = useRef<HTMLDivElement>(null)
   // A parent may build the request afresh on every render; only a different title searches again.
   const requestRef = useRef(request)
@@ -83,7 +86,9 @@ export function SourcePicker({ request, seed, onPick, onClose }: { request: Play
   const loading = search.providers.filter((p) => p.state === 'loading')
   const failures = search.providers.filter((p) => p.state === 'failed')
   const noProviders = search.finished && search.providers.length === 0
-  const entries = useMemo(() => grouped(list, best, lastPlayed?.id), [list, best, lastPlayed?.id])
+  const byProvider = appearance.titleDisplay === 'provider'
+  const entries = useMemo(() => grouped(list, best, lastPlayed?.id, byProvider), [list, best, lastPlayed?.id, byProvider])
+  const hidden = search.hidden ?? 0
 
   function pick(source: Source | undefined) {
     if (!source || source.unsupported) return
@@ -134,7 +139,7 @@ export function SourcePicker({ request, seed, onPick, onClose }: { request: Play
         <span className={s.spinner} aria-hidden /> Searching {listFormat(loading.map((p) => p.name))}…
       </span>
     ) : noProviders ? null : search.finished ? (
-      `${all.length} source${all.length === 1 ? '' : 's'}`
+      `${all.length} source${all.length === 1 ? '' : 's'}${hidden > 0 ? `, ${hidden} hidden by your settings` : ''}`
     ) : (
       'Finding sources…'
     )
@@ -196,8 +201,15 @@ export function SourcePicker({ request, seed, onPick, onClose }: { request: Play
               </Link>
             </Empty>
           )}
-          {search.finished && !noProviders && all.length === 0 && <Empty title="No Sources" text="None of your sources have this title yet." />}
-          {mounted && list.length > 0 && <Rows entries={entries} best={best} active={active} lastPlayedId={lastPlayed?.id} onPick={pick} onHover={setActiveId} scroller={listRef} />}
+          {search.finished && !noProviders && all.length === 0 && hidden === 0 && <Empty title="No Sources" text="None of your sources have this title yet." />}
+          {search.finished && all.length === 0 && hidden > 0 && (
+            <Empty title="No Sources Shown" text={`${hidden} source${hidden === 1 ? ' was' : 's were'} found, and your filters hide ${hidden === 1 ? 'it' : 'them'}. Loosen the filters or the result cap in Settings.`}>
+              <Link to="/settings" hash="sources" className="btn btn-secondary btn-compact">
+                Open Sources Settings
+              </Link>
+            </Empty>
+          )}
+          {mounted && list.length > 0 && <Rows entries={entries} appearance={appearance} best={best} active={active} lastPlayedId={lastPlayed?.id} onPick={pick} onHover={setActiveId} scroller={listRef} />}
           {(search.torrents > 0 || failures.length > 0) && (
             <div className={s.notes}>
               {search.torrents > 0 && (
@@ -218,8 +230,6 @@ export function SourcePicker({ request, seed, onPick, onClose }: { request: Play
   )
 }
 
-const optionId = (source: Source) => `source-${source.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
-
 function listFormat(names: string[]): string {
   try {
     return new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(names)
@@ -228,29 +238,41 @@ function listFormat(names: string[]): string {
   }
 }
 
-type Entry = { kind: 'heading'; id: string; text: string } | { kind: 'row'; source: Source }
+type Entry = { kind: 'heading'; id: string; text: string; count?: number; note?: string } | { kind: 'row'; source: Source; providerAbove: boolean }
 
 /** The list in plain groups: the match Play would start, the other sources that play, then those that
- *  can't play in this browser. A group with nothing in it has no heading. */
-function grouped(list: Source[], best: Source | undefined, lastPlayedId: string | undefined): Entry[] {
+ *  can't play in this browser. A group with nothing in it has no heading. With rows titled by provider (the
+ *  default), the others sit under their provider's name in the order Settings → Sources gives, with the
+ *  category beside it when there's more than one. */
+function grouped(list: Source[], best: Source | undefined, lastPlayedId: string | undefined, byProvider: boolean): Entry[] {
   const top = best && list.includes(best) ? best : undefined
   const rest = list.filter((x) => x !== top && !x.unsupported)
   const blocked = list.filter((x) => x.unsupported)
-  const rows = (sources: Source[]): Entry[] => sources.map((source) => ({ kind: 'row', source }))
+  const rows = (sources: Source[], providerAbove = false): Entry[] => sources.map((source) => ({ kind: 'row', source, providerAbove }))
   const out: Entry[] = []
   if (top) out.push({ kind: 'heading', id: 'best', text: top.id === lastPlayedId ? 'Last Played' : 'Best Match' }, ...rows([top]))
-  if (rest.length) out.push({ kind: 'heading', id: 'rest', text: top ? 'Other Sources' : 'Sources' }, ...rows(rest))
+  if (rest.length && byProvider) {
+    const several = new Set(rest.map((x) => categoryOf(x.origin))).size > 1
+    // Runs, not groups: the demotions can leave one provider's sources in two places.
+    const runs: Source[][] = []
+    for (const source of rest) {
+      const last = runs.at(-1)
+      if (last && (last[0]!.providerId ?? last[0]!.provider) === (source.providerId ?? source.provider)) last.push(source)
+      else runs.push([source])
+    }
+    runs.forEach((run, i) => out.push({ kind: 'heading', id: `provider-${i}`, text: run[0]!.provider, count: run.length, note: several ? categoryNames[categoryOf(run[0]!.origin)] : undefined }, ...rows(run, true)))
+  } else if (rest.length) out.push({ kind: 'heading', id: 'rest', text: top ? 'Other Sources' : 'Sources' }, ...rows(rest))
   if (blocked.length) out.push({ kind: 'heading', id: 'blocked', text: 'Can’t Play in This Browser' }, ...rows(blocked))
   return out
 }
 
 /** The rows, virtualised: add-ons often answer with a hundred or more. */
-function Rows({ entries, best, active, lastPlayedId, onPick, onHover, scroller }: { entries: Entry[]; best?: Source; active?: Source; lastPlayedId?: string; onPick: (s: Source) => void; onHover: (id: string) => void; scroller: RefObject<HTMLDivElement | null> }) {
+function Rows({ entries, appearance, best, active, lastPlayedId, onPick, onHover, scroller }: { entries: Entry[]; appearance: SourceAppearance; best?: Source; active?: Source; lastPlayedId?: string; onPick: (s: Source) => void; onHover: (id: string) => void; scroller: RefObject<HTMLDivElement | null> }) {
   'use no memo'
   const virtualizer = useVirtualizer({
     count: entries.length,
     getScrollElement: () => scroller.current,
-    estimateSize: (i) => (entries[i]!.kind === 'heading' ? 44 : 92),
+    estimateSize: (i) => (entries[i]!.kind === 'heading' ? 44 : appearance.showRawText ? 150 : appearance.compact ? 72 : 92),
     overscan: 8,
     getItemKey: (i) => {
       const e = entries[i]!
@@ -278,10 +300,16 @@ function Rows({ entries, best, active, lastPlayedId, onPick, onHover, scroller }
         return (
           <div key={v.key} data-index={v.index} ref={virtualizer.measureElement} className={s.slot} style={{ transform: `translateY(${v.start - margin}px)` }}>
             {entry.kind === 'heading' ? (
-              <h3 className={s.group} role="presentation">{entry.text}</h3>
+              <h3 className={s.group} role="presentation">
+                {entry.text}
+                {entry.count !== undefined && <span className={s.count}>{entry.count}</span>}
+                {entry.note && <span className={s.groupNote}>{entry.note}</span>}
+              </h3>
             ) : (
               <SourceRow
                 source={entry.source}
+                appearance={appearance}
+                providerAbove={entry.providerAbove}
                 active={entry.source.id === active?.id}
                 best={entry.source === best}
                 lastPlayed={entry.source.id === lastPlayedId}
@@ -293,56 +321,6 @@ function Rows({ entries, best, active, lastPlayedId, onPick, onHover, scroller }
           </div>
         )
       })}
-    </div>
-  )
-}
-
-/** One source as a film-can label row: the resolution large on the left; then the format line in edge
- *  print, the release's name, and size, provider and languages in ink-3. The best match has the yellow
- *  Play (a cue: the whole row plays); one that can't play is dimmed and says why in words. */
-function SourceRow({ source, active, best, lastPlayed, divider, onPick, onHover }: { source: Source; active: boolean; best: boolean; lastPlayed: boolean; divider: boolean; onPick: (s: Source) => void; onHover: (id: string) => void }) {
-  const formats = formatLine(source)
-  const facts = source.unsupported ? undefined : playFacts(source)
-  return (
-    <div
-      id={optionId(source)}
-      role="option"
-      aria-selected={active}
-      aria-disabled={source.unsupported ? true : undefined}
-      aria-label={spokenLabel(source, lastPlayed)}
-      className={s.row}
-      data-active={active ? '' : undefined}
-      data-divider={divider ? '' : undefined}
-      onClick={() => onPick(source)}
-      onPointerEnter={() => !source.unsupported && onHover(source.id)}
-    >
-      <span className={s.resolution}>{resolutionText(source) ?? '–'}</span>
-      <span className={s.body}>
-        <span className={s.content}>
-          {formats && <span className={s.formats}>{formats}</span>}
-          <span className={s.release}>{source.title || source.quality || 'Stream'}</span>
-          <span className={s.meta}>
-            {detailLine(source)}
-            {source.cached === false && ' · Not cached'}
-          </span>
-          {facts && facts.notes.length > 0 && (
-            <span className={s.notesLine}>
-              {facts.notes.map((n, i) => (
-                <span key={n.text} className={n.tone === 'warn' ? s.warn : undefined}>
-                  {i > 0 && ' · '}
-                  {n.text}
-                </span>
-              ))}
-            </span>
-          )}
-        </span>
-        {source.unsupported && <span className={s.unsupported}>{source.unsupported}</span>}
-      </span>
-      {best && (
-        <span className={`btn btn-primary btn-compact ${s.play}`} aria-hidden>
-          <Icon name="play" size={14} /> Play
-        </span>
-      )}
     </div>
   )
 }

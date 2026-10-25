@@ -190,3 +190,12 @@ export function arrangeSources(ranked: Source[], ordering: SourceOrdering, conte
   if (custom && ordering.resultCap && list.length > ordering.resultCap) list = list.slice(0, ordering.resultCap)
   return { sources: list, hidden: ranked.length - list.length }
 }
+
+/** The list with the item at `index` one place earlier (-1) or later (1); unchanged at either end. */
+export function moveWithin<T>(list: readonly T[], index: number, delta: -1 | 1): T[] {
+  const out = [...list]
+  const to = index + delta
+  if (index < 0 || index >= out.length || to < 0 || to >= out.length) return out
+  ;[out[index], out[to]] = [out[to]!, out[index]!]
+  return out
+}

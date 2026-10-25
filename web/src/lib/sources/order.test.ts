@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fixedCapabilities } from './capabilities'
-import { arrangeSources, audioLanguageFirst, categoryOf, compareByRules, effectiveProviderOrder, passes, sdrFirst, sortValue, type ArrangeContext } from './order'
+import { arrangeSources, audioLanguageFirst, categoryOf, compareByRules, effectiveProviderOrder, moveWithin, passes, sdrFirst, sortValue, type ArrangeContext } from './order'
 import { parseStream } from './parser'
 import { buildSource, orderedSources } from './rank'
 import { defaultSourceFilters, defaultSourceOrdering, defaultSortRules, normaliseSourceOrdering, type SourceFilters, type SourceOrdering } from './sourceSettings'
@@ -64,6 +64,14 @@ describe('category and provider order', () => {
   it('order providers: the named ones first, the rest as they come, strangers ignored', () => {
     expect(effectiveProviderOrder(['a', 'b', 'c'], undefined)).toEqual(['a', 'b', 'c'])
     expect(effectiveProviderOrder(['a', 'b', 'c'], ['c', 'gone', 'c'])).toEqual(['c', 'a', 'b'])
+  })
+
+  it('move an item one place, and stop at either end', () => {
+    expect(moveWithin(['a', 'b', 'c'], 1, -1)).toEqual(['b', 'a', 'c'])
+    expect(moveWithin(['a', 'b', 'c'], 1, 1)).toEqual(['a', 'c', 'b'])
+    expect(moveWithin(['a', 'b', 'c'], 0, -1)).toEqual(['a', 'b', 'c'])
+    expect(moveWithin(['a', 'b', 'c'], 2, 1)).toEqual(['a', 'b', 'c'])
+    expect(moveWithin(['a'], -1, 1)).toEqual(['a'])
   })
 })
 
