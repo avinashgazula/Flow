@@ -1,6 +1,8 @@
 .section { margin-top: var(--section); }
-.bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-s) var(--space-m); margin-bottom: var(--space-m); }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s) var(--space-m); margin-bottom: var(--space-s); }
 .title { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; }
+.picker { margin-bottom: var(--space-m); }
+.season { margin-right: -12px; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(252px, 1fr)); gap: var(--space-l) var(--space-m); }
 .ghost { aspect-ratio: 16 / 9; border-radius: var(--radius-art); background: var(--base-2); }
@@ -16,7 +18,34 @@
 }
 .empty { color: var(--ink-2); font-size: var(--fs-small); }
 
+/* The check on an episode's still: flat on the overlay, ink-2 until the episode is watched, then the yellow that
+   means watched. It is 36px to look at and 44px to hit. */
+.mark {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-control);
+  background: var(--overlay);
+  color: var(--ink-2);
+  transition: color var(--dur-state) ease, background var(--dur-state) ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.mark::after { content: ''; position: absolute; inset: -4px; }
+.mark:hover { color: var(--paper); }
+.mark[data-on] { color: var(--stock); }
+.mark:active { transform: scale(0.96); }
+
+/* Episode Spoilers off: an aired episode not yet watched keeps its still blurred. The marker sits beside the
+   card (FrameCard takes no flag for it), and the image is the only thing of the card that is picture. */
+.veil { display: none; }
+.grid > li:has(> .veil) img { filter: blur(14px); transform: scale(1.15); }
+
 @media (max-width: 720px) {
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-l) var(--space-s); }
   .overview { display: none; }
 }
+@media (prefers-reduced-motion: reduce) { .mark:active { transform: none; } }

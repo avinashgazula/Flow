@@ -1,4 +1,4 @@
-import type { FontChoice } from '../../lib/store/settings'
+import type { DetailTextSize, FontChoice } from '../../lib/store/settings'
 
 /* The choices the pickers offer. TMDB takes any ISO language-region pair; these are the common ones,
    and a saved value that isn't listed is added so it never silently changes. */
@@ -43,4 +43,13 @@ export const typefaces: { value: FontChoice; label: string; detail: string }[] =
   { value: 'geist', label: 'Geist', detail: 'Precise and modern.' },
   { value: 'manrope', label: 'Manrope', detail: 'Rounded and friendly.' },
   { value: 'ioskeley', label: 'Ioskeley Mono', detail: 'Monospaced, with character.' },
+]
+
+/** The sizes Title Pages text can be set in, as the apps' Text Size. The page scales its own type steps to match
+ *  (DetailScreen.module.css). */
+export const textSizes: { value: DetailTextSize; label: string }[] = [
+  { value: 'small', label: 'Small' },
+  { value: 'standard', label: 'Default' },
+  { value: 'large', label: 'Large' },
+  { value: 'extraLarge', label: 'Extra Large' },
 ]

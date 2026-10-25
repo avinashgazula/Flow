@@ -1,0 +1,20 @@
+/* Five stars, paper when chosen and ink-3 outlines when not (yellow is for the next action, not for a score). */
+.stars { display: inline-flex; margin-left: -7px; }
+.star {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 44px;
+  color: var(--ink-3);
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
+}
+.star[data-on] { color: var(--paper); }
+@media (hover: hover) {
+  .star:hover { color: var(--paper); }
+  /* Hovering a star lights it and the ones before it, which says what a click will choose. */
+  .stars:has(.star:hover) .star { color: var(--ink-3); }
+  .stars:has(.star:hover) .star:hover, .stars:has(.star:hover) .star:has(~ .star:hover) { color: var(--paper); }
+}
+.star:active { transform: scale(0.92); }
+@media (prefers-reduced-motion: reduce) { .star:active { transform: none; } }

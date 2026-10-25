@@ -255,9 +255,32 @@ authorization-code flow with PKCE (no client secret, as in the apps). Trakt's AP
   data is never sent.
 - **Scrobbling.** The player starts, pauses and stops a scrobble with how far in (`features/player/useTraktScrobble.ts`
   hooks it up). A stop at 80 % or more is Trakt's watch and also marks the title watched here.
-- **Ratings.** There's no rating screen yet. `rateTitle(item, 1–10 | null)` in `lib/trakt/engine.ts` is the hook:
-  the screen that adds stars calls it and the change is queued and sent like the rest.
+- **Ratings.** A title page offers five stars (two points each, as the apps) for a title that is watched or already
+  scored. `titleLibrary.rate` keeps the score in the library whoever is signed in and, when signed in, calls
+  `rateTitle(item, 1–10 | null)` in `lib/trakt/engine.ts`, which queues and sends it like the rest. The player can offer the
+  same stars at the end of a film with `<StarRating item={item} />` from `features/detail/StarRating`.
+- **Marking unwatched.** `titleLibrary.markUnwatched` takes a film or episodes out of what is watched and calls
+  `unwatchTitle` in the engine, which queues a removal from Trakt's history. (A cleared history never un-watches
+  anything on Trakt, which is why this is an explicit call and not something the library's changes are diffed into.)
+  An episode whose removal is still waiting isn't brought back by the next pull.
 - **Budget.** `lib/trakt/boot.ts` is the only part in the first load; the sign-in, sync and scrobbler are lazy chunks.
+
+## Title pages
+
+`features/detail/` is the page for a film or series, matching the apps' Detail view:
+
+- **About** (always the release, runtime, seasons, director and rating; with Settings → Appearance → Title Pages → About
+  on, also status, language, country, budget, revenue, companies and network), **Where to Watch** (a row of logos for
+  Subscription, Free, Rent and Buy in the viewer's own region), **Reviews** (TMDB's plus Trakt's most-liked comments when
+  a Client ID is set; cleaned by `lib/reviewText.ts`, a port of FlowKit's `ReviewText`; a Trakt review flagged as a spoiler,
+  or words inside `[spoiler]` tags, stay blurred until tapped), logo art for the title, and a trailer picker.
+- **Watching.** Every aired episode has a check, the season has Watch Season, and the show has Watched. **Shuffle** picks a
+  random episode not yet picked this round, preferring one not watched (`lib/watching.ts`, from FlowKit's `nextShuffle`);
+  **Rewatch** makes Next Up and the episode checks follow what is watched again.
+- **Settings** (Appearance → Title Pages): About, Where to Watch, Reviews, Episode Spoilers (off blurs the still and hides the
+  synopsis of an aired episode not yet watched), Specials Season and Text Size.
+- The code that reads a title's details (`lib/tmdb/detail.ts`), the reviews (`lib/reviews.ts`, `Reviews.tsx`) and the library
+  actions beyond marking one thing watched (`lib/store/titleLibrary.ts`) are chunks of their own, so the first page carries none of them.
 
 ## Sample data
 

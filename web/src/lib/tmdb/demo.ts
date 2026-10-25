@@ -120,9 +120,57 @@ const moreServices = [
  *  Fixed by the id, so the detail page and the Explore filter agree. */
 const streamsOn = (t: { id: number }) => [services[t.id % services.length]!, ...(t.id % 3 === 0 ? [moreServices[t.id % moreServices.length]!] : [])]
 const stores = [
-  { provider_id: 2, provider_name: 'Apple TV', logo_path: '/peURlLlr8jggOwK53fJ5wdQl05y.jpg' },
-  { provider_id: 3, provider_name: 'Google Play Movies', logo_path: '/tbEdFQDwx5LEVr8WpSeXQSIirVq.jpg' },
+  { provider_id: 2, provider_name: 'Apple TV', logo_path: '/peURlLlr8jggOwK53fJ5wdQl05y.jpg', display_priority: 0 },
+  { provider_id: 10, provider_name: 'Amazon Video', logo_path: '/seGSXajazLMCKGB5hnRCidtjay1.jpg', display_priority: 1 },
+  { provider_id: 3, provider_name: 'Google Play Movies', logo_path: '/tbEdFQDwx5LEVr8WpSeXQSIirVq.jpg', display_priority: 2 },
+  { provider_id: 192, provider_name: 'YouTube', logo_path: '/pTnn5JwWr4p3pG8H6VrpiQo7Vs0.jpg', display_priority: 3 },
 ]
+
+/* The About rows TMDB would give, for the titles the catalogue knows well: where it was made, what it cost and
+   took, and who made it. A title not listed here leaves those rows out, as TMDB does when it has nothing. */
+// prettier-ignore
+const about: Record<number, { countries: string[]; budget?: number; revenue?: number; companies: string[] }> = {
+  693134: { countries: ['US'], budget: 190_000_000, revenue: 714_444_358, companies: ['Legendary Pictures', 'Warner Bros. Pictures'] },
+  872585: { countries: ['US', 'GB'], budget: 100_000_000, revenue: 975_811_000, companies: ['Universal Pictures', 'Syncopy', 'Atlas Entertainment'] },
+  157336: { countries: ['US', 'GB'], budget: 165_000_000, revenue: 746_606_706, companies: ['Legendary Pictures', 'Syncopy', 'Paramount Pictures'] },
+  155: { countries: ['US', 'GB'], budget: 185_000_000, revenue: 1_006_234_167, companies: ['Warner Bros. Pictures', 'Legendary Pictures', 'Syncopy'] },
+  1396: { countries: ['US'], companies: ['Sony Pictures Television Studios', 'High Bridge Productions', 'Gran Via Productions'] },
+  1399: { countries: ['US'], companies: ['HBO Entertainment', 'Television 360', 'Bighead Littlehead'] },
+  66732: { countries: ['US'], companies: ['21 Laps Entertainment', 'Monkey Massacre'] },
+  100088: { countries: ['US'], companies: ['HBO', 'Sony Pictures Television', 'PlayStation Productions', 'Naughty Dog'] },
+}
+
+/* Every title has the same short list of videos, so the trailer picker has something to pick from. The keys are
+   Blender Foundation films, which are openly licensed; the names are what a studio's own channel calls these. */
+const videos = [
+  { key: 'aqz-KE-bpKQ', name: 'Official Trailer', site: 'YouTube', type: 'Trailer', official: true },
+  { key: 'eRsGyueVLvQ', name: 'Final Trailer', site: 'YouTube', type: 'Trailer', official: true },
+  { key: 'YE7VzlLtp-4', name: 'Official Teaser', site: 'YouTube', type: 'Teaser', official: true },
+  { key: 'R6MlUcmOul8', name: 'Behind the Scenes', site: 'YouTube', type: 'Behind the Scenes', official: true },
+  { key: 'unlisted-1', name: 'Fan Cut', site: 'Vimeo', type: 'Trailer', official: false },
+]
+
+/* The title logos TMDB has for two of them, as the file paths it serves; the rest have none and set their name as
+   text, which is what the page does when a title has no logo art. */
+const logos: Record<number, string> = { 693134: '/gOWf4IYBP2m1Q7dhbQJkwxH714x.png', 1396: '/h6yDiAXP5AyOzXHTxjUssYOGbG3.png' }
+
+/* Reviews as TMDB returns them: Markdown, HTML and entities left in, which is what the review cleaning is for.
+   They say nothing about any one title, so they read true for every one of them. The third marks its ending as a
+   spoiler the way reviewers do. Sample data only. */
+const sampleReviews = [
+  { id: 'demo-1', author: 'frameperfect', rating: 9, created_at: '2026-09-02T18:21:00.000Z', content: '**Stunning** from the first frame, and the sound design is half the experience &amp; then some.\r\n\r\nThe middle stretch is a touch slow, but the last hour earns it. I wrote more about it [on my blog](https://example.com/review).' },
+  { id: 'demo-2', author: 'Maren', rating: 7, created_at: '2026-08-14T09:05:00.000Z', content: 'A confident, patient piece of film-making that trusts its audience.<br/><br/>Not for everyone, but _the performances_ carry it, and it looks gorgeous on a big screen.' },
+  { id: 'demo-3', author: 'nightowl', rating: 8, created_at: '2026-07-30T22:40:00.000Z', content: 'Go in cold if you can. [spoiler]The twist in the last act changes how everything before it reads, and it holds up on a second watch.[/spoiler] Highly recommended &mdash; I would watch it again tomorrow.' },
+  { id: 'demo-4', author: 'Anonymous', created_at: '2026-06-11T12:00:00.000Z', content: 'Better than I expected. It has real heart, a great cast and a score I have not stopped listening to since. The pacing in the opening act is uneven and a couple of subplots never quite land, but the whole is greater than its parts.\r\n\r\nWhat stayed with me are the quiet scenes: two people in a room, saying less than they mean. That is where the film does its best work, and it is why I think it will be rewatched for years.\r\n\r\nOne note for anyone on the fence: give it the full first half hour before deciding. It pays off.' },
+]
+
+/** What Trakt's most-liked comments would add, for sample data (which never calls Trakt): one flagged as a spoiler. */
+export function demoComments() {
+  return [
+    { id: 4101, comment: 'A rare one that is **both** a crowd-pleaser and a proper piece of cinema.', spoiler: false, created_at: '2026-09-20T08:00:00.000Z', user: { username: 'popcorn.pat' }, user_stats: { rating: 9 } },
+    { id: 4102, comment: 'The last scene recontextualises the opening. Do not read further if you have not seen it: the reveal is the whole point.', spoiler: true, created_at: '2026-05-02T08:00:00.000Z', user: { username: 'reelreg' }, user_stats: { rating: 8 } },
+  ]
+}
 
 const byId = new Map(titles.map((t) => [t.id, t]))
 const ofType = (path: string) => (path.includes('/movie') ? titles.filter((t) => t.type === 'movie') : path.includes('/tv') ? titles.filter((t) => t.type === 'show') : titles)
@@ -189,14 +237,26 @@ function detail(t: Title) {
     cast: (credited?.cast ?? []).map(([name, character], order) => ({ id: personId(name), name, character, order })),
     crew: (credited?.crew ?? []).map(([name, job]) => ({ id: personId(name), name, job })),
   }
-  o.videos = { results: [{ key: 'Way9Dexny3w', name: 'Official Trailer', site: 'YouTube', type: 'Trailer', official: true }] }
-  const region: Record<string, unknown> = { link: `https://www.themoviedb.org/${t.type === 'movie' ? 'movie' : 'tv'}/${t.id}/watch?locale=US`, flatrate: streamsOn(t) }
-  if (t.type === 'movie') Object.assign(region, { rent: stores, buy: stores })
+  o.videos = { results: videos }
+  const region: Record<string, unknown> = {
+    link: `https://www.themoviedb.org/${t.type === 'movie' ? 'movie' : 'tv'}/${t.id}/watch?locale=US`,
+    flatrate: streamsOn(t).map((p, i) => ({ ...p, display_priority: i })),
+  }
+  // Films can be rented and bought; of the series, every other one can be bought (an even id).
+  if (t.type === 'movie') Object.assign(region, { rent: stores.slice(0, 3), buy: stores })
+  else if (t.id % 2 === 0) Object.assign(region, { buy: [stores[0], stores[1]] })
+  const facts = about[t.id]
+  if (facts) {
+    o[t.type === 'movie' ? 'production_countries' : 'origin_country'] = t.type === 'movie' ? facts.countries.map((c) => ({ iso_3166_1: c })) : facts.countries
+    o.production_companies = facts.companies.map((name, id) => ({ id, name }))
+    if (facts.budget) o.budget = facts.budget
+    if (facts.revenue) o.revenue = facts.revenue
+  }
   o['watch/providers'] = { results: { US: region } }
   const similar = shuffled(titles.filter((x) => x.type === t.type && x.id !== t.id), t.id)
   o.recommendations = page(similar.slice(0, 10))
   o.similar = page(similar.slice(-6))
-  o.images = { logos: [] }
+  o.images = { logos: logos[t.id] ? [{ iso_639_1: 'en', file_path: logos[t.id], vote_average: 5.5 }] : [] }
   if (t.type === 'movie') {
     o.runtime = t.runtime
     o.release_dates = { results: [{ iso_3166_1: 'US', release_dates: [{ certification: t.certification, type: 3 }] }] }
@@ -205,7 +265,11 @@ function detail(t: Title) {
     o.number_of_seasons = t.seasons
     o.content_ratings = { results: [{ iso_3166_1: 'US', rating: t.certification }] }
     o.networks = [{ name: ['HBO', 'Netflix', 'AMC', 'Disney+', 'Apple TV+'][t.id % 5] }]
-    o.seasons = Array.from({ length: Math.max(1, t.seasons) }, (_, i) => ({ season_number: i + 1, name: `Season ${i + 1}`, episode_count: 8 + ((i + 1 + t.id) % 5), air_date: `${t.year + i}-03-10`, poster_path: t.poster }))
+    // TMDB lists Specials as season 0, first. Two of them, aired long ago.
+    o.seasons = [
+      { season_number: 0, name: 'Specials', episode_count: 2, air_date: `${t.year}-01-05`, poster_path: t.poster },
+      ...Array.from({ length: Math.max(1, t.seasons) }, (_, i) => ({ season_number: i + 1, name: `Season ${i + 1}`, episode_count: 8 + ((i + 1 + t.id) % 5), air_date: `${t.year + i}-03-10`, poster_path: t.poster })),
+    ]
     const last = Math.max(1, t.seasons)
     if (returning) {
       const next = nextEpisode(t)
@@ -217,6 +281,7 @@ function detail(t: Title) {
 }
 
 function season(t: Title, n: number) {
+  if (n === 0) return { season_number: 0, episodes: [1, 2].map((e) => ({ ...demoEpisode(t, 0, e, `${t.year}-01-0${4 + e}`), name: e === 1 ? 'Behind the Scenes' : 'Cast Reunion' })) }
   const count = 8 + ((n + t.id) % 5)
   const returning = t.year >= 2016 && n === Math.max(1, t.seasons)
   return {
@@ -281,6 +346,7 @@ export async function demoTmdb(rawPath: string, query: Record<string, unknown>):
       if (!t) throw new Error('Not in the sample data')
       if (parts.length === 2) return detail(t)
       if (parts[2] === 'season') return season(t, Number(parts[3] ?? 1))
+      if (parts[2] === 'reviews') return { page: 1, total_pages: 1, results: sampleReviews.map(({ rating, ...r }) => ({ ...r, author_details: { rating: rating ?? null } })) }
       // Every third film has a scene after its credits and every third a scene during them, so both notes can be seen.
       if (parts[2] === 'keywords') return { keywords: t.id % 3 === 2 ? [{ id: 1, name: 'aftercreditsstinger' }] : t.id % 3 === 1 ? [{ id: 2, name: 'duringcreditsstinger' }] : [] }
       if (parts[2] === 'external_ids') return { imdb_id: t.imdb, tvdb_id: t.id + 70000 }

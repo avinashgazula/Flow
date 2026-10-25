@@ -2,6 +2,7 @@ import { Icon } from '../../components/Icon'
 import { settingsStore, useSettings } from '../../lib/store/settings'
 import { typefaces } from './options'
 import { TabOrderGroup } from './TabOrderGroup'
+import { TitlePagesGroup } from './TitlePagesGroup'
 import s from './SettingsScreen.module.css'
 
 /** The typeface, as a group of cards that each show their own font. Native radio inputs give the
@@ -52,6 +53,7 @@ export function AppearanceSection() {
         </div>
         <p className={s.footer}>Applies right away. Any typeface other than System downloads once, when you choose it.</p>
       </div>
+      <TitlePagesGroup />
       <TabOrderGroup />
     </>
   )
