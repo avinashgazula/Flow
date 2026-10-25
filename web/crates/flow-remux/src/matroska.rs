@@ -106,6 +106,14 @@ pub struct Cue {
     pub relative_position: Option<u64>,
 }
 
+/// One entry of the file's chapter list, in file time (no playback delay added).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Chapter {
+    /// Nanoseconds.
+    pub start: i64,
+    pub title: String,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Header {
     pub doc_type: String,
@@ -119,6 +127,7 @@ pub struct Header {
     pub title: Option<String>,
     pub tracks: Vec<Track>,
     pub cues: Vec<Cue>,
+    pub chapters: Vec<Chapter>,
     /// Absolute offset of the first Cluster.
     pub first_cluster: Option<u64>,
 }
@@ -134,6 +143,9 @@ impl Header {
 pub const MAX_TIME: i64 = 100_000_000_000_000_000;
 
 // MARK: - Header
+
+/// Starts a blob made by `HeaderReader::export`; a different version of it is a blob to ignore.
+const CACHE_MAGIC: &[u8; 4] = b"FHC1";
 
 /// How much to ask for when probing for the next top-level element.
 const PROBE: u64 = 256 * 1024;
@@ -170,6 +182,12 @@ pub struct HeaderReader {
     pub error: Option<String>,
     /// The raw Cues element, kept so the worker can cache it.
     pub cues_raw: Vec<u8>,
+    /// The chapter list has been read, or has been found to be absent.
+    chapters_done: bool,
+    chapters_last: Option<(u64, u64)>,
+    chapters_raw: Vec<u8>,
+    /// The SeekHead, Info and Tracks elements as they were read, so a later visit can skip reading them.
+    raw_head: Vec<Vec<u8>>,
 }
 
 /// What the reader needs next.
@@ -192,6 +210,10 @@ impl HeaderReader {
             last_request: None,
             error: None,
             cues_raw: Vec::new(),
+            chapters_done: false,
+            chapters_last: None,
+            chapters_raw: Vec::new(),
+            raw_head: Vec::new(),
         }
     }
 
@@ -293,7 +315,7 @@ impl HeaderReader {
                     let Some(size) = element.size else { return self.fail("The file's header is damaged (an element of unknown size).") };
                     let header_len = (element.data_start - local) as u64;
                     let end = offset + header_len + size;
-                    let wanted = matches!(element.id, id::SEEK_HEAD | id::INFO | id::TRACKS | id::CUES);
+                    let wanted = matches!(element.id, id::SEEK_HEAD | id::INFO | id::TRACKS | id::CUES | id::CHAPTERS);
                     if wanted && end > self.window_end() {
                         if end - offset > MAX_INDEX {
                             self.stage = Stage::TopLevel(end);
@@ -317,6 +339,9 @@ impl HeaderReader {
 
     fn parse_top_level(&mut self, b: &[u8], e: &Element) -> Result<(), &'static str> {
         let damaged = "The file's header is damaged.";
+        if let (id::SEEK_HEAD | id::INFO | id::TRACKS, Some(end)) = (e.id, e.end_within(b.len())) {
+            self.raw_head.push(b[e.start..end].to_vec());
+        }
         match e.id {
             id::SEEK_HEAD => {
                 let entries = parse_seek_head(b, e).map_err(|_| damaged)?;
@@ -329,6 +354,13 @@ impl HeaderReader {
                     self.cues_raw = b[e.start..end].to_vec();
                 }
                 self.header.cues = parse_cues(b, e, self.header.timecode_scale).unwrap_or_default();
+            }
+            id::CHAPTERS => {
+                if let Some(end) = e.end_within(b.len()) {
+                    self.chapters_raw = b[e.start..end].to_vec();
+                }
+                self.header.chapters = parse_chapters(b, e).unwrap_or_default();
+                self.chapters_done = true;
             }
             _ => {}
         }
@@ -398,6 +430,7 @@ impl HeaderReader {
             None
         } else {
             let more = parse_seek_head(b, &element).unwrap_or_default();
+            self.seek_positions.extend(more.iter().copied());
             self.cue_stage = match more.iter().find(|(i, _)| *i == id::CUES) {
                 Some(&(_, p)) => CueStage::Cues(self.header.segment_data_start + p),
                 None => CueStage::Done,
@@ -418,6 +451,191 @@ impl HeaderReader {
         self.cue_stage = CueStage::Done;
         true
     }
+}
+
+const CHAPTER_LIST_MAX: usize = 4096;
+
+impl HeaderReader {
+    /// The byte range the chapter list needs next, or None when it's read, the file has none, or the header isn't read yet.
+    /// Chapters usually sit in the first bytes and are read with the header; some muxers write them after the clusters.
+    pub fn chapters_need(&self) -> Option<(u64, u64)> {
+        if self.chapters_done || !self.is_ready() {
+            return None;
+        }
+        let &(_, p) = self.seek_positions.iter().find(|(i, _)| *i == id::CHAPTERS)?;
+        let position = self.header.segment_data_start + p;
+        let len = self.length.map_or(256 * 1024, |l| l.saturating_sub(position).min(256 * 1024));
+        if len == 0 { None } else { Some((position, len)) }
+    }
+
+    /// Bytes for the chapter list, starting at `offset`. Returns the next range to read, if any.
+    pub fn feed_chapters(&mut self, offset: u64, b: &[u8]) -> Option<(u64, u64)> {
+        let Some((position, _)) = self.chapters_need() else { return None };
+        if offset != position {
+            return self.chapters_need();
+        }
+        let done = |this: &mut HeaderReader| {
+            this.chapters_done = true;
+            None
+        };
+        let Ok(element) = ebml::read_element(b, 0) else { return done(self) };
+        let Some(end) = element.end() else { return done(self) };
+        if element.id != id::CHAPTERS || end > MAX_INDEX {
+            return done(self);
+        }
+        if end > b.len() as u64 {
+            // The same ask answered with the same short read means the file ends early.
+            let ask = (position, end);
+            if self.chapters_last == Some(ask) {
+                return done(self);
+            }
+            self.chapters_last = Some(ask);
+            return Some(ask);
+        }
+        self.chapters_raw = b[..end as usize].to_vec();
+        self.header.chapters = parse_chapters(b, &element).unwrap_or_default();
+        done(self)
+    }
+
+    /// Loads a chapter list read earlier (from the worker's cache).
+    pub fn load_chapters(&mut self, raw: &[u8]) -> bool {
+        let Ok(element) = ebml::read_element(raw, 0) else { return false };
+        if element.id != id::CHAPTERS || element.end_within(raw.len()).is_none() {
+            return false;
+        }
+        let Ok(chapters) = parse_chapters(raw, &element) else { return false };
+        self.header.chapters = chapters;
+        self.chapters_raw = raw.to_vec();
+        self.chapters_done = true;
+        true
+    }
+
+    /// Everything read so far in one blob for the worker's cache: the SeekHead, Info and Tracks elements as they were,
+    /// the chapter list and the Cues, and where the segment and its first cluster are. None until the far reads are
+    /// done (a blob without them would only be half an answer).
+    pub fn export(&self) -> Option<Vec<u8>> {
+        if !self.far_reads_done() || self.raw_head.is_empty() {
+            return None;
+        }
+        let first = self.header.first_cluster?;
+        let mut out = Vec::from(*CACHE_MAGIC);
+        out.extend_from_slice(&self.header.segment_data_start.to_be_bytes());
+        out.extend_from_slice(&self.header.segment_end.unwrap_or(0).to_be_bytes());
+        out.extend_from_slice(&first.to_be_bytes());
+        let doc = self.header.doc_type.as_bytes();
+        out.push(doc.len().min(255) as u8);
+        out.extend_from_slice(&doc[..doc.len().min(255)]);
+        let parts = self.raw_head.iter().chain(Some(&self.chapters_raw)).chain(Some(&self.cues_raw));
+        for part in parts.filter(|p| !p.is_empty()) {
+            out.extend_from_slice(&(part.len() as u32).to_be_bytes());
+            out.extend_from_slice(part);
+        }
+        Some(out)
+    }
+
+    /// Takes the blob `export` made for this same file (the worker keys it by the file's identity). Leaves the reader
+    /// untouched and says false when the blob isn't one, or doesn't describe a playable file.
+    pub fn import(&mut self, raw: &[u8]) -> bool {
+        let Some(imported) = Self::imported(self.length, raw) else { return false };
+        *self = imported;
+        true
+    }
+
+    fn imported(length: Option<u64>, raw: &[u8]) -> Option<HeaderReader> {
+        let fixed = CACHE_MAGIC.len() + 8 * 3 + 1;
+        if raw.len() < fixed || &raw[..4] != CACHE_MAGIC {
+            return None;
+        }
+        let number = |at: usize| u64::from_be_bytes(raw[at..at + 8].try_into().unwrap_or_default());
+        let mut r = HeaderReader::new(length);
+        r.header.segment_data_start = number(4);
+        r.header.segment_end = Some(number(12)).filter(|&e| e > 0);
+        r.header.first_cluster = Some(number(20));
+        let doc_len = raw[28] as usize;
+        r.header.doc_type = String::from_utf8_lossy(raw.get(29..29 + doc_len)?).into_owned();
+        let mut at = 29 + doc_len;
+        while at < raw.len() {
+            let len = u32::from_be_bytes(raw.get(at..at + 4)?.try_into().ok()?) as usize;
+            let part = raw.get(at + 4..at + 4 + len)?;
+            let element = ebml::read_element(part, 0).ok()?;
+            element.end_within(part.len())?;
+            r.parse_top_level(part, &element).ok()?;
+            at += 4 + len;
+        }
+        if r.header.tracks.is_empty() || r.header.first_cluster? < r.header.segment_data_start {
+            return None;
+        }
+        r.stage = Stage::Ready;
+        r.cue_stage = CueStage::Done;
+        r.chapters_done = true;
+        Some(r)
+    }
+
+    /// Both the seek index and the chapters have been read (or the file has none), so `export` has all there is.
+    pub fn far_reads_done(&self) -> bool {
+        self.is_ready() && self.cue_stage == CueStage::Done && self.chapters_need().is_none()
+    }
+}
+
+/// The chapters of the default edition (else the first), nested ones included, in time order. Hidden and
+/// disabled chapters are left out; an unnamed one keeps an empty title, which the player numbers.
+pub fn parse_chapters(b: &[u8], e: &Element) -> Result<Vec<Chapter>, ebml::Error> {
+    fn atoms(b: &[u8], parent: &Element, out: &mut Vec<Chapter>) -> Result<(), ebml::Error> {
+        for atom in ebml::children(b, parent)? {
+            if atom.id != id::CHAPTER_ATOM {
+                continue;
+            }
+            let (mut start, mut hidden, mut enabled, mut title) = (None, false, true, None);
+            for field in ebml::children(b, &atom)? {
+                match field.id {
+                    id::CHAPTER_TIME_START => start = Some(ebml::uint(b, &field) as i64),
+                    id::CHAPTER_FLAG_HIDDEN => hidden = ebml::uint(b, &field) != 0,
+                    id::CHAPTER_FLAG_ENABLED => enabled = ebml::uint(b, &field) != 0,
+                    id::CHAPTER_DISPLAY if title.is_none() => {
+                        for name in ebml::children(b, &field)? {
+                            if name.id == id::CHAP_STRING {
+                                title = Some(ebml::string(b, &name).trim().to_string());
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if let Some(start) = start.filter(|&s| !hidden && enabled && s < MAX_TIME) {
+                if out.len() < CHAPTER_LIST_MAX {
+                    out.push(Chapter { start, title: title.unwrap_or_default() });
+                }
+            }
+            atoms(b, &atom, out)?;
+        }
+        Ok(())
+    }
+
+    let mut editions: Vec<(bool, Vec<Chapter>)> = Vec::new();
+    for edition in ebml::children(b, e)? {
+        if edition.id != id::EDITION_ENTRY {
+            continue;
+        }
+        let (mut default, mut hidden) = (false, false);
+        for field in ebml::children(b, &edition)? {
+            match field.id {
+                id::EDITION_FLAG_DEFAULT => default = ebml::uint(b, &field) != 0,
+                id::EDITION_FLAG_HIDDEN => hidden = ebml::uint(b, &field) != 0,
+                _ => {}
+            }
+        }
+        if hidden {
+            continue;
+        }
+        let mut chapters = Vec::new();
+        atoms(b, &edition, &mut chapters)?;
+        editions.push((default, chapters));
+    }
+    let index = editions.iter().position(|(default, _)| *default).unwrap_or(0);
+    let mut chosen = editions.into_iter().nth(index).map(|(_, c)| c).unwrap_or_default();
+    chosen.sort_by_key(|c| c.start);
+    chosen.dedup();
+    Ok(chosen)
 }
 
 pub fn parse_seek_head(b: &[u8], e: &Element) -> Result<Vec<(u32, u64)>, ebml::Error> {

@@ -8,7 +8,7 @@ import type { AudioCodec } from '../audio/decoder'
 import type { AudioConverter } from './convert'
 import { cleanDetail, DETAIL_BYTES, detailWanted, httpFailureMessage, networkFailureMessage, PROXY_DIRECT_HEADER, PROXY_HOPS_HEADER } from './failure'
 import { AHEAD_TARGET, aheadCapFor, AheadGovernor, RateMeter } from './pacing'
-import { parseChapters } from './chapters'
+import { cacheKeys, type CacheKeys, type FileIdentity, HeaderCache } from './headerCache'
 import type { FromWorker, HeaderInfo, RawCue, ToWorker } from './protocol'
 import { PieceReader, planReads } from './reader'
 import { CACHE_SIZE, firstRead, type Found, Lru, readKeyframe, thumbSize } from './thumbs'
@@ -43,6 +43,13 @@ let convertCodec: AudioCodec | null = null
 /** Loaded the first time a track is converted: the decoder's WebAssembly comes with it. */
 let converter: AudioConverter | null = null
 let cuesReady: Promise<void> = Promise.resolve()
+/** What an earlier visit to this file left (the index and chapters), and how this one is named in it. */
+const cache = new HeaderCache()
+/** The chapter list has been read, and has been said (see postChapters). */
+let chaptersRead = false
+let chaptersPosted = false
+/** The picture subtitle track being decoded, 0 for none. */
+let pictureTrack = 0
 
 let run: { ctl: AbortController; done: Promise<void> } | null = null
 let playhead = 0
@@ -205,6 +212,8 @@ async function open(message: Extract<ToWorker, { type: 'open' }>) {
   await init()
   const res = await request(0, HEAD_BYTES - 1)
   length = totalLength(res)
+  // These are only readable when the server (or the stream proxy) lists them in Access-Control-Expose-Headers.
+  const file: FileIdentity = { url: given, size: length, etag: res.headers.get('ETag'), lastModified: res.headers.get('Last-Modified') }
   if (!res.body) throw new Error('This browser can’t stream the file.')
   // A server without ranges sends the whole file: keep what the header needs and drop the rest.
   const reader = res.body.getReader()
@@ -228,6 +237,10 @@ async function open(message: Extract<ToWorker, { type: 'open' }>) {
 
   const rem = new Remuxer(length)
   remuxer = rem
+  // A file seen before has its header, index and chapters saved: nothing past the first bytes is read for them.
+  const keys = length > 0 && ranges ? cacheKeys(file, head) : null
+  const saved = keys ? await cache.lookup(keys, file) : undefined
+  const cached = !!saved && rem.importHeader(saved)
   for (let need = rem.headerNeed(); need.length; need = rem.headerNeed()) {
     rem.headerFeed(need[0]!, await readRange(need[0]!, need[1]!))
   }
@@ -246,8 +259,48 @@ async function open(message: Extract<ToWorker, { type: 'open' }>) {
       need = rem.cuesFeed(need[0]!, await readRange(need[0]!, need[1]!))
     }
   })().catch(() => {})
+  // The chapters are for the panel and the scrubber, so they wait their turn behind the index.
+  void cuesReady.then(() => readChapters(rem, cached ? null : keys, file))
 
-  post({ type: 'header', json: rem.headerJson(), length, ranges, chapters: parseChapters(head) })
+  post({ type: 'header', json: rem.headerJson(), length, ranges, cached })
+}
+
+/** Reads the chapter list where the SeekHead puts it (unless the header or the cache had it), says it, and then saves
+ *  what the far reads found for the next visit (`keys`: null when it came from the cache already). */
+async function readChapters(rem: Remuxer, keys: CacheKeys | null, file: FileIdentity) {
+  try {
+    for (let need = rem.chaptersNeed(); need.length; ) {
+      need = rem.chaptersFeed(need[0]!, await readRange(need[0]!, need[1]!))
+    }
+  } catch {
+    // Chapters are a nicety: a failed read is a file without them.
+  }
+  if (remuxer !== rem) return
+  chaptersRead = true
+  postChapters()
+  if (!keys) return
+  // Empty until the index and the chapters are both read; a failed read leaves nothing worth keeping.
+  const blob = rem.exportHeader()
+  if (blob.length) await cache.save(keys, file, blob)
+}
+
+/** Says the chapters once they are read and the timeline's delay is known: media time is file time plus that delay,
+ *  which the first fragments settle. Audio alone has none. */
+function postChapters() {
+  const rem = remuxer
+  if (!rem || !chaptersRead || chaptersPosted || !rem.timingKnown()) return
+  chaptersPosted = true
+  const delay = rem.delay()
+  const chapters = JSON.parse(rem.chaptersJson()) as { title: string; start: number }[]
+  post({ type: 'chapters', chapters: chapters.map((c) => ({ title: c.title, start: Math.round((c.start + delay) * 1000) / 1000 })) })
+}
+
+/** Sends the picture subtitle cues decoded since the last time. */
+function postPictures() {
+  const rem = remuxer
+  if (!rem || !pictureTrack) return
+  const bytes = rem.takePictureCues()
+  if (bytes) post({ type: 'pictures', track: pictureTrack, bytes: bytes.buffer as ArrayBuffer }, [bytes.buffer as ArrayBuffer])
 }
 
 // MARK: Streaming
@@ -287,6 +340,8 @@ async function drain(epoch: number) {
   }
   const cues = rem.takeCues()
   if (cues) post({ type: 'cues', cues: JSON.parse(cues) as RawCue[] })
+  postPictures()
+  postChapters()
 }
 
 const converterHost = {
@@ -648,6 +703,12 @@ ctx.onmessage = (event: MessageEvent<ToWorker>) => {
       return
     case 'thumb':
       thumbRequest(message.id, message.time)
+      return
+    case 'picture':
+      // Between two of the stream's own calls, like the thumbnail lane: the remuxer is never in two places at once.
+      pictureTrack = message.track
+      remuxer?.selectPicture(message.track)
+      postPictures()
       return
     case 'destroy':
       run?.ctl.abort()

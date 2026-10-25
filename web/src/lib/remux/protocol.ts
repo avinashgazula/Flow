@@ -22,9 +22,12 @@ export interface HeaderTrack {
   height?: number
   frameRate?: number
   range?: string
+  displayWidth?: number
+  displayHeight?: number
   channels?: number
   sampleRate?: number
-  subtitleKind?: 'text' | 'image'
+  /** Text arrives as cues, image (PGS, VobSub) as bitmaps; anything else (DVB subtitles) can't be shown. */
+  subtitleKind?: 'text' | 'image' | 'unsupported'
 }
 
 export interface HeaderInfo {
@@ -57,11 +60,18 @@ export type ToWorker =
   /** The picture at `time`, for the seek preview: the keyframe at or before it, decoded and drawn small. Answered
    *  with `id` once, as a `thumb` or `thumb-none`. Handled outside the stream's queue, one at a time. */
   | { type: 'thumb'; id: number; time: number }
+  /** Decodes this picture subtitle track (0: none). Everything already read is decoded at once; the cues come as `pictures`. */
+  | { type: 'picture'; track: number }
   | { type: 'destroy' }
 
 export type FromWorker =
-  /** `chapters`: the names and times the file's chapter list holds, when it sits in the bytes read first (chapters.ts). */
-  | { type: 'header'; json: string; length: number; ranges: boolean; chapters: { title: string; start: number }[] }
+  /** `cached`: the file's index came from an earlier visit (headerCache.ts), so nothing beyond the first bytes was read for it. */
+  | { type: 'header'; json: string; length: number; ranges: boolean; cached: boolean }
+  /** The file's chapter list, once it has been read (it can sit at the far end) and the timeline's delay is known:
+   *  `start` is media time, in seconds. Said once. */
+  | { type: 'chapters'; chapters: { title: string; start: number }[] }
+  /** Picture subtitle cues for the chosen track, in the layout picture.rs writes (pictures.ts reads them), transferred. */
+  | { type: 'pictures'; track: number; bytes: ArrayBuffer }
   /** A converted audio track's init is kind 1 with codec 'opus'. */
   | { type: 'init'; epoch: number; kind: 0 | 1; codec: string; data: ArrayBuffer }
   /** `key`: the fragment starts on a keyframe, so the buffer before it can be trimmed safely. */

@@ -7,11 +7,16 @@
 //!    until `headerNeed()` is empty. `headerError()` says why a file can't be read; `headerJson()`
 //!    describes the tracks.
 //! 2. The seek index (often at the end of the file): `cuesNeed()` → fetch → `cuesFeed()`, or
-//!    `loadCues(cached)`. Streaming doesn't wait for it; seeking does.
+//!    `loadCues(cached)`. Streaming doesn't wait for it; seeking does. The chapter list is the same
+//!    (`chaptersNeed()`/`chaptersFeed()`) when it sits after the clusters; before them, the header read has it.
+//!    Once both are done `exportHeader()` makes a blob for the worker's cache, and `importHeader()` starts a
+//!    later visit to the same file from it, with nothing left to read.
 //! 3. `select(videoTrack, audioTrack, raw)` (`raw` lets a track with a header `decode` of "ac3", "eac3",
 //!    "dts" or "truehd" through as undecoded payloads, fragment kind 2, for the worker to convert), then `push(bytes)` the clusters from `firstCluster()` (or from
 //!    `seekTarget(t)` after `reset()`), draining `nextFragment()` and `takeCues()` after each push.
 //!    `initSegment(track)` is ready once the first fragment is (it may need a real audio frame).
+//!    Picture subtitles (PGS, VobSub) are kept as raw packets for every such track; `selectPicture(track)` decodes one
+//!    (everything read so far, then each packet as it arrives) and `takePictureCues()` hands over the bitmaps.
 //! 4. `finish()` at the end of the file sends what's held back.
 //! 5. Seek previews, independent of the above and usable while the file streams: `thumbTarget(t)` says
 //!    where a keyframe is, `thumbFind(bytes, …)` takes what was read there and returns the keyframe's
@@ -29,6 +34,7 @@ mod inflate;
 mod matroska;
 mod mp4;
 mod opus_mux;
+mod picture;
 pub mod remuxer;
 mod subtitle;
 
@@ -110,6 +116,50 @@ impl Remuxer {
     #[wasm_bindgen(js_name = cueCount)]
     pub fn cue_count(&self) -> u32 {
         self.core.reader.header.cues.len() as u32
+    }
+
+    /// [offset, length] of the next read the chapter list needs, or empty when it is read (or the file has none). Chapters that
+    /// sit before the first cluster are read with the header; the rest are found through the SeekHead, like the index.
+    #[wasm_bindgen(js_name = chaptersNeed)]
+    pub fn chapters_need(&self) -> Vec<f64> {
+        range(self.core.chapters_need())
+    }
+
+    /// Returns the next range the chapter list needs, if any.
+    #[wasm_bindgen(js_name = chaptersFeed)]
+    pub fn chapters_feed(&mut self, offset: f64, bytes: &[u8]) -> Vec<f64> {
+        range(self.core.chapters_feed(offset as u64, bytes))
+    }
+
+    /// The chapters as JSON [{title, start}], start in seconds of file time (add `delay()` for media time).
+    #[wasm_bindgen(js_name = chaptersJson)]
+    pub fn chapters_json(&self) -> String {
+        self.core.chapters_json()
+    }
+
+    /// Everything the header and the far reads found, as one blob for the worker's cache; empty until they are done.
+    #[wasm_bindgen(js_name = exportHeader)]
+    pub fn export_header(&self) -> Vec<u8> {
+        self.core.export_header().unwrap_or_default()
+    }
+
+    /// Starts from a blob `exportHeader` made for this file: the header, the index and the chapters, with nothing to read.
+    /// False (and nothing changed) when it isn't one.
+    #[wasm_bindgen(js_name = importHeader)]
+    pub fn import_header(&mut self, raw: &[u8]) -> bool {
+        self.core.import_header(raw)
+    }
+
+    /// Chooses the picture subtitle track to decode (0 for none). Packets already read are decoded at once.
+    #[wasm_bindgen(js_name = selectPicture)]
+    pub fn select_picture(&mut self, track: u32) {
+        self.core.select_picture(track);
+    }
+
+    /// Picture subtitle cues decoded since the last call, in the layout lib/remux/pictures.ts reads, or undefined.
+    #[wasm_bindgen(js_name = takePictureCues)]
+    pub fn take_picture_cues(&mut self) -> Option<Vec<u8>> {
+        self.core.take_picture_cues()
     }
 
     /// Picks the tracks to remux (0 for none). With `raw`, an audio track whose header `decode` isn't
