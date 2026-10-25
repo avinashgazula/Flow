@@ -91,7 +91,8 @@ function placeholder(type: MediaType, id: number): MediaDetail | undefined {
     recommendations: [],
     similar: [],
     seasons: [],
-    providers: { stream: [], rent: [], buy: [] },
+    providers: { stream: [], free: [], rent: [], buy: [] },
+    trailers: [],
     networks: [],
   }
 }

@@ -50,6 +50,9 @@ export interface TraktToken {
   redirectURI: string | null
 }
 
+/** How large a title page's text is set, as the apps' DetailTextSize (Default is the page's own size). */
+export type DetailTextSize = 'small' | 'standard' | 'large' | 'extraLarge'
+
 export interface Settings {
   /** TMDB v3 API key or v4 read-access token. */
   tmdbKey: string
@@ -97,6 +100,15 @@ export interface Settings {
   /** Where files from hosts that block web pages are fetched through: a URL with `{url}` for the
    *  encoded file address. Empty means no proxy. */
   streamProxy: string
+  /** Title pages, as the apps' Detail Views: About adds status, language, country, money and companies to the
+   *  essentials (which are always there); Where to Watch and Reviews are sections; Episode Spoilers off blurs the
+   *  still and hides the synopsis of an aired episode not yet watched; Specials Season lists season 0. */
+  showAboutSection: boolean
+  showWhereToWatch: boolean
+  showReviews: boolean
+  showEpisodeSpoilers: boolean
+  showSpecialsSeason: boolean
+  detailTextSize: DetailTextSize
   /** IPTV providers, the guide's refresh time and the favourite channels (FlowKit's LiveTVSettings). */
   liveTV: LiveTVSettings
 }
@@ -131,6 +143,12 @@ export const defaultSettings: Settings = {
   font: 'system',
   tabOrder: [...defaultTabOrder],
   streamProxy: '',
+  showAboutSection: true,
+  showWhereToWatch: true,
+  showReviews: true,
+  showEpisodeSpoilers: true,
+  showSpecialsSeason: true,
+  detailTextSize: 'standard',
   liveTV: defaultLiveTV,
 }
 

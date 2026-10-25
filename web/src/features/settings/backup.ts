@@ -54,6 +54,12 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   tabOrder: isTabOrder,
   // Empty clears the proxy; anything else has to be an address Flow can call.
   streamProxy: (v) => typeof v === 'string' && proxyProblem(v) === undefined,
+  showAboutSection: (v) => typeof v === 'boolean',
+  showWhereToWatch: (v) => typeof v === 'boolean',
+  showReviews: (v) => typeof v === 'boolean',
+  showEpisodeSpoilers: (v) => typeof v === 'boolean',
+  showSpecialsSeason: (v) => typeof v === 'boolean',
+  detailTextSize: (v) => ['small', 'standard', 'large', 'extraLarge'].includes(v as string),
   // Providers (with their logins), the guide's refresh time and the favourite channels, as the apps keep them.
   liveTV: isLiveTVSettings,
 }
@@ -64,6 +70,9 @@ const libraryTypes: { [K in keyof Library]: (v: unknown) => boolean } = {
   favourites: Array.isArray,
   history: Array.isArray,
   watchedEpisodes: isObject,
+  ratings: isObject,
+  rewatches: isObject,
+  shuffled: isObject,
 }
 
 export function createBackup(settings: Settings, library: Library, now = new Date()): Backup {
@@ -112,6 +121,6 @@ export function applyBackup(parsed: { settings: Partial<Settings>; library: Part
 /** Back to a fresh install: settings, library and remembered sources. The caller clears the query cache. */
 export function resetEverything() {
   settingsStore.set({ ...defaultSettings })
-  libraryStore.set({ progress: {}, watchlist: [], favourites: [], history: [], watchedEpisodes: {} })
+  libraryStore.set({ progress: {}, watchlist: [], favourites: [], history: [], watchedEpisodes: {}, ratings: {}, rewatches: {}, shuffled: {} })
   lastSourceStore.set({ byTitle: {} })
 }

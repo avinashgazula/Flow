@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createClient, readHistory, readPlayback, readWatchedShows, readWatchlist, scrobbleBody, syncBody, TraktError, words } from './client'
+import { createClient, readComments, readHistory, readPlayback, readWatchedShows, readWatchlist, scrobbleBody, syncBody, TraktError, words } from './client'
 
 interface Seen {
   method: string
@@ -186,5 +186,28 @@ describe('requests', () => {
       'POST /sync/ratings/remove',
     ])
     expect(trakt.seen[5]!.body).toEqual({ movies: [{ ids: { tmdb: 1 }, rating: 9 }] })
+  })
+})
+
+describe('comments', () => {
+  const body = [
+    { id: 1, comment: '**Great** &amp; moving', spoiler: false, created_at: '2026-10-01T10:00:00.000Z', user: { username: 'sam' }, user_stats: { rating: 9 } },
+    { id: 2, comment: 'He dies at the end.', spoiler: true, user: {}, user_rating: 4.6 },
+    { id: 3, comment: '   ', user: { username: 'blank' } },
+  ]
+
+  it('reads them as reviews, cleaned, with the spoiler flag and the score out of 10', () => {
+    expect(readComments(body)).toEqual([
+      { id: 'trakt:1', source: 'trakt', author: 'sam', text: 'Great & moving', rating: 9, date: Date.parse('2026-10-01T10:00:00.000Z'), spoiler: false },
+      { id: 'trakt:2', source: 'trakt', author: 'Anonymous', text: 'He dies at the end.', rating: 5, spoiler: true },
+    ])
+  })
+
+  it('asks for the most-liked comments without a sign-in, naming the title the way Trakt’s paths do', async () => {
+    const trakt = fakeTrakt({ status: 200, json: body })
+    const out = await createClient({ clientID: () => 'cid', accessToken: async () => null }, trakt.fetcher).comments('movie', 'tt0816692')
+    expect(out).toHaveLength(2)
+    expect(trakt.seen[0]!.url).toBe('https://api.trakt.tv/movies/tt0816692/comments/likes?limit=10')
+    expect(trakt.seen[0]!.headers.Authorization).toBeUndefined()
   })
 })

@@ -5,7 +5,8 @@
    The token comes from `auth`, which refreshes it when it is due, so this file knows nothing of storage or
    Sync. `fetch` is a parameter so the tests can stand in for Trakt. */
 
-import type { MediaType } from '../tmdb/types'
+import { cleanReview } from '../reviewText'
+import type { MediaType, Review } from '../tmdb/types'
 import { apiBase } from './oauth'
 
 export interface TraktAuth {
@@ -174,6 +175,27 @@ export function readPlayback(body: unknown): Resume[] {
   })
 }
 
+/** Trakt's most-liked comments as reviews, as FlowKit's `comments`. Anything without words is skipped. */
+export function readComments(body: unknown): Review[] {
+  return rows(body).flatMap((c) => {
+    const text = cleanReview(typeof c.comment === 'string' ? c.comment : '')
+    if (!text || typeof c.id !== 'number') return []
+    const score = c.user_stats?.rating ?? c.user_rating
+    const posted = Date.parse(typeof c.created_at === 'string' ? c.created_at : '')
+    return [
+      {
+        id: `trakt:${c.id}`,
+        source: 'trakt' as const,
+        author: (typeof c.user?.username === 'string' && c.user.username) || 'Anonymous',
+        text,
+        ...(typeof score === 'number' ? { rating: Math.round(score) } : {}),
+        ...(Number.isFinite(posted) ? { date: posted } : {}),
+        spoiler: c.spoiler === true,
+      },
+    ]
+  })
+}
+
 // MARK: The client
 
 export interface RequestOptions {
@@ -265,6 +287,13 @@ export function createClient(auth: TraktAuth, fetcher: typeof fetch) {
 
     rate: (entries: Entry[]) => post('/sync/ratings', syncBody(entries)),
     unrate: (entries: Entry[]) => post('/sync/ratings/remove', syncBody(entries)),
+
+    /** The most-liked comments, which are mostly reviews. Public, so no sign-in is needed, only the Client ID.
+     *  `slug` is the IMDb id or Trakt's own, which is what Trakt's paths take. */
+    async comments(type: MediaType, slug: string): Promise<Review[]> {
+      const path = type === 'movie' ? 'movies' : 'shows'
+      return readComments((await request('GET', `/${path}/${encodeURIComponent(slug)}/comments/likes`, { query: { limit: 10 }, anonymous: true })).body)
+    },
 
     scrobble: async (action: Scrobble, target: Target, progress: number, keepalive = false): Promise<void> => void (await request('POST', `/scrobble/${action}`, { body: scrobbleBody(target, progress), keepalive })),
   }
