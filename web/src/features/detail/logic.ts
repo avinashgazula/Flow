@@ -60,18 +60,27 @@ export function sourcesSummary(count: number, providers: ProviderState[]): strin
 /** The strip under the still, as edge print. A film: "2024 · 2 H 47 · 1H44 LEFT · ENDS 22:56", the
  *  time left the one yellow fact; not started, just "2024 · 2 H 47 · ENDS 22:56". A series started prints
  *  the episode: "S3 E7 · 35M LEFT · ENDS 22:56"; not started, "2008 · 5 SEASONS · 47 MIN · ENDS 22:56".
+ *  A title already watched (and not being watched again) prints WATCHED first and leaves out an end time that
+ *  nothing is waiting for, as a poster does: "WATCHED · 2024 · 2 H 47".
  *  Every fact has a rank (stripLayout), so a strip with less room drops the year first and keeps the end time. */
 export function titlePrint(
   d: Pick<MediaDetail, 'type' | 'year' | 'runtime' | 'seasons'>,
   progress: { position: number; duration: number; episode?: { season: number; episode: number } } | undefined,
   now: number,
   locale?: string,
+  watched?: boolean,
 ): PrintPart[] {
   const seasons = d.seasons.filter((x) => x.number > 0).length
   const length: PrintPart = { text: d.runtime ? formatRuntime(d.runtime * 60) : '', rank: rank.facts }
   const started = progress && progress.duration > 0 ? progress : undefined
   const year: PrintPart = { text: d.year ? String(d.year) : '', rank: rank.year }
   const facts: PrintPart[] = []
+  if (watched && !started) {
+    facts.push({ text: 'watched', rank: rank.left }, year)
+    if (d.type === 'show') facts.push({ text: seasons ? `${seasons} ${seasons === 1 ? 'season' : 'seasons'}` : 'Series', rank: rank.facts })
+    facts.push(length)
+    return facts
+  }
   if (started) {
     const left = secondsLeft(started)
     if (d.type === 'show') facts.push({ text: started.episode ? `S${started.episode.season} E${started.episode.episode}` : '', rank: rank.episode })
