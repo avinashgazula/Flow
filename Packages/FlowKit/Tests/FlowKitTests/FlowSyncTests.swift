@@ -186,7 +186,7 @@ final class FlowSyncMappingTests: XCTestCase {
         var c = Credentials()
         c.tmdbAPIKey = "tmdb"; c.tvdbAPIKey = "tvdb"; c.mdblistAPIKey = "mdb"
         c.openSubtitlesAPIKey = "os"; c.openSubtitlesUsername = "user"; c.openSubtitlesPassword = "pw"
-        c.subdlAPIKey = "subdl"; c.subSourceAPIKey = "subsource"; c.rpdbAPIKey = "rpdb"
+        c.subdlAPIKey = "subdl"; c.subSourceAPIKey = "subsource"; c.wyzieAPIKey = "wyzie"; c.rpdbAPIKey = "rpdb"
         c.introDBAPIKey = "intro"; c.publicMetaDBAPIKey = "pmdb"
         c.traktClientID = "tid"; c.traktClientSecret = "tsecret"; c.simklClientID = "sid"
         c.traktToken = OAuthToken(accessToken: "ta", refreshToken: "tr", expiresAt: Date(timeIntervalSince1970: 1_800_000_000), redirectURI: "flow://trakt-callback")
@@ -203,10 +203,27 @@ final class FlowSyncMappingTests: XCTestCase {
             FlowSyncMapping.apply(sections[name]!, to: name, credentials: &restored, settings: &settings)
         }
         XCTAssertEqual(restored, credentials)
-        XCTAssertEqual(sections["keys"]?.object?.keys.sorted(), ["introDBAPIKey", "mdblistAPIKey", "openSubtitlesAPIKey", "openSubtitlesPassword", "openSubtitlesUsername", "publicMetaDBAPIKey", "rpdbAPIKey", "simklClientID", "subSourceAPIKey", "subdlAPIKey", "traktClientID", "traktClientSecret", "tmdbAPIKey", "tvdbAPIKey"].sorted())
+        XCTAssertEqual(sections["keys"]?.object?.keys.sorted(), ["introDBAPIKey", "mdblistAPIKey", "openSubtitlesAPIKey", "openSubtitlesPassword", "openSubtitlesUsername", "publicMetaDBAPIKey", "rpdbAPIKey", "simklClientID", "subSourceAPIKey", "subdlAPIKey", "traktClientID", "traktClientSecret", "tmdbAPIKey", "tvdbAPIKey", "wyzieAPIKey"].sorted())
         XCTAssertEqual(sections["accounts"]?["trakt"]?["accessToken"], .string("ta"))
         XCTAssertEqual(sections["accounts"]?["trakt"]?["expiresAt"], .string("2027-01-15T08:00:00Z"))
         XCTAssertEqual(sections["accounts"]?["simkl"]?["refreshToken"], .null)
+    }
+
+    func testWyzieKeySyncsBothWays() {
+        var local = Credentials()
+        local.wyzieAPIKey = "wk"
+        let sections = FlowSyncMapping.sections(credentials: local, settings: AppSettings())
+        XCTAssertEqual(sections["keys"]?["wyzieAPIKey"], .string("wk"))
+
+        // The website's key comes in; a record that doesn't mention it leaves it alone, and a null clears it.
+        var other = Credentials()
+        var settings = AppSettings()
+        FlowSyncMapping.apply(.object(["wyzieAPIKey": .string("from-web")]), to: FlowSyncSectionName.keys, credentials: &other, settings: &settings)
+        XCTAssertEqual(other.wyzieAPIKey, "from-web")
+        FlowSyncMapping.apply(.object(["tmdbAPIKey": .string("t")]), to: FlowSyncSectionName.keys, credentials: &other, settings: &settings)
+        XCTAssertEqual(other.wyzieAPIKey, "from-web")
+        FlowSyncMapping.apply(.object(["wyzieAPIKey": .null]), to: FlowSyncSectionName.keys, credentials: &other, settings: &settings)
+        XCTAssertNil(other.wyzieAPIKey)
     }
 
     func testSkipSegmentKeysSyncBothWays() {
