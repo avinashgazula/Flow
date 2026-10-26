@@ -38,7 +38,7 @@ npm test             # unit tests (Vitest)
 | `src/lib/tmdb/` | TMDB client (normalises responses into `types.ts`), images, sample data. |
 | `src/lib/store/` | Settings and library (watchlist, progress, history) in localStorage. |
 | `src/lib/trakt/` | Trakt: PKCE sign-in, the API client, the library sync and the player's scrobbler (see Trakt below). |
-| `src/lib/sources/` | Stream add-ons, Jellyfin/Emby and Plex, and source ranking. |
+| `src/lib/sources/` | Stream add-ons, Jellyfin/Emby, Plex and WebDAV, and source ranking. |
 | `src/features/player/` | The player. |
 | `src/features/livetv/`, `src/lib/livetv/` | Live TV: the channel list, the timeline guide and the live player; the M3U, Xtream Codes and XMLTV code behind them. |
 | `proxy/` | The stream proxy: a Cloudflare Worker that makes blocked file hosts readable. |
@@ -163,6 +163,58 @@ ties, so the smooth-decode, HDR and audio-language ranking holds wherever a sett
 this browser can't play, or is known to stutter on, goes last whatever the rules. The picker's chips (resolution,
 provider) are session-only and sit on top of the saved filters, and the picker says how many sources they hid.
 The settings are stored as `sources` and are left out of the defaults on purpose, so nothing here loads with the app.
+
+## Media servers
+
+Settings → Media Servers and what the servers add to Home, Search and the player, as the apps have them
+(`lib/sources/jellyfin.ts`, `plex.ts`, `webdav.ts`, with the apps' words and defaults):
+
+- **Home.** Recently Added to Your Server is a real shelf (off by default, as in the apps): the newest 30 of every
+  enabled server, merged, newest first. **Server Home Rows** (Settings → Shelves) gives each switched-on server a row
+  per library, named as the server names it ("Movies"; "Living Room · Movies" with more than one server), 60 titles
+  each, newest first. A `mediaServerLibrary` shelf pasted from the apps becomes the same row. A server's titles carry
+  TMDB ids (Plex's guids, Jellyfin's provider ids); each row reads its posters from TMDB like any other, and **Use Server
+  Artwork** puts the server's own pictures over them. A title the server never matched to TMDB isn't listed, since its
+  page couldn't open. The apps have no "continue watching" shelf from a server either: the server's own Continue
+  Watching follows from the playback reports below.
+- **SERVER on a poster.** A title on any enabled server ends its edge print with SERVER, after the rating (the apps'
+  `EdgePrint.poster(onServer:)`), printed after the rating but ranked above it and the runtime, so a strip with little room keeps "8.2 · SERVER" and a
+  phone's 112 px poster (which keeps its holes, as every strip does) keeps SERVER alone. It is on the Search top
+  result too, and **Show Badge on Posters** (on) switches it. What is on a server comes from an index of every
+  server's titles by TMDB id (a server's titles without one by name and year), read lazily and kept in the saved query cache
+  (`marks.ts`, `serverCatalogue.ts`), refreshed after half an hour or from Settings → Refresh Library Index. A server that
+  doesn't answer is named there and left out; if none answers nothing is judged. **Only Show My Server's Content** leaves
+  out of Home's rows and Search what no server lists (people stay), with no filtering while the index can't be read.
+  Explore isn't filtered yet.
+- **Play From This Library Only** (Settings → Sources → Library). A title opened from one of a server's library rows on
+  Home remembers that server for the visit (`rememberLibraryOrigin`, sessionStorage); the source search asks that server
+  first and only asks everyone when it has nothing. Titles opened anywhere else are unchanged.
+- **Playback is reported.** `useServerReport` tells the server a source came from: started when the picture first moves,
+  progress every ten seconds, paused, and stopped when it ends, the player closes or the page closes (a `keepalive` request, which a browser may still drop on a hard
+  close, so Continue Watching can lag until the server times the session out). Jellyfin and Emby get `Sessions/Playing`, `/Progress` and `/Stopped` with the position in ticks; Plex gets
+  `/:/timeline` and a `/:/scrobble` for a stop at 90 % or more (Plex's own watched line). **Track Only With Your Tracking
+  Service** stops the reports and ignores the server's resume point. Sample streams report nothing.
+- **WebDAV.** Settings → Media Servers → WebDAV Shares: name, address, an optional login, and the Movies and TV Shows
+  folders (`/Movies` and `/TV Shows`). Flow lists them with `PROPFIND` (two levels down, at most 400 folders a level, kept
+  for five minutes) and offers the files named like the title ("Movie (2020).mkv", "Show/Season 1/Show S01E02.mkv") in the
+  picker, under the WebDAV category between Media Servers and Add-ons.
+
+**What a browser needs from a WebDAV share.** Listing is a cross-origin `PROPFIND` with `Authorization` and `Depth`
+headers, so the browser asks the server first (a CORS preflight) and almost no WebDAV server answers it. The server has to
+allow this site's address, the `PROPFIND` and `OPTIONS` methods, and the `Authorization`, `Depth` and `Content-Type`
+headers; the error says exactly that when the browser gets no answer (it can't tell a server that is off from one that
+refuses web pages). The stream proxy can't stand in for the listing: its Worker answers `GET` and `HEAD` only and never
+forwards a login, by design. It does carry the files themselves when a share allows listing but not reading. Playing
+needs more of the same: a password goes as an `Authorization` header, which a media element can't send, so a
+password-protected share plays Matroska (the remuxer reads with headers; the share must expose `Content-Range`) and
+offers MP4 and WebM as "Needs request headers a browser can't send". A login in the address (`https://user:pass@…`) is
+blocked by browsers for media, so Flow never builds one. Shares are kept in settings and in the backup (passwords
+included, like the servers' tokens), not in Flow Sync.
+
+Tests: `servers.test.ts` (answers in the servers' response shapes: libraries, newest titles, search, catalogue paging,
+the report calls), `report.test.ts` (the order and timing of reports), `webdav.test.ts` (Apache and Nextcloud answers,
+matching, sources, errors), `libraryFirst.test.ts`, and the index and SERVER print in `home/serverIndex.test.ts`,
+`marks.test.ts` and `stripLayout.test.ts`.
 
 ## Skipping and binge watching
 
@@ -415,7 +467,7 @@ them playing within the hour with a channel on air in the sample guide.
 
 - **Mixed content:** a page served over HTTPS can't reach an `http://` server. Use HTTPS for your
   Jellyfin/Emby/Plex server, or run Flow locally (`npm run preview`) to reach one on your network.
-- **CORS:** TMDB, Trakt, Stremio add-ons, Jellyfin, Emby and Plex all allow browser requests. Some IPTV
+- **CORS:** TMDB, Trakt, Stremio add-ons, Jellyfin, Emby and Plex all allow browser requests (a WebDAV share has to be set to; see Media servers). Some IPTV
   playlists and file hosts don't (most debrid download servers send no CORS headers), and those can't
   be read from a web page. Settings → Playback has a **Stream Proxy** field: a proxy you run fetches
   such files for Flow and adds the headers. `proxy/` holds a Cloudflare Worker for it

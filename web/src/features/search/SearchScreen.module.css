@@ -59,6 +59,7 @@
   font-size: var(--fs-small);
   line-height: 1.5;
   color: var(--ink-2);
+  text-wrap: pretty;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;

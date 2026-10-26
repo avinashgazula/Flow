@@ -91,10 +91,10 @@ describe('folder rows', () => {
 describe('SERVER on a poster', () => {
   const none = { movies: watchedMovieKeys([]), shows: watchedShowsOf({}) }
 
-  it('prints after the rating, ranked just under it, never before the watched marks', () => {
+  it('prints after the rating, ranked just above it, never before the watched marks', () => {
     const m = posterMarks({ type: 'movie', id: 1 }, none, undefined, now, on, true)
     expect(m.parts).toEqual([])
-    expect(toFacts(m.tail ?? [])).toEqual([{ text: 'server', rank: 4.5 }])
+    expect(toFacts(m.tail ?? [])).toEqual([{ text: 'server', rank: 3.5 }])
     expect(m.spoken).toBe('on your server')
   })
 

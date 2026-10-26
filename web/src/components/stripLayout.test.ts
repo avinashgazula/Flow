@@ -173,18 +173,19 @@ describe('episodes left', () => {
 })
 
 describe('SERVER on a poster strip', () => {
-  const print = toFacts([{ text: '2h 47', rank: rank.facts }, { text: '8.2', rank: rank.rating }, { text: 'server', rank: rank.server }])
+  const print = toFacts([{ text: '2h 47', rank: rank.facts }, { text: '8.2', rank: rank.rating }, { text: 'server', rank: 3.5 }])
   const shown = (width: number) => composeStrip({ width, facts: print, kind: 'poster' }).facts.map((f) => f.text)
 
-  it('goes after the rating and outranks the runtime: a poster with little room keeps 8.2 and SERVER', () => {
+  it('goes after the rating but outranks it and the runtime: the less room, the fewer facts, SERVER last to go', () => {
+    expect(shown(92)).toEqual(['server'])
     expect(shown(110)).toEqual(['8.2', 'server'])
     expect(shown(150)).toEqual(['8.2', 'server'])
-  })
-
-  it('prints with everything where there is room, and is the first to go after the rating when there is very little', () => {
     expect(shown(178)).toEqual(['2h 47', '8.2', 'server'])
     expect(shown(300)).toEqual(['2h 47', '8.2', 'server'])
-    // A phone's 112 px poster keeps its perforations and the rating, as every strip does.
-    expect(shown(92)).toEqual(['8.2'])
+  })
+
+  it('never drops what comes before it: the episode code and the time left outrank it', () => {
+    const resume = toFacts([{ key: '18m left' }, { text: 'S1 E2', rank: rank.episode }, { text: 'server', rank: 3.5 }, { text: '8.2', rank: rank.rating }])
+    expect(composeStrip({ width: 92, facts: resume, kind: 'poster' }).facts.map((f) => f.text)).toEqual(['18m left'])
   })
 })
