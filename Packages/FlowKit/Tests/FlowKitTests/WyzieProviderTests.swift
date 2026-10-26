@@ -1,5 +1,8 @@
 import XCTest
 @testable import FlowKit
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Wyzie moved to sub.wyzie.io and answers 401 without a free key. The answer is the website's fixture
 /// (web/src/lib/subtitles/__fixtures__/wyzie-search.json), so both code bases read it alike.
