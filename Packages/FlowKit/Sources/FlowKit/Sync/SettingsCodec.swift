@@ -139,6 +139,7 @@ public enum SetupShare {
             creds.openSubtitlesPassword = pick(incoming.openSubtitlesPassword, creds.openSubtitlesPassword)
             creds.subdlAPIKey = pick(incoming.subdlAPIKey, creds.subdlAPIKey)
             creds.subSourceAPIKey = pick(incoming.subSourceAPIKey, creds.subSourceAPIKey)
+            creds.wyzieAPIKey = pick(incoming.wyzieAPIKey, creds.wyzieAPIKey)
             creds.traktClientID = pick(incoming.traktClientID, creds.traktClientID)
             creds.traktClientSecret = pick(incoming.traktClientSecret, creds.traktClientSecret)
             creds.simklClientID = pick(incoming.simklClientID, creds.simklClientID)

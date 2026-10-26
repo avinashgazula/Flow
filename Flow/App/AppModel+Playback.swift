@@ -48,7 +48,7 @@ extension AppModel {
         }
         if enabled.contains("subdl"), let key = credentials.subdlAPIKey?.nonEmpty { providers.append(SubDLProvider(apiKey: key, http: http)) }
         if enabled.contains("subsource"), let key = credentials.subSourceAPIKey?.nonEmpty { providers.append(SubSourceProvider(apiKey: key, http: http)) }
-        if enabled.contains("wyzie") { providers.append(WyzieProvider(http: http)) }
+        if enabled.contains("wyzie"), let key = credentials.wyzieAPIKey?.nonEmpty { providers.append(WyzieProvider(apiKey: key, http: http)) }
         return providers
     }
 

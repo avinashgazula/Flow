@@ -359,7 +359,7 @@ struct SubtitleSettingsView: View {
                 }
             }
             Section("Sources") {
-                ForEach([("opensubtitles", "OpenSubtitles"), ("subdl", "SubDL"), ("wyzie", "Wyzie (no key)"), ("subsource", "SubSource")], id: \.0) { id, name in
+                ForEach([("opensubtitles", "OpenSubtitles"), ("subdl", "SubDL"), ("wyzie", "Wyzie"), ("subsource", "SubSource")], id: \.0) { id, name in
                     Toggle(name, isOn: Binding(
                         get: { model.settings.subtitles.enabledProviders.contains(id) },
                         set: { on in

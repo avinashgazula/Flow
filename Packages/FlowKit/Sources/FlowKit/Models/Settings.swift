@@ -261,6 +261,8 @@ public struct Credentials: Codable, Hashable, Sendable {
     public var openSubtitlesPassword: String?
     public var subdlAPIKey: String?
     public var subSourceAPIKey: String?
+    /// Wyzie asks for a free key (store.wyzie.io/redeem) since it moved to sub.wyzie.io.
+    public var wyzieAPIKey: String?
     public var rpdbAPIKey: String?
     public var traktClientID: String?
     public var traktClientSecret: String?

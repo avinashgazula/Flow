@@ -165,7 +165,7 @@ struct AccountSettingsView: View {
 
     private var configuredSummary: String {
         let c = model.credentials
-        let count = [c.mdblistAPIKey, c.publicMetaDBAPIKey, c.introDBAPIKey, c.openSubtitlesAPIKey, c.subdlAPIKey, c.subSourceAPIKey].compactMap { $0?.nonEmpty }.count
+        let count = [c.mdblistAPIKey, c.publicMetaDBAPIKey, c.introDBAPIKey, c.openSubtitlesAPIKey, c.subdlAPIKey, c.subSourceAPIKey, c.wyzieAPIKey].compactMap { $0?.nonEmpty }.count
         return count == 0 ? "Not configured" : "\(count) configured"
     }
 
@@ -358,14 +358,15 @@ struct APIKeysView: View {
                 Link("Get a key at ratingposterdb.com", destination: URL(string: "https://ratingposterdb.com")!)
             } header: { Text("RatingPosterDB") } footer: { Text("Posters with ratings drawn on, for Poster Enhancement in Metadata settings.") }
 
-            Section("Subtitle Sources") {
+            Section {
                 OptionalTextField(title: "OpenSubtitles API Key", text: $model.credentials.openSubtitlesAPIKey, secure: true)
                 OptionalTextField(title: "OpenSubtitles Username (optional)", text: $model.credentials.openSubtitlesUsername)
                 OptionalTextField(title: "OpenSubtitles Password (optional)", text: $model.credentials.openSubtitlesPassword, secure: true)
                 OptionalTextField(title: "SubDL API Key", text: $model.credentials.subdlAPIKey, secure: true)
                 OptionalTextField(title: "SubSource API Key", text: $model.credentials.subSourceAPIKey, secure: true)
-                Text("Wyzie needs no key.").font(.caption).foregroundStyle(.secondary)
-            }
+                OptionalTextField(title: "Wyzie API Key", text: $model.credentials.wyzieAPIKey, secure: true)
+                Link("Get a free Wyzie key at store.wyzie.io/redeem", destination: URL(string: "https://store.wyzie.io/redeem")!)
+            } header: { Text("Subtitle Sources") } footer: { Text("Wyzie needs a free key. Claim one at store.wyzie.io/redeem and paste it here.") }
 
             Section {
                 OptionalTextField(title: "Trakt Client ID", text: $model.credentials.traktClientID, prompt: BundleKeys.traktClientID == nil ? "Client ID" : "Using built-in app")

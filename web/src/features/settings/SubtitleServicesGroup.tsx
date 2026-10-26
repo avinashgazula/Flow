@@ -86,7 +86,7 @@ export function SubtitleServicesGroup() {
         title="Subtitle Keys"
         footer={
           <>
-            Get keys at {links}. They sync with the apps, apart from Wyzie’s, which the apps have no place for. OpenSubtitles keeps its downloads on a host that blocks web pages, so they are fetched through your stream proxy below, with{' '}
+            Get keys at {links}. They sync with the apps. OpenSubtitles keeps its downloads on a host that blocks web pages, so they are fetched through your stream proxy below, with{' '}
             <code>www.opensubtitles.com</code> and <code>dl.opensubtitles.org</code> in its allowed hosts. OpenSubtitles doesn’t let a web page send the login, so here downloads count against the key’s own daily limit, and the username and password are kept for the apps. SubSource doesn’t let web pages read its answers at all, so its key is kept for the apps.
           </>
         }

@@ -70,7 +70,7 @@ iCloud sync uses the iCloud key-value store entitlement, which needs a paid deve
 | TVDB | TVDB episode ordering | Settings → Metadata |
 | MDBList | Ratings row, list shelves, optional tracking | Settings → Account → API Keys |
 | IntroDB / PublicMetaDB | Skip segments, tracking | Settings → Account → API Keys |
-| OpenSubtitles / SubDL / SubSource | Subtitle search (Wyzie needs no key) | Settings → Account → API Keys |
+| OpenSubtitles / SubDL / SubSource | Subtitle search (Wyzie needs a free key from store.wyzie.io/redeem) | Settings → Account → API Keys |
 
 ## Testing in the simulators
 
