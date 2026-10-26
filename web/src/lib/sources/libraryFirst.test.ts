@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { settingsStore } from '../store/settings'
 import { fixedCapabilities } from './capabilities'
 import { searchSources, type Provider, type SearchUpdate } from './index'
-import { libraryOriginFor, rememberLibraryOrigin } from './libraryOrigin'
+import { libraryOriginFor, rememberLibraryOrigin } from './lastSource'
 import type { PlaybackRequest, Source } from './types'
 
 const caps = fixedCapabilities({})

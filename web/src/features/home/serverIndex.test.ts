@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { asMediaItem, buildIndex, lookup, normaliseTitle, titleKey } from './serverIndex'
-import type { ServerTitle } from './types'
+import { asMediaItem, buildIndex, lookup, normaliseTitle, titleKey } from './marks'
+import type { ServerTitle } from '../../lib/sources/types'
 
 const t = (over: Partial<ServerTitle>): ServerTitle => ({ serverId: 's', itemId: 'i', type: 'movie', title: 'Title', ...over })
 

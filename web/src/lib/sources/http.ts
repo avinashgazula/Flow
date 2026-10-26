@@ -53,6 +53,21 @@ export function hostOf(url: string): string {
   }
 }
 
+/** What people paste: no scheme, or a trailing slash. A bare IP or .local name is a home server, so http. */
+export function normaliseShareURL(input: string): string {
+  let url = input.trim()
+  if (!/^https?:\/\//i.test(url)) {
+    const local = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?(\/|$)|^[^/]+\.local(:\d+)?(\/|$)|^localhost(:\d+)?(\/|$)/i.test(url)
+    url = `${local ? 'http' : 'https'}://${url}`
+  }
+  const parsed = new URL(url)
+  parsed.hash = ''
+  parsed.search = ''
+  parsed.username = ''
+  parsed.password = ''
+  return parsed.toString().replace(/\/+$/, '')
+}
+
 /** True when this page is HTTPS and the URL isn't: the browser blocks that request outright. */
 export function isMixedContent(url: string): boolean {
   if (typeof location === 'undefined' || location.protocol !== 'https:') return false

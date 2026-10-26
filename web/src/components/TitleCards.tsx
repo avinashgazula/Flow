@@ -8,7 +8,7 @@ import { useSettings } from '../lib/store/settings'
 import { formatLeft, userLocale, useMinuteTick } from '../lib/time'
 import type { MediaItem } from '../lib/tmdb/types'
 import { useNearScreen } from '../lib/useNearScreen'
-import { posterMarks, watchedMovieKeys, watchedShowsOf } from '../features/home/marks'
+import { posterMarks, useOnServer, watchedMovieKeys, watchedShowsOf } from '../features/home/marks'
 import { episodeLine, pickPrint, resumePrint, secondsLeft, spokenPick, spokenResume, watchedFraction, type PickDetail } from '../features/home/logic'
 import { FrameCard } from './Frame'
 
@@ -45,7 +45,8 @@ export function PosterItem({ item, meta, sizes = posterSizes, children }: { item
   const rewatches = useLibrary((l) => l.rewatches)
   const showWatched = useSettings((x) => x.showWatchedBadges)
   const showEpisodes = useSettings((x) => x.showEpisodesRemaining)
-  const marks = posterMarks(item, { movies: watchedMovieKeys(history), shows: watchedShowsOf(episodes, rewatches) }, detail, now, { watched: showWatched, episodes: showEpisodes })
+  const onServer = useOnServer(item)
+  const marks = posterMarks(item, { movies: watchedMovieKeys(history), shows: watchedShowsOf(episodes, rewatches) }, detail, now, { watched: showWatched, episodes: showEpisodes }, onServer)
   return (
     <FrameCard
       link={{ to: '/title/$type/$id', params: { type: item.type, id: item.id } }}
@@ -54,7 +55,7 @@ export function PosterItem({ item, meta, sizes = posterSizes, children }: { item
       artPath={item.poster}
       sizes={sizes}
       progress={marks.progress}
-      print={[...marks.parts, ...pickPrint(item, detail, now)]}
+      print={[...marks.parts, ...pickPrint(item, detail, now), ...(marks.tail ?? [])]}
       title={item.title}
       meta={meta}
       label={[spokenPick(item, detail), marks.spoken].filter(Boolean).join(', ')}

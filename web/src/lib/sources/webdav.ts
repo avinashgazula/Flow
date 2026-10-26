@@ -30,21 +30,6 @@ export const isVideo = (entry: WebDAVEntry) => !entry.isDirectory && videoExtens
 
 // MARK: Addresses
 
-/** What people paste: no scheme, or a trailing slash. A bare IP or .local name is a home server, so http. */
-export function normaliseShareURL(input: string): string {
-  let url = input.trim()
-  if (!/^https?:\/\//i.test(url)) {
-    const local = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?(\/|$)|^[^/]+\.local(:\d+)?(\/|$)|^localhost(:\d+)?(\/|$)/i.test(url)
-    url = `${local ? 'http' : 'https'}://${url}`
-  }
-  const parsed = new URL(url)
-  parsed.hash = ''
-  parsed.search = ''
-  parsed.username = ''
-  parsed.password = ''
-  return parsed.toString().replace(/\/+$/, '')
-}
-
 /** A configured folder ("/Movies") under the share's address, each part escaped. */
 export function urlForPath(config: Pick<WebDAVConfig, 'url'>, path: string): string {
   const parts = path.split('/').filter(Boolean).map(encodeURIComponent)

@@ -13,6 +13,7 @@ import { userLocale, useMinuteTick } from '../../lib/time'
 import type { SearchResult } from '../../lib/tmdb/types'
 import { StateView, errorMessage } from '../explore/Controls'
 import { pickPrint } from '../home/logic'
+import { useServerLookup } from '../home/marks'
 import { groupResults, minimumQuery, neighbour, topResult, type Direction, type MediaResult, type PersonResult } from './logic'
 import { recentSearches, useRecentSearches } from './recent'
 import s from './SearchScreen.module.css'
@@ -66,7 +67,10 @@ export function SearchScreen({ initial }: { initial: string }) {
 
   const active = term.trim().length >= minimumQuery
   const search = useQuery({ ...q.search(active ? term : ''), placeholderData: keepPreviousData })
-  const results = active ? (search.data?.results ?? []) : []
+  // Only Show My Server's Content leaves out the titles no server lists (people stay). With no server readable, nothing is judged.
+  const server = useServerLookup()
+  const found = active ? (search.data?.results ?? []) : []
+  const results = server.only && server.has ? found.filter((r) => r.kind === 'person' || server.has!(r)) : found
   const top = active ? topResult(results, term) : undefined
   const groups = groupResults(results, top)
 
@@ -190,7 +194,7 @@ export function SearchScreen({ initial }: { initial: string }) {
               </button>
             }
           />
-        ) : search.isPending ? (
+        ) : search.isPending || (server.only && server.pending) ? (
           <section aria-label="Searching" aria-busy="true">
             <ul className={s.grid}>
               {Array.from({ length: 7 }, (_, i) => (
@@ -201,7 +205,11 @@ export function SearchScreen({ initial }: { initial: string }) {
         ) : results.length === 0 ? (
           <StateView
             title={`No Results for “${term.trim()}”`}
-            message="Check the spelling, or try a shorter title, a show’s name or a person’s. You can also browse a genre instead."
+            message={
+              server.only && found.length > 0
+                ? 'Nothing on your media servers matches. Turn off Only Show My Server’s Content in Settings → Media Servers to search everything.'
+                : 'Check the spelling, or try a shorter title, a show’s name or a person’s. You can also browse a genre instead.'
+            }
             action={
               <Link to="/explore" className="btn btn-secondary">
                 Browse Titles

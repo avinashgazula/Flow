@@ -8,15 +8,17 @@ import { PosterItem, useSeenDetail } from '../../components/TitleCards'
 import { prefetchDetail, q } from '../../lib/queries'
 import { providerLogo, useWatchProviders } from '../../lib/providers'
 import type { BuiltInShelf, ShelfConfig } from '../../lib/shelfDefaults'
+import { rememberLibraryOrigin } from '../../lib/sources/lastSource'
+import type { ServerLibrary, ServerTitle } from '../../lib/sources/types'
 import { useLibrary, mediaKey } from '../../lib/store/library'
-import { useSettings } from '../../lib/store/settings'
+import { hasCatalog, useSettings, type ServerConfig } from '../../lib/store/settings'
 import { userLocale, useMinuteTick } from '../../lib/time'
 import type { MediaItem, Page } from '../../lib/tmdb/types'
 import { useNearScreen } from '../../lib/useNearScreen'
 import { followedShows, showStatus } from './continue'
 import { genreTiles, serviceTiles } from './folders'
 import { episodeShort, pickMeta, pickPrint, spokenPick } from './logic'
-import { watchedShowsOf } from './marks'
+import { asMediaItem, enabledServers, useServerLookup, watchedShowsOf } from './marks'
 import { builtInExplore, discoverParams, exploreLinkFor, type ExploreLink } from './shelfQuery'
 import { airLabel, airSpoken, buildUpcoming, type UpcomingEntry, type UpcomingShow } from './upcoming'
 import s from './HomeScreen.module.css'
@@ -59,6 +61,7 @@ export default function Shelves() {
       {rows.map((sh) => (
         <ShelfSection key={sh.id} shelf={sh} />
       ))}
+      <ServerHomeRows />
     </div>
   )
 }
@@ -73,15 +76,15 @@ function ShelfSection({ shelf }: { shelf: ShelfConfig }) {
         return <GenresFolder title={shelf.title} />
       case 'upcomingEpisodes':
         return <UpcomingShelf title={shelf.title} />
-      // Lists from a media server have their own batch; until then the row has nothing to show.
       case 'mediaServerRecent':
-        return null
+        return <RecentServerShelf title={shelf.title} />
       default:
         return <TitleShelf shelf={shelf} />
     }
   }
-  // Trakt lists, MDBList lists and media-server libraries are kept in the list and shown once those sources exist.
   if (source.kind === 'discover') return <TitleShelf shelf={shelf} />
+  if (source.kind === 'mediaServerLibrary') return <LibraryShelf title={shelf.title} serverId={source.serverID} libraryId={source.libraryID} />
+  // Trakt lists and MDBList lists are kept in the list and shown once those sources exist.
   return null
 }
 
@@ -131,6 +134,7 @@ function TitleShelf({ shelf }: { shelf: ShelfConfig }) {
   const id = useId()
   const builtIn = shelf.source.kind === 'builtIn' ? shelf.source.id : undefined
 
+  const server = useServerLookup()
   const feed = catalogueFeed(shelf, region, startOfDay())
   const usesSeed = builtIn === 'becauseYouWatched' || builtIn === 'recommendedForYou'
   const seed = usesSeed ? history[0]?.item : undefined
@@ -155,6 +159,10 @@ function TitleShelf({ shelf }: { shelf: ShelfConfig }) {
     items = catalogue.data?.results ?? []
     pending ||= catalogue.isPending
   }
+  // Only Show My Server's Content: titles the servers don't list are left out. When no server can be read the
+  // filter can't judge, so the row shows as it is.
+  if (server.only && server.has) items = items.filter(server.has)
+  pending ||= server.only && server.pending
   const failed = catalogue.isError && !items.length
   const capped = builtIn && contentShelves.has(builtIn) ? length : shelf.source.kind === 'discover' ? length : 40
   const shown = items.slice(0, capped)
@@ -376,5 +384,104 @@ function GenresFolder({ title }: { title: string }) {
         ))}
       </ul>
     </section>
+  )
+}
+
+// MARK: Media servers
+
+const sixMinutes = 6 * 60_000
+const idsOf = (servers: readonly ServerConfig[]) => servers.map((v) => v.id).join(',')
+
+/** A row of a server's titles as posters. The titles a server lists carry TMDB ids; each is read from TMDB for its
+ *  artwork and facts (the request its poster would make anyway), and Use Server Artwork puts the server's own
+ *  pictures over TMDB's. Printed "Server" like any title on one. Nothing is asked until the row is near the screen. */
+function ServerRow({ id, title, titles, pending, libraryServerId, near, sectionRef }: { id: string; title: string; titles: ServerTitle[] | undefined; pending: boolean; libraryServerId?: string; near: boolean; sectionRef: React.Ref<HTMLElement> }) {
+  const artwork = useSettings((x) => x.useServerArtwork === true)
+  const catalogue = useSettings(hasCatalog)
+  const shown = (titles ?? []).filter((t) => t.tmdb).slice(0, 40)
+  const details = useQueries({ queries: shown.map((t) => ({ ...q.detail(t.type, t.tmdb!), enabled: near && catalogue, retry: false })) })
+  // With TMDB's pictures wanted, the row waits for them rather than showing a server's and then swapping.
+  const waiting = catalogue && !artwork && details.some((d) => d.isPending && d.fetchStatus !== 'idle')
+  const loading = pending || waiting
+  if (!pending && shown.length === 0) return null
+  return (
+    <section ref={sectionRef} className={s.rowSection} aria-labelledby={id}>
+      <RowHead id={id} title={title} />
+      <ul
+        className={s.row}
+        aria-busy={loading || undefined}
+        // A title opened from a server's library remembers which, for Play From This Library Only. Its link says which title.
+        onClickCapture={
+          libraryServerId
+            ? (e) => {
+                const m = /\/title\/(movie|show)\/(\d+)/.exec((e.target as Element).closest('a')?.getAttribute('href') ?? '')
+                if (m) rememberLibraryOrigin(m[1] as 'movie' | 'show', Number(m[2]), libraryServerId)
+              }
+            : undefined
+        }
+      >
+        {loading
+          ? Array.from({ length: 7 }, (_, i) => <PosterGhost key={i} />)
+          : shown.map((t, i) => {
+              const item = asMediaItem(t, details[i]?.data, artwork)
+              return item && <PosterItem key={mediaKey(item.type, item.id)} item={item} sizes="(max-width: 720px) 112px, 180px" />
+            })}
+      </ul>
+    </section>
+  )
+}
+
+/** "Recently Added to Your Server": the newest titles on all enabled servers, newest first. */
+function RecentServerShelf({ title }: { title: string }) {
+  const [near, ref] = useNearScreen<HTMLElement>()
+  const id = useId()
+  const servers = enabledServers(useSettings((x) => x.servers))
+  const recent = useQuery({
+    queryKey: ['servers', 'recent', idsOf(servers)],
+    queryFn: async ({ signal }) => (await import('../../lib/sources/serverCatalogue')).recentTitles(servers, signal),
+    enabled: near && servers.length > 0,
+    staleTime: sixMinutes,
+  })
+  if (servers.length === 0) return null
+  return <ServerRow id={id} title={title} titles={recent.data} pending={!near || recent.isPending} near={near} sectionRef={ref} />
+}
+
+/** One library of one server, as a shelf in the list (the apps' `mediaServerLibrary` source). */
+function LibraryShelf({ title, serverId, libraryId }: { title: string; serverId: string; libraryId: string }) {
+  const [near, ref] = useNearScreen<HTMLElement>()
+  const id = useId()
+  const server = useSettings((x) => x.servers.find((v) => v.id === serverId && v.enabled))
+  const titles = useQuery({
+    queryKey: ['servers', 'library', serverId, libraryId],
+    queryFn: async ({ signal }) => (await import('../../lib/sources/serverCatalogue')).libraryTitles(server!, libraryId, signal),
+    enabled: near && !!server,
+    staleTime: sixMinutes,
+  })
+  if (!server) return null
+  return <ServerRow id={id} title={title} titles={titles.data} pending={!near || titles.isPending} libraryServerId={serverId} near={near} sectionRef={ref} />
+}
+
+/** Server Home Rows (Settings → Shelves): each switched-on server's libraries, one row each, in the order the server
+ *  lists them and named by the library; with several servers the server's name leads ("Living Room · Movies"). */
+function ServerHomeRows() {
+  const ids = useSettings((x) => x.serverHomeRowIDs)
+  const servers = enabledServers(useSettings((x) => x.servers)).filter((v) => ids?.includes(v.id))
+  return servers.map((server) => <ServerLibraryRows key={server.id} server={server} named={servers.length > 1} />)
+}
+
+function ServerLibraryRows({ server, named }: { server: ServerConfig; named: boolean }) {
+  const [near, ref] = useNearScreen<HTMLDivElement>()
+  const libraries = useQuery({
+    queryKey: ['servers', 'libraries', server.id],
+    queryFn: async ({ signal }): Promise<ServerLibrary[]> => (await import('../../lib/sources/serverCatalogue')).serverLibraries(server, signal),
+    enabled: near,
+    staleTime: sixMinutes,
+  })
+  return (
+    <div ref={ref}>
+      {(libraries.data ?? []).map((library) => (
+        <LibraryShelf key={library.id} title={named ? `${server.name} · ${library.name}` : library.name} serverId={server.id} libraryId={library.id} />
+      ))}
+    </div>
   )
 }

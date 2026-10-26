@@ -7,8 +7,7 @@ import plexRecent from './__fixtures__/plex-recently-added.json'
 import plexSections from './__fixtures__/plex-sections.json'
 import * as jellyfin from './jellyfin'
 import * as plex from './plex'
-import { recentTitles, merged } from './serverCatalogue'
-import { catalogueOf, librariesOf, recentOf, reportTo } from './servers'
+import { catalogueOf, librariesOf, merged, recentOf, recentTitles, reportTo } from './serverCatalogue'
 import type { ServerTitle } from './types'
 
 const jf: ServerConfig = { id: 'jellyfin:srv:u1', kind: 'jellyfin', name: 'Living Room', url: 'https://jf.example.com', token: 'tok', userId: 'u1', enabled: true }

@@ -3,9 +3,9 @@ import type { WebDAVConfig } from '../store/settings'
 import apacheMovies from './__fixtures__/webdav-apache-movies.xml?raw'
 import nextcloudFolder from './__fixtures__/webdav-nextcloud-folder.xml?raw'
 import { fixedCapabilities } from './capabilities'
-import { SourceError } from './http'
+import { normaliseShareURL, SourceError } from './http'
 import type { PlaybackRequest } from './types'
-import { authHeaders, corsMessage, findFiles, forgetListings, isVideo, matchesMovie, matchShowFolder, normaliseShareURL, parseMultistatus, testShare, urlForHref, urlForPath, videos, webdavSources } from './webdav'
+import { authHeaders, corsMessage, findFiles, forgetListings, isVideo, matchesMovie, matchShowFolder, parseMultistatus, testShare, urlForHref, urlForPath, videos, webdavSources } from './webdav'
 
 const share: WebDAVConfig = { id: 'dav1', name: 'My NAS', url: 'https://nas.example.com/dav', moviesPath: '/Movies', showsPath: '/TV Shows', enabled: true }
 const caps = fixedCapabilities({})

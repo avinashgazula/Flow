@@ -87,3 +87,28 @@ describe('folder rows', () => {
     expect(new Set(genreTiles.map((g) => g.id)).size).toBe(12)
   })
 })
+
+describe('SERVER on a poster', () => {
+  const none = { movies: watchedMovieKeys([]), shows: watchedShowsOf({}) }
+
+  it('prints after the rating, as the lowest priority, never before the watched marks', () => {
+    const m = posterMarks({ type: 'movie', id: 1 }, none, undefined, now, on, true)
+    expect(m.parts).toEqual([])
+    expect(toFacts(m.tail ?? [])).toEqual([{ text: 'server', rank: 6 }])
+    expect(m.spoken).toBe('on your server')
+  })
+
+  it('keeps WATCHED first and says both aloud', () => {
+    const watched = { movies: watchedMovieKeys([film(7)]), shows: watchedShowsOf({}) }
+    const m = posterMarks({ type: 'movie', id: 7 }, watched, undefined, now, on, true)
+    expect(text(m)).toEqual(['watched'])
+    expect(m.tail).toHaveLength(1)
+    expect(m.spoken).toBe('watched, on your server')
+  })
+
+  it('is absent for a title that is not on one, and the shared empty answer is never changed', () => {
+    expect(posterMarks({ type: 'movie', id: 1 }, none, undefined, now, on, false)).toEqual({ parts: [] })
+    posterMarks({ type: 'movie', id: 1 }, none, undefined, now, on, true)
+    expect(posterMarks({ type: 'movie', id: 2 }, none, undefined, now, on)).toEqual({ parts: [] })
+  })
+})

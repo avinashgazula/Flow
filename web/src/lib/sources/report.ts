@@ -1,5 +1,5 @@
 import type { ServerConfig } from '../store/settings'
-import { reportTo } from './servers'
+import { reportTo } from './serverCatalogue'
 import { uuid } from './http'
 import type { ReportState } from './types'
 
