@@ -14,6 +14,7 @@ use crate::codecs::{self, Codec, Output, TextFormat};
 use crate::ebml::{self, id};
 use crate::matroska::{self, Block, Decoding, HeaderReader, Need, AUDIO, MAX_TIME, SUBTITLE, VIDEO};
 use crate::mp4;
+use crate::picture::{self, Decoder, PictureCue};
 use crate::subtitle;
 
 mod thumb;
@@ -73,6 +74,27 @@ struct Selected {
     raw: bool,
 }
 
+/// Raw picture-subtitle packets kept for tracks nobody has chosen (yet), so choosing one mid-film has its
+/// subtitles for what has already streamed. A PGS packet is a few KB; this keeps the newest few thousand.
+const PICTURE_STORE_MAX: usize = 16 * 1024 * 1024;
+
+struct PicturePacket {
+    track: u32,
+    time: i64,
+    duration: Option<i64>,
+    data: Vec<u8>,
+}
+
+#[derive(Default)]
+struct Pictures {
+    store: Vec<PicturePacket>,
+    bytes: usize,
+    /// Which (track, time) are in `store`, so reading the same stretch again after a seek adds nothing.
+    seen: std::collections::HashSet<(u32, i64)>,
+    selected: Option<(u32, Decoder)>,
+    out: Vec<PictureCue>,
+}
+
 pub struct TextCue {
     pub track: u32,
     pub start: i64,
@@ -115,6 +137,7 @@ pub struct Core {
     fragments: VecDeque<Fragment>,
     sequence: u32,
     cues: Vec<TextCue>,
+    pictures: Pictures,
 }
 
 impl Core {
@@ -144,6 +167,7 @@ impl Core {
             fragments: VecDeque::new(),
             sequence: 0,
             cues: Vec::new(),
+            pictures: Pictures::default(),
         }
     }
 
@@ -208,6 +232,10 @@ impl Core {
                 VIDEO => {
                     j.field_num("width", t.width as f64);
                     j.field_num("height", t.height as f64);
+                    if let (Some(w), Some(h)) = (t.display_width.filter(|&w| w > 0), t.display_height.filter(|&h| h > 0)) {
+                        j.field_num("displayWidth", w as f64);
+                        j.field_num("displayHeight", h as f64);
+                    }
                     if let Some(d) = t.default_duration.filter(|&d| d > 0) {
                         j.field_num("frameRate", (1e12 / d as f64).round() / 1000.0);
                     }
@@ -218,7 +246,14 @@ impl Core {
                     j.field_num("sampleRate", t.sample_rate);
                     j.field_str("decode", codecs::decode_of(t));
                 }
-                SUBTITLE => j.field_str("subtitleKind", if matches!(codec, Codec::Text(_)) { "text" } else { "image" }),
+                SUBTITLE => j.field_str(
+                    "subtitleKind",
+                    match codec {
+                        Codec::Text(_) => "text",
+                        Codec::Picture(_) => "image",
+                        _ => "unsupported",
+                    },
+                ),
                 _ => {}
             }
             j.raw("}");
@@ -331,6 +366,9 @@ impl Core {
         self.audio_next = None;
         self.raw_pending.clear();
         self.fragments.clear();
+        if let Some((_, decoder)) = self.pictures.selected.as_mut() {
+            decoder.reset();
+        }
     }
 
     pub fn set_video_floor(&mut self, seconds: f64) {
@@ -463,7 +501,7 @@ impl Core {
         let selected = self.video.as_ref().is_some_and(|s| s.track == track) || self.audio.as_ref().is_some_and(|s| s.track == track);
         let codec = self.codec(track);
         let wanted = selected
-            || matches!(codec, Codec::Text(_))
+            || matches!(codec, Codec::Text(_) | Codec::Picture(_))
             || (codecs::needs_first_frame(codec) && !self.first_frames.iter().any(|(n, _)| *n == track));
         if !wanted {
             return None;
@@ -522,6 +560,8 @@ impl Core {
         }
         if let Codec::Text(format) = codec {
             self.text(block, format);
+        } else if let Codec::Picture(_) = codec {
+            self.picture(block);
         } else if self.video.as_ref().is_some_and(|s| s.track == track) {
             self.video_block(block);
         } else if self.audio.as_ref().is_some_and(|s| s.track == track) {
@@ -537,6 +577,110 @@ impl Core {
                 self.cues.push(TextCue { track: block.track, start: block.time, end, text });
             }
         }
+    }
+
+    // MARK: Picture subtitles
+
+    /// Decodes the packet when its track is the one chosen, and keeps it (once) for a later choice. Reading a stretch again after a
+    /// seek decodes it again: the page may have let go of those cues meanwhile.
+    fn picture(&mut self, block: Block) {
+        let data = if block.frames.len() == 1 { block.frames.into_iter().next().unwrap_or_default() } else { block.frames.concat() };
+        if data.is_empty() {
+            return;
+        }
+        if let Some((_, decoder)) = self.pictures.selected.as_mut().filter(|(t, _)| *t == block.track) {
+            if let Some(cue) = decoder.decode(&data, block.time) {
+                self.pictures.out.push(with_duration(cue, block.duration));
+            }
+        }
+        if !self.pictures.seen.insert((block.track, block.time)) {
+            return;
+        }
+        self.pictures.bytes += data.len();
+        self.pictures.store.push(PicturePacket { track: block.track, time: block.time, duration: block.duration, data });
+        // Over the limit, the packets furthest (in time) from this one go first.
+        while self.pictures.bytes > PICTURE_STORE_MAX {
+            let Some((index, _)) = self.pictures.store.iter().enumerate().max_by_key(|(_, p)| (p.time - block.time).unsigned_abs()) else { break };
+            let gone = self.pictures.store.swap_remove(index);
+            self.pictures.bytes -= gone.data.len();
+            self.pictures.seen.remove(&(gone.track, gone.time));
+        }
+    }
+
+    /// Chooses the picture track to decode (0 for none). Packets already read are decoded at once, in time order.
+    pub fn select_picture(&mut self, track: u32) {
+        let pictures = &mut self.pictures;
+        if pictures.selected.as_ref().is_some_and(|(t, _)| *t == track) {
+            return;
+        }
+        pictures.selected = None;
+        pictures.out.clear();
+        let header = &self.reader.header;
+        let codec = self.codecs.iter().find(|(n, _)| *n == track).map_or(Codec::Unsupported, |c| c.1);
+        let (Some(t), Codec::Picture(format)) = (header.track(track), codec) else { return };
+        let video = header.tracks.iter().find(|v| v.kind == VIDEO).map_or((0, 0), |v| (v.width, v.height));
+        let mut decoder = Decoder::new(format, &t.codec_private, video);
+        let mut packets: Vec<&PicturePacket> = pictures.store.iter().filter(|p| p.track == track).collect();
+        packets.sort_by_key(|p| p.time);
+        for packet in packets {
+            if let Some(cue) = decoder.decode(&packet.data, packet.time) {
+                pictures.out.push(with_duration(cue, packet.duration));
+            }
+        }
+        pictures.selected = Some((track, decoder));
+    }
+
+    /// Picture cues decoded since the last call, as `picture::encode` lays them out, once the timeline is settled.
+    pub fn take_picture_cues(&mut self) -> Option<Vec<u8>> {
+        if self.pictures.out.is_empty() || !self.delay_known {
+            return None;
+        }
+        let cues = std::mem::take(&mut self.pictures.out);
+        Some(picture::encode(&cues, self.delay))
+    }
+
+    #[cfg(test)]
+    pub fn pictures_bytes(&self) -> usize {
+        self.pictures.bytes
+    }
+
+    // MARK: Chapters
+
+    pub fn chapters_need(&self) -> Option<(u64, u64)> {
+        self.reader.chapters_need()
+    }
+
+    pub fn chapters_feed(&mut self, offset: u64, bytes: &[u8]) -> Option<(u64, u64)> {
+        self.reader.feed_chapters(offset, bytes)
+    }
+
+    /// The chapters as JSON, [{"title", "start"}], start in seconds of file time (the page adds `delay`).
+    pub fn chapters_json(&self) -> String {
+        let mut j = Json::default();
+        j.raw("[");
+        for (i, chapter) in self.reader.header.chapters.iter().enumerate() {
+            if i > 0 {
+                j.raw(",");
+            }
+            j.raw("{\"title\":");
+            j.string(&chapter.title);
+            j.raw(",\"start\":");
+            j.num(chapter.start as f64 / 1e9);
+            j.raw("}");
+        }
+        j.raw("]");
+        j.0
+    }
+
+    // MARK: Cached headers
+
+    /// What a later visit to the same file can start from (see `HeaderReader::export`).
+    pub fn export_header(&self) -> Option<Vec<u8>> {
+        self.reader.export()
+    }
+
+    pub fn import_header(&mut self, raw: &[u8]) -> bool {
+        self.reader.import(raw)
     }
 
     // MARK: Video
@@ -819,6 +963,14 @@ impl Core {
         j.raw("]");
         Some(j.0)
     }
+}
+
+/// A picture's end, when the packet doesn't say, is the block's duration.
+fn with_duration(mut cue: PictureCue, duration: Option<i64>) -> PictureCue {
+    if cue.end.is_none() {
+        cue.end = duration.filter(|&d| d > 0).map(|d| cue.start.saturating_add(d));
+    }
+    cue
 }
 
 pub fn reorder_delay(pts: &[i64], frame: Option<i64>) -> i64 {

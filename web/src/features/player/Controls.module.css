@@ -210,6 +210,25 @@
   background: var(--ink-2);
   pointer-events: none;
 }
+/* Where a chapter begins: a thin Ink 2 tick under the rail's holes, never on them (the holes keep their colours). The
+   rail is 9px in the middle of the 26px track, so the ticks sit in the space below it. */
+.ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% + 7px);
+  height: 5px;
+  pointer-events: none;
+}
+.tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--ink-2);
+}
 /* The thumb is only there when you are using the bar: under the pointer, while dragging, or on focus. */
 .thumb {
   position: absolute;
@@ -331,7 +350,7 @@
   overflow: hidden;
   overflow-wrap: anywhere;
 }
-.rowValue { color: var(--ink-2); font-size: var(--fs-small); }
+.rowValue { color: var(--ink-2); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
 /* The selected row's check: the one yellow in a list. */
 .check { color: var(--stock); flex: none; }
 .chevron { color: var(--ink-3); display: grid; }

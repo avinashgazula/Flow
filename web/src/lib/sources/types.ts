@@ -100,6 +100,8 @@ export interface Source {
   detail?: string
   /** Seek preview pictures made by the server, when it has them. */
   trickplay?: Trickplay
+  /** The chapters the server lists (Jellyfin), in seconds; they win over what a file holds. */
+  chapters?: { title: string; start: number }[]
   /** Stremio's hint that the stream isn't ready for a web player as it is (often an odd container). */
   notWebReady?: boolean
 }

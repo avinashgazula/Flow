@@ -21,6 +21,7 @@ import { episodeLine } from './format'
 import { NoSoundNotice } from './NoSound'
 import { PlaybackInfo } from './PlaybackInfo'
 import { FilmExtras } from './FilmExtras'
+import { PictureSubtitles } from './PictureSubtitles'
 import { Buffering, FeedbackFlash, Notes, SubtitleOverlay, TapLayer } from './Overlays'
 import { demoSegments, segmentsFromChapters, type SkipSegment } from './segments'
 import { lookupSegments } from './segmentSources'
@@ -419,6 +420,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     if (!source || !el) return
     const abort = new AbortController()
     let engine: Engine | null = null
+    let stopChapters: (() => void) | undefined
     started.current = false
     setBlocked(false)
     setConvertFailed(false)
@@ -434,8 +436,18 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
         engine = e
         controller.setEngine(e, source)
         setBlocked(e.fallback === 'blocked')
-        // Chapters named "Opening" or "Ending" stand in when no server or service knows this episode.
-        setChapterSegments(segmentsFromChapters(e.chapters?.() ?? [], e.duration()))
+        // The chapters the server lists (Jellyfin) or the file holds: the Chapters page and the scrubber's ticks show them, and
+        // ones named "Opening" or "Ending" stand in when no server or service knows this episode. A file can keep its list at
+        // the far end, which arrives a moment after the engine is up.
+        const apply = (list: { title: string; start: number }[]) => {
+          controller.setChapters(list)
+          setChapterSegments(segmentsFromChapters(list, e.duration()))
+        }
+        if (source.chapters?.length) apply(source.chapters)
+        else {
+          apply(e.chapters?.() ?? [])
+          stopChapters = e.onChapters?.(apply)
+        }
       })
       .catch((err: Error) => {
         if (abort.signal.aborted || err.name === 'AbortError') return
@@ -443,6 +455,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
       })
     return () => {
       abort.abort()
+      stopChapters?.()
       engine?.destroy()
       controller.setEngine(null, null)
       setChapterSegments([])
@@ -718,6 +731,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
         <>
           <TapLayer controller={controller} />
           <SubtitleOverlay controller={controller} />
+          <PictureSubtitles controller={controller} />
           <Buffering controller={controller} />
           <Notes controller={controller} />
           <Controls

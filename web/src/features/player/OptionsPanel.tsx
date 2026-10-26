@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Icon, type IconName } from '../../components/Icon'
 import { PlayerIcon, type PlayerIconName } from './playerIcons'
@@ -8,7 +8,8 @@ import { usePlayer, type PlayerController } from './controller'
 import { keepFocus } from './Controls'
 import { externalPlayerTitle, playersFor } from './externalPlayers'
 import { BoostPage, DelayPage } from './ExtraPages'
-import { fileSize, speedLabel, speeds } from './format'
+import { chapterAt, chapterTitle } from './chapters'
+import { clock, fileSize, speedLabel, speeds } from './format'
 import { sleepChoices, sleepTitle } from './sleepTimer'
 import { delayLabel } from './subtitleDelay'
 import { StylePage } from './StylePage'
@@ -16,7 +17,7 @@ import { SubtitleSearchPage } from './SubtitleSearch'
 import { boostLabel } from './volumeBoost'
 import s from './Controls.module.css'
 
-type Page = 'root' | 'tracks' | 'audio' | 'subtitles' | 'search' | 'style' | 'delay' | 'speed' | 'sleep' | 'boost' | 'external' | 'source'
+type Page = 'root' | 'tracks' | 'audio' | 'subtitles' | 'search' | 'style' | 'delay' | 'speed' | 'sleep' | 'boost' | 'external' | 'chapters' | 'source'
 
 const titles: Record<Page, string> = {
   root: 'Options',
@@ -30,6 +31,7 @@ const titles: Record<Page, string> = {
   sleep: 'Sleep Timer',
   boost: 'Volume Boost',
   external: 'Open in',
+  chapters: 'Chapters',
   source: 'Source',
 }
 
@@ -66,6 +68,22 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   onMoreSources: () => void
 }) {
   const [page, setPage] = useState<Page>(start)
+  const chapters = usePlayer(controller, (st) => st.chapters)
+  const scroller = useRef<HTMLDivElement>(null)
+  // Which chapter is playing, kept up to date while the page is open (the clock is read from the video, not from React).
+  const [playing, setPlaying] = useState(() => chapterAt(chapters, controller.currentTime()))
+  useEffect(() => {
+    const video = controller.video
+    if (page !== 'chapters' || !video) return
+    const tick = () => setPlaying(chapterAt(chapters, video.currentTime))
+    tick()
+    video.addEventListener('timeupdate', tick)
+    return () => video.removeEventListener('timeupdate', tick)
+  }, [controller, chapters, page])
+  // The list opens on the chapter playing.
+  useEffect(() => {
+    if (page === 'chapters') scroller.current?.querySelector('[aria-checked="true"]')?.scrollIntoView({ block: 'center' })
+  }, [page])
   const audio = usePlayer(controller, (st) => st.audio)
   const audioId = usePlayer(controller, (st) => st.audioId)
   const subtitles = usePlayer(controller, (st) => st.subtitles)
@@ -176,6 +194,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
       rows.push({ id: 'subtitles', icon: 'subtitles', title: currentSubtitle ? `Subtitles · ${currentSubtitle.label}` : 'Subtitles Off', chevron: true, action: () => setPage('subtitles') })
       rows.push(styleRow)
       rows.push(delayRow)
+      if (chapters.length > 0) rows.push({ id: 'chapters', icon: 'list', title: `Chapters · ${chapters.length}`, chevron: true, action: () => setPage('chapters') })
       rows.push({
         id: 'source',
         icon: 'stack',
@@ -243,6 +262,22 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
         },
       ]
       break
+    case 'chapters':
+      groups = [
+        {
+          rows: chapters.map((chapter, i) => ({
+            id: `c${i}`,
+            title: chapterTitle(chapter, i),
+            value: clock(chapter.start),
+            checked: i === playing,
+            action: () => {
+              close()
+              controller.seekTo(chapter.start)
+            },
+          })),
+        },
+      ]
+      break
     case 'speed':
       groups = [{ rows: speeds.map((r) => ({ id: `r${r}`, title: speedLabel(r), checked: r === rate, action: () => (controller.setRate(r), back()) })) }]
       break
@@ -277,7 +312,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
           <span>{titles[page]}</span>
         </button>
       )}
-      <div className={s.panelScroll}>
+      <div className={s.panelScroll} ref={scroller}>
         {page === 'style' && <StylePage />}
         {page === 'search' && <SubtitleSearchPage controller={controller} onDone={close} />}
         {page === 'delay' && <DelayPage controller={controller} />}
