@@ -2,6 +2,7 @@ import { isLiveTVSettings } from '../../lib/livetv/validate'
 import { lastSourceStore } from '../../lib/sources/lastSource'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { isSourceOrdering, normaliseSourceOrdering } from '../../lib/sources/sourceSettings'
+import { isSubtitleOptions, normaliseSubtitleOptions } from '../../lib/subtitles/options'
 import { defaultSettings, settingsStore, type ExternalPlayerId, type Settings } from '../../lib/store/settings'
 import { externalPlayerIds } from '../player/externalPlayers'
 import { libraryStore, type Library } from '../../lib/store/library'
@@ -42,7 +43,7 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   servers: (v) => Array.isArray(v) && v.every((s) => isObject(s) && typeof s.id === 'string' && typeof s.url === 'string' && typeof s.token === 'string' && ['jellyfin', 'emby', 'plex'].includes(s.kind as string)),
   audioLanguages: (v) => Array.isArray(v) && v.every((x) => typeof x === 'string' && x.length > 0),
   subtitleLanguages: (v) => Array.isArray(v) && v.every((x) => typeof x === 'string'),
-  subtitleMode: (v) => ['off', 'foreign', 'always'].includes(v as string),
+  subtitleMode: (v) => ['off', 'foreign', 'always', 'forced'].includes(v as string),
   // The apps' keys (fontScale, font, weight, color, edgeStyle, background, backgroundOpacity, verticalPosition).
   subtitleStyle: isSubtitleStyle,
   autoplayNext: (v) => typeof v === 'boolean',
@@ -53,6 +54,14 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   skipCredits: isSkipBehaviour,
   introDBKey: (v) => typeof v === 'string',
   publicMetaDBKey: (v) => typeof v === 'string',
+  openSubtitlesKey: (v) => typeof v === 'string',
+  openSubtitlesUsername: (v) => typeof v === 'string',
+  openSubtitlesPassword: (v) => typeof v === 'string',
+  subdlKey: (v) => typeof v === 'string',
+  subSourceKey: (v) => typeof v === 'string',
+  wyzieKey: (v) => typeof v === 'string',
+  // Subtitle Type, Anime Audio, Keep Original ASS Styling and the services that are on; fields a backup lacks take their defaults.
+  subtitleOptions: isSubtitleOptions,
   postCreditsAlert: (v) => typeof v === 'boolean',
   becauseYouWatched: (v) => typeof v === 'boolean',
   neverUseDolbyVision: (v) => typeof v === 'boolean',
@@ -124,7 +133,7 @@ export function parseBackup(text: string): { ok: true; settings: Partial<Setting
       if (!(key in data.settings)) continue
       if (!valid(data.settings[key])) skipped.push(key)
       // A style missing some fields takes their defaults, and the apps' older "shadow" background reads as none.
-      else settings[key] = key === 'subtitleStyle' ? normaliseSubtitleStyle(data.settings[key]) : key === 'sources' ? normaliseSourceOrdering(data.settings[key]) : data.settings[key]
+      else settings[key] = key === 'subtitleStyle' ? normaliseSubtitleStyle(data.settings[key]) : key === 'sources' ? normaliseSourceOrdering(data.settings[key]) : key === 'subtitleOptions' ? normaliseSubtitleOptions(data.settings[key]) : data.settings[key]
     }
   }
   if (isObject(data.library)) {

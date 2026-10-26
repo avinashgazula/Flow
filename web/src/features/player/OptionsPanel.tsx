@@ -12,16 +12,18 @@ import { fileSize, speedLabel, speeds } from './format'
 import { sleepChoices, sleepTitle } from './sleepTimer'
 import { delayLabel } from './subtitleDelay'
 import { StylePage } from './StylePage'
+import { SubtitleSearchPage } from './SubtitleSearch'
 import { boostLabel } from './volumeBoost'
 import s from './Controls.module.css'
 
-type Page = 'root' | 'tracks' | 'audio' | 'subtitles' | 'style' | 'delay' | 'speed' | 'sleep' | 'boost' | 'external' | 'source'
+type Page = 'root' | 'tracks' | 'audio' | 'subtitles' | 'search' | 'style' | 'delay' | 'speed' | 'sleep' | 'boost' | 'external' | 'source'
 
 const titles: Record<Page, string> = {
   root: 'Options',
   tracks: 'Audio and Subtitles',
   audio: 'Audio',
   subtitles: 'Subtitles',
+  search: 'Search Subtitles',
   style: 'Subtitle Style',
   delay: 'Subtitle Delay',
   speed: 'Speed',
@@ -85,7 +87,10 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
     controller.setStyling(page === 'style' || page === 'delay' ? page : null)
     return () => controller.setStyling(null)
   }, [controller, page])
-  const back = () => setPage(start === 'tracks' && page !== 'root' ? 'tracks' : 'root')
+  // Search Subtitles opens from the subtitle list, in Options or in Audio and Subtitles, and goes back to it.
+  const [searchFrom, setSearchFrom] = useState<Page>('subtitles')
+  const home: Page = start === 'tracks' ? 'tracks' : 'root'
+  const back = () => setPage(page === 'search' ? searchFrom : start === 'tracks' && page !== 'root' ? 'tracks' : 'root')
 
   const proxy = useSettings((st) => st.streamProxy) !== ''
   const currentAudio = audio.find((t) => t.id === audioId)
@@ -146,7 +151,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
     ...subtitles.map((t) => ({
       id: `s${t.id}`,
       title: t.label,
-      detail: t.unavailable ?? (t.id.startsWith('ext:') ? 'From the source' : undefined),
+      detail: t.unavailable ?? t.note ?? (t.id.startsWith('ext:') ? 'From the source' : undefined),
       disabled: !!t.unavailable,
       checked: t.id === subtitleId,
       action: () => {
@@ -156,6 +161,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
     })),
   ]
 
+  const searchRow = (from: Page): Row => ({ id: 'search', icon: 'search', title: 'Search Subtitles…', chevron: true, action: () => (setSearchFrom(from), setPage('search')) })
   const styleRow: Row = { id: 'style', icon: 'text', title: 'Subtitle Style', chevron: true, action: () => setPage('style') }
   const delayRow: Row = { id: 'delay', icon: 'clock', title: `Subtitle Delay · ${delayLabel(delay)}`, chevron: true, action: () => setPage('delay') }
   // "Open in" is offered where an app can take the stream by its address (see externalPlayers.ts).
@@ -166,8 +172,8 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   switch (page) {
     case 'root': {
       const rows: Row[] = []
-      rows.push({ id: 'audio', icon: 'music', title: currentAudio?.label ?? audioGroup(noop).rows[0]!.title, chevron: true, action: () => setPage('audio') })
-      rows.push({ id: 'subtitles', icon: 'subtitles', title: currentSubtitle ? currentSubtitle.label : 'Subtitles Off', chevron: true, action: () => setPage('subtitles') })
+      rows.push({ id: 'audio', icon: 'music', title: `Audio · ${currentAudio?.label ?? audioGroup(noop).rows[0]!.title}`, chevron: true, action: () => setPage('audio') })
+      rows.push({ id: 'subtitles', icon: 'subtitles', title: currentSubtitle ? `Subtitles · ${currentSubtitle.label}` : 'Subtitles Off', chevron: true, action: () => setPage('subtitles') })
       rows.push(styleRow)
       rows.push(delayRow)
       rows.push({
@@ -205,14 +211,15 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
       break
     }
     case 'tracks':
-      groups = [audioGroup(noop, 'Audio'), { title: 'Subtitles', rows: subtitleRows(close) }, { rows: [styleRow, delayRow] }]
+      groups = [audioGroup(noop, 'Audio'), { title: 'Subtitles', rows: subtitleRows(close) }, { rows: [searchRow('tracks'), styleRow, delayRow] }]
       break
     case 'audio':
       groups = [audioGroup(back)]
       break
     case 'subtitles':
-      groups = [{ rows: subtitleRows(back) }]
+      groups = [{ rows: subtitleRows(back) }, { rows: [searchRow('subtitles')] }]
       break
+    case 'search':
     case 'style':
     case 'delay':
     case 'boost':
@@ -265,13 +272,14 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   return (
     <div className={`${s.panel} ${s.interactive}`} data-page={page} role="dialog" aria-label={titles[page]} onPointerEnter={() => (controller.hovering = true)} onPointerLeave={() => (controller.hovering = false)}>
       {showHeader && (
-        <button className={s.panelHeader} onClick={back} onMouseDown={keepFocus} aria-label={`Back to ${titles[start === 'tracks' ? 'tracks' : 'root']}`}>
+        <button className={s.panelHeader} onClick={back} onMouseDown={keepFocus} aria-label={`Back to ${titles[page === 'search' ? searchFrom : home]}`}>
           <Icon name="chevronLeft" size={16} strokeWidth={2.6} />
           <span>{titles[page]}</span>
         </button>
       )}
       <div className={s.panelScroll}>
         {page === 'style' && <StylePage />}
+        {page === 'search' && <SubtitleSearchPage controller={controller} onDone={close} />}
         {page === 'delay' && <DelayPage controller={controller} />}
         {page === 'boost' && <BoostPage controller={controller} />}
         {groups.map((g, i) => (

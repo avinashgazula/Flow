@@ -187,6 +187,44 @@ What the apps' player has beyond that, each with the apps' words and defaults (p
   recommendations come up beside the credits (closing them gives back Skip Credits), and where the film ends they fill the screen. The keywords
   are asked for once the film is playing (`/movie/{id}/keywords`), so the title page's request is unchanged. Films of half an hour or more only.
 
+## Subtitles
+
+Options → Audio and Subtitles → **Search Subtitles…** asks OpenSubtitles, SubDL, Wyzie and SubSource at once (`lib/subtitles/`:
+`providers.ts` builds each request and reads each answer, as FlowKit's `Subtitles.swift` does, with tests on recorded answers
+in `__fixtures__/`; `search.ts` ranks them like the apps: your languages in order, then your Subtitle Type, then downloads).
+Keys are in Settings → Playback → Subtitle Keys and travel through Flow Sync under the apps' names (`openSubtitlesAPIKey`,
+`openSubtitlesUsername`, `openSubtitlesPassword`, `subdlAPIKey`, `subSourceAPIKey`), sent only once set. A pick is downloaded,
+unzipped (`zip.ts`: gzip and zip through `DecompressionStream`, plus a zip directory reader in about eighty lines), decoded
+(UTF-8, UTF-16 or Windows-1252) and becomes a track of its own, drawn with the viewer's style and moved by the subtitle delay.
+When the file lacks the subtitles Settings ask for (Always, or Foreign Audio Only with foreign audio) the first result in your
+language is fetched by itself a couple of seconds in, as in the apps, when any service has a key.
+
+What a web page can do, checked against the live services:
+
+- **OpenSubtitles** allows every origin and every header a preflight asks for except `Authorization` (a wildcard never covers
+  it), so the page asks with the API key alone; the login's token can't be sent, and downloads count against the key's daily limit.
+  The file it points to is on `www.opensubtitles.com`, which sends no CORS headers: it is fetched through the stream proxy, so
+  `www.opensubtitles.com` (and `dl.opensubtitles.org`) belong in the proxy's `ALLOWED_HOSTS`.
+- **SubDL** allows every origin for its API and `dl.subdl.com`; its files are zips.
+- **Wyzie** has moved to `sub.wyzie.io` and wants a free key (`key=`; claim one at store.wyzie.io/redeem). The apps still ask
+  `sub.wyzie.ru` without one, which answers 401 now. The key is kept on this device: the apps have no field for it.
+- **SubSource** sends no `Access-Control-Allow-Origin` at all and its key is a header the stream proxy doesn't pass on, so a web
+  page can't use it. It is tried, and the page says why when the browser refuses; the key is kept for Flow Sync and the apps.
+
+**Selection** (`player/languages.ts`, with the apps' `TrackSelection` rules): Show Subtitles has Forced Only beside Foreign Audio
+Only, Always and Off; Subtitle Type (Standard or SDH) decides between two tracks of one language, in the file and in search
+results; Anime Audio (No Preference, Sub, Dub) applies to Japanese animation (TMDB's Animation genre with Japanese as the original
+language): Sub plays Japanese audio and always shows subtitles, Dub shows none, not even forced ones. A subtitle in the file is
+taken before one from a search.
+
+**ASS styling.** Settings → Playback → Keep Original ASS Styling (off, as in the apps) draws ASS and SSA files the way their author
+styled them, with libass through JASSUB 2.5.18 (`player/ass.ts`). A renderer of our own would be a partial libass, so JASSUB it is;
+its cost is a 2.2 MB WebAssembly module (920 KB gzipped), a 146 KB default font and 15 KB of script, about 1.1 MB over the wire, in lazy chunks that only `ass.ts` imports and only an ASS track
+shown with the setting on loads (nothing of it is in the first load or the service worker's precache). Local fonts aren't queried
+(Chrome would ask for permission), so a font the browser can't supply is drawn in the default one. Two of JASSUB's CommonJS
+dependencies are stood in for (`src/lib/shims`, `vite.config.ts`) so the module-wrapper helper they need doesn't join the first load.
+It covers ASS files Flow reads itself (from a source or a search); ASS tracks inside an MKV arrive as cues without the script.
+
 ## Seek previews
 
 Hovering or dragging the scrubber, or pressing an arrow key, shows a small frame (`SeekPreview.tsx`) of where you

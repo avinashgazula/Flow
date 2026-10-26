@@ -2,7 +2,9 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { settingsStore, useSettings, type Settings, type SkipBehaviour, type SubtitleMode } from '../../lib/store/settings'
 import { Group, Note, Row, Select, Switch } from './controls'
+import { SubtitleServicesGroup } from './SubtitleServicesGroup'
 import { SubtitleStyleGroup } from './SubtitleStyleGroup'
+import { animeAudios, normaliseSubtitleOptions, subtitleTypes } from '../../lib/subtitles/options'
 import { audioChoices, subtitleChoices, withCurrent } from './options'
 import { detectPlatform, externalPlayerTitle, playersFor } from '../player/externalPlayers'
 import s from './SettingsScreen.module.css'
@@ -163,6 +165,7 @@ function SkipServices() {
 const subtitleModes: { value: SubtitleMode; label: string }[] = [
   { value: 'foreign', label: 'Foreign Audio Only' },
   { value: 'always', label: 'Always' },
+  { value: 'forced', label: 'Forced Only' },
   { value: 'off', label: 'Off' },
 ]
 
@@ -177,6 +180,9 @@ export function PlaybackSection() {
   const skipRecap = useSettings((x) => x.skipRecap)
   const skipCredits = useSettings((x) => x.skipCredits)
   const remember = useSettings((x) => x.rememberLastSource)
+  const subtitleOptions = useSettings((x) => x.subtitleOptions)
+  const extras = normaliseSubtitleOptions(subtitleOptions)
+  const setExtras = (patch: Partial<typeof extras>) => settingsStore.set({ subtitleOptions: { ...extras, ...patch } })
   const waitsForEnd = useSettings((x) => x.upNextWaitsForEnd ?? false)
   const neverDolbyVision = useSettings((x) => x.neverUseDolbyVision ?? false)
   const postCredits = useSettings((x) => x.postCreditsAlert !== false)
@@ -213,15 +219,18 @@ export function PlaybackSection() {
           <Switch label="Never use Dolby Vision" checked={neverDolbyVision} onChange={(on) => settingsStore.set({ neverUseDolbyVision: on })} />
         </Row>
       </Group>
-      <Group footer="Flow starts each title on the first of these it has, and never on commentary. Original Language is the one the title was made in. A track you choose in the player is remembered for that title or show.">
+      <Group footer="Flow starts each title on the first of these it has, and never on commentary. Original Language is the one the title was made in. A track you choose in the player is remembered for that title or show. For anime, Sub plays Japanese audio with subtitles and Dub plays your audio language without them.">
         <Row label="Audio Language" htmlFor="audio-1">
           <Select id="audio-1" label="Audio language" value={audioFirst} onChange={(v) => setAudio(v, v ? audioSecond : '')} options={audioOptions(audioFirst, 'Stream Default')} />
         </Row>
         <Row label="Second Choice" htmlFor="audio-2">
           <Select id="audio-2" label="Second choice for audio" value={audioSecond} onChange={(v) => setAudio(audioFirst, v)} options={audioOptions(audioSecond, 'None')} disabled={!audioFirst} />
         </Row>
+        <Row label="Anime Audio" htmlFor="anime-audio">
+          <Select id="anime-audio" label="Anime audio" value={extras.animeAudio} onChange={(v) => setExtras({ animeAudio: v })} options={animeAudios} />
+        </Row>
       </Group>
-      <Group footer="Foreign Audio Only turns subtitles on when the audio isn’t in your Subtitle Language. Always turns them on for every title that has them in your languages.">
+      <Group footer="Foreign Audio Only turns subtitles on when the audio isn’t in your Subtitle Language, and otherwise shows only a forced subtitle from the file, for foreign-language scenes. Always turns them on for every title that has them in your languages, taking one from the file before an online one. Forced Only shows forced subtitles from the file and nothing else. Off leaves them off. Subtitle Type picks SDH (with sound cues and speakers) or standard subtitles where a language has both.">
         <Row label="Show Subtitles" htmlFor="subtitle-mode">
           <Select id="subtitle-mode" label="When to show subtitles" value={subtitleMode} onChange={(v) => settingsStore.set({ subtitleMode: v })} options={subtitleModes} />
         </Row>
@@ -231,8 +240,17 @@ export function PlaybackSection() {
         <Row label="Second Choice" htmlFor="subtitle-2">
           <Select id="subtitle-2" label="Second choice for subtitles" value={second} onChange={(v) => setSubtitles(first, v)} options={options(second)} disabled={!first} />
         </Row>
+        <Row label="Subtitle Type" htmlFor="subtitle-type">
+          <Select id="subtitle-type" label="Subtitle type" value={extras.type} onChange={(v) => setExtras({ type: v })} options={subtitleTypes} />
+        </Row>
       </Group>
       <SubtitleStyleGroup />
+      <Group footer="Draw ASS and SSA subtitles the way their author styled them (colour, weight, size and placement) instead of the style above. Mostly matters for anime, whose subtitles style each sign and speaker differently. It downloads a drawing engine of about 1 MB the first time such a subtitle shows, and only then. Applies to ASS files Flow reads itself (from a source or a search), not to ones inside an MKV; a font the browser doesn’t have is drawn in a stand-in.">
+        <Row label="Keep Original ASS Styling">
+          <Switch label="Keep original ASS styling" checked={extras.keepASSStyling} onChange={(on) => setExtras({ keepASSStyling: on })} />
+        </Row>
+      </Group>
+      <SubtitleServicesGroup />
       <Group footer="Shows start the next episode when one ends, with a countdown you can cancel. Up Next counts down as the credits begin when a server, a skip service or the file’s chapters say where, else in the last 30 seconds; with Wait for the Episode to End, so the next one begins as this one finishes. After the number of episodes you pick played with nobody touching anything, Flow asks before the next.">
         <Row label="Autoplay Next Episode">
           <Switch label="Autoplay next episode" checked={autoplay} onChange={(on) => settingsStore.set({ autoplayNext: on })} />
