@@ -135,3 +135,20 @@ describe('episodes left', () => {
     expect(texts(composeStrip({ width: 640, facts: series, kind: 'lead' }).facts)).toEqual(['S2 E4', 'up next', '5 episodes left', 'ends 7:11 AM'])
   })
 })
+
+describe('SERVER on a poster strip', () => {
+  const print = toFacts([{ text: '2h 47', rank: rank.facts }, { text: '8.2', rank: rank.rating }, { text: 'server', rank: rank.server }])
+  const shown = (width: number) => composeStrip({ width, facts: print, kind: 'poster' }).facts.map((f) => f.text)
+
+  it('goes after the rating and before the runtime is given up: a narrow poster keeps 8.2 and SERVER', () => {
+    // A phone's poster (112 px, 92 inside its padding) and the room just above it.
+    expect(shown(92)).toEqual(['8.2', 'server'])
+    expect(shown(80)).toEqual(['8.2', 'server'])
+  })
+
+  it('prints with everything where there is room, and is the first of the two to go when there is very little', () => {
+    expect(shown(178)).toEqual(['2h 47', '8.2', 'server'])
+    expect(shown(300)).toEqual(['2h 47', '8.2', 'server'])
+    expect(shown(30)).toEqual(['8.2'])
+  })
+})

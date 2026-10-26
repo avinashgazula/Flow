@@ -55,7 +55,8 @@ export interface PosterMarks {
   parts: PrintPart[]
   /** How much of the reel is watched, 0 to 1: the strip's perforations. Absent when nothing is. */
   progress?: number
-  /** Print that goes after the rest of the strip's facts (after the rating), the lowest priority: SERVER. */
+  /** Print that goes after the rest of the strip's facts, after the rating: SERVER. It outranks the runtime, so a narrow
+   *  poster keeps "8.2 · SERVER" rather than "2H 47 · 8.2". */
   tail?: PrintPart[]
   /** For a screen reader. */
   spoken?: string
@@ -63,7 +64,7 @@ export interface PosterMarks {
 
 const none: PosterMarks = { parts: [] }
 
-const serverPrint: PrintPart[] = [{ text: 'server', rank: rank.year }]
+export const serverPrint: PrintPart[] = [{ text: 'server', rank: rank.server }]
 
 /** What has been watched, plus SERVER for a title on one of the viewer's media servers. */
 export function posterMarks(

@@ -161,7 +161,7 @@ function ShelfList() {
           }}
         />
       ) : (
-        <Group title="Add a Shelf" footer="A Discover shelf is a row from TMDB’s catalogue that you filter yourself: a genre, a streaming service, a decade, a rating. Trakt and MDBList lists, and a media server’s libraries, can be shelves too once those are connected.">
+        <Group title="Add a Shelf" footer="A Discover shelf is a row from TMDB’s catalogue that you filter yourself: a genre, a streaming service, a decade, a rating. Trakt and MDBList lists can be shelves too once those are connected, and a media server’s libraries get a row each under Server Home Rows.">
           <Row label="Discover Shelf" detail="Choose what it holds">
             <button type="button" className="btn btn-secondary btn-compact" onClick={() => setEditing({})}>
               <Icon name="plus" size={16} /> Add

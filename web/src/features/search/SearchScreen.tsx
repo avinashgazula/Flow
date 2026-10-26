@@ -13,7 +13,7 @@ import { userLocale, useMinuteTick } from '../../lib/time'
 import type { SearchResult } from '../../lib/tmdb/types'
 import { StateView, errorMessage } from '../explore/Controls'
 import { pickPrint } from '../home/logic'
-import { useServerLookup } from '../home/marks'
+import { serverPrint, useOnServer, useServerLookup } from '../home/marks'
 import { groupResults, minimumQuery, neighbour, topResult, type Direction, type MediaResult, type PersonResult } from './logic'
 import { recentSearches, useRecentSearches } from './recent'
 import s from './SearchScreen.module.css'
@@ -278,6 +278,7 @@ function TopResult({ item }: { item: MediaResult }) {
   const inWatchlist = useLibrary((l) => l.watchlist.some((e) => e.key === mediaKey(item.type, item.id)))
   const detail = useQuery(q.detail(item.type, item.id)).data
   const known = detail && (detail.runtime || detail.seasons.length) ? detail : undefined
+  const onServer = useOnServer(item)
   const meta = [item.year, genreNames(item.genres, item.type)[0], item.type === 'movie' ? 'Film' : 'Series'].filter(Boolean)
   const link = { to: '/title/$type/$id', params: { type: item.type, id: item.id } } as const
   return (
@@ -286,8 +287,8 @@ function TopResult({ item }: { item: MediaResult }) {
         Top Result
       </h2>
       <article className={s.top}>
-        <Link {...link} data-result="" className={s.topPlate} onPointerEnter={() => prefetchDetail(item)} onFocus={() => prefetchDetail(item)} onClick={markZoomSource} viewTransition aria-label={`${item.title}, top result`}>
-          <Plate shape="poster" artPath={item.poster} sizes="160px" print={pickPrint(item, known, now, { locale: userLocale })} fallback={item.title} hideStrip />
+        <Link {...link} data-result="" className={s.topPlate} onPointerEnter={() => prefetchDetail(item)} onFocus={() => prefetchDetail(item)} onClick={markZoomSource} viewTransition aria-label={`${item.title}, top result${onServer ? ', on your server' : ''}`}>
+          <Plate shape="poster" artPath={item.poster} sizes="160px" print={[...pickPrint(item, known, now, { locale: userLocale }), ...(onServer ? serverPrint : [])]} fallback={item.title} hideStrip />
         </Link>
         <div className={s.topText}>
           <Link {...link} className={s.topTitle} onPointerEnter={() => prefetchDetail(item)} tabIndex={-1}>
