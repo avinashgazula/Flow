@@ -18,8 +18,8 @@
 }
 .empty { color: var(--ink-2); font-size: var(--fs-small); }
 
-/* The check on an episode's still: flat on the overlay, ink-2 until the episode is watched, then the yellow that
-   means watched. It is 36px to look at and 44px to hit. */
+/* The mark on an episode's still: flat on the overlay, an empty ring in ink-2 until the episode is watched, then
+   the check in the yellow that means watched. It is 36px to look at and 44px to hit. */
 .mark {
   position: absolute;
   top: 6px;
@@ -35,6 +35,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 .mark::after { content: ''; position: absolute; inset: -4px; }
+.ring { display: block; width: 16px; height: 16px; border: 2px solid currentColor; border-radius: var(--radius-full); }
 .mark:hover { color: var(--paper); }
 .mark[data-on] { color: var(--stock); }
 .mark:active { transform: scale(0.96); }

@@ -63,6 +63,12 @@ describe('strip and buttons', () => {
     expect(plain(titlePrint(film, undefined, now, 'en-GB'))).toEqual(['2024', '2 h 47', 'ends 00:17'])
   })
 
+  it('says WATCHED first on a title watched through, with no end time to wait for', () => {
+    expect(plain(titlePrint(film, undefined, now, 'en-GB', true))).toEqual(['watched', '2024', '2 h 47'])
+    // Watching it again is a resume: the time left takes over.
+    expect(plain(titlePrint(film, { position: 3720, duration: 10020 }, now, 'en-GB', true))).toEqual(['2024', '2 h 47', { key: '1h45 left' }, 'ends 23:15'])
+  })
+
   it('puts time left in the key slot once started', () => {
     expect(plain(titlePrint(film, { position: 3720, duration: 10020 }, now, 'en-GB'))).toEqual(['2024', '2 h 47', { key: '1h45 left' }, 'ends 23:15'])
   })

@@ -67,8 +67,8 @@
 .cells { position: absolute; top: 0; height: 100%; }
 .empty { position: absolute; inset: 5px 0 5px 0; display: flex; align-items: center; padding-left: var(--space-s); border-radius: var(--radius-label); background: var(--base); color: var(--ink-2); font-size: var(--fs-footnote); }
 
-/* A programme: as wide as it runs. The one on now is a lighter base outlined in yellow, with a hairline of
-   red for how far through it is. */
+/* A programme: as wide as it runs. The one on now is a lighter base with a hairline of red for how far through
+   it is, and the red line beside it: yellow is for focus and the choice you make, not for what is on. */
 .programme {
   position: absolute;
   top: 5px;
@@ -87,10 +87,9 @@
   -webkit-tap-highlight-color: transparent;
 }
 .programme:hover { background: var(--base-3); }
-.programme[data-live] { background: var(--base-3); box-shadow: inset 0 0 0 2px var(--stock); }
+.programme[data-live] { background: var(--base-3); }
 .programme[data-live]:hover { background: var(--base-4); }
 .programme[data-selected] { background: var(--base-4); box-shadow: inset 0 0 0 2px var(--paper); }
-.programme[data-selected][data-live] { box-shadow: inset 0 0 0 2px var(--stock); }
 .programme:focus-visible { outline-offset: 2px; z-index: 1; }
 .label {
   /* Stays in view at the guide's left edge while the programme runs on past it, so a cut-off cell still says what it is. */
@@ -104,6 +103,8 @@
   margin-left: 10px;
   min-width: 0;
 }
+/* Cut by the channel column: the observer in Guide.tsx hides what it can't show whole. */
+.label[data-cut] { visibility: hidden; }
 .title { font: 600 var(--fs-footnote) / 1.25 var(--font); color: var(--paper); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .when { font-size: var(--fs-caption); line-height: 1.2; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .progress { position: absolute; left: 10px; bottom: 5px; max-width: calc(100% - 20px); height: 2px; border-radius: var(--radius-hair); background: var(--red); }

@@ -101,10 +101,11 @@ export function pickPrint(item: Pick<MediaItem, 'type' | 'rating'>, detail: Pick
   return [state, ...(detail.runtime && opts.ends ? [{ text: formatRuntime(detail.runtime * 60), rank: rank.facts }] : []), score]
 }
 
-/** "Film · 2024 · Science Fiction, Adventure": the plain facts under a title. */
-export function pickMeta(item: MediaItem): string {
+/** "Film · 2024 · Science Fiction, Adventure": the plain facts under a title. `kind: false` leaves out Film or Series,
+ *  for a card whose strip already says it. */
+export function pickMeta(item: MediaItem, opts: { kind?: boolean } = {}): string {
   const genres = genreNames(item.genres, item.type).slice(0, 2).join(', ')
-  return [item.type === 'movie' ? 'Film' : 'Series', item.year, genres].filter(Boolean).join(' · ')
+  return [opts.kind === false ? undefined : item.type === 'movie' ? 'Film' : 'Series', item.year, genres].filter(Boolean).join(' · ')
 }
 
 /** What a screen reader says for a started title: "Breaking Bad, season 3 episode 7, 18 minutes left,

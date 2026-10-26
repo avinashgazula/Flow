@@ -7,7 +7,7 @@ import type { MediaType, Review } from '../../lib/tmdb/types'
 import { userLocale } from '../../lib/time'
 import s from './Reviews.module.css'
 
-/** Reviews shown before "Show all". Two columns on a wide screen, so an even number reads best. */
+/** Reviews shown before "Show All". Two columns on a wide screen, so an even number reads best. */
 const shown = 4
 
 /** What viewers on TMDB and Trakt wrote, newest first. Kept in its own chunk, and only asked for when the page is
@@ -36,7 +36,7 @@ export default function Reviews({ type, id, imdb }: { type: MediaType; id: numbe
       </ul>
       {data.length > shown && (
         <button type="button" className={s.more} onClick={() => setAll(!all)} aria-expanded={all}>
-          {all ? 'Show fewer' : `Show all ${data.length}`}
+          {all ? 'Show Fewer' : `Show All ${data.length}`}
         </button>
       )}
     </section>
@@ -52,6 +52,9 @@ function ReviewItem({ review: r }: { review: Review }) {
   const long = r.text.length > foldAt
   const date = r.date ? new Date(r.date).toLocaleDateString(userLocale, { day: 'numeric', month: 'short', year: 'numeric' }) : undefined
   const hidden = r.spoiler && !revealed
+  const parts = spoilerParts(r.text)
+  // Words between spoiler tags in a review that isn't flagged as one: blurred, with a way to read them all at once.
+  const tagged = !r.spoiler && parts.some((part) => part.spoiler)
   return (
     <article className={s.item} aria-label={`Review by ${r.author}`}>
       <header className={s.by}>
@@ -77,7 +80,7 @@ function ReviewItem({ review: r }: { review: Review }) {
       </header>
       <div className={s.body}>
         <p className={s.text} data-folded={long && !open ? '' : undefined} data-hidden={hidden ? '' : undefined} aria-hidden={hidden || undefined}>
-          {spoilerParts(r.text).map((part, i) => (part.spoiler ? <Hidden key={i} text={part.text} /> : <span key={i}>{part.text}</span>))}
+          {parts.map((part, i) => (part.spoiler ? <Hidden key={i} text={part.text} all={revealed} /> : <span key={i}>{part.text}</span>))}
         </p>
         {hidden && (
           <button type="button" className={s.reveal} onClick={() => setRevealed(true)}>
@@ -85,19 +88,29 @@ function ReviewItem({ review: r }: { review: Review }) {
           </button>
         )}
       </div>
-      {long && !hidden && (
-        <button type="button" className={s.fold} onClick={() => setOpen(!open)} aria-expanded={open}>
-          {open ? 'Read Less' : 'Read More'}
-        </button>
+      {((long && !hidden) || tagged) && (
+        <div className={s.actions}>
+          {long && !hidden && (
+            <button type="button" className={s.fold} onClick={() => setOpen(!open)} aria-expanded={open}>
+              {open ? 'Read Less' : 'Read More'}
+            </button>
+          )}
+          {tagged && (
+            <button type="button" className={s.fold} onClick={() => setRevealed(!revealed)} aria-pressed={revealed}>
+              {revealed ? 'Hide Spoilers' : 'Show Spoilers'}
+            </button>
+          )}
+        </div>
       )}
     </article>
   )
 }
 
-/** Words between spoiler tags: blurred until tapped, and kept from a screen reader until then too. */
-function Hidden({ text }: { text: string }) {
+/** Words between spoiler tags: blurred until asked for (all of them with the review's Show Spoilers, or this one by a
+ *  tap), and kept from a screen reader until then too. */
+function Hidden({ text, all }: { text: string; all: boolean }) {
   const [shown, setShown] = useState(false)
-  if (shown) return <span className={s.revealed}>{text}</span>
+  if (shown || all) return <span className={s.revealed}>{text}</span>
   return (
     <button type="button" className={s.hidden} onClick={() => setShown(true)} aria-label="Spoiler. Show it.">
       <span aria-hidden="true">{text}</span>

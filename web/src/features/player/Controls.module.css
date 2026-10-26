@@ -722,6 +722,13 @@
 .suggestClose:hover { background: var(--base-3); color: var(--paper); }
 .suggestRow { display: flex; gap: 10px; }
 .suggestRow > li { width: var(--w); flex: none; }
+/* A phone held upright has room for two frames in a card as wide as its screen, not three: the rest wait out of sight
+   rather than run past the card's edge, and the two share the width. */
+@media (max-width: 420px) {
+  .suggest { width: calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--margin)); }
+  .suggestRow > li { flex: 1 1 0; width: auto; min-width: 0; }
+  .suggestRow > li:nth-child(n + 3) { display: none; }
+}
 /* Where the film ends: the film just finished as one quiet line, then Because You Watched, its row of stills and Done,
    in the middle of the screen on the flat edge colour over the last frame. Matte: no backdrop, no blur. */
 .suggestEnd {

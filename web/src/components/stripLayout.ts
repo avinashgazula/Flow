@@ -93,17 +93,26 @@ export function composeStrip({ width, facts, kind, measure }: { width: number; f
 
   if (facts.length === 0) return { perfs: Math.min(maxPerfs[kind], Math.max(0, fitPerfs(width))), facts: [] }
 
+  /** Perforations still leave the most important fact (the time left, else the highest on the list) its whole
+   *  width. The perforations are the strip's identity, so print gives way first. */
+  const top = Math.min(...facts.map((f) => f.rank))
+  const lead = m(facts.find((f) => f.rank === top)!.text)
+  const holds = (perfs: number) => room(perfs) >= lead
   const keep = reserve[kind]
   if (keep !== undefined) {
-    // Stills and posters: the same count in every strip of a size, from the width alone.
-    const n = Math.min(maxPerfs[kind], fitPerfs(width - keep - gap))
-    const perfs = n >= minPerfs[kind] ? n : 0
+    // Stills and posters: the same count in every strip of a size, from the width alone. A narrow strip (a
+    // poster in a phone's row, a suggestion's still) keeps the fewest holes and drops print instead.
+    const n = Math.min(maxPerfs[kind], Math.max(minPerfs[kind], fitPerfs(width - keep - gap)))
+    const perfs = holds(n) ? n : 0
     return { perfs, ...compose(room(perfs)) }
   }
   // A lead or a title's still: print in full if it fits beside the most perforations, else beside the fewest.
+  // When even that is tight the print loses its format, then its end time, before a hole goes.
+  // A few pixels are kept back: the estimate is within a few per cent of the face, and a line that overshoots by a
+  // fraction of a pixel still gets an ellipsis.
   const full = total(facts)
-  const n = Math.min(maxPerfs[kind], fitPerfs(width - full - gap))
+  const n = Math.min(maxPerfs[kind], fitPerfs(width - full - gap - 6))
   if (n >= minPerfs[kind]) return { perfs: n, facts }
-  const perfs = width >= perfsWidth(minPerfs[kind]) + gap + total(facts.filter((f) => f.rank <= rank.ends)) ? minPerfs[kind] : 0
+  const perfs = holds(minPerfs[kind]) ? minPerfs[kind] : 0
   return { perfs, ...compose(room(perfs)) }
 }

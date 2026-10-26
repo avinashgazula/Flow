@@ -59,6 +59,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   const remember = useSettings((x) => x.rememberLastSource)
   const textSize = useSettings((x) => x.detailTextSize)
   const showWhere = useSettings((x) => x.showWhereToWatch)
+  const showWatchedMark = useSettings((x) => x.showWatchedBadges)
   const showReviews = useSettings((x) => x.showReviews)
   const [nearReviews, reviewsRef] = useNearScreen<HTMLDivElement>()
   const today = todayOf(now)
@@ -128,6 +129,8 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   const trailers = d.trailers ?? []
   const isWatched = type === 'movie' ? watched : showDone
   const ready = loaded && (type === 'movie' || episodes.ready)
+  // A title watched through says so on its strip, with every hole filled, as its poster does on Home.
+  const marked = isWatched && showWatchedMark && !progress
 
   /** Shuffle: a random episode, one not yet picked this round, preferring one not yet watched. */
   async function shuffle() {
@@ -157,8 +160,8 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
               artPath={d.backdrop}
               sizes={stillSizes}
               priority
-              progress={progress ? watchedFraction(progress) : undefined}
-              print={titlePrint(d, progress, now, userLocale)}
+              progress={progress ? watchedFraction(progress) : marked ? 1 : undefined}
+              print={titlePrint(d, progress, now, userLocale, marked)}
               stripSize="title"
               fallback={d.title}
             />

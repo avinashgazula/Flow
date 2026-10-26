@@ -16,11 +16,12 @@ import s from './HomeScreen.module.css'
 /** How wide an Up Next still renders, for `srcset`: two across beside the lead on a desktop, a scrolling row below. */
 const stillSizes = '(min-width: 1100px) 22vw, (min-width: 721px) 30vw, 240px'
 
-/** Up Next: what's in progress, and the next episode of each series being followed, most recently watched first
- *  (the apps' Continue Watching and Up Next shelves, which share this place beside the lead). The title the lead
- *  is showing is left out. Each is a still: perforations for how far, print for the episode, the time left in
- *  yellow, when it would end, and for a series how many episodes are left. */
-export function UpNext({ leadKey }: { leadKey?: string }) {
+/** Continue Watching: what's in progress, and the next episode of each series being followed, most recently watched
+ *  first (the apps' Continue Watching shelf, which sits beside the lead here). With only the apps' Up Next shelf on,
+ *  it is called that and holds only the next episodes, as there. The title the lead is showing is left out. Each is
+ *  a still: perforations for how far, print for the episode, the time left in yellow, when it would end, and for a
+ *  series how many episodes are left. */
+export function UpNext({ leadKey, title, nextOnly }: { leadKey?: string; title: string; nextOnly?: boolean }) {
   const progress = useLibrary((l) => l.progress)
   const history = useLibrary((l) => l.history)
   const marks = useLibrary((l) => l.watchedEpisodes)
@@ -40,17 +41,17 @@ export function UpNext({ leadKey }: { leadKey?: string }) {
     const next = showStatus(seen, detail, now).next
     return next ? [{ key: f.key, item: f.item, episode: next, updatedAt: f.watchedAt }] : []
   })
-  const entries = continueEntries(resumes, nexts, limit).filter((e) => e.key !== leadKey)
+  const entries = continueEntries(resumes, nexts, limit).filter((e) => e.key !== leadKey && (!nextOnly || e.nextUp))
 
   return (
-    <section className={s.side} aria-labelledby="up-next">
-      <h2 id="up-next" className={s.sectionTitle}>
-        Up Next
+    <section className={s.side} aria-labelledby="continue-watching">
+      <h2 id="continue-watching" className={s.sectionTitle}>
+        {title}
       </h2>
       {entries.length ? (
         <ul className={s.stills}>
           {entries.slice(0, 6).map((e) => (
-            <ContinueCard key={e.key} entry={e} />
+            <ContinueCard key={e.key} entry={e} said={!nextOnly} />
           ))}
         </ul>
       ) : (
@@ -60,7 +61,9 @@ export function UpNext({ leadKey }: { leadKey?: string }) {
   )
 }
 
-function ContinueCard({ entry }: { entry: ContinueEntry }) {
+/** `said`: the next episode says "up next" on its strip, to tell it from one in progress. Under a heading that already
+ *  says it, it would repeat it. */
+function ContinueCard({ entry, said }: { entry: ContinueEntry; said: boolean }) {
   const { item, progress, episode } = entry
   const now = useMinuteTick()
   const [near, itemRef] = useNearScreen<HTMLLIElement>()
@@ -90,7 +93,7 @@ function ContinueCard({ entry }: { entry: ContinueEntry }) {
     const runtime = ep?.runtime ?? detail.data?.runtime
     print = [
       { text: episodeShort(episode) ?? '', rank: rank.episode },
-      { text: 'up next', rank: rank.left },
+      ...(said ? [{ text: 'up next', rank: rank.left }] : []),
       ...leftPrint,
       ...(runtime ? [endsPart(runtime * 60, now, userLocale), { text: formatRuntime(runtime * 60), rank: rank.facts }] : []),
     ]
