@@ -225,6 +225,15 @@ pub mod id {
     pub const CUE_CLUSTER_POSITION: u32 = 0xF1;
     pub const CUE_RELATIVE_POSITION: u32 = 0xF0;
     pub const CHAPTERS: u32 = 0x1043A770;
+    pub const EDITION_ENTRY: u32 = 0x45B9;
+    pub const EDITION_FLAG_HIDDEN: u32 = 0x45BD;
+    pub const EDITION_FLAG_DEFAULT: u32 = 0x45DB;
+    pub const CHAPTER_ATOM: u32 = 0xB6;
+    pub const CHAPTER_TIME_START: u32 = 0x91;
+    pub const CHAPTER_FLAG_HIDDEN: u32 = 0x98;
+    pub const CHAPTER_FLAG_ENABLED: u32 = 0x4598;
+    pub const CHAPTER_DISPLAY: u32 = 0x80;
+    pub const CHAP_STRING: u32 = 0x85;
     pub const CLUSTER: u32 = 0x1F43B675;
     pub const TIMECODE: u32 = 0xE7;
     pub const SIMPLE_BLOCK: u32 = 0xA3;

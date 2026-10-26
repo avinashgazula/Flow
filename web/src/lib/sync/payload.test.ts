@@ -319,7 +319,7 @@ describe('applying a section here', () => {
     expect(settingsPatch('keys', { tmdbAPIKey: 'abc' }, settings({ onboarded: true }))).toEqual({ tmdbKey: 'abc' })
     expect(settingsPatch('keys', { tmdbAPIKey: null }, settings())).toEqual({ tmdbKey: '' })
     // Keys the web has no field for travel through untouched; the ones it has are read.
-    expect(settingsPatch('keys', { openSubtitlesAPIKey: 'only' }, settings())).toEqual({ tmdbKey: '' })
+    expect(settingsPatch('keys', { simklFutureKey: 'only' }, settings())).toEqual({ tmdbKey: '' })
     expect(settingsPatch('keys', { tvdbAPIKey: 'only' }, settings())).toEqual({ tmdbKey: '', tvdbKey: 'only' })
     expect(settingsPatch('keys', null, settings())).toBeNull()
   })
@@ -330,10 +330,10 @@ describe('applying a section here', () => {
     expect(settingsPatch('keys', { tmdbAPIKey: null, introDBAPIKey: ' intro ', publicMetaDBAPIKey: 'pmdb' }, settings())).toEqual({ tmdbKey: '', introDBKey: 'intro', publicMetaDBKey: 'pmdb' })
   })
 
-  it('carries the MDBList, TVDB and RatingPosterDB keys both ways, trimmed, without a blank browser clearing them', () => {
-    expect(localValue('keys', settings({ mdblistKey: ' md ', tvdbKey: 'tv', rpdbKey: 'rp' }))).toMatchObject({ mdblistAPIKey: 'md', tvdbAPIKey: 'tv', rpdbAPIKey: 'rp' })
-    // Unset, blank or only spaces: nothing is written under the name.
-    const none = localValue('keys', settings({ mdblistKey: '  ', tvdbKey: '' })) as Record<string, unknown>
+  it('carries the MDBList, TVDB and RatingPosterDB keys both ways, without a blank browser clearing them', () => {
+    expect(localValue('keys', settings({ mdblistKey: 'md', tvdbKey: 'tv', rpdbKey: 'rp' }))).toMatchObject({ mdblistAPIKey: 'md', tvdbAPIKey: 'tv', rpdbAPIKey: 'rp' })
+    // Unset or blank: nothing is written under the name.
+    const none = localValue('keys', settings({ mdblistKey: '', tvdbKey: undefined })) as Record<string, unknown>
     expect(Object.keys(none)).toEqual(['tmdbAPIKey', 'traktClientID', 'simklClientID'])
     expect(settingsPatch('keys', { tmdbAPIKey: null, mdblistAPIKey: ' md ', tvdbAPIKey: 'tv', rpdbAPIKey: 'rp' }, settings())).toEqual({ tmdbKey: '', mdblistKey: 'md', tvdbKey: 'tv', rpdbKey: 'rp' })
     // A null or empty key in the record leaves this browser's own as it is.
@@ -350,6 +350,47 @@ describe('applying a section here', () => {
     const set = merge(remote, settings({ tmdbKey: 'new', mdblistKey: 'web-md' }), metas, t(10), 'Web')
     expect((set.payload.sections.keys!.data as Record<string, unknown>).mdblistAPIKey).toBe('web-md')
     expect((set.payload.sections.keys!.data as Record<string, unknown>).tvdbAPIKey).toBe('apps-tv')
+  })
+
+  it('carries the subtitle service keys and the OpenSubtitles login under the document’s names, once they are set', () => {
+    const set = settings({ openSubtitlesKey: 'os', openSubtitlesUsername: 'me', openSubtitlesPassword: 'pw', subdlKey: 'sd', subSourceKey: 'ss', wyzieKey: 'wz' })
+    expect(localValue('keys', set)).toEqual({
+      tmdbAPIKey: null,
+      traktClientID: null,
+      simklClientID: null,
+      openSubtitlesAPIKey: 'os',
+      openSubtitlesUsername: 'me',
+      openSubtitlesPassword: 'pw',
+      subdlAPIKey: 'sd',
+      subSourceAPIKey: 'ss',
+      wyzieAPIKey: 'wz',
+    })
+    // A blank browser sends none of them, and a half-set one only what it has.
+    expect(Object.keys(localValue('keys', settings()) as object)).toEqual(['tmdbAPIKey', 'traktClientID', 'simklClientID'])
+    expect(localValue('keys', settings({ subdlKey: 'sd' }))).toMatchObject({ subdlAPIKey: 'sd' })
+    expect(localValue('keys', settings({ subdlKey: 'sd' }))).not.toHaveProperty('openSubtitlesAPIKey')
+    // Wyzie's key travels as wyzieAPIKey, and only once it is set.
+    expect(localValue('keys', settings())).not.toHaveProperty('wyzieAPIKey')
+    expect(settingsPatch('keys', { tmdbAPIKey: null, openSubtitlesAPIKey: ' os ', openSubtitlesUsername: 'me', openSubtitlesPassword: 'pw', subdlAPIKey: 'sd', subSourceAPIKey: 'ss' }, settings())).toEqual({
+      tmdbKey: '',
+      openSubtitlesKey: 'os',
+      openSubtitlesUsername: 'me',
+      openSubtitlesPassword: 'pw',
+      subdlKey: 'sd',
+      subSourceKey: 'ss',
+    })
+    // A key the record doesn't have, or has blank, leaves the one here as it is.
+    expect(settingsPatch('keys', { tmdbAPIKey: null, subdlAPIKey: '', subSourceAPIKey: null }, settings({ subdlKey: 'mine' }))).toEqual({ tmdbKey: '' })
+  })
+
+  it('does not clear the apps’ subtitle keys from a browser that never set them', () => {
+    const remote = record({ keys: section(2, { tmdbAPIKey: 'old', openSubtitlesAPIKey: 'os', openSubtitlesUsername: 'me', openSubtitlesPassword: 'pw', subdlAPIKey: 'sd', subSourceAPIKey: 'ss' }) })
+    const blank = settings({ tmdbKey: 'new' })
+    const written = merge(remote, blank, {}, t(20), 'Web')
+    expect(written.payload.sections.keys!.data).toMatchObject({ tmdbAPIKey: 'new', openSubtitlesAPIKey: 'os', openSubtitlesUsername: 'me', openSubtitlesPassword: 'pw', subdlAPIKey: 'sd', subSourceAPIKey: 'ss' })
+    // And a key set here goes up beside the ones the record has.
+    const mine = merge(remote, settings({ tmdbKey: 'new', subdlKey: 'mine' }), {}, t(20), 'Web')
+    expect(mine.payload.sections.keys!.data).toMatchObject({ openSubtitlesAPIKey: 'os', subdlAPIKey: 'mine' })
   })
 
   it('keeps an add-on’s saved manifest and a server’s on/off switch', () => {

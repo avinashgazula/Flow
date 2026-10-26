@@ -3,6 +3,7 @@ import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { pwa } from './scripts/pwa.ts'
+import { fileURLToPath } from 'node:url'
 
 // FLOW_BASE is the path the site is served from: "/" locally, "/Flow/" on GitHub Pages.
 export default defineConfig({
@@ -16,6 +17,16 @@ export default defineConfig({
     // The service worker and the address-bar search descriptor, written after the site is built.
     pwa(),
   ],
+  resolve: {
+    // JASSUB (ASS subtitles, loaded only when needed) imports two CommonJS packages it doesn't need here; standing in
+    // for them keeps the module-wrapper helper they require out of the first load (see src/lib/shims).
+    alias: {
+      'rvfc-polyfill': fileURLToPath(new URL('./src/lib/shims/rvfc-polyfill.ts', import.meta.url)),
+      throughput: fileURLToPath(new URL('./src/lib/shims/throughput.ts', import.meta.url)),
+    },
+  },
+  // Pre-bundling would break the worker and wasm addresses JASSUB builds from its own location.
+  optimizeDeps: { exclude: ['jassub'] },
   define: {
     // Shown in error details, so a report says which build it came from.
     'import.meta.env.VITE_BUILD': JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? 'local'),

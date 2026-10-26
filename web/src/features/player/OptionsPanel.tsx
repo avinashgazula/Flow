@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Icon, type IconName } from '../../components/Icon'
 import { PlayerIcon, type PlayerIconName } from './playerIcons'
@@ -8,26 +8,30 @@ import { usePlayer, type PlayerController } from './controller'
 import { keepFocus } from './Controls'
 import { externalPlayerTitle, playersFor } from './externalPlayers'
 import { BoostPage, DelayPage } from './ExtraPages'
-import { fileSize, speedLabel, speeds } from './format'
+import { chapterAt, chapterTitle } from './chapters'
+import { clock, fileSize, speedLabel, speeds } from './format'
 import { sleepChoices, sleepTitle } from './sleepTimer'
 import { delayLabel } from './subtitleDelay'
 import { StylePage } from './StylePage'
+import { SubtitleSearchPage } from './SubtitleSearch'
 import { boostLabel } from './volumeBoost'
 import s from './Controls.module.css'
 
-type Page = 'root' | 'tracks' | 'audio' | 'subtitles' | 'style' | 'delay' | 'speed' | 'sleep' | 'boost' | 'external' | 'source'
+type Page = 'root' | 'tracks' | 'audio' | 'subtitles' | 'search' | 'style' | 'delay' | 'speed' | 'sleep' | 'boost' | 'external' | 'chapters' | 'source'
 
 const titles: Record<Page, string> = {
   root: 'Options',
   tracks: 'Audio and Subtitles',
   audio: 'Audio',
   subtitles: 'Subtitles',
+  search: 'Search Subtitles',
   style: 'Subtitle Style',
   delay: 'Subtitle Delay',
   speed: 'Speed',
   sleep: 'Sleep Timer',
   boost: 'Volume Boost',
   external: 'Open in',
+  chapters: 'Chapters',
   source: 'Source',
 }
 
@@ -64,6 +68,22 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   onMoreSources: () => void
 }) {
   const [page, setPage] = useState<Page>(start)
+  const chapters = usePlayer(controller, (st) => st.chapters)
+  const scroller = useRef<HTMLDivElement>(null)
+  // Which chapter is playing, kept up to date while the page is open (the clock is read from the video, not from React).
+  const [playing, setPlaying] = useState(() => chapterAt(chapters, controller.currentTime()))
+  useEffect(() => {
+    const video = controller.video
+    if (page !== 'chapters' || !video) return
+    const tick = () => setPlaying(chapterAt(chapters, video.currentTime))
+    tick()
+    video.addEventListener('timeupdate', tick)
+    return () => video.removeEventListener('timeupdate', tick)
+  }, [controller, chapters, page])
+  // The list opens on the chapter playing.
+  useEffect(() => {
+    if (page === 'chapters') scroller.current?.querySelector('[aria-checked="true"]')?.scrollIntoView({ block: 'center' })
+  }, [page])
   const audio = usePlayer(controller, (st) => st.audio)
   const audioId = usePlayer(controller, (st) => st.audioId)
   const subtitles = usePlayer(controller, (st) => st.subtitles)
@@ -85,7 +105,10 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
     controller.setStyling(page === 'style' || page === 'delay' ? page : null)
     return () => controller.setStyling(null)
   }, [controller, page])
-  const back = () => setPage(start === 'tracks' && page !== 'root' ? 'tracks' : 'root')
+  // Search Subtitles opens from the subtitle list, in Options or in Audio and Subtitles, and goes back to it.
+  const [searchFrom, setSearchFrom] = useState<Page>('subtitles')
+  const home: Page = start === 'tracks' ? 'tracks' : 'root'
+  const back = () => setPage(page === 'search' ? searchFrom : start === 'tracks' && page !== 'root' ? 'tracks' : 'root')
 
   const proxy = useSettings((st) => st.streamProxy) !== ''
   const currentAudio = audio.find((t) => t.id === audioId)
@@ -146,7 +169,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
     ...subtitles.map((t) => ({
       id: `s${t.id}`,
       title: t.label,
-      detail: t.unavailable ?? (t.id.startsWith('ext:') ? 'From the source' : undefined),
+      detail: t.unavailable ?? t.note ?? (t.id.startsWith('ext:') ? 'From the source' : undefined),
       disabled: !!t.unavailable,
       checked: t.id === subtitleId,
       action: () => {
@@ -156,6 +179,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
     })),
   ]
 
+  const searchRow = (from: Page): Row => ({ id: 'search', icon: 'search', title: 'Search Subtitles…', chevron: true, action: () => (setSearchFrom(from), setPage('search')) })
   const styleRow: Row = { id: 'style', icon: 'text', title: 'Subtitle Style', chevron: true, action: () => setPage('style') }
   const delayRow: Row = { id: 'delay', icon: 'clock', title: `Subtitle Delay · ${delayLabel(delay)}`, chevron: true, action: () => setPage('delay') }
   // "Open in" is offered where an app can take the stream by its address (see externalPlayers.ts).
@@ -166,10 +190,11 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   switch (page) {
     case 'root': {
       const rows: Row[] = []
-      rows.push({ id: 'audio', icon: 'music', title: currentAudio?.label ?? audioGroup(noop).rows[0]!.title, chevron: true, action: () => setPage('audio') })
-      rows.push({ id: 'subtitles', icon: 'subtitles', title: currentSubtitle ? currentSubtitle.label : 'Subtitles Off', chevron: true, action: () => setPage('subtitles') })
+      rows.push({ id: 'audio', icon: 'music', title: `Audio · ${currentAudio?.label ?? audioGroup(noop).rows[0]!.title}`, chevron: true, action: () => setPage('audio') })
+      rows.push({ id: 'subtitles', icon: 'subtitles', title: currentSubtitle ? `Subtitles · ${currentSubtitle.label}` : 'Subtitles Off', chevron: true, action: () => setPage('subtitles') })
       rows.push(styleRow)
       rows.push(delayRow)
+      if (chapters.length > 0) rows.push({ id: 'chapters', icon: 'list', title: `Chapters · ${chapters.length}`, chevron: true, action: () => setPage('chapters') })
       rows.push({
         id: 'source',
         icon: 'stack',
@@ -205,14 +230,15 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
       break
     }
     case 'tracks':
-      groups = [audioGroup(noop, 'Audio'), { title: 'Subtitles', rows: subtitleRows(close) }, { rows: [styleRow, delayRow] }]
+      groups = [audioGroup(noop, 'Audio'), { title: 'Subtitles', rows: subtitleRows(close) }, { rows: [searchRow('tracks'), styleRow, delayRow] }]
       break
     case 'audio':
       groups = [audioGroup(back)]
       break
     case 'subtitles':
-      groups = [{ rows: subtitleRows(back) }]
+      groups = [{ rows: subtitleRows(back) }, { rows: [searchRow('subtitles')] }]
       break
+    case 'search':
     case 'style':
     case 'delay':
     case 'boost':
@@ -233,6 +259,22 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
         {
           rows: apps.map((id) => ({ id: `app-${id}`, icon: 'external' as const, title: externalPlayerTitle(id), action: () => (close(), controller.openExternally(id)) })),
           footer: 'Another player gets the stream’s link (Infuse also the resume point). Flow tracks progress only in its own player, and playback pauses here.',
+        },
+      ]
+      break
+    case 'chapters':
+      groups = [
+        {
+          rows: chapters.map((chapter, i) => ({
+            id: `c${i}`,
+            title: chapterTitle(chapter, i),
+            value: clock(chapter.start),
+            checked: i === playing,
+            action: () => {
+              close()
+              controller.seekTo(chapter.start)
+            },
+          })),
         },
       ]
       break
@@ -265,13 +307,14 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   return (
     <div className={`${s.panel} ${s.interactive}`} data-page={page} role="dialog" aria-label={titles[page]} onPointerEnter={() => (controller.hovering = true)} onPointerLeave={() => (controller.hovering = false)}>
       {showHeader && (
-        <button className={s.panelHeader} onClick={back} onMouseDown={keepFocus} aria-label={`Back to ${titles[start === 'tracks' ? 'tracks' : 'root']}`}>
+        <button className={s.panelHeader} onClick={back} onMouseDown={keepFocus} aria-label={`Back to ${titles[page === 'search' ? searchFrom : home]}`}>
           <Icon name="chevronLeft" size={16} strokeWidth={2.6} />
           <span>{titles[page]}</span>
         </button>
       )}
-      <div className={s.panelScroll}>
+      <div className={s.panelScroll} ref={scroller}>
         {page === 'style' && <StylePage />}
+        {page === 'search' && <SubtitleSearchPage controller={controller} onDone={close} />}
         {page === 'delay' && <DelayPage controller={controller} />}
         {page === 'boost' && <BoostPage controller={controller} />}
         {groups.map((g, i) => (

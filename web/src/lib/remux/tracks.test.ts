@@ -74,6 +74,14 @@ describe('plan', () => {
       { id: 8, label: 'French', language: 'fra', kind: 'image', default: false, forced: false },
     ])
   })
+
+  it('says which subtitle formats can’t be shown at all', () => {
+    const dvb = track({ id: 9, type: 'subtitle', codecId: 'S_DVBSUB', subtitleKind: 'unsupported', supported: false, reason: 'DVB subtitles' })
+    expect(plan(header(video, dvb), everything).subtitles[0]?.kind).toBe('unsupported')
+    // A header from before the field existed shows nothing it can't be sure of.
+    const old = track({ id: 10, type: 'subtitle', codecId: 'S_TEXT/UTF8' })
+    expect(plan(header(video, old), everything).subtitles[0]?.kind).toBe('unsupported')
+  })
 })
 
 describe('plan with audio conversion', () => {

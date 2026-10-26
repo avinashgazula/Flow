@@ -104,6 +104,65 @@ export class Remuxer {
         wasm.__wbg_remuxer_free(ptr, 0);
     }
     /**
+     * Returns the next range the chapter list needs, if any.
+     * @param {number} offset
+     * @param {Uint8Array} bytes
+     * @returns {Float64Array}
+     */
+    chaptersFeed(offset, bytes) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passArray8ToWasm0(bytes, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.remuxer_chaptersFeed(retptr, this.__wbg_ptr, offset, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v2 = getArrayF64FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export(r0, r1 * 8, 8);
+            return v2;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * The chapters as JSON [{title, start}], start in seconds of file time (add `delay()` for media time).
+     * @returns {string}
+     */
+    chaptersJson() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.remuxer_chaptersJson(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            deferred1_0 = r0;
+            deferred1_1 = r1;
+            return getStringFromWasm0(r0, r1);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * [offset, length] of the next read the chapter list needs, or empty when it is read (or the file has none). Chapters that
+     * sit before the first cluster are read with the header; the rest are found through the SeekHead, like the index.
+     * @returns {Float64Array}
+     */
+    chaptersNeed() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.remuxer_chaptersNeed(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v1 = getArrayF64FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export(r0, r1 * 8, 8);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * @returns {string}
      */
     codecString() {
@@ -190,6 +249,23 @@ export class Remuxer {
     delay() {
         const ret = wasm.remuxer_delay(this.__wbg_ptr);
         return ret;
+    }
+    /**
+     * Everything the header and the far reads found, as one blob for the worker's cache; empty until they are done.
+     * @returns {Uint8Array}
+     */
+    exportHeader() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.remuxer_exportHeader(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var v1 = getArrayU8FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_export(r0, r1 * 1, 1);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
     }
     finish() {
         wasm.remuxer_finish(this.__wbg_ptr);
@@ -330,6 +406,18 @@ export class Remuxer {
         }
     }
     /**
+     * Starts from a blob `exportHeader` made for this file: the header, the index and the chapters, with nothing to read.
+     * False (and nothing changed) when it isn't one.
+     * @param {Uint8Array} raw
+     * @returns {boolean}
+     */
+    importHeader(raw) {
+        const ptr0 = passArray8ToWasm0(raw, wasm.__wbindgen_export2);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.remuxer_importHeader(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
      * The track's init segment, or undefined until the frame it's configured from has been read.
      * `codecString()` then holds its codec string. Always undefined for a raw track.
      * @param {number} track
@@ -437,6 +525,13 @@ export class Remuxer {
         }
     }
     /**
+     * Chooses the picture subtitle track to decode (0 for none). Packets already read are decoded at once.
+     * @param {number} track
+     */
+    selectPicture(track) {
+        wasm.remuxer_selectPicture(this.__wbg_ptr, track);
+    }
+    /**
      * Picks the tracks to remux (0 for none). With `raw`, an audio track whose header `decode` isn't
      * empty is selectable even though browsers can't play it, and its frames come out of
      * `nextFragment()` as kind 2 instead of being muxed.
@@ -476,6 +571,26 @@ export class Remuxer {
             let v1;
             if (r0 !== 0) {
                 v1 = getStringFromWasm0(r0, r1);
+                wasm.__wbindgen_export(r0, r1 * 1, 1);
+            }
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * Picture subtitle cues decoded since the last call, in the layout lib/remux/pictures.ts reads, or undefined.
+     * @returns {Uint8Array | undefined}
+     */
+    takePictureCues() {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.remuxer_takePictureCues(retptr, this.__wbg_ptr);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            let v1;
+            if (r0 !== 0) {
+                v1 = getArrayU8FromWasm0(r0, r1).slice();
                 wasm.__wbindgen_export(r0, r1 * 1, 1);
             }
             return v1;
