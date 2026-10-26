@@ -108,7 +108,7 @@ export interface Settings {
   openSubtitlesPassword?: string
   subdlKey?: string
   subSourceKey?: string
-  /** Wyzie asks for a free key now. The apps have no field for it, so it stays on this device. */
+  /** Wyzie asks for a free key now; it syncs as `wyzieAPIKey`. */
   wyzieKey?: string
   /** Subtitle Type, Anime Audio, Keep Original ASS Styling and which services are on. Absent until the viewer
    *  changes something; read it through `normaliseSubtitleOptions`. */

@@ -339,6 +339,7 @@ describe('applying a section here', () => {
       openSubtitlesPassword: 'pw',
       subdlAPIKey: 'sd',
       subSourceAPIKey: 'ss',
+      wyzieAPIKey: 'wz',
     })
     // A blank browser sends none of them, and a half-set one only what it has.
     expect(Object.keys(localValue('keys', settings()) as object)).toEqual(['tmdbAPIKey', 'traktClientID', 'simklClientID'])

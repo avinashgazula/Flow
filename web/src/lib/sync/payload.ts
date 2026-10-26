@@ -123,7 +123,7 @@ export function readToken(v: unknown): TraktToken | undefined {
 
 /** The keys that go up only once this browser has one, and come down only when the record has one: the settings field
  *  and the name the document gives it. A browser that never set one can't clear the apps' copy, so clearing one on the
- *  website stays local. Wyzie's key has no name in the document (the apps have no field for it) and stays here. */
+ *  website stays local. */
 const optionalKeys = [
   ['introDBKey', 'introDBAPIKey'],
   ['publicMetaDBKey', 'publicMetaDBAPIKey'],
@@ -132,6 +132,7 @@ const optionalKeys = [
   ['openSubtitlesPassword', 'openSubtitlesPassword'],
   ['subdlKey', 'subdlAPIKey'],
   ['subSourceKey', 'subSourceAPIKey'],
+  ['wyzieKey', 'wyzieAPIKey'],
 ] as const
 
 const defs: Record<SectionName, SectionDef> = {
