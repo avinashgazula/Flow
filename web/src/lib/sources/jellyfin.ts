@@ -48,6 +48,22 @@ interface ItemDTO {
   MediaSources?: MediaSourceDTO[]
   /** Jellyfin 10.9+: preview pictures by media source id, then by picture width. */
   Trickplay?: Record<string, Record<string, TrickplayDTO>>
+  /** The chapter list the server keeps for the item (its own, or ones it made from the file). */
+  Chapters?: ChapterDTO[]
+}
+
+interface ChapterDTO {
+  Name?: string
+  StartPositionTicks?: number
+}
+
+/** The server's chapters as the player lists them: seconds, in time order, a nameless one left for the player to number. */
+export function chaptersOf(list: ChapterDTO[] | undefined): { title: string; start: number }[] | undefined {
+  const out = (list ?? [])
+    .filter((c) => Number.isFinite(c.StartPositionTicks) && (c.StartPositionTicks ?? -1) >= 0)
+    .map((c) => ({ title: (c.Name ?? '').trim(), start: (c.StartPositionTicks ?? 0) / ticksPerSecond }))
+    .sort((a, b) => a.start - b.start)
+  return out.length ? out : undefined
 }
 
 interface MediaSourceDTO {
@@ -278,7 +294,7 @@ export async function jellyfinSources(config: ServerConfig, request: PlaybackReq
   const resume = (full?.UserData?.PlaybackPositionTicks ?? 0) / ticksPerSecond
   const mediaSources = info?.MediaSources?.length ? info.MediaSources : (full?.MediaSources ?? [])
   return mediaSources
-    .map((ms, index) => mapMediaSource(config, targetId, ms, index, resume, caps, full?.Trickplay?.[ms.Id]))
+    .map((ms, index) => mapMediaSource(config, targetId, ms, index, resume, caps, full?.Trickplay?.[ms.Id], chaptersOf(full?.Chapters)))
     .filter((s) => !(s.filename && isUnsafeFileName(s.filename)))
 }
 
@@ -305,7 +321,7 @@ function remoteURL(ms: MediaSourceDTO): string | undefined {
   return [ms.DirectStreamUrl, ms.Path].find((u) => u && /^https?:\/\//i.test(u))
 }
 
-export function mapMediaSource(config: ServerConfig, itemId: string, ms: MediaSourceDTO, index: number, resume: number, caps: Capabilities, trickplay?: Record<string, TrickplayDTO>): Source {
+export function mapMediaSource(config: ServerConfig, itemId: string, ms: MediaSourceDTO, index: number, resume: number, caps: Capabilities, trickplay?: Record<string, TrickplayDTO>, chapters?: { title: string; start: number }[]): Source {
   const streams = ms.MediaStreams ?? []
   const video = streams.find((s) => s.Type === 'Video')
   const audioStreams = streams.filter((s) => s.Type === 'Audio')
@@ -402,6 +418,7 @@ export function mapMediaSource(config: ServerConfig, itemId: string, ms: MediaSo
   // Emby has no trickplay; Jellyfin 10.9+ lists what it made on the item.
   const tiles = config.kind === 'jellyfin' ? trickplayFor(config.url, itemId, ms.Id, config.token, trickplay) : undefined
   if (tiles) source.trickplay = tiles
+  if (chapters) source.chapters = chapters
   return source
 }
 

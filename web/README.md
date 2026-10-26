@@ -77,7 +77,7 @@ is named after a fingerprint of its contents, so a deploy that changes any file 
 
 ## Matroska
 
-Browsers can't play `.mkv`, so `src/lib/remux` does it: a Rust crate (`crates/flow-remux`, 130 KB of
+Browsers can't play `.mkv`, so `src/lib/remux` does it: a Rust crate (`crates/flow-remux`, 175 KB of
 WebAssembly) demuxes Matroska in a Web Worker, fed by range requests (header, seek index, then
 clusters a few MB at a time), and remuxes it to fragmented MP4 for Media Source Extensions. The page
 only sees `attachMatroska(video, url)`; nothing loads until an MKV is played. The built wasm and its
@@ -105,6 +105,32 @@ chosen, so nothing about it is in the first-load code. Sound is counted in sampl
 fragment after a start or seek and re-anchored when the file has a gap, so it stays with the
 picture. Tracks that play as they are are never converted, and a failure at any step (the module
 won't load, a decoder crashes, the encoder errors) drops the audio buffer so the picture plays on.
+
+**Chapters.** The remuxer reads the chapter list the way the apps do: the default edition (else the first), nested
+chapters included, hidden and disabled ones left out, an unnamed one numbered by the player. A list before the clusters
+comes with the header; one after them is found through the SeekHead and read behind the index, so it never delays the
+first picture. Times are shifted by the timeline's delay, so a chapter's start is a time on `<video>`. The Options panel
+gets a Chapters page (name and time, the one playing checked, a choice seeks) and the scrubber gets a thin Ink 2 tick
+under the rail's holes at each chapter after the first (none when there are more than 40, which would make a comb); the
+holes keep their colours. Jellyfin and Emby list chapters on the item, and those win when playing from them
+(`Source.chapters`); the file's are for every other source.
+
+**Picture subtitles.** Blu-ray PGS and DVD VobSub (`crates/flow-remux/src/picture.rs`, a port of FlowKit's decoders)
+are decoded to palette-indexed bitmaps in the worker. The crate keeps the raw packets of every picture track (a few KB
+each, 16 MB at most, the ones furthest from the playhead going first), so choosing a track mid-film has the pictures of
+what already streamed; choosing one at the start costs nothing extra. `pictures.ts` keeps each cue until the next begins
+(ten seconds when nothing says), under a memory budget. `PictureSubtitles.tsx` draws them on a canvas laid on the picture
+as the apps do (`pictureLayout.ts`: the disc's canvas spans the picture's width and is centred on it, anamorphic DVD video
+stretched sideways), follows Zoom, the subtitle delay and the viewer's subtitle position, and rises just clear of the
+controls when a line would sit behind them. DVB subtitles still say they aren't supported.
+
+**Remembered headers.** `headerCache.ts` keeps what reading a file's far end cost, so reopening it is quick: the remuxer
+exports its SeekHead, Info, Tracks, chapters and Cues as one blob (`exportHeader()`), saved in IndexedDB once both far
+reads are done and loaded with `importHeader()` before the header is read, which leaves nothing to fetch past the first
+512 KB. A resume part-way in then doesn't wait for the index. A file is named by a hash of its address, size and ETag or
+Last-Modified (when the server lists them in `Access-Control-Expose-Headers`), and, for links that change on every
+request, by a hash of its first 64 KB and its size; the address itself is never stored. Records go after 30 days unused,
+beyond 24 MB or 150 files, or when the server shows a different ETag or date. Any failure is a miss.
 
 ## Smooth playback
 
@@ -148,7 +174,7 @@ The player has what the apps have for watching a series (`features/player/segmen
   segment begins and says "Skipped intro" with Undo) or Off. The scrubber marks each segment with a thin tick under the holes.
 - **Where segments come from**, first answer wins: the server the file plays from (Jellyfin media segments, Plex
   markers), IntroDB, PublicMetaDB (each only with a key), then the file's chapter names ("Opening", "Ending"), read
-  from the first bytes of an MKV by `lib/remux/chapters.ts`. No answer means no button, never an error.
+  by the remuxer from wherever the file keeps them (see Matroska below). No answer means no button, never an error.
 - **CORS.** IntroDB's CORS header allows only introdb.app, so from the website it is asked through the stream proxy
   (with `api.introdb.app` in its `ALLOWED_HOSTS`). PublicMetaDB sends no CORS headers and needs an Authorization header
   the proxy doesn't forward, so it can't be read from a web page; its key is kept for Flow Sync and the apps. A refused
@@ -186,6 +212,44 @@ What the apps' player has beyond that, each with the apps' words and defaults (p
   (`duringcreditsstinger`, `aftercreditsstinger`) name a scene to stay for, and such credits are never skipped by themselves. Otherwise a few of its
   recommendations come up beside the credits (closing them gives back Skip Credits), and where the film ends they fill the screen. The keywords
   are asked for once the film is playing (`/movie/{id}/keywords`), so the title page's request is unchanged. Films of half an hour or more only.
+
+## Subtitles
+
+Options → Audio and Subtitles → **Search Subtitles…** asks OpenSubtitles, SubDL, Wyzie and SubSource at once (`lib/subtitles/`:
+`providers.ts` builds each request and reads each answer, as FlowKit's `Subtitles.swift` does, with tests on recorded answers
+in `__fixtures__/`; `search.ts` ranks them like the apps: your languages in order, then your Subtitle Type, then downloads).
+Keys are in Settings → Playback → Subtitle Keys and travel through Flow Sync under the apps' names (`openSubtitlesAPIKey`,
+`openSubtitlesUsername`, `openSubtitlesPassword`, `subdlAPIKey`, `subSourceAPIKey`), sent only once set. A pick is downloaded,
+unzipped (`zip.ts`: gzip and zip through `DecompressionStream`, plus a zip directory reader in about eighty lines), decoded
+(UTF-8, UTF-16 or Windows-1252) and becomes a track of its own, drawn with the viewer's style and moved by the subtitle delay.
+When the file lacks the subtitles Settings ask for (Always, or Foreign Audio Only with foreign audio) the first result in your
+language is fetched by itself a couple of seconds in, as in the apps, when any service has a key.
+
+What a web page can do, checked against the live services:
+
+- **OpenSubtitles** allows every origin and every header a preflight asks for except `Authorization` (a wildcard never covers
+  it), so the page asks with the API key alone; the login's token can't be sent, and downloads count against the key's daily limit.
+  The file it points to is on `www.opensubtitles.com`, which sends no CORS headers: it is fetched through the stream proxy, so
+  `www.opensubtitles.com` (and `dl.opensubtitles.org`) belong in the proxy's `ALLOWED_HOSTS`.
+- **SubDL** allows every origin for its API and `dl.subdl.com`; its files are zips.
+- **Wyzie** has moved to `sub.wyzie.io` and wants a free key (`key=`; claim one at store.wyzie.io/redeem). The apps still ask
+  `sub.wyzie.ru` without one, which answers 401 now. The key is kept on this device: the apps have no field for it.
+- **SubSource** sends no `Access-Control-Allow-Origin` at all and its key is a header the stream proxy doesn't pass on, so a web
+  page can't use it. It is tried, and the page says why when the browser refuses; the key is kept for Flow Sync and the apps.
+
+**Selection** (`player/languages.ts`, with the apps' `TrackSelection` rules): Show Subtitles has Forced Only beside Foreign Audio
+Only, Always and Off; Subtitle Type (Standard or SDH) decides between two tracks of one language, in the file and in search
+results; Anime Audio (No Preference, Sub, Dub) applies to Japanese animation (TMDB's Animation genre with Japanese as the original
+language): Sub plays Japanese audio and always shows subtitles, Dub shows none, not even forced ones. A subtitle in the file is
+taken before one from a search.
+
+**ASS styling.** Settings → Playback → Keep Original ASS Styling (off, as in the apps) draws ASS and SSA files the way their author
+styled them, with libass through JASSUB 2.5.18 (`player/ass.ts`). A renderer of our own would be a partial libass, so JASSUB it is;
+its cost is a 2.2 MB WebAssembly module (920 KB gzipped), a 146 KB default font and 15 KB of script, about 1.1 MB over the wire, in lazy chunks that only `ass.ts` imports and only an ASS track
+shown with the setting on loads (nothing of it is in the first load or the service worker's precache). Local fonts aren't queried
+(Chrome would ask for permission), so a font the browser can't supply is drawn in the default one. Two of JASSUB's CommonJS
+dependencies are stood in for (`src/lib/shims`, `vite.config.ts`) so the module-wrapper helper they need doesn't join the first load.
+It covers ASS files Flow reads itself (from a source or a search); ASS tracks inside an MKV arrive as cues without the script.
 
 ## Seek previews
 
@@ -264,6 +328,37 @@ authorization-code flow with PKCE (no client secret, as in the apps). Trakt's AP
   anything on Trakt, which is why this is an explicit call and not something the library's changes are diffed into.)
   An episode whose removal is still waiting isn't brought back by the next pull.
 - **Budget.** `lib/trakt/boot.ts` is the only part in the first load; the sign-in, sync and scrobbler are lazy chunks.
+
+## Ratings, requests and episode numbering
+
+Settings → Metadata and Requests hold the keys and choices; every key is checked with its service before it is kept.
+
+- **Ratings** (`lib/ratings/`, `features/detail/Ratings.tsx`). The title page prints IMDb, Rotten Tomatoes, Popcornmeter,
+  Metacritic, TMDB, Letterboxd and Trakt as aligned numbers with the site's name under each (no logos or boxes), from
+  MDBList with the viewer's key, as FlowKit's `MDBListClient` and `CatalogService.ratings`. TMDB's own score is there at
+  once, and Trakt's community score is asked for directly when MDBList lacks it. Settings → Metadata → Ratings Shown
+  chooses and orders them (arrows, so a keyboard works). **Tap a Rating** opens that site's page (`RatingLinks`); it is
+  on by default here, where the apps default it off, because a score on the web is a plain link. Sample data answers with
+  the apps' sample formulas. The apps' **rating icon packs** (custom logos from a JSON address) are left out: the title
+  page is numbers and names.
+- **Poster Enhancement** swaps a poster's address for RatingPosterDB's (`posterOf` in `lib/ratings/posters.ts`, used by
+  the poster cards and search results), off by default; `fallback=true` makes the service answer with the plain poster
+  when it has no rated art. A change applies to posters rendered afterwards.
+- **Requests** (`lib/requests/seerr.ts`, `RequestButton.tsx`). With a Seerr, Overseerr or Jellyseerr connected, a title
+  none of the viewer's media servers has gets a Request button; its words are Request, Requested, Processing and
+  Available. A series with more than one season asks All Seasons or Latest Season in place. The address `demo.flow.invalid`
+  answers from the sample catalogue.
+- **Episode numbering** (`lib/tvdb/`). Settings → Metadata → Episode Source is TVDB by default (as the apps), TMDB or
+  Trakt. With the TVDB key, `q.season` reads the series' episodes from TVDB once (`lib/tvdb/season.ts`), fills TMDB's
+  stills, scores and missing words in where the numbering lines up (`withTMDB`, from `EpisodeProvider`), and falls back to
+  TMDB's own list on any failure. Because every screen reads episodes through `q.season`, Next Up, the player and Home
+  follow the numbering too. The season list itself still comes from TMDB, as in the apps.
+- **CORS.** MDBList, RatingPosterDB, TVDB (login POST and the Authorization header on reads) and Trakt all answer browsers
+  with `Access-Control-Allow-Origin: *`, checked from Chromium and Firefox, so none of them uses the stream proxy. Seerr
+  can't use it either: the proxy only fetches with GET and passes no headers on, and a request is a POST with `X-Api-Key`.
+  The instance has to allow web pages itself (a reverse proxy adding CORS headers); Settings says so when it can't be read.
+- **Sync.** `mdblistAPIKey`, `tvdbAPIKey` and `rpdbAPIKey` travel in the `keys` section, written only once this browser
+  has one so a blank browser never clears the apps' copy. The Seerr address and key stay in this browser.
 
 ## Title pages
 

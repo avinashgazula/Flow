@@ -113,7 +113,7 @@ The plaintext is JSON:
 - **`keys`:** string or null fields:
   - `tmdbAPIKey`, `tvdbAPIKey`, `mdblistAPIKey`;
   - `openSubtitlesAPIKey`, `openSubtitlesUsername`, `openSubtitlesPassword`;
-  - `subdlAPIKey`, `subSourceAPIKey`, `rpdbAPIKey`;
+  - `subdlAPIKey`, `subSourceAPIKey`, `wyzieAPIKey`, `rpdbAPIKey`;
   - `introDBAPIKey`, `publicMetaDBAPIKey`, used for Skip Intro, Recap and Credits;
   - `traktClientID`, `traktClientSecret`, `simklClientID`.
 

@@ -8,6 +8,8 @@
                                                   DTS and TrueHD say playable: false where that isn't possible)
    await session.selectAudio(id)                  rebuilds the audio from the playhead, picture untouched
    const stop = session.onSubtitleCues(id, cues => …)   text cues arrive as the file is read (SRT, ASS, WebVTT)
+   session.selectPictures(id)                      picture subtitles (PGS, VobSub): decoded in the worker; session.pictureAt(t) is what's on screen
+   session.chapters / session.onChapters(list => …) the file's chapters, wherever it keeps them (the far end of a big file is read after the start)
    await session.seek(seconds)                    or just set video.currentTime: both are handled
    session.netStats / session.onStats(stats => …)  how fast the file is arriving (bytes per second), its average bitrate, requests in flight
    session.onError(message => …)                  mid-playback failures (the initial ones reject attachMatroska)
@@ -25,6 +27,7 @@
 import type { FromWorker, HeaderInfo, ToWorker } from './protocol'
 import { type BufferKind, isMediaSourceSupported, MseSink, typeSupported } from './mse'
 import { canConvertAudio } from '../audio/support'
+import { type PictureCue, PictureTrack, parsePictureCues } from './pictures'
 import { parseHeader, type Plan, plan as makePlan, UnplayableError } from './tracks'
 
 export { UnplayableError }
@@ -46,8 +49,9 @@ export interface RemuxSubtitleTrack {
   id: number
   label: string
   language?: string
-  /** Text tracks (SRT, ASS, WebVTT) arrive as cues; image tracks (PGS, VobSub) aren't supported yet. */
-  kind: 'text' | 'image'
+  /** Text tracks (SRT, ASS, WebVTT) arrive as cues, image tracks (PGS, VobSub) as bitmaps (`selectPictures`); the rest
+   *  (DVB subtitles) can't be shown. */
+  kind: 'text' | 'image' | 'unsupported'
   default: boolean
   forced: boolean
 }
@@ -57,6 +61,8 @@ export interface RemuxChapter {
   /** Seconds. */
   start: number
 }
+
+export type { PictureCue }
 
 export interface SubtitleCue {
   start: number
@@ -71,6 +77,9 @@ export interface RemuxVideoInfo {
   frameRate?: number
   /** "SDR", "HDR10", "HLG" or "Dolby Vision", as the file declares it. */
   range?: string
+  /** The shape the file asks to be shown in, when it differs from the coded size (anamorphic DVD video, say). */
+  displayWidth?: number
+  displayHeight?: number
 }
 
 /** How the network is doing, about once a second while the file is being read. */
@@ -94,8 +103,17 @@ export interface RemuxSession {
   duration: number
   audioTracks: RemuxAudioTrack[]
   subtitleTracks: RemuxSubtitleTrack[]
-  /** The file's chapters, when its chapter list is among the first bytes (see chapters.ts); none otherwise. */
-  chapters: RemuxChapter[]
+  /** The file's chapters in media time, once read: with the header when the list sits at the start, a moment later when
+   *  the SeekHead sends the reader to the far end (`onChapters` says when). Empty until then, and for a file with none. */
+  readonly chapters: RemuxChapter[]
+  /** Called when the chapters arrive (at once, when they already have). */
+  onChapters(listener: (chapters: RemuxChapter[]) => void): () => void
+  /** True when the file's header, index and chapters came from an earlier visit (headerCache.ts) and weren't read again. */
+  readonly headerCached: boolean
+  /** Chooses the picture subtitle track to decode and draw (null: none). Everything already read is decoded at once. */
+  selectPictures(trackId: number | null): void
+  /** The picture subtitle on screen at `time` (media seconds) for the chosen track, or null. */
+  pictureAt(time: number): PictureCue | null
   /** The picture, when the file has one. */
   video?: RemuxVideoInfo
   /** The audio track playing now. */
@@ -159,6 +177,7 @@ class Session implements RemuxSession {
   audioTracks: RemuxAudioTrack[] = []
   subtitleTracks: RemuxSubtitleTrack[] = []
   chapters: RemuxChapter[] = []
+  headerCached = false
   video?: RemuxVideoInfo
   audioId: number | null = null
 
@@ -193,7 +212,9 @@ class Session implements RemuxSession {
   private restartAt = 0
   private eof = false
   private headerReceived!: (info: HeaderInfo) => void
-  private headerChapters: RemuxChapter[] = []
+  private chapterListeners = new Set<(chapters: RemuxChapter[]) => void>()
+  private pictureTracks = new Map<number, PictureTrack>()
+  private pictureId: number | null = null
   private firstReady: (() => void) | null = null
 
   private cues = new Map<number, { list: SubtitleCue[]; seen: Set<string>; listeners: Set<(cues: SubtitleCue[]) => void> }>()
@@ -262,13 +283,14 @@ class Session implements RemuxSession {
 
     this.plan = makePlan(info, typeSupported, canConvertAudio())
     this.declared = info.duration ?? 0
-    this.chapters = this.headerChapters
     this.audioTracks = this.plan.audio.map(({ mime: _mime, ...track }) => track)
     this.subtitleTracks = this.plan.subtitles
     this.audioId = this.plan.defaultAudio
     this.primary = this.plan.video ? 0 : 1
     const track = this.plan.video?.track
-    if (track) this.video = { width: track.width ?? 0, height: track.height ?? 0, codec: track.codec, frameRate: track.frameRate, range: track.range }
+    if (track) {
+      this.video = { width: track.width ?? 0, height: track.height ?? 0, codec: track.codec, frameRate: track.frameRate, range: track.range, displayWidth: track.displayWidth, displayHeight: track.displayHeight }
+    }
     this.sink.setDuration(this.declared)
 
     const at = Math.max(0, options.startAt ?? 0)
@@ -296,9 +318,24 @@ class Session implements RemuxSession {
     if (this.destroyed) return
     switch (message.type) {
       case 'header':
-        this.headerChapters = message.chapters ?? []
+        this.headerCached = message.cached
         this.headerReceived(parseHeader(message.json))
         return
+      case 'chapters':
+        this.chapters = message.chapters
+        for (const listener of this.chapterListeners) listener(this.chapters)
+        return
+      case 'pictures': {
+        const cues = parsePictureCues(message.bytes)
+        let list = this.pictureTracks.get(message.track)
+        if (!list) {
+          // Only the track in use is kept: a switch starts the new one from what the worker decodes again.
+          if (message.track !== this.pictureId) return
+          this.pictureTracks.set(message.track, (list = new PictureTrack()))
+        }
+        list.add(cues)
+        return
+      }
       case 'error':
         this.fail(message.message, message.blocked ? 'blocked' : message.notMatroska ? 'notMatroska' : null)
         return
@@ -488,6 +525,7 @@ class Session implements RemuxSession {
     const time = video.currentTime
     this.send({ type: 'playhead', time })
     this.sink.evict(time)
+    if (this.pictureId !== null) this.pictureTracks.get(this.pictureId)?.trim(time)
     // Nearing the end of a buffered stretch that the worker isn't extending (after a seek back into old data): point it there.
     if (!this.eof && this.front !== null) {
       const end = this.sink.contiguousEnd(this.primary, time)
@@ -554,6 +592,23 @@ class Session implements RemuxSession {
     return () => entry.listeners.delete(listener)
   }
 
+  onChapters(listener: (chapters: RemuxChapter[]) => void): () => void {
+    this.chapterListeners.add(listener)
+    if (this.chapters.length) listener(this.chapters)
+    return () => this.chapterListeners.delete(listener)
+  }
+
+  selectPictures(trackId: number | null): void {
+    if (this.destroyed || trackId === this.pictureId) return
+    this.pictureId = trackId
+    for (const id of [...this.pictureTracks.keys()]) if (id !== trackId) this.pictureTracks.delete(id)
+    this.send({ type: 'picture', track: trackId ?? 0 })
+  }
+
+  pictureAt(time: number): PictureCue | null {
+    return this.pictureId === null ? null : (this.pictureTracks.get(this.pictureId)?.at(time) ?? null)
+  }
+
   get netStats(): NetStats | null {
     return this.stats
   }
@@ -608,6 +663,8 @@ class Session implements RemuxSession {
     this.thumbs.clear()
     this.sink.destroy()
     this.cues.clear()
+    this.pictureTracks.clear()
+    this.chapterListeners.clear()
     this.errorListeners.clear()
     this.audioFailedListeners.clear()
     this.statsListeners.clear()

@@ -152,7 +152,7 @@ export function plan(info: HeaderInfo, isSupported: (mime: string) => boolean, c
 
   const subtitles = info.tracks
     .filter((t) => t.type === 'subtitle')
-    .map((t): RemuxSubtitleTrack => ({ id: t.id, label: subtitleLabel(t), language: t.language && t.language !== 'und' ? t.language : undefined, kind: t.subtitleKind === 'text' ? 'text' : 'image', default: t.default, forced: t.forced }))
+    .map((t): RemuxSubtitleTrack => ({ id: t.id, label: subtitleLabel(t), language: t.language && t.language !== 'und' ? t.language : undefined, kind: t.subtitleKind ?? 'unsupported', default: t.default, forced: t.forced }))
 
   return {
     video,

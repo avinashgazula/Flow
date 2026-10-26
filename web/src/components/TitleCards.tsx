@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { posterOf } from '../lib/ratings/posters'
 import { useEffect, useState, type ReactNode } from 'react'
 import { prefetchDetail, q } from '../lib/queries'
 import { lastSourceStore } from '../lib/sources/lastSource'
@@ -51,7 +52,7 @@ export function PosterItem({ item, meta, sizes = posterSizes, children }: { item
       link={{ to: '/title/$type/$id', params: { type: item.type, id: item.id } }}
       itemRef={itemRef}
       shape="poster"
-      artPath={item.poster}
+      artPath={posterOf(item)}
       sizes={sizes}
       progress={marks.progress}
       print={[...marks.parts, ...pickPrint(item, detail, now)]}

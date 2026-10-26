@@ -42,10 +42,22 @@
 
 /* Ratings: aligned numbers with the source's name under each, tapping opens the site. */
 .ratings { display: flex; flex-wrap: wrap; gap: var(--space-m) var(--space-xl); margin-top: var(--space-m); }
+@media (max-width: 720px) { .ratings { column-gap: var(--space-l); } }
 .ratings a { display: flex; flex-direction: column; gap: 2px; }
 .score { font: 600 var(--fs-title3) / 1 var(--font); font-variant-numeric: tabular-nums; }
 .source { font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); transition: color var(--dur-state) ease; }
-.ratings a:hover .source { color: var(--paper); }
+.ratings a:hover .source, .ratings a:focus-visible .source { color: var(--paper); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.plain { display: flex; flex-direction: column; gap: 2px; }
+
+/* A series asks which seasons to request in the actions row, under the button, instead of in a dialog. */
+.seasonsChoice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); flex: 1 1 100%; }
+.seasonsLabel { margin-right: var(--space-xs); font-size: var(--fs-small); color: var(--ink-2); }
+@media (max-width: 720px) {
+  /* The question and Cancel share a line, and the two answers share the next, each half the width. */
+  .seasonsLabel { order: 0; flex: 1 0 auto; white-space: nowrap; }
+  .seasonsCancel { order: 1; }
+  .seasonsAnswer { order: 2; flex: 1 1 calc(50% - var(--space-xs)); }
+}
 
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-s); margin-top: var(--space-l); }
 .actions > :first-child { flex: 0 1 auto; min-width: 0; }
