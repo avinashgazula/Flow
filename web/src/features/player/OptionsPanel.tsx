@@ -172,8 +172,8 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   switch (page) {
     case 'root': {
       const rows: Row[] = []
-      rows.push({ id: 'audio', icon: 'music', title: currentAudio?.label ?? audioGroup(noop).rows[0]!.title, chevron: true, action: () => setPage('audio') })
-      rows.push({ id: 'subtitles', icon: 'subtitles', title: currentSubtitle ? currentSubtitle.label : 'Subtitles Off', chevron: true, action: () => setPage('subtitles') })
+      rows.push({ id: 'audio', icon: 'music', title: `Audio · ${currentAudio?.label ?? audioGroup(noop).rows[0]!.title}`, chevron: true, action: () => setPage('audio') })
+      rows.push({ id: 'subtitles', icon: 'subtitles', title: currentSubtitle ? `Subtitles · ${currentSubtitle.label}` : 'Subtitles Off', chevron: true, action: () => setPage('subtitles') })
       rows.push(styleRow)
       rows.push(delayRow)
       rows.push({
