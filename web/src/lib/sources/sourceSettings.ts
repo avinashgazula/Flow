@@ -3,8 +3,8 @@
    in their own small file because the settings store needs the defaults at launch and everything else here
    (ranking, the picker, Settings) loads later. */
 
-/** The kinds of place sources come from, as FlowKit's SourceCategory. The browser has media servers and
- *  add-ons today; WebDAV and IPTV keep their places in the saved order for the apps' sake. */
+/** The kinds of place sources come from, as FlowKit's SourceCategory. The browser has media servers, WebDAV
+ *  shares and add-ons; IPTV keeps its place in the saved order for the apps' sake. */
 export type SourceCategory = 'mediaServers' | 'webDAV' | 'iptv' | 'addons'
 export const sourceCategories: readonly SourceCategory[] = ['mediaServers', 'webDAV', 'iptv', 'addons']
 export const categoryNames: Record<SourceCategory, string> = { mediaServers: 'Media Servers', webDAV: 'WebDAV', iptv: 'IPTV / VOD', addons: 'Add-ons' }
@@ -78,6 +78,8 @@ export interface SourceOrdering {
   /** Null shows every source that passes. */
   resultCap: number | null
   appearance: SourceAppearance
+  /** A title opened from one of a server's libraries lists only that server's sources (FlowKit's `playFromLibraryOnly`). */
+  playFromLibraryOnly: boolean
 }
 
 export const defaultSortRules = (): SourceSortRule[] => [
@@ -109,6 +111,7 @@ export const defaultSourceOrdering: SourceOrdering = {
   filters: defaultSourceFilters,
   resultCap: null,
   appearance: defaultSourceAppearance,
+  playFromLibraryOnly: false,
 }
 
 /** Options the pickers in Settings offer, as the Settings → Sources page of the apps lists them. */
@@ -151,6 +154,7 @@ export function isSourceOrdering(v: unknown): boolean {
     ok('providerOrder', (x) => isObject(x) && Object.entries(x).every(([k, ids]) => isCategory(k) && isStrings(ids))) &&
     ok('sortRules', (x) => Array.isArray(x) && x.every((r) => isObject(r) && isSortKey(r.key) && (!('descending' in r) || isBool(r.descending)))) &&
     ok('resultCap', isLimit) &&
+    ok('playFromLibraryOnly', isBool) &&
     section('filters', {
       excludeCinemaCaptures: isBool,
       excludeUncached: isBool,
@@ -206,6 +210,7 @@ export function normaliseSourceOrdering(value: unknown): SourceOrdering {
       excludedCodecs: isStrings(f.excludedCodecs) ? f.excludedCodecs : [],
     },
     resultCap: limit(value.resultCap),
+    playFromLibraryOnly: pick(isBool, value.playFromLibraryOnly, d.playFromLibraryOnly),
     appearance: {
       showRawText: pick(isBool, a.showRawText, d.appearance.showRawText),
       titleDisplay: pick(isTitleDisplay, a.titleDisplay, d.appearance.titleDisplay),

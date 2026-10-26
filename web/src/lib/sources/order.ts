@@ -9,8 +9,8 @@ import { isCinemaCapture, releaseQualities, type ParsedQuality } from './parser'
 import { sourceCategories, type SourceCategory, type SourceFilters, type SourceOrdering, type SourceSortKey, type SourceSortRule } from './sourceSettings'
 import type { Source, SourceOrigin } from './types'
 
-/** Where a source comes from: the viewer's own servers, or an add-on. */
-export const categoryOf = (origin: SourceOrigin): SourceCategory => (origin === 'jellyfin' || origin === 'emby' || origin === 'plex' ? 'mediaServers' : 'addons')
+/** Where a source comes from: the viewer's own servers, a WebDAV share, or an add-on. */
+export const categoryOf = (origin: SourceOrigin): SourceCategory => (origin === 'jellyfin' || origin === 'emby' || origin === 'plex' ? 'mediaServers' : origin === 'webdav' ? 'webDAV' : 'addons')
 
 /** What tells one provider's sources from another's: the add-on's address or the server's id. */
 export const providerKey = (s: Pick<Source, 'providerId' | 'provider'>): string => s.providerId ?? s.provider

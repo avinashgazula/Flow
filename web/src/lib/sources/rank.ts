@@ -299,7 +299,7 @@ export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilitie
   if (s.cached === false) score -= 400
   if (s.seeders !== undefined) score += Math.min(60, Math.log10(s.seeders + 1) * 20)
   // The viewer's own server is the most dependable copy at the same quality.
-  if (s.origin === 'jellyfin' || s.origin === 'emby' || s.origin === 'plex') score += 300
+  if (s.origin === 'jellyfin' || s.origin === 'emby' || s.origin === 'plex' || s.origin === 'webdav') score += 300
   return score
 }
 

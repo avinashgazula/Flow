@@ -58,7 +58,15 @@ describe('category and provider order', () => {
   })
 
   it('name every kind of origin a category', () => {
-    expect((['jellyfin', 'emby', 'plex', 'addon', 'demo'] as const).map(categoryOf)).toEqual(['mediaServers', 'mediaServers', 'mediaServers', 'addons', 'addons'])
+    expect((['jellyfin', 'emby', 'plex', 'webdav', 'addon', 'demo'] as const).map(categoryOf)).toEqual(['mediaServers', 'mediaServers', 'mediaServers', 'webDAV', 'addons', 'addons'])
+  })
+
+  it('put a WebDAV share between the servers and the add-ons, until the viewer says otherwise', () => {
+    const withShare = [...list, source('w1', '1080p', { provider: 'nas', origin: 'webdav' })]
+    const all = [...providers, { id: 'nas', category: 'webDAV' as const }]
+    expect(ids(arrangeSources(withShare, defaultSourceOrdering, context({ providers: all })).sources)).toEqual(['s2', 's1', 'w1', 'a1'])
+    const settings: SourceOrdering = { ...defaultSourceOrdering, categoryOrder: ['webDAV', 'mediaServers', 'iptv', 'addons'] }
+    expect(ids(arrangeSources(withShare, settings, context({ providers: all })).sources)).toEqual(['w1', 's2', 's1', 'a1'])
   })
 
   it('order providers: the named ones first, the rest as they come, strangers ignored', () => {

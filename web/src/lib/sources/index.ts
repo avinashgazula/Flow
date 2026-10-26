@@ -6,6 +6,7 @@ import { addonSources } from './addons'
 import { browserCapabilities, type Capabilities } from './capabilities'
 import { demoProviderId, demoSources } from './demo'
 import { SourceError, withTimeout } from './http'
+import { libraryOriginFor } from './libraryOrigin'
 import { dedupe, dedupeKey, orderedSources } from './rank'
 import { normaliseSourceOrdering } from './sourceSettings'
 import type { PlaybackRequest, Source } from './types'
@@ -26,7 +27,7 @@ export interface ProviderResult {
 export interface Provider {
   id: string
   name: string
-  kind: 'addon' | 'jellyfin' | 'emby' | 'plex' | 'demo'
+  kind: 'addon' | 'jellyfin' | 'emby' | 'plex' | 'webdav' | 'demo'
   search(request: PlaybackRequest, caps: Capabilities, signal: AbortSignal): Promise<ProviderResult>
 }
 
@@ -65,6 +66,10 @@ export function enabledProviders(settings: Settings = settingsStore.get()): Prov
       },
     })
   }
+  for (const share of settings.webDAV ?? []) {
+    if (!share.enabled) continue
+    providers.push({ id: share.id, name: share.name, kind: 'webdav', search: async (r, caps, signal) => ({ sources: await (await import('./webdav')).webdavSources(share, r, caps, signal) }) })
+  }
   for (const addon of settings.addons) {
     if (!addon.enabled) continue
     providers.push({ id: addon.url, name: addon.name, kind: 'addon', search: (r, caps, signal) => addonSources(addon, r, caps, signal) })
@@ -84,13 +89,30 @@ async function withIMDb(request: PlaybackRequest): Promise<PlaybackRequest> {
   }
 }
 
-/** Asks every provider at once, reporting each one's state and the ranked list as answers arrive. */
-export async function searchSources(
-  request: PlaybackRequest,
-  options: { signal?: AbortSignal; onUpdate?: (update: SearchUpdate) => void; providers?: Provider[]; capabilities?: Capabilities; timeoutMs?: number } = {},
-): Promise<SearchUpdate> {
+type SearchOptions = { signal?: AbortSignal; onUpdate?: (update: SearchUpdate) => void; providers?: Provider[]; capabilities?: Capabilities; timeoutMs?: number }
+
+/** Asks every provider at once, reporting each one's state and the ranked list as answers arrive. With Play From
+ *  This Library Only on, a title opened from one of a server's libraries asks that server first, and everyone
+ *  only if it has nothing for the title (FlowKit's SourcePickerView.gather). */
+export async function searchSources(request: PlaybackRequest, options: SearchOptions = {}): Promise<SearchUpdate> {
   const settings = settingsStore.get()
   const providers = options.providers ?? enabledProviders(settings)
+  const origin = settings.sources?.playFromLibraryOnly ? libraryOriginFor(request.type, request.tmdbId) : undefined
+  const library = origin ? providers.find((p) => p.id === origin) : undefined
+  if (library && providers.length > 1) {
+    // The library's answer stands in for the first pass; it only counts as finished once the rest is decided.
+    const first = await searchAmong(request, { ...options, providers: [library], onUpdate: (u) => options.onUpdate?.({ ...u, finished: false }) })
+    if (first.sources.length > 0) {
+      options.onUpdate?.(first)
+      return first
+    }
+  }
+  return searchAmong(request, { ...options, providers })
+}
+
+async function searchAmong(request: PlaybackRequest, options: SearchOptions & { providers: Provider[] }): Promise<SearchUpdate> {
+  const settings = settingsStore.get()
+  const providers = options.providers
   const caps = options.capabilities ?? browserCapabilities()
   const prefs = { preferredQuality: settings.preferredQuality, kind: request.type, audioLanguage: resolveAudioLanguages(settings.audioLanguages, request.item.originalLanguage)[0] }
   const arrangement = { ordering: normaliseSourceOrdering(settings.sources), providers: providers.map((p) => ({ id: p.id, kind: p.kind })) }
