@@ -25,6 +25,11 @@ fn open(bytes: &[u8]) -> Core {
         let end = (offset + len).min(bytes.len() as u64);
         core.cues_feed(offset, &bytes[offset as usize..end as usize]);
     }
+    let mut need = core.chapters_need();
+    while let Some((offset, len)) = need {
+        let end = (offset + len).min(bytes.len() as u64);
+        need = core.chapters_feed(offset, &bytes[offset as usize..end as usize]);
+    }
     core
 }
 
@@ -1185,5 +1190,440 @@ fn preview_never_panics_on_corrupt_bytes() {
         }
         let _ = core.thumb_target(f64::NAN);
         let _ = core.thumb_target(1e12);
+    }
+}
+
+// MARK: - Chapters, the header cache and picture subtitles
+
+mod extras {
+    use super::mkv::{el, text, uint};
+    use super::*;
+    use crate::picture::tests::{clear_set, show_set, vob_packet, IDX};
+
+    fn chapter_string(title: &str) -> Vec<u8> {
+        el(0x80, &[el(0x85, title.as_bytes()), text(0x437C, "eng")].concat())
+    }
+
+    /// A chapter at `seconds`, with `inside` (sub-chapters) in it.
+    fn atom(title: &str, seconds: f64, inside: &[Vec<u8>]) -> Vec<u8> {
+        let body = [uint(0x73C4, 1), uint(0x91, (seconds * 1e9) as u64), chapter_string(title), inside.concat()].concat();
+        el(0xB6, &body)
+    }
+
+    fn edition(default: bool, atoms: &[Vec<u8>]) -> Vec<u8> {
+        el(0x45B9, &[uint(0x45DB, default as u64), atoms.concat()].concat())
+    }
+
+    fn chapters(editions: &[Vec<u8>]) -> Vec<u8> {
+        el(0x1043A770, &editions.concat())
+    }
+
+    fn video_entry() -> Vec<u8> {
+        el(0xAE, &[uint(0xD7, 1), uint(0x83, 1), text(0x86, "V_VP9"), el(0xE0, &[uint(0xB0, 640), uint(0xBA, 360)].concat())].concat())
+    }
+
+    fn subtitle_entry(number: u64, codec: &str, private: &[u8]) -> Vec<u8> {
+        el(0xAE, &[uint(0xD7, number), uint(0x83, 0x11), text(0x86, codec), el(0x63A2, private)].concat())
+    }
+
+    fn simple_block(track: u8, ms: i16, key: bool, body: &[u8]) -> Vec<u8> {
+        let mut payload = vec![0x80 | track];
+        payload.extend_from_slice(&ms.to_be_bytes());
+        payload.push(if key { 0x80 } else { 0 });
+        payload.extend_from_slice(body);
+        el(0xA3, &payload)
+    }
+
+    /// A block with a BlockDuration, as muxers write a subtitle that knows how long it lasts.
+    fn timed_block(track: u8, ms: i16, duration_ms: u64, body: &[u8]) -> Vec<u8> {
+        let mut payload = vec![0x80 | track];
+        payload.extend_from_slice(&ms.to_be_bytes());
+        payload.push(0);
+        payload.extend_from_slice(body);
+        el(0xA0, &[el(0xA1, &payload), uint(0x9B, duration_ms)].concat())
+    }
+
+    /// EBML header, then a Segment of `head` (Tracks and friends), one cluster, then `tail`. With
+    /// `seek_to_tail`, a SeekHead in front says where the tail's first element (Chapters) is.
+    fn file(head: &[Vec<u8>], cluster_body: &[u8], tail: &[u8], seek_to_tail: bool) -> Vec<u8> {
+        let info = el(0x1549A966, &uint(0x2AD7B1, 1_000_000));
+        let seek = |position: u32| el(0x114D9B74, &el(0x4DBB, &[el(0x53AB, &0x1043A770u32.to_be_bytes()), el(0x53AC, &position.to_be_bytes())].concat()));
+        let cluster = el(0x1F43B675, &[uint(0xE7, 0), cluster_body.to_vec()].concat());
+        let mut rest = info;
+        rest.extend(head.concat());
+        let seek_len = if seek_to_tail { seek(0).len() } else { 0 };
+        let tail_at = seek_len + rest.len() + cluster.len();
+        let mut segment = if seek_to_tail { seek(tail_at as u32) } else { Vec::new() };
+        segment.extend(rest);
+        segment.extend(cluster);
+        segment.extend_from_slice(tail);
+        let mut out = el(0x1A45DFA3, &[el(0x4282, b"matroska"), uint(0x4287, 4)].concat());
+        out.extend(el(0x18538067, &segment));
+        out
+    }
+
+    fn chapter_file(list: &[u8], after: bool) -> Vec<u8> {
+        let tracks = el(0x1654AE6B, &video_entry());
+        let key = simple_block(1, 0, true, &[1, 2, 3]);
+        if after {
+            file(&[tracks], &key, list, true)
+        } else {
+            file(&[tracks, list.to_vec()], &key, &[], false)
+        }
+    }
+
+    fn titles(core: &Core) -> Vec<(String, i64)> {
+        core.reader.header.chapters.iter().map(|c| (c.title.clone(), c.start)).collect()
+    }
+
+    fn header_only(bytes: &[u8]) -> Core {
+        let mut core = Core::new(Some(bytes.len() as u64));
+        while let Some((offset, len)) = core.header_need() {
+            let end = (offset + len).min(bytes.len() as u64);
+            core.reader.feed(offset, &bytes[offset as usize..end as usize]);
+        }
+        core
+    }
+
+    #[test]
+    fn chapters_before_the_clusters_come_with_the_header() {
+        let list = chapters(&[edition(true, &[atom("Opening", 95.5, &[]), atom("Prologue", 0.0, &[]), atom("Part A", 185.0, &[])])]);
+        let core = open(&chapter_file(&list, false));
+        assert_eq!(titles(&core), vec![("Prologue".into(), 0), ("Opening".into(), 95_500_000_000), ("Part A".into(), 185_000_000_000)]);
+        assert_eq!(core.chapters_need(), None);
+        assert_eq!(core.chapters_json(), r#"[{"title":"Prologue","start":0},{"title":"Opening","start":95.5},{"title":"Part A","start":185}]"#);
+    }
+
+    #[test]
+    fn chapters_after_the_clusters_are_found_through_the_seek_head() {
+        let list = chapters(&[edition(true, &[atom("Act", 0.0, &[]), atom("Credits", 3000.0, &[])])]);
+        let bytes = chapter_file(&list, true);
+        // The header phase alone doesn't have them; the SeekHead says where to look.
+        let mut core = header_only(&bytes);
+        assert!(core.reader.is_ready(), "{:?}", core.reader.error);
+        assert!(core.reader.header.chapters.is_empty());
+        let (offset, len) = core.chapters_need().expect("a place to look");
+        assert!(offset > core.reader.header.first_cluster.unwrap());
+        let end = (offset + len).min(bytes.len() as u64);
+        assert_eq!(core.chapters_feed(offset, &bytes[offset as usize..end as usize]), None);
+        assert_eq!(titles(&core), vec![("Act".into(), 0), ("Credits".into(), 3_000_000_000_000)]);
+        assert_eq!(core.chapters_need(), None, "read once");
+    }
+
+    #[test]
+    fn a_short_answer_for_the_chapters_is_asked_again_once_then_given_up() {
+        let list = chapters(&[edition(true, &[atom("Act", 0.0, &[])])]);
+        let bytes = chapter_file(&list, true);
+        let mut core = header_only(&bytes);
+        let (offset, _) = core.chapters_need().unwrap();
+        let half = &bytes[offset as usize..offset as usize + 12];
+        let again = core.chapters_feed(offset, half).expect("asks for the whole element");
+        assert_eq!(again.0, offset);
+        assert_eq!(core.chapters_feed(offset, half), None, "the same short answer means the file ends early");
+        assert!(core.reader.header.chapters.is_empty());
+    }
+
+    #[test]
+    fn chapter_rules_follow_the_apps() {
+        let hidden = el(0xB6, &[uint(0x91, 10_000_000_000), uint(0x98, 1), chapter_string("Hidden")].concat());
+        let disabled = el(0xB6, &[uint(0x91, 11_000_000_000), uint(0x4598, 0), chapter_string("Disabled")].concat());
+        let unnamed = el(0xB6, &uint(0x91, 20_000_000_000));
+        let other_cut = edition(false, &[atom("Other cut", 5.0, &[])]);
+        let list = chapters(&[
+            other_cut.clone(),
+            edition(true, &[atom("Act One", 0.0, &[atom("Opening", 30.0, &[])]), hidden, disabled, unnamed, atom("Act One", 0.0, &[]), atom("Ending", 1290.0, &[])]),
+        ]);
+        let core = open(&chapter_file(&list, false));
+        // The default edition, not the first; sub-chapters in time order; hidden and disabled ones out; an unnamed one kept
+        // (the player numbers it); a chapter listed twice once.
+        assert_eq!(
+            titles(&core),
+            vec![("Act One".into(), 0), ("".into(), 20_000_000_000), ("Opening".into(), 30_000_000_000), ("Ending".into(), 1_290_000_000_000)]
+        );
+        // With no default edition, the first one is taken.
+        let first = chapters(&[other_cut, edition(false, &[atom("Never", 1.0, &[])])]);
+        assert_eq!(titles(&open(&chapter_file(&first, false))), vec![("Other cut".into(), 5_000_000_000)]);
+    }
+
+    #[test]
+    fn a_real_files_chapters() {
+        let bytes = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/../../src/lib/remux/__fixtures__/chapters.mkv")).unwrap();
+        let core = open(&bytes);
+        assert_eq!(titles(&core), vec![("Prologue".into(), 0), ("Opening".into(), 5_000_000_000), ("Part A".into(), 20_000_000_000)]);
+        let sample = open(&sample());
+        assert!(sample.reader.header.chapters.len() >= 2, "the sample has chapters");
+    }
+
+    #[test]
+    fn broken_chapter_lists_are_empty_not_fatal() {
+        // A list whose atom has a garbled child is just empty.
+        let garbled = el(0x1043A770, &el(0x45B9, &[0xB6, 0x88, 0x91]));
+        assert!(titles(&open(&chapter_file(&garbled, false))).is_empty());
+        // A file cut inside the list fails cleanly, and asking for the chapters after that is harmless.
+        let list = chapters(&[edition(true, &[atom("A", 1.0, &[])])]);
+        let bytes = chapter_file(&list, false);
+        let cut = &bytes[..bytes.len() - 60];
+        let mut core = Core::new(Some(cut.len() as u64));
+        for _ in 0..8 {
+            let Some((offset, len)) = core.header_need() else { break };
+            let end = (offset + len).min(cut.len() as u64);
+            core.reader.feed(offset, &cut[offset as usize..end as usize]);
+        }
+        let _ = core.chapters_json();
+    }
+
+    // MARK: The header cache
+
+    #[test]
+    fn a_cached_header_needs_no_reads() {
+        for (bytes, name) in [(sample(), "sample"), (fixture("avc-aac-srt"), "srt"), (fixture("hevc-eac3-ac3"), "hevc")] {
+            let first = open(&bytes);
+            let blob = first.export_header().unwrap_or_else(|| panic!("{name}: nothing to export"));
+            assert!(blob.len() < 200_000, "{name}: {} bytes", blob.len());
+
+            let mut again = Core::new(Some(bytes.len() as u64));
+            assert!(again.import_header(&blob), "{name}");
+            // No reads at all: the header, the index and the chapters are in.
+            assert_eq!(again.header_need(), None);
+            assert_eq!(again.cues_need(), None);
+            assert_eq!(again.chapters_need(), None);
+            assert_eq!(again.header_json(), first.header_json(), "{name}");
+            assert_eq!(again.reader.header.cues, first.reader.header.cues);
+            assert_eq!(again.reader.header.chapters, first.reader.header.chapters);
+            assert_eq!(again.reader.header.first_cluster, first.reader.header.first_cluster);
+            assert_eq!(again.chapters_json(), first.chapters_json());
+            for at in [0.0, 1.5, 4.0] {
+                assert_eq!(again.seek_target(at), first.seek_target(at), "{name} at {at}");
+            }
+            // It exports the same blob again, so a cached visit can refresh the cache.
+            assert_eq!(again.export_header().unwrap(), blob);
+
+            // And it streams exactly like one that read everything.
+            let video = first.reader.header.tracks.iter().find(|t| t.kind == crate::matroska::VIDEO).unwrap().number;
+            let mut a = open(&bytes);
+            let mut b = again;
+            a.select(video, 0);
+            b.select(video, 0);
+            let start = a.reader.header.first_cluster.unwrap();
+            let one: Vec<Vec<u8>> = stream(&mut a, &bytes, start, 32 * 1024).into_iter().map(|f| f.data).collect();
+            let two: Vec<Vec<u8>> = stream(&mut b, &bytes, start, 32 * 1024).into_iter().map(|f| f.data).collect();
+            assert_eq!(one, two, "{name}");
+        }
+    }
+
+    #[test]
+    fn a_header_is_only_exported_once_the_far_reads_are_done() {
+        let bytes = sample();
+        let core = header_only(&bytes);
+        assert!(core.cues_need().is_some(), "the sample's index is at the end");
+        assert!(core.export_header().is_none());
+    }
+
+    #[test]
+    fn other_blobs_are_refused_and_change_nothing() {
+        let bytes = sample();
+        let blob = open(&bytes).export_header().unwrap();
+        let mut core = Core::new(Some(bytes.len() as u64));
+        for bad in [Vec::new(), b"FHC1".to_vec(), blob[..blob.len() / 2].to_vec(), [b"XXXX".as_slice(), &blob[4..]].concat(), vec![0u8; 400]] {
+            assert!(!core.import_header(&bad));
+        }
+        assert!(!core.reader.is_ready(), "still at the start");
+        // Corrupting any single byte never panics.
+        for at in (0..blob.len()).step_by(7) {
+            let mut mutated = blob.clone();
+            mutated[at] ^= 0xFF;
+            let _ = Core::new(Some(bytes.len() as u64)).import_header(&mutated);
+        }
+    }
+
+    // MARK: Picture subtitles
+
+    /// What `picture::encode` wrote, read the way the page does.
+    #[derive(Debug)]
+    struct Read {
+        start: f64,
+        end: f64,
+        canvas: (u16, u16),
+        forced: bool,
+        objects: Vec<(u16, u16, u16, u16, Vec<u8>)>,
+        palette: Vec<[u8; 4]>,
+    }
+
+    fn read_cues(bytes: &[u8]) -> Vec<Read> {
+        let count = u32::from_be_bytes(bytes[..4].try_into().unwrap());
+        let mut at = 4usize;
+        let u16_at = |at: usize| u16::from_be_bytes([bytes[at], bytes[at + 1]]);
+        let f64_at = |at: usize| f64::from_be_bytes(bytes[at..at + 8].try_into().unwrap());
+        let mut out = Vec::new();
+        for _ in 0..count {
+            let (start, end) = (f64_at(at), f64_at(at + 8));
+            let canvas = (u16_at(at + 16), u16_at(at + 18));
+            let (forced, objects, colours) = (bytes[at + 20] != 0, bytes[at + 21] as usize, u16_at(at + 22) as usize);
+            at += 24;
+            let palette = (0..colours).map(|k| bytes[at + k * 4..at + k * 4 + 4].try_into().unwrap()).collect();
+            at += colours * 4;
+            let mut list = Vec::new();
+            for _ in 0..objects {
+                let (x, y, w, h) = (u16_at(at), u16_at(at + 2), u16_at(at + 4), u16_at(at + 6));
+                at += 8;
+                let size = w as usize * h as usize;
+                list.push((x, y, w, h, bytes[at..at + size].to_vec()));
+                at += size;
+            }
+            out.push(Read { start, end, canvas, forced, objects: list, palette });
+        }
+        assert_eq!(at, bytes.len(), "every byte accounted for");
+        out
+    }
+
+    const PGS: u64 = 2;
+    const VOB: u64 = 3;
+
+    fn subtitle_file() -> Vec<u8> {
+        let tracks = el(0x1654AE6B, &[video_entry(), subtitle_entry(PGS, "S_HDMV/PGS", &[]), subtitle_entry(VOB, "S_VOBSUB", IDX.as_bytes())].concat());
+        let body = [
+            simple_block(1, 0, true, &[1, 2, 3]),
+            timed_block(PGS as u8, 1000, 1500, &show_set()),
+            timed_block(VOB as u8, 2000, 1000, &vob_packet()),
+            // The clear is a packet of its own, as discs write it.
+            simple_block(PGS as u8, 2500, true, &clear_set()),
+            timed_block(PGS as u8, 4000, 1000, &show_set()),
+        ]
+        .concat();
+        file(&[tracks], &body, &[], false)
+    }
+
+    fn streamed(bytes: &[u8]) -> Core {
+        let mut core = open(bytes);
+        core.select(1, 0);
+        let first = core.reader.header.first_cluster.unwrap();
+        stream(&mut core, bytes, first, 40);
+        core
+    }
+
+    #[test]
+    fn picture_tracks_are_listed_as_pictures() {
+        let core = open(&subtitle_file());
+        let json = core.header_json();
+        assert!(json.contains("\"codecId\":\"S_HDMV/PGS\",\"codec\":\"\",\"supported\":true"), "{json}");
+        assert_eq!(json.matches("\"subtitleKind\":\"image\"").count(), 2, "{json}");
+        let mut dvb = crate::matroska::Track::new();
+        dvb.codec_id = "S_DVBSUB".into();
+        dvb.kind = crate::matroska::SUBTITLE;
+        assert_eq!(crate::codecs::codec_of(&dvb), (crate::codecs::Codec::Unsupported, "DVB subtitles"));
+    }
+
+    #[test]
+    fn choosing_a_picture_track_after_it_streamed_decodes_what_was_read() {
+        let bytes = subtitle_file();
+        let mut core = streamed(&bytes);
+        assert!(core.take_picture_cues().is_none(), "nothing is decoded until a track is chosen");
+        core.select_picture(PGS as u32);
+        let cues = read_cues(&core.take_picture_cues().unwrap());
+        assert_eq!(cues.len(), 3, "two displays and the clear between them: {cues:?}");
+        let (first, clear, second) = (&cues[0], &cues[1], &cues[2]);
+        assert_eq!((first.start, first.end), (1.0, 2.5), "the block's duration ends it");
+        assert_eq!(first.canvas, (1920, 1080));
+        assert_eq!(first.objects[0].4, vec![1, 1, 1, 1, 1, 0, 0, 1]);
+        assert_eq!(first.palette[1], [255, 255, 255, 255]);
+        assert!(!first.forced);
+        assert!(clear.objects.is_empty());
+        assert_eq!(clear.start, 2.5);
+        assert_eq!(second.start, 4.0);
+        // The other track is untouched, and nothing is handed over twice.
+        assert!(core.take_picture_cues().is_none());
+    }
+
+    #[test]
+    fn choosing_before_streaming_decodes_as_packets_arrive() {
+        let bytes = subtitle_file();
+        let mut core = open(&bytes);
+        core.select(1, 0);
+        core.select_picture(VOB as u32);
+        let first = core.reader.header.first_cluster.unwrap();
+        stream(&mut core, &bytes, first, 4096);
+        let cues = read_cues(&core.take_picture_cues().unwrap());
+        assert_eq!(cues.len(), 1);
+        let cue = &cues[0];
+        assert_eq!(cue.canvas, (720, 576), "the .idx header's size");
+        assert_eq!(cue.start, 2.0);
+        assert!((cue.end - (2.0 + 176.0 * 1024.0 / 90_000.0)).abs() < 0.001, "the packet's own stop beats the block's duration: {}", cue.end);
+        assert_eq!(cue.objects[0].4, vec![1, 1, 1, 1, 2, 2, 2, 2]);
+        assert_eq!(cue.palette[2], [255, 0, 0, 255]);
+    }
+
+    #[test]
+    fn reading_a_stretch_again_adds_nothing_and_switching_tracks_starts_over() {
+        let bytes = subtitle_file();
+        let mut core = streamed(&bytes);
+        core.select_picture(PGS as u32);
+        core.take_picture_cues().unwrap();
+        // A seek back to the start reads the same packets again: the store keeps one of each, but the selected track
+        // is decoded again, because the page may have let go of those cues.
+        let kept = core.pictures_bytes();
+        assert!(kept > 0);
+        let first = core.reader.header.first_cluster.unwrap();
+        core.reset(first, true);
+        stream(&mut core, &bytes, first, 4096);
+        assert_eq!(core.pictures_bytes(), kept, "one of each");
+        assert_eq!(read_cues(&core.take_picture_cues().unwrap()).len(), 3);
+        // Choosing another track, then none.
+        core.select_picture(VOB as u32);
+        assert_eq!(read_cues(&core.take_picture_cues().unwrap()).len(), 1);
+        core.select_picture(0);
+        assert!(core.take_picture_cues().is_none());
+        core.select_picture(1);
+        assert!(core.take_picture_cues().is_none(), "a picture track only");
+    }
+
+    #[test]
+    fn picture_cues_carry_the_timeline_delay() {
+        let bytes = subtitle_file();
+        let mut core = open(&bytes);
+        core.select(1, 0);
+        core.select_picture(PGS as u32);
+        let first = core.reader.header.first_cluster.unwrap();
+        stream(&mut core, &bytes, first, 4096);
+        let delay = core.delay_seconds();
+        let cues = read_cues(&core.take_picture_cues().unwrap());
+        assert!((cues[0].start - (1.0 + delay)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn the_sample_files_pgs_track_decodes() {
+        let bytes = sample();
+        let mut core = open(&bytes);
+        let pgs = track_id(&core, "S_HDMV/PGS");
+        let video = track_id(&core, "V_MPEG4/ISO/AVC");
+        core.select(video, 0);
+        core.select_picture(pgs);
+        let first = core.reader.header.first_cluster.unwrap();
+        stream(&mut core, &bytes, first, 64 * 1024);
+        let delay = core.delay_seconds();
+        let cues = read_cues(&core.take_picture_cues().unwrap());
+        // ffprobe -show_packets on the PGS track: display sets at 0.4, 6.0 (a clear), 6.3 and 11.6 (a clear).
+        let times: Vec<f64> = cues.iter().map(|c| ((c.start - delay) * 1000.0).round() / 1000.0).collect();
+        assert_eq!(times, vec![0.4, 6.0, 6.3, 11.6], "{cues:?}");
+        let shown: Vec<bool> = cues.iter().map(|c| !c.objects.is_empty()).collect();
+        assert_eq!(shown, vec![true, false, true, false]);
+        for cue in cues.iter().filter(|c| !c.objects.is_empty()) {
+            assert_eq!(cue.canvas, (1280, 720));
+            let (x, y, w, h, indices) = &cue.objects[0];
+            assert!(*w > 50 && *h > 10 && (*x as u32 + *w as u32) <= 1280 && (*y as u32 + *h as u32) <= 720, "{x},{y} {w}x{h}");
+            assert_eq!(indices.len(), *w as usize * *h as usize);
+            assert!(indices.iter().any(|&i| cue.palette[i as usize][3] > 0), "something is drawn");
+        }
+    }
+
+    #[test]
+    fn many_picture_packets_stay_within_the_store() {
+        // Hundreds of 100 KB packets for a track nobody chose: the store keeps under its limit and nothing panics.
+        let tracks = el(0x1654AE6B, &[video_entry(), subtitle_entry(PGS, "S_HDMV/PGS", &[])].concat());
+        let packet = vec![0x80u8; 100 * 1024];
+        let body: Vec<u8> = (0..400i16).flat_map(|k| timed_block(PGS as u8, k * 50, 100, &packet)).collect();
+        let bytes = file(&[tracks], &[simple_block(1, 0, true, &[1]), body].concat(), &[], false);
+        let core = streamed(&bytes);
+        assert!(core.pictures_bytes() <= 16 * 1024 * 1024);
+        assert!(core.pictures_bytes() > 8 * 1024 * 1024);
     }
 }

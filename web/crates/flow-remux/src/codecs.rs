@@ -4,6 +4,7 @@
 
 use crate::matroska::{Colour, Track, AUDIO, SUBTITLE, VIDEO};
 use crate::mp4::{self, Put};
+use crate::picture::PictureFormat;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Codec {
@@ -19,7 +20,9 @@ pub enum Codec {
     Opus,
     /// SRT, ASS/SSA or WebVTT, delivered as cues.
     Text(TextFormat),
-    /// Recognised but not remuxable here (DTS, TrueHD, PGS, …): `reason` says why.
+    /// Blu-ray PGS or DVD VobSub: bitmaps, decoded by `picture` and drawn by the player.
+    Picture(PictureFormat),
+    /// Recognised but not remuxable here (DTS, TrueHD, DVB subtitles, …): `reason` says why.
     Unsupported,
 }
 
@@ -70,7 +73,9 @@ pub fn codec_of(t: &Track) -> (Codec, &'static str) {
             "S_TEXT/UTF8" | "S_TEXT/ASCII" => (Codec::Text(TextFormat::Srt), ""),
             "S_TEXT/ASS" | "S_TEXT/SSA" | "S_ASS" | "S_SSA" => (Codec::Text(TextFormat::Ass), ""),
             "S_TEXT/WEBVTT" => (Codec::Text(TextFormat::WebVtt), ""),
-            "S_HDMV/PGS" | "S_VOBSUB" | "S_DVBSUB" => (Codec::Unsupported, "Picture subtitles"),
+            "S_HDMV/PGS" => (Codec::Picture(PictureFormat::Pgs), ""),
+            "S_VOBSUB" => (Codec::Picture(PictureFormat::VobSub), ""),
+            "S_DVBSUB" => (Codec::Unsupported, "DVB subtitles"),
             _ => (Codec::Unsupported, "Subtitle format"),
         },
         _ => (Codec::Unsupported, "Track type"),
@@ -123,7 +128,7 @@ pub fn header_codec_string(t: &Track, codec: Codec) -> String {
         Codec::Eac3 => "ec-3".into(),
         Codec::Flac => "flac".into(),
         Codec::Opus => "opus".into(),
-        Codec::Text(_) | Codec::Unsupported => String::new(),
+        Codec::Text(_) | Codec::Picture(_) | Codec::Unsupported => String::new(),
     }
 }
 
@@ -176,7 +181,7 @@ pub fn output(t: &Track, first_frame: Option<&[u8]>) -> Option<Output> {
             let entry = mp4::audio_sample_entry(b"Opus", channels, 48000, &mp4::boxed(b"dOps", &dops));
             audio("opus".into(), 48000, entry, 960)
         }
-        Codec::Text(_) | Codec::Unsupported => None,
+        Codec::Text(_) | Codec::Picture(_) | Codec::Unsupported => None,
     }
 }
 

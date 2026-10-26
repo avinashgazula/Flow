@@ -1,5 +1,6 @@
 import { defaultLiveTV, type LiveTVSettings } from '../livetv/types'
 import type { SourceOrdering } from '../sources/sourceSettings'
+import type { SubtitleOptions } from '../subtitles/options'
 import type { AddonManifest } from '../sources/types'
 import { defaultShelves, type HeroSource, type ShelfConfig } from '../shelfDefaults'
 import { defaultTabOrder } from '../tabs'
@@ -49,8 +50,9 @@ export interface WebDAVConfig {
 export type FontChoice = 'system' | 'inter' | 'geist' | 'manrope' | 'ioskeley'
 
 /** When subtitles turn on by themselves: never, only when the audio isn't in the viewer's own
- *  language (the first subtitle language), or for every title. */
-export type SubtitleMode = 'off' | 'foreign' | 'always'
+ *  language (the first subtitle language), for every title, or only the forced ones the file carries.
+ *  As FlowKit's AutoSubtitleMode (automatic, always, forcedOnly, never). */
+export type SubtitleMode = 'off' | 'foreign' | 'always' | 'forced'
 
 /** What happens when an intro, recap or the credits begins: a Skip button, skipping by itself, or nothing.
  *  As FlowKit's SkipBehaviour. */
@@ -123,6 +125,19 @@ export interface Settings {
    *  mark. Named as in Flow Sync (`introDBAPIKey`, `publicMetaDBAPIKey`). Empty means not asked. */
   introDBKey: string
   publicMetaDBKey: string
+  /** The subtitle services' keys and logins (Settings → Playback), named as in Flow Sync (`openSubtitlesAPIKey`,
+   *  `openSubtitlesUsername`, `openSubtitlesPassword`, `subdlAPIKey`, `subSourceAPIKey`). Absent until set, which keeps
+   *  them out of the code that loads first; the website sends no login to OpenSubtitles (see lib/subtitles/providers.ts). */
+  openSubtitlesKey?: string
+  openSubtitlesUsername?: string
+  openSubtitlesPassword?: string
+  subdlKey?: string
+  subSourceKey?: string
+  /** Wyzie asks for a free key now; it syncs as `wyzieAPIKey`. */
+  wyzieKey?: string
+  /** Subtitle Type, Anime Audio, Keep Original ASS Styling and which services are on. Absent until the viewer
+   *  changes something; read it through `normaliseSubtitleOptions`. */
+  subtitleOptions?: SubtitleOptions
   /** Say so as a film's credits begin when it has a scene during or after them (TMDB's stinger keywords). */
   postCreditsAlert?: boolean
   /** Suggest films like it as a film's credits roll, and when it ends. */

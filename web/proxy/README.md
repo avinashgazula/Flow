@@ -99,6 +99,10 @@ was missed: check that the binding is called `SYNC` and that you deployed after 
 Sync uses the free KV allowance: Flow writes only when something changed, about three seconds after
 you stop typing. A record is capped at 256 KB. **Turn Off and Erase** in Flow deletes the record.
 
+Subtitle search needs one more host when OpenSubtitles is used: its download links are on `www.opensubtitles.com`, which
+sends no CORS headers, so Flow fetches them through this proxy. Add `www.opensubtitles.com` and `dl.opensubtitles.org` to
+`ALLOWED_HOSTS`. (SubSource's key is a request header the proxy doesn't pass on, so SubSource can't be used from the website.)
+
 ## Which hosts to allow
 
 `ALLOWED_HOSTS` is a comma-separated list of host names. `*.` at the start matches any subdomain, so

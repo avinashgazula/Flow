@@ -28,6 +28,19 @@ export class OpusMuxer {
 export class Remuxer {
     free(): void;
     [Symbol.dispose](): void;
+    /**
+     * Returns the next range the chapter list needs, if any.
+     */
+    chaptersFeed(offset: number, bytes: Uint8Array): Float64Array;
+    /**
+     * The chapters as JSON [{title, start}], start in seconds of file time (add `delay()` for media time).
+     */
+    chaptersJson(): string;
+    /**
+     * [offset, length] of the next read the chapter list needs, or empty when it is read (or the file has none). Chapters that
+     * sit before the first cluster are read with the header; the rest are found through the SeekHead, like the index.
+     */
+    chaptersNeed(): Float64Array;
     codecString(): string;
     cueCount(): number;
     /**
@@ -43,6 +56,10 @@ export class Remuxer {
      * Seconds added to every timestamp so B-frames never need a negative decode time.
      */
     delay(): number;
+    /**
+     * Everything the header and the far reads found, as one blob for the worker's cache; empty until they are done.
+     */
+    exportHeader(): Uint8Array;
     finish(): void;
     firstCluster(): number;
     fragmentEnd(): number;
@@ -70,6 +87,11 @@ export class Remuxer {
      * [offset, length] of the next header read, or an empty array when the header is done (or failed).
      */
     headerNeed(): Float64Array;
+    /**
+     * Starts from a blob `exportHeader` made for this file: the header, the index and the chapters, with nothing to read.
+     * False (and nothing changed) when it isn't one.
+     */
+    importHeader(raw: Uint8Array): boolean;
     /**
      * The track's init segment, or undefined until the frame it's configured from has been read.
      * `codecString()` then holds its codec string. Always undefined for a raw track.
@@ -101,6 +123,10 @@ export class Remuxer {
      */
     seekTarget(seconds: number): Float64Array;
     /**
+     * Chooses the picture subtitle track to decode (0 for none). Packets already read are decoded at once.
+     */
+    selectPicture(track: number): void;
+    /**
      * Picks the tracks to remux (0 for none). With `raw`, an audio track whose header `decode` isn't
      * empty is selectable even though browsers can't play it, and its frames come out of
      * `nextFragment()` as kind 2 instead of being muxed.
@@ -120,6 +146,10 @@ export class Remuxer {
      * Text subtitle cues read since the last call, as JSON [{track, start, end, text}], or undefined.
      */
     takeCues(): string | undefined;
+    /**
+     * Picture subtitle cues decoded since the last call, in the layout lib/remux/pictures.ts reads, or undefined.
+     */
+    takePictureCues(): Uint8Array | undefined;
     /**
      * The codec string for a WebCodecs `VideoDecoder` for the selected picture track, or empty when
      * there is none to give (no picture, a codec the remuxer can't carry). `frame` is a keyframe's
@@ -160,12 +190,16 @@ export interface InitOutput {
     readonly opusmuxer_fragment: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
     readonly opusmuxer_init: (a: number, b: number) => void;
     readonly opusmuxer_new: (a: number, b: number) => number;
+    readonly remuxer_chaptersFeed: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly remuxer_chaptersJson: (a: number, b: number) => void;
+    readonly remuxer_chaptersNeed: (a: number, b: number) => void;
     readonly remuxer_codecString: (a: number, b: number) => void;
     readonly remuxer_cueCount: (a: number) => number;
     readonly remuxer_cuesBytes: (a: number, b: number) => void;
     readonly remuxer_cuesFeed: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly remuxer_cuesNeed: (a: number, b: number) => void;
     readonly remuxer_delay: (a: number) => number;
+    readonly remuxer_exportHeader: (a: number, b: number) => void;
     readonly remuxer_finish: (a: number) => void;
     readonly remuxer_firstCluster: (a: number) => number;
     readonly remuxer_fragmentEnd: (a: number) => number;
@@ -178,6 +212,7 @@ export interface InitOutput {
     readonly remuxer_headerFeed: (a: number, b: number, c: number, d: number) => void;
     readonly remuxer_headerJson: (a: number, b: number) => void;
     readonly remuxer_headerNeed: (a: number, b: number) => void;
+    readonly remuxer_importHeader: (a: number, b: number, c: number) => number;
     readonly remuxer_initSegment: (a: number, b: number, c: number) => void;
     readonly remuxer_loadCues: (a: number, b: number, c: number) => number;
     readonly remuxer_new: (a: number) => number;
@@ -187,9 +222,11 @@ export interface InitOutput {
     readonly remuxer_reset: (a: number, b: number, c: number) => void;
     readonly remuxer_seekTarget: (a: number, b: number, c: number) => void;
     readonly remuxer_select: (a: number, b: number, c: number, d: number) => void;
+    readonly remuxer_selectPicture: (a: number, b: number) => void;
     readonly remuxer_setHdr10Only: (a: number, b: number) => void;
     readonly remuxer_setVideoFloor: (a: number, b: number) => void;
     readonly remuxer_takeCues: (a: number, b: number) => void;
+    readonly remuxer_takePictureCues: (a: number, b: number) => void;
     readonly remuxer_thumbCodec: (a: number, b: number, c: number, d: number) => void;
     readonly remuxer_thumbDescription: (a: number, b: number) => void;
     readonly remuxer_thumbFind: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;

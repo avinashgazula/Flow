@@ -1,8 +1,8 @@
 /* What Flow Sync carries and how two copies are merged (docs/SYNC.md, Payload). Pure functions over the
    web's settings, so the rules are tested without a browser or a server.
 
-   The record holds sections. The web understands six of them: keys (the TMDB, IntroDB, PublicMetaDB, Trakt and Simkl
-   keys; the rest travel through), accounts (the Trakt sign-in; Simkl's travels through), add-ons, servers, the stream
+   The record holds sections. The web understands six of them: keys (the TMDB, IntroDB, PublicMetaDB, OpenSubtitles,
+   SubDL, SubSource, Trakt and Simkl keys; the rest travel through), accounts (the Trakt sign-in; Simkl's travels through), add-ons, servers, the stream
    proxy and playback. Everything else in the record (the other keys, Simkl's token, sections a newer app added,
    fields a newer app added inside these) is carried through unchanged. */
 
@@ -121,6 +121,20 @@ export function readToken(v: unknown): TraktToken | undefined {
   }
 }
 
+/** The keys that go up only once this browser has one, and come down only when the record has one: the settings field
+ *  and the name the document gives it. A browser that never set one can't clear the apps' copy, so clearing one on the
+ *  website stays local. */
+const optionalKeys = [
+  ['introDBKey', 'introDBAPIKey'],
+  ['publicMetaDBKey', 'publicMetaDBAPIKey'],
+  ['openSubtitlesKey', 'openSubtitlesAPIKey'],
+  ['openSubtitlesUsername', 'openSubtitlesUsername'],
+  ['openSubtitlesPassword', 'openSubtitlesPassword'],
+  ['subdlKey', 'subdlAPIKey'],
+  ['subSourceKey', 'subSourceAPIKey'],
+  ['wyzieKey', 'wyzieAPIKey'],
+] as const
+
 const defs: Record<SectionName, SectionDef> = {
   keys: {
     // The key baked into a build is the site's, not the person's: it isn't theirs to sync.
@@ -130,8 +144,7 @@ const defs: Record<SectionName, SectionDef> = {
     // never had a value for.
     value: (s) => ({
       tmdbAPIKey: s.tmdbKey && s.tmdbKey !== defaultSettings.tmdbKey ? s.tmdbKey : null,
-      ...(s.introDBKey ? { introDBAPIKey: s.introDBKey } : {}),
-      ...(s.publicMetaDBKey ? { publicMetaDBAPIKey: s.publicMetaDBKey } : {}),
+      ...Object.fromEntries(optionalKeys.flatMap(([field, name]) => (s[field] ? [[name, s[field]]] : []))),
       traktClientID: s.traktClientID.trim() || null,
       simklClientID: s.simklClientID.trim() || null,
     }),
@@ -151,8 +164,7 @@ const defs: Record<SectionName, SectionDef> = {
       // A key from another device is a way in: a browser that hasn't been set up needn't ask again.
       return {
         tmdbKey: key || defaultSettings.tmdbKey,
-        ...(text(data.introDBAPIKey) ? { introDBKey: text(data.introDBAPIKey) } : {}),
-        ...(text(data.publicMetaDBAPIKey) ? { publicMetaDBKey: text(data.publicMetaDBAPIKey) } : {}),
+        ...Object.fromEntries(optionalKeys.flatMap(([field, name]) => (text(data[name]) ? [[field, text(data[name])]] : []))),
         ...clientID('traktClientID'),
         ...clientID('simklClientID'),
         ...(key && !current.onboarded ? { onboarded: true } : {}),

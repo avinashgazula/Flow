@@ -1,0 +1,28 @@
+[
+  {
+    "id": "1962054623",
+    "url": "https://sub.wyzie.io/c/6d1f0b4a/id/1962054623?format=srt&encoding=utf-8",
+    "flagUrl": "https://flagcdn.com/w40/us.png",
+    "format": "srt",
+    "encoding": "UTF-8",
+    "media": "Dune: Part Two (2024)",
+    "isHearingImpaired": false,
+    "source": "opensubtitles",
+    "language": "en",
+    "display": "English",
+    "release": "Dune.Part.Two.2024.1080p.WEB-DL",
+    "fileName": "Dune.Part.Two.2024.1080p.WEB-DL.en.srt",
+    "downloadCount": 3100
+  },
+  {
+    "id": "1962054700",
+    "url": "https://sub.wyzie.io/c/6d1f0b4a/id/1962054700?format=srt&encoding=utf-8",
+    "format": "srt",
+    "media": "Dune: Part Two (2024)",
+    "isHearingImpaired": true,
+    "language": "es",
+    "display": "Spanish",
+    "fileName": "Dune.Part.Two.2024.es.srt"
+  },
+  { "id": "x", "language": "fr", "display": "French" }
+]

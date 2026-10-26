@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { usePlayer, type PlayerController } from './controller'
 import { endTime, formatClock, userLocale } from '../../lib/time'
+import { chapterAt, chapterTicks, chapterTitle, markedChapters } from './chapters'
 import { clock } from './format'
 import { SeekPreview, type SeekPreviewHandle } from './SeekPreview'
 import s from './Controls.module.css'
@@ -14,6 +15,12 @@ import s from './Controls.module.css'
 export function Scrubber({ controller }: { controller: PlayerController }) {
   const visible = usePlayer(controller, (st) => st.controls)
   const segments = usePlayer(controller, (st) => st.segments)
+  const chapters = usePlayer(controller, (st) => st.chapters)
+  const ticks = useRef<(HTMLDivElement | null)[]>([])
+  const marked = markedChapters(chapters)
+  // The paint loop below is set up once per showing of the controls, so it reads the chapters from here.
+  const chaptersNow = useRef(chapters)
+  chaptersNow.current = chapters
   const marks = useRef<(HTMLDivElement | null)[]>([])
   const track = useRef<HTMLDivElement>(null)
   const fill = useRef<HTMLDivElement>(null)
@@ -29,6 +36,12 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
 
   /** Where each segment's mark lies along the rail, once the length is known. */
   const placeMarks = (d: number) => {
+    chapterTicks(chapters, d).forEach((fraction, i) => {
+      const tick = ticks.current[i]
+      if (!tick) return
+      tick.style.left = fraction === null ? '0' : `${fraction * 100}%`
+      tick.hidden = fraction === null
+    })
     segments.forEach((segment, i) => {
       const mark = marks.current[i]
       if (!mark) return
@@ -40,7 +53,7 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
   useEffect(() => {
     placeMarks(controller.duration())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segments])
+  }, [segments, chapters])
 
   const paint = () => {
     const video = controller.video
@@ -66,7 +79,10 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
       elapsed.current!.textContent = clock(t)
       remaining.current!.textContent = known ? `\u2212${clock(Math.max(0, d - t))}` : '--:--'
       ends.current!.textContent = known ? ` \u00b7 Ends ${formatClock(endTime(Date.now(), d - t), userLocale)}` : ''
-      track.current!.setAttribute('aria-valuetext', known ? `${clock(t)} of ${clock(d)}` : clock(t))
+      const list = chaptersNow.current
+      const at = chapterAt(list, t)
+      const where = at >= 0 && list.length > 1 ? `, ${chapterTitle(list[at]!, at)}` : ''
+      track.current!.setAttribute('aria-valuetext', `${known ? `${clock(t)} of ${clock(d)}` : clock(t)}${where}`)
       track.current!.setAttribute('aria-valuenow', String(second))
       if (known) track.current!.setAttribute('aria-valuemax', String(Math.floor(d)))
     }
@@ -173,6 +189,13 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
         {segments.map((segment, i) => (
           <div key={`${segment.kind}:${segment.start}`} ref={(el) => void (marks.current[i] = el)} className={s.mark} data-kind={segment.kind} />
         ))}
+        {marked.length > 0 && (
+          <div className={s.ticks} aria-hidden="true">
+            {marked.map((chapter, i) => (
+              <div key={chapter.start} ref={(el) => void (ticks.current[i] = el)} className={s.tick} hidden />
+            ))}
+          </div>
+        )}
         <div ref={thumb} className={s.thumb} />
         <SeekPreview controller={controller} ref={preview} />
       </div>
