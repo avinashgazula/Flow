@@ -15,14 +15,47 @@ interface Selection {
   channel: Channel
   programme: Programme
 }
-/** A programme's text starts at the cell's left edge, unless the red line is within its first stretch: then it
- *  starts just past the line, so the line never crosses a word. */
-const avoidNowLine = (lineAt: number, width: number) => (lineAt > 0 && lineAt < Math.min(240, width - 110) ? lineAt + 2 : 0)
+/** The programme on now keeps its words to the right of the red line, where what is left of it runs on, so the
+ *  line never crosses a word. Returns how far in the words start and how wide they may be, or none when what is
+ *  left of the programme is too short to read a title in (the block says what it is to a screen reader). */
+function afterNowLine(lineAt: number, width: number): { offset: number; room: number } | undefined {
+  const offset = lineAt > 0 ? lineAt + 8 : 10
+  const room = width - offset - 10
+  return room >= 64 ? { offset, room } : undefined
+}
+
+/** One observer per guide and column width, telling each label whether all of it is in view. A label is readable
+ *  only whole: the one a programme's remaining stretch squeezes under the channel column would otherwise show as
+ *  a fragment ("PM", "ion"). Only the left edge counts; the right edge and the rows scroll as they always do. */
+const observers = new WeakMap<Element, Map<number, IntersectionObserver>>()
+function watchLabel(el: HTMLElement) {
+  const root = el.closest('[data-guide-scroller]')
+  if (!root || typeof IntersectionObserver === 'undefined') return
+  const col = Math.round(parseFloat(getComputedStyle(el).getPropertyValue('--col')) || 0)
+  let byColumn = observers.get(root)
+  if (!byColumn) observers.set(root, (byColumn = new Map()))
+  let watcher = byColumn.get(col)
+  if (!watcher) {
+    watcher = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.intersectionRatio >= 0.98) e.target.removeAttribute('data-cut')
+          else e.target.setAttribute('data-cut', '')
+        }
+      },
+      { root, rootMargin: `400px 4000px 400px -${col}px`, threshold: [0.98] },
+    )
+    byColumn.set(col, watcher)
+  }
+  watcher.observe(el)
+  return () => watcher.unobserve(el)
+}
 
 const selectionKey = (x: Selection) => `${x.channel.id}@${x.programme.start}`
 
 /** The timeline guide: channels down the left, a sticky ruler of half hours along the top, a red line for
- *  now, and each programme as a block as long as it runs. The current programme is outlined in yellow.
+ *  now, and each programme as a block as long as it runs. The one on now is a lighter base with a red hairline
+ *  for how far through it is; yellow is left for the focus ring.
  *  Rows are virtualised and the whole guide scrolls sideways through time; the channel column and the ruler
  *  stay put. Choosing a programme opens its details below, and Watch Now there (or the channel on the left)
  *  starts it. */
@@ -44,7 +77,8 @@ export function Guide({ channels, epg, now, onPlay }: { channels: Channel[]; epg
     const el = scroller.current
     if (!el || placed.current || channels.length === 0) return
     placed.current = true
-    el.scrollLeft = Math.max(0, nowX - 56)
+    // Far enough in that what has just ended shows beside the line, as a block you can still read.
+    el.scrollLeft = Math.max(0, nowX - Math.min(120, (el.clientWidth - columnWidth) * 0.3))
   }, [channels.length, nowX])
 
   // A selection for a channel that is no longer listed (the group changed) goes away with it.
@@ -56,7 +90,7 @@ export function Guide({ channels, epg, now, onPlay }: { channels: Channel[]; epg
 
   return (
     <div className={s.guide}>
-      <div ref={scroller} className={s.scroller} role="region" aria-label="Programme guide" tabIndex={-1}>
+      <div ref={scroller} className={s.scroller} data-guide-scroller="" role="region" aria-label="Programme guide" tabIndex={-1}>
         <div className={s.canvas} style={{ width: columnWidth + timelineWidth, height: rulerHeight + virtualizer.getTotalSize() }}>
           <div className={s.ruler} style={{ height: rulerHeight }}>
             <span className={s.corner} style={{ width: columnWidth }} />
@@ -86,6 +120,7 @@ export function Guide({ channels, epg, now, onPlay }: { channels: Channel[]; epg
                     const x = ((from - start) / 60_000) * pointsPerMinute
                     const width = Math.max(2, ((to - from) / 60_000) * pointsPerMinute - 4)
                     const live = isAiring(p, now)
+                    const words = live ? afterNowLine(nowX - x, width) : width > 44 ? { offset: 10, room: width - 20 } : undefined
                     const chosen = selected !== undefined && selectionKey(selected) === `${channel.id}@${p.start}`
                     return (
                       <button
@@ -99,8 +134,8 @@ export function Guide({ channels, epg, now, onPlay }: { channels: Channel[]; epg
                         aria-label={`${p.title}, ${timeRange(p)}, ${channel.name}${live ? ', on now' : ''}`}
                         onClick={() => setSelected(chosen ? undefined : { channel, programme: p })}
                       >
-                        {width > 44 && (
-                          <span className={s.label} style={live ? { marginLeft: avoidNowLine(nowX - x, width) } : undefined}>
+                        {words && (
+                          <span ref={watchLabel} className={s.label} style={{ marginLeft: words.offset, maxWidth: words.room }}>
                             <span className={s.title}>{p.title}</span>
                             <span className={`num ${s.when}`}>{timeRange(p)}</span>
                           </span>
