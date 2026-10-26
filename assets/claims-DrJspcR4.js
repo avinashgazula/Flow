@@ -1,0 +1,2 @@
+var e=new Map,t=12e4,n=(e,t,n,r)=>`${e}:${t}:${n??``}:${r??``}`;function r(t){e.set(t,1/0)}function i(n,r,i=Date.now()){r?e.set(n,i+t):e.delete(n)}function a(t,n=Date.now()){let r=e.get(t);return r===void 0?!1:r<n?(e.delete(t),!1):!0}export{i,n,a as r,r as t};
+//# sourceMappingURL=claims-DrJspcR4.js.map
