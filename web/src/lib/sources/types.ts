@@ -10,7 +10,7 @@ export interface PlaybackRequest {
   episode?: number
 }
 
-export type SourceOrigin = 'addon' | 'jellyfin' | 'emby' | 'plex' | 'demo' | 'iptv'
+export type SourceOrigin = 'addon' | 'jellyfin' | 'emby' | 'plex' | 'webdav' | 'demo' | 'iptv'
 
 /** How the player should open a source. */
 export type PlaybackEngine =
@@ -117,4 +117,46 @@ export interface AddonManifest {
   types?: string[]
   idPrefixes?: string[]
   resources: (string | { name: string; types?: string[]; idPrefixes?: string[] })[]
+}
+
+// MARK: What a media server lists
+
+/** A library on a server (Movies, Shows, Kids), with the server's own cover for it. As FlowKit's MediaLibrary. */
+export interface ServerLibrary {
+  id: string
+  name: string
+  /** Absent for a mixed library. */
+  type?: MediaType
+  image?: string
+}
+
+/** A film or series as one server lists it. As FlowKit's MediaServerItem. */
+export interface ServerTitle {
+  serverId: string
+  itemId: string
+  type: MediaType
+  title: string
+  year?: number
+  tmdb?: number
+  imdb?: string
+  tvdb?: number
+  /** The server's own pictures, as web addresses an <img> can load. */
+  poster?: string
+  backdrop?: string
+  overview?: string
+  /** Milliseconds since 1970. */
+  addedAt?: number
+}
+
+/** What a player tells a server: playback began, moved on (every ten seconds), paused or ended. */
+export type ReportState = 'started' | 'progress' | 'paused' | 'stopped'
+
+export interface PlaybackReport {
+  state: ReportState
+  /** The source's id (`<server>#<item>#<media source>`), which carries what the server needs. */
+  sourceId: string
+  position: number
+  duration?: number
+  /** One per play, so the server can tell one viewing from the next. */
+  sessionId: string
 }

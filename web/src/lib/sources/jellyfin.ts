@@ -9,7 +9,7 @@ import { bestMatch, type ServerCandidate } from './match'
 import { isUnsafeFileName, parseStream, titleAndYear, type ResolutionClass } from './parser'
 import { buildSource } from './rank'
 import { trickplayFor, type TrickplayDTO } from './trickplay'
-import type { ExternalSubtitle, PlaybackRequest, Source } from './types'
+import type { ExternalSubtitle, PlaybackReport, PlaybackRequest, ServerLibrary, ServerTitle, Source } from './types'
 
 const ticksPerSecond = 10_000_000
 
@@ -44,6 +44,12 @@ interface ItemDTO {
   ParentIndexNumber?: number
   IndexNumber?: number
   SeriesId?: string
+  Overview?: string
+  DateCreated?: string
+  ImageTags?: Record<string, string | undefined>
+  BackdropImageTags?: string[]
+  /** On a library (a "view"): movies, tvshows, mixed, music, and so on. */
+  CollectionType?: string
   UserData?: { PlaybackPositionTicks?: number; Played?: boolean }
   MediaSources?: MediaSourceDTO[]
   /** Jellyfin 10.9+: preview pictures by media source id, then by picture width. */
@@ -280,6 +286,109 @@ export async function jellyfinSources(config: ServerConfig, request: PlaybackReq
   return mediaSources
     .map((ms, index) => mapMediaSource(config, targetId, ms, index, resume, caps, full?.Trickplay?.[ms.Id]))
     .filter((s) => !(s.filename && isUnsafeFileName(s.filename)))
+}
+
+// MARK: Browsing: Home's server rows, the library index and Search (FlowKit's MediaServerClient)
+
+const listFields = 'ProviderIds,ProductionYear,Overview,DateCreated'
+
+/** A server's own picture for an item. Jellyfin and Emby serve images without a sign-in, as the apps rely on, so
+ *  the address holds no token. */
+function imageURL(config: ServerConfig, id: string, kind: 'Primary' | 'Backdrop', tag: string, width: number): string {
+  return `${config.url}/Items/${id}/Images/${kind}?${new URLSearchParams({ maxWidth: String(width), tag, quality: '90' })}`
+}
+
+const capitalised = (text: string) => text.replace(/\b\p{L}/gu, (c) => c.toUpperCase())
+
+/** An item as a title on this server, or undefined for anything that isn't a film or series. */
+export function serverTitle(config: ServerConfig, dto: ItemDTO): ServerTitle | undefined {
+  const c = candidate(dto)
+  if (!c) return undefined
+  const p = dto.ProviderIds ?? {}
+  const tvdb = Number(p.Tvdb ?? p.tvdb)
+  const added = dto.DateCreated ? Date.parse(dto.DateCreated) : NaN
+  const primary = dto.ImageTags?.Primary
+  const backdrop = dto.BackdropImageTags?.[0]
+  return {
+    serverId: config.id,
+    itemId: dto.Id,
+    type: c.type,
+    // A name cleaned out of a file name comes back from the matcher in lower case.
+    title: dto.Name && c.title !== dto.Name ? capitalised(c.title) : c.title,
+    year: c.year,
+    tmdb: c.tmdb,
+    imdb: c.imdb,
+    ...(Number.isFinite(tvdb) && tvdb > 0 ? { tvdb } : {}),
+    ...(primary ? { poster: imageURL(config, dto.Id, 'Primary', primary, 500) } : {}),
+    ...(backdrop ? { backdrop: imageURL(config, dto.Id, 'Backdrop', backdrop, 1280) } : {}),
+    ...(dto.Overview ? { overview: dto.Overview } : {}),
+    ...(Number.isFinite(added) ? { addedAt: added } : {}),
+  }
+}
+
+const titlesOf = (config: ServerConfig, response: ItemsResponse | undefined) => (response?.Items ?? []).flatMap((dto) => serverTitle(config, dto) ?? [])
+
+/** The server's libraries in the order it lists them, with its own cover for each. Music and the like are left out. */
+export async function libraries(config: ServerConfig, signal?: AbortSignal): Promise<ServerLibrary[]> {
+  const views = await get<ItemsResponse>(config, `Users/${config.userId}/Views`, {}, signal)
+  return (views?.Items ?? []).flatMap((dto): ServerLibrary[] => {
+    const tag = dto.ImageTags?.Primary
+    const back = dto.BackdropImageTags?.[0]
+    const image = tag ? imageURL(config, dto.Id, 'Primary', tag, 640) : back ? imageURL(config, dto.Id, 'Backdrop', back, 640) : undefined
+    const type = dto.CollectionType === 'movies' ? 'movie' : dto.CollectionType === 'tvshows' ? 'show' : undefined
+    // No collection type means a mixed library; anything else (music, books, live TV) isn't ours.
+    if (!type && dto.CollectionType && dto.CollectionType !== 'mixed' && dto.CollectionType !== 'homevideos') return []
+    return [{ id: dto.Id, name: dto.Name || (type === 'show' ? 'Shows' : type === 'movie' ? 'Movies' : 'Library'), ...(type ? { type } : {}), ...(image ? { image } : {}) }]
+  })
+}
+
+/** Every film and series, with ids only: what "Server" on a poster and the server-only filter are decided from. */
+export async function catalogue(config: ServerConfig, signal?: AbortSignal): Promise<ServerTitle[]> {
+  const all: ServerTitle[] = []
+  const pageSize = 2000
+  for (let start = 0; ; ) {
+    const page = await queryItems(config, { Recursive: 'true', IncludeItemTypes: 'Movie,Series', Fields: 'ProviderIds,ProductionYear', StartIndex: String(start), Limit: String(pageSize), EnableImages: 'false' }, signal)
+    all.push(...titlesOf(config, page))
+    start += page.Items.length
+    if (page.Items.length < pageSize || start >= (page.TotalRecordCount ?? 0)) break
+  }
+  return all
+}
+
+/** One library's newest additions. */
+export async function itemsIn(config: ServerConfig, libraryId: string, limit: number, signal?: AbortSignal): Promise<ServerTitle[]> {
+  const page = await get<ItemsResponse>(config, `Users/${config.userId}/Items`, { ParentId: libraryId, Recursive: 'true', IncludeItemTypes: 'Movie,Series', Fields: listFields, SortBy: 'DateCreated', SortOrder: 'Descending', Limit: String(limit) }, signal)
+  return titlesOf(config, page)
+}
+
+export async function recentlyAdded(config: ServerConfig, limit: number, signal?: AbortSignal): Promise<ServerTitle[]> {
+  return titlesOf(config, await queryItems(config, { Recursive: 'true', IncludeItemTypes: 'Movie,Series', Fields: listFields, SortBy: 'DateCreated', SortOrder: 'Descending', Limit: String(limit) }, signal))
+}
+
+export async function search(config: ServerConfig, text: string, signal?: AbortSignal): Promise<ServerTitle[]> {
+  return titlesOf(config, await queryItems(config, { Recursive: 'true', IncludeItemTypes: 'Movie,Series', Fields: listFields, SearchTerm: text, Limit: '40' }, signal))
+}
+
+// MARK: Reporting playback (Jellyfin and Emby: Sessions/Playing, Progress, Stopped)
+
+/** Tells the server what is playing, as FlowKit's JellyfinClient.report: started, then progress (and paused), then
+ *  stopped, with the position in ticks. The server keeps Continue Watching and the watched mark from it. Never throws:
+ *  a missed report isn't a reason to interrupt a film. */
+export async function report(config: ServerConfig, r: PlaybackReport, keepalive = false): Promise<void> {
+  const [, itemId, mediaSourceId] = r.sourceId.split('#')
+  if (!itemId || !mediaSourceId) return
+  const path = r.state === 'started' ? 'Sessions/Playing' : r.state === 'stopped' ? 'Sessions/Playing/Stopped' : 'Sessions/Playing/Progress'
+  try {
+    await requestJSON<unknown>(`${config.url}/${path}`, {
+      method: 'POST',
+      headers: headers(config),
+      body: { ItemId: itemId, MediaSourceId: mediaSourceId, PositionTicks: Math.round(r.position * ticksPerSecond), PlaySessionId: r.sessionId, IsPaused: r.state === 'paused', CanSeek: true },
+      timeoutMs: 10_000,
+      keepalive,
+    })
+  } catch {
+    // A missed update.
+  }
 }
 
 const videoCodecs: Record<string, string> = { h264: 'H264', avc: 'H264', hevc: 'HEVC', h265: 'HEVC', av1: 'AV1', vp9: 'VP9', mpeg4: 'XviD', msmpeg4v3: 'XviD' }

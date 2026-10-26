@@ -1,0 +1,10 @@
+{
+  "MediaContainer": {
+    "size": 3,
+    "Directory": [
+      { "key": "1", "title": "Movies", "type": "movie", "art": "/:/resources/movie-fanart.jpg", "thumb": "/:/resources/movie.png" },
+      { "key": "2", "title": "TV Shows", "type": "show", "thumb": "/:/resources/show.png" },
+      { "key": "3", "title": "Music", "type": "artist", "art": "/:/resources/artist-fanart.jpg" }
+    ]
+  }
+}

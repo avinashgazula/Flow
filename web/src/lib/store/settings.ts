@@ -30,6 +30,20 @@ export interface ServerConfig {
   machineId?: string
 }
 
+/** A WebDAV share, as the apps' WebDAVConfig: its address, an optional login and the two folders Flow scans. */
+export interface WebDAVConfig {
+  id: string
+  name: string
+  url: string
+  username?: string
+  /** Kept on this device only, and sent only to the share it belongs to. */
+  password?: string
+  /** Folders under the share's address, "/Movies" and "/TV Shows" unless the viewer says otherwise. */
+  moviesPath: string
+  showsPath: string
+  enabled: boolean
+}
+
 /** The typefaces Settings offers. The ids are also the keys in index.html's pre-paint script and the
  *  `[data-font]` rules in styles/tokens.css. */
 export type FontChoice = 'system' | 'inter' | 'geist' | 'manrope' | 'ioskeley'
@@ -75,6 +89,17 @@ export interface Settings {
   includeAdult: boolean
   addons: AddonConfig[]
   servers: ServerConfig[]
+  /** Settings → Media Servers, with the apps' names (`mediaServers.*`). Absent means the default, which keeps
+   *  them out of the code that loads first: Show Badge on Posters is on, the other three off. */
+  showBadgeOnPosters?: boolean
+  onlyShowServerContent?: boolean
+  useServerArtwork?: boolean
+  /** Ignore the servers' own watched state and resume points, and stop telling them what plays. */
+  trackOnlyWithTracker?: boolean
+  /** The servers whose libraries get rows of their own on Home (Settings → Shelves → Server Home Rows). */
+  serverHomeRowIDs?: string[]
+  /** WebDAV shares (Settings → Media Servers). Absent means none. */
+  webDAV?: WebDAVConfig[]
   /** Audio languages in order of preference: two-letter codes, and 'original' for the language the
    *  title was made in (TMDB's original language). */
   audioLanguages: string[]

@@ -18,6 +18,8 @@ export interface RequestOptions {
   signal?: AbortSignal
   /** Gives up after this long. */
   timeoutMs?: number
+  /** Lets the request finish after the page closes (a server told that playback stopped). */
+  keepalive?: boolean
 }
 
 /** A signal that aborts when `signal` does or after `ms`, whichever comes first. */
@@ -86,7 +88,7 @@ export async function request(url: string, options: RequestOptions = {}): Promis
     body = JSON.stringify(options.body)
   }
   try {
-    const response = await fetch(url, { method: options.method ?? (body ? 'POST' : 'GET'), headers, body, signal })
+    const response = await fetch(url, { method: options.method ?? (body ? 'POST' : 'GET'), headers, body, signal, keepalive: options.keepalive })
     if (!response.ok) throw statusError(url, response.status)
     return response
   } catch (error) {

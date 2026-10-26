@@ -1,0 +1,12 @@
+{
+  "MediaContainer": {
+    "size": 5,
+    "Metadata": [
+      { "ratingKey": "202", "type": "movie", "title": "Dune: Part Two", "year": 2024, "summary": "Paul Atreides unites with the Fremen.", "thumb": "/library/metadata/202/thumb/1729400000", "art": "/library/metadata/202/art/1729400000", "addedAt": 1729425000, "Guid": [{ "id": "imdb://tt15239678" }, { "id": "tmdb://693134" }, { "id": "tvdb://5678" }] },
+      { "ratingKey": "310", "type": "season", "title": "Season 2", "parentTitle": "Severance", "index": 2, "thumb": "/library/metadata/310/thumb/1729500000", "addedAt": 1729500000 },
+      { "ratingKey": "311", "type": "episode", "title": "Hello, Ms. Cobel", "grandparentTitle": "Severance", "index": 4, "parentIndex": 1, "addedAt": 1729490000 },
+      { "ratingKey": "300", "type": "show", "title": "Severance", "year": 2022, "thumb": "/library/metadata/300/thumb/1729480000", "addedAt": 1729480000, "Guid": [{ "id": "imdb://tt11280740" }, { "id": "tmdb://95396" }, { "id": "tvdb://371980" }] },
+      { "ratingKey": "101", "type": "movie", "title": "Dune", "year": 2021, "addedAt": 1729300000, "Guid": [{ "id": "tmdb://438631" }] }
+    ]
+  }
+}

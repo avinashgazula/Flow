@@ -1,0 +1,27 @@
+{
+  "Items": [
+    {
+      "Id": "dune2", "Name": "Dune: Part Two", "Type": "Movie", "ProductionYear": 2024,
+      "ProviderIds": { "Tmdb": "693134", "Imdb": "tt15239678" },
+      "Overview": "Paul Atreides unites with the Fremen.",
+      "DateCreated": "2026-10-20T10:00:00.0000000Z",
+      "ImageTags": { "Primary": "p-dune2" }, "BackdropImageTags": ["b-dune2"]
+    },
+    {
+      "Id": "sev", "Name": "Severance", "Type": "Series", "ProductionYear": 2022,
+      "ProviderIds": { "Tmdb": "95396", "Imdb": "tt11280740", "Tvdb": "371980" },
+      "DateCreated": "2026-10-22T08:30:00.0000000Z",
+      "ImageTags": { "Primary": "p-sev" }, "BackdropImageTags": []
+    },
+    {
+      "Id": "file1", "Name": "Resident Evil (2026) WEBDL-1080p.mp4", "Type": "Movie",
+      "ProviderIds": {},
+      "DateCreated": "2026-10-21T12:00:00.0000000Z",
+      "ImageTags": {}
+    },
+    { "Id": "ep1", "Name": "Hello, Ms. Cobel", "Type": "Episode", "ParentIndexNumber": 1, "IndexNumber": 4, "ProviderIds": { "Tmdb": "1" } },
+    { "Id": "bad1", "Name": "Free.Movie.2026.1080p.mkv.exe", "Type": "Movie", "ProviderIds": { "Tmdb": "2" } }
+  ],
+  "TotalRecordCount": 5,
+  "StartIndex": 0
+}

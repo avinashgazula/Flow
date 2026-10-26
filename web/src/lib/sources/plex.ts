@@ -8,7 +8,7 @@ import { deviceId, deviceName, request, requestJSON, SourceError, uuid } from '.
 import { bestMatch, type ServerCandidate } from './match'
 import { parseStream, type ResolutionClass } from './parser'
 import { buildSource } from './rank'
-import type { PlaybackRequest, Source } from './types'
+import type { PlaybackReport, PlaybackRequest, ServerLibrary, ServerTitle, Source } from './types'
 
 export function plexHeaders(token?: string): Record<string, string> {
   const h: Record<string, string> = {
@@ -121,6 +121,11 @@ export async function testServer(config: ServerConfig, signal?: AbortSignal): Pr
 
 interface MediaContainer {
   Metadata?: Metadata[]
+  /** `library/sections`: the libraries. */
+  Directory?: { key: string; title: string; type: string; art?: string; thumb?: string }[]
+  /** `hubs/search`: results grouped by kind. */
+  Hub?: { type?: string; Metadata?: Metadata[] }[]
+  totalSize?: number
   version?: string
 }
 
@@ -129,6 +134,11 @@ interface Metadata {
   title?: string
   type?: string
   year?: number
+  summary?: string
+  thumb?: string
+  art?: string
+  /** Seconds since 1970. */
+  addedAt?: number
   index?: number
   parentIndex?: number
   viewOffset?: number
@@ -202,6 +212,105 @@ export async function plexSources(config: ServerConfig, request: PlaybackRequest
   const full = (await get(config, `library/metadata/${ratingKey}`, {}, signal)).Metadata?.[0]
   if (!full) return []
   return mapMetadata(config, full, caps)
+}
+
+// MARK: Browsing: Home's server rows, the library index and Search (FlowKit's PlexClient)
+
+/** A server's picture through its photo transcoder. It needs the token, so these addresses are made when a shelf
+ *  is asked for and never kept in the saved cache. */
+function photoURL(config: ServerConfig, path: string | undefined, width: number, height: number): string | undefined {
+  if (!path) return undefined
+  return `${config.url}/photo/:/transcode?${new URLSearchParams({ width: String(width), height: String(height), minSize: '1', url: path, 'X-Plex-Token': config.token })}`
+}
+
+/** A film or series on this server, or undefined for a season, an episode or anything else Plex lists. */
+export function serverTitle(config: ServerConfig, m: Metadata): ServerTitle | undefined {
+  const c = plexCandidate(m)
+  if (!c) return undefined
+  const ids = guidIds(m)
+  const poster = photoURL(config, m.thumb, 500, 750)
+  const backdrop = photoURL(config, m.art, 1280, 720)
+  return {
+    serverId: config.id,
+    itemId: m.ratingKey,
+    type: c.type,
+    title: c.title,
+    year: m.year,
+    tmdb: ids.tmdb,
+    imdb: ids.imdb,
+    ...(ids.tvdb ? { tvdb: ids.tvdb } : {}),
+    ...(poster ? { poster } : {}),
+    ...(backdrop ? { backdrop } : {}),
+    ...(m.summary ? { overview: m.summary } : {}),
+    ...(m.addedAt ? { addedAt: m.addedAt * 1000 } : {}),
+  }
+}
+
+const titlesOf = (config: ServerConfig, list: Metadata[] | undefined) => (list ?? []).flatMap((m) => serverTitle(config, m) ?? [])
+
+/** Movie and TV libraries, in the order Plex lists them. */
+export async function libraries(config: ServerConfig, signal?: AbortSignal): Promise<ServerLibrary[]> {
+  const sections = (await get(config, 'library/sections', {}, signal)).Directory ?? []
+  return sections.flatMap((d): ServerLibrary[] => {
+    if (d.type !== 'movie' && d.type !== 'show') return []
+    const image = photoURL(config, d.art ?? d.thumb, 640, 360)
+    return [{ id: d.key, name: d.title, type: d.type === 'movie' ? 'movie' : 'show', ...(image ? { image } : {}) }]
+  })
+}
+
+/** Every film and series in every library, with their guids. */
+export async function catalogue(config: ServerConfig, signal?: AbortSignal): Promise<ServerTitle[]> {
+  const all: ServerTitle[] = []
+  const pageSize = 2000
+  for (const library of await libraries(config, signal)) {
+    for (let start = 0; ; start += pageSize) {
+      const page = await get(config, `library/sections/${library.id}/all`, { includeGuids: '1', 'X-Plex-Container-Start': String(start), 'X-Plex-Container-Size': String(pageSize) }, signal)
+      all.push(...titlesOf(config, page.Metadata))
+      if ((page.Metadata?.length ?? 0) < pageSize) break
+    }
+  }
+  return all
+}
+
+export async function itemsIn(config: ServerConfig, libraryId: string, limit: number, signal?: AbortSignal): Promise<ServerTitle[]> {
+  const page = await get(config, `library/sections/${encodeURIComponent(libraryId)}/all`, { includeGuids: '1', sort: 'addedAt:desc', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': String(limit) }, signal)
+  return titlesOf(config, page.Metadata)
+}
+
+export async function recentlyAdded(config: ServerConfig, limit: number, signal?: AbortSignal): Promise<ServerTitle[]> {
+  // Seasons and episodes come back too; only films and series are kept, so twice as many are asked for.
+  const page = await get(config, 'library/recentlyAdded', { includeGuids: '1', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': String(limit * 2) }, signal)
+  return titlesOf(config, page.Metadata).slice(0, limit)
+}
+
+export async function search(config: ServerConfig, text: string, signal?: AbortSignal): Promise<ServerTitle[]> {
+  const page = await get(config, 'hubs/search', { query: text, limit: '30', includeGuids: '1' }, signal)
+  return titlesOf(config, (page.Hub ?? []).flatMap((hub) => hub.Metadata ?? []))
+}
+
+// MARK: Reporting playback (the timeline, and a scrobble when it's watched)
+
+/** Plex counts a play as watched at 90 %, and so does the timeline on its own; the scrobble says it outright, for
+ *  a play that ended with the credits rolling. */
+export const scrobbleAt = 0.9
+
+/** Tells Plex what is playing: `/:/timeline` with the state and position, and `/:/scrobble` when it stops at 90 %
+ *  or more. Never throws. */
+export async function report(config: ServerConfig, r: PlaybackReport, keepalive = false): Promise<void> {
+  const ratingKey = r.sourceId.split('#')[1]
+  if (!ratingKey) return
+  const state = r.state === 'paused' ? 'paused' : r.state === 'stopped' ? 'stopped' : 'playing'
+  const call = (path: string, query: Record<string, string>) =>
+    request(`${config.url}/${path}?${new URLSearchParams(query)}`, { headers: plexHeaders(config.token), timeoutMs: 10_000, keepalive }).catch(() => undefined)
+  await call(':/timeline', {
+    ratingKey,
+    key: `/library/metadata/${ratingKey}`,
+    identifier: 'com.plexapp.plugins.library',
+    state,
+    time: String(Math.round(r.position * 1000)),
+    ...(r.duration ? { duration: String(Math.round(r.duration * 1000)) } : {}),
+  })
+  if (r.state === 'stopped' && r.duration && r.position / r.duration >= scrobbleAt) await call(':/scrobble', { key: ratingKey, identifier: 'com.plexapp.plugins.library' })
 }
 
 /** The intro and credits markers Plex found for an item, as the server sends them. */

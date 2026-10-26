@@ -1,0 +1,10 @@
+{
+  "MediaContainer": {
+    "size": 3,
+    "Hub": [
+      { "type": "movie", "title": "Movies", "size": 1, "Metadata": [{ "ratingKey": "202", "type": "movie", "title": "Dune: Part Two", "year": 2024, "thumb": "/library/metadata/202/thumb/1", "Guid": [{ "id": "tmdb://693134" }] }] },
+      { "type": "show", "title": "Shows", "size": 1, "Metadata": [{ "ratingKey": "400", "type": "show", "title": "Dune: Prophecy", "year": 2024, "Guid": [{ "id": "tmdb://90228" }] }] },
+      { "type": "episode", "title": "Episodes", "size": 1, "Metadata": [{ "ratingKey": "401", "type": "episode", "title": "Dune Walk", "index": 1, "parentIndex": 1 }] }
+    ]
+  }
+}

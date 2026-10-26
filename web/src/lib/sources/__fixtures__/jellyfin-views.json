@@ -1,0 +1,12 @@
+{
+  "Items": [
+    { "Id": "view-movies", "Name": "Movies", "Type": "CollectionFolder", "CollectionType": "movies", "ImageTags": { "Primary": "tagM" }, "BackdropImageTags": [] },
+    { "Id": "view-shows", "Name": "Shows", "Type": "CollectionFolder", "CollectionType": "tvshows", "ImageTags": {}, "BackdropImageTags": ["tagB"] },
+    { "Id": "view-music", "Name": "Music", "Type": "CollectionFolder", "CollectionType": "music", "ImageTags": { "Primary": "tagX" } },
+    { "Id": "view-sets", "Name": "Collections", "Type": "CollectionFolder", "CollectionType": "boxsets" },
+    { "Id": "view-home", "Name": "Home Videos", "Type": "CollectionFolder", "CollectionType": "homevideos", "ImageTags": {}, "BackdropImageTags": [] },
+    { "Id": "view-plain", "Type": "CollectionFolder" }
+  ],
+  "TotalRecordCount": 6,
+  "StartIndex": 0
+}
