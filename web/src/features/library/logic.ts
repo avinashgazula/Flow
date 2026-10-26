@@ -1,15 +1,21 @@
 import type { HistoryEntry, ListEntry } from '../../lib/store/library'
-import { genreNames } from '../../lib/genres'
 import type { MediaType } from '../../lib/tmdb/types'
 
-export type LibraryList = 'continue' | 'watchlist' | 'favourites' | 'history'
-export const libraryLists: LibraryList[] = ['continue', 'watchlist', 'favourites', 'history']
+/** Library's pages: the four lists of titles, and the three that read your library rather than list it. Each is
+ *  `/library?list=`, so Library stays one place and the PWA shortcut to Upcoming is `library?list=upcoming`. */
+export type LibraryList = 'continue' | 'watchlist' | 'favourites' | 'history' | 'upcoming' | 'sports' | 'stats'
+export const libraryLists: LibraryList[] = ['continue', 'watchlist', 'favourites', 'history', 'upcoming', 'sports', 'stats']
+export type LibraryPage = 'upcoming' | 'sports' | 'stats'
+export const isLibraryPage = (list: LibraryList | undefined): list is LibraryPage => list === 'upcoming' || list === 'sports' || list === 'stats'
 
 export const listTitles: Record<LibraryList, string> = {
   continue: 'Continue Watching',
   watchlist: 'Watchlist',
   favourites: 'Favourites',
   history: 'History',
+  upcoming: 'Upcoming',
+  sports: 'Sports',
+  stats: 'Stats',
 }
 
 // MARK: History by day
@@ -97,40 +103,3 @@ export function sortEntries(entries: ListEntry[], sort: ListSort, type?: MediaTy
 
 /** "1 title", "12 titles". */
 export const titles = (n: number) => (n === 1 ? '1 title' : `${n.toLocaleString()} titles`)
-
-// MARK: Stats
-
-export interface WatchStats {
-  week: number
-  month: number
-  year: number
-  total: number
-  films: number
-  /** Episodes of series; each counts once. */
-  episodes: number
-  /** The genres of what was watched, most first, at most `topGenres`. */
-  genres: { name: string; count: number }[]
-}
-
-const dayMs = 24 * 60 * 60_000
-
-/** Counts from History alone (it records no durations, so there are no hours here, and none are made up).
- *  The week is the last seven days, the month the last thirty, the year the last 365. */
-export function watchStats(history: HistoryEntry[], now: number, topGenres = 3): WatchStats {
-  const stats: WatchStats = { week: 0, month: 0, year: 0, total: history.length, films: 0, episodes: 0, genres: [] }
-  const genres = new Map<string, number>()
-  for (const e of history) {
-    const age = now - e.watchedAt
-    if (age < 7 * dayMs) stats.week++
-    if (age < 30 * dayMs) stats.month++
-    if (age < 365 * dayMs) stats.year++
-    if (e.item.type === 'movie') stats.films++
-    else stats.episodes++
-    for (const name of genreNames(e.item.genres, e.item.type)) genres.set(name, (genres.get(name) ?? 0) + 1)
-  }
-  stats.genres = [...genres]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
-    .slice(0, topGenres)
-  return stats
-}

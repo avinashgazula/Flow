@@ -18,7 +18,7 @@ import { genreTiles, serviceTiles } from './folders'
 import { episodeShort, pickMeta, pickPrint, spokenPick } from './logic'
 import { watchedShowsOf } from './marks'
 import { builtInExplore, discoverParams, exploreLinkFor, type ExploreLink } from './shelfQuery'
-import { airLabel, airSpoken, buildUpcoming, type UpcomingEntry, type UpcomingShow } from './upcoming'
+import { airLabel, airSpoken, buildUpcoming, filmCandidates, type UpcomingEntry, type UpcomingFilm, type UpcomingShow } from './upcoming'
 import s from './HomeScreen.module.css'
 
 /* Everything on Home under the lead and Up Next: the shelves, in the order Settings → Shelves gives them. Each
@@ -273,6 +273,8 @@ function UpcomingShelf({ title }: { title: string }) {
   const rewatches = useLibrary((l) => l.rewatches)
   const withinDays = useSettings((x) => x.upcomingWithinDays)
   const premieres = useSettings((x) => x.includeWatchlistPremieres)
+  const filmDates = useSettings((x) => x.filmDates ?? 'digital')
+  const region = useSettings((x) => x.region)
   const now = useMinuteTick()
 
   const followed = followedShows(history, new Set(), 12)
@@ -280,6 +282,9 @@ function UpcomingShelf({ title }: { title: string }) {
   const listed = watchlist.filter((e) => e.item.type === 'show' && !known.has(e.key)).slice(0, premieres ? 12 : 0)
   const candidates = [...followed.map((f) => f.item), ...listed.map((e) => e.item)]
   const details = useQueries({ queries: candidates.map((item) => ({ ...q.detail('show', item.id), enabled: near })) })
+  // Films are dated by their release dates, which come with the film's details; they matter only when premieres do.
+  const filmItems = premieres ? filmCandidates(watchlist, now, 12) : []
+  const filmDetails = useQueries({ queries: filmItems.map((item) => ({ ...q.detail('movie', item.id), enabled: near })) })
   const onWatchlist = new Set(watchlist.map((e) => e.key))
   const watched = watchedShowsOf(marks, rewatches)
 
@@ -291,8 +296,9 @@ function UpcomingShelf({ title }: { title: string }) {
     const caughtUp = seen.length > 0 && showStatus(seen, detail, now).next === undefined
     return [{ item, nextEpisode: detail.nextEpisode, caughtUp, onWatchlist: onWatchlist.has(`show:${item.id}`) }]
   })
-  const entries = buildUpcoming(shows, now, { withinDays, includeWatchlistPremieres: premieres })
-  const loading = !near || details.some((d) => d.isPending && d.fetchStatus !== 'idle')
+  const films: UpcomingFilm[] = filmItems.map((item, i) => ({ item, releases: filmDetails[i]?.data?.releases ?? [] }))
+  const entries = buildUpcoming(shows, now, { withinDays, includeWatchlistPremieres: premieres, filmDates, region }, films)
+  const loading = !near || [...details, ...filmDetails].some((d) => d.isPending && d.fetchStatus !== 'idle')
   if (!loading && entries.length === 0) return null
   return (
     <section ref={ref} className={s.rowSection} aria-labelledby={id}>
@@ -308,17 +314,17 @@ function UpcomingCard({ entry }: { entry: UpcomingEntry }) {
   const { item, episode } = entry
   return (
     <FrameCard
-      link={{ to: '/title/$type/$id', params: { type: item.type, id: item.id }, search: { season: episode.season } }}
+      link={{ to: '/title/$type/$id', params: { type: item.type, id: item.id }, search: episode ? { season: episode.season } : undefined }}
       shape="still"
       artPath={item.backdrop}
       sizes={stillRowSizes}
       print={[
-        { text: episodeShort({ season: episode.season, episode: episode.number }) ?? '', rank: rank.episode },
+        { text: episode ? (episodeShort({ season: episode.season, episode: episode.number }) ?? '') : 'Film', rank: rank.episode },
         { text: airLabel(entry.date, now, userLocale), rank: rank.left },
       ]}
       title={item.title}
-      meta={[entry.kind === 'premiere' ? 'Season premiere' : '', episode.name].filter(Boolean).join(' · ')}
-      label={`${item.title}, season ${episode.season} episode ${episode.number}, ${airSpoken(entry.date, now, userLocale)}`}
+      meta={episode ? [entry.kind === 'premiere' ? 'Season premiere' : '', episode.name].filter(Boolean).join(' · ') : entry.release === 'theatrical' ? 'In cinemas' : 'Digital release'}
+      label={episode ? `${item.title}, season ${episode.season} episode ${episode.number}, ${airSpoken(entry.date, now, userLocale)}` : `${item.title}, ${entry.release === 'theatrical' ? 'in cinemas' : 'out on digital'} ${airSpoken(entry.date, now, userLocale)}`}
       fallback={item.title}
       onIntent={() => prefetchDetail(item)}
     />

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { libraryLists } from '../features/library/logic'
+import { isLibraryPage, libraryLists } from '../features/library/logic'
 import { openSearchDescriptor, siteAddress } from './openSearch'
 
 const web = new URL('../../', import.meta.url)
@@ -79,6 +79,12 @@ describe('the web app manifest', () => {
     const continueWatching = new URL(manifest.shortcuts[0]!.url, 'https://flow.example/Flow/manifest.webmanifest')
     expect(continueWatching.searchParams.get('list')).toBe('continue')
     expect(libraryLists as readonly string[]).toContain('continue')
+    // Upcoming is a page of Library, reached by ?list=, so the shortcut has to name one that exists and opens it.
+    const upcoming = new URL(manifest.shortcuts[1]!.url, 'https://flow.example/Flow/manifest.webmanifest')
+    expect(upcoming.pathname).toBe('/Flow/library')
+    expect(upcoming.searchParams.get('list')).toBe('upcoming')
+    expect(libraryLists as readonly string[]).toContain('upcoming')
+    expect(isLibraryPage('upcoming')).toBe(true)
   })
 })
 

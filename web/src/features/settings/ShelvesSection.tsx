@@ -3,6 +3,7 @@ import { Icon, type IconName } from '../../components/Icon'
 import { builtInTitles, type HeroSource, type ShelfConfig, type ShelfSource } from '../../lib/shelfDefaults'
 import { addBuiltInShelf, addDiscoverShelf, missingBuiltIns, moveShelf, parseShelves, removeShelf, restoreDefaultShelves, setShelfEnabled, shelfSubtitle, shelvesToJSON, updateDiscoverShelf } from '../../lib/shelves'
 import { settingsStore, useSettings } from '../../lib/store/settings'
+import { filmDateKinds } from '../home/upcoming'
 import { DiscoverEditor } from './DiscoverEditor'
 import { ConfirmButton, Group, Note, Row, Select, Switch } from './controls'
 import s from './SettingsScreen.module.css'
@@ -202,11 +203,12 @@ function HomeSwitches() {
   const showUpcoming = useSettings((x) => x.showUpcoming)
   const premieres = useSettings((x) => x.includeWatchlistPremieres)
   const within = useSettings((x) => x.upcomingWithinDays)
+  const filmDates = useSettings((x) => x.filmDates ?? 'digital')
   const watched = useSettings((x) => x.showWatchedBadges)
   const left = useSettings((x) => x.showEpisodesRemaining)
   return (
     <>
-      <Group title="Home" footer="Content shelves such as Trending hold this many titles (a wide screen shows the first few across, a phone scrolls the rest). Upcoming lists the next episode of series you’re caught up on, with the day it airs. Watchlist premieres add the first episode of a new season of a series on your watchlist.">
+      <Group title="Home" footer="Content shelves such as Trending hold this many titles (a wide screen shows the first few across, a phone scrolls the rest). Upcoming lists the next episode of series you’re caught up on, with the day it airs. Watchlist premieres add the first episode of a new season of a series on your watchlist, and films on your watchlist that aren’t out yet, dated by their digital or theatrical release.">
         <Row label="Content Shelf Length" htmlFor="shelf-length">
           <Select id="shelf-length" value={String(length)} onChange={(v) => settingsStore.set({ contentShelfLength: Number(v) })} options={lengths} label="Content shelf length" />
         </Row>
@@ -221,6 +223,9 @@ function HomeSwitches() {
         </Row>
         <Row label="Include Watchlist Premieres">
           <Switch checked={premieres} onChange={(on) => settingsStore.set({ includeWatchlistPremieres: on })} label="Include watchlist premieres" disabled={!showUpcoming} />
+        </Row>
+        <Row label="Film Dates" htmlFor="film-dates">
+          <Select id="film-dates" value={filmDates} onChange={(v) => settingsStore.set({ filmDates: v })} options={filmDateKinds} label="Film dates" disabled={!showUpcoming || !premieres} />
         </Row>
         <Row label="Upcoming Within" htmlFor="upcoming-within">
           <Select id="upcoming-within" value={String(within)} onChange={(v) => settingsStore.set({ upcomingWithinDays: Number(v) })} options={windows} label="Upcoming within" disabled={!showUpcoming} />

@@ -1,4 +1,5 @@
 import { isLiveTVSettings } from '../../lib/livetv/validate'
+import { isSportsSettings } from '../../lib/sports/types'
 import { lastSourceStore } from '../../lib/sources/lastSource'
 import { ratingSources } from '../../lib/ratings/sources'
 import { proxyProblem } from '../../lib/sources/proxy'
@@ -92,6 +93,8 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   detailTextSize: (v) => ['small', 'standard', 'large', 'extraLarge'].includes(v as string),
   // Providers (with their logins), the guide's refresh time and the favourite channels, as the apps keep them.
   liveTV: isLiveTVSettings,
+  // Followed teams, TheSportsDB's key and the two switches; a missing field takes its default.
+  sports: isSportsSettings,
   // Home: the shelf list (the apps' ShelfConfig, in the website's shape) and the switches around it.
   shelves: isShelfList,
   heroSource: isHeroSource,
@@ -103,6 +106,7 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   showUpcoming: (v) => typeof v === 'boolean',
   includeWatchlistPremieres: (v) => typeof v === 'boolean',
   upcomingWithinDays: (v) => [3, 7, 14, 30].includes(v as number),
+  filmDates: (v) => v === 'digital' || v === 'theatrical',
   showWatchedBadges: (v) => typeof v === 'boolean',
   showEpisodesRemaining: (v) => typeof v === 'boolean',
 }

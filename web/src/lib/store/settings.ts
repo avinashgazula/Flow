@@ -1,3 +1,4 @@
+import type { SportsSettings } from '../sports/types'
 import { defaultLiveTV, type LiveTVSettings } from '../livetv/types'
 import type { RatingSource } from '../ratings/sources'
 import type { SourceOrdering } from '../sources/sourceSettings'
@@ -166,6 +167,9 @@ export interface Settings {
   detailTextSize: DetailTextSize
   /** IPTV providers, the guide's refresh time and the favourite channels (FlowKit's LiveTVSettings). */
   liveTV: LiveTVSettings
+  /** Followed teams, TheSportsDB's key and how a game opens (the apps' `sports`). Absent until the first change; read it
+   *  through `sportsSettings`, which supplies the defaults, so none of this loads with the first page. */
+  sports?: SportsSettings
   /** Home's shelves, in order: built-in rows, Discover shelves and (later) lists, as the apps' `shelves`. */
   shelves: ShelfConfig[]
   /** Where Home's top pick comes from when nothing is in progress, and a second source mixed in. */
@@ -182,6 +186,8 @@ export interface Settings {
   /** Upcoming also lists season premieres of shows on the watchlist. */
   includeWatchlistPremieres: boolean
   upcomingWithinDays: number
+  /** Which release a watchlisted film is dated by in Upcoming (the apps' Film Dates). Digital when absent. */
+  filmDates?: 'digital' | 'theatrical'
   /** WATCHED on a poster's strip, and the episodes of a series left. */
   showWatchedBadges: boolean
   showEpisodesRemaining: boolean

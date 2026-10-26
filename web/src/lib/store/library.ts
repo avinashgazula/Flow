@@ -22,6 +22,9 @@ export interface HistoryEntry {
   item: MediaItem
   episode?: EpisodeRef
   watchedAt: number
+  /** How long the play was, in whole minutes, when the player knew (Stats adds these up). Older entries have none, and
+   *  Stats takes the title's typical runtime from TMDB instead. */
+  runtime?: number
 }
 
 export interface ListEntry {
@@ -82,14 +85,14 @@ export const library = {
     if (!Number.isFinite(duration) || duration <= 0 || position < startedAfter) return
     const key = mediaKey(item.type, item.id)
     if (position / duration >= finishedAt) {
-      library.markWatched(item, episode)
+      library.markWatched(item, episode, minutesOf(duration))
       return
     }
     libraryStore.set((l) => ({
       progress: { ...l.progress, [key]: { key, item: slim(item), episode, position, duration, updatedAt: Date.now() } },
     }))
   },
-  markWatched(item: MediaItem, episode?: EpisodeRef) {
+  markWatched(item: MediaItem, episode?: EpisodeRef, runtime?: number) {
     const key = mediaKey(item.type, item.id)
     libraryStore.set((l) => {
       const progress = { ...l.progress }
@@ -98,7 +101,7 @@ export const library = {
       return {
         progress,
         watchedEpisodes,
-        history: [{ key, item: slim(item), episode, watchedAt: Date.now() }, ...l.history].slice(0, 500),
+        history: [{ key, item: slim(item), episode, watchedAt: Date.now(), ...(runtime ? { runtime } : {}) }, ...l.history].slice(0, 500),
         // Watching an episode during a rewatch moves the rewatch on, as the apps' advanceRewatch.
         ...(episode ? { rewatches: advanceRewatch(l.rewatches, key, episode) } : {}),
       }
@@ -115,6 +118,9 @@ export const library = {
     libraryStore.set({ history: [], watchedEpisodes: {} })
   },
 }
+
+/** A length in seconds as whole minutes for History, or nothing when it isn't a real length. */
+export const minutesOf = (seconds: number | undefined): number | undefined => (seconds && Number.isFinite(seconds) && seconds >= 30 ? Math.round(seconds / 60) : undefined)
 
 export const episodeKey = (showId: number, e: EpisodeRef) => `show:${showId}:s${e.season}e${e.episode}`
 /** An episode as the rewatch and shuffle lists keep it: "s3e7". */

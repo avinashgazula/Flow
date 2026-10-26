@@ -145,7 +145,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
     play(pick.pick)
   }
   const toggleWatched = () => {
-    if (type === 'movie') return watched ? titleLibrary.markUnwatched(card) : library.markWatched(card)
+    if (type === 'movie') return watched ? titleLibrary.markUnwatched(card) : library.markWatched(card, undefined, d.runtime)
     return showDone ? titleLibrary.markUnwatched(card, episodes.aired) : titleLibrary.markEpisodesWatched(card, episodes.aired)
   }
 
