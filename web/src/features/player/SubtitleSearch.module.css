@@ -55,18 +55,14 @@
   overflow: hidden;
 }
 
-/* SDH is a small format label, so it is printed: edge print on the band. */
+/* SDH is a format fact, so it is set in edge print inside the line, like the strip's print: no box. */
 .sdh {
-  display: inline-block;
-  margin-right: 8px;
-  padding: 2px 5px 1px;
-  border-radius: var(--radius-perf);
-  background: var(--edge);
+  margin-right: 6px;
   color: var(--print);
-  font: 600 11px / 1.1 var(--font-edge);
+  font: 600 11px / 1 var(--font-edge);
   letter-spacing: 0.1em;
-  vertical-align: 1px;
 }
+.sdh::after { content: ' ·'; color: var(--ink-3); }
 
 /* What each service said: name and answer, two quiet columns. */
 .notes {
