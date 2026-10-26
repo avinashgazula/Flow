@@ -58,7 +58,11 @@ export function HomeScreen() {
     }
   }, [still])
 
-  const upNext = showContinue && shelves.some((sh) => sh.enabled && sh.source.kind === 'builtIn' && (sh.source.id === 'continueWatching' || sh.source.id === 'nextUp'))
+  // Continue Watching and Up Next are the apps' two shelves for this place. Continue Watching holds both what is in
+  // progress and what is next, so it names the place when it is on; Up Next alone holds only the next episodes.
+  const beside = showContinue ? shelves.filter((sh) => sh.enabled && sh.source.kind === 'builtIn' && (sh.source.id === 'continueWatching' || sh.source.id === 'nextUp')) : []
+  const continuing = beside.find((sh) => sh.source.kind === 'builtIn' && sh.source.id === 'continueWatching')
+  const upNext = continuing ?? beside[0]
   const none = slides.length === 0 && !pending && failed
 
   return (
@@ -74,7 +78,7 @@ export function HomeScreen() {
           <>
             <div className={s.top} data-lead={slides.length || pending ? undefined : 'none'}>
               {slides.length ? <Lead slides={slides} auto={auto} /> : pending ? <LeadGhost /> : null}
-              {upNext && <UpNext leadKey={resume && resumeKey} />}
+              {upNext && <UpNext leadKey={resume && resumeKey} title={upNext.title} nextOnly={!continuing} />}
             </div>
             <Suspense fallback={null}>
               <Shelves />
