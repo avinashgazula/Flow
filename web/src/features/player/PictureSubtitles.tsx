@@ -1,9 +1,9 @@
-import { type CSSProperties, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import type { PictureCue } from '../../lib/remux/pictures'
 import { useSettings } from '../../lib/store/settings'
 import { usePlayer, type PlayerController } from './controller'
-import { placeObjects, rgbaOf, sitsHigh } from './pictureLayout'
-import { subtitleCSS } from './subtitleStyle'
+import { liftFor, placeObjects, rgbaOf, sitsHigh } from './pictureLayout'
+import { normaliseSubtitleStyle } from '../../lib/store/subtitleStyle'
 import s from './PictureSubtitles.module.css'
 
 /** Picture subtitles (Blu-ray PGS, DVD VobSub) drawn on a canvas over the picture, where the disc put them
@@ -14,7 +14,7 @@ export function PictureSubtitles({ controller }: { controller: PlayerController 
   const lifted = usePlayer(controller, (st) => st.controls)
   const delay = usePlayer(controller, (st) => st.subtitleDelay)
   const fit = usePlayer(controller, (st) => st.fit)
-  const style = useSettings((st) => st.subtitleStyle)
+  const position = useSettings((st) => normaliseSubtitleStyle(st.subtitleStyle).verticalPosition)
   const canvas = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -49,12 +49,15 @@ export function PictureSubtitles({ controller }: { controller: PlayerController 
       g.imageSmoothingEnabled = true
       g.imageSmoothingQuality = 'high'
       boxes.forEach((b, i) => g.drawImage(pieces[i]!, b.x * ratio, b.y * ratio, b.width * ratio, b.height * ratio))
+      // The band the controls cover, from the bottom of the window (the same figures as the text subtitles').
+      const band = lifted ? (window.innerHeight <= 500 ? 78 : 96) : 0
+      const shift = liftFor({ container: el.clientHeight, bottom: Math.max(...boxes.map((b) => b.y + b.height)), controls: band, user: position, high: sitsHigh(shown) })
+      el.style.setProperty('--shift', `${Math.round(shift)}px`)
     }
     const update = () => {
       const cue = picture.at(video.currentTime - delay)
       if (cue === shown) return
       shown = cue
-      el.toggleAttribute('data-high', !!cue && sitsHigh(cue))
       draw()
     }
     const resize = () => {
@@ -91,8 +94,8 @@ export function PictureSubtitles({ controller }: { controller: PlayerController 
       for (const [name, fn] of events) video.removeEventListener(name, fn)
       g.clearRect(0, 0, el.width, el.height)
     }
-  }, [controller, picture, delay, fit])
+  }, [controller, picture, delay, fit, lifted, position])
 
   if (!picture) return null
-  return <canvas ref={canvas} className={s.canvas} style={{ '--sub-lift': subtitleCSS(style)['--sub-lift'] } as CSSProperties} data-lifted={lifted ? '' : undefined} aria-hidden="true" />
+  return <canvas ref={canvas} className={s.canvas} aria-hidden="true" />
 }

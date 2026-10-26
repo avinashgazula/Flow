@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PictureCue } from '../../lib/remux/pictures'
-import { pictureBox, placeObjects, shownShape, sitsHigh } from './pictureLayout'
+import { liftFor, pictureBox, placeObjects, shownShape, sitsHigh } from './pictureLayout'
 
 const cue = (canvas: [number, number], objects: { x: number; y: number; width: number; height: number }[]): PictureCue => ({
   start: 0,
@@ -68,5 +68,28 @@ describe('where a cue sits', () => {
     expect(sitsHigh(cue([1920, 1080], [{ x: 0, y: 900, width: 100, height: 100 }]))).toBe(false)
     expect(sitsHigh(cue([1920, 1080], [{ x: 0, y: 60, width: 100, height: 100 }]))).toBe(true)
     expect(sitsHigh(cue([1920, 1080], []))).toBe(false)
+  })
+})
+
+describe('raising a subtitle clear of the controls', () => {
+  const base = { container: 1000, controls: 96, user: 0, high: false }
+  it('leaves it be when the controls are away, or it is already clear', () => {
+    expect(liftFor({ ...base, bottom: 950, controls: 0 })).toBe(0)
+    expect(liftFor({ ...base, bottom: 800 })).toBe(0)
+  })
+
+  it('raises it just clear of the band when it sits in it', () => {
+    expect(liftFor({ ...base, bottom: 950 })).toBe(46)
+    expect(liftFor({ ...base, bottom: 1000 })).toBe(96)
+  })
+
+  it('takes the viewer’s position when that is higher', () => {
+    expect(liftFor({ ...base, bottom: 950, user: 0.2 })).toBe(200)
+    expect(liftFor({ ...base, bottom: 950, user: 0.02, controls: 0 })).toBe(20)
+    expect(liftFor({ ...base, bottom: 950, user: 0.02 })).toBe(46)
+  })
+
+  it('leaves a title or a sign in the upper half alone', () => {
+    expect(liftFor({ ...base, bottom: 990, user: 0.3, high: true })).toBe(0)
   })
 })

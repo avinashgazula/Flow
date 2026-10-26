@@ -60,6 +60,16 @@ export function sitsHigh(cue: PictureCue): boolean {
   return (top + bottom) / 2 < cue.canvasHeight / 2
 }
 
+/** How far to raise the canvas, in pixels. The viewer's subtitle position raises a line by a fraction of the window's height
+ *  (`user`); with the controls up (`controls` is the band they cover, 0 when they are away) a line that would sit in that
+ *  band is raised just clear of it, and one already above it stays. The text subtitles are always at the bottom of the
+ *  window, so they take the whole band; a bitmap sits where the disc drew it, which in a tall window (a phone held
+ *  upright) can be well above the band. A subtitle in the upper half of the picture isn't raised at all. */
+export function liftFor({ container, bottom, controls, user, high }: { container: number; bottom: number; controls: number; user: number; high: boolean }): number {
+  if (high) return 0
+  return Math.max(0, user * container, controls - (container - bottom))
+}
+
 /** The pixels of one object as straight RGBA, for `ImageData`. Indices past the palette are transparent. */
 export function rgbaOf(object: PictureObject, palette: Uint8Array): Uint8ClampedArray<ArrayBuffer> {
   const out = new Uint8ClampedArray(object.width * object.height * 4)

@@ -77,7 +77,7 @@ is named after a fingerprint of its contents, so a deploy that changes any file 
 
 ## Matroska
 
-Browsers can't play `.mkv`, so `src/lib/remux` does it: a Rust crate (`crates/flow-remux`, 130 KB of
+Browsers can't play `.mkv`, so `src/lib/remux` does it: a Rust crate (`crates/flow-remux`, 175 KB of
 WebAssembly) demuxes Matroska in a Web Worker, fed by range requests (header, seek index, then
 clusters a few MB at a time), and remuxes it to fragmented MP4 for Media Source Extensions. The page
 only sees `attachMatroska(video, url)`; nothing loads until an MKV is played. The built wasm and its
@@ -105,6 +105,32 @@ chosen, so nothing about it is in the first-load code. Sound is counted in sampl
 fragment after a start or seek and re-anchored when the file has a gap, so it stays with the
 picture. Tracks that play as they are are never converted, and a failure at any step (the module
 won't load, a decoder crashes, the encoder errors) drops the audio buffer so the picture plays on.
+
+**Chapters.** The remuxer reads the chapter list the way the apps do: the default edition (else the first), nested
+chapters included, hidden and disabled ones left out, an unnamed one numbered by the player. A list before the clusters
+comes with the header; one after them is found through the SeekHead and read behind the index, so it never delays the
+first picture. Times are shifted by the timeline's delay, so a chapter's start is a time on `<video>`. The Options panel
+gets a Chapters page (name and time, the one playing checked, a choice seeks) and the scrubber gets a thin Ink 2 tick
+under the rail's holes at each chapter after the first (none when there are more than 40, which would make a comb); the
+holes keep their colours. Jellyfin and Emby list chapters on the item, and those win when playing from them
+(`Source.chapters`); the file's are for every other source.
+
+**Picture subtitles.** Blu-ray PGS and DVD VobSub (`crates/flow-remux/src/picture.rs`, a port of FlowKit's decoders)
+are decoded to palette-indexed bitmaps in the worker. The crate keeps the raw packets of every picture track (a few KB
+each, 16 MB at most, the ones furthest from the playhead going first), so choosing a track mid-film has the pictures of
+what already streamed; choosing one at the start costs nothing extra. `pictures.ts` keeps each cue until the next begins
+(ten seconds when nothing says), under a memory budget. `PictureSubtitles.tsx` draws them on a canvas laid on the picture
+as the apps do (`pictureLayout.ts`: the disc's canvas spans the picture's width and is centred on it, anamorphic DVD video
+stretched sideways), follows Zoom, the subtitle delay and the viewer's subtitle position, and rises just clear of the
+controls when a line would sit behind them. DVB subtitles still say they aren't supported.
+
+**Remembered headers.** `headerCache.ts` keeps what reading a file's far end cost, so reopening it is quick: the remuxer
+exports its SeekHead, Info, Tracks, chapters and Cues as one blob (`exportHeader()`), saved in IndexedDB once both far
+reads are done and loaded with `importHeader()` before the header is read, which leaves nothing to fetch past the first
+512 KB. A resume part-way in then doesn't wait for the index. A file is named by a hash of its address, size and ETag or
+Last-Modified (when the server lists them in `Access-Control-Expose-Headers`), and, for links that change on every
+request, by a hash of its first 64 KB and its size; the address itself is never stored. Records go after 30 days unused,
+beyond 24 MB or 150 files, or when the server shows a different ETag or date. Any failure is a miss.
 
 ## Smooth playback
 
@@ -148,7 +174,7 @@ The player has what the apps have for watching a series (`features/player/segmen
   segment begins and says "Skipped intro" with Undo) or Off. The scrubber marks each segment with a thin tick under the holes.
 - **Where segments come from**, first answer wins: the server the file plays from (Jellyfin media segments, Plex
   markers), IntroDB, PublicMetaDB (each only with a key), then the file's chapter names ("Opening", "Ending"), read
-  from the first bytes of an MKV by `lib/remux/chapters.ts`. No answer means no button, never an error.
+  by the remuxer from wherever the file keeps them (see Matroska below). No answer means no button, never an error.
 - **CORS.** IntroDB's CORS header allows only introdb.app, so from the website it is asked through the stream proxy
   (with `api.introdb.app` in its `ALLOWED_HOSTS`). PublicMetaDB sends no CORS headers and needs an Authorization header
   the proxy doesn't forward, so it can't be read from a web page; its key is kept for Flow Sync and the apps. A refused
