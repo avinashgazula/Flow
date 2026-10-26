@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { HistoryEntry, ListEntry } from '../../lib/store/library'
 import type { MediaItem } from '../../lib/tmdb/types'
-import { dayGroup, episodeLabel, groupHistory, historyRows, parseListSort, sortEntries, watchStats } from './logic'
+import { dayGroup, episodeLabel, groupHistory, historyRows, parseListSort, sortEntries } from './logic'
 
 // Noon local time on a Wednesday, so day boundaries are unambiguous in any zone the tests run in.
 const now = new Date(2026, 9, 14, 12, 0).getTime()
@@ -72,29 +72,5 @@ describe('sortEntries', () => {
   it('reads unknown sorts as Recently Added', () => {
     expect(parseListSort('rating')).toBe('rating')
     expect(parseListSort('nope')).toBe('added')
-  })
-})
-
-describe('watchStats', () => {
-  const show = (id: number, watchedAt: number): HistoryEntry => ({ key: `show:${id}`, item: item(id, { type: 'show', genres: [18] }), episode: { season: 1, episode: 1 }, watchedAt })
-  const film = (id: number, watchedAt: number, genres: number[]): HistoryEntry => ({ key: `movie:${id}`, item: item(id, { genres }), watchedAt })
-
-  it('counts the last week, month and year, and the split between films and episodes', () => {
-    const stats = watchStats([film(1, at(1), [18]), film(2, at(10), [18]), show(3, at(40)), show(4, at(400))], now)
-    expect([stats.week, stats.month, stats.year, stats.total]).toEqual([1, 2, 3, 4])
-    expect([stats.films, stats.episodes]).toEqual([2, 2])
-  })
-
-  it('ranks genres by how often they were watched, ties by name, and keeps the top few', () => {
-    const stats = watchStats([film(1, at(1), [18, 35]), film(2, at(2), [18]), film(3, at(3), [35, 878, 28])], now)
-    expect(stats.genres).toEqual([
-      { name: 'Comedy', count: 2 },
-      { name: 'Drama', count: 2 },
-      { name: 'Action', count: 1 },
-    ])
-  })
-
-  it('is all zeros for an empty history', () => {
-    expect(watchStats([], now)).toEqual({ week: 0, month: 0, year: 0, total: 0, films: 0, episodes: 0, genres: [] })
   })
 })

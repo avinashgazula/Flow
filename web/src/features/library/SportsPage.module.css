@@ -1,0 +1,73 @@
+/* Sports: each followed team is a plain section, its games rows on a hairline, in the History page's rhythm.
+   Flat; the only blur is a covered score, which is a spoiler waiting to be read. */
+
+.page { max-width: 900px; }
+.tools { display: flex; align-items: center; gap: var(--space-m); min-height: 36px; margin-bottom: var(--space-l); }
+.note { min-width: 0; font-size: var(--fs-footnote); line-height: 1.35; text-wrap: pretty; }
+.note:empty { display: none; }
+
+.team { margin-top: var(--section); }
+.team:first-of-type { margin-top: 0; }
+.teamHead { display: flex; align-items: center; gap: var(--space-s); margin-bottom: var(--space-s); min-height: 36px; }
+.teamName { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.league { min-width: 0; font-size: var(--fs-footnote); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.unfollow { margin-left: auto; margin-right: -12px; flex: none; }
+
+/* A badge on a plate, or the club's initials in edge print's neighbour: the interface face, tracked. */
+.badge { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-art); background: var(--base-2); overflow: hidden; }
+.badge img { width: 100%; height: 100%; object-fit: contain; }
+.monogram { font: 700 var(--fs-footnote) / 1 var(--font); letter-spacing: 0.04em; color: var(--ink-2); }
+
+.games { list-style: none; margin: 0; padding: 0; }
+.game { border-bottom: 1px solid var(--rule); }
+.gameRow { display: flex; align-items: center; gap: var(--space-s); }
+.gameMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: var(--space-s) 0; text-align: left; color: var(--paper); -webkit-tap-highlight-color: transparent; }
+.gameMain:disabled { cursor: default; opacity: 1; }
+.gameMain:not(:disabled):hover .gameTitle { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ink-3); }
+.gameTitle { font: 600 var(--fs-small) / 1.25 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gameMeta { font-size: var(--fs-footnote); line-height: 1.35; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score { flex: none; font: 600 var(--fs-body) / 1 var(--font); }
+.other { flex: none; margin-right: -12px; }
+
+/* A covered score: its stand-in blurred, so even its width gives nothing away, and the way out in words. */
+.cover { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; padding: 4px 0; color: var(--paper); border-radius: var(--radius-art); -webkit-tap-highlight-color: transparent; }
+.blur { font: 600 var(--fs-body) / 1 var(--font); filter: blur(7px); user-select: none; }
+.show { font-size: var(--fs-caption); line-height: 1; color: var(--ink-2); }
+.cover:hover .show { color: var(--paper); text-decoration: underline; text-underline-offset: 3px; }
+
+.results { margin: var(--space-l) 0 var(--space-xxs); font: 600 var(--fs-footnote) / 1.2 var(--font); color: var(--ink-2); }
+
+.ghosts { display: grid; gap: var(--space-xs); }
+.ghost { height: 56px; border-radius: var(--radius-art); background: var(--base-2); }
+
+/* The channels for a game, under it. */
+.channels { list-style: none; margin: 0 0 var(--space-s); padding: 0; border-radius: var(--radius-panel); background: var(--base-2); }
+.channels > li + li { border-top: 1px solid var(--rule); }
+.channel { display: flex; align-items: center; gap: var(--space-s); padding: var(--space-s) var(--space-m); color: var(--paper); }
+.channel:hover .channelName { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ink-3); }
+.channelText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.channelName { font: 600 var(--fs-small) / 1.25 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.channelMeta { font-size: var(--fs-footnote); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.watch { flex: none; }
+.channelsNote { margin: var(--space-xs) 0 var(--space-s); font-size: var(--fs-small); line-height: 1.5; text-wrap: pretty; }
+.retry { color: var(--paper); text-decoration: underline; text-underline-offset: 0.2em; text-decoration-color: var(--ink-3); font: inherit; }
+
+/* Finding a team: a field and its answers, in the page. */
+.find { margin-bottom: var(--section); max-width: 560px; }
+.findField { display: flex; align-items: center; gap: var(--space-xs); height: 44px; padding: 0 var(--space-m); border-radius: var(--radius-control); background: var(--base-3); color: var(--ink-2); }
+.findField:hover { background: var(--base-4); }
+.findField:focus-within { outline: 2px solid var(--stock); outline-offset: 2px; }
+.findInput { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; border-radius: 0; box-shadow: none; appearance: none; background: transparent; color: var(--paper); font: 400 var(--fs-body) / 1 var(--font); }
+.findInput::placeholder { color: var(--ink-2); }
+.findInput:focus-visible { outline: none; }
+.findState { min-height: 20px; margin: var(--space-xs) 0; font-size: var(--fs-footnote); color: var(--ink-2); }
+.found { list-style: none; margin: 0; padding: 0; }
+.foundRow { display: flex; align-items: center; gap: var(--space-s); padding: var(--space-xs) 0; border-bottom: 1px solid var(--rule); }
+.foundText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.foundName { font: 600 var(--fs-small) / 1.25 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.foundMeta { font-size: var(--fs-footnote); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  .tools { flex-wrap: wrap; row-gap: var(--space-xs); }
+  .league { display: none; }
+}

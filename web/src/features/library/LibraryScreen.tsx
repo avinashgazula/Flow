@@ -1,14 +1,20 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
 import { PosterItem, ResumeItem } from '../../components/TitleCards'
+import { useFollowedTeams } from '../../lib/sports/settings'
 import { library, useLibrary, type Progress } from '../../lib/store/library'
 import type { MediaType } from '../../lib/tmdb/types'
 import { Segmented, Select, StateView } from '../explore/Controls'
 import { PosterGrid } from '../explore/PosterGrid'
 import { HistoryItem, HistoryList } from './HistoryList'
-import { groupHistory, historyRows, listSorts, listTitles, sortEntries, titles, watchStats, type LibraryList, type ListSort } from './logic'
+import { groupHistory, historyRows, isLibraryPage, listSorts, listTitles, sortEntries, titles, type LibraryList, type LibraryPage, type ListSort } from './logic'
 import s from './LibraryScreen.module.css'
+
+/* Upcoming, Sports and Stats are each their own chunk: Library's overview carries none of their code. */
+const UpcomingPage = lazy(() => import('./UpcomingPage'))
+const SportsPage = lazy(() => import('./SportsPage'))
+const StatsPage = lazy(() => import('./StatsPage'))
 
 type Filter = 'all' | MediaType
 const filters = [
@@ -25,7 +31,7 @@ export function LibraryScreen({ list, type, sort }: { list?: LibraryList; type?:
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [list])
-  return <div className={`page ${s.screen}`}>{list ? <FullList list={list} type={type} sort={sort} /> : <Overview />}</div>
+  return <div className={`page ${s.screen}`}>{isLibraryPage(list) ? <ReadingPage page={list} /> : list ? <FullList list={list} type={type} sort={sort} /> : <Overview />}</div>
 }
 
 // MARK: Overview
@@ -41,6 +47,7 @@ function Overview() {
   return (
     <>
       <h1 className="page-title">Library</h1>
+      <Pages watched={history.length} />
       {empty ? (
         <StateView
           icon="library"
@@ -82,15 +89,58 @@ function Overview() {
             </Section>
           )}
           {history.length > 0 && <RecentHistory />}
-          {history.length > 0 && <Stats />}
         </>
       )}
     </>
   )
 }
 
+/** The places that read your library rather than list it, as an index (the apps' tiles): where the apps put Upcoming,
+ *  Sports, History and Stats. */
+function Pages({ watched }: { watched: number }) {
+  const teams = useFollowedTeams().length
+  const rows: { list: LibraryList; subtitle: string }[] = [
+    { list: 'upcoming', subtitle: 'New episodes' },
+    { list: 'sports', subtitle: teams === 0 ? 'Follow your teams' : teams === 1 ? '1 team followed' : `${teams} teams followed` },
+    { list: 'history', subtitle: watched === 0 ? 'Watched titles' : watched === 1 ? '1 title' : `${watched.toLocaleString()} titles` },
+    { list: 'stats', subtitle: 'Your watching' },
+  ]
+  return (
+    <nav aria-label="Library pages">
+      <ul className={s.pages}>
+        {rows.map((r) => (
+          <li key={r.list}>
+            <Link to="/library" search={{ list: r.list }} className={s.pageLink}>
+              <span className={s.pageText}>
+                <span className={s.pageName}>{listTitles[r.list]}</span>
+                <span className={s.pageSub}>{r.subtitle}</span>
+              </span>
+              <Icon name="chevronRight" size={16} strokeWidth={2.4} />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
+/** Upcoming, Sports or Stats, under Library's back link. Each loads on its own. */
+function ReadingPage({ page }: { page: LibraryPage }) {
+  return (
+    <>
+      <Link to="/library" className={s.back}>
+        <Icon name="chevronLeft" size={16} strokeWidth={2.6} /> Library
+      </Link>
+      <h1 className="page-title">{listTitles[page]}</h1>
+      <Suspense fallback={<p className="muted" role="status">Loading…</p>}>
+        {page === 'upcoming' ? <UpcomingPage /> : page === 'sports' ? <SportsPage /> : <StatsPage />}
+      </Suspense>
+    </>
+  )
+}
+
 /** A plain heading with its count and a link to the whole list, then the list's first items. */
-function Section({ list, count, children }: { list: LibraryList; count: number; children: ReactNode }) {
+function Section({ list, count, children }: { list: 'continue' | 'watchlist' | 'favourites'; count: number; children: ReactNode }) {
   return (
     <section className={s.section} aria-labelledby={`lib-${list}`}>
       <header className={s.sectionHead}>
@@ -136,40 +186,6 @@ function RecentHistory() {
   )
 }
 
-/** Counts from History: plain labelled numbers in tabular figures, one row each. */
-function Stats() {
-  const history = useLibrary((l) => l.history)
-  const stats = watchStats(history, Date.now())
-  const rows: [string, string][] = [
-    ['Watched in the Last 7 Days', String(stats.week)],
-    ['Watched in the Last 30 Days', String(stats.month)],
-    ['Watched in the Last Year', String(stats.year)],
-    ['Films', String(stats.films)],
-    ['Episodes', String(stats.episodes)],
-  ]
-  return (
-    <section className={s.section} aria-labelledby="lib-stats">
-      <h2 id="lib-stats" className={s.sectionTitle}>
-        Stats
-      </h2>
-      <dl className={s.stats}>
-        {rows.map(([label, value]) => (
-          <div key={label} className={s.stat}>
-            <dt>{label}</dt>
-            <dd className="num">{Number(value).toLocaleString()}</dd>
-          </div>
-        ))}
-        {stats.genres.length > 0 && (
-          <div className={s.stat}>
-            <dt>Most Watched Genres</dt>
-            <dd>{stats.genres.map((g) => g.name).join(', ')}</dd>
-          </div>
-        )}
-      </dl>
-    </section>
-  )
-}
-
 /** A Continue Watching item with a way to drop it from the list. */
 function ContinueItem({ progress: p }: { progress: Progress }) {
   return (
@@ -183,7 +199,7 @@ function ContinueItem({ progress: p }: { progress: Progress }) {
 
 // MARK: One whole list
 
-function FullList({ list, type, sort }: { list: LibraryList; type?: MediaType; sort: ListSort }) {
+function FullList({ list, type, sort }: { list: Exclude<LibraryList, LibraryPage>; type?: MediaType; sort: ListSort }) {
   const navigate = useNavigate({ from: '/library' })
   const setFilter = (f: Filter) => void navigate({ search: (prev) => ({ ...prev, type: f === 'all' ? undefined : f }), replace: true, resetScroll: false })
   const setSort = (v: ListSort) => void navigate({ search: (prev) => ({ ...prev, sort: v === 'added' ? undefined : v }), replace: true, resetScroll: false })
