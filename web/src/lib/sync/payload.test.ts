@@ -345,8 +345,8 @@ describe('applying a section here', () => {
     expect(Object.keys(localValue('keys', settings()) as object)).toEqual(['tmdbAPIKey', 'traktClientID', 'simklClientID'])
     expect(localValue('keys', settings({ subdlKey: 'sd' }))).toMatchObject({ subdlAPIKey: 'sd' })
     expect(localValue('keys', settings({ subdlKey: 'sd' }))).not.toHaveProperty('openSubtitlesAPIKey')
-    // Wyzie has no field in the apps, so its key is never written to the shared record.
-    expect(JSON.stringify(localValue('keys', set))).not.toContain('wz')
+    // Wyzie's key travels as wyzieAPIKey, and only once it is set.
+    expect(localValue('keys', settings())).not.toHaveProperty('wyzieAPIKey')
     expect(settingsPatch('keys', { tmdbAPIKey: null, openSubtitlesAPIKey: ' os ', openSubtitlesUsername: 'me', openSubtitlesPassword: 'pw', subdlAPIKey: 'sd', subSourceAPIKey: 'ss' }, settings())).toEqual({
       tmdbKey: '',
       openSubtitlesKey: 'os',
