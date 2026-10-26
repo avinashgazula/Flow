@@ -31,19 +31,45 @@ describe('what an edge strip can say', () => {
     expect(layout.perfs).toBeGreaterThanOrEqual(8)
   })
 
-  it('never cuts the end time: whatever else it drops, the time left and end time stay', () => {
+  it('never cuts the end time: whatever else it drops, the time left and end time stay beside the fewest holes', () => {
     for (let width = 150; width <= 740; width += 10) {
       for (const kind of ['lead', 'still'] as const) {
         const { facts, perfs } = composeStrip({ width, facts: resume, kind })
         const used = facts.reduce((sum, f) => sum + estimateWidth(f.text, kind), 0) + estimateWidth(' · ', kind) * (facts.length - 1) + (perfs ? perfsWidth(perfs) + gapAfterPerfs(kind) : 0)
+        const both = estimateWidth('18m left · ends 11:40 AM', kind) + perfsWidth(kind === 'lead' ? 8 : 3) + gapAfterPerfs(kind)
         // Room enough for the two facts that matter means they are both there, and it all fits.
-        if (width >= 195) {
+        if (width >= both) {
           expect(texts(facts)).toContain('ends 11:40 AM')
           expect(facts.some((f) => f.key)).toBe(true)
           expect(used).toBeLessThanOrEqual(width)
         }
       }
     }
+  })
+
+  it('keeps the fewest perforations on a narrow lead and drops print first: format, then the end time', () => {
+    const series: Fact[] = [fact('18m left', rank.left, { key: true }), fact('23 episodes left', rank.episodesLeft), fact('ends 11:11 PM', rank.ends), fact('2160p', rank.format)]
+    // The phone's lead: 358 px less the strip's padding.
+    for (let width = 338; width >= 200; width -= 6) {
+      const layout = composeStrip({ width, facts: series, kind: 'lead' })
+      expect(layout.perfs).toBeGreaterThanOrEqual(8)
+      expect(texts(layout.facts)).toContain('18m left')
+    }
+    const narrow = texts(composeStrip({ width: 250, facts: series, kind: 'lead' }).facts)
+    expect(narrow).not.toContain('2160p')
+    // The format goes before the end time does.
+    let formatGone = 0
+    let endsGone = 0
+    for (let width = 338; width >= 160; width -= 2) {
+      const got = texts(composeStrip({ width, facts: series, kind: 'lead' }).facts)
+      if (!formatGone && !got.includes('2160p')) formatGone = width
+      if (!endsGone && !got.includes('ends 11:11 PM')) endsGone = width
+    }
+    expect(formatGone).toBeGreaterThanOrEqual(endsGone)
+    // The 390 px phone's lead: the series' remaining episodes outrank the end time, and eight holes stay.
+    const phone = composeStrip({ width: 338, facts: series, kind: 'lead' })
+    expect(phone.perfs).toBe(8)
+    expect(texts(phone.facts)).toEqual(['18m left', '23 episodes left'])
   })
 
   it('drops by priority as the room shrinks: episode, then the end of the format, never the time left or end time', () => {
@@ -92,8 +118,18 @@ describe('what an edge strip can say', () => {
     expect(p1.perfs).toBeGreaterThan(0)
   })
 
-  it('draws no perforations on a poster too narrow for them, and prints what fits', () => {
-    const layout = composeStrip({ width: 96, facts: [fact('2 h 47', rank.facts), fact('8.2', rank.rating)], kind: 'poster' })
+  it('keeps three perforations on the narrow strips of a phone: a 112 px poster and a 148 px suggestion', () => {
+    const poster = composeStrip({ width: 96, facts: [fact('2 h 47', rank.facts), fact('8.2', rank.rating)], kind: 'poster' })
+    expect(poster.perfs).toBe(3)
+    expect(texts(poster.facts).length).toBeGreaterThan(0)
+    const still = composeStrip({ width: 128, facts: [fact('Film', rank.facts), fact('2h 46', rank.facts), fact('8.1', rank.rating)], kind: 'still' })
+    expect(still.perfs).toBe(3)
+    // Every poster of that width has the same count, whatever it prints.
+    expect(composeStrip({ width: 96, facts: [fact('new ep', rank.left)], kind: 'poster' }).perfs).toBe(3)
+  })
+
+  it('draws no perforations on a strip too narrow to print its one fact beside them', () => {
+    const layout = composeStrip({ width: 50, facts: [fact('2 h 47', rank.facts), fact('8.2', rank.rating)], kind: 'poster' })
     expect(layout.perfs).toBe(0)
     expect(texts(layout.facts).length).toBeGreaterThan(0)
   })
