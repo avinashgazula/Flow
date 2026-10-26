@@ -13,7 +13,9 @@
 .sheet {
   position: relative;
   width: min(760px, 100%);
-  height: min(880px, 100%);
+  /* As tall as its sources, up to the window: a few sources don't leave a screenful of empty sheet under them. */
+  max-height: min(880px, 100%);
+  min-height: min(360px, 100%);
   display: flex;
   flex-direction: column;
   border-radius: var(--radius-panel);

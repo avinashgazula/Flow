@@ -42,14 +42,20 @@ export function SettingsScreen() {
     }
   }, [])
 
-  // The anchor for the section in view follows the scroll; observers don't run per frame.
+  // The anchor for the section in view follows the scroll; observers don't run per frame. A page that has run out of
+  // scroll names its last section, since the short ones at the end can never reach the line the others are read at.
   useEffect(() => {
     const visible = new Set<string>()
+    const last = sections[sections.length - 1]!.id
+    const atEnd = () => window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
+    const settle = () => {
+      const first = atEnd() ? sections.find((x) => x.id === last) : sections.find((x) => visible.has(x.id))
+      if (first) setCurrent(first.id)
+    }
     const observer = new IntersectionObserver(
       (entries) => {
         for (const e of entries) e.isIntersecting ? visible.add(e.target.id) : visible.delete(e.target.id)
-        const first = sections.find((x) => visible.has(x.id))
-        if (first) setCurrent(first.id)
+        settle()
       },
       { rootMargin: '-20% 0px -65% 0px' },
     )
@@ -57,7 +63,17 @@ export function SettingsScreen() {
       const el = document.getElementById(x.id)
       if (el) observer.observe(el)
     })
-    return () => observer.disconnect()
+    let frame = 0
+    const onScroll = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(settle)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(frame)
+    }
   }, [])
 
   return (
