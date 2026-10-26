@@ -1,0 +1,50 @@
+2026-10-26T14:00:28Z step welcome active=false picker=false tab=home
+2026-10-26T14:00:37Z step home active=false picker=false tab=home
+2026-10-26T14:00:43Z step detail-movie active=false picker=false tab=home
+2026-10-26T14:00:50Z step detail-show active=false picker=false tab=home
+2026-10-26T14:00:55Z step sources active=false picker=true tab=home
+2026-10-26T14:01:02Z startPlayback demo#0 url=https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8
+2026-10-26T14:01:02Z activePlayback set: true
+2026-10-26T14:01:02Z step player active=true picker=false tab=home
+2026-10-26T14:01:03Z prepare native for master.m3u8
+2026-10-26T14:01:05Z item status 1 error=-
+2026-10-26T14:01:14Z PlaybackSession.close from stop() phase=playing
+2026-10-26T14:01:15Z startPlayback demo#mkv url=file:///Users/runner/Library/Developer/CoreSimulator/Devices/0DE52589-6E0B-47D4-B4A7-7E4E3D9C1049/data/Containers/Bundle/Application/31696049-AB1D-4AA1-AC47-6D28B945F155/Flow.app/FlowSample.mkv
+2026-10-26T14:01:15Z activePlayback set: true
+2026-10-26T14:01:15Z step player-mkv active=true picker=false tab=home
+2026-10-26T14:01:15Z prepare matroska for FlowSample.mkv
+2026-10-26T14:01:17Z item status 1 error=-
+2026-10-26T14:01:18Z info: Source=AIOStreams; File=Flow.Sample.720p.DTS.AAC.AC3.mkv; Playback=MKV, remuxed on this device; Video=H.264 · 1280×720 · 24 fps · SDR; Audio=English – DTS 5.1; Decoded=DTS (English) → lossless FLAC, on this device; Bitrate=2.2 Mb/s; Buffered=1 s ahead
+2026-10-26T14:01:21Z step player-options active=true picker=false tab=home
+2026-10-26T14:01:27Z step player-advanced active=true picker=false tab=home
+2026-10-26T14:01:33Z step player-panels-closed active=true picker=false tab=home
+2026-10-26T14:01:38Z step player-xray active=true picker=false tab=home
+2026-10-26T14:01:44Z step player-still-watching active=true picker=false tab=home
+2026-10-26T14:01:49Z suggestions: 8 phase=Optional(Flow.PlaybackSession.Phase.playing)
+2026-10-26T14:01:49Z step player-suggestions active=true picker=false tab=home
+2026-10-26T14:01:54Z step person active=true picker=false tab=home
+2026-10-26T14:01:54Z PlaybackSession.close from stop() phase=finished
+2026-10-26T14:01:59Z step home-after-playback active=false picker=false tab=home
+2026-10-26T14:02:04Z step explore active=false picker=false tab=explore
+2026-10-26T14:02:09Z step library active=false picker=false tab=library
+2026-10-26T14:02:14Z step library-watchlist active=false picker=false tab=library
+2026-10-26T14:02:19Z step calendar active=false picker=false tab=library
+2026-10-26T14:02:24Z step search active=false picker=false tab=search
+2026-10-26T14:02:30Z step search-top active=false picker=false tab=search
+2026-10-26T14:02:35Z step livetv active=false picker=false tab=liveTV
+2026-10-26T14:02:40Z step settings active=false picker=false tab=home
+2026-10-26T14:02:45Z step settings-metadata active=false picker=false tab=home
+2026-10-26T14:02:51Z step settings-sources active=false picker=false tab=home
+2026-10-26T14:02:56Z step settings-general active=false picker=false tab=home
+2026-10-26T14:03:02Z step settings-playback active=false picker=false tab=home
+2026-10-26T14:03:07Z step settings-data active=false picker=false tab=home
+2026-10-26T14:03:13Z step settings-subtitles active=false picker=false tab=home
+2026-10-26T14:03:18Z step settings-account active=false picker=false tab=home
+2026-10-26T14:03:24Z step settings-shelves active=false picker=false tab=home
+2026-10-26T14:03:34Z step settings-servers active=false picker=false tab=home
+2026-10-26T14:03:39Z step settings-webdav active=false picker=false tab=home
+2026-10-26T14:03:44Z step settings-livetv active=false picker=false tab=home
+2026-10-26T14:03:50Z step settings-sync active=false picker=false tab=home
+2026-10-26T14:04:06Z step settings-sync-pairing active=false picker=false tab=home
+2026-10-26T14:04:12Z step settings-sync-off active=false picker=false tab=home
+2026-10-26T14:04:18Z step settings-sync-join active=false picker=false tab=home

@@ -1,0 +1,46 @@
+2026-10-26T13:48:35Z step welcome active=false picker=false tab=home
+2026-10-26T13:48:41Z step home active=false picker=false tab=home
+2026-10-26T13:48:46Z step detail-movie active=false picker=false tab=home
+2026-10-26T13:48:51Z step detail-show active=false picker=false tab=home
+2026-10-26T13:48:56Z step sources active=false picker=true tab=home
+2026-10-26T13:49:02Z startPlayback demo#0 url=https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8
+2026-10-26T13:49:02Z activePlayback set: true
+2026-10-26T13:49:02Z step player active=true picker=false tab=home
+2026-10-26T13:49:03Z prepare native for master.m3u8
+2026-10-26T13:49:05Z item status 1 error=-
+2026-10-26T13:49:07Z PlaybackSession.close from stop() phase=playing
+2026-10-26T13:49:09Z startPlayback demo#mkv url=file:///Users/runner/work/Flow/Flow/dd/Build/Products/Debug/Flow.app/Contents/Resources/FlowSample.mkv
+2026-10-26T13:49:09Z activePlayback set: true
+2026-10-26T13:49:09Z step player-mkv active=true picker=false tab=home
+2026-10-26T13:49:09Z prepare matroska for FlowSample.mkv
+2026-10-26T13:49:11Z info: Source=AIOStreams; File=Flow.Sample.720p.DTS.AAC.AC3.mkv; Playback=MKV, remuxed on this device; Video=H.264 · 1280×720 · 24 fps · SDR; Decoded=DTS (English) → lossless FLAC, on this device; Bitrate=2.2 Mb/s; Buffered=2 s ahead
+2026-10-26T13:49:14Z step player-still-watching active=true picker=false tab=home
+2026-10-26T13:49:14Z item status 1 error=-
+2026-10-26T13:49:19Z suggestions: 8 phase=Optional(Flow.PlaybackSession.Phase.playing)
+2026-10-26T13:49:19Z step player-suggestions active=true picker=false tab=home
+2026-10-26T13:49:24Z step person active=true picker=false tab=home
+2026-10-26T13:49:24Z PlaybackSession.close from stop() phase=finished
+2026-10-26T13:49:29Z step home-after-playback active=false picker=false tab=home
+2026-10-26T13:49:34Z step explore active=false picker=false tab=explore
+2026-10-26T13:49:40Z step library active=false picker=false tab=library
+2026-10-26T13:49:45Z step library-watchlist active=false picker=false tab=library
+2026-10-26T13:49:50Z step calendar active=false picker=false tab=library
+2026-10-26T13:49:55Z step search active=false picker=false tab=search
+2026-10-26T13:50:00Z step search-top active=false picker=false tab=search
+2026-10-26T13:50:06Z step livetv active=false picker=false tab=liveTV
+2026-10-26T13:50:11Z step settings active=false picker=false tab=liveTV
+2026-10-26T13:50:16Z step settings-general active=false picker=false tab=liveTV
+2026-10-26T13:50:21Z step settings-account active=false picker=false tab=liveTV
+2026-10-26T13:50:26Z step settings-shelves active=false picker=false tab=liveTV
+2026-10-26T13:50:31Z step settings-servers active=false picker=false tab=liveTV
+2026-10-26T13:50:37Z step settings-webdav active=false picker=false tab=liveTV
+2026-10-26T13:50:42Z step settings-livetv active=false picker=false tab=liveTV
+2026-10-26T13:50:47Z step settings-sources active=false picker=false tab=liveTV
+2026-10-26T13:50:52Z step settings-data active=false picker=false tab=liveTV
+2026-10-26T13:50:57Z step settings-playback active=false picker=false tab=liveTV
+2026-10-26T13:51:02Z step settings-subtitles active=false picker=false tab=liveTV
+2026-10-26T13:51:08Z step settings-metadata active=false picker=false tab=liveTV
+2026-10-26T13:51:13Z step settings-sync active=false picker=false tab=liveTV
+2026-10-26T13:51:18Z step settings-sync-pairing active=false picker=false tab=liveTV
+2026-10-26T13:51:23Z step settings-sync-off active=false picker=false tab=liveTV
+2026-10-26T13:51:29Z step settings-sync-join active=false picker=false tab=liveTV
