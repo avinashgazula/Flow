@@ -248,23 +248,42 @@ public struct SubDLProvider: SubtitleProvider {
     }
 }
 
-/// Wyzie Subs: keyless aggregator returning direct SRT links.
+/// Wyzie Subs: aggregator returning direct SRT links. It moved from sub.wyzie.ru to sub.wyzie.io and answers
+/// 401 without a free key (store.wyzie.io/redeem), which goes in the address as `key`.
 public struct WyzieProvider: SubtitleProvider {
     public let id = "wyzie"
     public let name = "Wyzie"
+    let apiKey: String
     let http: HTTPClient
-    public init(http: HTTPClient = HTTPClient()) { self.http = http }
+    static let base = "https://sub.wyzie.io"
+
+    public init(apiKey: String, http: HTTPClient = HTTPClient()) {
+        self.apiKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.http = http
+    }
 
     public func search(_ request: PlaybackRequest, languages: [String]) async throws -> [SubtitleTrackInfo] {
+        guard !apiKey.isEmpty else { throw FlowError.missingCredential("Wyzie API key") }
         guard let mediaID = request.item.ids.tmdb.map(String.init) ?? request.item.ids.imdb else { return [] }
-        var q: [String: String?] = ["id": mediaID, "language": languages.joined(separator: ","), "format": "srt"]
+        var q: [String: String?] = ["id": mediaID, "language": languages.joined(separator: ","), "format": "srt", "key": apiKey]
         if let ep = request.episode { q["season"] = String(ep.season); q["episode"] = String(ep.number) }
-        let json = try await http.json(JSONValue.self, HTTPRequest(.get, "https://sub.wyzie.ru/search", query: q))
-        return (json.array ?? []).compactMap { e in
-            guard let url = e["url"]?.string else { return nil }
+        let json: JSONValue
+        do {
+            json = try await http.json(JSONValue.self, HTTPRequest(.get, Self.base + "/search", query: q))
+        } catch FlowError.unauthorized {
+            // The client's own wording for a 401 is about signing in again, which isn't what is wrong here.
+            throw FlowError.unsupported("Wyzie didn’t accept that API key. Claim a free one at store.wyzie.io/redeem and add it in Settings.")
+        }
+        return Self.parse(json)
+    }
+
+    static func parse(_ json: JSONValue) -> [SubtitleTrackInfo] {
+        (json.array ?? []).compactMap { e in
+            guard let url = e["url"]?.string, !url.isEmpty else { return nil }
             let lang = e["language"]?.string ?? "en"
-            return SubtitleTrackInfo(id: "wyzie-\(e["id"]?.string ?? url)", provider: name, language: lang, languageName: e["display"]?.string ?? SubtitleLanguages.name(lang),
-                                     release: e["media"]?.string ?? e["fileName"]?.string ?? "", hearingImpaired: e["isHearingImpaired"]?.bool ?? false, downloadToken: url)
+            return SubtitleTrackInfo(id: "wyzie-\(e["id"]?.string ?? url)", provider: "Wyzie", language: lang, languageName: e["display"]?.string ?? SubtitleLanguages.name(lang),
+                                     release: e["release"]?.string ?? e["media"]?.string ?? e["fileName"]?.string ?? "",
+                                     hearingImpaired: e["isHearingImpaired"]?.bool ?? false, downloads: e["downloadCount"]?.int, downloadToken: url)
         }
     }
 
