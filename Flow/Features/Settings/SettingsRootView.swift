@@ -102,7 +102,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .metadata: return "tvdb tmdb episode source time zone unreleased language api key ratings imdb rotten tomatoes metacritic letterboxd rpdb rating posters reviews comments region adult prefetch"
         case .about: return "version licenses"
         case .sourceAppearance: return "badges formatting title"
-        case .apiKeys: return "keys opensubtitles subdl introdb sports spoilers scores channel"
+        case .apiKeys: return "keys opensubtitles subdl subsource wyzie introdb sports spoilers scores channel"
         case .addons: return "stremio manifest addon"
         case .sync: return "flow sync devices share keys api keys sideload sideloaded iphone ipad mac apple tv website cloudflare worker kv pairing link qr code key encrypted end-to-end trakt simkl add-ons servers subtitles languages without icloud"
         case .syncPairing: return "qr code pairing link share copy sync key join another device"

@@ -56,7 +56,7 @@ public enum FlowSyncMapping {
             ("tmdbAPIKey", \.tmdbAPIKey), ("tvdbAPIKey", \.tvdbAPIKey), ("mdblistAPIKey", \.mdblistAPIKey),
             ("openSubtitlesAPIKey", \.openSubtitlesAPIKey), ("openSubtitlesUsername", \.openSubtitlesUsername),
             ("openSubtitlesPassword", \.openSubtitlesPassword),
-            ("subdlAPIKey", \.subdlAPIKey), ("subSourceAPIKey", \.subSourceAPIKey), ("rpdbAPIKey", \.rpdbAPIKey),
+            ("subdlAPIKey", \.subdlAPIKey), ("subSourceAPIKey", \.subSourceAPIKey), ("wyzieAPIKey", \.wyzieAPIKey), ("rpdbAPIKey", \.rpdbAPIKey),
             ("introDBAPIKey", \.introDBAPIKey), ("publicMetaDBAPIKey", \.publicMetaDBAPIKey),
             ("traktClientID", \.traktClientID), ("traktClientSecret", \.traktClientSecret), ("simklClientID", \.simklClientID),
         ]
