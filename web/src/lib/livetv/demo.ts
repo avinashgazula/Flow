@@ -1,3 +1,4 @@
+import { demoAway, demoHome, demoKickoff, demoLeague } from '../sports/demoFixture'
 import type { IPTVProviderConfig } from './types'
 
 /* The sample IPTV provider, as FlowKit's DemoTransport serves it: twelve channels in six groups, each
@@ -78,6 +79,9 @@ const xmltvTime = (ms: number) => {
 export function demoGuide(now: number): string {
   const slot = 30 * 60_000
   const hour = Math.floor(now / slot) * slot
+  // The sample game from Library → Sports: Sport HD shows it, and Arena has the home side's build-up, so a game
+  // has a best channel and a second.
+  const kickoff = demoKickoff(now)
   let xml = '<?xml version="1.0" encoding="UTF-8"?><tv>'
   demoChannels.forEach((ch, index) => {
     xml += `<channel id="${ch.id}"><display-name>${ch.name}</display-name></channel>`
@@ -85,7 +89,10 @@ export function demoGuide(now: number): string {
     let start = hour - (index % 3) * 600_000 - slot
     for (let n = 0; n < 16; n++) {
       const end = start + (30 + ((n + index) % 3) * 30) * 60_000
-      xml += `<programme start="${xmltvTime(start)}" stop="${xmltvTime(end)}" channel="${ch.id}"><title>${titles[(n + index) % titles.length]}</title><desc>Live on ${ch.name}.</desc></programme>`
+      const onAir = start < kickoff + 2 * slot && end > kickoff - slot
+      const title =
+        ch.id === 'sport.hd' && onAir ? `${demoLeague}: ${demoHome} v ${demoAway}` : ch.id === 'arena' && onAir ? `${demoHome} Matchday Live` : titles[(n + index) % titles.length]
+      xml += `<programme start="${xmltvTime(start)}" stop="${xmltvTime(end)}" channel="${ch.id}"><title>${title}</title><desc>Live on ${ch.name}.</desc></programme>`
       start = end
     }
   })

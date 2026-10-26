@@ -4,7 +4,9 @@
 
 import { demoProviderId } from '../sources/demo'
 import { lastSourceStore, type LastSource } from '../sources/lastSource'
+import { demoFollowed } from '../sports/demo'
 import { libraryStore } from '../store/library'
+import { settingsStore } from '../store/settings'
 
 type Row = [id: number, type: 'movie' | 'show', title: string, year: number, genres: number[], poster: string, backdrop: string, rating: number, runtime: number, certification: string, imdb: string, seasons: number, overview: string]
 
@@ -214,6 +216,9 @@ const page = (list: Title[], n = 1) => ({ page: n, total_pages: Math.max(1, Math
 
 const day = (offset: number) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10)
 const nextEpisode = (t: Title) => 4 + (t.id % 4)
+/** Films on the sample watchlist that have a digital release near today, as days from now, so Upcoming has films to
+ *  show: Interstellar in 3 days, Spider-Verse in 12, and Parasite two days ago (Just Aired). */
+const upcomingReleases: Record<number, number> = { 157336: 3, 569094: 12, 496243: -2 }
 
 function demoEpisode(t: Title, season: number, number: number, airDate: string) {
   return {
@@ -259,7 +264,18 @@ function detail(t: Title) {
   o.images = { logos: logos[t.id] ? [{ iso_639_1: 'en', file_path: logos[t.id], vote_average: 5.5 }] : [] }
   if (t.type === 'movie') {
     o.runtime = t.runtime
-    o.release_dates = { results: [{ iso_3166_1: 'US', release_dates: [{ certification: t.certification, type: 3 }] }] }
+    const out = upcomingReleases[t.id]
+    o.release_dates = {
+      results: [
+        {
+          iso_3166_1: 'US',
+          release_dates: [
+            { certification: t.certification, type: 3, release_date: `${releaseDate(t)}T00:00:00.000Z` },
+            ...(out ? [{ certification: '', type: 4, release_date: `${day(out)}T00:00:00.000Z` }] : []),
+          ],
+        },
+      ],
+    }
   } else {
     o.episode_run_time = [t.runtime]
     o.number_of_seasons = t.seasons
@@ -379,9 +395,47 @@ export function seededLibrary() {
       { key: key(872585), item: it(872585), watchedAt: now - 2 * 86400e3 },
       { key: key(155), item: it(155), watchedAt: now - 5 * 86400e3 },
       ...followed.map(([id, days]) => ({ key: key(id), item: it(id), episode: { season: 1, episode: 1 }, watchedAt: now - days * 86400e3 })),
-    ],
+      ...earlierViewing(now, it, key),
+    ].sort((a, b) => b.watchedAt - a.watchedAt),
     watchedEpisodes,
   }
+}
+
+/** Months of earlier viewing, so Stats has a year to show: a week-long binge, evenings through the spring and summer,
+ *  and a film now and then. Counted back from now and fixed in shape, so it is the same every time. Every other play
+ *  records its length, as the player does now; the rest leave Stats to estimate from TMDB's runtimes. */
+function earlierViewing(now: number, it: (id: number) => any, key: (id: number) => string) {
+  const shows = [66732, 94997, 119051, 76331, 1396, 100088]
+  const films = [438631, 475557, 299534, 27205, 603, 13]
+  const plays: { key: string; item: any; episode?: { season: number; episode: number }; watchedAt: number; runtime?: number }[] = []
+  const at = (daysAgo: number, hour: number) => {
+    const d = new Date(now - daysAgo * 86400e3)
+    d.setHours(hour, 15, 0, 0)
+    return d.getTime()
+  }
+  let n = 0
+  const episode = (id: number, daysAgo: number, hour = 21) => {
+    n++
+    const t = byId.get(id)!
+    plays.push({ key: key(id), item: it(id), episode: { season: 1 + (n % 2), episode: 2 + (n % 9) }, watchedAt: at(daysAgo, hour), ...(n % 2 === 0 ? { runtime: t.runtime } : {}) })
+  }
+  // Six evenings in a row, a few weeks back.
+  for (let d = 0; d < 6; d++) {
+    episode(shows[1]!, 24 + d, 21)
+    if (d % 2 === 0) episode(shows[1]!, 24 + d, 22)
+  }
+  // An episode or two most evenings the rest of the way back to February, more on Fridays and Sundays.
+  for (let d = 12; d < 255; d += 2 + (d % 3)) {
+    const when = new Date(now - d * 86400e3)
+    if (d >= 24 && d <= 29) continue
+    episode(shows[d % shows.length]!, d, 20 + (d % 3))
+    if (when.getDay() === 5 || when.getDay() === 0) episode(shows[(d + 2) % shows.length]!, d, 22)
+  }
+  films.forEach((id, i) => {
+    n++
+    plays.push({ key: key(id), item: it(id), watchedAt: at(30 + i * 37, 20), ...(i % 2 === 0 ? { runtime: byId.get(id)!.runtime } : {}) })
+  })
+  return plays
 }
 
 /** The series the sample viewer has been watching: how far through each (whole seasons, then episodes of the
@@ -413,5 +467,7 @@ function seededLastSources(): Record<string, LastSource> {
  *  viewer already has is left as it is. */
 export function seedDemo() {
   libraryStore.set(seededLibrary())
+  // The sample viewer follows two clubs; Sports is empty until someone does.
+  if (!settingsStore.get().sports) settingsStore.set({ sports: { followedTeams: demoFollowed, apiKey: '123', showScoreSpoilers: true, chooseChannelOnTap: false } })
   lastSourceStore.set((st) => ({ byTitle: { ...seededLastSources(), ...st.byTitle } }))
 }

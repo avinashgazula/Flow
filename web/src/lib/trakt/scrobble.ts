@@ -7,7 +7,7 @@
    play claimed here is left out of the queue of changes (claims.ts), or Trakt would count it twice; if the stop
    can't be sent, the claim is dropped first so the library's mark travels as an ordinary change instead. */
 
-import { library, type EpisodeRef } from '../store/library'
+import { library, minutesOf, type EpisodeRef } from '../store/library'
 import type { MediaItem } from '../tmdb/types'
 import type { Scrobble, Target } from './client'
 import { claim, claimKey, release } from './claims'
@@ -30,7 +30,7 @@ const percentOf = (r: Reading) => (Number.isFinite(r.duration) && r.duration > 0
 export interface ScrobbleDeps {
   send(action: Scrobble, target: Target, percent: number, keepalive: boolean): Promise<void>
   /** The library's own mark, made when Trakt will count the play. */
-  markWatched(item: MediaItem, episode?: EpisodeRef): void
+  markWatched(item: MediaItem, episode?: EpisodeRef, runtime?: number): void
 }
 
 /** The sequence of calls for one player. Sends one after another, in the order made, and never throws: a
@@ -63,7 +63,7 @@ export function createScrobbler(deps: ScrobbleDeps) {
     })
     // Sent and counted: Trakt has the play, and the library's mark must not travel too. Not sent: let it travel.
     if (counted && !sent) release(key, false)
-    if (counted) deps.markWatched(reading.item, reading.episode)
+    if (counted) deps.markWatched(reading.item, reading.episode, minutesOf(reading.duration))
     release(key, counted && sent)
   }
 
@@ -116,7 +116,7 @@ export function createScrobbler(deps: ScrobbleDeps) {
 export function startScrobbling(video: HTMLVideoElement, read: () => Reading | null): () => void {
   const scrobbler = createScrobbler({
     send: (action, target, percent, keepalive) => trakt().scrobble(action, target, percent, keepalive),
-    markWatched: (item, episode) => library.markWatched(item, episode),
+    markWatched: (item, episode, runtime) => library.markWatched(item, episode, runtime),
   })
   const onPlay = () => {
     const r = read()

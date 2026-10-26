@@ -1,4 +1,4 @@
-import type { CastMember, Genre, MediaDetail, MediaType, Provider, Video } from './types'
+import type { CastMember, Genre, MediaDetail, MediaType, MovieRelease, Provider, Video } from './types'
 import { tmdbPath } from './types'
 import { episode, item, items } from './client'
 
@@ -24,6 +24,19 @@ function certification(raw: any, type: MediaType, region: string): string | unde
   }
   const results: any[] = raw.content_ratings?.results ?? []
   return (results.find((r) => r.iso_3166_1 === region) ?? results.find((r) => r.iso_3166_1 === 'US'))?.rating || undefined
+}
+
+/** A film's release dates in every country, as calendar days. TMDB gives each as a moment in UTC at midnight, so the
+ *  first ten characters are the day. Entries without a usable date are left out. */
+export function movieReleases(raw: any): MovieRelease[] {
+  const out: MovieRelease[] = []
+  for (const result of raw.release_dates?.results ?? []) {
+    for (const r of result.release_dates ?? []) {
+      const date = typeof r.release_date === 'string' ? r.release_date.slice(0, 10) : ''
+      if (result.iso_3166_1 && Number.isInteger(r.type) && /^\d{4}-\d{2}-\d{2}$/.test(date)) out.push({ country: result.iso_3166_1, type: r.type, date })
+    }
+  }
+  return out
 }
 
 /** Every YouTube video, best first, as FlowKit's `trailers`: official trailers, trailers, official teasers,
@@ -114,5 +127,6 @@ export function buildDetail(type: MediaType, raw: any, lang: string, regionCode:
     budget: raw.budget > 0 ? raw.budget : undefined,
     revenue: raw.revenue > 0 ? raw.revenue : undefined,
     productionCompanies: (raw.production_companies ?? []).map((c: any) => c.name).filter(Boolean),
+    ...(type === 'movie' ? { releases: movieReleases(raw) } : {}),
   }
 }
