@@ -935,6 +935,22 @@ export class PlayerController {
     this.root?.toggleAttribute('data-styling', styling !== null)
   }
 
+  /** Because You Watched stands over the picture's corner while the credits roll: its size goes to the stylesheet, which
+   *  moves the subtitles clear of it (beside it on a wide window, above it on a narrow one). Written to the element, as
+   *  the styling attribute is, so the screen doesn't re-render. `null` when the card goes. */
+  setCardClear = (size: { width: number; height: number } | null) => {
+    const root = this.root
+    if (!root) return
+    root.toggleAttribute('data-card', size !== null)
+    if (size) {
+      root.style.setProperty('--card-w', `${Math.ceil(size.width)}px`)
+      root.style.setProperty('--card-h', `${Math.ceil(size.height)}px`)
+    } else {
+      root.style.removeProperty('--card-w')
+      root.style.removeProperty('--card-h')
+    }
+  }
+
   setPanel = (panel: Panel) => {
     this.set({ panel })
     if (panel) this.showControls(false)

@@ -76,6 +76,15 @@
         ],
         "createdAt": "2026-10-24T18:15:02.337Z",
         "reason": "Concentric with the 10px control around it (10 minus its 3px inset)."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#000",
+        "files": [
+          "src/features/livetv/LivePlayer.module.css"
+        ],
+        "createdAt": "2026-10-26T06:08:46.584Z",
+        "reason": "True black behind live video."
       }
     ]
   }

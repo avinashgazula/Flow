@@ -59,8 +59,16 @@ export const q = {
       placeholderData: () => placeholder(type, id),
     }),
 
-  season: (showId: number, season: number) =>
-    queryOptions({ queryKey: [...scope(), 'season', showId, season], queryFn: () => api.season(showId, season), staleTime: day }),
+  season: (showId: number, season: number) => {
+    const s = settingsStore.get()
+    // TVDB's numbering (the apps' default, once there is a key) or Trakt's comes from a chunk of its own; TMDB's is the plain call.
+    const other = !s.demo && s.episodeSource !== 'tmdb' && (s.tvdbKey || s.traktClientID) ? (s.episodeSource ?? 'tvdb') : ''
+    return queryOptions({
+      queryKey: [...scope(), 'season', showId, season, ...(other ? [other] : [])],
+      queryFn: () => (other ? import('./tvdb/season').then((m) => m.seasonEpisodes(showId, season)) : api.season(showId, season)),
+      staleTime: day,
+    })
+  },
 
   /** TMDB's reviews with Trakt's most-liked comments, newest first. The code is a chunk of its own. */
   reviews: (type: MediaType, id: number, imdb?: string) =>

@@ -60,6 +60,14 @@ export interface Episode {
   rating?: number
 }
 
+/** One of a film's release dates in one country (FlowKit's MovieRelease): `type` is TMDB's number, 1 premiere,
+ *  2 limited theatrical, 3 theatrical, 4 digital, 5 physical, 6 TV. `date` is the calendar day, "2026-11-06". */
+export interface MovieRelease {
+  country: string
+  type: number
+  date: string
+}
+
 export interface MediaDetail extends MediaItem {
   tagline?: string
   status?: string
@@ -90,6 +98,8 @@ export interface MediaDetail extends MediaItem {
   budget?: number
   revenue?: number
   productionCompanies?: string[]
+  /** A film's release dates by country, for Upcoming (which dates a watchlisted film by its digital or theatrical release). */
+  releases?: MovieRelease[]
 }
 
 /** What a viewer wrote about a title, from TMDB or a Trakt comment (FlowKit's Review). */

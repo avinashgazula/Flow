@@ -329,6 +329,37 @@ authorization-code flow with PKCE (no client secret, as in the apps). Trakt's AP
   An episode whose removal is still waiting isn't brought back by the next pull.
 - **Budget.** `lib/trakt/boot.ts` is the only part in the first load; the sign-in, sync and scrobbler are lazy chunks.
 
+## Ratings, requests and episode numbering
+
+Settings → Metadata and Requests hold the keys and choices; every key is checked with its service before it is kept.
+
+- **Ratings** (`lib/ratings/`, `features/detail/Ratings.tsx`). The title page prints IMDb, Rotten Tomatoes, Popcornmeter,
+  Metacritic, TMDB, Letterboxd and Trakt as aligned numbers with the site's name under each (no logos or boxes), from
+  MDBList with the viewer's key, as FlowKit's `MDBListClient` and `CatalogService.ratings`. TMDB's own score is there at
+  once, and Trakt's community score is asked for directly when MDBList lacks it. Settings → Metadata → Ratings Shown
+  chooses and orders them (arrows, so a keyboard works). **Tap a Rating** opens that site's page (`RatingLinks`); it is
+  on by default here, where the apps default it off, because a score on the web is a plain link. Sample data answers with
+  the apps' sample formulas. The apps' **rating icon packs** (custom logos from a JSON address) are left out: the title
+  page is numbers and names.
+- **Poster Enhancement** swaps a poster's address for RatingPosterDB's (`posterOf` in `lib/ratings/posters.ts`, used by
+  the poster cards and search results), off by default; `fallback=true` makes the service answer with the plain poster
+  when it has no rated art. A change applies to posters rendered afterwards.
+- **Requests** (`lib/requests/seerr.ts`, `RequestButton.tsx`). With a Seerr, Overseerr or Jellyseerr connected, a title
+  none of the viewer's media servers has gets a Request button; its words are Request, Requested, Processing and
+  Available. A series with more than one season asks All Seasons or Latest Season in place. The address `demo.flow.invalid`
+  answers from the sample catalogue.
+- **Episode numbering** (`lib/tvdb/`). Settings → Metadata → Episode Source is TVDB by default (as the apps), TMDB or
+  Trakt. With the TVDB key, `q.season` reads the series' episodes from TVDB once (`lib/tvdb/season.ts`), fills TMDB's
+  stills, scores and missing words in where the numbering lines up (`withTMDB`, from `EpisodeProvider`), and falls back to
+  TMDB's own list on any failure. Because every screen reads episodes through `q.season`, Next Up, the player and Home
+  follow the numbering too. The season list itself still comes from TMDB, as in the apps.
+- **CORS.** MDBList, RatingPosterDB, TVDB (login POST and the Authorization header on reads) and Trakt all answer browsers
+  with `Access-Control-Allow-Origin: *`, checked from Chromium and Firefox, so none of them uses the stream proxy. Seerr
+  can't use it either: the proxy only fetches with GET and passes no headers on, and a request is a POST with `X-Api-Key`.
+  The instance has to allow web pages itself (a reverse proxy adding CORS headers); Settings says so when it can't be read.
+- **Sync.** `mdblistAPIKey`, `tvdbAPIKey` and `rpdbAPIKey` travel in the `keys` section, written only once this browser
+  has one so a blank browser never clears the apps' copy. The Seerr address and key stay in this browser.
+
 ## Title pages
 
 `features/detail/` is the page for a film or series, matching the apps' Detail view:
@@ -346,10 +377,39 @@ authorization-code flow with PKCE (no client secret, as in the apps). Trakt's AP
 - The code that reads a title's details (`lib/tmdb/detail.ts`), the reviews (`lib/reviews.ts`, `Reviews.tsx`) and the library
   actions beyond marking one thing watched (`lib/store/titleLibrary.ts`) are chunks of their own, so the first page carries none of them.
 
+## Library: Upcoming, Sports and Stats
+
+Library's overview opens three more pages, as the apps' tiles do, each at `/library?list=` (so the PWA shortcut to
+Upcoming is `library?list=upcoming`) and each a chunk of its own, loaded when opened (`features/library/`).
+
+- **Upcoming** (`calendar.ts`, `UpcomingPage.tsx`): a day-by-day calendar of the shows you follow (Continue Watching, the
+  watchlist, favourites and History) and the films on your watchlist: a strip of the next two weeks that jumps to a day, Just
+  Aired for the last seven days, a section for each day after. Films are dated by Settings → Shelves → Film Dates (digital
+  release by default, as on Home; `home/upcoming.ts` holds the one rule for both). **Add to Calendar** downloads an `.ics`
+  (`lib/ics.ts`, with tests): one event, or every upcoming one with Add All to Calendar. TMDB gives only a day, so each is an
+  all-day event, and its id comes from the episode or film, so adding it twice updates it.
+- **Stats** (`lib/stats.ts`, `statsView.ts`): a port of FlowKit's WatchStats, case for case: watch time, films, episodes and
+  shows, hours by month, week or year, top genres, most-watched shows, longest streak and favourite weekday, for This Year,
+  Last 30 Days or All Time. History now records each watch's length in minutes (`HistoryEntry.runtime`), from the player or the
+  scrobbler; older entries take their title's typical runtime from TMDB, and failing that the apps' defaults (45 and 110
+  minutes). The library keeps the latest 500 plays, so All Time reaches as far back as that.
+- **Sports** (`lib/sports/`, `SportsPage.tsx`): the teams you follow, with fixtures and results from TheSportsDB, called
+  directly (its API allows browser requests, so the stream proxy isn't involved). Tapping a game plays the best matching
+  Live TV channel, or lists the channels (Settings → Live TV → Sports, Choose Channel on Tap); the button beside the game does
+  the other. `match.ts` is FlowKit's SportsChannelMatcher: guide entries around kick-off that name the teams, then channels
+  named after the league. Show Score Spoilers off covers final scores until tapped. The key, the two switches and the teams
+  are the `sports` setting, absent until first changed, so none of it loads with the first page.
+  Unlike the apps, there is no notification for a finished match.
+
+A page that reads queries with react-query (as these do) must import something from `lib/queries.ts`, or the bundler splits
+the shared query code into more first-load files and the budget grows.
+
 ## Sample data
 
 `?demo` in the address, or **Explore with Sample Data** on the welcome screen, fills every screen
-from `src/lib/tmdb/demo.ts` with no key. The same catalogue as the apps' Demo mode.
+from `src/lib/tmdb/demo.ts` with no key. The same catalogue as the apps' Demo mode. It also gives Library months of viewing
+for Stats, three films with release dates near today for Upcoming, and two made-up clubs for Sports (`lib/sports/demo.ts`), one of
+them playing within the hour with a channel on air in the sample guide.
 
 ## Limits of a browser
 

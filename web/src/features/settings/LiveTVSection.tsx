@@ -9,6 +9,7 @@ import { streamProxy } from '../../lib/sources/proxy'
 import { useSettings } from '../../lib/store/settings'
 import { Segmented } from '../explore/Controls'
 import { ConfirmButton, Group, Note, Row, Select, Switch } from './controls'
+import { SportsGroup } from './SportsGroup'
 import s from './SettingsScreen.module.css'
 
 const kindNames: Record<IPTVProviderKind, string> = { m3u: 'M3U Playlist', xtream: 'Xtream Codes' }
@@ -76,6 +77,7 @@ export function LiveTVSection() {
           {favourites.length > 0 && <ConfirmButton label="Clear" confirm="Clear Favourites" onConfirm={clearFavourites} />}
         </Row>
       </Group>
+      <SportsGroup />
     </>
   )
 }

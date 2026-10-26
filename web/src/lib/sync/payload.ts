@@ -1,8 +1,8 @@
 /* What Flow Sync carries and how two copies are merged (docs/SYNC.md, Payload). Pure functions over the
    web's settings, so the rules are tested without a browser or a server.
 
-   The record holds sections. The web understands six of them: keys (the TMDB, IntroDB, PublicMetaDB, OpenSubtitles,
-   SubDL, SubSource, Trakt and Simkl keys; the rest travel through), accounts (the Trakt sign-in; Simkl's travels through), add-ons, servers, the stream
+   The record holds sections. The web understands six of them: keys (the TMDB, MDBList, TVDB, RatingPosterDB, IntroDB,
+   PublicMetaDB, OpenSubtitles, SubDL, SubSource, Trakt and Simkl keys; the rest travel through), accounts (the Trakt sign-in; Simkl's travels through), add-ons, servers, the stream
    proxy and playback. Everything else in the record (the other keys, Simkl's token, sections a newer app added,
    fields a newer app added inside these) is carried through unchanged. */
 
@@ -125,6 +125,9 @@ export function readToken(v: unknown): TraktToken | undefined {
  *  and the name the document gives it. A browser that never set one can't clear the apps' copy, so clearing one on the
  *  website stays local. */
 const optionalKeys = [
+  ['mdblistKey', 'mdblistAPIKey'],
+  ['tvdbKey', 'tvdbAPIKey'],
+  ['rpdbKey', 'rpdbAPIKey'],
   ['introDBKey', 'introDBAPIKey'],
   ['publicMetaDBKey', 'publicMetaDBAPIKey'],
   ['openSubtitlesKey', 'openSubtitlesAPIKey'],
@@ -138,8 +141,8 @@ const optionalKeys = [
 const defs: Record<SectionName, SectionDef> = {
   keys: {
     // The key baked into a build is the site's, not the person's: it isn't theirs to sync.
-    // The skip-segment keys go up only once this browser has one, so a browser that never set them can't
-    // clear the apps' copy; clearing one on the website therefore stays local. The client ids are the other
+    // The optional keys go up only once this browser has one, so a browser that never set them can't clear the apps'
+    // copy; clearing one on the website therefore stays local. The client ids are the other
     // way: written as null so a cleared one travels, except that the overlay below drops a null this browser
     // never had a value for.
     value: (s) => ({

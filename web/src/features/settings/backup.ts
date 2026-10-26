@@ -1,5 +1,7 @@
 import { isLiveTVSettings } from '../../lib/livetv/validate'
+import { isSportsSettings } from '../../lib/sports/types'
 import { lastSourceStore } from '../../lib/sources/lastSource'
+import { ratingSources } from '../../lib/ratings/sources'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { isSourceOrdering, normaliseSourceOrdering } from '../../lib/sources/sourceSettings'
 import { isSubtitleOptions, normaliseSubtitleOptions } from '../../lib/subtitles/options'
@@ -63,6 +65,14 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   skipCredits: isSkipBehaviour,
   introDBKey: (v) => typeof v === 'string',
   publicMetaDBKey: (v) => typeof v === 'string',
+  mdblistKey: (v) => typeof v === 'string',
+  tvdbKey: (v) => typeof v === 'string',
+  rpdbKey: (v) => typeof v === 'string',
+  episodeSource: (v) => ['tvdb', 'tmdb', 'trakt'].includes(v as string),
+  ratingsShown: (v) => Array.isArray(v) && v.every((x) => (ratingSources as readonly unknown[]).includes(x)),
+  tapRatingOpensReviews: (v) => typeof v === 'boolean',
+  posterEnhancement: (v) => v === 'off' || v === 'rpdb',
+  seerr: (v) => isObject(v) && typeof v.url === 'string' && typeof v.key === 'string',
   openSubtitlesKey: (v) => typeof v === 'string',
   openSubtitlesUsername: (v) => typeof v === 'string',
   openSubtitlesPassword: (v) => typeof v === 'string',
@@ -92,6 +102,8 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   detailTextSize: (v) => ['small', 'standard', 'large', 'extraLarge'].includes(v as string),
   // Providers (with their logins), the guide's refresh time and the favourite channels, as the apps keep them.
   liveTV: isLiveTVSettings,
+  // Followed teams, TheSportsDB's key and the two switches; a missing field takes its default.
+  sports: isSportsSettings,
   // Home: the shelf list (the apps' ShelfConfig, in the website's shape) and the switches around it.
   shelves: isShelfList,
   heroSource: isHeroSource,
@@ -103,6 +115,7 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   showUpcoming: (v) => typeof v === 'boolean',
   includeWatchlistPremieres: (v) => typeof v === 'boolean',
   upcomingWithinDays: (v) => [3, 7, 14, 30].includes(v as number),
+  filmDates: (v) => v === 'digital' || v === 'theatrical',
   showWatchedBadges: (v) => typeof v === 'boolean',
   showEpisodesRemaining: (v) => typeof v === 'boolean',
 }

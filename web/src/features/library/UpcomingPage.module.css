@@ -1,0 +1,85 @@
+/* Upcoming: a strip of days, the week just gone, then a section for each day with something on. Flat, in
+   the History page's rhythm: a frame with its strip, then what it is. */
+
+.page { max-width: 1280px; }
+
+.tools { display: flex; align-items: center; gap: var(--space-m); min-height: 36px; margin-bottom: var(--space-l); }
+.saved { min-width: 0; font-size: var(--fs-footnote); line-height: 1.35; text-wrap: pretty; }
+.saved:empty { display: none; }
+
+/* The day strip. A day with something on is a button (lighter base, a dot); an empty day is just a day, in
+   ink-3 on the ground with a hairline; today is the lightest step. */
+.cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 52px;
+  height: 68px;
+  border-radius: var(--radius-control);
+  color: var(--ink-3);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  font-family: var(--font);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.cell[data-marked] { background: var(--base-3); box-shadow: none; color: var(--paper); cursor: pointer; transition: background-color var(--dur-state) ease, transform var(--dur-state) var(--ease-out); }
+.cell[data-marked]:hover { background: var(--base-4); }
+.cell[data-marked]:active { transform: scale(0.98); }
+.cell[data-today] { background: var(--base-4); box-shadow: none; color: var(--paper); }
+.cellWeekday { font: 600 var(--fs-caption) / 1 var(--font); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+.cell:not([data-marked]):not([data-today]) .cellWeekday { color: var(--ink-3); }
+.cellNumber { font: 600 var(--fs-headline) / 1.1 var(--font); }
+.cellDot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0; }
+.cell[data-marked] .cellDot { opacity: 1; }
+
+/* Sections: more room above a heading than below it. */
+.day, .justAired { margin-top: var(--section); scroll-margin-top: calc(var(--nav-height) + var(--space-m)); }
+.day:focus-visible { outline: none; }
+.day:focus-visible .dayTitle { outline: 2px solid var(--stock); outline-offset: 4px; border-radius: var(--radius-art); }
+.dayHead { display: flex; align-items: baseline; gap: var(--space-s); margin-bottom: var(--space-s); }
+.dayTitle { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; }
+.dayDate { font-size: var(--fs-footnote); color: var(--ink-3); }
+.arrows { display: none; margin-left: auto; gap: var(--space-xs); align-self: center; }
+@media (hover: hover) and (pointer: fine) and (min-width: 721px) { .arrows { display: inline-flex; } }
+
+/* Just Aired: stills at one size, scrolling sideways at every width. No scroll snapping: episodes arrive as each show's
+   details load, and a snapping row follows the card it had settled on, so new ones in front would scroll it away. */
+.stills { display: flex; gap: var(--space-m); overflow-x: auto; scrollbar-width: none; padding: 6px; margin: -6px; }
+.stills::-webkit-scrollbar { display: none; }
+.still { flex: 0 0 280px; min-width: 0; }
+.stillLink { display: block; color: var(--paper); -webkit-tap-highlight-color: transparent; }
+.stillLink:focus-visible { outline: none; }
+.stillLink:focus-visible > :first-child { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }
+.stillTitle { display: block; margin-top: var(--space-xs); font: 600 var(--fs-small) / 1.3 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stillMeta { display: block; font-size: var(--fs-footnote); line-height: 1.35; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stillLink:hover .stillTitle { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ink-3); }
+
+/* A day's entries: rows with a hairline between, two across once there is room. */
+.rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); column-gap: var(--space-xl); }
+.row { display: flex; align-items: center; gap: var(--space-s); border-bottom: 1px solid var(--rule); }
+.rowLink { display: flex; align-items: center; flex: 1; gap: var(--space-m); min-width: 0; padding: var(--space-xs) 0; color: var(--paper); -webkit-tap-highlight-color: transparent; }
+.rowPlate { flex: none; width: 144px; border-radius: var(--radius-art); }
+.rowText { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.rowTitle { font: 600 var(--fs-small) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rowMeta { font-size: var(--fs-footnote); line-height: 1.35; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rowLink:hover .rowTitle { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ink-3); }
+.rowLink:focus-visible { outline: none; }
+.rowLink:focus-visible .rowPlate { outline: 2px solid var(--stock); outline-offset: 3px; }
+.add { flex: none; }
+
+.more { margin-top: var(--section); font-size: var(--fs-small); }
+
+.ghosts { display: grid; gap: var(--space-m); max-width: 640px; }
+.ghost { height: 90px; border-radius: var(--radius-art); background: var(--base-2); }
+
+@media (max-width: 720px) {
+  .tools { flex-wrap: wrap; row-gap: var(--space-xs); }
+  .still { flex-basis: 240px; }
+  .stills { gap: var(--space-s); margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); }
+  .rowPlate { width: 128px; }
+  /* The label gives way to the icon: the calendar mark still names itself to a screen reader. */
+  .add { width: 36px; padding: 0; }
+  .add span { display: none; }
+}

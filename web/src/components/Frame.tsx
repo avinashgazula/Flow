@@ -64,9 +64,17 @@ function useStripLayout(facts: Fact[], kind: StripKind, active: boolean) {
   const shown = layout && extra > 0 ? { ...layout, facts: dropLeast(layout.facts, extra) } : layout
   useLayoutEffect(() => {
     const el = text.current
-    if (el && shown && el.scrollWidth > el.clientWidth + 1 && shown.facts.length > 1) setBump({ key, n: extra + 1 })
+    if (el && shown && shown.facts.length > 1 && cutOff(el)) setBump({ key, n: extra + 1 })
   })
   return { strip, text, layout: shown }
+}
+
+/** Whether the print is wider than its box, by any amount: the browser draws its ellipsis for a fraction of a pixel,
+ *  which scrollWidth (a whole number, equal to the box's own width when nothing is wider) can't see. */
+function cutOff(el: HTMLElement): boolean {
+  const range = document.createRange()
+  range.selectNodeContents(el)
+  return range.getBoundingClientRect().width > el.getBoundingClientRect().width + 0.01
 }
 
 /** Without its `n` least important facts (never the last one standing). */

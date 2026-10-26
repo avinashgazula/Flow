@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { posterOf } from '../../lib/ratings/posters'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Artwork } from '../../components/Artwork'
@@ -288,7 +289,7 @@ function TopResult({ item }: { item: MediaResult }) {
       </h2>
       <article className={s.top}>
         <Link {...link} data-result="" className={s.topPlate} onPointerEnter={() => prefetchDetail(item)} onFocus={() => prefetchDetail(item)} onClick={markZoomSource} viewTransition aria-label={`${item.title}, top result${onServer ? ', on your server' : ''}`}>
-          <Plate shape="poster" artPath={item.poster} sizes="160px" print={[...pickPrint(item, known, now, { locale: userLocale }), ...(onServer ? serverPrint : [])]} fallback={item.title} hideStrip />
+          <Plate shape="poster" artPath={posterOf(item)} sizes="160px" print={[...pickPrint(item, known, now, { locale: userLocale }), ...(onServer ? serverPrint : [])]} fallback={item.title} hideStrip />
         </Link>
         <div className={s.topText}>
           <Link {...link} className={s.topTitle} onPointerEnter={() => prefetchDetail(item)} tabIndex={-1}>

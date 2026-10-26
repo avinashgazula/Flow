@@ -128,7 +128,8 @@ function EpisodeCard({
       {veiled && <span className={s.veil} aria-hidden="true" />}
       {aired && (
         <button type="button" className={s.mark} data-on={watched ? '' : undefined} onClick={onToggle} aria-label={`${watched ? 'Mark as unwatched' : 'Mark as watched'}: episode ${e.number}, ${e.name}`}>
-          <Icon name="check" size={16} strokeWidth={2.8} />
+          {/* An empty ring until it is watched, then the check: the state is the shape, not only the colour. */}
+          {watched ? <Icon name="check" size={16} strokeWidth={2.8} /> : <span className={s.ring} aria-hidden="true" />}
         </button>
       )}
     </FrameCard>

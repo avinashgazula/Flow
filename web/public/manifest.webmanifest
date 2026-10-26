@@ -28,7 +28,7 @@
     {
       "name": "Upcoming",
       "description": "What’s next in your library",
-      "url": "library",
+      "url": "library?list=upcoming",
       "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {

@@ -1,4 +1,5 @@
 import { prefetchDetail } from '../lib/queries'
+import { posterOf } from '../lib/ratings/posters'
 import type { MediaItem } from '../lib/tmdb/types'
 import { pickPrint, spokenPick } from '../features/home/logic'
 import { FrameCard } from './Frame'
@@ -11,7 +12,7 @@ function Posters({ items, now }: { items: MediaItem[]; now: number }) {
     <FrameCard
       key={`${m.type}${m.id}`}
       shape="poster"
-      artPath={m.poster}
+      artPath={posterOf(m)}
       sizes="(max-width: 720px) 30vw, 150px"
       print={pickPrint(m, undefined, now)}
       fallback={m.title}

@@ -1,4 +1,6 @@
+import type { SportsSettings } from '../sports/types'
 import { defaultLiveTV, type LiveTVSettings } from '../livetv/types'
+import type { RatingSource } from '../ratings/sources'
 import type { SourceOrdering } from '../sources/sourceSettings'
 import type { SubtitleOptions } from '../subtitles/options'
 import type { AddonManifest } from '../sources/types'
@@ -125,6 +127,22 @@ export interface Settings {
    *  mark. Named as in Flow Sync (`introDBAPIKey`, `publicMetaDBAPIKey`). Empty means not asked. */
   introDBKey: string
   publicMetaDBKey: string
+  // Ratings, requests and episode numbering (Settings → Metadata and Requests). Like the fields above they are left out of
+  // the defaults, which keeps the first visit's code small; absent means the apps' default, noted on each.
+  /** MDBList, TVDB and RatingPosterDB API keys, named as in Flow Sync (`mdblistAPIKey`, `tvdbAPIKey`, `rpdbAPIKey`). */
+  mdblistKey?: string
+  tvdbKey?: string
+  rpdbKey?: string
+  /** Where episode numbering comes from. Absent is TVDB, the apps' default; without its key that is TMDB's. */
+  episodeSource?: 'tvdb' | 'tmdb' | 'trakt'
+  /** The scores a title page shows, in order. Absent is all of them. */
+  ratingsShown?: RatingSource[]
+  /** A score opens that site's page for the title. Absent is on: on the web it is a plain link. */
+  tapRatingOpensReviews?: boolean
+  /** Rated posters from RatingPosterDB (needs its key). Absent is off. */
+  posterEnhancement?: 'off' | 'rpdb'
+  /** The Seerr, Overseerr or Jellyseerr instance Request asks. Not part of Flow Sync yet. */
+  seerr?: { url: string; key: string }
   /** The subtitle services' keys and logins (Settings → Playback), named as in Flow Sync (`openSubtitlesAPIKey`,
    *  `openSubtitlesUsername`, `openSubtitlesPassword`, `subdlAPIKey`, `subSourceAPIKey`). Absent until set, which keeps
    *  them out of the code that loads first; the website sends no login to OpenSubtitles (see lib/subtitles/providers.ts). */
@@ -174,6 +192,9 @@ export interface Settings {
   detailTextSize: DetailTextSize
   /** IPTV providers, the guide's refresh time and the favourite channels (FlowKit's LiveTVSettings). */
   liveTV: LiveTVSettings
+  /** Followed teams, TheSportsDB's key and how a game opens (the apps' `sports`). Absent until the first change; read it
+   *  through `sportsSettings`, which supplies the defaults, so none of this loads with the first page. */
+  sports?: SportsSettings
   /** Home's shelves, in order: built-in rows, Discover shelves and (later) lists, as the apps' `shelves`. */
   shelves: ShelfConfig[]
   /** Where Home's top pick comes from when nothing is in progress, and a second source mixed in. */
@@ -190,6 +211,8 @@ export interface Settings {
   /** Upcoming also lists season premieres of shows on the watchlist. */
   includeWatchlistPremieres: boolean
   upcomingWithinDays: number
+  /** Which release a watchlisted film is dated by in Upcoming (the apps' Film Dates). Digital when absent. */
+  filmDates?: 'digital' | 'theatrical'
   /** WATCHED on a poster's strip, and the episodes of a series left. */
   showWatchedBadges: boolean
   showEpisodesRemaining: boolean
