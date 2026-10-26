@@ -3,6 +3,7 @@
    hls.js and the remuxer are dynamic imports: a film that plays natively never downloads them. */
 
 import type { HlsConfig } from 'hls.js'
+import type { PictureCue } from '../../lib/remux/pictures'
 import type { Source } from '../../lib/sources'
 import { proxyLoader } from '../../lib/sources/hlsProxy'
 import { needsProxy, proxied, rememberBlocked, streamProxy } from '../../lib/sources/proxy'
@@ -22,6 +23,12 @@ export interface Track {
   note?: string
   /** Plays only by being converted, so a track in the same language that plays as it is comes first. */
   converted?: boolean
+}
+
+/** Picture subtitles a player can draw: what is on screen at a time, and the video's shape, which the subtitle canvas is laid on. */
+export interface PictureSource {
+  at(time: number): PictureCue | null
+  video: { width: number; height: number; displayWidth?: number; displayHeight?: number } | undefined
 }
 
 /** What an engine knows about its download, in bytes a second: how fast the file is arriving, how
@@ -44,8 +51,14 @@ export interface Engine {
   /** Where the seek preview's pictures come from, made the first time it is asked for (the scrubber
    *  asks on the first hover); null when this engine can't give any. Torn down with the engine. */
   preview?(): PreviewSource | null
-  /** The stream's chapter names, for engines that read them (the remuxer): where "Opening" and "Ending" begin. */
+  /** The stream's chapters, for engines that read them (the remuxer): where "Opening" and "Ending" begin, and what the
+   *  Chapters page lists. */
   chapters?(): { title: string; start: number }[]
+  /** Called when the chapters arrive, which can be after the engine is up (a list at the far end of a big file). */
+  onChapters?(listener: (chapters: { title: string; start: number }[]) => void): () => void
+  /** The picture subtitles (Blu-ray PGS, DVD VobSub) of the track `selectSubtitle` last chose, or null when it chose
+   *  none or a text track. Drawn by PictureSubtitles.tsx. */
+  pictures?(): PictureSource | null
   audio(): { tracks: Track[]; selected?: string }
   selectAudio(id: string): void | Promise<void>
   /** Subtitles inside the stream. External files are the controller's job. */
@@ -383,6 +396,8 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
   let unsubscribe: (() => void) | undefined
   let current: TextTrack | null = null
   let preview: BitmapPreview | undefined
+  /** Set while a picture subtitle track is the one chosen; one object per choice, so the screen only re-renders on a change. */
+  let picture: PictureSource | null = null
 
   return {
     kind: 'remux',
@@ -392,6 +407,8 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
     // The session measures the download itself (the reader in lib/remux); an older one has nothing to say.
     netStats: () => (remux as { netStats?: NetStats | null }).netStats ?? null,
     chapters: () => remux.chapters,
+    onChapters: (listener) => remux.onChapters(listener),
+    pictures: () => picture,
     videoInfo: () => (remux.video ? { codec: remux.video.codec, range: remux.video.range } : undefined),
     audio: () => ({
       tracks: remux.audioTracks.map((t) => ({
@@ -411,15 +428,23 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
         id: String(t.id),
         label: trackLabel({ name: t.label, language: t.language, forced: t.forced }),
         language: t.language,
-        unavailable: t.kind === 'image' ? 'Picture subtitles aren’t supported yet' : undefined,
+        unavailable: t.kind === 'unsupported' ? 'This subtitle format isn’t supported' : undefined,
       })),
     async selectSubtitle(id) {
       unsubscribe?.()
       unsubscribe = undefined
       if (current) current.mode = 'disabled'
       current = null
+      picture = null
+      remux.selectPictures(null)
       if (id === null) return null
       const info = remux.subtitleTracks.find((t) => String(t.id) === id)
+      if (info?.kind === 'image') {
+        // Bitmaps, not text: they come from the worker decoded and are drawn on a canvas, so there is no TextTrack.
+        remux.selectPictures(Number(id))
+        picture = { at: (time) => remux.pictureAt(time), video: remux.video }
+        return null
+      }
       const track = video.addTextTrack('subtitles', info?.label ?? 'Subtitles', info?.language ?? '')
       ownTracks.add(track)
       track.mode = 'hidden'

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { type PictureCue, PictureTrack, parsePictureCues, rgbaOf } from './pictures'
+import { rgbaOf } from '../../features/player/pictureLayout'
+import { type PictureCue, PictureTrack, parsePictureCues } from './pictures'
 
 /** What picture.rs `encode` writes: big-endian, a cue after a cue. */
 function encode(cues: { start: number; end?: number; forced?: boolean; canvas?: [number, number]; palette?: number[][]; objects?: { x: number; y: number; w: number; h: number; pixels: number[] }[] }[]): Uint8Array {

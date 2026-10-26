@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { initSync, Remuxer } from './pkg/flow_remux.js'
-import { parsePictureCues, PictureTrack, rgbaOf } from './pictures'
+import { rgbaOf } from '../../features/player/pictureLayout'
+import { parsePictureCues, PictureTrack } from './pictures'
 import type { HeaderInfo } from './protocol'
 
 /* The built WebAssembly module itself, driven the way the worker drives it, against real files: what the crate's

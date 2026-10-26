@@ -74,21 +74,6 @@ export function parsePictureCues(buffer: ArrayBuffer | Uint8Array): PictureCue[]
   return out
 }
 
-/** The pixels of one object as straight RGBA, for `ImageData`. Indices past the palette are transparent. */
-export function rgbaOf(object: PictureObject, palette: Uint8Array): Uint8ClampedArray<ArrayBuffer> {
-  const out = new Uint8ClampedArray(object.width * object.height * 4)
-  const { indices } = object
-  for (let i = 0; i < indices.length; i++) {
-    const from = indices[i]! * 4
-    if (from + 3 >= palette.length) continue
-    out[i * 4] = palette[from]!
-    out[i * 4 + 1] = palette[from + 1]!
-    out[i * 4 + 2] = palette[from + 2]!
-    out[i * 4 + 3] = palette[from + 3]!
-  }
-  return out
-}
-
 /** The bytes a cue holds, for the memory budget. */
 const sizeOf = (cue: PictureCue) => cue.palette.length + cue.objects.reduce((n, o) => n + o.indices.length, 64)
 

@@ -6,12 +6,12 @@
 import { useSyncExternalStore } from 'react'
 import type { Source } from '../../lib/sources'
 import { settingsStore } from '../../lib/store/settings'
-import { ownTracks, type Engine, type Track } from './engine'
+import { ownTracks, type Engine, type PictureSource, type Track } from './engine'
 import { pickAudio, pickSubtitle, releaseLanguage, trackLanguage } from './languages'
 import { detectPlatform, launchURL, streamLink, externalPlayerTitle, type ExternalPlayerId } from './externalPlayers'
 import { planReplay, replayDone, replaySeconds } from './replay'
 import { prefs, titleChoices } from './session'
-import type { SkipSegment } from './segments'
+import type { Chapter, SkipSegment } from './segments'
 import { sleepDoneNotice, sleepSetNotice, sleepTimer, type SleepChoice } from './sleepTimer'
 import { clampDelay, rememberDelay, rememberedDelay } from './subtitleDelay'
 import { parseSubtitles } from './subtitles'
@@ -62,6 +62,10 @@ export interface PlayerState {
   /** What can be skipped in this stream (an intro, a recap, the credits), in time order; empty until a
    *  server, a service or the file's chapters say. */
   segments: SkipSegment[]
+  /** The stream's chapters in time order, from the server (Jellyfin) or the file; empty when it has none. */
+  chapters: Chapter[]
+  /** The picture subtitles (PGS, VobSub) being drawn, when the chosen subtitle track is one. */
+  picture: PictureSource | null
   /** The Up Next card (or Because You Watched) is on screen, so the Skip button leaves that corner to it. */
   upNext: boolean
   /** The sleep timer: minutes, or "end" for the end of this episode or film. */
@@ -128,6 +132,8 @@ export class PlayerController {
     pip: false,
     cast: null,
     segments: [],
+    chapters: [],
+    picture: null,
     upNext: false,
     sleep: null,
     fast: false,
@@ -284,7 +290,7 @@ export class PlayerController {
     this.external.clear()
     this.subtitleToken++
     this.endReplay()
-    this.set({ audio: [], audioId: undefined, blocked: engine?.fallback === 'blocked', proxyError: engine?.proxyError, subtitles: [], subtitleId: null, subtitleTrack: null })
+    this.set({ audio: [], audioId: undefined, blocked: engine?.fallback === 'blocked', proxyError: engine?.proxyError, subtitles: [], subtitleId: null, subtitleTrack: null, picture: null, chapters: [] })
     if (engine) this.refreshTracks()
     this.set({ boostable: !!engine && !!source && !!this.boost?.supported && canBoost({ engine: engine.kind, blocked: engine.fallback === 'blocked', url: source.url, origin: location.origin }) })
     void this.applyBoost(false)
@@ -580,6 +586,7 @@ export class PlayerController {
   // MARK: Skipping
 
   setSegments = (segments: SkipSegment[]) => this.set({ segments })
+  setChapters = (chapters: Chapter[]) => this.set({ chapters })
   setUpNextShown = (upNext: boolean) => this.set({ upNext })
 
   /** What S and Enter do right now, by who offers it (the Skip button, the Up Next card). */
@@ -617,7 +624,7 @@ export class PlayerController {
     const previous = this.state.subtitleTrack
     if (previous && ownTracks.has(previous)) previous.mode = 'disabled'
     const info = id ? this.state.subtitles.find((t) => t.id === id) : undefined
-    this.set({ subtitleId: id, subtitleTrack: null })
+    this.set({ subtitleId: id, subtitleTrack: null, picture: null })
     if (remember) {
       this.manual.subtitles = true
       if (this.context.key) titleChoices.set(this.context.key, { subtitle: id ? info && trackLanguage(info) : null })
@@ -644,7 +651,7 @@ export class PlayerController {
     }
     if (token !== this.subtitleToken) return
     if (track) track.mode = 'hidden'
-    this.set({ subtitleTrack: track })
+    this.set({ subtitleTrack: track, picture: this.engine?.pictures?.() ?? null })
   }
 
   /** C: subtitles off, or back on with the last ones chosen (else ones in the viewer's languages). */
