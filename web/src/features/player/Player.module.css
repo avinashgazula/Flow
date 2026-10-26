@@ -84,11 +84,14 @@
   --sub-base: clamp(19px, 2.4vw + 0.6vh, 46px);
   /* What the viewer's lift is a fraction of: the picture, which here is the whole window. */
   --sub-room: 100dvh;
+  /* How far above the window's bottom the line rests, and how far Because You Watched's card rides up with the controls. */
+  --rest: max(5.5vh, 28px);
+  --card-lift: 106px;
   position: absolute;
   z-index: 2;
   left: calc(var(--inset-left) + 6%);
   right: calc(var(--inset-right) + 6%);
-  bottom: calc(var(--inset-bottom) + max(5.5vh, 28px));
+  bottom: calc(var(--inset-bottom) + var(--rest));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -106,7 +109,10 @@
 /* With the controls up the line clears the scrubber, or stays where the viewer put it when that's higher. */
 .subtitles[data-lifted] { transform: translateY(calc(-1 * max(var(--lift, 96px), var(--sub-lift, 0) * var(--sub-room)))); }
 @media (max-height: 500px) {
-  .subtitles { --lift: 78px; --sub-base: clamp(17px, 2vw + 1vh, 28px); bottom: calc(var(--inset-bottom) + 16px); }
+  .subtitles { --lift: 78px; --sub-base: clamp(17px, 2vw + 1vh, 28px); --rest: 16px; }
+}
+@media (max-width: 720px), (max-height: 500px) {
+  .subtitles { --card-lift: 94px; }
 }
 
 /* The options panel is on its Subtitle Style page. Where the window is wide the panel sits on the right, so
@@ -114,6 +120,17 @@
    and the line has the room below it. Either way the line being judged is never behind the panel. */
 @media (min-width: 900px), (max-height: 500px) {
   .root[data-styling] .subtitles { right: calc(var(--inset-right) + var(--margin) + min(380px, 100% - 32px) + 24px); }
+}
+
+/* Because You Watched stands in the picture's corner as the credits roll (FilmExtras measures it onto the player's
+   element). Where the window is wide the line keeps to the picture beside it; where it is not, the card spans the
+   width, so the line rides above it. Either way the line is never behind the card. */
+@media (min-width: 900px), (min-width: 761px) and (max-height: 500px) {
+  .root[data-card] .subtitles { right: calc(var(--inset-right) + var(--margin) + var(--card-w, 0px) + 24px); }
+}
+@media (max-width: 899px) and (min-height: 501px), (max-width: 760px) {
+  .root[data-card] .subtitles { transform: translateY(calc(-1 * (var(--card-h, 0px) + 36px - var(--rest)))); }
+  .root[data-card] .subtitles[data-lifted] { transform: translateY(calc(-1 * (var(--card-h, 0px) + 36px - var(--rest) + var(--card-lift)))); }
 }
 
 /* Keyboard feedback: a flat disc in the middle that's gone in half a second. */

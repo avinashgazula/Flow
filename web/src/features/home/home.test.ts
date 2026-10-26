@@ -92,6 +92,8 @@ describe('words for titles and screen readers', () => {
   it('gives a title its plain facts', () => {
     expect(pickMeta(item())).toBe('Film · 2024 · Science Fiction, Adventure')
     expect(pickMeta(item({ type: 'show', genres: [18], year: undefined }))).toBe('Series · Drama')
+    // A card whose strip already says Film leaves it out of the line under the title.
+    expect(pickMeta(item(), { kind: false })).toBe('2024 · Science Fiction, Adventure')
   })
 
   it('reads a started title naturally, with the end time in the locale and the format', () => {

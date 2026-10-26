@@ -106,6 +106,9 @@ export function Skip({ controller, hasNext, onNext, hidesCredits }: { controller
   }, [note])
 
   if (panel || upNext || (!shown && !note)) return null
+  // The credits of a film with a scene in or after them are being told to stay for it ("Stay until the end"): skipping
+  // them is the opposite of the note, so the button waits quietly and is not the one yellow action on the screen.
+  const quiet = !!hidesCredits && shown?.segment.kind === 'credits'
   return (
     <div className={s.skipLayer} data-lifted={lifted ? '' : undefined}>
       {note && (
@@ -126,7 +129,7 @@ export function Skip({ controller, hasNext, onNext, hidesCredits }: { controller
       {shown && (
         <button
           key={shown.segment.start}
-          className={`btn btn-primary ${s.skipButton}`}
+          className={`btn ${quiet ? 'btn-secondary' : 'btn-primary'} ${s.skipButton}`}
           data-leaving={shown.leaving ? '' : undefined}
           tabIndex={shown.leaving ? -1 : 0}
           onClick={() => skipSegment(controller, shown.segment, latest.current, false)}
