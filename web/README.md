@@ -232,8 +232,8 @@ What a web page can do, checked against the live services:
   The file it points to is on `www.opensubtitles.com`, which sends no CORS headers: it is fetched through the stream proxy, so
   `www.opensubtitles.com` (and `dl.opensubtitles.org`) belong in the proxy's `ALLOWED_HOSTS`.
 - **SubDL** allows every origin for its API and `dl.subdl.com`; its files are zips.
-- **Wyzie** has moved to `sub.wyzie.io` and wants a free key (`key=`; claim one at store.wyzie.io/redeem). The apps still ask
-  `sub.wyzie.ru` without one, which answers 401 now. The key is kept on this device: the apps have no field for it.
+- **Wyzie** has moved to `sub.wyzie.io` and wants a free key (`key=`; claim one at store.wyzie.io/redeem). The apps ask the same
+  host, and the key syncs as `wyzieAPIKey`.
 - **SubSource** sends no `Access-Control-Allow-Origin` at all and its key is a header the stream proxy doesn't pass on, so a web
   page can't use it. It is tried, and the page says why when the browser refuses; the key is kept for Flow Sync and the apps.
 
