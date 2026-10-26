@@ -6,7 +6,9 @@ import { AppearanceSection } from './AppearanceSection'
 import { CatalogueSection } from './CatalogueSection'
 import { DataSection } from './DataSection'
 import { LiveTVSection } from './LiveTVSection'
+import { MetadataSection } from './MetadataSection'
 import { PlaybackSection } from './PlaybackSection'
+import { RequestsSection } from './RequestsSection'
 import { ServersSection } from './ServersSection'
 import { SourcesSection } from './SourcesSection'
 import s from './SettingsScreen.module.css'
@@ -17,9 +19,11 @@ const ShelvesSection = lazy(() => import('./ShelvesSection').then((m) => ({ defa
 const sections: { id: string; title: string; body: ReactNode }[] = [
   { id: 'appearance', title: 'Appearance', body: <AppearanceSection /> },
   { id: 'catalogue', title: 'Catalogue', body: <CatalogueSection /> },
+  { id: 'metadata', title: 'Metadata', body: <MetadataSection /> },
   { id: 'shelves', title: 'Shelves', body: <Suspense fallback={<p className={s.hint}>Loading shelves…</p>}><ShelvesSection /></Suspense> },
   { id: 'addons', title: 'Stream Add-ons', body: <AddonsSection /> },
   { id: 'servers', title: 'Media Servers', body: <ServersSection /> },
+  { id: 'requests', title: 'Requests', body: <RequestsSection /> },
   { id: 'sources', title: 'Sources', body: <SourcesSection /> },
   { id: 'livetv', title: 'Live TV', body: <LiveTVSection /> },
   { id: 'playback', title: 'Playback', body: <PlaybackSection /> },

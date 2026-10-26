@@ -6,7 +6,6 @@ import { routeTree } from './routeTree.gen'
 import { ErrorScreen } from './components/ErrorScreen'
 import { cacheBuster, persister, queryClient } from './lib/queryClient'
 import { checkConvertAudio } from './lib/audio/support'
-import { checkSmoothVideo } from './lib/sources/smooth'
 import { listenForInstall } from './lib/pwa/install'
 import { registerServiceWorker } from './lib/pwa/update'
 import { settingsStore } from './lib/store/settings'
@@ -66,9 +65,9 @@ listenForInstall()
 void checkConvertAudio()
 
 // Ask the browser which kinds of video it decodes smoothly (4K HEVC without a hardware decoder, say),
-// so ranking can put those lower. Once the page is idle: nothing waits on the answer.
+// so ranking can put those lower. Once the page is idle, and from a chunk of its own: nothing waits on the answer.
 const whenIdle = window.requestIdleCallback ? (run: () => void) => window.requestIdleCallback(run, { timeout: 2000 }) : (run: () => void) => setTimeout(run, 300)
-whenIdle(() => void checkSmoothVideo())
+whenIdle(() => void import('./lib/sources/smooth').then((m) => m.checkSmoothVideo()))
 
 // A browser with Flow Sync on pulls at load. The sync code is its own chunk, fetched only when the
 // setup is there (lib/sync/config.ts names the same key), so a browser without sync never downloads it.

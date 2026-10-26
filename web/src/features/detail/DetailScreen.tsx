@@ -18,6 +18,8 @@ import { useNearScreen } from '../../lib/useNearScreen'
 import { allWatched, nextUp, pickShuffle, watchedEpisodes } from '../../lib/watching'
 import { watchedFraction } from '../home/logic'
 import { About } from './About'
+import { Ratings } from './Ratings'
+import { RequestButton } from './RequestButton'
 import { Episodes } from './Episodes'
 import { FilmCan } from './FilmCan'
 import { airedRefs, cardOf, metaLine, playLabel, playsFirst, titlePrint, todayOf } from './logic'
@@ -122,8 +124,6 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   if (!d) return <Ghost />
 
   const label = playLabel(d, progress, upNext, now, userLocale)
-  const rated = d.rating ? d.rating.toFixed(1) : undefined
-  const tmdbPage = `https://www.themoviedb.org/${type === 'movie' ? 'movie' : 'tv'}/${d.id}`
   const card = cardOf(d)
   const trailers = d.trailers ?? []
   const isWatched = type === 'movie' ? watched : showDone
@@ -170,16 +170,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
           <TitleName title={d.title} logo={d.logo} />
           <p className={s.meta}>{metaLine(d, genreNames(d.genres, type))}</p>
 
-          {rated && (
-            <ul className={s.ratings}>
-              <li>
-                <a href={tmdbPage} target="_blank" rel="noreferrer" aria-label={`TMDB rating ${rated}${d.voteCount ? ` from ${compact(d.voteCount)} votes` : ''}. Opens TMDB.`}>
-                  <b className={s.score}>{rated}</b>
-                  <span className={s.source}>TMDB{d.voteCount ? ` · ${compact(d.voteCount)} votes` : ''}</span>
-                </a>
-              </li>
-            </ul>
-          )}
+          <Ratings detail={d} ready={loaded} />
 
           <div className={s.actions}>
             <button className="btn btn-primary btn-large" onClick={() => play()} aria-label={label.spoken}>
@@ -190,6 +181,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
                 <Icon name="trailer" size={18} /> Trailer
               </button>
             )}
+            <RequestButton detail={d} onServer={!search.finished || search.sources.some((x) => x.origin === 'jellyfin' || x.origin === 'emby' || x.origin === 'plex')} onNote={setNote} />
           </div>
 
           <div className={s.textActions} role="group" aria-label="Your list">
@@ -346,8 +338,6 @@ function Ghost() {
     </div>
   )
 }
-
-const compact = (n: number) => new Intl.NumberFormat('en', { notation: 'compact' }).format(n)
 
 /** Opens the system's share sheet, or copies the link; true when it copied, so the button can say so. */
 async function share(d: MediaDetail): Promise<boolean> {

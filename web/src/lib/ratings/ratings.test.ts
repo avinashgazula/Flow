@@ -3,7 +3,7 @@ import { settingsStore } from '../store/settings'
 import { checkMDBListKey, mdblistRatings, mergeRatings, parseRatings, RatingsError, traktRating } from './mdblist'
 import { demoRatings, loadRatings } from './load'
 import { posterOf, rpdbPoster } from './posters'
-import { ratingLink, ratingSources, scoreText, shownSources, spokenScore } from './sources'
+import { isDefaultSources, moveSource, orderedSources, ratingLink, ratingSources, scoreText, shownSources, spokenScore, toggleSource } from './sources'
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 const stub = (fn: (url: string, init?: RequestInit) => Response | Promise<Response>) => fn as unknown as typeof fetch
@@ -123,6 +123,32 @@ describe('the row', () => {
     expect(shownSources(undefined)).toEqual(['imdb', 'tomatometer', 'popcornmeter', 'metacritic', 'tmdb', 'letterboxd', 'trakt'])
     expect(shownSources(['trakt', 'mal', 'imdb', 'trakt', 3])).toEqual(['trakt', 'imdb'])
     expect(shownSources([])).toEqual([])
+  })
+})
+
+describe('choosing and ordering the scores', () => {
+  it('lists the shown ones first, then the hidden ones in the apps’ order', () => {
+    expect(orderedSources(['trakt', 'imdb'])).toEqual(['trakt', 'imdb', 'tomatometer', 'popcornmeter', 'metacritic', 'tmdb', 'letterboxd'])
+    expect(orderedSources([])).toEqual([...ratingSources])
+  })
+
+  it('moves a shown score one place, and stays put at the ends or when hidden', () => {
+    expect(moveSource(['imdb', 'trakt', 'tmdb'], 'trakt', -1)).toEqual(['trakt', 'imdb', 'tmdb'])
+    expect(moveSource(['imdb', 'trakt', 'tmdb'], 'trakt', 1)).toEqual(['imdb', 'tmdb', 'trakt'])
+    expect(moveSource(['imdb', 'trakt'], 'imdb', -1)).toEqual(['imdb', 'trakt'])
+    expect(moveSource(['imdb', 'trakt'], 'trakt', 1)).toEqual(['imdb', 'trakt'])
+    expect(moveSource(['imdb'], 'tmdb', 1)).toEqual(['imdb'])
+  })
+
+  it('hides a shown score and adds a hidden one at the end', () => {
+    expect(toggleSource(['imdb', 'trakt'], 'imdb')).toEqual(['trakt'])
+    expect(toggleSource(['imdb', 'trakt'], 'tmdb')).toEqual(['imdb', 'trakt', 'tmdb'])
+  })
+
+  it('knows the default', () => {
+    expect(isDefaultSources([...ratingSources])).toBe(true)
+    expect(isDefaultSources(['imdb'])).toBe(false)
+    expect(isDefaultSources([...ratingSources].reverse())).toBe(false)
   })
 })
 

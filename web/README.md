@@ -265,6 +265,37 @@ authorization-code flow with PKCE (no client secret, as in the apps). Trakt's AP
   An episode whose removal is still waiting isn't brought back by the next pull.
 - **Budget.** `lib/trakt/boot.ts` is the only part in the first load; the sign-in, sync and scrobbler are lazy chunks.
 
+## Ratings, requests and episode numbering
+
+Settings → Metadata and Requests hold the keys and choices; every key is checked with its service before it is kept.
+
+- **Ratings** (`lib/ratings/`, `features/detail/Ratings.tsx`). The title page prints IMDb, Rotten Tomatoes, Popcornmeter,
+  Metacritic, TMDB, Letterboxd and Trakt as aligned numbers with the site's name under each (no logos or boxes), from
+  MDBList with the viewer's key, as FlowKit's `MDBListClient` and `CatalogService.ratings`. TMDB's own score is there at
+  once, and Trakt's community score is asked for directly when MDBList lacks it. Settings → Metadata → Ratings Shown
+  chooses and orders them (arrows, so a keyboard works). **Tap a Rating** opens that site's page (`RatingLinks`); it is
+  on by default here, where the apps default it off, because a score on the web is a plain link. Sample data answers with
+  the apps' sample formulas. The apps' **rating icon packs** (custom logos from a JSON address) are left out: the title
+  page is numbers and names.
+- **Poster Enhancement** swaps a poster's address for RatingPosterDB's (`posterOf` in `lib/ratings/posters.ts`, used by
+  the poster cards and search results), off by default; `fallback=true` makes the service answer with the plain poster
+  when it has no rated art. A change applies to posters rendered afterwards.
+- **Requests** (`lib/requests/seerr.ts`, `RequestButton.tsx`). With a Seerr, Overseerr or Jellyseerr connected, a title
+  none of the viewer's media servers has gets a Request button; its words are Request, Requested, Processing and
+  Available. A series with more than one season asks All Seasons or Latest Season in place. The address `demo.flow.invalid`
+  answers from the sample catalogue.
+- **Episode numbering** (`lib/tvdb/`). Settings → Metadata → Episode Source is TVDB by default (as the apps), TMDB or
+  Trakt. With the TVDB key, `q.season` reads the series' episodes from TVDB once (`lib/tvdb/season.ts`), fills TMDB's
+  stills, scores and missing words in where the numbering lines up (`withTMDB`, from `EpisodeProvider`), and falls back to
+  TMDB's own list on any failure. Because every screen reads episodes through `q.season`, Next Up, the player and Home
+  follow the numbering too. The season list itself still comes from TMDB, as in the apps.
+- **CORS.** MDBList, RatingPosterDB, TVDB (login POST and the Authorization header on reads) and Trakt all answer browsers
+  with `Access-Control-Allow-Origin: *`, checked from Chromium and Firefox, so none of them uses the stream proxy. Seerr
+  can't use it either: the proxy only fetches with GET and passes no headers on, and a request is a POST with `X-Api-Key`.
+  The instance has to allow web pages itself (a reverse proxy adding CORS headers); Settings says so when it can't be read.
+- **Sync.** `mdblistAPIKey`, `tvdbAPIKey` and `rpdbAPIKey` travel in the `keys` section, written only once this browser
+  has one so a blank browser never clears the apps' copy. The Seerr address and key stay in this browser.
+
 ## Title pages
 
 `features/detail/` is the page for a film or series, matching the apps' Detail view:

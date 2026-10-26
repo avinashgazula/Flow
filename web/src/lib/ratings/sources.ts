@@ -80,6 +80,25 @@ export function spokenScore(source: RatingSource, text: string): string {
   }
 }
 
+/** Every source with the shown ones first, in their order, then the hidden ones in the apps' order: what Settings lists,
+ *  so an arrow only ever reorders what is on screen. */
+export const orderedSources = (shown: readonly RatingSource[]): RatingSource[] => [...shown, ...ratingSources.filter((s) => !shown.includes(s))]
+
+/** One place up or down among the shown scores; the list as it was if the source is hidden or already at that end. */
+export function moveSource(shown: readonly RatingSource[], source: RatingSource, direction: -1 | 1): RatingSource[] {
+  const from = shown.indexOf(source)
+  const to = from + direction
+  if (from < 0 || to < 0 || to >= shown.length) return [...shown]
+  const out = [...shown]
+  ;[out[from], out[to]] = [out[to]!, out[from]!]
+  return out
+}
+
+/** A shown score is hidden; a hidden one joins the end of the shown ones. */
+export const toggleSource = (shown: readonly RatingSource[], source: RatingSource): RatingSource[] => (shown.includes(source) ? shown.filter((s) => s !== source) : [...shown, source])
+
+export const isDefaultSources = (shown: readonly RatingSource[]) => shown.length === ratingSources.length && shown.every((s, i) => s === ratingSources[i])
+
 /** What a link needs to know of a title. */
 export interface LinkTarget {
   type: MediaType
