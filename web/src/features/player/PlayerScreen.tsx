@@ -30,6 +30,7 @@ import { StillWatchingPrompt } from './StillWatchingPrompt'
 import type { StillWatching } from './stillWatching'
 import { StruggleNotice } from './Struggle'
 import { UpNext } from './UpNext'
+import { useServerReport } from './useServerReport'
 import { useTraktScrobble } from './useTraktScrobble'
 import s from './Player.module.css'
 
@@ -193,7 +194,8 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     if (from === undefined && !offeredResume.current) {
       // Resume is offered once, for the first source; switching sources keeps the position instead.
       offeredResume.current = true
-      const resume = resumePosition(saved, epRef, next.serverPosition)
+      // Track Only With Your Tracking Service: the server's own resume point is ignored.
+      const resume = resumePosition(saved, epRef, settingsStore.get().trackOnlyWithTracker ? undefined : next.serverPosition)
       if (resume) {
         from = resume
         setResumeAt(resume)
@@ -503,6 +505,9 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     const { item: it, epRef: ep } = latest.current
     return started.current && it ? { item: it, episode: ep, position: position.current, duration: length.current } : null
   })
+
+  // The media server the file comes from, told what plays so its Continue Watching and watched mark follow.
+  useServerReport(video, phase === 'playing', source, () => (started.current ? { position: position.current, duration: length.current } : null))
 
   // The tab's title, and the system's Now Playing (lock screen, media keys, Control Centre).
   useEffect(() => {

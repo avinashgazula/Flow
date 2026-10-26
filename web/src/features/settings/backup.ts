@@ -40,6 +40,15 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   includeAdult: (v) => typeof v === 'boolean',
   addons: (v) => Array.isArray(v) && v.every((a) => isObject(a) && typeof a.url === 'string' && typeof a.name === 'string' && typeof a.enabled === 'boolean'),
   servers: (v) => Array.isArray(v) && v.every((s) => isObject(s) && typeof s.id === 'string' && typeof s.url === 'string' && typeof s.token === 'string' && ['jellyfin', 'emby', 'plex'].includes(s.kind as string)),
+  // Media Servers' options and WebDAV shares (logins included, like the servers' tokens).
+  showBadgeOnPosters: (v) => typeof v === 'boolean',
+  onlyShowServerContent: (v) => typeof v === 'boolean',
+  useServerArtwork: (v) => typeof v === 'boolean',
+  trackOnlyWithTracker: (v) => typeof v === 'boolean',
+  serverHomeRowIDs: (v) => Array.isArray(v) && v.every((x) => typeof x === 'string' && x.length > 0),
+  webDAV: (v) =>
+    Array.isArray(v) &&
+    v.every((x) => isObject(x) && typeof x.id === 'string' && typeof x.name === 'string' && typeof x.url === 'string' && typeof x.moviesPath === 'string' && typeof x.showsPath === 'string' && typeof x.enabled === 'boolean' && [x.username, x.password].every((f) => f === undefined || typeof f === 'string')),
   audioLanguages: (v) => Array.isArray(v) && v.every((x) => typeof x === 'string' && x.length > 0),
   subtitleLanguages: (v) => Array.isArray(v) && v.every((x) => typeof x === 'string'),
   subtitleMode: (v) => ['off', 'foreign', 'always'].includes(v as string),
@@ -145,7 +154,9 @@ export function applyBackup(parsed: { settings: Partial<Settings>; library: Part
 
 /** Back to a fresh install: settings, library and remembered sources. The caller clears the query cache. */
 export function resetEverything() {
-  settingsStore.set({ ...defaultSettings })
+  // Settings the defaults leave out (WebDAV logins, the source order…) have to be cleared by name, or the merge keeps them.
+  const optional = Object.fromEntries(Object.keys(settingsStore.get()).filter((k) => !(k in defaultSettings)).map((k) => [k, undefined]))
+  settingsStore.set({ ...optional, ...defaultSettings })
   libraryStore.set({ progress: {}, watchlist: [], favourites: [], history: [], watchedEpisodes: {}, ratings: {}, rewatches: {}, shuffled: {} })
   lastSourceStore.set({ byTitle: {} })
 }

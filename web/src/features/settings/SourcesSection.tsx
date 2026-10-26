@@ -33,8 +33,8 @@ import s from './SettingsScreen.module.css'
 /* Settings → Sources: how the sources a title offers are ordered, filtered and shown. The same choices as the
    apps' Sources and Source Appearance pages, in the same words. */
 
-/** The categories this browser has providers for. WebDAV and IPTV keep their places in the saved order. */
-const shownCategories: SourceCategory[] = ['mediaServers', 'addons']
+/** The categories this browser has providers for. IPTV keeps its place in the saved order. */
+const shownCategories: SourceCategory[] = ['mediaServers', 'webDAV', 'addons']
 const serverKinds = { jellyfin: 'Jellyfin', emby: 'Emby', plex: 'Plex' }
 
 /** Changes the saved ordering from its latest value, so two quick changes never undo each other. */
@@ -54,11 +54,12 @@ interface Provider {
 function useProviders(ordering: SourceOrdering): Record<SourceCategory, Provider[]> {
   const addons = useSettings((x) => x.addons)
   const servers = useSettings((x) => x.servers)
+  const shares = useSettings((x) => x.webDAV)
   const demo = useSettings((x) => x.demo)
   return useMemo(() => {
     const natural: Record<SourceCategory, Provider[]> = {
       mediaServers: servers.map((v) => ({ id: v.id, name: v.name, detail: [serverKinds[v.kind], v.enabled ? '' : 'Off'].filter(Boolean).join(' · ') })),
-      webDAV: [],
+      webDAV: (shares ?? []).map((v) => ({ id: v.id, name: v.name, detail: ['WebDAV', v.enabled ? '' : 'Off'].filter(Boolean).join(' · ') })),
       iptv: [],
       addons: [
         ...(demo ? [{ id: demoProviderId, name: 'AIOStreams', detail: 'Sample data' }] : []),
@@ -71,7 +72,7 @@ function useProviders(ordering: SourceOrdering): Record<SourceCategory, Provider
       out[category] = order.map((id) => natural[category].find((p) => p.id === id)!)
     }
     return out
-  }, [addons, servers, demo, ordering.providerOrder])
+  }, [addons, servers, shares, demo, ordering.providerOrder])
 }
 
 /** Up and down buttons for a row in an ordered list. The pressed button keeps focus when the row moves, or
@@ -290,6 +291,12 @@ export function SourcesSection() {
           </Group>
         </>
       )}
+
+      <Group title="Library" footer="A title opened from one of a media server’s libraries on Home lists only that server’s sources, so they’re ready sooner and Play picks from them. If that library has no source for the title, every source is searched as usual. Titles opened anywhere else are unchanged.">
+        <Row label="Play From This Library Only">
+          <Switch checked={o.playFromLibraryOnly} onChange={(on) => change((c) => ({ ...c, playFromLibraryOnly: on }))} label="Play from this library only" />
+        </Row>
+      </Group>
 
       <Appearance look={o.appearance} />
       <p className="sr-only" role="status">

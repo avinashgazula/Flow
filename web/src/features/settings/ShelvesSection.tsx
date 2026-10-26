@@ -42,9 +42,30 @@ export function ShelvesSection() {
     <>
       <ShelfList />
       <TopPick />
+      <ServerHomeRows />
       <HomeSwitches />
       <ShelfJSON />
     </>
+  )
+}
+
+/** Which servers get a row for each of their libraries on Home, in the order and with the names the server gives them. */
+function ServerHomeRows() {
+  const servers = useSettings((x) => x.servers).filter((v) => v.enabled)
+  const ids = useSettings((x) => x.serverHomeRowIDs) ?? []
+  if (servers.length === 0) return null
+  return (
+    <Group title="Server Home Rows" footer="Adds a row to Home for each of a server’s libraries, in the order set on that server. Your other shelves stay.">
+      {servers.map((server) => (
+        <Row key={server.id} label={server.name}>
+          <Switch
+            checked={ids.includes(server.id)}
+            onChange={(on) => settingsStore.set((st) => ({ serverHomeRowIDs: [...(st.serverHomeRowIDs ?? []).filter((id) => id !== server.id), ...(on ? [server.id] : [])] }))}
+            label={`Show ${server.name}’s libraries on Home`}
+          />
+        </Row>
+      ))}
+    </Group>
   )
 }
 

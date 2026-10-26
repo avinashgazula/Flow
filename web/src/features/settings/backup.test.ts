@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { defaultSettings } from '../../lib/store/settings'
+import { defaultSettings, settingsStore } from '../../lib/store/settings'
 import { defaultSubtitleStyle } from '../../lib/store/subtitleStyle'
-import { backupFormat, createBackup, parseBackup } from './backup'
+import { backupFormat, createBackup, parseBackup, resetEverything } from './backup'
 
 const library = { progress: {}, watchlist: [], favourites: [], history: [], watchedEpisodes: {} }
 
@@ -198,5 +198,28 @@ describe('settings backup', () => {
     expect(r.ok && r.settings.heroSecondarySource).toBeNull()
     const bad = parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { autoplayNext: true, shelves: [{ ...shelves[0], source: { kind: 'builtIn', id: 'nope' } }], heroSource: 'random', continueWatchingLimit: 7, upcomingWithinDays: 5, contentShelfLength: 99 } }))
     expect(bad.ok && bad.skipped.sort()).toEqual(['contentShelfLength', 'continueWatchingLimit', 'heroSource', 'shelves', 'upcomingWithinDays'])
+  })
+
+  it('keeps the media server options and WebDAV shares, and skips ones that are not', () => {
+    const share = { id: 'd1', name: 'NAS', url: 'https://nas.example.com/dav', username: 'sam', password: 'pw', moviesPath: '/Movies', showsPath: '/TV Shows', enabled: true }
+    const parse = (settings: object) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings }))
+    const good = parse({ webDAV: [share], showBadgeOnPosters: false, onlyShowServerContent: true, useServerArtwork: true, trackOnlyWithTracker: true, serverHomeRowIDs: ['jellyfin:a:b'] })
+    expect(good.ok && good.skipped).toEqual([])
+    expect(good.ok && good.settings.webDAV).toEqual([share])
+    expect(good.ok && good.settings.showBadgeOnPosters).toBe(false)
+    const bad = parse({ webDAV: [{ ...share, enabled: 'yes' }], showBadgeOnPosters: 1, serverHomeRowIDs: [''], useServerArtwork: true })
+    expect(bad.ok && bad.skipped.sort()).toEqual(['serverHomeRowIDs', 'showBadgeOnPosters', 'webDAV'])
+    const withSources = parse({ sources: { playFromLibraryOnly: true } })
+    expect(withSources.ok && withSources.settings.sources?.playFromLibraryOnly).toBe(true)
+    // Nothing usable in the file at all is told as an empty backup.
+    expect(parse({ sources: { playFromLibraryOnly: 'yes' } }).ok).toBe(false)
+  })
+
+  it('Reset Everything clears the settings the defaults leave out, such as a WebDAV login', () => {
+    settingsStore.set({ webDAV: [{ id: 'd1', name: 'NAS', url: 'https://nas.example.com/dav', password: 'pw', moviesPath: '/Movies', showsPath: '/TV Shows', enabled: true }], onlyShowServerContent: true })
+    resetEverything()
+    expect(settingsStore.get().webDAV).toBeUndefined()
+    expect(settingsStore.get().onlyShowServerContent).toBeUndefined()
+    expect(settingsStore.get().servers).toEqual([])
   })
 })

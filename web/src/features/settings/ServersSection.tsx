@@ -1,11 +1,14 @@
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Icon } from '../../components/Icon'
 import { hostOf, isMixedContent, SourceError } from '../../lib/sources/http'
 import * as jellyfin from '../../lib/sources/jellyfin'
 import * as plex from '../../lib/sources/plex'
-import { settingsStore, useSettings, type ServerConfig } from '../../lib/store/settings'
+import { settingsStore, useSettings, type ServerConfig, type Settings } from '../../lib/store/settings'
 import { Segmented } from '../explore/Controls'
-import { ConfirmButton, Group, Note, Switch } from './controls'
+import { enabledServers, refreshServerIndex, serverIndexQuery } from '../home/marks'
+import { ConfirmButton, Group, Note, Row, Switch } from './controls'
+import { WebDAVGroups } from './WebDAVGroups'
 import s from './SettingsScreen.module.css'
 
 const kindNames: Record<ServerConfig['kind'], string> = { jellyfin: 'Jellyfin', emby: 'Emby', plex: 'Plex' }
@@ -32,6 +35,61 @@ export function ServersSection() {
         </Group>
       )}
       <AddServer />
+      <ServerOptions />
+      <WebDAVGroups />
+    </>
+  )
+}
+
+/** The apps' Media Servers options, in their words: what a server changes about posters, Search, artwork and tracking. */
+function ServerOptions() {
+  const servers = useSettings((x) => x.servers)
+  const badge = useSettings((x) => x.showBadgeOnPosters) !== false
+  const only = useSettings((x) => x.onlyShowServerContent) === true
+  const artwork = useSettings((x) => x.useServerArtwork) === true
+  const trackOnly = useSettings((x) => x.trackOnlyWithTracker) === true
+  const on = enabledServers(servers)
+  const index = useQuery({ ...serverIndexQuery(on), enabled: on.length > 0 })
+  const set = (patch: Partial<Settings>) => settingsStore.set(patch)
+  if (servers.length === 0) return null
+  return (
+    <>
+      <Group title="Display">
+        <Row label="Show Badge on Posters" detail="Prints Server on the edge of any poster whose title is on one of your media servers.">
+          <Switch checked={badge} onChange={(v) => set({ showBadgeOnPosters: v })} label="Show Badge on Posters" />
+        </Row>
+        <Row label="Only Show My Server’s Content" detail="Hides every movie and show that isn’t in your media server library, across Home and Search. Live TV channels are unaffected.">
+          <Switch checked={only} onChange={(v) => set({ onlyShowServerContent: v })} label="Only Show My Server’s Content" />
+        </Row>
+        <Row label="Use Server Artwork" detail="Uses posters and backdrops from your media server for titles in its library. Everything else, and all text details, still comes from TMDB.">
+          <Switch checked={artwork} onChange={(v) => set({ useServerArtwork: v })} label="Use Server Artwork" />
+        </Row>
+      </Group>
+      <Group footer="Ignores the media server’s own watched state, resume position and Continue Watching, and stops reporting playback to it. Progress comes only from your tracking service. The server still provides artwork and streams.">
+        <Row label="Track Only With Your Tracking Service">
+          <Switch checked={trackOnly} onChange={(v) => set({ trackOnlyWithTracker: v })} label="Track Only With Your Tracking Service" />
+        </Row>
+      </Group>
+      <Group footer="Flow lists what your servers hold to know which titles are on them. It refreshes about every half hour, and when you add or remove a server.">
+        <Row label="Indexed Titles" detail={index.isPending && on.length > 0 ? 'Reading your servers…' : index.data ? undefined : 'None yet'}>
+          <span className="num">{index.data ? index.data.count.toLocaleString() : ''}</span>
+        </Row>
+        {index.data && index.data.failed.length > 0 && (
+          <div className={s.pad}>
+            <Note tone="warning">{`Couldn’t read ${index.data.failed.join(' or ')}. Test its sign-in above, then refresh.`}</Note>
+          </div>
+        )}
+        {index.isError && (
+          <div className={s.pad}>
+            <Note tone="error">{index.error instanceof SourceError ? index.error.message : 'Couldn’t read your servers. Test their sign-ins above, then refresh.'}</Note>
+          </div>
+        )}
+        <div className={s.pad}>
+          <button type="button" className="btn btn-secondary btn-compact" onClick={() => void refreshServerIndex()} disabled={index.isFetching || on.length === 0}>
+            <Icon name="refresh" size={16} /> {index.isFetching ? 'Refreshing…' : 'Refresh Library Index'}
+          </button>
+        </div>
+      </Group>
     </>
   )
 }
