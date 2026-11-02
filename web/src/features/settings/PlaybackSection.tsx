@@ -187,6 +187,7 @@ export function PlaybackSection() {
   const neverDolbyVision = useSettings((x) => x.neverUseDolbyVision ?? false)
   const postCredits = useSettings((x) => x.postCreditsAlert !== false)
   const becauseYouWatched = useSettings((x) => x.becauseYouWatched !== false)
+  const xrayWhenPaused = useSettings((x) => x.xrayWhenPaused !== false)
   const externalPlayer = useSettings((x) => x.externalPlayer ?? 'none')
   // The apps exist on iPhone, iPad and Mac only; elsewhere the setting would have nothing to choose.
   const platform = typeof navigator === 'undefined' ? undefined : detectPlatform(navigator.userAgent, navigator.maxTouchPoints)
@@ -285,6 +286,11 @@ export function PlaybackSection() {
         </Row>
         <Row label="Because You Watched">
           <Switch label="Because you watched" checked={becauseYouWatched} onChange={(on) => settingsStore.set({ becauseYouWatched: on })} />
+        </Row>
+      </Group>
+      <Group title="X-Ray" footer="X-Ray shows the cast and crew, jumps to scenes, and names who’s in the scene from the last few minutes of dialogue: from the subtitles on screen, or a file fetched for X-Ray from your subtitle services. Open it any time with the X-Ray button or by tapping X; hold X to play at double speed.">
+        <Row label="Show X-Ray When Paused">
+          <Switch label="Show X-Ray when paused" checked={xrayWhenPaused} onChange={(on) => settingsStore.set({ xrayWhenPaused: on })} />
         </Row>
       </Group>
       {platform && (

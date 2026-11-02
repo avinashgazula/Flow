@@ -133,6 +133,17 @@
   .root[data-card] .subtitles[data-lifted] { transform: translateY(calc(-1 * (var(--card-h, 0px) + 36px - var(--rest) + var(--card-lift)))); }
 }
 
+/* X-Ray stands beside the picture (XRayPanel measures it onto the player's element). Where the window is wide the line
+   keeps to the picture beside it; on a phone held upright the card is a sheet over the picture's lower part, so the
+   line rides just above it. Either way the line is never behind the card. */
+@media (min-width: 721px), (max-height: 500px) {
+  .root[data-xray] .subtitles { right: calc(var(--inset-right) + var(--margin) + var(--xray-w, 0px) + 24px); }
+}
+@media (max-width: 720px) and (min-height: 501px) {
+  .root[data-xray] .subtitles,
+  .root[data-xray] .subtitles[data-lifted] { transform: translateY(calc(-1 * max(0px, var(--xray-room, 0px) + 12px - var(--inset-bottom) - var(--rest)))); }
+}
+
 /* Keyboard feedback: a flat disc in the middle that's gone in half a second. */
 .feedback {
   position: absolute;

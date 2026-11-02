@@ -7,6 +7,8 @@ const paths = {
   external: 'M13.5 4.5h6v6M19.5 4.5l-8 8M17 14v5.5H4.5V7H10',
   minus: 'M5 12h14',
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  /* A person in a frame with a second frame behind it: who's in the picture, as SF Symbols' person.crop.rectangle.stack. */
+  xray: 'M7.5 4h9M4 7h16v13H4zM12 15.4a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6zM8 20a4 4 0 0 1 8 0',
 } as const
 
 export type PlayerIconName = keyof typeof paths

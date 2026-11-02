@@ -361,6 +361,8 @@ export async function demoTmdb(rawPath: string, query: Record<string, unknown>):
       const t = byId.get(Number(parts[1]))
       if (!t) throw new Error('Not in the sample data')
       if (parts.length === 2) return detail(t)
+      // An episode's own credits: the regulars, and no guest stars (the sample data doesn't know who visited).
+      if (parts[2] === 'season' && parts[4] === 'episode' && parts[5] === 'credits') return { cast: (credits[t.id]?.cast ?? []).map(([name, character], order) => ({ id: personId(name), name, character, order })), guest_stars: [] }
       if (parts[2] === 'season') return season(t, Number(parts[3] ?? 1))
       if (parts[2] === 'reviews') return { page: 1, total_pages: 1, results: sampleReviews.map(({ rating, ...r }) => ({ ...r, author_details: { rating: rating ?? null } })) }
       // Every third film has a scene after its credits and every third a scene during them, so both notes can be seen.

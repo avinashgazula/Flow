@@ -1,0 +1,256 @@
+/* X-Ray: a flat Film Base 2 card beside the picture (a wide window) or a sheet over its lower part (a phone held
+   upright). Solid, not the 94% panel colour, because the subtitle line is kept clear of it and nothing should show
+   through. Photos are frames, names are in the interface face, characters in Ink 2; the only yellow is the focus ring
+   (and the check on the scene that is playing). */
+
+.panel {
+  /* What the controls under it take, as in Controls.module.css: the card stands on that band. */
+  --bottom-band: 124px;
+  /* A person's row, which is always this tall: the sheet's height is a count of them. */
+  --row: 76px;
+  position: absolute;
+  z-index: 4;
+  top: calc(var(--inset-top) + 68px);
+  right: calc(var(--inset-right) + var(--margin));
+  /* As tall as what it lists, up to the room above the scrubber's band; past that the list scrolls. */
+  max-height: calc(100% - var(--inset-top) - 68px - var(--inset-bottom) - var(--bottom-band));
+  width: min(380px, calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--margin)));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--base-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  animation: appear var(--dur-state) var(--ease-out);
+}
+@keyframes appear { from { opacity: 0; } }
+
+@media (max-width: 720px), (max-height: 500px) {
+  .panel { --bottom-band: 112px; }
+}
+/* A phone held sideways: the buttons' row is shorter, and the card runs from under it to the scrubber. */
+@media (max-height: 500px) {
+  .panel { top: calc(var(--inset-top) + 56px); max-height: calc(100% - var(--inset-top) - 56px - var(--inset-bottom) - var(--bottom-band)); }
+}
+/* A phone held upright: a sheet on the scrubber's row, about half the screen, with the subtitle line just above it.
+   Its list is a whole number of rows tall, so it never ends through a line of text. */
+@media (max-width: 720px) and (min-height: 501px) {
+  .panel {
+    --rows: 3;
+    top: auto;
+    bottom: calc(var(--inset-bottom) + var(--bottom-band));
+    left: calc(var(--inset-left) + var(--margin));
+    width: auto;
+    /* The header, the tabs and the card's ring, then the list's padding and its rows. */
+    height: calc(103px + 6px + 12px + var(--rows) * var(--row));
+    max-height: none;
+  }
+}
+@media (max-width: 720px) and (min-height: 760px) {
+  .panel { --rows: 4; }
+}
+
+.head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 52px;
+  padding: 4px 6px 4px 16px;
+}
+.title { font: 600 var(--fs-body) / 1.2 var(--font); }
+.iconButton {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-control);
+  color: var(--ink-2);
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+}
+.iconButton:hover { background: var(--base-3); color: var(--paper); }
+/* Back, in the person's page: the arrow and where it goes. */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+  margin-left: -8px;
+  padding: 0 12px 0 8px;
+  border-radius: var(--radius-control);
+  font: 600 var(--fs-small) / 1 var(--font);
+  transition: background-color var(--dur-state) ease;
+}
+.back:hover { background: var(--base-3); }
+
+.tabs {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 12px;
+  border-bottom: 1px solid var(--rule);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+/* A chip: the current one is a step lighter and brighter, never yellow. */
+.tab {
+  flex: none;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  background: var(--base-3);
+  color: var(--ink-2);
+  font: 600 var(--fs-small) / 1 var(--font);
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+}
+.tab:hover { background: var(--base-4); color: var(--paper); }
+.tab[aria-selected='true'] { background: var(--base-4); color: var(--paper); }
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 6px 0 12px;
+  /* Rows stop at the top edge, and what lies past the bottom fades out over the padding instead of being cut. */
+  scroll-snap-type: y proximity;
+  scroll-padding-top: 6px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
+}
+.note {
+  padding: 8px 16px;
+  font: 400 var(--fs-footnote) / 1.45 var(--font);
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.note[role='status'] { min-height: 1.45em; }
+.note[data-after] { padding-top: 12px; }
+/* A plain heading, in sentence case: what follows is the crew. */
+.heading {
+  padding: 16px 16px 4px;
+  font: 600 var(--fs-footnote) / 1.2 var(--font);
+  color: var(--ink-2);
+}
+
+.row {
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  height: var(--row);
+  padding: 8px 16px;
+  text-align: left;
+  scroll-snap-align: start;
+  transition: background-color var(--dur-state) ease;
+}
+.row:hover { background: var(--base-3); }
+.row:active { background: var(--base-4); }
+.face {
+  width: 44px;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-art);
+  border: 1px solid var(--rule);
+  background: var(--base-3);
+}
+.who { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.name { font: 600 var(--fs-small) / 1.25 var(--font); overflow-wrap: anywhere; }
+.role {
+  font: 400 var(--fs-footnote) / 1.3 var(--font);
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* The scenes: where each chapter starts, and the one playing. */
+.scene {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  scroll-snap-align: start;
+  min-height: 48px;
+  padding: 8px 16px;
+  text-align: left;
+  transition: background-color var(--dur-state) ease;
+}
+.scene:hover { background: var(--base-3); }
+.scene:active { background: var(--base-4); }
+.sceneTime { flex: none; width: 56px; font: 400 var(--fs-footnote) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.sceneName { flex: 1; min-width: 0; font: 400 var(--fs-small) / 1.3 var(--font); overflow-wrap: anywhere; }
+.scene[aria-current='true'] .sceneName { font-weight: 600; }
+.check { flex: none; color: var(--stock); }
+
+/* The person's page, inside the card: the film stays where it is. */
+.person { display: flex; flex-direction: column; gap: 16px; padding: 8px 16px 16px; }
+.personTop { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: end; gap: 16px; }
+.portrait {
+  width: 96px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-art);
+  border: 1px solid var(--rule);
+  background: var(--base-3);
+}
+.personWho { min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-bottom: 2px; }
+.personName { font: 700 var(--fs-headline) / 1.2 var(--font); letter-spacing: -0.005em; text-wrap: balance; overflow-wrap: anywhere; }
+.personRole { font: 400 var(--fs-small) / 1.3 var(--font); color: var(--ink-2); overflow-wrap: anywhere; }
+.personFacts { font: 400 var(--fs-footnote) / 1.4 var(--font); color: var(--ink-2); }
+.bio { font: 400 var(--fs-small) / 1.5 var(--font); color: var(--ink-2); text-wrap: pretty; }
+.bio[data-folded] {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* Read More: a quiet underlined word, as on the title page. */
+.more {
+  align-self: flex-start;
+  height: 32px;
+  margin-top: -8px;
+  padding-right: 8px;
+  font: 500 var(--fs-small) / 1 var(--font);
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--ink-3);
+  text-underline-offset: 0.25em;
+}
+.more:hover { color: var(--paper); text-decoration-color: var(--paper); }
+.alsoHead { font: 600 var(--fs-footnote) / 1.2 var(--font); color: var(--ink-2); margin-bottom: 8px; }
+.also {
+  display: flex;
+  gap: 10px;
+  margin: 0 -16px;
+  padding: 4px 16px 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+  scroll-padding: 0 16px;
+}
+.also > li { flex: none; width: 76px; scroll-snap-align: start; }
+.also a { display: block; border-radius: var(--radius-art); }
+.poster {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-art);
+  border: 1px solid var(--rule);
+  transition: opacity var(--dur-state) ease;
+}
+.also a:hover .poster { opacity: 0.85; }
+.foot { display: flex; align-items: center; gap: 8px; }
+.error { color: var(--ink-2); font: 400 var(--fs-footnote) / 1.45 var(--font); }
+/* The page's shape while it loads, so nothing moves when it arrives. */
+.ghosts { display: grid; gap: 8px; }
+.ghost { height: 14px; background: var(--base-3); border-radius: var(--radius-label); }
+.ghost:nth-child(1) { width: 92%; }
+.ghost:nth-child(2) { width: 78%; }
+.ghost:nth-child(3) { width: 60%; }

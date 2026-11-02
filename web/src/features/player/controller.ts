@@ -23,7 +23,7 @@ import { parseSubtitles, type SubtitleFormat } from './subtitles'
 import { canBoost, clampBoost, VolumeBoost } from './volumeBoost'
 import { ScreenAwake, wantsWakeLock } from './wakeLock'
 
-export type Panel = 'options' | 'tracks' | 'episodes' | null
+export type Panel = 'options' | 'tracks' | 'episodes' | 'xray' | null
 
 /** A subtitle track as the options panel lists it: one from the file or its source, or one downloaded from a service. */
 export type SubtitleTrack = Track & { online?: boolean; hearingImpaired?: boolean }
@@ -683,7 +683,8 @@ export class PlayerController {
     action()
     return true
   }
-  toggleInfo = () => this.set({ info: !this.state.info })
+  // Playback Info and X-Ray both want the corner beside the picture: whichever is asked for second wins it.
+  toggleInfo = () => this.set({ info: !this.state.info, ...(!this.state.info && this.state.panel === 'xray' ? { panel: null } : {}) })
 
   // MARK: Tracks
 
@@ -955,6 +956,39 @@ export class PlayerController {
     this.set({ panel })
     if (panel) this.showControls(false)
     else this.scheduleHide()
+  }
+
+  /** X-Ray opened itself on a pause, so it closes itself on play; one the viewer opened stays until they close it. */
+  xrayAuto = false
+  openXRay(auto = false) {
+    this.xrayAuto = auto
+    this.set({ info: false })
+    this.setPanel('xray')
+  }
+  toggleXRay = () => (this.state.panel === 'xray' ? this.setPanel(null) : this.openXRay())
+
+  /** X-Ray stands beside the picture (a wide window) or over its lower part (a narrow one): its size goes to the
+   *  stylesheet, which keeps the subtitles clear of it. `room` is the height from the window's bottom edge to the panel's
+   *  top. Written to the element, as Because You Watched's card is, so the screen doesn't re-render. `null` when it goes. */
+  setXRayClear = (size: { width: number; room: number } | null) => {
+    const root = this.root
+    if (!root) return
+    root.toggleAttribute('data-xray', size !== null)
+    if (size) {
+      root.style.setProperty('--xray-w', `${Math.ceil(size.width)}px`)
+      root.style.setProperty('--xray-room', `${Math.ceil(size.room)}px`)
+    } else {
+      root.style.removeProperty('--xray-w')
+      root.style.removeProperty('--xray-room')
+    }
+  }
+
+  /** The lines of the subtitles being shown, whichever way they're drawn (libass has none on the overlay's track), for
+   *  X-Ray to read who is named. Null for picture subtitles and when there are none. */
+  subtitleCues(): ArrayLike<{ startTime: number; text: string }> | null {
+    const id = this.state.subtitleId
+    const track = this.state.subtitleTrack ?? (id ? (this.online.get(id)?.track ?? this.external.get(id)) : undefined)
+    return track?.cues && track.cues.length > 0 ? (track.cues as unknown as ArrayLike<VTTCue>) : null
   }
 
   // MARK: Feedback
