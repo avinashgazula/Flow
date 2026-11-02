@@ -52,7 +52,7 @@ describe('what the web puts in each section', () => {
   })
 })
 
-const webValues = (s: Settings) => (['keys', 'accounts', 'addons', 'servers', 'streamProxy', 'playback'] as const).map((n) => localValue(n, s))
+const webValues = (s: Settings) => (['keys', 'accounts', 'addons', 'servers', 'streamProxy', 'playback', 'requests', 'sports'] as const).map((n) => localValue(n, s))
 
 describe('noticing a local change', () => {
   it('writes nothing for a browser nobody has set up', () => {
@@ -416,6 +416,99 @@ describe('applying a section here', () => {
     expect(settingsPatch('streamProxy', { template: '' }, settings())).toEqual({ streamProxy: '' })
     expect(settingsPatch('streamProxy', { template: 'http://p.example.com/?url={url}' }, settings())).toBeNull()
     expect(settingsPatch('streamProxy', { template: 7 }, settings())).toBeNull()
+  })
+})
+
+describe('the Requests section (Seerr)', () => {
+  const seerr = { url: 'https://seerr.example.com', key: 'k1' }
+
+  it('writes the connection under the apps’ names, and null for none', () => {
+    expect(localValue('requests', settings({ seerr }))).toEqual({ seerr: { url: 'https://seerr.example.com', apiKey: 'k1' } })
+    expect(localValue('requests', settings())).toEqual({ seerr: null })
+  })
+
+  it('writes nothing for a browser that never connected one, and a clear as null once it had', () => {
+    expect(detectChanges(settings(), {}, t(0), 'Web').changed).toBe(false)
+    const first = detectChanges(settings({ seerr }), {}, t(1), 'Web').metas
+    expect(first.requests).toMatchObject({ updatedAt: iso(1) })
+    const cleared = pull(record({ requests: section(1, { seerr: { url: seerr.url, apiKey: 'k1' } }) }), settings(), first, 5)
+    expect(cleared.payload.sections.requests).toEqual({ updatedAt: iso(5), device: 'Web', data: { seerr: null } })
+  })
+
+  it('takes the connection from a newer record, clears it on null, and ignores junk', () => {
+    expect(settingsPatch('requests', { seerr: { url: 'https://s.example.com', apiKey: ' k2 ' } }, settings())).toEqual({ seerr: { url: 'https://s.example.com', key: 'k2' } })
+    expect(settingsPatch('requests', { seerr: null }, settings({ seerr }))).toEqual({ seerr: undefined })
+    for (const junk of [{ seerr: 'x' }, { seerr: { url: 'not a url', apiKey: 'k' } }, { seerr: { url: 'ftp://s.example.com', apiKey: 'k' } }, { seerr: { url: 'https://s.example.com' } }, { seerr: { url: 'https://s.example.com', apiKey: '' } }, {}, 'x']) {
+      expect(settingsPatch('requests', junk, settings({ seerr }))).toBeNull()
+    }
+    const metas: Metas = { requests: { updatedAt: iso(1), device: 'Web', snapshot: JSON.stringify(localValue('requests', settings({ seerr }))) } }
+    expect(pull(record({ requests: section(5, { seerr: null }) }), settings({ seerr }), metas, 9).settings.seerr).toBeUndefined()
+  })
+
+  it('keeps the fields the record has that the web does not know', () => {
+    const remote = record({ requests: section(1, { seerr: { url: 'https://old.example.com', apiKey: 'old', extra: 1 }, other: true }) })
+    const metas: Metas = { requests: { updatedAt: iso(0), device: 'Web', snapshot: '{"seerr":null}' } }
+    const { payload } = merge(remote, settings({ seerr }), metas, t(5), 'Web')
+    expect(payload.sections.requests!.data).toEqual({ seerr: { url: 'https://seerr.example.com', apiKey: 'k1', extra: 1 }, other: true })
+  })
+
+  it('keeps a connection made here when joining a sync whose record has none', () => {
+    const none = pull(record({ requests: section(5, { seerr: null }) }), settings({ seerr }), {}, 9, true)
+    expect(none.settings.seerr).toEqual(seerr)
+    expect((none.payload.sections.requests!.data as { seerr: { apiKey: string } }).seerr.apiKey).toBe('k1')
+    const has = pull(record({ requests: section(5, { seerr: { url: 'https://theirs.example.com', apiKey: 'theirs' } }) }), settings({ seerr }), {}, 9, true)
+    expect(has.settings.seerr).toEqual({ url: 'https://theirs.example.com', key: 'theirs' })
+  })
+
+  it('leaves the connection alone when the record has no Requests section', () => {
+    const metas: Metas = { requests: { updatedAt: iso(1), device: 'Web', snapshot: JSON.stringify(localValue('requests', settings({ seerr }))) } }
+    expect(pull(record({ keys: section(1, { tmdbAPIKey: 'k' }) }), settings({ seerr }), metas, 9).settings.seerr).toEqual(seerr)
+  })
+})
+
+describe('the Sports section', () => {
+  const team = { id: '133604', name: 'Arsenal', league: 'English Premier League', sport: 'Soccer', badgeURL: 'https://img.example.com/arsenal.png', country: 'England' }
+  const sports = { followedTeams: [team], apiKey: 'abc', showScoreSpoilers: false, chooseChannelOnTap: true }
+
+  it('writes the apps’ SportsSettings names, with the defaults for a browser that never changed anything', () => {
+    expect(localValue('sports', settings({ sports }))).toEqual(sports)
+    expect(localValue('sports', settings())).toEqual({ followedTeams: [], apiKey: '123', showScoreSpoilers: true, chooseChannelOnTap: false })
+    expect(detectChanges(settings(), {}, t(0), 'Web').changed).toBe(false)
+    expect(detectChanges(settings({ sports: { ...sports, followedTeams: [] } }), {}, t(0), 'Web').metas.sports).toBeDefined()
+  })
+
+  it('takes the record’s teams and settings, field by field', () => {
+    const patch = settingsPatch('sports', { followedTeams: [{ ...team, league: null, extra: 1 }, { id: '', name: 'x' }, { name: 'no id' }], apiKey: 'zzz', showScoreSpoilers: false, chooseChannelOnTap: 'yes' }, settings())!
+    expect(patch.sports).toEqual({ followedTeams: [{ id: '133604', name: 'Arsenal', sport: 'Soccer', badgeURL: team.badgeURL, country: 'England' }], apiKey: 'zzz', showScoreSpoilers: false, chooseChannelOnTap: false })
+    expect(settingsPatch('sports', { apiKey: null }, settings({ sports }))!.sports).toMatchObject({ apiKey: '123', followedTeams: [team] })
+    expect(settingsPatch('sports', { apiKey: 7 }, settings({ sports }))).toBeNull()
+    expect(settingsPatch('sports', { followedTeams: [] }, settings({ sports }))!.sports).toMatchObject({ followedTeams: [], apiKey: 'abc' })
+    expect(settingsPatch('sports', 'x', settings())).toBeNull()
+  })
+
+  it('writes a change here over the record, keeping unknown fields on the section and its teams', () => {
+    const remote = record({ sports: section(1, { followedTeams: [{ ...team, colour: 'red' }, { id: '9', name: 'Gone' }], apiKey: '123', showScoreSpoilers: true, chooseChannelOnTap: false, other: 1 }) })
+    const metas: Metas = { sports: { updatedAt: iso(0), device: 'Web', snapshot: '{}' } }
+    const { payload } = merge(remote, settings({ sports }), metas, t(5), 'Web')
+    expect(payload.sections.sports).toEqual({ updatedAt: iso(5), device: 'Web', data: { ...sports, followedTeams: [{ ...team, colour: 'red' }], other: 1 } })
+  })
+
+  it('applies a newer record, and an unfollow made elsewhere is a change', () => {
+    const mine = settings({ sports })
+    const metas: Metas = { sports: { updatedAt: iso(1), device: 'Web', snapshot: JSON.stringify(localValue('sports', mine)) } }
+    const out = pull(record({ sports: section(5, { ...sports, followedTeams: [] }) }), mine, metas, 9)
+    expect(out.settings.sports).toEqual({ ...sports, followedTeams: [] })
+    expect(out.metas.sports!.updatedAt).toBe(iso(5))
+  })
+
+  it('leaves Sports alone when the record has no section, and keeps its own on joining a record at the defaults', () => {
+    const mine = settings({ sports })
+    expect(pull(record({ keys: section(1, { tmdbAPIKey: 'k' }) }), mine, {}, 9, true).settings.sports).toEqual(sports)
+    const blank = pull(record({ sports: section(5, { followedTeams: [], apiKey: '123', showScoreSpoilers: true, chooseChannelOnTap: false }) }), mine, {}, 9, true)
+    expect(blank.settings.sports).toEqual(sports)
+    expect((blank.payload.sections.sports!.data as { followedTeams: unknown[] }).followedTeams).toHaveLength(1)
+    const theirs = pull(record({ sports: section(5, { ...sports, followedTeams: [], apiKey: 'theirs' }) }), mine, {}, 9, true)
+    expect(theirs.settings.sports).toMatchObject({ followedTeams: [], apiKey: 'theirs' })
   })
 })
 

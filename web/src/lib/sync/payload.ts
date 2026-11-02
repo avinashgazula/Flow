@@ -1,17 +1,18 @@
 /* What Flow Sync carries and how two copies are merged (docs/SYNC.md, Payload). Pure functions over the
    web's settings, so the rules are tested without a browser or a server.
 
-   The record holds sections. The web understands six of them: keys (the TMDB, MDBList, TVDB, RatingPosterDB, IntroDB,
+   The record holds sections. The web understands eight of them: keys (the TMDB, MDBList, TVDB, RatingPosterDB, IntroDB,
    PublicMetaDB, OpenSubtitles, SubDL, SubSource, Trakt and Simkl keys; the rest travel through), accounts (the Trakt sign-in; Simkl's travels through), add-ons, servers, the stream
-   proxy and playback. Everything else in the record (the other keys, Simkl's token, sections a newer app added,
+   proxy, playback, requests (the Seerr connection) and sports (followed teams and their settings). Everything else in the record (the other keys, Simkl's token, sections a newer app added,
    fields a newer app added inside these) is carried through unchanged. */
 
 import { proxyProblem } from '../sources/proxy'
 import { defaultSettings, type AddonConfig, type ServerConfig, type Settings, type TraktToken } from '../store/settings'
 import { isSubtitleStyle, normaliseSubtitleStyle } from '../store/subtitleStyle'
+import { defaultSports, type SportsSettings, type SportsTeam } from '../sports/types'
 
-export type SectionName = 'keys' | 'accounts' | 'addons' | 'servers' | 'streamProxy' | 'playback'
-export const webSections: readonly SectionName[] = ['keys', 'accounts', 'addons', 'servers', 'streamProxy', 'playback']
+export type SectionName = 'keys' | 'accounts' | 'addons' | 'servers' | 'streamProxy' | 'playback' | 'requests' | 'sports'
+export const webSections: readonly SectionName[] = ['keys', 'accounts', 'addons', 'servers', 'streamProxy', 'playback', 'requests', 'sports']
 
 type Json = Record<string, unknown>
 
@@ -138,6 +139,32 @@ const optionalKeys = [
   ['wyzieKey', 'wyzieAPIKey'],
 ] as const
 
+/** The Seerr connection in a record: an address a page can call and a key, or undefined for anything else. */
+function readSeerr(v: unknown): Settings['seerr'] {
+  if (!isObject(v) || !isString(v.url) || !isString(v.apiKey) || !v.apiKey.trim()) return undefined
+  try {
+    const { protocol } = new URL(v.url)
+    return protocol === 'https:' || protocol === 'http:' ? { url: v.url.trim(), key: v.apiKey.trim() } : undefined
+  } catch {
+    return undefined
+  }
+}
+
+const asKnownTeam = (v: unknown): v is Json & { id: string; name: string } => isObject(v) && isString(v.id) && v.id.length > 0 && isString(v.name) && v.name.length > 0
+
+/** A team from the record, keeping the fields the web models; a null from another writer is the same as absent. */
+function readTeam(v: Json & { id: string; name: string }): SportsTeam {
+  const team: SportsTeam = { id: v.id, name: v.name }
+  for (const field of ['league', 'sport', 'badgeURL', 'country'] as const) {
+    const value = v[field]
+    if (isString(value) && value) team[field] = value
+  }
+  return team
+}
+
+/** The Sports settings as the document writes them (the apps' `SportsSettings` names), over the defaults. */
+const sportsData = (s: Settings): SportsSettings => ({ ...defaultSports, ...s.sports })
+
 const defs: Record<SectionName, SectionDef> = {
   keys: {
     // The key baked into a build is the site's, not the person's: it isn't theirs to sync.
@@ -250,7 +277,46 @@ const defs: Record<SectionName, SectionDef> = {
       return Object.keys(patch).length ? patch : null
     },
   },
+  // Written once this browser has a Seerr, or has had one and cleared it (the snapshot then differs): a browser that
+  // never connected one writes nothing, so it can't disconnect the apps. A clear travels as null.
+  requests: {
+    value: (s) => ({ seerr: s.seerr ? { url: s.seerr.url, apiKey: s.seerr.key } : null }),
+    overlay(base, value) {
+      const before = isObject(base) ? base : {}
+      const seerr = (value as Json).seerr
+      return { ...before, seerr: seerr === null ? null : { ...(isObject(before.seerr) ? before.seerr : {}), ...(seerr as Json) } }
+    },
+    patch(data) {
+      if (!isObject(data) || !('seerr' in data)) return null
+      if (data.seerr === null) return { seerr: undefined }
+      const seerr = readSeerr(data.seerr)
+      return seerr ? { seerr } : null
+    },
+    keepOnJoin: (data, current) => current.seerr !== undefined && !(isObject(data) && readSeerr(data.seerr)),
+  },
+  sports: {
+    value: (s) => sportsData(s),
+    overlay(base, value) {
+      const before = isObject(base) ? base : {}
+      const v = value as unknown as SportsSettings
+      return { ...before, ...v, followedTeams: overList(before.followedTeams, v.followedTeams, asKnownTeam, (item) => item.id) }
+    },
+    patch(data, current) {
+      if (!isObject(data)) return null
+      const patch: Partial<SportsSettings> = {}
+      if (Array.isArray(data.followedTeams)) patch.followedTeams = data.followedTeams.filter(asKnownTeam).map(readTeam)
+      // A blank or null key reads as unset, which is the free test key; any other shape is left alone.
+      if (data.apiKey === null || isString(data.apiKey)) patch.apiKey = (data.apiKey ?? '').trim() || defaultSports.apiKey
+      if (typeof data.showScoreSpoilers === 'boolean') patch.showScoreSpoilers = data.showScoreSpoilers
+      if (typeof data.chooseChannelOnTap === 'boolean') patch.chooseChannelOnTap = data.chooseChannelOnTap
+      return Object.keys(patch).length ? { sports: { ...sportsData(current), ...patch } } : null
+    },
+    // A record whose Sports are all still the defaults has nothing to say that a configured browser should lose.
+    keepOnJoin: (data, current) => !isDefaultSports(sportsData(current)) && isObject(data) && isDefaultSports({ ...defaultSports, ...(defs.sports.patch(data, defaultSettings)?.sports ?? {}) }),
+  },
 }
+
+const isDefaultSports = (v: SportsSettings) => JSON.stringify(v) === JSON.stringify(defaultSports)
 
 /** What the web owns of a section, built from its settings. */
 export const localValue = (name: SectionName, s: Settings): unknown => defs[name].value(s)

@@ -141,7 +141,7 @@ export interface Settings {
   tapRatingOpensReviews?: boolean
   /** Rated posters from RatingPosterDB (needs its key). Absent is off. */
   posterEnhancement?: 'off' | 'rpdb'
-  /** The Seerr, Overseerr or Jellyseerr instance Request asks. Not part of Flow Sync yet. */
+  /** The Seerr, Overseerr or Jellyseerr instance Request asks. Part of Flow Sync (the requests section). */
   seerr?: { url: string; key: string }
   /** The subtitle services' keys and logins (Settings → Playback), named as in Flow Sync (`openSubtitlesAPIKey`,
    *  `openSubtitlesUsername`, `openSubtitlesPassword`, `subdlAPIKey`, `subSourceAPIKey`). Absent until set, which keeps

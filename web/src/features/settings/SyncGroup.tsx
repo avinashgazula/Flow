@@ -12,7 +12,7 @@ import s from './SettingsScreen.module.css'
    device). On: when it last synced, what went wrong, and the way to pair another device. The engine and
    the rules are in lib/sync; this is the form. */
 
-const whatSyncs = 'Sync keeps your keys, Trakt and Simkl sign-ins, add-ons, servers, stream proxy, languages and subtitle style the same on every device. It’s end-to-end encrypted: your devices lock everything with a key only they hold, and it’s stored on your own Cloudflare Worker, which can’t read it.'
+const whatSyncs = 'Sync keeps your keys, Trakt and Simkl sign-ins, add-ons, servers, stream proxy, languages, subtitle style, Seerr connection and followed teams the same on every device. It’s end-to-end encrypted: your devices lock everything with a key only they hold, and it’s stored on your own Cloudflare Worker, which can’t read it.'
 const workerAddress = 'https://flow-stream-proxy.example.workers.dev'
 
 // MARK: A link from another device

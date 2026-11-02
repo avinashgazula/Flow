@@ -410,7 +410,8 @@ Settings → Metadata and Requests hold the keys and choices; every key is check
   can't use it either: the proxy only fetches with GET and passes no headers on, and a request is a POST with `X-Api-Key`.
   The instance has to allow web pages itself (a reverse proxy adding CORS headers); Settings says so when it can't be read.
 - **Sync.** `mdblistAPIKey`, `tvdbAPIKey` and `rpdbAPIKey` travel in the `keys` section, written only once this browser
-  has one so a blank browser never clears the apps' copy. The Seerr address and key stay in this browser.
+  has one so a blank browser never clears the apps' copy. The Seerr address and key travel in the `requests` section (`{ seerr: { url, apiKey } | null }`), written once this
+  browser has connected one; disconnecting travels as `null`.
 
 ## Title pages
 
@@ -450,7 +451,8 @@ Upcoming is `library?list=upcoming`) and each a chunk of its own, loaded when op
   Live TV channel, or lists the channels (Settings → Live TV → Sports, Choose Channel on Tap); the button beside the game does
   the other. `match.ts` is FlowKit's SportsChannelMatcher: guide entries around kick-off that name the teams, then channels
   named after the league. Show Score Spoilers off covers final scores until tapped. The key, the two switches and the teams
-  are the `sports` setting, absent until first changed, so none of it loads with the first page.
+  are the `sports` setting, absent until first changed, so none of it loads with the first page. They travel in the
+  `sports` section under the apps' names (`followedTeams`, `apiKey`, `showScoreSpoilers`, `chooseChannelOnTap`).
   Unlike the apps, there is no notification for a finished match.
 
 A page that reads queries with react-query (as these do) must import something from `lib/queries.ts`, or the bundler splits
