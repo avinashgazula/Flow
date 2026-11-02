@@ -26,6 +26,7 @@ import { airedRefs, cardOf, metaLine, playLabel, playsFirst, titlePrint, todayOf
 import { fetchEpisodes, useShowEpisodes } from './shows'
 import { StarRating, useRating } from './StarRating'
 import { TitleName } from './TitleName'
+import { usePhone } from './usePhone'
 import { useSourceSearch } from './useSourceSearch'
 import { hasProviders, WhereToWatch } from './WhereToWatch'
 import s from './DetailScreen.module.css'
@@ -57,6 +58,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   const rewatch = useLibrary((l) => l.rewatches?.[key])
   const score = useRating({ type, id })
   const remember = useSettings((x) => x.rememberLastSource)
+  const phone = usePhone()
   const textSize = useSettings((x) => x.detailTextSize)
   const showWhere = useSettings((x) => x.showWhereToWatch)
   const showWatchedMark = useSettings((x) => x.showWatchedBadges)
@@ -173,7 +175,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
           <TitleName title={d.title} logo={d.logo} />
           <p className={s.meta}>{metaLine(d, genreNames(d.genres, type))}</p>
 
-          <Ratings detail={d} ready={loaded} />
+          {!phone && <Ratings detail={d} ready={loaded} />}
 
           <div className={s.actions}>
             <button className="btn btn-primary btn-large" onClick={() => play()} aria-label={label.spoken}>
@@ -204,6 +206,8 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
               }
             />
           </div>
+
+          {phone && <Ratings detail={d} ready={loaded} />}
 
           {(isWatched || score !== undefined) && (
             <div className={s.rating}>

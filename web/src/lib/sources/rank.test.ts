@@ -73,6 +73,15 @@ describe('rankSources', () => {
     expect(ids(rankSources(list, { preferredQuality: 'any' }, fixedCapabilities({ hdr: true })))).toEqual(['dv', 'sdr'])
   })
 
+  it('puts SDR first on an HDR screen when the viewer prefers SDR, and in the picker’s order too', () => {
+    const list = [source('dv', '2160p WEB-DL DV x264 AAC'), source('sdr', '2160p WEB-DL x264 AAC')]
+    const hdrScreen = fixedCapabilities({ hdr: true })
+    expect(ids(rankSources(list, { preferredQuality: 'any', preferHDR: false }, hdrScreen))).toEqual(['sdr', 'dv'])
+    expect(ids(rankSources(list, { preferredQuality: 'any', preferHDR: true }, hdrScreen))).toEqual(['dv', 'sdr'])
+    // Unset means on, as in the apps.
+    expect(ids(rankSources(list, { preferredQuality: 'any' }, hdrScreen))).toEqual(['dv', 'sdr'])
+  })
+
   it('sinks cinema captures, uncached and suspiciously small files', () => {
     const list = [
       source('cam', '1080p CAM x264 AAC 2 GB'),

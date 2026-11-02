@@ -2,7 +2,8 @@ import { del } from 'idb-keyval'
 import { useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { queryClient } from '../../lib/queryClient'
-import { library, libraryStore } from '../../lib/store/library'
+import { library, libraryStore, useLibrary } from '../../lib/store/library'
+import { lastSources } from '../player/session'
 import { settingsStore } from '../../lib/store/settings'
 import { applyBackup, createBackup, parseBackup, resetEverything } from './backup'
 import { turnOff } from '../../lib/sync/engine'
@@ -12,6 +13,11 @@ import { SyncGroup } from './SyncGroup'
 export function DataSection() {
   const file = useRef<HTMLInputElement>(null)
   const [note, setNote] = useState<{ tone: 'ok' | 'error'; text: string }>()
+  const progress = useLibrary((l) => Object.keys(l.progress).length)
+  const watchlist = useLibrary((l) => l.watchlist.length)
+  // What the browser remembers lives outside the stores; it is counted again after each change.
+  const [remembered, setRemembered] = useState(() => lastSources.count())
+  const items = (n: number) => (n === 1 ? '1 title' : `${n} titles`)
 
   function exportBackup() {
     const backup = createBackup(settingsStore.get(), libraryStore.get())
@@ -72,12 +78,29 @@ export function DataSection() {
           <input ref={file} type="file" accept="application/json,.json" hidden onChange={(e) => void importBackup(e.target.files?.[0])} />
         </Row>
       </Group>
-      <Group footer="The cache holds shelves, title details and search results so screens open at once. Clearing it never touches your library. Reset Everything also turns sync off on this device, and leaves what is synced alone.">
+      <Group footer="The cache holds shelves, title details and search results so screens open at once. Clearing it never touches your library. Reset Progress, Clear Watchlist and Forget Remembered Sources each clear one thing on this device and leave the rest. Reset Everything also turns sync off on this device, and leaves what is synced alone.">
         <Row label="Clear Cache">
           <ConfirmButton label="Clear Cache" confirm="Clear" onConfirm={() => void clearCache()} />
         </Row>
         <Row label="Clear History" detail="Watched titles and episodes">
           <ConfirmButton label="Clear History" confirm="Clear History" onConfirm={() => (library.clearHistory(), setNote({ tone: 'ok', text: 'Cleared your watch history.' }))} />
+        </Row>
+        <Row label="Reset Progress" detail={progress ? `Resume points for ${items(progress)}` : 'No resume points'}>
+          <ConfirmButton
+            label="Reset Progress"
+            confirm="Reset"
+            onConfirm={() => (library.resetProgress(), setNote({ tone: 'ok', text: 'Cleared your resume points. Continue Watching is empty; what you watched stays in History.' }))}
+          />
+        </Row>
+        <Row label="Clear Watchlist" detail={watchlist ? items(watchlist) : 'Nothing on it'}>
+          <ConfirmButton label="Clear Watchlist" confirm="Clear Watchlist" onConfirm={() => (library.clearWatchlist(), setNote({ tone: 'ok', text: 'Cleared your watchlist. Favourites and History are untouched.' }))} />
+        </Row>
+        <Row label="Forget Remembered Sources" detail={remembered ? `Last source for ${items(remembered)}` : 'None remembered'}>
+          <ConfirmButton
+            label="Forget Sources"
+            confirm="Forget"
+            onConfirm={() => (lastSources.forgetAll(), setRemembered(0), setNote({ tone: 'ok', text: 'Forgot the sources titles last played from. The picker chooses afresh.' }))}
+          />
         </Row>
         <Row label="Reset Everything" detail="Settings, sign-ins, library and cache">
           <ConfirmButton label="Reset Everything" confirm="Reset" onConfirm={() => void reset()} />

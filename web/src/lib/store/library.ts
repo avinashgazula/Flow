@@ -117,6 +117,13 @@ export const library = {
   clearHistory() {
     libraryStore.set({ history: [], watchedEpisodes: {} })
   },
+  /** Forgets every resume point, so Continue Watching empties. Watched titles and the watchlist stay. */
+  resetProgress() {
+    libraryStore.set({ progress: {} })
+  },
+  clearWatchlist() {
+    libraryStore.set({ watchlist: [] })
+  },
 }
 
 /** A length in seconds as whole minutes for History, or nothing when it isn't a real length. */

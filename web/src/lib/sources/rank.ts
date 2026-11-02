@@ -217,7 +217,12 @@ export interface RankPreferences {
   /** The viewer's first audio language as a code ("en"), already resolved against the title's
    *  original language. Sources that say they carry it are lifted a little. */
   audioLanguage?: string
+  /** Off puts SDR first even on a screen that shows HDR (the apps' HDR When Available). On unless said otherwise. */
+  preferHDR?: boolean
 }
+
+/** Whether HDR should count in a source's favour: the screen shows it and the viewer hasn't asked for SDR. */
+const wantsHDR = (prefs: RankPreferences, caps: Capabilities) => caps.hdr && prefs.preferHDR !== false
 
 const resolutionOrder: (Source['resolution'] | undefined)[] = ['SD', '720p', '1080p', '1440p', '2160p']
 const resolutionStep = (r: Source['resolution']) => {
@@ -279,9 +284,9 @@ export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilitie
   else if (feel === 'warm') score -= inefficientPenalty
   if (isCinemaCapture(s.quality as ParsedQuality)) score -= 3000
   score += Math.max(0, releaseQualities.indexOf((s.quality ?? 'Unknown') as ParsedQuality)) * 30
-  // HDR only helps on a screen that shows it; elsewhere the browser tone-maps it, so SDR goes first.
+  // HDR only helps on a screen that shows it; elsewhere the browser tone-maps it, so SDR goes first. So does asking for SDR.
   const hdrRank = s.hdr?.includes('DV') ? 3 : s.hdr?.includes('HDR10+') ? 2 : s.hdr?.length ? 1 : 0
-  score += caps.hdr ? hdrRank * 60 : hdrRank ? -40 : 0
+  score += wantsHDR(prefs, caps) ? hdrRank * 60 : hdrRank ? -40 : 0
   if (s.sizeBytes) {
     const mb = s.sizeBytes / 1_048_576
     const episode = prefs.kind === 'show'
@@ -325,7 +330,7 @@ export function orderedSources(list: Source[], prefs: RankPreferences, caps: Cap
   return arrangeSources(rankSources(list, prefs, caps), arrangement.ordering, {
     providers,
     audioLanguage: prefs.audioLanguage,
-    hdrScreen: caps.hdr,
+    hdrScreen: wantsHDR(prefs, caps),
     resolutionFit: (s) => resolutionScore(s.resolution, prefs.preferredQuality),
   })
 }

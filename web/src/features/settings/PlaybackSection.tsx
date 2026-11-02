@@ -185,6 +185,7 @@ export function PlaybackSection() {
   const setExtras = (patch: Partial<typeof extras>) => settingsStore.set({ subtitleOptions: { ...extras, ...patch } })
   const waitsForEnd = useSettings((x) => x.upNextWaitsForEnd ?? false)
   const neverDolbyVision = useSettings((x) => x.neverUseDolbyVision ?? false)
+  const preferHDR = useSettings((x) => x.preferHDR !== false)
   const postCredits = useSettings((x) => x.postCreditsAlert !== false)
   const becauseYouWatched = useSettings((x) => x.becauseYouWatched !== false)
   const externalPlayer = useSettings((x) => x.externalPlayer ?? 'none')
@@ -203,9 +204,12 @@ export function PlaybackSection() {
 
   return (
     <>
-      <Group footer="The picker puts this resolution first when a title has it, and falls back to the next best. Anything the browser can’t play is marked and never chosen for you.">
+      <Group footer="The picker puts this resolution first when a title has it, and falls back to the next best. Anything the browser can’t play is marked and never chosen for you. With HDR When Available off, an SDR release leads its HDR twin at the same resolution, even on a screen that shows HDR.">
         <Row label="Preferred Quality" htmlFor="quality">
           <Select id="quality" label="Preferred quality" value={quality} onChange={(v) => settingsStore.set({ preferredQuality: v })} options={qualities} />
+        </Row>
+        <Row label="HDR When Available" detail="Rank HDR releases first on an HDR screen">
+          <Switch label="HDR when available" checked={preferHDR} onChange={(on) => settingsStore.set({ preferHDR: on })} />
         </Row>
         <Row label="Remember Last Source" detail="Offer the source a title was last played from first">
           <Switch label="Remember last source" checked={remember} onChange={(on) => settingsStore.set({ rememberLastSource: on })} />

@@ -184,8 +184,9 @@ Settings → Media Servers and what the servers add to Home, Search and the play
   server's titles by TMDB id (a server's titles without one by name and year), read lazily and kept in the saved query cache
   (`marks.ts`, `serverCatalogue.ts`), refreshed after half an hour or from Settings → Refresh Library Index. A server that
   doesn't answer is named there and left out; if none answers nothing is judged. **Only Show My Server's Content** leaves
-  out of Home's rows and Search what no server lists (people stay), with no filtering while the index can't be read.
-  Explore isn't filtered yet.
+  out of Home's rows, Search and Explore what no server lists (people stay), with no filtering while the index can't be read.
+  Explore filters the pages as they arrive and keeps asking for more while the grid is short (up to 25 pages), so a server
+  with little in common with a genre still fills a screen when it can; past that it says nothing here is on the servers.
 - **Play From This Library Only** (Settings → Sources → Library). A title opened from one of a server's library rows on
   Home remembers that server for the visit (`rememberLibraryOrigin`, sessionStorage); the source search asks that server
   first and only asks everyone when it has nothing. Titles opened anywhere else are unchanged.

@@ -118,6 +118,10 @@ export const lastSources = {
     delete all[key]
     write(lastKey, all)
   },
+  forgetAll() {
+    write(lastKey, {})
+  },
+  count: (): number => Object.keys(read<Record<string, LastSource>>(lastKey, {})).length,
 }
 
 export interface PlayerPrefs {
