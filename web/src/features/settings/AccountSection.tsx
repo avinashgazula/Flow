@@ -124,9 +124,6 @@ function SignInGroup() {
   }, [account, trakt.lastSyncAt])
 
   const sharing = sync.phase !== 'off'
-  const footer = sharing
-    ? 'Sign in once. A sign-in on any device arrives on the others through Sync, with no prompt, and so does signing out. Trakt keeps your watchlist, history and progress, and Flow keeps this browser’s in step.'
-    : 'Sign in once. With Sync on (Settings → Data), a sign-in on any device arrives on the others with no prompt. Trakt keeps your watchlist, history and progress, and Flow keeps this browser’s in step.'
 
   async function signIn() {
     setProblem(undefined)
@@ -152,7 +149,7 @@ function SignInGroup() {
   if (!account) {
     return (
       <>
-        <Group title="Trakt" footer={footer}>
+        <Group title="Trakt">
           <Row label="Not Signed In" detail={finishing ? 'Finishing with Trakt…' : clientID ? 'Opens Trakt to approve Flow' : 'Add a Trakt Client ID above first'}>
             <button type="button" className="btn btn-primary btn-compact" onClick={() => void signIn()} disabled={!clientID || busy === 'sign-in' || finishing}>
               {busy === 'sign-in' ? 'Opening Trakt…' : 'Sign In to Trakt'}
@@ -171,7 +168,7 @@ function SignInGroup() {
   const syncing = busy === 'sync'
   const detail = tracking ? syncDetail({ ...trakt }, syncing, now) : 'Choose Trakt under Tracking With to track with it'
   return (
-    <Group title="Trakt" footer={footer}>
+    <Group title="Trakt">
       <Row label={trakt.username ? `Signed in as ${trakt.username}` : 'Signed in to Trakt'} detail={detail}>
         {trakt.signInAgain ? (
           <button type="button" className="btn btn-primary btn-compact" onClick={() => void signIn()} disabled={busy === 'sign-in' || !clientID}>

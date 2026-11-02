@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent } from 'react'
 import { Icon } from '../../components/Icon'
 import { settingsStore, useSettings } from '../../lib/store/settings'
+import { syncStatus } from '../../lib/sync/engine'
 import { trackerBlurb, trackerName, trackerOrder, unavailable } from '../../lib/tracking/labels'
 import { activeTracker, type TrackerKind } from '../../lib/tracking/service'
 import { checkSimklClientID, finishPin, signOutOfSimkl, startPin, type Pin } from '../../lib/tracking/session'
@@ -40,6 +41,7 @@ const choose = (kind: TrackerKind) => settingsStore.set({ tracker: kind })
 
 /** One service tracks at a time. A service that can't be chosen yet says what to do first. */
 export function TrackingWithGroup() {
+  const sync = useSyncExternalStore(syncStatus.subscribe, syncStatus.get)
   const settings = useSettings((x) => x)
   const active = activeTracker(settings)
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
@@ -58,7 +60,9 @@ export function TrackingWithGroup() {
   return (
     <Group
       title="Tracking With"
-      footer="Only one of these tracks at a time; choosing another moves your tracking to it, and the others keep their sign-ins so you can switch back. What you watch is also kept in this browser, whichever you choose."
+      footer={`Only one of these tracks at a time; choosing another moves your tracking to it, and the others keep their sign-ins so you can switch back. The one that tracks keeps your watchlist, history and progress, and Flow keeps this browser’s in step; what you watch is kept here whichever you choose. ${
+        sync.phase !== 'off' ? 'A sign-in on any device arrives on the others through Sync, with no prompt, and so does signing out.' : 'With Sync on (Settings → Data), a sign-in on any device arrives on the others with no prompt.'
+      }`}
     >
       <div role="radiogroup" aria-label="Tracking With" className={t.options}>
         {trackerOrder.map((kind, i) => {
@@ -213,13 +217,12 @@ export function SimklGroup() {
     }
   }
 
-  const footer = 'Sign in once. With Sync on (Settings → Data), a sign-in on any device arrives on the others with no prompt. Simkl keeps your watchlist, history and progress, and Flow keeps this browser’s in step.'
   const issue = problem ?? state.error
 
   if (flow.step === 'code') {
     const { pin } = flow
     return (
-      <Group title="Simkl" footer={footer}>
+      <Group title="Simkl">
         <div className={`${s.pad} ${s.padTop}`}>
           <div className={t.pin}>
             <span className={s.fieldLabel}>Your Code</span>
@@ -259,7 +262,7 @@ export function SimklGroup() {
   if (!account) {
     const asking = flow.step === 'asking'
     return (
-      <Group title="Simkl" footer={footer}>
+      <Group title="Simkl">
         <Row label="Not Signed In" detail={clientID ? 'Gives you a code to approve at simkl.com/pin' : 'Add a Simkl Client ID above first'}>
           <button type="button" className="btn btn-primary btn-compact" onClick={() => void signIn()} disabled={!clientID || asking}>
             {asking ? 'Asking Simkl…' : 'Sign In to Simkl'}
@@ -275,7 +278,7 @@ export function SimklGroup() {
   }
 
   return (
-    <Group title="Simkl" footer={footer}>
+    <Group title="Simkl">
       <Row label={state.username ? `Signed in as ${state.username}` : 'Signed in to Simkl'} detail={tracking ? syncDetail(state, syncing, now) : 'Choose Simkl under Tracking With to track with it'}>
         {state.signInAgain ? (
           <button type="button" className="btn btn-primary btn-compact" onClick={() => void signIn()} disabled={!clientID || flow.step === 'asking'}>
