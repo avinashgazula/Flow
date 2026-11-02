@@ -2,9 +2,9 @@
    web's settings, so the rules are tested without a browser or a server.
 
    The record holds sections. The web understands six of them: keys (the TMDB, MDBList, TVDB, RatingPosterDB, IntroDB,
-   PublicMetaDB, OpenSubtitles, SubDL, SubSource, Trakt and Simkl keys; the rest travel through), accounts (the Trakt sign-in; Simkl's travels through), add-ons, servers, the stream
-   proxy and playback. Everything else in the record (the other keys, Simkl's token, sections a newer app added,
-   fields a newer app added inside these) is carried through unchanged. */
+   PublicMetaDB, OpenSubtitles, SubDL, SubSource, Trakt and Simkl keys; the rest travel through), accounts (the Trakt and Simkl sign-ins), add-ons, servers, the stream
+   proxy and playback. Everything else in the record (the other keys, sections a newer app added, fields a newer app
+   added inside these) is carried through unchanged. */
 
 import { proxyProblem } from '../sources/proxy'
 import { defaultSettings, type AddonConfig, type ServerConfig, type Settings, type TraktToken } from '../store/settings'
@@ -72,7 +72,7 @@ function readable(section: unknown): Section | undefined {
        field of the section as the record had it, which is how introDBAPIKey, publicMetaDBAPIKey, the
        OpenSubtitles keys and the rest travel through without the web reading them;
      - a new section: add its name to SectionName and webSections, and an entry here. `accounts` is the
-       example: its `overlay` replaces only `trakt` and leaves `simkl` as the record has it.
+       example: its `overlay` replaces only `trakt` and `simkl` and leaves the rest of the record as it was.
    Everything else (timestamps, merging, unknown sections) is shared. */
 interface SectionDef {
   /** What this browser owns of the section, built from its settings. Also what the section's snapshot is made of. */
@@ -175,21 +175,37 @@ const defs: Record<SectionName, SectionDef> = {
     },
   },
   accounts: {
-    value: (s) => ({ trakt: s.traktAccount ? tokenOut(s.traktAccount) : null }),
-    overlay(base, value) {
-      const before = isObject(base) ? base : {}
-      const trakt = (value as Json).trakt
-      // Simkl, and anything else in the section, stays as the record had it; so do fields on the Trakt token the web doesn't know.
-      return { ...before, trakt: trakt === null ? null : { ...(isObject(before.trakt) ? before.trakt : {}), ...(trakt as Json) } }
+    // Simkl goes up once this browser has a sign-in, and a sign-out it had made travels as null; a browser that never
+    // signed in to Simkl leaves the apps' token as the record has it.
+    value: (s) => ({ trakt: s.traktAccount ? tokenOut(s.traktAccount) : null, ...(s.simklAccount ? { simkl: tokenOut(s.simklAccount) } : {}) }),
+    overlay(base, value, before) {
+      const was = isObject(base) ? base : {}
+      const mine = value as Json
+      const trakt = mine.trakt
+      const had = isObject(before) && isObject(before.simkl)
+      // Anything else in the section stays as the record had it; so do fields on a token the web doesn't know.
+      // The record's own copy stays as it is while it says the same thing (an app writes fewer fields than the web reads).
+      const same = isObject(mine.simkl) && JSON.stringify(readToken(was.simkl)) === JSON.stringify(readToken(mine.simkl))
+      const simkl = same ? was.simkl : isObject(mine.simkl) ? { ...(isObject(was.simkl) ? was.simkl : {}), ...mine.simkl } : had ? null : was.simkl
+      return { ...was, trakt: trakt === null ? null : { ...(isObject(was.trakt) ? was.trakt : {}), ...(trakt as Json) }, ...(simkl === undefined ? {} : { simkl }) }
     },
     patch(data) {
-      if (!isObject(data) || !('trakt' in data)) return null
-      if (data.trakt === null) return { traktAccount: null }
-      const token = readToken(data.trakt)
-      return token ? { traktAccount: token } : null
+      if (!isObject(data)) return null
+      const patch: Partial<Settings> = {}
+      const token = (field: 'trakt' | 'simkl', set: 'traktAccount' | 'simklAccount') => {
+        if (!(field in data)) return
+        if (data[field] === null) patch[set] = null
+        else {
+          const read = readToken(data[field])
+          if (read) patch[set] = read
+        }
+      }
+      token('trakt', 'traktAccount')
+      token('simkl', 'simklAccount')
+      return Object.keys(patch).length ? patch : null
     },
-    // A sign-out recorded elsewhere is news; "no Trakt in the record" on joining is not.
-    keepOnJoin: (data, current) => current.traktAccount !== null && !(isObject(data) && readToken(data.trakt)),
+    // A sign-out recorded elsewhere is news; "no sign-in in the record" on joining is not.
+    keepOnJoin: (data, current) => (current.traktAccount !== null && !(isObject(data) && readToken(data.trakt))) || (current.simklAccount !== null && !(isObject(data) && readToken(data.simkl))),
   },
   addons: {
     value: (s) => s.addons.map((a) => ({ url: a.url, name: a.name, enabled: a.enabled })),

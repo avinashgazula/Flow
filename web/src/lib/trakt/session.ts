@@ -11,6 +11,7 @@
 
 import { settingsStore, type TraktToken } from '../store/settings'
 import { loadConfig } from '../sync/config'
+import { activeTracker } from '../tracking/service'
 import { createClient, TraktError, words, type TraktAuth } from './client'
 import { authorizationCode, authorizeURL, exchangeCode, isExpired, makePkce, redirectURI, refreshToken, revokeToken, TraktAuthError } from './oauth'
 import { emptyState, traktStore } from './store'
@@ -134,7 +135,8 @@ export async function finishSignIn(search: string): Promise<{ ok: true } | { ok:
   if (!code.ok) return code
   try {
     const token = await exchangeCode(fetch, { clientID: pending.clientID, code: code.code, verifier: pending.verifier, redirect: pending.redirect })
-    settingsStore.set({ traktAccount: token })
+    // Signing in is choosing to track with it, as in the apps.
+    settingsStore.set({ traktAccount: token, tracker: 'trakt' })
     traktStore.set({ signInAgain: false, error: null })
     await pushToSync().catch(() => undefined)
     await rememberProfile()
@@ -189,7 +191,8 @@ export async function signOut(): Promise<void> {
   const token = currentToken()
   if (!token) return
   const id = clientID()
-  settingsStore.set({ traktAccount: null })
+  // Tracking goes back to this device if Trakt was doing it, as the apps do.
+  settingsStore.set((s) => ({ traktAccount: null, ...(activeTracker(s) === 'trakt' ? { tracker: 'local' as const } : {}) }))
   traktStore.set({ ...emptyState })
   await Promise.all([id ? revokeToken(fetch, { clientID: id, token }) : undefined, pushToSync().catch(() => undefined)])
 }

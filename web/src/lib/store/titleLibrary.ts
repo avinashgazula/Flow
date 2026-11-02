@@ -1,4 +1,4 @@
-import { settingsStore } from './settings'
+import { trackerEngine } from '../tracking/service'
 import { advanceRewatch, episodeCode, episodeKey, libraryStore, mediaKey, slim, type EpisodeRef, type Library } from './library'
 import type { MediaItem } from '../tmdb/types'
 
@@ -8,7 +8,7 @@ import type { MediaItem } from '../tmdb/types'
 
 export const titleLibrary = {
   /** Many episodes at once (a season, a whole show): one change to the store, one history entry for each episode
-   *  not already watched. Trakt hears about them through the library's own watching of its history. */
+   *  not already watched. The tracker hears about them through the library's own watching of its history. */
   markEpisodesWatched(item: MediaItem, episodes: EpisodeRef[]) {
     const key = mediaKey(item.type, item.id)
     libraryStore.set((l) => {
@@ -27,7 +27,7 @@ export const titleLibrary = {
       }
     })
   },
-  /** Takes a film, an episode or several episodes back out of what is watched. Trakt is told, which a cleared
+  /** Takes a film, an episode or several episodes back out of what is watched. The tracker is told, which a cleared
    *  history never does. During a rewatch an episode comes off the rewatch only: the plays before it stay. */
   markUnwatched(item: MediaItem, episodes?: EpisodeRef[]) {
     const key = mediaKey(item.type, item.id)
@@ -44,10 +44,10 @@ export const titleLibrary = {
       const history = l.history.filter((h) => h.key !== key || !gone.has(h.episode ? episodeKey(item.id, h.episode) : ''))
       return { watchedEpisodes, history }
     })
-    if (settingsStore.get().traktAccount) void import('../trakt/engine').then((m) => refs.forEach((e) => m.unwatchTitle(item, e)))
+    void trackerEngine()?.then((m) => refs.forEach((e) => m.unwatchTitle(item, e)))
   },
-  /** The viewer's own score, 1 to 10, or null to clear it. Kept here whoever is signed in, and sent to Trakt when
-   *  there is a sign-in. */
+  /** The viewer's own score, 1 to 10, or null to clear it. Kept here whoever is signed in, and sent to the tracker
+   *  when there is one. */
   rate(item: MediaItem, score: number | null) {
     const key = mediaKey(item.type, item.id)
     libraryStore.set((l) => {
@@ -56,7 +56,7 @@ export const titleLibrary = {
       else ratings[key] = Math.min(10, Math.max(1, Math.round(score)))
       return { ratings }
     })
-    if (settingsStore.get().traktAccount) void import('../trakt/engine').then((m) => m.rateTitle(item, score))
+    void trackerEngine()?.then((m) => m.rateTitle(item, score))
   },
   startRewatch(item: MediaItem) {
     libraryStore.set((l) => ({ rewatches: { ...l.rewatches, [mediaKey(item.type, item.id)]: { startedAt: Date.now(), watched: [] } } }))

@@ -2,17 +2,19 @@ import { useEffect, useState, useSyncExternalStore, type FormEvent } from 'react
 import { Icon } from '../../components/Icon'
 import { settingsStore, useSettings } from '../../lib/store/settings'
 import { syncStatus } from '../../lib/sync/engine'
+import { activeTracker } from '../../lib/tracking/service'
 import { callbackPath } from '../../lib/trakt/arrive'
 import { redirectURI } from '../../lib/trakt/oauth'
 import { beginSignIn, checkClientID, finishingSignIn, signOut } from '../../lib/trakt/session'
 import { useTrakt } from '../../lib/trakt/store'
 import { ConfirmButton, Group, Note, Row } from './controls'
 import s from './SettingsScreen.module.css'
-import { ago } from './SyncGroup'
+import { MDBListGroup, SimklAppGroup, SimklGroup, TrackingWithGroup, syncDetail } from './TrackerGroups'
 
-/* Settings → Account: the Trakt app Flow signs in with, and the sign-in itself. The sign-in is a setting that
-   Flow Sync carries, so signing in on any device signs in here too. The sign-in code, the library sync and the
-   scrobbler are in lib/trakt and load only when they are used. */
+/* Settings → Account: which service tracks (TrackerGroups.tsx), the Trakt app Flow signs in with and the sign-in
+   itself, then Simkl and MDBList. The sign-in is a setting that Flow Sync carries, so signing in on any device signs
+   in here too. The sign-in code, the library sync and the scrobbler are in lib/trakt (and lib/tracking for the
+   others) and load only when they are used. */
 
 /** The Client ID of the owner's Trakt app, and the one address they must add to it. */
 function AppGroup() {
@@ -107,6 +109,7 @@ function AppGroup() {
 function SignInGroup() {
   const clientID = useSettings((x) => x.traktClientID.trim())
   const account = useSettings((x) => x.traktAccount)
+  const tracking = useSettings((x) => activeTracker(x) === 'trakt')
   const trakt = useTrakt((x) => x)
   const sync = useSyncExternalStore(syncStatus.subscribe, syncStatus.get)
   const finishing = useSyncExternalStore(finishingSignIn.subscribe, finishingSignIn.get)
@@ -166,7 +169,7 @@ function SignInGroup() {
   }
 
   const syncing = busy === 'sync'
-  const detail = syncing ? 'Syncing…' : trakt.lastSyncAt ? `Last synced ${ago(trakt.lastSyncAt, now)}` : 'Waiting for the first sync'
+  const detail = tracking ? syncDetail({ ...trakt }, syncing, now) : 'Choose Trakt under Tracking With to track with it'
   return (
     <Group title="Trakt" footer={footer}>
       <Row label={trakt.username ? `Signed in as ${trakt.username}` : 'Signed in to Trakt'} detail={detail}>
@@ -174,13 +177,17 @@ function SignInGroup() {
           <button type="button" className="btn btn-primary btn-compact" onClick={() => void signIn()} disabled={busy === 'sign-in' || !clientID}>
             {busy === 'sign-in' ? 'Opening Trakt…' : 'Sign In Again'}
           </button>
-        ) : (
+        ) : tracking ? (
           <button type="button" className="btn btn-secondary btn-compact" onClick={() => void syncNow()} disabled={syncing}>
             <Icon name="refresh" size={16} /> Sync Now
           </button>
+        ) : (
+          <button type="button" className="btn btn-primary btn-compact" onClick={() => settingsStore.set({ tracker: 'trakt' })}>
+            Track With Trakt
+          </button>
         )}
       </Row>
-      {(trakt.error || problem) && (
+      {(tracking ? (trakt.error || problem) : problem) && (
         <div className={`${s.pad} ${s.padTop}`}>
           <Note tone="error">{problem ?? trakt.error}</Note>
         </div>
@@ -195,8 +202,12 @@ function SignInGroup() {
 export function AccountSection() {
   return (
     <>
+      <TrackingWithGroup />
       <AppGroup />
       <SignInGroup />
+      <SimklAppGroup />
+      <SimklGroup />
+      <MDBListGroup />
     </>
   )
 }

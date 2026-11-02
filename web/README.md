@@ -38,6 +38,7 @@ npm test             # unit tests (Vitest)
 | `src/lib/tmdb/` | TMDB client (normalises responses into `types.ts`), images, sample data. |
 | `src/lib/store/` | Settings and library (watchlist, progress, history) in localStorage. |
 | `src/lib/trakt/` | Trakt: PKCE sign-in, the API client, the library sync and the player's scrobbler (see Trakt below). |
+| `src/lib/tracking/` | Which service tracks, and Simkl and MDBList as trackers: clients, sign-in, one shared sync engine (see Simkl and MDBList below). |
 | `src/lib/sources/` | Stream add-ons, Jellyfin/Emby, Plex and WebDAV, and source ranking. |
 | `src/features/player/` | The player. |
 | `src/features/livetv/`, `src/lib/livetv/` | Live TV: the channel list, the timeline guide and the live player; the M3U, Xtream Codes and XMLTV code behind them. |
@@ -360,7 +361,7 @@ authorization-code flow with PKCE (no client secret, as in the apps). Trakt's AP
   The address isn't a screen: `lib/trakt/arrive.ts` sends the browser to Settings → Account before the router reads
   it and finishes the sign-in in the background, so a failure is told in Account.
 - **Through Flow Sync.** The Client ID travels in the `keys` section (`traktClientID`, `simklClientID`) and the token in
-  `accounts.trakt` in the apps' shape, with the `redirectURI` it was issued against; Simkl's entry is never touched. A
+  `accounts.trakt` in the apps' shape, with the `redirectURI` it was issued against; Simkl's token is `accounts.simkl` (below). A
   sign-in, a refreshed token and a sign-out are pushed at once, and a token pulled from another device signs the site
   in with no prompt. Before refreshing, Sync is pulled first, since another device may have rotated the token (and
   again if the refresh is refused). A refresh quotes the redirect the token was issued against.
@@ -379,7 +380,45 @@ authorization-code flow with PKCE (no client secret, as in the apps). Trakt's AP
   `unwatchTitle` in the engine, which queues a removal from Trakt's history. (A cleared history never un-watches
   anything on Trakt, which is why this is an explicit call and not something the library's changes are diffed into.)
   An episode whose removal is still waiting isn't brought back by the next pull.
-- **Budget.** `lib/trakt/boot.ts` is the only part in the first load; the sign-in, sync and scrobbler are lazy chunks.
+- **Budget.** `lib/tracking/boot.ts` (with `service.ts`) is the only tracker code in the first load; the sign-in, sync and scrobbler are lazy chunks.
+
+## Simkl and MDBList
+
+Only one service tracks at a time, as in the apps: Settings → Account → Tracking With lists Trakt, Simkl, PublicMetaDB,
+MDBList and This Device in the apps' order, with a check on the one in use. `settings.tracker` holds the choice (local to
+the browser, as in the apps). Never chosen means the first sign-in tracks (Trakt, then Simkl), as the apps do when a
+sign-in arrives through Sync; signing in tracks with that service, signing out of the one in use goes back to This
+Device, and a choice whose sign-in or key has gone falls back to This Device and comes back with it
+(`lib/tracking/service.ts`, `activeTracker`). The others keep their sign-ins and queues but are never spoken to. The
+library in this browser is always kept, so This Device works whatever is chosen.
+
+Checked against the live services in November 2026:
+
+| Service | Browser access | What the website does |
+| --- | --- | --- |
+| Simkl | `access-control-allow-origin: *` on every answer, errors too, and a preflight for `Authorization` and `simkl-api-key` is answered | Everything: sign-in, sync, ratings, scrobbles |
+| MDBList | `access-control-allow-origin: *` on every answer, but no preflight is accepted (OPTIONS is 405 on every path) | Reads send no custom header, so they are simple requests. Writes go as `text/plain` with the JSON as the body, which is also simple. Whether MDBList reads a JSON body sent that way couldn't be checked without a key: if it answers 415, Settings says so and the change stays in this browser |
+| PublicMetaDB | No CORS headers at all | Nothing: its row in Tracking With says only the apps can use it, and its key still travels through Sync |
+
+- **Simkl sign-in** is its PIN flow (`/oauth/pin`): the page asks for a code, shows it with a link to simkl.com/pin and
+  polls until it is approved (`lib/tracking/session.ts`). It needs the Simkl app's Client ID (Settings → Account → Simkl
+  App, checked by asking Simkl for a code) and no redirect. The token has no refresh token or expiry. It is
+  `settings.simklAccount` and travels as `accounts.simkl` in the apps' shape, so a sign-in made here works in the apps
+  and the other way round; the section's other fields are kept as the record had them. A browser that never held a
+  Simkl sign-in leaves the apps' token alone.
+- **MDBList** tracks with the API key from Settings → Metadata (no sign-in; the key is the same one that adds ratings).
+- **One engine** (`lib/tracking/engine.ts`) serves both, with `lib/trakt/merge.ts` and `ops.ts` as the rules, so they sync
+  like Trakt: the watchlist two-way, history additions only, resume points the service's when newer, changes made here
+  sent a couple of seconds later from a queue that survives a reload, a full sync on Sync Now, on choosing the service and
+  hourly, and the lighter one (watchlist and resume points) every five minutes. Simkl has no flat history, so history is
+  read from its all-items lists. A service's state (who, last sync, queue, what went wrong) is kept per service.
+- **Sync issues in words.** The service's group in Account says "Sync issues" and the sentence (couldn't reach it, key or
+  sign-in not accepted, an update refused with its status), with how many changes are waiting. A refused update is
+  dropped, as for Trakt, but its sentence stays on screen.
+- **Scrobbling** uses the same start, pause and stop as Trakt. Simkl counts a stop at 80 % as a watch, so the library's
+  own mark of that play isn't sent too; for MDBList it is, since its reading of a scrobble couldn't be checked.
+- **Ratings** go to Simkl (`/sync/ratings`); MDBList keeps none through this API, as in the apps.
+- **Budget.** The engine, clients and sign-in are lazy chunks; `boot.ts` loads the engine only once one of the two tracks.
 
 ## Ratings, requests and episode numbering
 

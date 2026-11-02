@@ -73,6 +73,9 @@ export interface TraktToken {
   redirectURI: string | null
 }
 
+/** The service that keeps watch history, as the apps' TrackerKind. */
+export type TrackerKind = 'trakt' | 'simkl' | 'publicMetaDB' | 'mdblist' | 'local'
+
 /** How large a title page's text is set, as the apps' DetailTextSize (Default is the page's own size). */
 export type DetailTextSize = 'small' | 'standard' | 'large' | 'extraLarge'
 
@@ -81,10 +84,15 @@ export interface Settings {
   tmdbKey: string
   /** The Client ID of the owner's own Trakt app. Trakt issues no secret for PKCE apps, so this is all it takes. */
   traktClientID: string
-  /** Simkl's Client ID. The website doesn't sign in to Simkl yet; the field keeps the apps' value through Sync. */
+  /** The Client ID of the owner's Simkl app. Simkl signs in with a code, so there is no secret and no redirect. */
   simklClientID: string
   /** Who the website is signed in to Trakt as. Travels through Flow Sync, so any device's sign-in arrives here. */
   traktAccount: TraktToken | null
+  /** The same for Simkl: its token has no refresh token or expiry, and travels through Flow Sync like Trakt's. */
+  simklAccount: TraktToken | null
+  /** The one service that tracks (Settings → Account → Tracking With). Absent means never chosen: the first sign-in
+   *  (Trakt, then Simkl) tracks, as when the apps adopt a sign-in that arrives through Sync. */
+  tracker?: TrackerKind
   /** Sample data: every screen fills without keys or accounts. */
   demo: boolean
   onboarded: boolean
@@ -225,6 +233,7 @@ export const defaultSettings: Settings = {
   traktClientID: '',
   simklClientID: '',
   traktAccount: null,
+  simklAccount: null,
   demo: false,
   onboarded: false,
   language: browserLanguage.includes('-') ? browserLanguage : `${browserLanguage}-US`,

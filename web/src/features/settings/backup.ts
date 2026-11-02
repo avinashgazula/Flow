@@ -36,6 +36,8 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   traktClientID: (v) => typeof v === 'string',
   simklClientID: (v) => typeof v === 'string',
   traktAccount: (v) => v === null || (isObject(v) && typeof v.accessToken === 'string' && v.accessToken.length > 0 && [v.refreshToken, v.expiresAt, v.redirectURI].every((x) => x === null || typeof x === 'string')),
+  simklAccount: (v) => v === null || (isObject(v) && typeof v.accessToken === 'string' && v.accessToken.length > 0 && [v.refreshToken, v.expiresAt, v.redirectURI].every((x) => x === null || typeof x === 'string')),
+  tracker: (v) => ['trakt', 'simkl', 'publicMetaDB', 'mdblist', 'local'].includes(v as string),
   demo: (v) => typeof v === 'boolean',
   onboarded: (v) => typeof v === 'boolean',
   language: (v) => typeof v === 'string' && v.length > 0,

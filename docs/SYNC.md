@@ -120,6 +120,7 @@ The plaintext is JSON:
   The web app maps `tmdbKey` to `tmdbAPIKey`, and its Trakt Client ID and Simkl Client ID fields to `traktClientID` and `simklClientID`. A client id this device never had is not written as a blank over one another device set.
 - **`accounts`:** `{"trakt": token|null, "simkl": token|null}`. A token is `{"accessToken", "refreshToken", "expiresAt" (ISO 8601 or null), "redirectURI"}`.
   - The website signs in to Trakt too and writes its token here, so a sign-in made anywhere reaches every device. It uses PKCE with no client secret and a redirect URI of `<site origin>/settings/trakt-callback`, which the owner adds to the Trakt app next to the apps' own. `redirectURI` on the token is the one it was issued against, and a refresh on any device quotes it back.
+  - The website signs in to Simkl as well (its PIN flow) and writes the token to `accounts.simkl`. A Simkl token has an `accessToken` only: `refreshToken`, `expiresAt` and `redirectURI` are null, and there is nothing to rotate. A device that never held a Simkl sign-in leaves the record's `simkl` as it is, and one that signs out writes `null`.
   - A device that already holds a token keeps it when it joins a sync whose record has none.
   - When a device refreshes a token, it writes the new one at once, since the old refresh token stops working.
   - Before refreshing, a device pulls first in case another device already did.

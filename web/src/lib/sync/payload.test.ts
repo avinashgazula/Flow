@@ -262,8 +262,9 @@ describe('the Trakt sign-in and client ids through Sync', () => {
     expect(payload.sections.accounts!.data).toEqual({ trakt: null, simkl: { accessToken: 'sk' } })
   })
 
-  it('ignores an accounts section with no readable Trakt entry', () => {
-    expect(settingsPatch('accounts', { simkl: null }, settings())).toBeNull()
+  it('ignores an accounts section with no readable sign-in', () => {
+    expect(settingsPatch('accounts', {}, settings())).toBeNull()
+    expect(settingsPatch('accounts', { simkl: { refreshToken: 'x' } }, settings())).toBeNull()
     expect(settingsPatch('accounts', { trakt: { refreshToken: 'x' } }, settings())).toBeNull()
     expect(settingsPatch('accounts', { trakt: { accessToken: 'a' } }, settings())).toEqual({ traktAccount: { accessToken: 'a', refreshToken: null, expiresAt: null, redirectURI: null } })
   })
@@ -434,5 +435,46 @@ describe('reading a record', () => {
     expect(parsePayload('{"v":1}')).toEqual({ ok: false, newer: false })
     expect(parsePayload('nope')).toEqual({ ok: false, newer: false })
     expect(parsePayload('[]')).toEqual({ ok: false, newer: false })
+  })
+})
+
+describe('the Simkl sign-in through Sync', () => {
+  const simklToken = { accessToken: 'sk', refreshToken: null, expiresAt: null, redirectURI: null }
+
+  it('writes a Simkl sign-in once there is one, and writes nothing for a browser that never had one', () => {
+    expect(localValue('accounts', settings({ simklAccount: simklToken }))).toEqual({ trakt: null, simkl: simklToken })
+    expect(localValue('accounts', settings())).toEqual({ trakt: null })
+  })
+
+  it('signs the website in to Simkl from the apps’ token, and out when the record says so', () => {
+    const first = pull(record({ accounts: section(5, { trakt: null, simkl: { accessToken: 'sk' } }) }), settings(), {}, 9)
+    expect(first.settings.simklAccount).toEqual(simklToken)
+    // Taking the apps' token in is not a change to send back.
+    expect(first.payload.sections.accounts).toEqual(section(5, { trakt: null, simkl: { accessToken: 'sk' } }))
+    const out = pull(record({ accounts: section(8, { trakt: null, simkl: null }) }), first.settings, first.metas, 12)
+    expect(out.settings.simklAccount).toBeNull()
+  })
+
+  it('writes a Simkl sign-in made here over the record’s, keeping what the web does not know in the section', () => {
+    const remote = record({ accounts: section(1, { trakt: null, simkl: null, future: 1 }) })
+    const metas: Metas = { accounts: { updatedAt: iso(1), device: 'iPhone', snapshot: JSON.stringify({ trakt: null }) } }
+    const { payload } = merge(remote, settings({ simklAccount: simklToken }), metas, t(4), 'Web')
+    expect(payload.sections.accounts).toEqual({ updatedAt: iso(4), device: 'Web', data: { trakt: null, simkl: simklToken, future: 1 } })
+  })
+
+  it('writes a sign-out it made as null, but leaves the apps’ Simkl token alone when this browser never had one', () => {
+    const remote = record({ accounts: section(1, { trakt: null, simkl: { accessToken: 'sk' } }) })
+    const had: Metas = { accounts: { updatedAt: iso(1), device: 'Web', snapshot: JSON.stringify({ trakt: null, simkl: simklToken }) } }
+    expect(merge(remote, settings(), had, t(3), 'Web').payload.sections.accounts!.data).toEqual({ trakt: null, simkl: null })
+    const never: Metas = { accounts: { updatedAt: iso(1), device: 'iPhone', snapshot: JSON.stringify({ trakt: null }) } }
+    const kept = merge(remote, settings({ traktAccount: { accessToken: 'web', refreshToken: null, expiresAt: null, redirectURI: null } }), never, t(3), 'Web')
+    expect((kept.payload.sections.accounts!.data as { simkl: unknown }).simkl).toEqual({ accessToken: 'sk' })
+  })
+
+  it('keeps a Simkl sign-in made here when joining a sync whose record has none', () => {
+    const mine = settings({ simklAccount: simklToken })
+    const none = pull(record({ accounts: section(5, { trakt: null, simkl: null }) }), mine, {}, 9, true)
+    expect(none.settings.simklAccount).toEqual(simklToken)
+    expect((none.payload.sections.accounts!.data as { simkl: unknown }).simkl).toEqual(simklToken)
   })
 })

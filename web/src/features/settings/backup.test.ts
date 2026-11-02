@@ -208,6 +208,18 @@ describe('settings backup', () => {
     expect(defaultSettings.traktAccount).toBeNull()
   })
 
+  it('carries the Simkl sign-in and the chosen tracker, and skips ones it cannot use', () => {
+    const token = { accessToken: 'sk', refreshToken: null, expiresAt: null, redirectURI: null }
+    const parse = (settings: unknown) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings }))
+    const good = parse({ simklAccount: token, tracker: 'simkl' })
+    expect(good.ok && good.settings).toEqual({ simklAccount: token, tracker: 'simkl' })
+    const bad = parse({ autoplayNext: true, simklAccount: { accessToken: '' }, tracker: 'letterboxd' })
+    expect(bad.ok && bad.skipped.sort()).toEqual(['simklAccount', 'tracker'])
+    expect(defaultSettings.simklAccount).toBeNull()
+    // Never chosen is the default: the first sign-in tracks.
+    expect(defaultSettings.tracker).toBeUndefined()
+  })
+
   it('keeps Home’s shelves and the switches around them, and skips ones Home could not use', () => {
     const shelves = [
       { id: 'watchlist', title: 'Watchlist', source: { kind: 'builtIn', id: 'watchlist' }, enabled: true, style: 'poster' },

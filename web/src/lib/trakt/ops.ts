@@ -15,6 +15,9 @@ export interface FlushResult {
   remaining: Op[]
   /** Why sending stopped, when it did. */
   error?: TraktError
+  /** The first change the service looked at and refused, which is dropped. Trakt's engine ignores it; the other
+   *  trackers' engines say so in Settings, since a service that refuses every update from a web page needs telling. */
+  dropped?: TraktError
   /** Trakt's resume-point ids learned on the way. */
   ids: Record<string, number>
 }
@@ -22,6 +25,7 @@ export interface FlushResult {
 export async function flushOps(api: Api, ops: Op[], known: Record<string, number> = {}): Promise<FlushResult> {
   const ids = { ...known }
   let remaining = ops
+  let dropped: TraktError | undefined
 
   /** One request for a group. Returns why sending should stop, if it should. */
   async function send(group: Op[], call: () => Promise<unknown>): Promise<TraktError | undefined> {
@@ -32,6 +36,7 @@ export async function flushOps(api: Api, ops: Op[], known: Record<string, number
       if (!(error instanceof TraktError)) throw error
       // Trakt looked at it and said no: sending it again won't change that.
       if (error.kind !== 'rejected') return error
+      dropped ??= error
     }
     remaining = remaining.filter((o) => !group.includes(o))
     return undefined
@@ -60,7 +65,7 @@ export async function flushOps(api: Api, ops: Op[], known: Record<string, number
   ]
   for (const [group, call] of steps) {
     const error = await send(group, call)
-    if (error) return { remaining, error, ids }
+    if (error) return { remaining, error, ids, dropped }
   }
 
   // A resume point is removed by Trakt's own id for it, which is the one thing that has to be looked up.
@@ -78,7 +83,7 @@ export async function flushOps(api: Api, ops: Op[], known: Record<string, number
         delete ids[key]
       }
     })
-    if (error) return { remaining, error, ids }
+    if (error) return { remaining, error, ids, dropped }
   }
-  return { remaining, ids }
+  return { remaining, ids, dropped }
 }

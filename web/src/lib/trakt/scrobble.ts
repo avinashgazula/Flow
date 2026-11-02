@@ -31,6 +31,9 @@ export interface ScrobbleDeps {
   send(action: Scrobble, target: Target, percent: number, keepalive: boolean): Promise<void>
   /** The library's own mark, made when Trakt will count the play. */
   markWatched(item: MediaItem, episode?: EpisodeRef, runtime?: number): void
+  /** Whether the service records a play by itself when a stop comes in past 80 %, which is what keeps the library's own
+   *  mark from being sent too. True (Trakt, Simkl) unless said otherwise. */
+  counts?: boolean
 }
 
 /** The sequence of calls for one player. Sends one after another, in the order made, and never throws: a
@@ -64,7 +67,7 @@ export function createScrobbler(deps: ScrobbleDeps) {
     // Sent and counted: Trakt has the play, and the library's mark must not travel too. Not sent: let it travel.
     if (counted && !sent) release(key, false)
     if (counted) deps.markWatched(reading.item, reading.episode, minutesOf(reading.duration))
-    release(key, counted && sent)
+    release(key, counted && sent && deps.counts !== false)
   }
 
   return {
@@ -113,9 +116,16 @@ export function createScrobbler(deps: ScrobbleDeps) {
 
 /** Follows a video element: its play, pause and end, the page going away, and the player closing (the returned
  *  function). `read` says what is playing and how far in; null before there is anything to report. */
-export function startScrobbling(video: HTMLVideoElement, read: () => Reading | null): () => void {
+export function startScrobbling(
+  video: HTMLVideoElement,
+  read: () => Reading | null,
+  /** Where the scrobbles go: Trakt unless another service tracks (lib/tracking/scrobble.ts). */
+  send: ScrobbleDeps['send'] = (action, target, percent, keepalive) => trakt().scrobble(action, target, percent, keepalive),
+  counts = true,
+): () => void {
   const scrobbler = createScrobbler({
-    send: (action, target, percent, keepalive) => trakt().scrobble(action, target, percent, keepalive),
+    send,
+    counts,
     markWatched: (item, episode, runtime) => library.markWatched(item, episode, runtime),
   })
   const onPlay = () => {

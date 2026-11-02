@@ -11,12 +11,14 @@
    recent history, watched episodes and resume points and folds them in (merge.ts holds the rules). Titles
    Trakt names but this browser has never seen get their artwork from TMDB afterwards. */
 
-import { libraryStore, type Library } from '../store/library'
+import { libraryStore } from '../store/library'
 import { settingsStore } from '../store/settings'
-import { tmdbPath, type MediaItem } from '../tmdb/types'
+import type { MediaItem } from '../tmdb/types'
+import { hydrateStubs } from '../tracking/hydrate'
+import { activeTracker } from '../tracking/service'
 import { TraktError } from './client'
 import { claimKey, isClaimed } from './claims'
-import { applyPull, diffLibrary, enqueue, enqueueAll, isStub, mergeHistory, mergeProgress, mergeWatchedEpisodes, mergeWatchlist, snapshotOf } from './merge'
+import { applyPull, diffLibrary, enqueue, enqueueAll, mergeHistory, mergeProgress, mergeWatchedEpisodes, mergeWatchlist, snapshotOf } from './merge'
 import { flushOps } from './ops'
 import { clientID, currentToken, rememberProfile, trakt } from './session'
 import { traktStore } from './store'
@@ -41,8 +43,9 @@ let lastRun = 0
 let running: Promise<void> | undefined
 let again = false
 
-/** Sample data is a made-up library; it never goes to someone's real Trakt account. */
-const signedIn = () => currentToken() !== null && clientID() !== '' && !settingsStore.get().demo
+/** Sample data is a made-up library; it never goes to someone's real Trakt account. Nor does anything while another
+ *  service is the one tracking (Settings → Account → Tracking With): Trakt keeps its sign-in and sits idle. */
+const signedIn = () => currentToken() !== null && clientID() !== '' && !settingsStore.get().demo && activeTracker(settingsStore.get()) === 'trakt'
 
 // MARK: Going up
 
@@ -133,42 +136,15 @@ async function pull(): Promise<void> {
 
 // MARK: Artwork for titles Trakt named
 
-const truncate = (text: string) => (text.length > 240 ? `${text.slice(0, 237)}…` : text)
-
-/** Gives stand-in entries their poster and overview. A catalogue that can't be reached is not an error here. */
-async function hydrate(): Promise<void> {
-  const lib = libraryStore.get()
-  const wanted = new Map<string, MediaItem>()
-  for (const entry of [...lib.watchlist, ...lib.history.slice(0, 60), ...Object.values(lib.progress)]) if (isStub(entry.item)) wanted.set(`${entry.item.type}:${entry.item.id}`, entry.item)
-  const queue = [...wanted.values()].slice(0, 40)
-  const fresh = new Map<string, MediaItem>()
-  // TMDB's client is fetched only when there is artwork to look for.
-  const { item: tmdbItem, tmdb } = await import('../tmdb/client')
-  const worker = async () => {
-    for (let stub = queue.shift(); stub; stub = queue.shift()) {
-      try {
-        const found = tmdbItem(await tmdb(`/${tmdbPath(stub.type)}/${stub.id}`), stub.type)
-        if (found) fresh.set(`${stub.type}:${stub.id}`, { ...found, overview: truncate(found.overview) || stub.overview })
-      } catch {
-        // No key, offline or an id TMDB doesn't know: the stand-in stays.
-        return
-      }
+const hydrate = () =>
+  hydrateStubs((change) => {
+    applying = true
+    try {
+      change()
+    } finally {
+      applying = false
     }
-  }
-  await Promise.all([worker(), worker(), worker()])
-  if (!fresh.size) return
-  const swap = <T extends { item: MediaItem }>(e: T): T => (isStub(e.item) && fresh.has(`${e.item.type}:${e.item.id}`) ? { ...e, item: fresh.get(`${e.item.type}:${e.item.id}`)! } : e)
-  applying = true
-  try {
-    libraryStore.set((l: Library) => ({
-      watchlist: l.watchlist.map(swap),
-      history: l.history.map(swap),
-      progress: Object.fromEntries(Object.entries(l.progress).map(([k, p]) => [k, swap(p)])),
-    }))
-  } finally {
-    applying = false
-  }
-}
+  })
 
 // MARK: When
 
@@ -221,10 +197,11 @@ export function startTrakt() {
   if (started || typeof document === 'undefined') return
   started = true
   libraryStore.subscribe(onLibrary)
-  // A sign-in that arrives later (made here, or brought by Sync) starts with a full sync.
-  let was = currentToken()?.accessToken
+  // A sign-in that arrives later (made here, or brought by Sync), or Trakt being chosen again, starts with a full sync.
+  const active = () => (activeTracker(settingsStore.get()) === 'trakt' ? currentToken()?.accessToken : undefined)
+  let was = active()
   settingsStore.subscribe(() => {
-    const now = currentToken()?.accessToken
+    const now = active()
     if (was === undefined && now !== undefined) void syncTrakt()
     was = now
   })

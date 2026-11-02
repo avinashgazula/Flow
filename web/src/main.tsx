@@ -11,7 +11,7 @@ import { registerServiceWorker } from './lib/pwa/update'
 import { settingsStore } from './lib/store/settings'
 import { libraryStore } from './lib/store/library'
 import { arriveFromTrakt } from './lib/trakt/arrive'
-import { bootTrakt } from './lib/trakt/boot'
+import { bootTrackers } from './lib/tracking/boot'
 import './styles/global.css'
 
 // Trakt sends the browser back to an address that isn't a screen: point it at Settings before the router reads it.
@@ -77,9 +77,9 @@ try {
   // Blocked storage means no sync setup to find.
 }
 
-// A browser signed in to Trakt (here, or through Sync) keeps its library in step with it. The code is a separate
-// chunk, fetched only once there is a sign-in.
-bootTrakt()
+// A browser signed in to a tracker (here, or through Sync) keeps its library in step with the one chosen in Settings →
+// Account. The code is a separate chunk, fetched only once there is something to track with.
+bootTrackers()
 
 // Sample data comes with a lived-in library, as on the other platforms.
 if (settingsStore.get().demo && Object.keys(libraryStore.get().progress).length === 0 && libraryStore.get().watchlist.length === 0) {
