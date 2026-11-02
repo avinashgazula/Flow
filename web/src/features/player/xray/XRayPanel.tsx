@@ -207,10 +207,12 @@ function InScene({ scene, reads, loaded, onOpen }: { scene: CastMember[]; reads:
   if (scene.length > 0)
     return (
       <>
-        <p className={s.note}>Named in the last few minutes of dialogue.</p>
         {scene.map((m) => (
           <PersonRow key={m.id} member={m} onOpen={onOpen} />
         ))}
+        <p className={s.note} data-after="">
+          Named in the last few minutes of dialogue.
+        </p>
       </>
     )
   if (!loaded || reads === undefined) return <p className={s.note} role="status">Reading the dialogue…</p>

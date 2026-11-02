@@ -6,11 +6,14 @@
 .panel {
   /* What the controls under it take, as in Controls.module.css: the card stands on that band. */
   --bottom-band: 124px;
+  /* A person's row, which is always this tall: the sheet's height is a count of them. */
+  --row: 76px;
   position: absolute;
   z-index: 4;
   top: calc(var(--inset-top) + 68px);
   right: calc(var(--inset-right) + var(--margin));
-  bottom: calc(var(--inset-bottom) + var(--bottom-band));
+  /* As tall as what it lists, up to the room above the scrubber's band; past that the list scrolls. */
+  max-height: calc(100% - var(--inset-top) - 68px - var(--inset-bottom) - var(--bottom-band));
   width: min(380px, calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--margin)));
   display: flex;
   flex-direction: column;
@@ -28,16 +31,24 @@
 }
 /* A phone held sideways: the buttons' row is shorter, and the card runs from under it to the scrubber. */
 @media (max-height: 500px) {
-  .panel { top: calc(var(--inset-top) + 56px); }
+  .panel { top: calc(var(--inset-top) + 56px); max-height: calc(100% - var(--inset-top) - 56px - var(--inset-bottom) - var(--bottom-band)); }
 }
-/* A phone held upright: a sheet on the scrubber's row, with the picture and its subtitles above it. */
+/* A phone held upright: a sheet on the scrubber's row, about half the screen, with the subtitle line just above it.
+   Its list is a whole number of rows tall, so it never ends through a line of text. */
 @media (max-width: 720px) and (min-height: 501px) {
   .panel {
+    --rows: 3;
     top: auto;
+    bottom: calc(var(--inset-bottom) + var(--bottom-band));
     left: calc(var(--inset-left) + var(--margin));
     width: auto;
-    height: min(36dvh, 320px);
+    /* The header, the tabs and the card's ring, then the list's padding and its rows. */
+    height: calc(103px + 6px + 12px + var(--rows) * var(--row));
+    max-height: none;
   }
+}
+@media (max-width: 720px) and (min-height: 760px) {
+  .panel { --rows: 4; }
 }
 
 .head {
@@ -106,6 +117,11 @@
   overscroll-behavior: contain;
   scrollbar-width: thin;
   padding: 6px 0 12px;
+  /* Rows stop at the top edge, and what lies past the bottom fades out over the padding instead of being cut. */
+  scroll-snap-type: y proximity;
+  scroll-padding-top: 6px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 12px), transparent);
 }
 .note {
   padding: 8px 16px;
@@ -114,6 +130,7 @@
   text-wrap: pretty;
 }
 .note[role='status'] { min-height: 1.45em; }
+.note[data-after] { padding-top: 12px; }
 /* A plain heading, in sentence case: what follows is the crew. */
 .heading {
   padding: 16px 16px 4px;
@@ -128,8 +145,10 @@
   grid-template-columns: 44px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
+  height: var(--row);
   padding: 8px 16px;
   text-align: left;
+  scroll-snap-align: start;
   transition: background-color var(--dur-state) ease;
 }
 .row:hover { background: var(--base-3); }
@@ -159,6 +178,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  scroll-snap-align: start;
   min-height: 48px;
   padding: 8px 16px;
   text-align: left;
