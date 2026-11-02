@@ -83,6 +83,7 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   subtitleOptions: isSubtitleOptions,
   postCreditsAlert: (v) => typeof v === 'boolean',
   becauseYouWatched: (v) => typeof v === 'boolean',
+  xrayWhenPaused: (v) => typeof v === 'boolean',
   neverUseDolbyVision: (v) => typeof v === 'boolean',
   volumeBoostDB: (v) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 12,
   externalPlayer: (v) => externalPlayerIds.includes(v as ExternalPlayerId),

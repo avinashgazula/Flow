@@ -5,6 +5,7 @@ import type { Episode } from '../../lib/tmdb/types'
 import { usePlayer, volumeSettable, type Panel, type PlayerController } from './controller'
 import { EpisodeShelf } from './EpisodeShelf'
 import { OptionsPanel } from './OptionsPanel'
+import { PlayerIcon, type PlayerIconName } from './playerIcons'
 import { Scrubber } from './Scrubber'
 import s from './Controls.module.css'
 
@@ -62,6 +63,7 @@ export function Controls({ controller, title, line, onClose, sources, source, on
             </div>
             <Cluster {...hover}>
               {episodes && <ClusterButton icon="grid" label="Episodes" active={panel === 'episodes'} onClick={() => toggle('episodes')} />}
+              <ClusterButton icon="xray" label="X-Ray" active={panel === 'xray'} onClick={controller.toggleXRay} />
               <ClusterButton icon="subtitles" label="Audio and Subtitles" active={panel === 'tracks'} onClick={() => toggle('tracks')} />
               <ClusterButton icon="settings" label="Options" active={panel === 'options'} onClick={() => toggle('options')} />
             </Cluster>
@@ -100,10 +102,10 @@ function Cluster({ children, ...rest }: { children: ReactNode } & React.HTMLAttr
   )
 }
 
-function ClusterButton({ icon, label, onClick, active }: { icon: IconName; label: string; onClick: () => void; active?: boolean }) {
+function ClusterButton({ icon, label, onClick, active }: { icon: IconName | PlayerIconName; label: string; onClick: () => void; active?: boolean }) {
   return (
     <button className={s.clusterButton} aria-label={label} title={label} aria-pressed={active} onClick={onClick} onMouseDown={keepFocus}>
-      <Icon name={icon} size={20} strokeWidth={2.2} />
+      <PlayerIcon name={icon} size={20} strokeWidth={2.2} />
     </button>
   )
 }

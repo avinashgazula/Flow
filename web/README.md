@@ -245,7 +245,16 @@ What the apps' player has beyond that, each with the apps' words and defaults (p
 - **Sleep Timer** (Options): 15, 30, 45 minutes, 1 hour, 90 minutes or End of Episode or Movie (`sleepTimer.ts`). The sound fades over the last 30
   seconds, then the picture pauses (where a browser won't let a page set the volume, iPhone and iPad, it just pauses). The timer carries
   on into the next episode; End of Episode lets this one finish and closes the player.
-- **Hold for 2×:** a finger held on the picture for 0.45 s plays at double speed until it lifts (a wander of 40 px cancels); on a keyboard, hold **X**.
+- **Hold for 2×:** a finger held on the picture for 0.45 s plays at double speed until it lifts (a wander of 40 px cancels); on a keyboard, hold **X** for a third of a second (a tap of X is X-Ray).
+- **X-Ray** (`features/player/xray/`): who is in the scene, the cast and crew, and where each scene begins, as in the apps. A pause opens it after 0.4 s
+  (Settings → Playback → Show X-Ray When Paused, on, as `playback.xrayWhenPaused`) and Play closes it again; the X-Ray button and a tap of **X** open it
+  for good. *In Scene* reads the last three minutes of dialogue for characters' names (`xray.ts`, a port of FlowKit's `XRay` with its tests): from the
+  subtitles on screen, or from one hearing-impaired file fetched quietly from the viewer's subtitle services (`dialogue.ts`; the sample data brings its own
+  lines). *Cast* is the title's cast, or for an episode its credits with the guest stars (`/tv/{id}/season/{n}/episode/{n}/credits`), and the director or
+  creator; *Scenes* lists the chapters when the file has any. A person opens on a page inside the card (photo, character, age, biography, Also In) and
+  pauses the film, as in the apps; Open Full Page and the posters open in a new tab, so the player never loses its place. Only the tiny pause
+  hook (`useXRayOnPause.ts`) and the lazy wrapper (`XRay.tsx`) are in the player's code; the panel, its logic and its styles are one chunk fetched the first
+  time X-Ray opens. The apps' Music tab (Shazam) has no equivalent in a browser without a paid recognition API, so it isn't here.
 - **What Did They Say?** (Options, **W**, or a finger held on Back 10 Seconds) goes back ten seconds and shows subtitles for just that stretch
   even when they are off, then puts them back (`replay.ts`).
 - **Subtitle Delay** (Options, beside Subtitle Style): -10 to +10 seconds in tenths, positive later. It shifts every cue Flow draws, is remembered for

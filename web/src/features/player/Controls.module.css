@@ -671,6 +671,11 @@
   /* A panel is as tall as the picture here, so the transport steps aside rather than sit behind it. */
   .controls[data-panel] .transport { visibility: hidden; }
 }
+/* X-Ray on a phone held upright is a sheet over the picture's lower part, where the transport's buttons stand and the
+   subtitle line is lifted to: they step aside, and a tap on the picture closes the sheet and brings them back. */
+@media (max-width: 720px) and (min-height: 501px) {
+  .controls[data-panel='xray'] .transport { visibility: hidden; }
+}
 /* An iPhone held upright has no room for the volume capsule; its side buttons do the job. */
 @media (max-width: 520px) and (orientation: portrait) {
   .volume { display: none; }

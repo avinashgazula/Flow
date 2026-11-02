@@ -160,6 +160,9 @@ export interface Settings {
   postCreditsAlert?: boolean
   /** Suggest films like it as a film's credits roll, and when it ends. */
   becauseYouWatched?: boolean
+  /** X-Ray (who's in the scene, the cast and crew, the scenes) opens beside the picture whenever playback is paused; the
+   *  apps' `playback.xrayWhenPaused`. Absent means on. */
+  xrayWhenPaused?: boolean
   /** Play Dolby Vision files as their HDR10 picture (MKV files Flow plays itself). */
   neverUseDolbyVision?: boolean
   /** Extra loudness in whole decibels, 0 to 12 (the apps' `volumeBoostDB`); played through a Web Audio gain where the browser allows it. */

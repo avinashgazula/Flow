@@ -33,7 +33,12 @@ import { StruggleNotice } from './Struggle'
 import { UpNext } from './UpNext'
 import { useServerReport } from './useServerReport'
 import { useTraktScrobble } from './useTraktScrobble'
+import { XRay } from './xray/XRay'
+import { useXRayOnPause } from './xray/useXRayOnPause'
 import s from './Player.module.css'
+
+/** How long X is held before it plays at 2× instead of being a tap for X-Ray. */
+const holdKeyMs = 350
 
 type Phase = 'finding' | 'picking' | 'connecting' | 'playing' | 'error'
 
@@ -156,9 +161,9 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   const position = useRef(0)
   const length = useRef(Number.NaN)
   // The latest values, for handlers that effects registered once.
-  const latest = useRef({ item, epRef, current, source, sources, phase, resumeAt, next, title })
+  const latest = useRef({ item, epRef, current, source, sources, phase, resumeAt, next, title, picker })
   useLayoutEffect(() => {
-    latest.current = { item, epRef, current, source, sources, phase, resumeAt, next, title }
+    latest.current = { item, epRef, current, source, sources, phase, resumeAt, next, title, picker }
   })
 
   /** Goes on to the next episode. `automatic` is for the countdown running out, the credits being skipped by
@@ -588,6 +593,14 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item?.id, item?.backdrop, current?.name, next?.id])
 
+  // The X key: a tap is X-Ray, a hold is 2×. The timer that tells them apart, and whether the hold began.
+  const xKey = useRef(0)
+  const xHeld = useRef(false)
+
+  // X-Ray comes up on a pause (when Settings say so) and goes on Play. Not while the resume question, the source
+  // picker or "Are You Still Watching?" has the viewer's attention.
+  useXRayOnPause(controller, video, phase === 'playing', () => askingRef.current || latest.current.resumeAt !== null || latest.current.picker)
+
   // Keyboard, as in the apps and the usual web players.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -663,8 +676,8 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
           c.replayWithSubtitles()
           break
         case 'x':
-          // Hold for 2×: it lasts as long as the key is down (the keyup below).
-          if (!e.repeat) c.holdFast(true)
+          // A tap opens or closes X-Ray; held for a moment, it plays at 2× for as long as the key is down (the keyup below).
+          if (!e.repeat) xKey.current = window.setTimeout(() => ((xKey.current = 0), (xHeld.current = c.holdFast(true))), holdKeyMs)
           break
         case 'i':
           c.toggleInfo()
@@ -694,12 +707,29 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
       }
       e.preventDefault()
     }
-    const letGo = (e: KeyboardEvent) => e.key.toLowerCase() === 'x' && controller.holdFast(false)
-    const letGoAll = () => controller.holdFast(false)
+    const letGo = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== 'x') return
+      if (xKey.current) {
+        // Let go before it became a hold: that was a tap.
+        clearTimeout(xKey.current)
+        xKey.current = 0
+        if (latest.current.phase === 'playing' && !askingRef.current) controller.toggleXRay()
+      } else if (xHeld.current) {
+        xHeld.current = false
+        controller.holdFast(false)
+      }
+    }
+    const letGoAll = () => {
+      clearTimeout(xKey.current)
+      xKey.current = 0
+      xHeld.current = false
+      controller.holdFast(false)
+    }
     window.addEventListener('keydown', onKey)
     window.addEventListener('keyup', letGo)
     window.addEventListener('blur', letGoAll)
     return () => {
+      clearTimeout(xKey.current)
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('keyup', letGo)
       window.removeEventListener('blur', letGoAll)
@@ -750,6 +780,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
             onMoreSources={() => setPicker(true)}
             episodes={epRef ? { season: epRef.season, current: epRef.episode, list: seasonEpisodes, onPick: playEpisode, fallbackStill: item?.backdrop } : undefined}
           />
+          <XRay controller={controller} type={type} id={id} season={season} episode={episode} />
           {(blocked || convertFailed) && (
             <NoSoundNotice key={`${source?.id}#${attempt}`} controller={controller} source={source} conversionFailed={convertFailed} onSilent={() => lastSources.forget(key)} onTryAnother={tryWithSound} onShowing={setNoSoundUp} />
           )}
