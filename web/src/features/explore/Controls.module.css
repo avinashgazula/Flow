@@ -9,6 +9,7 @@
   background: var(--base-3);
 }
 .segment {
+  position: relative;
   height: 34px;
   padding: 0 var(--space-m);
   border-radius: 7px;
@@ -21,6 +22,11 @@
 .segment:hover { color: var(--paper); }
 .segment[aria-checked='true'] { background: var(--base-4); color: var(--paper); }
 .segment:focus-visible { outline-offset: -2px; }
+/* The track is 6px more than its segments: 38 + 6 is the 44px a finger needs. */
+@media (pointer: coarse) {
+  .segment { height: 38px; }
+  .segment::before { content: ''; position: absolute; inset: -3px 0; }
+}
 
 .select {
   position: relative;

@@ -117,9 +117,10 @@
 
 /* The options panel is on its Subtitle Style page. Where the window is wide the panel sits on the right, so
    the line keeps to the picture beside it; on a narrow one the panel is docked to the top (Controls.module.css)
-   and the line has the room below it. Either way the line being judged is never behind the panel. */
+   and the line has the room below it. Either way the line being judged is never behind the panel. The panel's other
+   pages (data-options) stand in the same place, so the line keeps beside them too. */
 @media (min-width: 900px), (max-height: 500px) {
-  .root[data-styling] .subtitles { right: calc(var(--inset-right) + var(--margin) + min(380px, 100% - 32px) + 24px); }
+  .root:is([data-styling], [data-options]) .subtitles { right: calc(var(--inset-right) + var(--margin) + min(380px, 100% - 32px) + 24px); }
 }
 
 /* Because You Watched stands in the picture's corner as the credits roll (FilmExtras measures it onto the player's

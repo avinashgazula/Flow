@@ -44,7 +44,7 @@ export function HistoryList({ rows }: { rows: Row[] }) {
         const row = rows[v.index]!
         return (
           <div key={v.key} className={s.historySlot} style={{ transform: `translateY(${v.start - top}px)`, height: v.size }}>
-            {row.kind === 'header' ? <h3 className={s.dayHeading}>{row.label}</h3> : <HistoryItem entry={row.entry} />}
+            {row.kind === 'header' ? <h2 className={s.dayHeading}>{row.label}</h2> : <HistoryItem entry={row.entry} />}
           </div>
         )
       })}

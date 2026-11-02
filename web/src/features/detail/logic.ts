@@ -95,11 +95,18 @@ export function titlePrint(
   return facts
 }
 
-/** The meta line under the title: "2024 · 2 h 47 min · PG-13 · Science Fiction, Adventure". */
-export function metaLine(d: Pick<MediaDetail, 'type' | 'year' | 'runtime' | 'certification' | 'genreNames'>, genres: string[]): string {
+/** The meta line under the title, in the parts it may wrap between: the facts ("2024", "2 h 47 min", "PG-13") and the
+ *  names of the genres. */
+export function metaParts(d: Pick<MediaDetail, 'type' | 'year' | 'runtime' | 'certification' | 'genreNames'>, genres: string[]): { facts: string[]; genres: string[] } {
   const minutes = d.runtime ? (d.runtime >= 60 ? `${Math.floor(d.runtime / 60)} h ${d.runtime % 60} min` : `${d.runtime} min`) : undefined
-  const names = (d.genreNames.length ? d.genreNames : genres).slice(0, 2).join(', ')
-  return [d.year, d.type === 'show' && minutes ? `${minutes} episodes` : minutes, d.certification, names].filter(Boolean).join(' · ')
+  const names = (d.genreNames.length ? d.genreNames : genres).slice(0, 2)
+  return { facts: [d.year, d.type === 'show' && minutes ? `${minutes} per episode` : minutes, d.certification].filter((x): x is string | number => !!x).map(String), genres: names }
+}
+
+/** The meta line as one string: "2024 · 2 h 47 min · PG-13 · Science Fiction, Adventure". */
+export function metaLine(d: Pick<MediaDetail, 'type' | 'year' | 'runtime' | 'certification' | 'genreNames'>, genres: string[]): string {
+  const { facts, genres: names } = metaParts(d, genres)
+  return [...facts, names.join(', ')].filter(Boolean).join(' · ')
 }
 
 /** The label of the yellow button: "Resume · 1 h 44 min left", "Play · ends 22:56", "Play S1 E1 · ends 21:30". */

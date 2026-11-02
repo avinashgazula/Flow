@@ -19,7 +19,7 @@ import {
   eventFileName,
   filmEntries,
   followedShowItems,
-  fullDate,
+  dayHeading,
   icsEvent,
   meta,
   needsSeason,
@@ -136,21 +136,24 @@ export default function UpcomingPage() {
               ))}
             </JustAired>
           )}
-          {days.map((day) => (
-            <section key={day.iso} id={`day-${day.iso}`} tabIndex={-1} className={s.day} aria-labelledby={`h-${day.iso}`}>
-              <header className={s.dayHead}>
-                <h2 id={`h-${day.iso}`} className={s.dayTitle}>
-                  {relativeDay(day.date, now, userLocale)}
-                </h2>
-                <span className={s.dayDate}>{fullDate(day.date, userLocale)}</span>
-              </header>
-              <ul className={s.rows}>
-                {day.entries.map((e) => (
-                  <Row key={e.id} entry={e} now={now} watched={watchedOf(e)} onAdd={() => save([e], eventFileName(e))} />
-                ))}
-              </ul>
-            </section>
-          ))}
+          {days.map((day) => {
+            const heading = dayHeading(day.date, now, userLocale)
+            return (
+              <section key={day.iso} id={`day-${day.iso}`} tabIndex={-1} className={s.day} aria-labelledby={`h-${day.iso}`}>
+                <header className={s.dayHead}>
+                  <h2 id={`h-${day.iso}`} className={s.dayTitle}>
+                    {heading.title}
+                  </h2>
+                  {heading.caption && <span className={s.dayDate}>{heading.caption}</span>}
+                </header>
+                <ul className={s.rows}>
+                  {day.entries.map((e) => (
+                    <Row key={e.id} entry={e} now={now} watched={watchedOf(e)} onAdd={() => save([e], eventFileName(e))} />
+                  ))}
+                </ul>
+              </section>
+            )
+          })}
           {loading && <p className={`${s.more} muted`} role="status">Looking for more…</p>}
         </>
       )}

@@ -96,7 +96,7 @@ describe('strip and buttons', () => {
 
   it('builds the meta line from what is known', () => {
     expect(metaLine({ type: 'movie', year: 2024, runtime: 167, certification: 'PG-13', genreNames: ['Science Fiction', 'Adventure', 'Drama'] }, [])).toBe('2024 · 2 h 47 min · PG-13 · Science Fiction, Adventure')
-    expect(metaLine({ type: 'show', year: 2008, runtime: 47, genreNames: [] }, ['Drama'])).toBe('2008 · 47 min episodes · Drama')
+    expect(metaLine({ type: 'show', year: 2008, runtime: 47, genreNames: [] }, ['Drama'])).toBe('2008 · 47 min per episode · Drama')
   })
 })
 

@@ -12,6 +12,7 @@
 @media (min-width: 1000px) { .info { margin-top: 0; } }
 
 .meta { margin-top: var(--space-xs); font-size: var(--fs-small); line-height: 1.4; color: var(--ink-2); text-wrap: pretty; }
+.metaPart { white-space: nowrap; }
 .name { font: 700 calc(32px * var(--ts, 1)) / 1.08 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
 @media (min-width: 721px) { .name { font-size: calc(46px * var(--ts, 1)); line-height: 1.05; } }
 /* Logo art stands in for the words: as tall as two lines of the title would be, as wide as the column allows. The
@@ -42,7 +43,8 @@
 
 /* Ratings: aligned numbers with the source's name under each, tapping opens the site. */
 .ratings { display: flex; flex-wrap: wrap; gap: var(--space-m) var(--space-xl); margin-top: var(--space-m); }
-@media (max-width: 720px) { .ratings { column-gap: var(--space-l); } }
+/* On a phone the scores fall into columns, so the numbers line up from row to row instead of ragged wraps. */
+@media (max-width: 720px) { .ratings { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: var(--space-m) var(--space-s); } }
 .ratings a { display: flex; flex-direction: column; gap: 2px; }
 .score { font: 600 var(--fs-title3) / 1 var(--font); font-variant-numeric: tabular-nums; }
 .source { font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); transition: color var(--dur-state) ease; }
@@ -50,7 +52,7 @@
 .plain { display: flex; flex-direction: column; gap: 2px; }
 
 /* A series asks which seasons to request in the actions row, under the button, instead of in a dialog. */
-.seasonsChoice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); flex: 1 1 100%; }
+.seasonsChoice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); flex: 1 1 100%; scroll-margin-bottom: calc(var(--tabbar-height) + var(--space-m)); }
 .seasonsLabel { margin-right: var(--space-xs); font-size: var(--fs-small); color: var(--ink-2); }
 @media (max-width: 720px) {
   /* The question and Cancel share a line, and the two answers share the next, each half the width. */
@@ -59,10 +61,17 @@
   .seasonsAnswer { order: 2; flex: 1 1 calc(50% - var(--space-xs)); }
 }
 
-.actions { display: flex; flex-wrap: wrap; gap: var(--space-s); margin-top: var(--space-l); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-s); margin-top: var(--space-l); }
 .actions > :first-child { flex: 0 1 auto; min-width: 0; }
+/* What Seerr says when there is nothing to ask: a status in words, in the row but not a button. */
+.requestState { display: inline-flex; align-items: center; gap: var(--space-xs); min-height: 48px; padding: 0 var(--space-xs); font: 500 var(--fs-small) / 1.2 var(--font); color: var(--ink-2); }
+.requestState svg { flex: none; }
 @media (max-width: 720px) {
-  .actions > *, .actions > :first-child { flex: 1 1 100%; }
+  /* Play takes the line; Trailer and Request share the next, so the list under them stays above the fold. */
+  .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .actions > * { min-width: 0; }
+  .actions > :first-child, .actions > .seasonsChoice, .actions > :nth-child(2):not(:has(+ :not(.seasonsChoice))) { grid-column: 1 / -1; }
+  .actions > .btn { padding-inline: var(--space-m); }
 }
 
 .textActions { display: flex; flex-wrap: wrap; gap: 0 var(--space-l); margin-top: var(--space-xxs); }

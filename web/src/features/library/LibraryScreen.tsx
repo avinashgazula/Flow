@@ -172,16 +172,18 @@ function RecentHistory() {
           See all
         </Link>
       </header>
-      {groups.map((g) => (
-        <div key={g.label}>
-          <h3 className={s.dayHeading}>{g.label}</h3>
-          {g.entries.map((e) => (
-            <div key={`${e.key}${e.watchedAt}`} className={s.recentRow}>
-              <HistoryItem entry={e} />
-            </div>
-          ))}
-        </div>
-      ))}
+      <div className={s.historyColumn}>
+        {groups.map((g) => (
+          <div key={g.label}>
+            <h3 className={s.dayHeading}>{g.label}</h3>
+            {g.entries.map((e) => (
+              <div key={`${e.key}${e.watchedAt}`} className={s.recentRow}>
+                <HistoryItem entry={e} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </section>
   )
 }

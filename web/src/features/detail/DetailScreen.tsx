@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { Fragment, lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Artwork } from '../../components/Artwork'
 import { Plate } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
@@ -22,7 +22,7 @@ import { Ratings } from './Ratings'
 import { RequestButton } from './RequestButton'
 import { Episodes } from './Episodes'
 import { FilmCan } from './FilmCan'
-import { airedRefs, cardOf, metaLine, playLabel, playsFirst, titlePrint, todayOf } from './logic'
+import { airedRefs, cardOf, metaParts, playLabel, playsFirst, titlePrint, todayOf } from './logic'
 import { fetchEpisodes, useShowEpisodes } from './shows'
 import { StarRating, useRating } from './StarRating'
 import { TitleName } from './TitleName'
@@ -173,7 +173,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
 
         <div className={s.info}>
           <TitleName title={d.title} logo={d.logo} />
-          <p className={s.meta}>{metaLine(d, genreNames(d.genres, type))}</p>
+          <Meta detail={d} genres={genreNames(d.genres, type)} />
 
           {!phone && <Ratings detail={d} ready={loaded} />}
 
@@ -354,4 +354,24 @@ async function share(d: MediaDetail): Promise<boolean> {
     return false
   }
   return navigator.clipboard?.writeText(url).then(() => true, () => false) ?? false
+}
+
+/** Year, runtime, rating and genres, wrapping only between the parts (the dot leads the part it separates), so a
+ *  genre is never split across two lines. */
+function Meta({ detail: d, genres }: { detail: MediaDetail; genres: string[] }) {
+  const parts = metaParts(d, genres)
+  const all = [...parts.facts.map((text) => ({ text, lead: true })), ...parts.genres.map((text, i) => ({ text: i < parts.genres.length - 1 ? `${text},` : text, lead: i === 0 }))]
+  return (
+    <p className={s.meta}>
+      {all.map((part, i) => (
+        <Fragment key={part.text}>
+          {i > 0 && ' '}
+          <span className={s.metaPart}>
+            {i > 0 && part.lead ? '·\u00a0' : ''}
+            {part.text}
+          </span>
+        </Fragment>
+      ))}
+    </p>
+  )
 }

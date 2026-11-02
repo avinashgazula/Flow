@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildICS } from '../../lib/ics'
 import type { Library } from '../../lib/store/library'
 import type { Episode, MediaItem } from '../../lib/tmdb/types'
-import { arrange, code, spoken, stripPrint, followedShowItems, hasAired, icsEvent, label, meta, needsSeason, relativeDay, showEntries, filmEntries, stripDays, type CalendarEntry } from './calendar'
+import { arrange, code, spoken, stripPrint, followedShowItems, hasAired, icsEvent, label, meta, needsSeason, relativeDay, dayHeading, showEntries, filmEntries, stripDays, type CalendarEntry } from './calendar'
 
 // Sunday 25 October 2026, 10:30 in the viewer's own zone: dates below are local days, as TMDB's are.
 const now = new Date(2026, 9, 25, 10, 30).getTime()
@@ -133,6 +133,15 @@ describe('the words', () => {
     expect(relativeDay(at(10, 20), now, 'en-US')).toBe('Tuesday')
     expect(relativeDay(at(11, 6), now, 'en-US')).toBe('Nov 6')
     expect(relativeDay(at(10, 18), now, 'en-US')).toBe('Oct 18')
+  })
+
+  it('says each day once in a heading', () => {
+    expect(dayHeading(at(10, 25), now, 'en-US')).toEqual({ title: 'Today', caption: 'Sunday, October 25' })
+    expect(dayHeading(at(10, 26), now, 'en-US')).toEqual({ title: 'Tomorrow', caption: 'Monday, October 26' })
+    expect(dayHeading(at(10, 28), now, 'en-US')).toEqual({ title: 'Wednesday', caption: 'October 28' })
+    expect(dayHeading(at(10, 31), now, 'en-US')).toEqual({ title: 'Saturday', caption: 'October 31' })
+    expect(dayHeading(at(11, 1), now, 'en-US')).toEqual({ title: 'Sunday, November 1' })
+    expect(dayHeading(at(11, 21), now, 'en-US')).toEqual({ title: 'Saturday, November 21' })
   })
 
   it('labels premieres, new episodes and a film’s day, and names the line under the title', () => {

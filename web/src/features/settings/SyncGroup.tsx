@@ -144,7 +144,7 @@ function ServerFields({ server, token, onChange, autoFocus }: { server: string; 
       </label>
       <input id="sync-token" className="field" value={token} onChange={(e) => onChange({ server, token: e.target.value })} placeholder="The Worker’s TOKEN" type="password" autoComplete="off" spellCheck={false} />
       <p className={s.hint}>
-        Sync keeps its copy in the same Cloudflare Worker as your stream proxy. Setting that up takes a few minutes: see <code>web/proxy/README.md</code>.
+        Sync keeps its copy in the same Cloudflare Worker as your stream proxy. Setting that up takes a few minutes: see web/proxy/README.md in Flow’s source.
       </p>
     </div>
   )

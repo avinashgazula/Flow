@@ -17,13 +17,13 @@
   transition: background-color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
 }
-.option:hover:not(:disabled) { background: var(--base-3); }
+.option:hover:not([aria-disabled]) { background: var(--base-3); }
 .option:focus-visible { outline: 2px solid var(--stock); outline-offset: -2px; }
-.option:disabled { cursor: default; }
+.option[aria-disabled] { cursor: not-allowed; }
 
 .text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .name { font: 500 var(--fs-body) / 1.3 var(--font); }
-.option:disabled .name { color: var(--ink-2); }
+.option[aria-disabled] .name { color: var(--ink-3); }
 .detail { font-size: var(--fs-footnote); line-height: 1.35; color: var(--ink-2); text-wrap: pretty; }
 
 .mark {
@@ -40,7 +40,7 @@
 .mark svg { width: 14px; height: 14px; opacity: 0; transform: scale(0.6); transition: opacity var(--dur-state) ease, transform var(--dur-state) var(--ease-out); }
 .option[aria-checked='true'] .mark { background: var(--paper); box-shadow: none; }
 .option[aria-checked='true'] .mark svg { opacity: 1; transform: none; }
-.option:disabled .mark { visibility: hidden; }
+.option[aria-disabled] .mark { visibility: hidden; }
 
 /* The code Simkl asks to be typed: large, spaced and selectable whole, with a line of what to do under it. */
 .pin { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-m); border-radius: var(--radius-control); background: var(--base-3); }

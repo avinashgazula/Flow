@@ -162,7 +162,7 @@ function ShelfList() {
           }}
         />
       ) : (
-        <Group title="Add a Shelf" footer="A Discover shelf is a row from TMDB’s catalogue that you filter yourself: a genre, a streaming service, a decade, a rating. Trakt and MDBList lists can be shelves too once those are connected, and a media server’s libraries get a row each under Server Home Rows.">
+        <Group title="Add a Shelf" footer="A Discover shelf is a row from TMDB’s catalogue that you filter yourself: a genre, a streaming service, a decade or a rating.">
           <Row label="Discover Shelf" detail="Choose what it holds">
             <button type="button" className="btn btn-secondary btn-compact" onClick={() => setEditing({})}>
               <Icon name="plus" size={16} /> Add
@@ -229,7 +229,7 @@ function HomeSwitches() {
   const left = useSettings((x) => x.showEpisodesRemaining)
   return (
     <>
-      <Group title="Home" footer="Content shelves such as Trending hold this many titles (a wide screen shows the first few across, a phone scrolls the rest). Upcoming lists the next episode of series you’re caught up on, with the day it airs. Watchlist premieres add the first episode of a new season of a series on your watchlist, and films on your watchlist that aren’t out yet, dated by their digital or theatrical release.">
+      <Group title="Home" footer="How many titles a content shelf such as Trending holds. Upcoming lists the next episode of series you’re caught up on, and Watchlist Premieres adds new seasons and unreleased films from your watchlist.">
         <Row label="Content Shelf Length" htmlFor="shelf-length">
           <Select id="shelf-length" value={String(length)} onChange={(v) => settingsStore.set({ contentShelfLength: Number(v) })} options={lengths} label="Content shelf length" />
         </Row>

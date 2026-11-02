@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { connect, demoHost, normaliseURL, SeerrError } from '../../lib/requests/seerr'
 import { settingsStore, useSettings } from '../../lib/store/settings'
 import { Group, Note, Row } from './controls'
+import { LearnMore } from './LearnMore'
 import s from './SettingsScreen.module.css'
 
 /* Settings → Requests: the Seerr, Overseerr or Jellyseerr instance the title page's Request button asks, after the
@@ -56,7 +57,7 @@ export function RequestsSection() {
 
   const footer = (
     <>
-      Connect a Seerr, Overseerr or Jellyseerr instance to request films and series that aren’t in your library yet. A Request button appears on titles that none of your media servers has. Find the API key in Seerr under Settings, General. Your instance has to allow web pages to talk to it (CORS), which usually means a reverse proxy that adds the headers for this site.
+      Connect a Seerr, Overseerr or Jellyseerr instance to request what isn’t in your library yet. Find the API key in Seerr under Settings, General. The instance has to allow web pages to talk to it.<LearnMore section="ratings-requests-and-episode-numbering" />
       {demo && !saved && (
         <>
           {' '}
@@ -86,7 +87,7 @@ export function RequestsSection() {
           </button>
         </Row>
         {(state.kind === 'ok' || state.kind === 'error') && (
-          <div className={`${s.pad} ${s.padTop}`}>
+          <div className={s.pad}>
             <Note tone={state.kind}>{state.text}</Note>
           </div>
         )}

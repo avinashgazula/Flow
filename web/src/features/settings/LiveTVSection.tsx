@@ -9,6 +9,7 @@ import { streamProxy } from '../../lib/sources/proxy'
 import { useSettings } from '../../lib/store/settings'
 import { Segmented } from '../explore/Controls'
 import { ConfirmButton, Group, Note, Row, Select, Switch } from './controls'
+import { LearnMore } from './LearnMore'
 import { SportsGroup } from './SportsGroup'
 import s from './SettingsScreen.module.css'
 
@@ -51,8 +52,8 @@ export function LiveTVSection() {
         title="IPTV Providers"
         footer={
           <>
-            Logins stay in this browser. Most providers don’t let web pages read their playlists, so Flow fetches them through your stream proxy{' '}
-            {proxy ? '(set in Playback)' : '(not set: add one in Playback)'}; the proxy then sees the provider’s address and login. Raw MPEG-TS channels can’t play in a browser, and a browser can’t send the User-Agent the apps do.
+            Most providers don’t let web pages read their playlists, so Flow fetches them through your stream proxy{' '}
+            {proxy ? '(set in Playback)' : '(not set: add one in Playback)'}, which then sees the provider’s address and login.<LearnMore section="live-tv" />
           </>
         }
       >

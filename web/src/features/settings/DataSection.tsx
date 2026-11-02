@@ -14,6 +14,7 @@ export function DataSection() {
   const file = useRef<HTMLInputElement>(null)
   const [note, setNote] = useState<{ tone: 'ok' | 'error'; text: string }>()
   const progress = useLibrary((l) => Object.keys(l.progress).length)
+  const history = useLibrary((l) => l.history.length)
   const watchlist = useLibrary((l) => l.watchlist.length)
   // What the browser remembers lives outside the stores; it is counted again after each change.
   const [remembered, setRemembered] = useState(() => lastSources.count())
@@ -78,31 +79,35 @@ export function DataSection() {
           <input ref={file} type="file" accept="application/json,.json" hidden onChange={(e) => void importBackup(e.target.files?.[0])} />
         </Row>
       </Group>
-      <Group footer="The cache holds shelves, title details and search results so screens open at once. Clearing it never touches your library. Reset Progress, Clear Watchlist and Forget Remembered Sources each clear one thing on this device and leave the rest. Reset Everything also turns sync off on this device, and leaves what is synced alone.">
-        <Row label="Clear Cache">
-          <ConfirmButton label="Clear Cache" confirm="Clear" onConfirm={() => void clearCache()} />
+      <Group title="On This Device" footer="Each button clears one thing here and leaves the rest. Clearing the cache never touches your library.">
+        <Row label="Cached Shelves and Details" detail="Kept so screens open at once">
+          <ConfirmButton label="Clear" confirm="Clear Cache" onConfirm={() => void clearCache()} />
         </Row>
-        <Row label="Clear History" detail="Watched titles and episodes">
-          <ConfirmButton label="Clear History" confirm="Clear History" onConfirm={() => (library.clearHistory(), setNote({ tone: 'ok', text: 'Cleared your watch history.' }))} />
+        <Row label="Watch History" detail={history ? `${items(history)} watched` : 'Nothing watched yet'}>
+          <ConfirmButton label="Clear" confirm="Clear History" disabled={!history} onConfirm={() => (library.clearHistory(), setNote({ tone: 'ok', text: 'Cleared your watch history.' }))} />
         </Row>
-        <Row label="Reset Progress" detail={progress ? `Resume points for ${items(progress)}` : 'No resume points'}>
+        <Row label="Watch Progress" detail={progress ? `Resume points for ${items(progress)}` : 'No resume points'}>
           <ConfirmButton
-            label="Reset Progress"
-            confirm="Reset"
+            label="Reset"
+            confirm="Reset Progress"
+            disabled={!progress}
             onConfirm={() => (library.resetProgress(), setNote({ tone: 'ok', text: 'Cleared your resume points. Continue Watching is empty; what you watched stays in History.' }))}
           />
         </Row>
-        <Row label="Clear Watchlist" detail={watchlist ? items(watchlist) : 'Nothing on it'}>
-          <ConfirmButton label="Clear Watchlist" confirm="Clear Watchlist" onConfirm={() => (library.clearWatchlist(), setNote({ tone: 'ok', text: 'Cleared your watchlist. Favourites and History are untouched.' }))} />
+        <Row label="Watchlist" detail={watchlist ? items(watchlist) : 'Nothing on it'}>
+          <ConfirmButton label="Clear" confirm="Clear Watchlist" disabled={!watchlist} onConfirm={() => (library.clearWatchlist(), setNote({ tone: 'ok', text: 'Cleared your watchlist. Favourites and History are untouched.' }))} />
         </Row>
-        <Row label="Forget Remembered Sources" detail={remembered ? `Last source for ${items(remembered)}` : 'None remembered'}>
+        <Row label="Remembered Sources" detail={remembered ? `Last source for ${items(remembered)}` : 'None remembered'}>
           <ConfirmButton
-            label="Forget Sources"
-            confirm="Forget"
+            label="Forget"
+            confirm="Forget Sources"
+            disabled={!remembered}
             onConfirm={() => (lastSources.forgetAll(), setRemembered(0), setNote({ tone: 'ok', text: 'Forgot the sources titles last played from. The picker chooses afresh.' }))}
           />
         </Row>
-        <Row label="Reset Everything" detail="Settings, sign-ins, library and cache">
+      </Group>
+      <Group footer="Also turns sync off on this device. What is already synced stays where it is.">
+        <Row label="Everything on This Device" detail="Settings, sign-ins, library and cache">
           <ConfirmButton label="Reset Everything" confirm="Reset" onConfirm={() => void reset()} />
         </Row>
       </Group>

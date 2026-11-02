@@ -1,7 +1,7 @@
 /* Sports: each followed team is a plain section, its games rows on a hairline, in the History page's rhythm.
    Flat; the only blur is a covered score, which is a spoiler waiting to be read. */
 
-.page { max-width: 900px; }
+.page { max-width: var(--reading-width); }
 .tools { display: flex; align-items: center; gap: var(--space-m); min-height: 36px; margin-bottom: var(--space-l); }
 .note { min-width: 0; font-size: var(--fs-footnote); line-height: 1.35; text-wrap: pretty; }
 .note:empty { display: none; }

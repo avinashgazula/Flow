@@ -44,7 +44,7 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
 .continueGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-l) var(--space-m); }
 
 /* History: a frame with its strip, then what it was and when. */
-.history { max-width: 900px; content-visibility: auto; contain-intrinsic-size: auto 500px; }
+.history { content-visibility: auto; contain-intrinsic-size: auto 500px; }
 .recentRow { height: 124px; }
 
 .dayHeading {
@@ -56,8 +56,8 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
   color: var(--ink-2);
 }
 
-.historyColumn { max-width: 900px; }
-.historyList { position: relative; max-width: 900px; contain: layout style; }
+.historyColumn { max-width: var(--reading-width); }
+.historyList { position: relative; max-width: var(--reading-width); contain: layout style; }
 .historySlot { position: absolute; top: 0; left: 0; width: 100%; }
 
 .historyItem {
@@ -82,6 +82,8 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
 /* The index of pages that read your library: folder rows, as Home's Streaming Services and Genres. A name and what
    it holds, and a chevron. */
 .pages { list-style: none; margin: 0 0 var(--section); padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-xs); }
+/* From 960px the four pages are four equal columns, so the index ends where the rows under it do. */
+@media (min-width: 960px) { .pages { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .pageLink { display: flex; align-items: center; gap: var(--space-s); min-height: 56px; padding: 0 var(--space-s) 0 var(--space-m); border-radius: var(--radius-control); background: var(--base-2); color: var(--paper); transition: background-color var(--dur-state) ease, transform var(--dur-state) var(--ease-out); -webkit-tap-highlight-color: transparent; }
 .pageLink:hover { background: var(--base-3); }
 .pageLink:active { transform: scale(0.98); }
@@ -102,6 +104,8 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
   color: var(--ink-2);
 }
 .back:hover { color: var(--paper); }
+/* The word is 16px tall; the link is 44px for a finger, drawn over the gap above the title. */
+@media (pointer: coarse) { .back { min-height: 44px; margin-bottom: 0; } }
 .toolbar {
   display: flex;
   align-items: center;

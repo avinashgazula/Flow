@@ -3,6 +3,7 @@ import { normaliseSubtitleOptions, hasCredentials, credentialsOf } from '../../l
 import { providerIds, providerNames, type ProviderId } from '../../lib/subtitles/types'
 import { settingsStore, useSettings, type Settings } from '../../lib/store/settings'
 import { Group, Row, Switch } from './controls'
+import { LearnMore } from './LearnMore'
 import s from './SettingsScreen.module.css'
 
 type KeyField = 'openSubtitlesKey' | 'openSubtitlesUsername' | 'openSubtitlesPassword' | 'subdlKey' | 'subSourceKey' | 'wyzieKey'
@@ -86,13 +87,12 @@ export function SubtitleServicesGroup() {
         title="Subtitle Keys"
         footer={
           <>
-            Get keys at {links}. They sync with the apps. OpenSubtitles keeps its downloads on a host that blocks web pages, so they are fetched through your stream proxy below, with{' '}
-            <code>www.opensubtitles.com</code> and <code>dl.opensubtitles.org</code> in its allowed hosts. OpenSubtitles doesn’t let a web page send the login, so here downloads count against the key’s own daily limit, and the username and password are kept for the apps. SubSource doesn’t let web pages read its answers at all, so its key is kept for the apps.
+            Get keys at {links}. They sync with the apps.<LearnMore section="subtitles" />
           </>
         }
       >
         {fields.map(({ field, label, id, secret, placeholder }) => (
-          <Row key={field} label={label} htmlFor={id} stacked>
+          <Row key={field} label={label} htmlFor={id}>
             <input
               id={id}
               className="field"

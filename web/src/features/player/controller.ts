@@ -954,6 +954,8 @@ export class PlayerController {
 
   setPanel = (panel: Panel) => {
     this.set({ panel })
+    // Options and Tracks stand on the right of a wide window: the stylesheet keeps the subtitles beside them.
+    this.root?.toggleAttribute('data-options', panel === 'options' || panel === 'tracks')
     if (panel) this.showControls(false)
     else this.scheduleHide()
   }

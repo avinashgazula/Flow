@@ -23,11 +23,11 @@ export function SportsGroup() {
       title="Sports"
       footer={
         <>
-          Library → Sports shows the fixtures and results of the teams you follow, from TheSportsDB. The free key, 123, works for everyone; a supporter’s key from{' '}
+          Library → Sports shows the teams you follow, from TheSportsDB. The free key, 123, works for everyone; a supporter’s key from{' '}
           <a href="https://www.thesportsdb.com/pricing" target="_blank" rel="noreferrer">
             thesportsdb.com
           </a>{' '}
-          raises its limits. Show Score Spoilers off blurs final scores until you tap them. Choose Channel on Tap opens a game’s channel list when you tap it, so you can pick a broadcast, and the Watch button beside it plays the best match; off, it is the other way round.
+          raises its limits. Choose Channel on Tap opens a game’s channel list when you tap it; off, a tap plays the best match.
         </>
       }
     >

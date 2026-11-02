@@ -30,23 +30,23 @@ function EpisodeData() {
     <>
       <Group
         title="Episode Data"
-        footer="Sets where season and episode numbering, episode titles and air dates come from. TVDB matches the numbering most stream sources use, so multi-part premieres and other ordering edge cases line up correctly. Trakt and TMDB use their own ordering. Posters and episode stills always come from TMDB. Takes effect on the next show you open."
+        footer="Where season and episode numbers, titles and air dates come from. TVDB matches the numbering most stream sources use; posters and stills always come from TMDB. Applies from the next show you open."
       >
         <Row label="Episode Source" detail="TVDB is recommended" htmlFor="episode-source">
           <Select id="episode-source" label="Episode Source" value={source} onChange={(v) => settingsStore.set({ episodeSource: v })} options={sources} />
         </Row>
         {source === 'tvdb' && !tvdbKey && (
-          <div className={`${s.pad} ${s.padTop}`}>
+          <div className={s.pad}>
             <Note tone="warning">Add a TVDB API key below. Until then Flow numbers episodes the way TMDB does.</Note>
           </div>
         )}
         {source === 'trakt' && !traktID && (
-          <div className={`${s.pad} ${s.padTop}`}>
+          <div className={s.pad}>
             <Note tone="warning">Add a Trakt Client ID in Account. Until then Flow numbers episodes the way TMDB does.</Note>
           </div>
         )}
         {demo && (
-          <div className={`${s.pad} ${s.padTop}`}>
+          <div className={s.pad}>
             <Note>Sample data uses TMDB’s numbering.</Note>
           </div>
         )}

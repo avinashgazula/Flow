@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { settingsStore, useSettings, type Settings, type SkipBehaviour, type SubtitleMode } from '../../lib/store/settings'
 import { Group, Note, Row, Select, Switch } from './controls'
+import { LearnMore } from './LearnMore'
 import { SubtitleServicesGroup } from './SubtitleServicesGroup'
 import { SubtitleStyleGroup } from './SubtitleStyleGroup'
 import { animeAudios, normaliseSubtitleOptions, subtitleTypes } from '../../lib/subtitles/options'
@@ -43,15 +44,13 @@ function StreamProxy() {
       title="Stream Proxy"
       footer={
         <>
-          Most debrid download servers don’t let web pages read their files, so Flow can’t pick or convert their audio. A stream proxy you run fetches such files for Flow. Put <code>{'{url}'}</code> where the
-          file’s address goes, like <code>https://proxy.example.com/?url={'{url}'}</code>. MediaFlow Proxy works too:{' '}
-          <code>https://mediaflow.example.com/proxy/stream?d={'{url}'}&amp;api_password=…</code>. Flow includes a Cloudflare Worker you can deploy yourself:{' '}
+          Most debrid servers don’t let web pages read their files, so a stream proxy you run fetches them for Flow. Put <code>{'{url}'}</code> where the file’s address goes.{' '}
           {proxyGuide ? (
             <a href={proxyGuide} target="_blank" rel="noreferrer">
-              read how in web/proxy
+              How to set one up
             </a>
           ) : (
-            <>see web/proxy in Flow’s source</>
+            <>See web/proxy in Flow’s source to set one up</>
           )}
           .
         </>
@@ -143,14 +142,14 @@ function SkipServices() {
           <a href="https://publicmetadb.com" target="_blank" rel="noreferrer">
             publicmetadb.com
           </a>
-          . A web page can reach IntroDB only through your stream proxy below, with <code>api.introdb.app</code> in its allowed hosts. PublicMetaDB doesn’t let web pages read its answers, so on the website its key is only kept for Flow Sync and the apps.
+          .<LearnMore section="skipping-and-binge-watching" />
         </>
       }
     >
-      <Row label="IntroDB API Key" htmlFor="introdb-key" stacked>
+      <Row label="IntroDB API Key" htmlFor="introdb-key">
         {input('introdb-key', 'IntroDB API key', intro, setIntro)}
       </Row>
-      <Row label="PublicMetaDB API Key" htmlFor="publicmetadb-key" stacked>
+      <Row label="PublicMetaDB API Key" htmlFor="publicmetadb-key">
         {input('publicmetadb-key', 'PublicMetaDB API key', meta, setMeta)}
       </Row>
       <div className={s.saveRow}>
@@ -205,7 +204,7 @@ export function PlaybackSection() {
 
   return (
     <>
-      <Group footer="The picker puts this resolution first when a title has it, and falls back to the next best. Anything the browser can’t play is marked and never chosen for you. With HDR When Available off, an SDR release leads its HDR twin at the same resolution, even on a screen that shows HDR.">
+      <Group footer="The picker puts this resolution first when a title has it, then the next best. Anything this browser can’t play is marked and never chosen for you.">
         <Row label="Preferred Quality" htmlFor="quality">
           <Select id="quality" label="Preferred quality" value={quality} onChange={(v) => settingsStore.set({ preferredQuality: v })} options={qualities} />
         </Row>
@@ -224,7 +223,7 @@ export function PlaybackSection() {
           <Switch label="Never use Dolby Vision" checked={neverDolbyVision} onChange={(on) => settingsStore.set({ neverUseDolbyVision: on })} />
         </Row>
       </Group>
-      <Group footer="Flow starts each title on the first of these it has, and never on commentary. Original Language is the one the title was made in. A track you choose in the player is remembered for that title or show. For anime, Sub plays Japanese audio with subtitles and Dub plays your audio language without them.">
+      <Group footer="Flow starts each title on the first of these it has, and never on commentary. A track you choose in the player is remembered for that title or show.">
         <Row label="Audio Language" htmlFor="audio-1">
           <Select id="audio-1" label="Audio language" value={audioFirst} onChange={(v) => setAudio(v, v ? audioSecond : '')} options={audioOptions(audioFirst, 'Stream Default')} />
         </Row>
@@ -235,7 +234,7 @@ export function PlaybackSection() {
           <Select id="anime-audio" label="Anime audio" value={extras.animeAudio} onChange={(v) => setExtras({ animeAudio: v })} options={animeAudios} />
         </Row>
       </Group>
-      <Group footer="Foreign Audio Only turns subtitles on when the audio isn’t in your Subtitle Language, and otherwise shows only a forced subtitle from the file, for foreign-language scenes. Always turns them on for every title that has them in your languages, taking one from the file before an online one. Forced Only shows forced subtitles from the file and nothing else. Off leaves them off. Subtitle Type picks SDH (with sound cues and speakers) or standard subtitles where a language has both.">
+      <Group footer="Foreign Audio Only turns subtitles on when the audio isn’t in your Subtitle Language, and shows only forced ones otherwise. Subtitle Type picks SDH (with sound cues and speakers) or standard subtitles where a language has both.">
         <Row label="Show Subtitles" htmlFor="subtitle-mode">
           <Select id="subtitle-mode" label="When to show subtitles" value={subtitleMode} onChange={(v) => settingsStore.set({ subtitleMode: v })} options={subtitleModes} />
         </Row>
@@ -250,13 +249,13 @@ export function PlaybackSection() {
         </Row>
       </Group>
       <SubtitleStyleGroup />
-      <Group footer="Draw ASS and SSA subtitles the way their author styled them (colour, weight, size and placement) instead of the style above. Mostly matters for anime, whose subtitles style each sign and speaker differently. It downloads a drawing engine of about 1 MB the first time such a subtitle shows, and only then. Applies to ASS files Flow reads itself (from a source or a search), not to ones inside an MKV; a font the browser doesn’t have is drawn in a stand-in.">
+      <Group footer="Draws ASS and SSA subtitles the way their author styled them, instead of the style above. It matters mostly for anime, and loads a 1 MB drawing engine the first time one shows. Subtitles inside an MKV keep your style.">
         <Row label="Keep Original ASS Styling">
           <Switch label="Keep original ASS styling" checked={extras.keepASSStyling} onChange={(on) => setExtras({ keepASSStyling: on })} />
         </Row>
       </Group>
       <SubtitleServicesGroup />
-      <Group footer="Shows start the next episode when one ends, with a countdown you can cancel. Up Next counts down as the credits begin when a server, a skip service or the file’s chapters say where, else in the last 30 seconds; with Wait for the Episode to End, so the next one begins as this one finishes. After the number of episodes you pick played with nobody touching anything, Flow asks before the next.">
+      <Group footer="The next episode starts after a countdown you can cancel, from where the credits begin or in the last 30 seconds. After the number of episodes you pick with nobody touching anything, Flow asks before the next.">
         <Row label="Autoplay Next Episode">
           <Switch label="Autoplay next episode" checked={autoplay} onChange={(on) => settingsStore.set({ autoplayNext: on })} />
         </Row>
@@ -273,7 +272,7 @@ export function PlaybackSection() {
           />
         </Row>
       </Group>
-      <Group footer="Segments come from your media server (Jellyfin media segments, Plex markers), IntroDB, PublicMetaDB or the file’s chapter names. Show Button puts a Skip button over the picture; Enter or S presses it. Skip Automatically skips as the segment begins and lets you undo it.">
+      <Group footer="Segments come from your media server, IntroDB, PublicMetaDB or the file’s chapters. Show Button puts a Skip button over the picture (press Enter or S); Skip Automatically skips as the segment begins and lets you undo it.">
         <Row label="Skip Intro" htmlFor="skip-intro">
           <Select id="skip-intro" label="Skip intro" value={skipIntro} onChange={(v) => settingsStore.set({ skipIntro: v })} options={skipChoices} />
         </Row>
@@ -292,7 +291,7 @@ export function PlaybackSection() {
           <Switch label="Because you watched" checked={becauseYouWatched} onChange={(on) => settingsStore.set({ becauseYouWatched: on })} />
         </Row>
       </Group>
-      <Group title="X-Ray" footer="X-Ray shows the cast and crew, jumps to scenes, and names who’s in the scene from the last few minutes of dialogue: from the subtitles on screen, or a file fetched for X-Ray from your subtitle services. Open it any time with the X-Ray button or by tapping X; hold X to play at double speed.">
+      <Group title="X-Ray" footer="X-Ray shows the cast and crew, jumps to scenes, and names who is in the scene from the last minutes of dialogue. Open it with the X-Ray button or by pressing X.">
         <Row label="Show X-Ray When Paused">
           <Switch label="Show X-Ray when paused" checked={xrayWhenPaused} onChange={(on) => settingsStore.set({ xrayWhenPaused: on })} />
         </Row>

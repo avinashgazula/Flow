@@ -90,10 +90,10 @@ function Histogram({ stats }: { stats: WatchStats }) {
         <div className={s.bars} data-crowded={stats.histogram.length > 12 || undefined} role="list" aria-label={histogramTitle[granularity]}>
           {stats.histogram.map((b, i) => (
             <div key={b.start} className={s.column} role="listitem" aria-label={`${longLabel(b.start, granularity, userLocale)}, ${hours(b.minutes)}`} data-current={b.isCurrent || undefined}>
-              <span className={`${s.value} num`} aria-hidden="true">
-                {b.minutes > 0 ? hours(b.minutes) : ''}
+              <span className={s.plot} style={{ '--h': columns[i]!.toFixed(4) } as React.CSSProperties} aria-hidden="true">
+                <span className={`${s.value} num`}>{b.minutes > 0 ? hours(b.minutes) : ''}</span>
+                <span className={s.bar} data-empty={b.minutes === 0 || undefined} />
               </span>
-              <span className={s.bar} style={{ '--h': columns[i]!.toFixed(4) } as React.CSSProperties} data-empty={b.minutes === 0 || undefined} aria-hidden="true" />
               <span className={`${s.axis} num`} aria-hidden="true">
                 {labels[i] ? label(b.start) : ''}
               </span>

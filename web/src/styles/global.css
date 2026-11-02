@@ -113,6 +113,11 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .btn-compact { height: 36px; padding: 0 14px; font-size: var(--fs-small); }
 .btn-circle { width: 44px; padding: 0; }
 .btn-circle.btn-compact { width: 36px; }
+/* A finger needs 44px: compact buttons are only compact for a mouse. */
+@media (pointer: coarse) {
+  .btn-compact { height: 44px; }
+  .btn-circle.btn-compact { width: 44px; }
+}
 .btn[disabled], .btn[aria-disabled='true'] { background: var(--base-3); color: var(--ink-3); pointer-events: none; }
 .btn-quiet[disabled], .btn-quiet[aria-disabled='true'] { background: transparent; }
 

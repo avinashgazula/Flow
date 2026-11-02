@@ -69,6 +69,8 @@
   --fs-title1: 40px;
   --fs-page-title: 34px;
   --measure: 62ch;
+  /* The width of the Library's reading pages (History, Upcoming, Sports, Stats): one right edge for all of them. */
+  --reading-width: 960px;
 
   /* Edge print: condensed, uppercase, tracked, 600. Self-hosted Barlow Condensed (fonts.css), only for
      strips, film-can labels and small format labels. */

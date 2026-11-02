@@ -60,8 +60,8 @@ export function TrackingWithGroup() {
   return (
     <Group
       title="Tracking With"
-      footer={`Only one of these tracks at a time; choosing another moves your tracking to it, and the others keep their sign-ins so you can switch back. The one that tracks keeps your watchlist, history and progress, and Flow keeps this browser’s in step; what you watch is kept here whichever you choose. ${
-        sync.phase !== 'off' ? 'A sign-in on any device arrives on the others through Sync, with no prompt, and so does signing out.' : 'With Sync on (Settings → Data), a sign-in on any device arrives on the others with no prompt.'
+      footer={`One service tracks at a time; the others keep their sign-ins so you can switch back. What you watch stays in this browser whichever you choose. ${
+        sync.phase !== 'off' ? 'Sync carries a sign-in to your other devices.' : 'With Sync on (Settings → Data), a sign-in on one device arrives on the others.'
       }`}
     >
       <div role="radiogroup" aria-label="Tracking With" className={t.options}>
@@ -75,10 +75,10 @@ export function TrackingWithGroup() {
               type="button"
               role="radio"
               aria-checked={checked}
-              disabled={why !== undefined}
+              aria-disabled={why !== undefined || undefined}
               tabIndex={checked ? 0 : -1}
               className={t.option}
-              onClick={() => choose(kind)}
+              onClick={() => why === undefined && choose(kind)}
               onKeyDown={(e) => onKey(e, kind)}
             >
               <span className={t.text}>
@@ -223,7 +223,7 @@ export function SimklGroup() {
     const { pin } = flow
     return (
       <Group title="Simkl">
-        <div className={`${s.pad} ${s.padTop}`}>
+        <div className={s.pad}>
           <div className={t.pin}>
             <span className={s.fieldLabel}>Your Code</span>
             <span className={t.pinCode}>{pin.code}</span>
@@ -236,7 +236,7 @@ export function SimklGroup() {
             </span>
           </div>
         </div>
-        <div className={`${s.pad} ${s.padTop}`}>
+        <div className={s.pad}>
           <div className={s.actions}>
             <a className="btn btn-primary btn-compact" href={pin.url} target="_blank" rel="noreferrer">
               Open Simkl
@@ -269,7 +269,7 @@ export function SimklGroup() {
           </button>
         </Row>
         {issue && (
-          <div className={`${s.pad} ${s.padTop}`}>
+          <div className={s.pad}>
             <Note tone="error">{issue}</Note>
           </div>
         )}
@@ -295,7 +295,7 @@ export function SimklGroup() {
         )}
       </Row>
       {tracking && issue && (
-        <div className={`${s.pad} ${s.padTop}`}>
+        <div className={s.pad}>
           <Note tone="error">{issue}</Note>
         </div>
       )}
@@ -356,7 +356,7 @@ export function MDBListGroup() {
         </Row>
       )}
       {tracking && state.error && (
-        <div className={`${s.pad} ${s.padTop}`}>
+        <div className={s.pad}>
           <Note tone="error">{state.error}</Note>
         </div>
       )}

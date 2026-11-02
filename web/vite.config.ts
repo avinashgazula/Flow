@@ -32,6 +32,11 @@ export default defineConfig({
     'import.meta.env.VITE_BUILD': JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? 'local'),
     // Where Settings links the stream proxy's instructions: this repository's web/proxy folder, as CI
     // builds it. Empty on a local build, where Settings just names the folder.
+    // Where a footer's "Learn more" goes: this repository's web README, as CI builds it. Empty on a local build, where
+    // the link is left out.
+    'import.meta.env.VITE_WEB_README': JSON.stringify(
+      process.env.GITHUB_REPOSITORY ? `https://github.com/${process.env.GITHUB_REPOSITORY}/blob/${process.env.GITHUB_REF_NAME ?? 'main'}/web/README.md` : '',
+    ),
     'import.meta.env.VITE_PROXY_GUIDE': JSON.stringify(
       process.env.GITHUB_REPOSITORY ? `https://github.com/${process.env.GITHUB_REPOSITORY}/tree/${process.env.GITHUB_REF_NAME ?? 'main'}/web/proxy` : '',
     ),

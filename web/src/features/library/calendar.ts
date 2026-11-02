@@ -149,6 +149,16 @@ export function relativeDay(date: number, now: number, locale?: string): string 
 /** "Tuesday, October 27". */
 export const fullDate = (date: number, locale?: string) => new Intl.DateTimeFormat(locale, { weekday: 'long', month: 'long', day: 'numeric' }).format(date)
 
+/** A day's heading, saying the day once: a near day is its word with the date after ("Tomorrow", "Tuesday, November 3";
+ *  "Thursday", "November 5"), and a day further off is just the whole date ("Saturday, November 21"). */
+export function dayHeading(date: number, now: number, locale?: string): { title: string; caption?: string } {
+  const days = Math.round((date - startOfDay(now)) / day)
+  const word = relativeDay(date, now, locale)
+  if (days >= 0 && days <= 1) return { title: word, caption: fullDate(date, locale) }
+  if (days >= 2 && days <= 6) return { title: word, caption: new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric' }).format(date) }
+  return { title: fullDate(date, locale) }
+}
+
 /** What is special about an entry, if anything: a premiere, a film's day, or a new episode. */
 export function label(entry: CalendarEntry, now: number): string | undefined {
   const { episode } = entry

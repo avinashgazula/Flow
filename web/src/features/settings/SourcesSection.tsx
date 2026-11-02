@@ -115,7 +115,7 @@ function ListField({ id, label, values, placeholder, onChange }: { id: string; l
     typed.current = saved
   }, [saved, values])
   return (
-    <Row label={label} htmlFor={id} stacked>
+    <Row label={label} htmlFor={id}>
       <input
         id={id}
         className="field"
@@ -292,7 +292,7 @@ export function SourcesSection() {
         </>
       )}
 
-      <Group title="Library" footer="A title opened from one of a media server’s libraries on Home lists only that server’s sources, so they’re ready sooner and Play picks from them. If that library has no source for the title, every source is searched as usual. Titles opened anywhere else are unchanged.">
+      <Group title="Library" footer="A title opened from a media server’s library on Home lists only that server’s sources, so they’re ready sooner. If it has none, every source is searched as usual.">
         <Row label="Play From This Library Only">
           <Switch checked={o.playFromLibraryOnly} onChange={(on) => change((c) => ({ ...c, playFromLibraryOnly: on }))} label="Play from this library only" />
         </Row>
@@ -321,7 +321,7 @@ function Appearance({ look }: { look: SourceOrdering['appearance'] }) {
     <>
       <Group
         title="Source Appearance"
-        footer="Add-on formatting shows each add-on’s own text, emoji and all. Turn it off for a clean summary read from the release name. Title picks what each row leads with: the provider’s name, which then heads its group, the file name, or the first line of the add-on’s text. Badges print Dolby Vision, HDR and premium audio as edge print: All Formats shows everything a release says, Minimal at most two, None leaves them out."
+        footer="Add-on formatting shows each add-on’s own text; off, rows are a clean summary read from the release name. Badges print Dolby Vision, HDR and premium audio on each row: All Formats shows everything, Minimal at most two."
       >
         <Row label="Show Add-on Formatting">
           <Switch checked={look.showRawText} onChange={(on) => changeLook({ showRawText: on })} label="Show add-on formatting" />

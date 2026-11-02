@@ -156,7 +156,7 @@ function SignInGroup() {
             </button>
           </Row>
           {(problem ?? trakt.error) && (
-            <div className={`${s.pad} ${s.padTop}`}>
+            <div className={s.pad}>
               <Note tone="error">{problem ?? trakt.error}</Note>
             </div>
           )}
@@ -185,7 +185,7 @@ function SignInGroup() {
         )}
       </Row>
       {(tracking ? (trakt.error || problem) : problem) && (
-        <div className={`${s.pad} ${s.padTop}`}>
+        <div className={s.pad}>
           <Note tone="error">{problem ?? trakt.error}</Note>
         </div>
       )}

@@ -13,7 +13,7 @@ export function TitlePagesGroup() {
   return (
     <Group
       title="Title Pages"
-      footer="About always lists the release date, runtime, director and rating at the foot of the page; this adds status, language, country, budget, revenue and production companies. Where to Watch shows subscription, free, rent and buy availability (JustWatch, through TMDB). Reviews shows TMDB and Trakt reviews. With Episode Spoilers off, the still of an episode that has aired and isn’t watched stays blurred and its synopsis stays hidden. Specials Season adds season 0 to a series’ seasons."
+      footer="Each switch adds a part to the title page. With Episode Spoilers off, the still and synopsis of an unwatched episode stay hidden until you ask."
     >
       <Row label="About">
         <Switch label="About" checked={about} onChange={(on) => settingsStore.set({ showAboutSection: on })} />

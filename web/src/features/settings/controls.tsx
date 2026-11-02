@@ -14,10 +14,10 @@ export function Group({ title, footer, children }: { title?: string; footer?: Re
   )
 }
 
-export function Row({ label, detail, htmlFor, children, stacked }: { label: ReactNode; detail?: ReactNode; htmlFor?: string; children?: ReactNode; stacked?: boolean }) {
+export function Row({ label, detail, htmlFor, children }: { label: ReactNode; detail?: ReactNode; htmlFor?: string; children?: ReactNode }) {
   const Label = htmlFor ? 'label' : 'span'
   return (
-    <div className={s.row} data-stacked={stacked ? '' : undefined}>
+    <div className={s.row}>
       <span className={s.rowText}>
         <Label className={s.rowLabel} htmlFor={htmlFor}>
           {label}
@@ -50,7 +50,7 @@ export function Select<T extends string>({ value, onChange, options, label, id, 
 }
 
 /** A destructive action asks once more in place, instead of a dialog that hides the page. */
-export function ConfirmButton({ label, confirm, onConfirm, compact = true }: { label: string; confirm: string; onConfirm: () => void; compact?: boolean }) {
+export function ConfirmButton({ label, confirm, onConfirm, compact = true, disabled }: { label: string; confirm: string; onConfirm: () => void; compact?: boolean; disabled?: boolean }) {
   const [armed, setArmed] = useState(false)
   useEffect(() => {
     if (!armed) return
@@ -60,7 +60,7 @@ export function ConfirmButton({ label, confirm, onConfirm, compact = true }: { l
   const size = compact ? 'btn-compact' : ''
   if (!armed) {
     return (
-      <button type="button" className={`btn btn-secondary ${size} ${s.danger}`} onClick={() => setArmed(true)}>
+      <button type="button" className={`btn btn-secondary ${size} ${s.danger}`} onClick={() => setArmed(true)} disabled={disabled}>
         {label}
       </button>
     )

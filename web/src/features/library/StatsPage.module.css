@@ -1,7 +1,7 @@
 /* Stats: one sentence for the answer, then the evidence on flat base-2 panels. No tiles of big numbers; the
    figures sit in the prose and in tabular columns. */
 
-.page { max-width: 1100px; }
+.page { max-width: var(--reading-width); }
 .period { margin-bottom: var(--space-l); }
 
 /* The lead is the page's title-size sentence: the time is the one paper word in it. */
@@ -15,9 +15,11 @@
 /* Hours by month, week or year: bars on a hairline, the value over each, the current one in paper. */
 .chart { margin: 0; padding: var(--space-m) var(--space-m) var(--space-s); border-radius: var(--radius-panel); background: var(--base-2); }
 .bars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; height: 220px; }
-.column { display: grid; grid-template-rows: 18px minmax(0, 1fr) 22px; min-width: 0; text-align: center; }
-.value { align-self: end; padding-bottom: 4px; font: 600 var(--fs-caption) / 1 var(--font); color: var(--ink-2); white-space: nowrap; }
-.bar { align-self: end; height: calc(var(--h) * 100%); min-height: 2px; border-radius: var(--radius-perf) var(--radius-perf) 0 0; background: var(--ink-3); }
+.column { display: grid; grid-template-rows: minmax(0, 1fr) 22px; min-width: 0; text-align: center; }
+/* The plot leaves 18px above the tallest bar for its value; each value rides on top of its own bar. */
+.plot { position: relative; margin-top: 18px; }
+.value { position: absolute; left: 0; right: 0; bottom: calc(var(--h) * 100% + 4px); font: 600 var(--fs-caption) / 1 var(--font); color: var(--ink-2); white-space: nowrap; }
+.bar { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--h) * 100%); min-height: 2px; border-radius: var(--radius-perf) var(--radius-perf) 0 0; background: var(--ink-3); }
 .bar[data-empty] { background: var(--base-4); }
 .column[data-current] .bar { background: var(--paper); }
 .column[data-current] .value { color: var(--paper); }
