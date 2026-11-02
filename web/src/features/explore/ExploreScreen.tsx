@@ -1,11 +1,12 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { lazy, Suspense, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { movieGenres, tvGenres } from '../../lib/genres'
 import { useProviderNames } from '../../lib/providers'
 import { q } from '../../lib/queries'
 import { useSettings } from '../../lib/store/settings'
+import { useServerLookup } from '../home/marks'
 import type { Genre, MediaType } from '../../lib/tmdb/types'
 import { ChipRow } from './ChipRow'
 import { Segmented, Select, StateView, errorMessage } from './Controls'
@@ -40,7 +41,16 @@ export function ExploreScreen({ type, sort, genre, filters }: { type: MediaType;
   // Both factories page through the same Page<MediaItem>; only their keys' shapes differ.
   const options = source.kind === 'discover' ? q.discoverInfinite(type, source.params) : (q.listInfinite(type, source.list) as unknown as ReturnType<typeof q.discoverInfinite>)
   const query = useInfiniteQuery(options)
-  const items = uniqueItems(query.data?.pages)
+  const listed = uniqueItems(query.data?.pages)
+  // Only Show My Server's Content leaves out the titles no server lists, as it does on Home and in Search. The filter
+  // only thins what a page brings, so a grid it leaves short or empty keeps asking for pages (up to a limit, so a server
+  // with nothing in common can't page through the whole catalogue). With no server readable, nothing is judged.
+  const server = useServerLookup()
+  const filtering = server.only && !!server.has
+  const items = filtering ? listed.filter(server.has!) : listed
+  const searchLimit = 25
+  const hasMore = !!query.hasNextPage && !query.isFetchNextPageError && (!filtering || (query.data?.pages.length ?? 0) < searchLimit)
+  const waiting = server.only && server.pending
 
   const { data: genreList } = useQuery({ ...q.genres(type), placeholderData: () => staticGenres(type) })
   const genres = orderGenres(genreList?.length ? genreList : staticGenres(type), type)
@@ -123,8 +133,19 @@ export function ExploreScreen({ type, sort, genre, filters }: { type: MediaType;
               </button>
             }
           />
-        ) : !query.isPending && items.length === 0 ? (
-          filtered ? (
+        ) : !query.isPending && !waiting && items.length === 0 && !hasMore ? (
+          filtering && listed.length > 0 ? (
+            <StateView
+              icon="explore"
+              title="Nothing on Your Servers Here"
+              message="None of these titles are on your media servers. Turn off Only Show My Server’s Content in Settings → Media Servers to browse everything."
+              action={
+                <Link to="/settings" hash="servers" className="btn btn-secondary">
+                  Open Settings
+                </Link>
+              }
+            />
+          ) : filtered ? (
             <StateView
               icon="filters"
               title="Nothing matches these filters"
@@ -139,7 +160,7 @@ export function ExploreScreen({ type, sort, genre, filters }: { type: MediaType;
             <StateView icon="explore" title="Nothing Here Yet" message="No titles match this genre and sort. Try another genre, or All." />
           )
         ) : (
-          <PosterGrid items={items} pending={query.isPending} hasMore={!!query.hasNextPage && !query.isFetchNextPageError} onNearEnd={loadMore} label={`${type === 'movie' ? 'Movies' : 'TV shows'}`} />
+          <PosterGrid items={items} pending={query.isPending || waiting} hasMore={hasMore} onNearEnd={loadMore} label={`${type === 'movie' ? 'Movies' : 'TV shows'}`} />
         )}
         {query.isFetchNextPageError && (
           <div className={s.more}>

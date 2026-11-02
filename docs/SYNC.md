@@ -104,7 +104,9 @@ The plaintext is JSON:
     "addons":      { "updatedAt": "...", "device": "...", "data": [ ... ] },
     "servers":     { "updatedAt": "...", "device": "...", "data": [ ... ] },
     "streamProxy": { "updatedAt": "...", "device": "...", "data": { "template": "..." } },
-    "playback":    { "updatedAt": "...", "device": "...", "data": { ... } }
+    "playback":    { "updatedAt": "...", "device": "...", "data": { ... } },
+    "requests":    { "updatedAt": "...", "device": "...", "data": { "seerr": { ... } | null } },
+    "sports":      { "updatedAt": "...", "device": "...", "data": { ... } }
   }
 }
 ```
@@ -128,11 +130,18 @@ The plaintext is JSON:
 - **`servers`:** `[{"id", "kind": "jellyfin"|"emby"|"plex", "name", "url", "token", "userId", "username", "machineId"}]`.
 - **`streamProxy`:** `{"template": "<proxy URL template>"}`. Only the web uses it; the apps keep it unchanged.
 - **`playback`:** `{"audioLanguages": [...], "subtitleLanguages": [...], "subtitleStyle": { native SubtitleSettings key names: fontScale, font, weight, color, edgeStyle, background, backgroundOpacity, verticalPosition }}`.
+- **`requests`:** `{"seerr": {"url": "<instance address>", "apiKey": "<its API key>"} | null}`: the Seerr, Overseerr or Jellyseerr instance the Request button asks. `url` is the apps' `SeerrConfig.baseURL` written as text; the website's `seerr.key` is `apiKey`. `null` means none is connected, and a disconnect on any device travels as `null`.
+  - A value that isn't an object with a readable `url` and a text `apiKey` is ignored, so junk never disconnects a device.
+  - The website writes the section only once it has a Seerr (or has had one and cleared it), so a browser that never connected one can't clear the apps' copy.
+- **`sports`:** `{"followedTeams": [...], "apiKey": "<TheSportsDB key>", "showScoreSpoilers": bool, "chooseChannelOnTap": bool}`, under the apps' `SportsSettings` names.
+  - A team is `{"id", "name", "league"?, "sport"?, "badgeURL"?, "country"?}`, and `badgeURL` is text. Teams are matched by `id`. A team without an `id` and a `name` is dropped.
+  - A field the record doesn't carry, or carries in a shape this version can't read, is left as it is on the device. `apiKey` is text, and a blank or `null` one reads as "unset", which the apps and the website show as TheSportsDB's free test key `123`.
+  - A device that has never changed any of it (no teams, key `123`, both switches at their defaults) doesn't write the section.
 
 **Merge rules:**
 - **Timestamps** are ISO 8601 UTC. Write them to the second (`2026-10-24T18:00:00Z`) and read them with or without fractional seconds. A local change made within the same second as the section's stored time is stamped one second later, so it can't tie and lose.
 - **Section by section, the newer `updatedAt` wins.** A device bumps a section's `updatedAt` (to now, UTC) only when its own value of that section changes. Pulling and applying a section doesn't bump it.
-- **Keep what you don't understand.** Unknown sections, and unknown fields inside known sections, are kept as received and written back untouched. The apps carry `streamProxy`, and a newer app can add sections without an older one dropping them.
+- **Keep what you don't understand.** Unknown sections, and unknown fields inside known sections, are kept as received and written back untouched. The apps carry `streamProxy`, and a newer app can add sections without an older one dropping them. A section a version doesn't know yet (`requests` and `sports` before they existed) is the same case.
 - **Clearing is a change.** A cleared value, null or an empty list, is a change like any other and wins when it's newer.
 - **Local values never sync.** Device-specific state stays on the device: playback position, caches, the demo switch, appearance.
 

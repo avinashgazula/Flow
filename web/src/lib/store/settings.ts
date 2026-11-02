@@ -149,7 +149,7 @@ export interface Settings {
   tapRatingOpensReviews?: boolean
   /** Rated posters from RatingPosterDB (needs its key). Absent is off. */
   posterEnhancement?: 'off' | 'rpdb'
-  /** The Seerr, Overseerr or Jellyseerr instance Request asks. Not part of Flow Sync yet. */
+  /** The Seerr, Overseerr or Jellyseerr instance Request asks. Part of Flow Sync (the requests section). */
   seerr?: { url: string; key: string }
   /** The subtitle services' keys and logins (Settings → Playback), named as in Flow Sync (`openSubtitlesAPIKey`,
    *  `openSubtitlesUsername`, `openSubtitlesPassword`, `subdlAPIKey`, `subSourceAPIKey`). Absent until set, which keeps
@@ -173,6 +173,8 @@ export interface Settings {
   xrayWhenPaused?: boolean
   /** Play Dolby Vision files as their HDR10 picture (MKV files Flow plays itself). */
   neverUseDolbyVision?: boolean
+  /** Rank HDR releases first when the screen shows HDR (the apps' `preferHDR`, on unless set); off ranks SDR first. */
+  preferHDR?: boolean
   /** Extra loudness in whole decibels, 0 to 12 (the apps' `volumeBoostDB`); played through a Web Audio gain where the browser allows it. */
   volumeBoostDB?: number
   /** The app "Open in" leads with in the player's options. It is never opened by itself: a web page can't tell whether the app is installed. */

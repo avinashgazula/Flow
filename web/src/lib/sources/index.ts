@@ -114,7 +114,7 @@ async function searchAmong(request: PlaybackRequest, options: SearchOptions & { 
   const settings = settingsStore.get()
   const providers = options.providers
   const caps = options.capabilities ?? browserCapabilities()
-  const prefs = { preferredQuality: settings.preferredQuality, kind: request.type, audioLanguage: resolveAudioLanguages(settings.audioLanguages, request.item.originalLanguage)[0] }
+  const prefs = { preferredQuality: settings.preferredQuality, preferHDR: settings.preferHDR, kind: request.type, audioLanguage: resolveAudioLanguages(settings.audioLanguages, request.item.originalLanguage)[0] }
   const arrangement = { ordering: normaliseSourceOrdering(settings.sources), providers: providers.map((p) => ({ id: p.id, kind: p.kind })) }
   const states = new Map<string, ProviderState>(providers.map((p) => [p.id, { id: p.id, name: p.name, kind: p.kind, state: 'loading' }]))
   // Everything found, unfiltered: a provider that answers later can lift a source the cap had cut.

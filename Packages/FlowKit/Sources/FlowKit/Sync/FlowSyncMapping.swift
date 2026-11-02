@@ -1,14 +1,16 @@
 import Foundation
 
-/// The five sections the apps read and write. `streamProxy` is the website's alone: the apps carry it unchanged.
+/// The seven sections the apps read and write. `streamProxy` is the website's alone: the apps carry it unchanged.
 public enum FlowSyncSectionName {
     public static let keys = "keys"
     public static let accounts = "accounts"
     public static let addons = "addons"
     public static let servers = "servers"
     public static let playback = "playback"
+    public static let requests = "requests"
+    public static let sports = "sports"
 
-    public static let all = [keys, accounts, addons, servers, playback]
+    public static let all = [keys, accounts, addons, servers, playback, requests, sports]
 }
 
 /// Between the app's own types and the payload's sections (docs/SYNC.md, "Payload").
@@ -24,6 +26,8 @@ public enum FlowSyncMapping {
             FlowSyncSectionName.addons: addonsData(settings.sources.addons),
             FlowSyncSectionName.servers: serversData(settings.mediaServers.servers),
             FlowSyncSectionName.playback: playbackData(settings),
+            FlowSyncSectionName.requests: requestsData(settings.mediaServers.seerr),
+            FlowSyncSectionName.sports: sportsData(settings.sports),
         ]
     }
 
@@ -32,10 +36,12 @@ public enum FlowSyncMapping {
         keysData(old) != keysData(new) || accountsData(old) != accountsData(new)
     }
 
-    /// The same for settings, without encoding all of them: the add-ons, servers, languages and subtitle style.
+    /// The same for settings, without encoding all of them: the add-ons, servers, languages, subtitle style, Seerr and Sports.
     public static func changed(from old: AppSettings, to new: AppSettings) -> Bool {
         old.sources.addons != new.sources.addons
             || old.mediaServers.servers != new.mediaServers.servers
+            || old.mediaServers.seerr != new.mediaServers.seerr
+            || old.sports != new.sports
             || old.playback.preferredAudioLanguage != new.playback.preferredAudioLanguage
             || old.playback.audioFallbackLanguage != new.playback.audioFallbackLanguage
             || old.subtitles.preferredLanguages != new.subtitles.preferredLanguages
@@ -136,6 +142,69 @@ public enum FlowSyncMapping {
         ])
     }
 
+    // MARK: requests
+
+    /// `{"seerr": {"url", "apiKey"} | null}`. `null` is a disconnect, which travels like any other change.
+    static func requestsData(_ seerr: SeerrConfig?) -> JSONValue {
+        let value: JSONValue = seerr.map { FlowSyncJSON.object(["url": .string($0.baseURL.absoluteString), "apiKey": .string($0.apiKey)]) } ?? .null
+        return FlowSyncJSON.object(["seerr": value])
+    }
+
+    /// Nil when the value isn't a usable connection (an address that isn't http or https, or no key), so junk never disconnects a device.
+    static func seerr(from value: JSONValue) -> SeerrConfig? {
+        guard case .object(let object) = value,
+              case .string(let text)? = object["url"], case .string(let key)? = object["apiKey"],
+              let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)), url.scheme.map({ ["http", "https"].contains($0.lowercased()) }) == true, url.host != nil,
+              let apiKey = key.nonEmptyTrimmed else { return nil }
+        return SeerrConfig(baseURL: url, apiKey: apiKey)
+    }
+
+    // MARK: sports
+
+    static func sportsData(_ sports: SportsSettings) -> JSONValue {
+        let teams = sports.followedTeams.map { team -> JSONValue in
+            var object: [String: JSONValue] = ["id": .string(team.id), "name": .string(team.name)]
+            if let league = team.league { object["league"] = .string(league) }
+            if let sport = team.sport { object["sport"] = .string(sport) }
+            if let badge = team.badgeURL { object["badgeURL"] = .string(badge.absoluteString) }
+            if let country = team.country { object["country"] = .string(country) }
+            return .object(object)
+        }
+        return FlowSyncJSON.object([
+            "followedTeams": .array(teams),
+            "apiKey": .string(sports.apiKey),
+            "showScoreSpoilers": .bool(sports.showScoreSpoilers),
+            "chooseChannelOnTap": .bool(sports.chooseChannelOnTap),
+        ])
+    }
+
+    /// A team needs an id and a name; the rest are text, and a null or a value of another type is left out.
+    static func teams(from list: [JSONValue]) -> [SportsTeam] {
+        func text(_ object: [String: JSONValue], _ key: String) -> String? {
+            if case .string(let s)? = object[key], !s.isEmpty { return s }
+            return nil
+        }
+        return list.compactMap { value in
+            guard let object = value.object, let id = text(object, "id"), let name = text(object, "name") else { return nil }
+            return SportsTeam(id: id, name: name, league: text(object, "league"), sport: text(object, "sport"),
+                              badgeURL: text(object, "badgeURL").flatMap { URL(string: $0) }, country: text(object, "country"))
+        }
+    }
+
+    /// One field at a time, so a shape this version can't read costs that field and not the rest. A blank or null
+    /// key reads as unset, which is TheSportsDB's free test key.
+    static func applySports(_ data: JSONValue, to sports: inout SportsSettings) {
+        guard let object = data.object else { return }
+        if let list = object["followedTeams"]?.array { sports.followedTeams = teams(from: list) }
+        switch object["apiKey"] {
+        case .string(let key)?: sports.apiKey = key.nonEmptyTrimmed ?? SportsSettings().apiKey
+        case .null?: sports.apiKey = SportsSettings().apiKey
+        default: break
+        }
+        if case .bool(let on)? = object["showScoreSpoilers"] { sports.showScoreSpoilers = on }
+        if case .bool(let on)? = object["chooseChannelOnTap"] { sports.chooseChannelOnTap = on }
+    }
+
     // MARK: Applying a section
 
     /// Puts a section's data into the app's values. Fields the section doesn't carry, or carries in a shape
@@ -149,6 +218,8 @@ public enum FlowSyncMapping {
         case FlowSyncSectionName.servers:
             if let list = data.array { settings.mediaServers.servers = servers(from: list, existing: settings.mediaServers.servers) }
         case FlowSyncSectionName.playback: applyPlayback(data, to: &settings)
+        case FlowSyncSectionName.requests: applyRequests(data, to: &settings)
+        case FlowSyncSectionName.sports: applySports(data, to: &settings.sports)
         default: break
         }
     }
@@ -173,6 +244,11 @@ public enum FlowSyncMapping {
         if let value = object["simkl"] {
             if case .null = value { credentials.simklToken = nil } else if let token = token(from: value) { credentials.simklToken = token }
         }
+    }
+
+    static func applyRequests(_ data: JSONValue, to settings: inout AppSettings) {
+        guard let value = data.object?["seerr"] else { return }
+        if case .null = value { settings.mediaServers.seerr = nil } else if let config = seerr(from: value) { settings.mediaServers.seerr = config }
     }
 
     static func addons(from list: [JSONValue]) -> [AddonConfig] {
@@ -256,8 +332,8 @@ public enum FlowSyncMapping {
         return sections(credentials: credentials, settings: settings)[section] ?? data
     }
 
-    /// Nothing in it yet: a device that has never filled in keys, accounts, add-ons or servers. Playback
-    /// always has defaults, so it never counts as empty.
+    /// Nothing in it yet: a device that has never filled in keys, accounts, add-ons, servers, Seerr or Sports.
+    /// Playback always has defaults, so it never counts as empty.
     public static func isBlank(_ data: JSONValue, section: String) -> Bool {
         switch section {
         case FlowSyncSectionName.keys:
@@ -269,6 +345,15 @@ public enum FlowSyncMapping {
             return (data.object ?? [:]).values.allSatisfy { if case .null = $0 { return true } else { return false } }
         case FlowSyncSectionName.addons, FlowSyncSectionName.servers:
             return data.array?.isEmpty ?? true
+        case FlowSyncSectionName.requests:
+            guard let value = data.object?["seerr"] else { return true }
+            if case .null = value { return true }
+            return seerr(from: value) == nil
+        case FlowSyncSectionName.sports:
+            // Still the defaults: nothing to say, so a device that never followed a team doesn't write one.
+            var sports = SportsSettings()
+            applySports(data, to: &sports)
+            return sports == SportsSettings()
         default:
             return false
         }

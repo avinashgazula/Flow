@@ -393,6 +393,128 @@ final class FlowSyncMappingTests: XCTestCase {
         XCTAssertEqual(account.tracker, .trakt)
     }
 
+    // MARK: requests and sports
+
+    func testSeerrRoundTripsUnderTheDocumentsNames() {
+        var settings = AppSettings()
+        settings.mediaServers.seerr = SeerrConfig(baseURL: URL(string: "https://seerr.example.com")!, apiKey: "KEY")
+        let sections = FlowSyncMapping.sections(credentials: Credentials(), settings: settings)
+        XCTAssertEqual(sections["requests"], FlowSyncJSON.object(["seerr": FlowSyncJSON.object(["url": .string("https://seerr.example.com"), "apiKey": .string("KEY")])]))
+
+        var other = AppSettings()
+        var credentials = Credentials()
+        FlowSyncMapping.apply(sections["requests"]!, to: "requests", credentials: &credentials, settings: &other)
+        XCTAssertEqual(other.mediaServers.seerr, settings.mediaServers.seerr)
+        XCTAssertEqual(FlowSyncMapping.sections(credentials: credentials, settings: other)["requests"], sections["requests"])
+    }
+
+    func testASeerrSectionThatIsAbsentOrUnreadableLeavesTheConnectionAlone() {
+        var settings = AppSettings()
+        settings.mediaServers.seerr = SeerrConfig(baseURL: URL(string: "https://seerr.example.com")!, apiKey: "KEY")
+        var credentials = Credentials()
+        let junk: [JSONValue] = [
+            .object([:]), .string("x"), .null,
+            FlowSyncJSON.object(["seerr": .string("x")]),
+            FlowSyncJSON.object(["seerr": FlowSyncJSON.object(["url": .string("ftp://s.example.com"), "apiKey": .string("k")])]),
+            FlowSyncJSON.object(["seerr": FlowSyncJSON.object(["url": .string("https://s.example.com")])]),
+            FlowSyncJSON.object(["seerr": FlowSyncJSON.object(["url": .string("https://s.example.com"), "apiKey": .string(" ")])]),
+        ]
+        for value in junk { FlowSyncMapping.apply(value, to: "requests", credentials: &credentials, settings: &settings) }
+        XCTAssertEqual(settings.mediaServers.seerr?.apiKey, "KEY")
+        // No section at all in a record changes nothing either: apply is only called for sections that exist.
+        XCTAssertTrue(FlowSyncMapping.isBlank(FlowSyncMapping.requestsData(nil), section: "requests"))
+        XCTAssertFalse(FlowSyncMapping.isBlank(FlowSyncMapping.requestsData(settings.mediaServers.seerr), section: "requests"))
+    }
+
+    func testDisconnectingSeerrElsewhereIsAChange() {
+        var settings = AppSettings()
+        settings.mediaServers.seerr = SeerrConfig(baseURL: URL(string: "https://seerr.example.com")!, apiKey: "KEY")
+        var credentials = Credentials()
+        FlowSyncMapping.apply(FlowSyncJSON.object(["seerr": .null]), to: "requests", credentials: &credentials, settings: &settings)
+        XCTAssertNil(settings.mediaServers.seerr)
+        FlowSyncMapping.apply(FlowSyncJSON.object(["seerr": FlowSyncJSON.object(["url": .string("https://new.example.com"), "apiKey": .string(" K2 "), "extra": .string("x")])]), to: "requests", credentials: &credentials, settings: &settings)
+        XCTAssertEqual(settings.mediaServers.seerr, SeerrConfig(baseURL: URL(string: "https://new.example.com")!, apiKey: "K2"))
+    }
+
+    func sportsSettings() -> SportsSettings {
+        var sports = SportsSettings()
+        sports.followedTeams = [
+            SportsTeam(id: "133604", name: "Arsenal", league: "English Premier League", sport: "Soccer", badgeURL: URL(string: "https://img.example.com/arsenal.png"), country: "England"),
+            SportsTeam(id: "9", name: "Bare"),
+        ]
+        sports.apiKey = "abc"
+        sports.showScoreSpoilers = false
+        sports.chooseChannelOnTap = true
+        return sports
+    }
+
+    func testSportsRoundTripUnderTheAppsNames() {
+        var settings = AppSettings()
+        settings.sports = sportsSettings()
+        let sections = FlowSyncMapping.sections(credentials: Credentials(), settings: settings)
+        let data = sections["sports"]!
+        XCTAssertEqual(data["apiKey"], .string("abc"))
+        XCTAssertEqual(data["showScoreSpoilers"], .bool(false))
+        XCTAssertEqual(data["chooseChannelOnTap"], .bool(true))
+        XCTAssertEqual(data["followedTeams"]?.array?.count, 2)
+        // A team with nothing to say about its league writes no league at all.
+        XCTAssertNil(data["followedTeams"]?.array?[1].object?["league"])
+
+        var other = AppSettings()
+        var credentials = Credentials()
+        FlowSyncMapping.apply(data, to: "sports", credentials: &credentials, settings: &other)
+        XCTAssertEqual(other.sports, settings.sports)
+        XCTAssertEqual(FlowSyncMapping.sections(credentials: credentials, settings: other)["sports"], data)
+    }
+
+    func testSportsFieldsAreTakenOneAtATimeAndAbsenceChangesNothing() {
+        var settings = AppSettings()
+        settings.sports = sportsSettings()
+        var credentials = Credentials()
+        // Fields the section doesn't carry, or carries as the wrong type, stay as they are.
+        FlowSyncMapping.apply(FlowSyncJSON.object(["showScoreSpoilers": .bool(true), "apiKey": .number(7), "chooseChannelOnTap": .string("yes")]), to: "sports", credentials: &credentials, settings: &settings)
+        XCTAssertTrue(settings.sports.showScoreSpoilers)
+        XCTAssertEqual(settings.sports.apiKey, "abc")
+        XCTAssertTrue(settings.sports.chooseChannelOnTap)
+        XCTAssertEqual(settings.sports.followedTeams.count, 2)
+        FlowSyncMapping.apply(.string("x"), to: "sports", credentials: &credentials, settings: &settings)
+        XCTAssertEqual(settings.sports.followedTeams.count, 2)
+    }
+
+    func testClearingSportsElsewhereClearsTeamsAndAnUnsetKeyReadsAsTheFreeKey() {
+        var settings = AppSettings()
+        settings.sports = sportsSettings()
+        var credentials = Credentials()
+        FlowSyncMapping.apply(FlowSyncJSON.object(["followedTeams": .array([]), "apiKey": .null]), to: "sports", credentials: &credentials, settings: &settings)
+        XCTAssertTrue(settings.sports.followedTeams.isEmpty)
+        XCTAssertEqual(settings.sports.apiKey, "123")
+        let teams: JSONValue = .array([
+            FlowSyncJSON.object(["id": .string("1"), "name": .string("A"), "league": .null, "colour": .string("red")]),
+            FlowSyncJSON.object(["id": .string(""), "name": .string("No id")]),
+            FlowSyncJSON.object(["name": .string("Also no id")]),
+        ])
+        FlowSyncMapping.apply(FlowSyncJSON.object(["followedTeams": teams]), to: "sports", credentials: &credentials, settings: &settings)
+        XCTAssertEqual(settings.sports.followedTeams, [SportsTeam(id: "1", name: "A")])
+    }
+
+    func testSportsAtTheirDefaultsAreBlankAndAnyChangeIsNot() {
+        XCTAssertTrue(FlowSyncMapping.isBlank(FlowSyncMapping.sportsData(SportsSettings()), section: "sports"))
+        XCTAssertFalse(FlowSyncMapping.isBlank(FlowSyncMapping.sportsData(sportsSettings()), section: "sports"))
+        var spoilers = SportsSettings()
+        spoilers.showScoreSpoilers = false
+        XCTAssertFalse(FlowSyncMapping.isBlank(FlowSyncMapping.sportsData(spoilers), section: "sports"))
+    }
+
+    func testChangeDetectionSeesSeerrAndSports() {
+        let settings = AppSettings()
+        var changed = settings
+        changed.mediaServers.seerr = SeerrConfig(baseURL: URL(string: "https://seerr.example.com")!, apiKey: "KEY")
+        XCTAssertTrue(FlowSyncMapping.changed(from: settings, to: changed))
+        var teams = settings
+        teams.sports.followedTeams = [SportsTeam(id: "1", name: "A")]
+        XCTAssertTrue(FlowSyncMapping.changed(from: settings, to: teams))
+    }
+
     func testChangeDetectionSeesOnlySyncedValues() {
         var settings = AppSettings()
         var changed = settings
@@ -427,6 +549,7 @@ final class FlowSyncMappingTests: XCTestCase {
 }
 
 final class FlowSyncMergeTests: XCTestCase {
+    let t0 = Date(timeIntervalSince1970: 1_760_999_900)
     let t1 = Date(timeIntervalSince1970: 1_761_000_000)
     let t2 = Date(timeIntervalSince1970: 1_761_000_100)
     let t3 = Date(timeIntervalSince1970: 1_761_000_200)
@@ -451,6 +574,34 @@ final class FlowSyncMergeTests: XCTestCase {
 
     func remote(_ sections: [String: (Date, JSONValue)], device: String = "Web") -> FlowSyncPayload {
         FlowSyncPayload(sections: sections.mapValues { FlowSyncSection(updatedAt: $0.0, device: device, data: $0.1) })
+    }
+
+    func testRequestsAndSportsFollowTheNewestSectionAndKeepUnknownFields() {
+        var settings = AppSettings()
+        settings.mediaServers.seerr = SeerrConfig(baseURL: URL(string: "https://seerr.example.com")!, apiKey: "KEY")
+        settings.sports.followedTeams = [SportsTeam(id: "1", name: "A")]
+        let mine = FlowSyncMapping.sections(credentials: Credentials(), settings: settings)
+
+        // Newer elsewhere: the record wins and is applied.
+        let cleared = remote(["requests": (t2, FlowSyncJSON.object(["seerr": .null])), "sports": (t2, FlowSyncMapping.sportsData(SportsSettings()))])
+        let pulled = FlowSyncMerge.merge(local: mine, state: state(mine, at: t1), remote: cleared, device: "iPhone", now: t3)
+        XCTAssertEqual(pulled.apply["requests"], FlowSyncJSON.object(["seerr": .null]))
+        XCTAssertEqual(pulled.apply["sports"]?["followedTeams"]?.array?.count, 0)
+
+        // Newer here: the local value wins, and what only the record's copy carries stays.
+        let theirs = remote(["requests": (t0, FlowSyncJSON.object(["seerr": FlowSyncJSON.object(["url": .string("https://old.example.com"), "apiKey": .string("old"), "future": .bool(true)])])),
+                             "sports": (t0, FlowSyncJSON.object(["followedTeams": .array([FlowSyncJSON.object(["id": .string("1"), "name": .string("A"), "colour": .string("red")])]), "other": .number(1)]))])
+        let pushed = FlowSyncMerge.merge(local: mine, state: state(mine, at: t1), remote: theirs, device: "iPhone", now: t3)
+        XCTAssertTrue(pushed.apply.isEmpty)
+        XCTAssertEqual(pushed.payload.sections["requests"]?.data["seerr"]?["url"], .string("https://seerr.example.com"))
+        XCTAssertEqual(pushed.payload.sections["requests"]?.data["seerr"]?["future"], .bool(true))
+        XCTAssertEqual(pushed.payload.sections["sports"]?.data["followedTeams"]?.array?.first?.object?["colour"], .string("red"))
+        XCTAssertEqual(pushed.payload.sections["sports"]?.data["other"], .number(1))
+
+        // A record with neither section leaves this device's values alone, and nothing here is applied.
+        let none = FlowSyncMerge.merge(local: mine, state: state(mine, at: t1), remote: remote(["keys": (t1, keys(nil))]), device: "iPhone", now: t2)
+        XCTAssertNil(none.apply["requests"])
+        XCTAssertNil(none.apply["sports"])
     }
 
     func testNewerSectionWins() {

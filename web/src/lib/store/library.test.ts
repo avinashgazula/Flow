@@ -38,6 +38,19 @@ describe('Library', () => {
     expect(libraryStore.get().watchlist).toEqual([])
   })
 
+  it('resets progress without touching what was watched, and clears the watchlist without touching favourites', () => {
+    library.saveProgress(film, 600, 9000)
+    library.markWatched(show, { season: 1, episode: 1 })
+    library.toggleWatchlist(film)
+    library.toggleFavourite(film)
+    library.resetProgress()
+    expect(libraryStore.get().progress).toEqual({})
+    expect(libraryStore.get().history).toHaveLength(1)
+    library.clearWatchlist()
+    expect(libraryStore.get().watchlist).toEqual([])
+    expect(libraryStore.get().favourites).toHaveLength(1)
+  })
+
   it('marks a season watched in one change, once for each episode not already watched', () => {
     library.markWatched(show, { season: 1, episode: 1 })
     titleLibrary.markEpisodesWatched(show, [{ season: 1, episode: 1 }, { season: 1, episode: 2 }, { season: 1, episode: 3 }])

@@ -87,6 +87,7 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   becauseYouWatched: (v) => typeof v === 'boolean',
   xrayWhenPaused: (v) => typeof v === 'boolean',
   neverUseDolbyVision: (v) => typeof v === 'boolean',
+  preferHDR: (v) => typeof v === 'boolean',
   volumeBoostDB: (v) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 12,
   externalPlayer: (v) => externalPlayerIds.includes(v as ExternalPlayerId),
   preferredQuality: (v) => ['2160p', '1080p', '720p', 'any'].includes(v as string),
