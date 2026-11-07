@@ -12,6 +12,7 @@ import { libraryStore, type Library } from '../../lib/store/library'
 import { isTabOrder } from '../../lib/tabs'
 import { isShelfList } from '../../lib/shelves'
 import { isSubtitleStyle, normaliseSubtitleStyle } from '../../lib/store/subtitleStyle'
+import { noExtras, setupExtrasStore } from '../../lib/setup/extras'
 import { typefaces } from './options'
 
 /* Export and import of everything Flow keeps in this browser, as one JSON file. */
@@ -159,6 +160,19 @@ const libraryTypes: { [K in keyof Library]: (v: unknown) => boolean } = {
   shuffled: isObject,
 }
 
+/** The settings in `raw` that import accepts, and the keys it had to skip. Shared by the backup and the apps' setup file. */
+export function readSettings(raw: Record<string, unknown>): { settings: Partial<Settings>; skipped: string[] } {
+  const skipped: string[] = []
+  const settings: Record<string, unknown> = {}
+  for (const [key, valid] of Object.entries(settingTypes)) {
+    if (!(key in raw)) continue
+    if (!valid(raw[key])) skipped.push(key)
+    // A style missing some fields takes their defaults, and the apps' older "shadow" background reads as none.
+    else settings[key] = key === 'subtitleStyle' ? normaliseSubtitleStyle(raw[key]) : key === 'sources' ? normaliseSourceOrdering(raw[key]) : key === 'subtitleOptions' ? normaliseSubtitleOptions(raw[key]) : raw[key]
+  }
+  return { settings: settings as Partial<Settings>, skipped }
+}
+
 export function createBackup(settings: Settings, library: Library, now = new Date()): Backup {
   return { format: backupFormat, version: 1, exportedAt: now.toISOString(), settings, library }
 }
@@ -176,16 +190,9 @@ export function parseBackup(text: string): { ok: true; settings: Partial<Setting
   if (typeof data.version === 'number' && data.version > 1) return { ok: false, error: 'That backup is from a newer version of Flow. Update Flow, then try again.' }
 
   const skipped: string[] = []
-  const settings: Record<string, unknown> = {}
   const library: Record<string, unknown> = {}
-  if (isObject(data.settings)) {
-    for (const [key, valid] of Object.entries(settingTypes)) {
-      if (!(key in data.settings)) continue
-      if (!valid(data.settings[key])) skipped.push(key)
-      // A style missing some fields takes their defaults, and the apps' older "shadow" background reads as none.
-      else settings[key] = key === 'subtitleStyle' ? normaliseSubtitleStyle(data.settings[key]) : key === 'sources' ? normaliseSourceOrdering(data.settings[key]) : key === 'subtitleOptions' ? normaliseSubtitleOptions(data.settings[key]) : data.settings[key]
-    }
-  }
+  const { settings, skipped: unreadable } = readSettings(isObject(data.settings) ? data.settings : {})
+  skipped.push(...unreadable)
   if (isObject(data.library)) {
     for (const [key, valid] of Object.entries(libraryTypes)) {
       if (!(key in data.library)) continue
@@ -194,7 +201,7 @@ export function parseBackup(text: string): { ok: true; settings: Partial<Setting
     }
   }
   if (Object.keys(settings).length === 0 && Object.keys(library).length === 0) return { ok: false, error: 'That backup is empty. Choose a file exported from Flow’s Settings.' }
-  return { ok: true, settings: settings as Partial<Settings>, library: library as Partial<Library>, skipped }
+  return { ok: true, settings, library: library as Partial<Library>, skipped }
 }
 
 export function applyBackup(parsed: { settings: Partial<Settings>; library: Partial<Library> }) {
@@ -209,4 +216,5 @@ export function resetEverything() {
   settingsStore.set({ ...optional, ...defaultSettings })
   libraryStore.set({ progress: {}, watchlist: [], favourites: [], history: [], watchedEpisodes: {}, ratings: {}, rewatches: {}, shuffled: {} })
   lastSourceStore.set({ byTitle: {} })
+  setupExtrasStore.set(noExtras)
 }

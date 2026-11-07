@@ -1,0 +1,16 @@
+/* Reading a setup: the same pieces in Settings → Data and on Welcome, so it takes the width and padding of whichever holds it. */
+.box { display: flex; flex-direction: column; gap: var(--space-s); text-align: left; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-s); }
+.paste { display: flex; gap: var(--space-s); }
+.paste :global(.field) { flex: 1; min-width: 0; height: 40px; background: var(--base-3); }
+.heading { font: 600 var(--fs-small) / 1.2 var(--font); color: var(--paper); }
+.summary { margin: 0; display: flex; flex-direction: column; }
+.line { display: flex; justify-content: space-between; gap: var(--space-m); padding: var(--space-xs) 0; font-size: var(--fs-small); }
+.line + .line { border-top: 1px solid var(--rule); }
+.line dt { color: var(--ink-2); }
+.line dd { margin: 0; color: var(--paper); font-variant-numeric: tabular-nums; text-align: right; }
+.hint { font-size: var(--fs-footnote); color: var(--ink-2); line-height: 1.45; text-wrap: pretty; }
+.error { font-size: var(--fs-footnote); color: var(--red); line-height: 1.45; }
+@media (max-width: 560px) {
+  .paste { flex-direction: column; }
+}

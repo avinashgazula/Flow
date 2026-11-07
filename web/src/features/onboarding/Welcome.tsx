@@ -1,14 +1,19 @@
-import { useState, type FormEvent } from 'react'
+import { lazy, Suspense, useState, type FormEvent } from 'react'
 import { Logo } from '../../components/Nav'
 import { libraryStore } from '../../lib/store/library'
 import { settingsStore, useSettings } from '../../lib/store/settings'
 import s from './Welcome.module.css'
+
+/* Reading a setup file and joining a sync pull in the codec and the sync engine, so they load when asked for. */
+const SetupImport = lazy(() => import('../settings/SetupImport').then((m) => ({ default: m.SetupImport })))
+const WelcomeJoin = lazy(() => import('./WelcomeJoin').then((m) => ({ default: m.WelcomeJoin })))
 
 export function Welcome() {
   const saved = useSettings((x) => x.tmdbKey)
   const [key, setKey] = useState(saved)
   const [state, setState] = useState<'idle' | 'checking' | 'error'>('idle')
   const [message, setMessage] = useState('')
+  const [other, setOther] = useState<'setup' | 'join'>()
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -40,37 +45,59 @@ export function Welcome() {
         <Logo size={48} />
         <h1 className={s.title}>Welcome to Flow</h1>
         <p className={s.lede}>Your Jellyfin, Emby and Plex servers, stream add-ons and live TV, in one beautiful place. Flow hosts no content: it plays what you already have.</p>
-        <form className={s.form} onSubmit={submit}>
-          <label className={s.label} htmlFor="tmdb-key">
-            TMDB API Key
-          </label>
-          <input
-            id="tmdb-key"
-            className="field"
-            value={key}
-            onChange={(e) => {
-              setKey(e.target.value)
-              setState('idle')
-            }}
-            placeholder="Paste your API key or read-access token"
-            autoComplete="off"
-            spellCheck={false}
-          />
-          {state === 'error' && <p className={s.error}>{message}</p>}
-          <p className={s.hint}>
-            Flow uses TMDB for posters, cast and details. A key is free:{' '}
-            <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">
-              get one at themoviedb.org
-            </a>
-            . It stays in this browser.
-          </p>
-          <button className="btn btn-primary" type="submit" disabled={!key.trim() || state === 'checking'}>
-            {state === 'checking' ? 'Checking…' : 'Continue'}
-          </button>
-        </form>
-        <button className={`btn btn-secondary ${s.sample}`} onClick={sample}>
-          Explore with Sample Data
-        </button>
+        {other ? (
+          <Suspense fallback={<p className={s.hint}>Loading…</p>}>
+            {other === 'setup' ? (
+              <div className={s.other}>
+                <SetupImport backups onImported={() => setOther(undefined)} onCancel={() => setOther(undefined)} />
+              </div>
+            ) : (
+              <WelcomeJoin onBack={() => setOther(undefined)} />
+            )}
+          </Suspense>
+        ) : (
+          <>
+            <form className={s.form} onSubmit={submit}>
+              <label className={s.label} htmlFor="tmdb-key">
+                TMDB API Key
+              </label>
+              <input
+                id="tmdb-key"
+                className="field"
+                value={key}
+                onChange={(e) => {
+                  setKey(e.target.value)
+                  setState('idle')
+                }}
+                placeholder="Paste your API key or read-access token"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {state === 'error' && <p className={s.error}>{message}</p>}
+              <p className={s.hint}>
+                Flow uses TMDB for posters, cast and details. A key is free:{' '}
+                <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">
+                  get one at themoviedb.org
+                </a>
+                . It stays in this browser.
+              </p>
+              <button className="btn btn-primary" type="submit" disabled={!key.trim() || state === 'checking'}>
+                {state === 'checking' ? 'Checking…' : 'Continue'}
+              </button>
+            </form>
+            <div className={s.alternatives}>
+              <button className={`btn btn-secondary ${s.sample}`} onClick={sample}>
+                Explore with Sample Data
+              </button>
+              <button className={`btn btn-quiet ${s.sample}`} onClick={() => setOther('setup')}>
+                I Have a Setup From Another Device
+              </button>
+              <button className={`btn btn-quiet ${s.sample}`} onClick={() => setOther('join')}>
+                Join Flow Sync
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

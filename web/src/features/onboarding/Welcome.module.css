@@ -26,4 +26,8 @@
 .hint a:hover { color: var(--paper); }
 .error { font-size: var(--fs-footnote); color: var(--red); }
 .form :global(.btn) { margin-top: var(--space-xs); }
+.alternatives { width: 100%; display: flex; flex-direction: column; gap: var(--space-xs); }
 .sample { width: 100%; }
+.other { width: 100%; }
+/* Sync's own address fields carry the padding of a settings row; here they sit in the form's column. */
+.server { margin: calc(var(--space-s) * -1) calc(var(--space-m) * -1); }

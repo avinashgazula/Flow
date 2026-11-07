@@ -1,0 +1,270 @@
+{
+  "credentials": {
+    "introDBAPIKey": "intro-key",
+    "mdblistAPIKey": "mdb-key",
+    "openSubtitlesAPIKey": "os-key",
+    "openSubtitlesPassword": "os-pass",
+    "openSubtitlesUsername": "os-user",
+    "simklClientID": "simkl-id",
+    "subdlAPIKey": "subdl-key",
+    "tmdbAPIKey": "tmdb-key-from-app",
+    "traktClientID": "trakt-id",
+    "traktClientSecret": "trakt-secret",
+    "tvdbAPIKey": "tvdb-key",
+    "wyzieAPIKey": "wyzie-key"
+  },
+  "exportedAt": "2026-10-30T09:15:22.481Z",
+  "format": "flow-setup",
+  "settings": {
+    "account": {
+      "introDBBaseURL": "https://api.introdb.app",
+      "publicMetaDBBaseURL": "https://publicmetadb.com",
+      "scrobble": false,
+      "syncInterval": 900,
+      "tracker": "trakt",
+      "watchlistDestination": "trakt",
+      "favouritesDestination": "local"
+    },
+    "downloads": {
+      "deleteWatchedDownloads": true,
+      "downloadAutomatically": false,
+      "downloadNextEpisode": true,
+      "location": "appStorage",
+      "movieLimitGB": 40,
+      "resolution": 1080
+    },
+    "general": {
+      "accent": "teal",
+      "appIcon": "light",
+      "contentShelfLength": 30,
+      "continueWatchingLimit": 10,
+      "detailTextSize": "large",
+      "episodeNotifications": true,
+      "filmDates": "theatrical",
+      "haptics": false,
+      "heroAutoAdvance": false,
+      "heroSecondarySource": "popular",
+      "heroSource": "watchlist",
+      "heroStyle": "fullscreen",
+      "includeWatchlistPremieres": true,
+      "matchResultNotifications": false,
+      "matchStartNotifications": true,
+      "showAboutSection": true,
+      "showContinueWatching": true,
+      "showContinueWatchingReleaseDate": false,
+      "showEpisodeSpoilers": false,
+      "showEpisodesRemaining": true,
+      "showPosterTitles": false,
+      "showReleaseYear": true,
+      "showReviews": true,
+      "showSpecialsSeason": false,
+      "showUpcoming": true,
+      "showWatchedBadges": false,
+      "showWhereToWatch": true,
+      "startTab": "liveTV",
+      "tabOrder": ["liveTV", "home", "explore", "library", "search"],
+      "upcomingWithinDays": 14
+    },
+    "liveTV": {
+      "epgRefreshHours": 6,
+      "favouriteChannelIDs": ["bbc-one", "arte"],
+      "hideEmptyGroups": false,
+      "providers": [
+        {
+          "enabled": true,
+          "epgURL": "https://iptv.example.com/guide.xml",
+          "id": "provider-1",
+          "kind": "xtream",
+          "name": "Demo IPTV",
+          "password": "hunter2",
+          "url": "https://iptv.example.com",
+          "useForVOD": true,
+          "userAgent": "Flow/1.0",
+          "username": "viewer"
+        },
+        {
+          "enabled": false,
+          "id": "provider-2",
+          "kind": "m3u",
+          "name": "Playlist",
+          "url": "https://lists.example.com/channels.m3u",
+          "useForVOD": false
+        }
+      ],
+      "recentChannelIDs": ["arte"]
+    },
+    "mediaServers": {
+      "onlyShowServerContent": true,
+      "preferDirectPlay": false,
+      "seerr": {
+        "apiKey": "seerr-key",
+        "baseURL": "https://seerr.example.com"
+      },
+      "serverHomeRowIDs": ["server-1"],
+      "serverHomeRows": true,
+      "servers": [
+        {
+          "accessToken": "jf-token",
+          "baseURL": "https://jellyfin.example.com",
+          "enabled": true,
+          "id": "server-1",
+          "isRemote": false,
+          "kind": "jellyfin",
+          "name": "Living Room",
+          "userID": "user-1",
+          "username": "viewer"
+        },
+        {
+          "accessToken": "plex-token",
+          "baseURL": "https://plex.example.com:32400",
+          "enabled": false,
+          "id": "server-2",
+          "isRemote": true,
+          "kind": "plex",
+          "machineID": "abc123",
+          "name": "Plex"
+        }
+      ],
+      "showBadgeOnPosters": false,
+      "trackOnlyWithTracker": true,
+      "useServerArtwork": true
+    },
+    "metadata": {
+      "airDatesInLocalTimeZone": false,
+      "episodeSource": "tmdb",
+      "includeAdult": true,
+      "language": "fr-FR",
+      "posterEnhancement": "rpdb",
+      "prefetchOnDetail": false,
+      "primarySource": "trakt",
+      "ratingIconPackURL": "https://icons.example.com/pack.json",
+      "ratingsShown": ["imdb", "tomatometer", "mal", "trakt"],
+      "region": "FR",
+      "showUnreleasedTitles": false,
+      "tapRatingOpensReviews": true
+    },
+    "playback": {
+      "animeAudio": "sub",
+      "askToResume": false,
+      "audioFallbackLanguage": "fr",
+      "autoPlayNextEpisode": false,
+      "autoRotate": false,
+      "becauseYouWatched": false,
+      "cellularResolutionCap": 720,
+      "convertDolbyVisionProfile7": false,
+      "decodeLosslessAudio": false,
+      "externalPlayer": "infuse",
+      "matroskaPlayback": "external",
+      "neverUseDolbyVision": true,
+      "nextEpisodeCountdownSeconds": 20,
+      "pictureInPicture": false,
+      "postCreditsAlert": false,
+      "preferHDR": false,
+      "preferredAudioLanguage": "en",
+      "preferredResolutionCap": 1080,
+      "rememberLastSourcePerShow": false,
+      "rememberTracksPerShow": false,
+      "seekBackwardSeconds": 15,
+      "seekForwardSeconds": 30,
+      "showLoadingProgress": false,
+      "showTracks": {
+        "show:1399": { "audioLanguage": "ja", "subtitleLanguage": "en", "subtitlesOff": false }
+      },
+      "skipCredits": "automatic",
+      "skipDetailsOnContinueWatching": false,
+      "skipIntro": "off",
+      "skipRecap": "button",
+      "stillWatchingAfterEpisodes": 5,
+      "tryNextSourceOnFailure": false,
+      "upNextWaitsForEnd": true,
+      "volumeBoostDB": 6,
+      "watchedThresholdPercent": 95,
+      "xrayWhenPaused": false
+    },
+    "shelves": [
+      { "enabled": true, "id": "continueWatching", "source": { "builtIn": { "_0": "continueWatching" } }, "style": "landscape", "title": "Continue Watching" },
+      { "enabled": true, "id": "genres", "source": { "builtIn": { "_0": "genres" } }, "style": "poster", "title": "Genres" },
+      {
+        "enabled": true,
+        "id": "A1B2C3D4-0000-4000-8000-000000000001",
+        "source": { "discover": { "_0": { "excludedGenres": [], "genres": [878], "minRating": 7, "sort": "vote_average.desc", "type": "movie", "watchProviders": [], "yearFrom": 2000 } } },
+        "style": "poster",
+        "title": "Great Sci-Fi"
+      },
+      { "enabled": false, "id": "A1B2C3D4-0000-4000-8000-000000000002", "source": { "traktList": { "slug": "best-of", "user": "someone" } }, "style": "poster", "title": "Best Of" },
+      { "enabled": true, "id": "A1B2C3D4-0000-4000-8000-000000000003", "source": { "mdblist": { "id": 4242 } }, "style": "poster", "title": "MDBList Picks" }
+    ],
+    "sources": {
+      "addons": [
+        { "enabled": true, "manifestURL": "https://addon.example.com/abc/manifest.json", "name": "My Add-on" },
+        { "enabled": false, "manifestURL": "https://other.example.com/manifest.json", "name": "Other" }
+      ],
+      "appearance": { "badgePack": "monochrome", "compact": true, "showRawText": true, "showSize": false, "titleDisplay": "filename" },
+      "autoPlayFirstSource": true,
+      "categoryOrder": ["addons", "mediaServers", "webDAV", "iptv"],
+      "filters": {
+        "excludeCinemaCaptures": false,
+        "excludeUncached": true,
+        "excludedCodecs": ["xvid"],
+        "excludedKeywords": ["hindi"],
+        "maxSizeGB": 20,
+        "minResolution": 1440,
+        "preferredLanguages": ["English"],
+        "requiredKeywords": []
+      },
+      "lastSources": {},
+      "playFromLibraryOnly": true,
+      "preferPlayableAudio": false,
+      "providerOrder": { "addons": ["https://addon.example.com/abc/manifest.json"] },
+      "rememberLastSource": false,
+      "resultCap": 20,
+      "sortRules": [
+        { "descending": false, "key": "size" },
+        { "descending": true, "key": "resolution" }
+      ],
+      "timeoutSeconds": 30,
+      "useCustomOrdering": true
+    },
+    "sports": {
+      "apiKey": "sports-key",
+      "chooseChannelOnTap": true,
+      "followedTeams": [
+        { "badgeURL": "https://img.example.com/badge.png", "country": "England", "id": "133604", "league": "English Premier League", "name": "Arsenal", "sport": "Soccer" }
+      ],
+      "showScoreSpoilers": false
+    },
+    "subtitles": {
+      "autoEnable": false,
+      "autoSelect": "forcedOnly",
+      "autoSync": true,
+      "background": "solid",
+      "backgroundOpacity": 0.8,
+      "color": "yellow",
+      "defaultOffsetSeconds": -1.5,
+      "edgeStyle": "outline",
+      "enabledProviders": ["opensubtitles", "wyzie"],
+      "font": "serif",
+      "fontScale": 1.4,
+      "hearingImpaired": false,
+      "keepASSStyling": true,
+      "preferredLanguages": ["fr", "en"],
+      "subtitleType": "sdh",
+      "verticalPosition": 0.1,
+      "weight": "bold"
+    },
+    "sync": { "iCloudEnabled": false },
+    "webDAV": [
+      {
+        "baseURL": "https://dav.example.com/files",
+        "enabled": true,
+        "id": "dav-1",
+        "moviesPath": "/Films",
+        "name": "NAS",
+        "password": "secret",
+        "showsPath": "/Series",
+        "username": "me"
+      }
+    ]
+  },
+  "version": 1
+}

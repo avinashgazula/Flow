@@ -7,8 +7,11 @@ import { lastSources } from '../player/session'
 import { settingsStore } from '../../lib/store/settings'
 import { applyBackup, createBackup, parseBackup, resetEverything } from './backup'
 import { turnOff } from '../../lib/sync/engine'
-import { ConfirmButton, Group, Note, Row } from './controls'
+import { ConfirmButton, Group, Note, Row, Switch } from './controls'
+import { SetupImport } from './SetupImport'
+import { createSetup } from './setup'
 import { SyncGroup } from './SyncGroup'
+import s from './SettingsScreen.module.css'
 
 export function DataSection() {
   const file = useRef<HTMLInputElement>(null)
@@ -18,6 +21,9 @@ export function DataSection() {
   const watchlist = useLibrary((l) => l.watchlist.length)
   // What the browser remembers lives outside the stores; it is counted again after each change.
   const [remembered, setRemembered] = useState(() => lastSources.count())
+  const [secrets, setSecrets] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [copied, setCopied] = useState(false)
   const items = (n: number) => (n === 1 ? '1 title' : `${n} titles`)
 
   function exportBackup() {
@@ -29,6 +35,28 @@ export function DataSection() {
     link.click()
     setTimeout(() => URL.revokeObjectURL(url), 10_000)
     setNote({ tone: 'ok', text: 'Saved a backup. It includes your sign-ins and keys, so keep it private.' })
+  }
+
+  function exportSetup() {
+    const setup = createSetup(secrets)
+    const url = URL.createObjectURL(new Blob([setup.json], { type: 'application/json' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = setup.filename
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    setNote({ tone: 'ok', text: secrets ? 'Saved a setup with your keys and passwords. Keep it private.' : 'Saved a setup without keys or passwords. Open it in the apps with Import Setup.' })
+  }
+
+  function copySetupLink() {
+    if (!navigator.clipboard) return setNote({ tone: 'error', text: 'This browser won’t let Flow copy. Use Export Setup instead.' })
+    void navigator.clipboard.writeText(createSetup(secrets).link).then(
+      () => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      },
+      () => setNote({ tone: 'error', text: 'Couldn’t copy the link. Use Export Setup instead.' }),
+    )
   }
 
   async function importBackup(chosen: File | undefined) {
@@ -66,13 +94,42 @@ export function DataSection() {
   return (
     <>
       <SyncGroup />
-      <Group footer="Settings, sign-ins, your watchlist, favourites and progress, as one JSON file. Import replaces what the file contains and leaves the rest alone.">
-        <Row label="Export" detail="Settings and library">
+      <Group
+        title="Setup"
+        footer="The same setup file the apps share: shelves, sources, add-ons, servers, IPTV providers, languages and subtitle style. Leave keys out when sharing it. Add-on and playlist addresses can carry keys of their own. Trakt and Simkl sign-ins are never included; Sync carries those."
+      >
+        <Row label="Include API Keys and Passwords" detail="Keys, server tokens, share and provider logins">
+          <Switch checked={secrets} onChange={setSecrets} label="Include API Keys and Passwords" />
+        </Row>
+        <Row label="Export Setup" detail="A file, or a link the apps paste">
+          <button type="button" className="btn btn-secondary btn-compact" onClick={exportSetup}>
+            <Icon name="download" size={16} /> Export
+          </button>
+          <button type="button" className="btn btn-secondary btn-compact" onClick={copySetupLink}>
+            <Icon name={copied ? 'check' : 'copy'} size={16} /> {copied ? 'Copied' : 'Copy Link'}
+          </button>
+        </Row>
+        <Row label="Import Setup" detail="From the apps or another browser">
+          <button type="button" className="btn btn-secondary btn-compact" aria-expanded={importing} onClick={() => setImporting((v) => !v)}>
+            <Icon name="upload" size={16} /> Import
+          </button>
+        </Row>
+        {importing && (
+          <div className={s.pad}>
+            <SetupImport
+              onImported={(text) => (setImporting(false), setNote({ tone: 'ok', text }))}
+              onCancel={() => setImporting(false)}
+            />
+          </div>
+        )}
+      </Group>
+      <Group title="Backup" footer="Settings, sign-ins, your watchlist, favourites and progress, as one JSON file for this browser. Import replaces what the file contains and leaves the rest alone.">
+        <Row label="Export Backup" detail="Settings and library">
           <button type="button" className="btn btn-secondary btn-compact" onClick={exportBackup}>
             <Icon name="download" size={16} /> Export
           </button>
         </Row>
-        <Row label="Import" detail="From a Flow backup">
+        <Row label="Import Backup" detail="From a Flow backup">
           <button type="button" className="btn btn-secondary btn-compact" onClick={() => file.current?.click()}>
             <Icon name="upload" size={16} /> Import
           </button>

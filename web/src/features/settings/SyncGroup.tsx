@@ -132,7 +132,7 @@ function PairingPanel({ link, keyText }: { link: string; keyText: string }) {
 }
 
 /** Where the Worker is: its address and token. */
-function ServerFields({ server, token, onChange, autoFocus }: { server: string; token: string; onChange: (next: { server: string; token: string }) => void; autoFocus?: boolean }) {
+export function ServerFields({ server, token, onChange, autoFocus }: { server: string; token: string; onChange: (next: { server: string; token: string }) => void; autoFocus?: boolean }) {
   return (
     <div className={s.form}>
       <label className={s.fieldLabel} htmlFor="sync-server">
