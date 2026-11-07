@@ -113,6 +113,9 @@ const fields: Field[] = [
   // account
   { web: 'introDBBaseURL', path: 'account.introDBBaseURL', absent: '', write: (v: string) => v.trim() || publicDefaults.introDBBaseURL, read: publicAddress('introDBBaseURL') },
   { web: 'publicMetaDBBaseURL', path: 'account.publicMetaDBBaseURL', absent: '', write: (v: string) => v.trim() || publicDefaults.publicMetaDBBaseURL, read: publicAddress('publicMetaDBBaseURL') },
+  same('favouritesDestination', 'account.favouritesDestination', 'local'),
+  same('syncInterval', 'account.syncInterval', 10800),
+  same('scrobble', 'account.scrobble', true),
   // metadata
   same('language', 'metadata.language'),
   same('region', 'metadata.region'),
@@ -209,7 +212,10 @@ function build(s: Settings, includeSecrets: boolean): { settings: Json; credenti
     put(settings, f.path, f.write ? f.write(raw) : raw)
   }
   // The tracker the website uses when none was chosen is the first sign-in, as the apps adopt one that arrives.
-  put(settings, 'account.tracker', s.tracker ?? (s.traktAccount ? 'trakt' : s.simklAccount ? 'simkl' : 'local'))
+  const tracker = s.tracker ?? (s.traktAccount ? 'trakt' : s.simklAccount ? 'simkl' : 'local')
+  put(settings, 'account.tracker', tracker)
+  // Absent, the watchlist follows the tracker (where it has lists).
+  put(settings, 'account.watchlistDestination', s.watchlistDestination ?? (['trakt', 'simkl', 'mdblist'].includes(tracker) ? tracker : 'local'))
 
   put(settings, 'shelves', JSON.parse(shelvesToJSON(s.shelves)))
 
