@@ -40,12 +40,16 @@ export const typefaces: { name: string; file: string }[] = [
   { name: 'Manrope', file: 'OFL-Manrope.txt' },
 ]
 
+/** The commit this build came from, so the links below show the exact build script and notice that made it; a local
+ *  build has none and links the working branch instead. */
+const ref = import.meta.env.VITE_BUILD && import.meta.env.VITE_BUILD !== 'local' ? import.meta.env.VITE_BUILD : 'claude/build-flow-app'
+
 /** FFmpeg's decoders, as the LGPL asks them to be offered: what it is, where the source is, and how to swap it. */
 export const ffmpeg = {
   version: '7.1.1',
   source: 'https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz',
   home: 'https://ffmpeg.org',
   /** The notice that ships with the module, and the script that builds it from the release above. */
-  notice: 'https://github.com/avinashgazula/Flow/tree/main/web/src/lib/audio/pkg',
-  script: 'https://github.com/avinashgazula/Flow/blob/main/web/scripts/build-audio-decoders.sh',
+  notice: `https://github.com/avinashgazula/Flow/tree/${ref}/web/src/lib/audio/pkg`,
+  script: `https://github.com/avinashgazula/Flow/blob/${ref}/web/scripts/build-audio-decoders.sh`,
 }
