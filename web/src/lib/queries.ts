@@ -5,10 +5,10 @@ import { queryClient } from './queryClient'
 import { settingsStore } from './store/settings'
 
 /* Every query key starts with the catalogue's identity (sample data or a key, plus language), so
-   switching either never shows the other's results. */
+   switching either never shows the other's results (and Show Unreleased Titles when off, which changes what the lists hold). */
 export const scope = () => {
   const s = settingsStore.get()
-  return [s.demo ? 'demo' : 'tmdb', s.language, s.region] as const
+  return [s.demo ? 'demo' : 'tmdb', s.language, s.region, ...(s.showUnreleasedTitles === false ? ['released'] : [])] as const
 }
 
 const day = 24 * 60 * 60_000

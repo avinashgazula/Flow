@@ -18,14 +18,14 @@ async function tmdbEpisodes(showId: number, seasons: { number: number }[]): Prom
   return lists.flat()
 }
 
-async function traktEpisodes(imdb: string, clientID: string): Promise<Episode[]> {
+async function traktEpisodes(imdb: string, clientID: string, localTimeZone: boolean): Promise<Episode[]> {
   const response = await fetch(`https://api.trakt.tv/shows/${encodeURIComponent(imdb)}/seasons?extended=episodes,full`, { headers: { 'trakt-api-version': '2', 'trakt-api-key': clientID }, credentials: 'omit' })
-  return response.ok ? fromTrakt((await response.json()) as TraktSeason[]) : []
+  return response.ok ? fromTrakt((await response.json()) as TraktSeason[], localTimeZone) : []
 }
 
 const show = (showId: number) =>
   queryOptions({
-    queryKey: [...scope(), 'numbered-episodes', showId, settingsStore.get().episodeSource ?? 'tvdb'],
+    queryKey: [...scope(), 'numbered-episodes', showId, settingsStore.get().episodeSource ?? 'tvdb', settingsStore.get().airDatesInLocalTimeZone !== false],
     staleTime: 24 * 60 * 60_000,
     queryFn: async (): Promise<Record<number, Episode[]>> => {
       const s = settingsStore.get()
@@ -33,7 +33,7 @@ const show = (showId: number) =>
       const tmdb = await tmdbEpisodes(showId, d.seasons)
       let other: Episode[] = []
       try {
-        if (s.episodeSource === 'trakt') other = d.imdb && s.traktClientID.trim() ? await traktEpisodes(d.imdb, s.traktClientID.trim()) : []
+        if (s.episodeSource === 'trakt') other = d.imdb && s.traktClientID.trim() ? await traktEpisodes(d.imdb, s.traktClientID.trim(), s.airDatesInLocalTimeZone !== false) : []
         else if (d.tvdb && s.tvdbKey?.trim()) other = fromTVDB(await tvdbEpisodes(d.tvdb, s.tvdbKey.trim(), tvdbLanguage(s.language)))
       } catch {
         other = []

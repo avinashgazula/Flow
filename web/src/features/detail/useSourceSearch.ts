@@ -1,12 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { searchSources, type PlaybackRequest, type SearchUpdate } from '../../lib/sources'
-import { settingsStore } from '../../lib/store/settings'
+import { normaliseSourceOrdering } from '../../lib/sources/sourceSettings'
+import { settingsStore, useSettings } from '../../lib/store/settings'
 
 /* The title page asks every source for the title as soon as the page has its details, so the film-can
    label can say what Play would start. The answer is kept for a few minutes: going back to a title, or
-   opening the picker from the label, doesn't ask every add-on again. */
+   opening the picker from the label, doesn't ask every add-on again. With Prefetch on Detail View off (Settings →
+   Metadata) nothing is asked until Play or the picker needs it, as the apps do to save bandwidth. */
 
 const idle: SearchUpdate = { sources: [], providers: [], torrents: 0, finished: false }
+const notAsked: SearchUpdate = { ...idle, idle: true }
 const keep = 5 * 60_000
 const answers = new Map<string, { at: number; update: SearchUpdate }>()
 
@@ -29,10 +32,12 @@ export function useSourceSearch(request: PlaybackRequest | undefined, enabled: b
   const latest = useRef(request)
   latest.current = request
   const key = request ? keyOf(request) : ''
+  const prefetch = useSettings((x) => x.prefetchOnDetail !== false)
+  const choose = useSettings((x) => !normaliseSourceOrdering(x.sources).autoPlayFirstSource)
 
   useEffect(() => {
     const r = latest.current
-    if (!enabled || !r) return
+    if (!enabled || !r || !prefetch) return
     const hit = again === 0 ? cachedSources(r) : undefined
     if (hit) {
       setUpdate(hit)
@@ -50,7 +55,7 @@ export function useSourceSearch(request: PlaybackRequest | undefined, enabled: b
       // Left the page, or asked again: the newer search reports instead.
     })
     return () => controller.abort()
-  }, [enabled, key, again])
+  }, [enabled, key, again, prefetch])
 
-  return update
+  return useMemo(() => ({ ...(prefetch ? update : notAsked), choose }), [prefetch, update, choose])
 }

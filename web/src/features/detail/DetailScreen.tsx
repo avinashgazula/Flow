@@ -178,7 +178,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
           {!phone && <Ratings detail={d} ready={loaded} />}
 
           <div className={s.actions}>
-            <button className="btn btn-primary btn-large" onClick={() => play()} aria-label={label.spoken}>
+            <button className="btn btn-primary btn-large" onClick={() => (search.choose ? setPicker(true) : play())} aria-label={label.spoken}>
               <Icon name="play" size={18} /> {label.text}
             </button>
             {trailers.length > 0 && (

@@ -164,6 +164,16 @@ export interface Settings {
   /** Subtitle Type, Anime Audio, Keep Original ASS Styling and which services are on. Absent until the viewer
    *  changes something; read it through `normaliseSubtitleOptions`. */
   subtitleOptions?: SubtitleOptions
+  /** Settings → Metadata and Account, as the apps' `metadata.*` and `account.*` fields. Absent means the apps' default, noted on each. */
+  /** Show Unreleased Titles: off drops titles that can't be played yet from Home, Explore and the trending rows. On when absent. */
+  showUnreleasedTitles?: boolean
+  /** Air Dates in My Time Zone: an episode with a known air time (Trakt's) is dated in the viewer's day. On when absent. */
+  airDatesInLocalTimeZone?: boolean
+  /** Prefetch on Detail View: a title page asks the sources as it opens, so Play is quick. On when absent. */
+  prefetchOnDetail?: boolean
+  /** Where IntroDB and PublicMetaDB are asked, for a deployment of your own. Absent or empty is the public address. */
+  introDBBaseURL?: string
+  publicMetaDBBaseURL?: string
   /** Say so as a film's credits begin when it has a scene during or after them (TMDB's stinger keywords). */
   postCreditsAlert?: boolean
   /** Suggest films like it as a film's credits roll, and when it ends. */

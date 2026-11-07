@@ -13,7 +13,7 @@ export function FilmCan({ search, best, lastPlayed, onOpen }: { search: SearchUp
   const noProviders = finished && providers.length === 0
   const failed = providers.filter((p) => p.state === 'failed').length
   const hidden = search.hidden ?? 0
-  const waiting = !finished && sources.length === 0
+  const waiting = !finished && sources.length === 0 && !search.idle
   const nothingPlays = finished && sources.length > 0 && !best
   const facts = best ? playFacts(best) : undefined
   const version = best ? versionParts(best) : []
@@ -58,7 +58,12 @@ export function FilmCan({ search, best, lastPlayed, onOpen }: { search: SearchUp
         <div className={s.row}>
         <dt>Sources</dt>
         <dd>
-          {noProviders ? (
+          {search.idle ? (
+            <button type="button" className={s.open} onClick={onOpen}>
+              Choose a source
+              <Icon name="chevronRight" size={14} strokeWidth={2.6} />
+            </button>
+          ) : noProviders ? (
             <Link to="/settings" className={s.open}>
               None yet · Add a source in Settings
               <Icon name="chevronRight" size={14} strokeWidth={2.6} />
