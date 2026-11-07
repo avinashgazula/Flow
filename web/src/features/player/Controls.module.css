@@ -282,6 +282,8 @@
   /* Under 900 the card is a sheet over the picture's lower part, with the subtitle line riding above it
      (Player.module.css): short enough that a strip of the picture stays above it for the line to sit on. */
   .panel { max-height: min(46%, calc(100% - var(--inset-top) - var(--inset-bottom) - var(--bottom-band) - 72px)); }
+  /* The transport's circles would show through the card (94% base), and the line rides where they stand: they step aside, as for X-Ray. */
+  .controls[data-panel] .transport { visibility: hidden; }
   .panel:is([data-page='style'], [data-page='delay']) {
     top: calc(var(--inset-top) + 64px);
     bottom: auto;
