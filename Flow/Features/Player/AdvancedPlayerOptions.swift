@@ -76,6 +76,8 @@ struct AdvancedPlayerOptions: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
                         .accessibilityLabel("Close")
+                        // Paper, not the stock tint: yellow is for the next action and selection.
+                        .tint(Theme.Palette.text)
                 }
             }
         }

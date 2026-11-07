@@ -10,20 +10,15 @@ struct SuggestionsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("BECAUSE YOU WATCHED")
-                        .font(Theme.Typeface.micro).kerning(1)
-                        .foregroundStyle(Theme.Palette.textTertiary)
-                    Text(session.request.item.title)
-                        .font(.system(.subheadline, weight: .semibold))
-                        .lineLimit(1)
-                }
+                Text("Because You Watched \(session.request.item.title)")
+                    .font(.system(.subheadline, weight: .bold))
+                    .lineLimit(2)
                 Spacer(minLength: 12)
                 Button { session.dismissSuggestions() } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 11, weight: .bold))
                         .frame(width: 28, height: 28)
-                        .background(.white.opacity(0.14), in: Circle())
+                        .background(Theme.Palette.control, in: Circle())
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -46,27 +41,18 @@ struct SuggestionsEndScreen: View {
     let session: PlaybackSession
     @FocusState private var focused: String?
 
-    private var width: CGFloat { Platform.isTV ? 420 : Platform.isPhone ? 200 : 260 }
+    private var width: CGFloat { Platform.isTV ? 420 : Platform.isPhone ? 200 : 300 }
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-            RemoteImage(url: session.request.item.backdropURL, maxPixel: 1200)
-                .blur(radius: 48)
-                .opacity(0.55)
-                .ignoresSafeArea()
-                .accessibilityHidden(true)
-            LinearGradient(colors: [.black.opacity(0.2), .black.opacity(0.85)], startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
+            // Flat base-2: the artwork is in the frames, not behind them.
+            Theme.Palette.panel.opacity(0.94).ignoresSafeArea()
             VStack(alignment: .leading, spacing: Platform.isTV ? 28 : 18) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("BECAUSE YOU WATCHED")
-                        .font(Theme.Typeface.micro).kerning(1.2)
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                    Text(session.request.item.title)
+                    Text("Because You Watched \(session.request.item.title)")
                         .font(Theme.Typeface.display)
                         .displayTracking()
-                        .lineLimit(1)
+                        .lineLimit(2)
                         .minimumScaleFactor(0.6)
                     // While it's fresh: a score for the film just watched.
                     HStack(spacing: Theme.Space.s) {
@@ -88,13 +74,8 @@ struct SuggestionsEndScreen: View {
                 .scrollClipDisabled()
                 Button { session.dismissSuggestions() } label: {
                     Label("Done", systemImage: "checkmark")
-                        .font(.system(.subheadline, weight: .semibold))
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 11)
-                        .flowGlass(Capsule())
-                        .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(GlassButtonStyle(compact: true))
                 .focused($focused, equals: "done")
             }
             .padding(.horizontal, Platform.isTV ? 90 : Platform.isPhone ? 20 : 48)
@@ -107,46 +88,28 @@ struct SuggestionsEndScreen: View {
     }
 }
 
-/// One suggested film: its backdrop and title.
+/// One suggested film: its still in the shared frame with a print-only strip, then its title and year.
 private struct SuggestionTile: View {
     let item: MediaItem
     let width: CGFloat
     /// The next film in the same collection.
     var isNext = false
     let action: () -> Void
+    @Environment(AppModel.self) private var model
 
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Platform.isTV ? 16 : 12, style: .continuous) }
+    /// Runtime and rating, with "Next" as the key fact on the next film in the collection.
+    private var strip: EdgePrint {
+        let print = model.posterPrint(for: item, runtime: item.runtimeMinutes)
+        guard isNext else { return print }
+        return EdgePrint(lead: print.lead, key: "Next", tail: print.tail)
+    }
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 6) {
-                RemoteImage(url: item.smallBackdropURL ?? item.tmdbPosterURL, maxPixel: Platform.isTV ? 900 : 560, fallbackTitle: item.title)
-                    .frame(width: width, height: width * 9 / 16)
-                    .overlay(alignment: .topLeading) {
-                        if isNext {
-                            Text("NEXT")
-                                .font(Theme.Typeface.micro).kerning(1)
-                                .foregroundStyle(.black)
-                                .padding(.horizontal, 7).padding(.vertical, 3)
-                                .background(.white, in: Capsule())
-                                .padding(8)
-                        }
-                    }
-                    .clipShape(shape)
-                    .hairline(shape)
-                Text(item.title)
-                    .font(.system(.caption, weight: .semibold))
-                    .lineLimit(1)
-                    .frame(width: width, alignment: .leading)
-                if let year = item.year {
-                    Text(String(year))
-                        .font(.system(.caption2))
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                }
-            }
+            FilmCard(art: .still(item), strip: strip, title: item.title, meta: item.year.map { String($0) },
+                     width: width, spoken: isNext ? "Next: \(item.title)" : item.title)
         }
-        .buttonStyle(CardButtonStyle())
-        .accessibilityLabel(isNext ? "Next: \(item.title)" : item.title)
+        .buttonStyle(CardButtonStyle(lift: 1.04))
     }
 }
 

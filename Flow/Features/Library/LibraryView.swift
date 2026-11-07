@@ -255,6 +255,8 @@ struct LibraryListView: View {
                     Text("Shows").tag(MediaType?.some(.show))
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(maxWidth: Platform.isPhone ? .infinity : 360, alignment: .leading)
                 .padding(.horizontal, Platform.horizontalPadding)
                 if loading {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 40)

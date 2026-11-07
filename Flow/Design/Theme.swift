@@ -222,7 +222,7 @@ private struct PrimaryButtonBody: View {
         surface(shape) {
             configuration.label
                 .font(compact ? .system(.subheadline, weight: .semibold) : Theme.Typeface.headline)
-                .foregroundStyle(Theme.Palette.onStock)
+                .foregroundStyle(enabled ? Theme.Palette.onStock : Theme.Palette.textSecondary)
                 // Wraps between words at large text sizes, never inside one ("Pla / y").
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.7)
@@ -231,7 +231,6 @@ private struct PrimaryButtonBody: View {
         }
         // Already yellow, so on Apple TV focus is a paper ring and the lift.
         .overlay { if focused { shape.strokeBorder(Theme.Palette.text, lineWidth: 4) } }
-        .opacity(enabled ? 1 : 0.4)
         .scaleEffect(configuration.isPressed ? 0.98 : 1)
         .animation(Theme.Motion.snappy, value: configuration.isPressed)
         .modifier(FocusLift(scale: 1.04))
@@ -239,6 +238,16 @@ private struct PrimaryButtonBody: View {
 
     @ViewBuilder
     private func surface<Content: View>(_ shape: RoundedRectangle, @ViewBuilder content: () -> Content) -> some View {
+        // Disabled reads as disabled by losing the yellow, not by fading it: a dim yellow on dark fails contrast.
+        if !enabled {
+            content().background(Theme.Palette.control, in: shape)
+        } else {
+            enabledSurface(shape, content: content)
+        }
+    }
+
+    @ViewBuilder
+    private func enabledSurface<Content: View>(_ shape: RoundedRectangle, @ViewBuilder content: () -> Content) -> some View {
         #if compiler(>=6.2)
         if #available(iOS 26.0, macOS 26.0, tvOS 26.0, *) {
             content().glassEffect(.regular.tint(Theme.Palette.stock).interactive(), in: shape)

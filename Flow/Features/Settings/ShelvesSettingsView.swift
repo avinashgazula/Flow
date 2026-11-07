@@ -89,7 +89,7 @@ struct ShelvesSettingsView: View {
             #endif
         }
         #if os(iOS)
-        .toolbar { EditButton() }
+        .toolbar { EditButton().tint(Theme.Palette.text) }
         #endif
         .sheet(isPresented: $addingDiscover) {
             DiscoverShelfEditor(shelf: nil).environment(model)

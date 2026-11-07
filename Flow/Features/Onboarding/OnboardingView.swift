@@ -11,17 +11,22 @@ struct OnboardingView: View {
     @State private var joiningSync = false
     @State private var appeared = false
 
+    private static var bandHeight: CGFloat { Platform.isTV ? 300 : 130 }
+
     var body: some View {
         NavigationStack {
             ZStack {
+                // The collage sits in a band above the words, so nothing is set over artwork.
                 PosterWall()
-                    .opacity(appeared ? 1 : 0)
-                LinearGradient(stops: [.init(color: .black.opacity(0.35), location: 0), .init(color: .black.opacity(0.7), location: 0.45), .init(color: .black, location: 0.8)],
-                               startPoint: .top, endPoint: .bottom)
-                    .ignoresSafeArea()
+                    .frame(maxWidth: .infinity, maxHeight: Self.bandHeight, alignment: .top)
+                    .clipped()
+                    .opacity(appeared ? 0.5 : 0)
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0.5), .init(color: .clear, location: 1)],
+                                         startPoint: .top, endPoint: .bottom))
+                    .frame(maxHeight: .infinity, alignment: .top)
                 ScrollView {
                     VStack(spacing: Theme.Space.xl) {
-                        Spacer(minLength: Platform.isTV ? 200 : 180)
+                        Spacer(minLength: Self.bandHeight)
                         VStack(spacing: Theme.Space.s) {
                             Text("Flow")
                                 .font(.system(size: 64 * Theme.scale, weight: .heavy))
@@ -92,13 +97,12 @@ struct OnboardingView: View {
             } label: {
                 HStack {
                     Spacer()
-                    if checking { ProgressView().tint(.black) } else { Text("Continue") }
+                    if checking { ProgressView().tint(Theme.Palette.onStock) } else { Text("Continue") }
                     Spacer()
                 }
             }
             .buttonStyle(PrimaryButtonStyle())
             .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty || checking)
-            .opacity(key.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
         }
         .padding(Theme.Space.l)
         .frame(maxWidth: 460 * Theme.scale)
