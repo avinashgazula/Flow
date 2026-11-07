@@ -37,7 +37,7 @@ describe('Trakt’s episodes as Flow’s', () => {
         { number: 1, episodes: [{ season: 1, number: 1, title: 'Pilot', overview: 'First.', first_aired: '2008-01-21T02:00:00.000Z', runtime: 58, ids: { trakt: 73640 } }, { number: 2 }, {}] },
         { number: 2, episodes: [{ number: 1, title: null }] },
         { number: 3 },
-      ]),
+      ], false),
     ).toEqual([
       { id: 73640, season: 1, number: 1, name: 'Pilot', overview: 'First.', airDate: '2008-01-21', runtime: 58 },
       { id: 1002, season: 1, number: 2, name: 'Episode 2', overview: '', airDate: undefined, runtime: undefined },

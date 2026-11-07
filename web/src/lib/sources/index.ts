@@ -15,9 +15,6 @@ export type { PlaybackRequest, Source, ExternalSubtitle, PlaybackEngine, SourceO
 export { lastSourceFor, rememberSource } from './lastSource'
 export { browserCapabilities } from './capabilities'
 
-/** How long one add-on or server gets before the search goes on without it. */
-export const providerTimeoutMs = 12_000
-
 export interface ProviderResult {
   sources: Source[]
   /** Torrent-only results this provider returned: a browser can't play them without a debrid service. */
@@ -46,6 +43,10 @@ export interface SearchUpdate {
   /** Torrent-only results skipped, across every provider. */
   torrents: number
   finished: boolean
+  /** Nothing was asked: Prefetch on Detail View is off, so the title page leaves the search to Play or the picker. */
+  idle?: boolean
+  /** Auto-Play Best Source is off: Play on the title page opens the picker instead of starting a source. */
+  choose?: boolean
 }
 
 /** Every enabled add-on and server, plus the sample provider in sample-data mode. */
@@ -114,8 +115,9 @@ async function searchAmong(request: PlaybackRequest, options: SearchOptions & { 
   const settings = settingsStore.get()
   const providers = options.providers
   const caps = options.capabilities ?? browserCapabilities()
-  const prefs = { preferredQuality: settings.preferredQuality, preferHDR: settings.preferHDR, kind: request.type, audioLanguage: resolveAudioLanguages(settings.audioLanguages, request.item.originalLanguage)[0] }
-  const arrangement = { ordering: normaliseSourceOrdering(settings.sources), providers: providers.map((p) => ({ id: p.id, kind: p.kind })) }
+  const ordering = normaliseSourceOrdering(settings.sources)
+  const prefs = { preferredQuality: settings.preferredQuality, preferHDR: settings.preferHDR, preferPlayableAudio: ordering.preferPlayableAudio, kind: request.type, audioLanguage: resolveAudioLanguages(settings.audioLanguages, request.item.originalLanguage)[0] }
+  const arrangement = { ordering, providers: providers.map((p) => ({ id: p.id, kind: p.kind })) }
   const states = new Map<string, ProviderState>(providers.map((p) => [p.id, { id: p.id, name: p.name, kind: p.kind, state: 'loading' }]))
   // Everything found, unfiltered: a provider that answers later can lift a source the cap had cut.
   let all: Source[] = []
@@ -130,7 +132,7 @@ async function searchAmong(request: PlaybackRequest, options: SearchOptions & { 
 
   await Promise.all(
     providers.map(async (provider) => {
-      const { signal, done, timedOut } = withTimeout(options.signal, options.timeoutMs ?? providerTimeoutMs)
+      const { signal, done, timedOut } = withTimeout(options.signal, options.timeoutMs ?? ordering.timeoutSeconds * 1000)
       try {
         const result = await provider.search(full, caps, signal)
         if (options.signal?.aborted) return

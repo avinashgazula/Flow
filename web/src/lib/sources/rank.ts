@@ -219,6 +219,8 @@ export interface RankPreferences {
   audioLanguage?: string
   /** Off puts SDR first even on a screen that shows HDR (the apps' HDR When Available). On unless said otherwise. */
   preferHDR?: boolean
+  /** Off drops the small penalty for a source whose audio Flow has to convert (the apps' Prefer Sources With Playable Audio). On unless said otherwise. */
+  preferPlayableAudio?: boolean
 }
 
 /** Whether HDR should count in a source's favour: the screen shows it and the viewer hasn't asked for SDR. */
@@ -298,7 +300,7 @@ export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilitie
   if (s.notWebReady && s.engine === 'native') score -= 120
   // Converting costs the browser some work and the start a moment: the same file with sound that
   // plays as it is comes first, but a better picture is still worth the conversion.
-  if (s.convertsAudio) score -= 200
+  if (s.convertsAudio && prefs.preferPlayableAudio !== false) score -= 200
   score += audioLanguageScore(s.languages, prefs.audioLanguage)
   if (s.cached === true) score += 80
   if (s.cached === false) score -= 400

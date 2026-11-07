@@ -32,6 +32,15 @@ describe('settings backup', () => {
     }
   })
 
+  it('keeps the metadata and skip-service choices, and skips ones that make no sense', () => {
+    const backup = (settings: unknown) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings }))
+    const good = backup({ showUnreleasedTitles: false, airDatesInLocalTimeZone: false, prefetchOnDetail: false, introDBBaseURL: 'https://skips.example.com', publicMetaDBBaseURL: '' })
+    expect(good.ok && good.skipped).toEqual([])
+    if (good.ok) expect(good.settings).toMatchObject({ showUnreleasedTitles: false, airDatesInLocalTimeZone: false, prefetchOnDetail: false, introDBBaseURL: 'https://skips.example.com', publicMetaDBBaseURL: '' })
+    const bad = backup({ language: 'fr-FR', showUnreleasedTitles: 'no', prefetchOnDetail: 0, introDBBaseURL: 'not an address', publicMetaDBBaseURL: 'javascript:alert(1)' })
+    expect(bad.ok && bad.skipped.sort()).toEqual(['introDBBaseURL', 'prefetchOnDetail', 'publicMetaDBBaseURL', 'showUnreleasedTitles'])
+  })
+
   it('rejects files that are not backups', () => {
     expect(parseBackup('nope').ok).toBe(false)
     expect(parseBackup('{"hello":1}').ok).toBe(false)

@@ -164,6 +164,14 @@ describe('the first answer wins', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it('asks the addresses the viewer set, and the public ones when they are empty', async () => {
+    fetchMock.mockImplementation(async () => answer({ error: 'none' }, 404))
+    await lookupSegments({ ...base, source: null, introDBKey: 'a', publicMetaDBKey: 'b', introDBBaseURL: 'https://skips.example.com/v2/', publicMetaDBBaseURL: '' })
+    const asked = fetchMock.mock.calls.map((c) => String(c[0]))
+    expect(asked[0]).toMatch(/^https:\/\/skips\.example\.com\/v2\/segments\?/)
+    expect(asked[1]).toMatch(/^https:\/\/publicmetadb\.com\/api\/external\/skips\?/)
+  })
+
   it('does not stop on a service that throws', async () => {
     fetchMock.mockRejectedValue(new Error('boom'))
     expect(await lookupSegments({ ...base, source: null, introDBKey: 'a', publicMetaDBKey: 'b' })).toEqual([])

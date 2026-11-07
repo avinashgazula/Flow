@@ -80,6 +80,13 @@ export interface SourceOrdering {
   appearance: SourceAppearance
   /** A title opened from one of a server's libraries lists only that server's sources (FlowKit's `playFromLibraryOnly`). */
   playFromLibraryOnly: boolean
+  /** Play on a title page starts the best source at once; off opens the picker first (FlowKit's `autoPlayFirstSource`). On
+   *  by default here: the website has always started the best source, where the apps open the picker. */
+  autoPlayFirstSource: boolean
+  /** How long one add-on or server gets before the search goes on without it, in seconds (`timeoutSeconds`). */
+  timeoutSeconds: number
+  /** Sources whose sound plays as it is come before ones that need converting (`preferPlayableAudio`). */
+  preferPlayableAudio: boolean
 }
 
 export const defaultSortRules = (): SourceSortRule[] => [
@@ -112,7 +119,13 @@ export const defaultSourceOrdering: SourceOrdering = {
   resultCap: null,
   appearance: defaultSourceAppearance,
   playFromLibraryOnly: false,
+  autoPlayFirstSource: true,
+  timeoutSeconds: 15,
+  preferPlayableAudio: true,
 }
+
+/** The timeouts Settings offers, as the apps' Provider Timeout picker. */
+export const providerTimeouts = [5, 10, 15, 20, 30]
 
 /** Options the pickers in Settings offer, as the Settings → Sources page of the apps lists them. */
 export const resultCaps = [5, 10, 15, 20, 30, 50]
@@ -139,6 +152,8 @@ const isSortKey = oneOf(sortKeys.map((k) => k.key))
 const isTitleDisplay = oneOf(titleDisplays.map((t) => t.value))
 // The apps' Colored and Monochrome read as All Formats.
 const isBadgeSet = (v: unknown) => badgeSets.some((b) => b.value === v) || v === 'colored' || v === 'monochrome'
+/** Any number of seconds from 1 to 120 is kept, so a timeout set in the apps' file still imports. */
+const isTimeout = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 1 && v <= 120
 const isResolution = oneOf<SourceFilters['minResolution']>([0, 480, 720, 1080, 2160])
 
 /** True when `v` can be read as source ordering: every field it has is the right type, and any it lacks takes
@@ -155,6 +170,9 @@ export function isSourceOrdering(v: unknown): boolean {
     ok('sortRules', (x) => Array.isArray(x) && x.every((r) => isObject(r) && isSortKey(r.key) && (!('descending' in r) || isBool(r.descending)))) &&
     ok('resultCap', isLimit) &&
     ok('playFromLibraryOnly', isBool) &&
+    ok('autoPlayFirstSource', isBool) &&
+    ok('timeoutSeconds', isTimeout) &&
+    ok('preferPlayableAudio', isBool) &&
     section('filters', {
       excludeCinemaCaptures: isBool,
       excludeUncached: isBool,
@@ -211,6 +229,9 @@ export function normaliseSourceOrdering(value: unknown): SourceOrdering {
     },
     resultCap: limit(value.resultCap),
     playFromLibraryOnly: pick(isBool, value.playFromLibraryOnly, d.playFromLibraryOnly),
+    autoPlayFirstSource: pick(isBool, value.autoPlayFirstSource, d.autoPlayFirstSource),
+    timeoutSeconds: pick(isTimeout, value.timeoutSeconds, d.timeoutSeconds),
+    preferPlayableAudio: pick(isBool, value.preferPlayableAudio, d.preferPlayableAudio),
     appearance: {
       showRawText: pick(isBool, a.showRawText, d.appearance.showRawText),
       titleDisplay: pick(isTitleDisplay, a.titleDisplay, d.appearance.titleDisplay),

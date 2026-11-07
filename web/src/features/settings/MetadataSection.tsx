@@ -26,11 +26,12 @@ function EpisodeData() {
   const tvdbKey = useSettings((x) => x.tvdbKey ?? '')
   const traktID = useSettings((x) => x.traktClientID.trim())
   const demo = useSettings((x) => x.demo)
+  const localDates = useSettings((x) => x.airDatesInLocalTimeZone !== false)
   return (
     <>
       <Group
         title="Episode Data"
-        footer="Where season and episode numbers, titles and air dates come from. TVDB matches the numbering most stream sources use; posters and stills always come from TMDB. Applies from the next show you open."
+        footer="Where season and episode numbers, titles and air dates come from. TVDB matches the numbering most stream sources use; posters and stills always come from TMDB. Applies from the next show you open. Air Dates in My Time Zone dates an episode with a known air time (Trakt gives one) in your own day; an air date without a time is always that day."
       >
         <Row label="Episode Source" detail="TVDB is recommended" htmlFor="episode-source">
           <Select id="episode-source" label="Episode Source" value={source} onChange={(v) => settingsStore.set({ episodeSource: v })} options={sources} />
@@ -50,6 +51,9 @@ function EpisodeData() {
             <Note>Sample data uses TMDB’s numbering.</Note>
           </div>
         )}
+        <Row label="Air Dates in My Time Zone">
+          <Switch label="Air dates in my time zone" checked={localDates} onChange={(on) => settingsStore.set({ airDatesInLocalTimeZone: on })} />
+        </Row>
       </Group>
       <KeyField
         title="TVDB"
@@ -224,11 +228,38 @@ function Posters() {
   )
 }
 
+/** Availability and Performance, as the apps' Metadata page words them. */
+function Availability() {
+  const unreleased = useSettings((x) => x.showUnreleasedTitles !== false)
+  const prefetch = useSettings((x) => x.prefetchOnDetail !== false)
+  return (
+    <>
+      <Group
+        title="Availability"
+        footer="Switch this off and Flow uses TMDB release dates to drop titles you can’t play yet, such as a film with only a cinema release, from Home shelves, Explore and the trending rows. Rows that exist to show what’s coming are left alone: your watchlist, Continue Watching, Upcoming, Now Playing, and any Discover shelf pointed at future dates. Search still finds everything, so you can add a title before it’s out."
+      >
+        <Row label="Show Unreleased Titles">
+          <Switch label="Show unreleased titles" checked={unreleased} onChange={(on) => settingsStore.set({ showUnreleasedTitles: on })} />
+        </Row>
+      </Group>
+      <Group
+        title="Performance"
+        footer="Asks your sources in the background when you open a title so Play starts quickly. Turn it off to save bandwidth on a slow connection: the title page then waits, and Play or Choose a Source looks when you ask."
+      >
+        <Row label="Prefetch on Detail View">
+          <Switch label="Prefetch on detail view" checked={prefetch} onChange={(on) => settingsStore.set({ prefetchOnDetail: on })} />
+        </Row>
+      </Group>
+    </>
+  )
+}
+
 export function MetadataSection() {
   const mdblist = useSettings((x) => x.mdblistKey ?? '')
   return (
     <>
       <EpisodeData />
+      <Availability />
       <KeyField
         title="MDBList"
         label="MDBList API Key"

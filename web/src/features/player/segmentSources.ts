@@ -17,11 +17,12 @@
 import type { PlaybackRequest, Source } from '../../lib/sources'
 import { withTimeout } from '../../lib/sources/http'
 import { proxied, streamProxy } from '../../lib/sources/proxy'
-import type { ServerConfig } from '../../lib/store/settings'
+import { introDBDefaultBase, publicMetaDBDefaultBase, skipBase } from '../../lib/sources/skipBase'
+import { settingsStore, type ServerConfig } from '../../lib/store/settings'
 import { mediaSegments, parseSegments, plexMarkers, type SkipSegment } from './segments'
 
-export const introDBBase = 'https://api.introdb.app'
-export const publicMetaDBBase = 'https://publicmetadb.com'
+export const introDBBase = introDBDefaultBase
+export const publicMetaDBBase = publicMetaDBDefaultBase
 
 /** How long one service gets before the next is tried, as in the apps. */
 export const lookupTimeoutMs = 8000
@@ -77,8 +78,8 @@ async function fetchJSON(url: string, headers: Record<string, string>, signal: A
 }
 
 /** IntroDB's segments, through the stream proxy when there is one. */
-export async function introDBSegments(request: PlaybackRequest, key: string, signal?: AbortSignal, template = streamProxy()): Promise<SkipSegment[]> {
-  const url = introDBURL(request)
+export async function introDBSegments(request: PlaybackRequest, key: string, signal?: AbortSignal, template = streamProxy(), base = introDBBase): Promise<SkipSegment[]> {
+  const url = introDBURL(request, base)
   if (!url) return []
   // Reading needs no key, and a key header would only make the browser ask permission first. It goes only where nothing is in between.
   const json = template.trim() ? await fetchJSON(proxied(url, template), {}, signal) : await fetchJSON(url, key ? { 'X-API-Key': key } : {}, signal)
@@ -86,8 +87,8 @@ export async function introDBSegments(request: PlaybackRequest, key: string, sig
 }
 
 /** PublicMetaDB's segments. Asked directly: the proxy forwards no sign-in, which this needs. */
-export async function publicMetaDBSegments(request: PlaybackRequest, key: string, signal?: AbortSignal): Promise<SkipSegment[]> {
-  const url = publicMetaDBURL(request)
+export async function publicMetaDBSegments(request: PlaybackRequest, key: string, signal?: AbortSignal, base = publicMetaDBBase): Promise<SkipSegment[]> {
+  const url = publicMetaDBURL(request, base)
   if (!url || !key) return []
   return parseSegments(await fetchJSON(url, { Authorization: `Bearer ${key}` }, signal))
 }
@@ -116,20 +117,26 @@ export interface LookupOptions {
   servers: readonly ServerConfig[]
   introDBKey: string
   publicMetaDBKey: string
+  /** Where each service is asked: the addresses in Settings → Sources unless given (the public ones when those are empty). */
+  introDBBaseURL?: string
+  publicMetaDBBaseURL?: string
   signal?: AbortSignal
 }
 
 /** The first answer, as the apps pick it: the source's own server, then IntroDB, then PublicMetaDB. Each service
  *  is asked only if it has a key, so nothing is sent to a service the viewer hasn't set up. */
-export async function lookupSegments({ source, request, servers, introDBKey, publicMetaDBKey, signal }: LookupOptions): Promise<SkipSegment[]> {
+export async function lookupSegments({ source, request, servers, introDBKey, publicMetaDBKey, introDBBaseURL, publicMetaDBBaseURL, signal }: LookupOptions): Promise<SkipSegment[]> {
+  const saved = settingsStore.get()
+  const introBase = skipBase(introDBBaseURL ?? saved.introDBBaseURL, introDBBase)
+  const metaBase = skipBase(publicMetaDBBaseURL ?? saved.publicMetaDBBaseURL, publicMetaDBBase)
   const fromServer = source ? await serverSegments(source, servers, signal) : []
   if (fromServer.length) return fromServer
   if (introDBKey.trim()) {
-    const found = await introDBSegments(request, introDBKey.trim(), signal).catch(() => [])
+    const found = await introDBSegments(request, introDBKey.trim(), signal, undefined, introBase).catch(() => [])
     if (found.length) return found
   }
   if (publicMetaDBKey.trim()) {
-    const found = await publicMetaDBSegments(request, publicMetaDBKey.trim(), signal).catch(() => [])
+    const found = await publicMetaDBSegments(request, publicMetaDBKey.trim(), signal, metaBase).catch(() => [])
     if (found.length) return found
   }
   return []

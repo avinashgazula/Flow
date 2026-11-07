@@ -9,6 +9,7 @@ import {
   badgeSets,
   categoryNames,
   defaultSortRules,
+  providerTimeouts,
   maxSizes,
   minResolutions,
   minSizes,
@@ -24,10 +25,11 @@ import {
   type SourceTitleDisplay,
 } from '../../lib/sources/sourceSettings'
 import { demoProviderId } from '../../lib/sources/demo'
+import { baseURLProblem, introDBDefaultBase, publicMetaDBDefaultBase } from '../../lib/sources/skipBase'
 import { settingsStore, useSettings } from '../../lib/store/settings'
 import picker from '../sources/SourcePicker.module.css'
 import { SourceRow } from '../sources/SourceRow'
-import { Group, Row, Select, Switch } from './controls'
+import { Group, Note, Row, Select, Switch } from './controls'
 import s from './SettingsScreen.module.css'
 
 /* Settings → Sources: how the sources a title offers are ordered, filtered and shown. The same choices as the
@@ -135,6 +137,68 @@ function ListField({ id, label, values, placeholder, onChange }: { id: string; l
   )
 }
 
+const timeoutOptions = (current: number) => {
+  const values = providerTimeouts.includes(current) ? providerTimeouts : [...providerTimeouts, current].sort((a, b) => a - b)
+  return values.map((v) => ({ value: String(v), label: `${v} seconds` }))
+}
+
+/** An address kept when it is left, so a half-typed one never reaches playback. Empty goes back to the public address. */
+function AddressField({ id, label, saved, fallback, onSave }: { id: string; label: string; saved: string | undefined; fallback: string; onSave: (value: string | undefined) => void }) {
+  const [text, setText] = useState(saved ?? '')
+  const [problem, setProblem] = useState<string>()
+  // An address that arrives from elsewhere (a backup, another tab) shows at once.
+  useEffect(() => {
+    setText(saved ?? '')
+  }, [saved])
+  function commit() {
+    const found = baseURLProblem(text)
+    setProblem(found)
+    if (!found && text.trim() !== (saved ?? '')) onSave(text.trim() || undefined)
+  }
+  return (
+    <>
+      <Row label={label} htmlFor={id}>
+        <input
+          id={id}
+          className="field"
+          type="text"
+          inputMode="url"
+          value={text}
+          placeholder={fallback}
+          onChange={(e) => {
+            setText(e.target.value)
+            setProblem(undefined)
+          }}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === 'Enter' && commit()}
+          aria-invalid={problem ? true : undefined}
+          aria-describedby={problem ? `${id}-problem` : undefined}
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+        />
+      </Row>
+      {problem && (
+        <div className={s.pad} id={`${id}-problem`}>
+          <Note tone="error">{problem}</Note>
+        </div>
+      )}
+    </>
+  )
+}
+
+/** Where intro, recap and credits times are asked, for a deployment of your own. The keys are in Playback. */
+function SkipServices() {
+  const intro = useSettings((x) => x.introDBBaseURL)
+  const meta = useSettings((x) => x.publicMetaDBBaseURL)
+  return (
+    <Group title="Skip Time Services" footer="Leave a field empty to use the public address. A service of your own has to answer web pages (CORS) or be reached through your stream proxy. The API keys are in Playback.">
+      <AddressField id="introdb-base" label="IntroDB Address" saved={intro} fallback={introDBDefaultBase} onSave={(v) => settingsStore.set({ introDBBaseURL: v })} />
+      <AddressField id="publicmetadb-base" label="PublicMetaDB Address" saved={meta} fallback={publicMetaDBDefaultBase} onSave={(v) => settingsStore.set({ publicMetaDBBaseURL: v })} />
+    </Group>
+  )
+}
+
 const sizeOptions = (current: number | null, list: number[], none: string) => {
   const values = current && !list.includes(current) ? [...list, current].sort((a, b) => a - b) : list
   return [{ value: '', label: none }, ...values.map((v) => ({ value: String(v), label: `${v} GB` }))]
@@ -182,6 +246,18 @@ export function SourcesSection() {
 
   return (
     <>
+      <Group footer="Auto-Play Best Source starts the first source when you press Play on a title page; off, Play opens the list so you choose. Provider Timeout is how long each add-on or server gets before the search goes on without it. Prefer Sources With Playable Audio lists sources whose sound plays as it is ahead of ones this browser has to convert, unless the picture is clearly better.">
+        <Row label="Auto-Play Best Source">
+          <Switch checked={o.autoPlayFirstSource} onChange={(on) => change((c) => ({ ...c, autoPlayFirstSource: on }))} label="Auto-Play Best Source" />
+        </Row>
+        <Row label="Provider Timeout" htmlFor="provider-timeout">
+          <Select id="provider-timeout" value={String(o.timeoutSeconds)} label="Provider timeout" options={timeoutOptions(o.timeoutSeconds)} onChange={(v) => change((c) => ({ ...c, timeoutSeconds: Number(v) }))} />
+        </Row>
+        <Row label="Prefer Sources With Playable Audio">
+          <Switch checked={o.preferPlayableAudio} onChange={(on) => change((c) => ({ ...c, preferPlayableAudio: on }))} label="Prefer sources with playable audio" />
+        </Row>
+      </Group>
+
       <Group footer="Adds the sort rules, filters and result cap below. Category and provider order apply whether this is on or off. Preferred Quality in Playback still decides which resolution leads.">
         <Row label="Use Custom Source Ordering">
           <Switch checked={o.useCustomOrdering} onChange={(on) => change((c) => ({ ...c, useCustomOrdering: on }))} label="Use Custom Source Ordering" />
@@ -297,6 +373,8 @@ export function SourcesSection() {
           <Switch checked={o.playFromLibraryOnly} onChange={(on) => change((c) => ({ ...c, playFromLibraryOnly: on }))} label="Play from this library only" />
         </Row>
       </Group>
+
+      <SkipServices />
 
       <Appearance look={o.appearance} />
       <p className="sr-only" role="status">

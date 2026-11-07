@@ -1,3 +1,4 @@
+import { airDay } from '../airDates'
 import type { Episode } from '../tmdb/types'
 import type { TVDBEpisode } from './client'
 
@@ -39,13 +40,14 @@ export interface TraktSeason {
   episodes?: { season?: number; number?: number; title?: string | null; overview?: string | null; first_aired?: string | null; runtime?: number | null; ids?: { trakt?: number } }[]
 }
 
-/** Trakt's episodes as Flow's. `first_aired` is a moment in UTC; the day is what a card shows. */
-export function fromTrakt(seasons: readonly TraktSeason[]): Episode[] {
+/** Trakt's episodes as Flow's. `first_aired` is a moment in UTC; the day is what a card shows, in the viewer's own day
+ *  unless Air Dates in My Time Zone is off. */
+export function fromTrakt(seasons: readonly TraktSeason[], localTimeZone = true): Episode[] {
   return seasons.flatMap((s) =>
     (s.episodes ?? []).flatMap((e) => {
       const season = e.season ?? s.number
       if (typeof season !== 'number' || typeof e.number !== 'number') return []
-      return [{ id: e.ids?.trakt ?? season * 1000 + e.number, season, number: e.number, name: e.title?.trim() || `Episode ${e.number}`, overview: e.overview?.trim() ?? '', airDate: e.first_aired?.slice(0, 10) || undefined, runtime: e.runtime || undefined }]
+      return [{ id: e.ids?.trakt ?? season * 1000 + e.number, season, number: e.number, name: e.title?.trim() || `Episode ${e.number}`, overview: e.overview?.trim() ?? '', airDate: airDay(e.first_aired, localTimeZone), runtime: e.runtime || undefined }]
     }),
   )
 }

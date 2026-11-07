@@ -3,6 +3,7 @@ import { isSportsSettings } from '../../lib/sports/types'
 import { lastSourceStore } from '../../lib/sources/lastSource'
 import { ratingSources } from '../../lib/ratings/sources'
 import { proxyProblem } from '../../lib/sources/proxy'
+import { baseURLProblem } from '../../lib/sources/skipBase'
 import { isSourceOrdering, normaliseSourceOrdering } from '../../lib/sources/sourceSettings'
 import { isSubtitleOptions, normaliseSubtitleOptions } from '../../lib/subtitles/options'
 import { defaultSettings, settingsStore, type ExternalPlayerId, type Settings } from '../../lib/store/settings'
@@ -83,6 +84,12 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   wyzieKey: (v) => typeof v === 'string',
   // Subtitle Type, Anime Audio, Keep Original ASS Styling and the services that are on; fields a backup lacks take their defaults.
   subtitleOptions: isSubtitleOptions,
+  showUnreleasedTitles: (v) => typeof v === 'boolean',
+  airDatesInLocalTimeZone: (v) => typeof v === 'boolean',
+  prefetchOnDetail: (v) => typeof v === 'boolean',
+  // Empty restores the public address; anything else has to be one Flow can ask.
+  introDBBaseURL: (v) => typeof v === 'string' && baseURLProblem(v) === undefined,
+  publicMetaDBBaseURL: (v) => typeof v === 'string' && baseURLProblem(v) === undefined,
   postCreditsAlert: (v) => typeof v === 'boolean',
   becauseYouWatched: (v) => typeof v === 'boolean',
   xrayWhenPaused: (v) => typeof v === 'boolean',

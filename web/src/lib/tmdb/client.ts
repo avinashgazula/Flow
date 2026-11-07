@@ -83,17 +83,36 @@ export function episode(raw: any): Episode {
   }
 }
 
+// MARK: Unreleased titles
+
+const homeReleased = new Map<number, boolean>()
+
+/** With Show Unreleased Titles off, drops titles that can't be played yet from a catalogue list. Rows that exist to show
+ *  what's coming (Now Playing, Upcoming, and Discover pointed at future dates) pass `exempt`; search is never filtered. */
+async function released(list: Page<MediaItem>, exempt = false): Promise<Page<MediaItem>> {
+  if (exempt || settingsStore.get().showUnreleasedTitles !== false || list.results.length === 0) return list
+  const { filterReleased, today } = await import('./released')
+  const lookup = async (id: number) => (await import('./detail')).movieReleases({ release_dates: await tmdb(`/movie/${id}/release_dates`) })
+  return { ...list, results: await filterReleased(list.results, lookup, today(), homeReleased) }
+}
+
+/** A Discover query that asks for dates after today is looking ahead on purpose, as the apps' `targetsFuture`. */
+export function looksAhead(params: Query, now = new Date()): boolean {
+  const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  return Object.entries(params).some(([k, v]) => /\.(gte|lte)$/.test(k) && /date/.test(k) && typeof v === 'string' && v > day)
+}
+
 // MARK: Endpoints
 
 export const api = {
   trending: async (type: MediaType | 'all', window: 'day' | 'week' = 'week', p = 1) =>
-    page(await tmdb(`/trending/${type === 'all' ? 'all' : tmdbPath(type)}/${window}`, { page: p }), type === 'all' ? undefined : type),
+    released(page(await tmdb(`/trending/${type === 'all' ? 'all' : tmdbPath(type)}/${window}`, { page: p }), type === 'all' ? undefined : type)),
 
   list: async (type: MediaType, list: 'popular' | 'top_rated' | 'now_playing' | 'upcoming' | 'airing_today' | 'on_the_air', p = 1) =>
-    page(await tmdb(`/${tmdbPath(type)}/${list}`, { page: p, region: settingsStore.get().region }), type),
+    released(page(await tmdb(`/${tmdbPath(type)}/${list}`, { page: p, region: settingsStore.get().region }), type), list === 'now_playing' || list === 'upcoming'),
 
   discover: async (type: MediaType, params: Query, p = 1) =>
-    page(await tmdb(`/discover/${tmdbPath(type)}`, { page: p, include_adult: settingsStore.get().includeAdult, ...params }), type),
+    released(page(await tmdb(`/discover/${tmdbPath(type)}`, { page: p, include_adult: settingsStore.get().includeAdult, ...params }), type), looksAhead(params)),
 
   genres: async (type: MediaType): Promise<Genre[]> => (await tmdb(`/genre/${tmdbPath(type)}/list`)).genres ?? [],
 

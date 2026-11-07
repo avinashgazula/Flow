@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { settingsStore } from '../store/settings'
-import { api, item } from './client'
+import { api, item, looksAhead } from './client'
 import { trailers } from './detail'
 import { srcSet, imageURL } from './images'
 import { demoTmdb } from './demo'
@@ -91,5 +91,25 @@ describe('A title page’s details', () => {
   it('ranks videos by kind and officialness and drops other sites', () => {
     const video = (key: string, type: string, official: boolean, site = 'YouTube') => ({ key, name: key, site, type, official })
     expect(trailers({ videos: { results: [video('clip', 'Clip', true), video('teaser', 'Teaser', false), video('t2', 'Trailer', false), video('t1', 'Trailer', true), video('vim', 'Trailer', true, 'Vimeo')] } }).map((v) => v.key)).toEqual(['t1', 't2', 'teaser', 'clip'])
+  })
+})
+
+describe('Show Unreleased Titles', () => {
+  it('treats a Discover query dated after today as looking ahead on purpose', () => {
+    const now = new Date(2026, 10, 7)
+    expect(looksAhead({ 'primary_release_date.gte': '2026-11-20' }, now)).toBe(true)
+    expect(looksAhead({ 'first_air_date.lte': '2027-01-01' }, now)).toBe(true)
+    expect(looksAhead({ 'primary_release_date.gte': '2020-01-01', 'primary_release_date.lte': '2026-11-07', sort_by: 'popularity.desc' }, now)).toBe(false)
+    expect(looksAhead({ with_genres: '28' }, now)).toBe(false)
+  })
+
+  it('leaves a list alone with the setting on, and drops titles dated ahead with it off', async () => {
+    settingsStore.set({ demo: true, showUnreleasedTitles: undefined })
+    const all = await api.trending('movie')
+    settingsStore.set({ showUnreleasedTitles: false })
+    const released = await api.trending('movie')
+    settingsStore.set({ showUnreleasedTitles: undefined })
+    expect(released.results.length).toBeLessThanOrEqual(all.results.length)
+    expect(released.results.every((m) => !m.date || m.date <= new Date().toISOString().slice(0, 10))).toBe(true)
   })
 })
