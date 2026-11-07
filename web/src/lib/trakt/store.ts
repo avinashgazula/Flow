@@ -11,6 +11,7 @@ export type Op =
   | { kind: 'watchlist'; type: MediaType; id: number; on: boolean }
   | { kind: 'watched'; type: MediaType; id: number; season?: number; episode?: number; at: string }
   | { kind: 'unwatched'; type: MediaType; id: number; season?: number; episode?: number }
+  | { kind: 'favourite'; type: MediaType; id: number; on: boolean }
   | { kind: 'unplayback'; type: MediaType; id: number }
   | { kind: 'rate'; type: MediaType; id: number; rating: number | null }
 
@@ -26,13 +27,15 @@ export interface TraktState {
   ops: Op[]
   /** Watchlist keys as they stood at the last sync; null before the first. */
   watchlistBaseline: string[] | null
+  /** The same for favourites, which only Trakt keeps. */
+  favouritesBaseline: string[] | null
   /** Only history after this (ISO 8601) is asked for once the first pull is done. */
   historyThrough: string | null
   /** Trakt's ids for the resume points seen, so removing one here can remove it there. */
   playbackIds: Record<string, number>
 }
 
-export const emptyState: TraktState = { username: null, lastSyncAt: null, error: null, signInAgain: false, ops: [], watchlistBaseline: null, historyThrough: null, playbackIds: {} }
+export const emptyState: TraktState = { username: null, lastSyncAt: null, error: null, signInAgain: false, ops: [], watchlistBaseline: null, favouritesBaseline: null, historyThrough: null, playbackIds: {} }
 
 export const traktStore = createStore<TraktState>('trakt', emptyState)
 export const useTrakt = <S,>(selector: (s: TraktState) => S) => useStore(traktStore, selector)

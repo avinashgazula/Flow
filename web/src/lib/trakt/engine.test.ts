@@ -238,3 +238,56 @@ describe('when Trakt can’t be reached', () => {
     expect(m.libraryStore.get().watchlist.map((e) => e.key)).toEqual(['movie:1'])
   })
 })
+
+describe('favourites and the other destinations', () => {
+  const favourited = (id: number) => ({ type: 'movie', listed_at: '2026-10-02T00:00:00.000Z', movie: { title: `T${id}`, ids: { tmdb: id } } })
+  const gets = () => calls.filter((c) => c.method === 'GET').map((c) => c.path)
+
+  it('leaves favourites on this device until Trakt is chosen for them', async () => {
+    routes['GET /sync/favorites'] = () => ({ status: 200, json: [favourited(7)] })
+    await started()
+    expect(gets()).not.toContain('/sync/favorites')
+    m.library.toggleFavourite(item('movie', 5))
+    await quiet()
+    expect(posts('/sync/favorites')).toEqual([])
+    expect(m.libraryStore.get().favourites.map((e) => e.key)).toEqual(['movie:5'])
+  })
+
+  it('brings Trakt’s favourites in, and sends a heart tapped here, when Favourites Saved To is Trakt', async () => {
+    m.settingsStore.set({ favouritesDestination: 'trakt' })
+    routes['GET /sync/favorites'] = () => ({ status: 200, json: [favourited(7)] })
+    await started()
+    expect(m.libraryStore.get().favourites.map((e) => e.key)).toEqual(['movie:7'])
+    m.library.toggleFavourite(item('movie', 5))
+    await quiet()
+    expect(posts('/sync/favorites').map((c) => c.body)).toEqual([{ movies: [{ ids: { tmdb: 5 } }] }])
+    m.library.toggleFavourite(item('movie', 5))
+    await quiet()
+    expect(posts('/sync/favorites/remove').map((c) => c.body)).toEqual([{ movies: [{ ids: { tmdb: 5 } }] }])
+    // The watchlist and history were not touched by any of this.
+    expect(posts('/sync/watchlist')).toEqual([])
+  })
+
+  it('does only what it is given: with the watchlist on this device and another service tracking, Trakt only holds favourites', async () => {
+    m.settingsStore.set({ favouritesDestination: 'trakt', watchlistDestination: 'local', tracker: 'local' })
+    await started()
+    const asked = gets()
+    expect(asked).toContain('/sync/favorites')
+    expect(asked).not.toContain('/sync/watchlist')
+    expect(asked).not.toContain('/sync/history')
+    expect(asked).not.toContain('/sync/playback')
+    calls.length = 0
+    m.library.toggleWatchlist(item('movie', 5))
+    m.library.markWatched(item('movie', 6))
+    await quiet()
+    expect(calls).toEqual([])
+  })
+
+  it('idles with a sign-in when every job is elsewhere', async () => {
+    m.settingsStore.set({ tracker: 'local', watchlistDestination: 'local' })
+    m.startTrakt()
+    m.library.toggleWatchlist(item('movie', 5))
+    await quiet()
+    expect(calls).toEqual([])
+  })
+})

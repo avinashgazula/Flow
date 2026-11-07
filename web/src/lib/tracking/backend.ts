@@ -37,6 +37,10 @@ export interface PullOptions {
   /** A full pull: also the watched episodes of every show. */
   full: boolean
   limit: number
+  /** Which jobs the service has (destinations.ts): when it only holds the watchlist, history and resume points aren't
+   *  asked for, and when it only tracks, the watchlist isn't. Both default to asked. */
+  track?: boolean
+  watchlist?: boolean
   /** Only plays after this (ISO 8601), for services that can say so. */
   startAt?: string
 }

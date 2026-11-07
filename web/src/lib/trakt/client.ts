@@ -268,6 +268,13 @@ export function createClient(auth: TraktAuth, fetcher: typeof fetch) {
     addToWatchlist: (entries: Entry[]) => post('/sync/watchlist', syncBody(entries)),
     removeFromWatchlist: (entries: Entry[]) => post('/sync/watchlist/remove', syncBody(entries)),
 
+    /** Favourites are listed like the watchlist (the apps read the same shape). */
+    async favourites(): Promise<Listed[]> {
+      return readWatchlist((await request('GET', '/sync/favorites')).body)
+    },
+    addToFavourites: (entries: Entry[]) => post('/sync/favorites', syncBody(entries)),
+    removeFromFavourites: (entries: Entry[]) => post('/sync/favorites/remove', syncBody(entries)),
+
     /** The newest plays first. `startAt` (ISO 8601) asks only for those after it. */
     async history(limit: number, startAt?: string): Promise<Watch[]> {
       return readHistory((await request('GET', '/sync/history', { query: { limit, start_at: startAt } })).body)

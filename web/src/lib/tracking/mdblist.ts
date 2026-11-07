@@ -215,8 +215,8 @@ export function mdblistBackend(client: MDBListClient, ready: () => boolean): Bac
     kind: 'mdblist',
     name: mdblistName,
     ready,
-    async pull({ full, limit }: PullOptions): Promise<Pulled> {
-      const [watchlist, history, resumes, shows] = await Promise.all([client.watchlist(), client.history(limit), client.playback(), full ? client.watchedShows() : Promise.resolve(undefined)])
+    async pull({ full, limit, track = true, watchlist: lists = true }: PullOptions): Promise<Pulled> {
+      const [watchlist, history, resumes, shows] = await Promise.all([lists ? client.watchlist() : [], track ? client.history(limit) : [], track ? client.playback() : [], track && full ? client.watchedShows() : Promise.resolve(undefined)])
       return { watchlist, history, resumes, ...(shows ? { shows } : {}) }
     },
     username: () => client.profile(),

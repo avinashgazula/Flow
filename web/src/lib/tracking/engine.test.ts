@@ -292,3 +292,86 @@ describe('when the service refuses or can’t be reached', () => {
     expect(JSON.stringify(state('mdblist'))).not.toContain('bad')
   })
 })
+
+describe('a list kept on a different service than tracking', () => {
+  const split = () => m.settingsStore.set({ mdblistKey: 'key-123', tracker: 'simkl', watchlistDestination: 'mdblist' })
+  /** Runs both services through their first sync. */
+  async function startedBoth() {
+    m.startTracking()
+    await vi.waitFor(() => expect(state('simkl').lastSyncAt && state('mdblist').lastSyncAt).toBeTruthy())
+  }
+  const hosts = (method: string) => calls.filter((c) => c.method === method).map((c) => `${c.host}${c.path}`)
+
+  it('asks each service only for what it does: Simkl for history and resume points, MDBList for the watchlist', async () => {
+    split()
+    await startedBoth()
+    const asked = hosts('GET')
+    expect(asked).toContain('api.mdblist.com/watchlist/items')
+    expect(asked.filter((a) => a.startsWith('api.mdblist.com'))).not.toContain('api.mdblist.com/sync/playback')
+    expect(asked.some((a) => a.startsWith('api.simkl.com/sync/all-items/') && a.includes('plantowatch'))).toBe(false)
+    expect(asked.some((a) => a.startsWith('api.simkl.com/sync/playback'))).toBe(true)
+  })
+
+  it('sends a watchlist change to MDBList and a watched title to Simkl, and each only to its own', async () => {
+    split()
+    await startedBoth()
+    calls.length = 0
+    m.library.toggleWatchlist(item('movie', 5))
+    m.library.markWatched(item('movie', 6))
+    await quiet()
+    const sent = calls.filter((c) => c.method === 'POST').map((c) => `${c.host}${c.path}`)
+    expect(sent).toContain('api.mdblist.com/watchlist/items/add')
+    expect(sent.some((p) => p.startsWith('api.simkl.com') && p.includes('add-to-list'))).toBe(false)
+    expect(sent).toContain('api.simkl.com/sync/history')
+    expect(sent.some((p) => p.startsWith('api.mdblist.com') && p.includes('history'))).toBe(false)
+  })
+
+  it('drops a watchlist change still queued for a service the watchlist has since left', async () => {
+    split()
+    await startedBoth()
+    routes['POST /watchlist/items/add'] = () => 'offline'
+    m.library.toggleWatchlist(item('movie', 5))
+    await quiet()
+    expect(state('mdblist').ops).toHaveLength(1)
+    m.settingsStore.set({ watchlistDestination: 'local' })
+    await m.syncTracker()
+    expect(state('mdblist').ops).toEqual([])
+  })
+
+  it('merges a list afresh when it is given to a service, instead of reading its old baseline as removals', async () => {
+    split()
+    await startedBoth()
+    m.setService('mdblist', { watchlistBaseline: ['movie:99'] })
+    m.settingsStore.set({ watchlistDestination: 'local' })
+    m.settingsStore.set({ watchlistDestination: 'mdblist' })
+    await vi.waitFor(() => expect(state('mdblist').watchlistBaseline).not.toContain('movie:99'))
+  })
+})
+
+describe('the Sync Interval', () => {
+  const recently = () => new Date(Date.now() - 20 * 60_000).toISOString()
+
+  it('leaves a recent sync alone when Flow opens, and syncs when the interval has passed', async () => {
+    m.setService('simkl', { lastSyncAt: recently(), historyThrough: '2026-10-01T00:00:00Z' })
+    m.settingsStore.set({ syncInterval: 3600 })
+    m.startTracking()
+    await quiet()
+    expect(calls.filter((c) => c.method === 'GET' && c.path.includes('plantowatch'))).toEqual([])
+  })
+
+  it('syncs on every open when set to Every Launch', async () => {
+    m.setService('simkl', { lastSyncAt: recently(), historyThrough: '2026-10-01T00:00:00Z' })
+    m.settingsStore.set({ syncInterval: 0 })
+    m.startTracking()
+    await vi.waitFor(() => expect(calls.some((c) => c.path.includes('plantowatch'))).toBe(true))
+  })
+
+  it('still sends a change straight away however long the interval is', async () => {
+    m.setService('simkl', { lastSyncAt: recently(), historyThrough: '2026-10-01T00:00:00Z' })
+    m.settingsStore.set({ syncInterval: 86400 })
+    m.startTracking()
+    m.library.toggleWatchlist(item('movie', 5))
+    await quiet()
+    expect(posts('/sync/add-to-list')).toHaveLength(1)
+  })
+})

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { HistoryEntry, Library, ListEntry, Progress } from '../store/library'
 import type { MediaItem } from '../tmdb/types'
 import type { Listed, Resume, Watch } from './client'
-import { applyPull, diffLibrary, enqueue, mergeHistory, mergeProgress, mergeWatchedEpisodes, mergeWatchlist, snapshotOf, stubItem } from './merge'
+import { applyPull, diffLibrary, enqueue, mergeFavourites, mergeHistory, mergeProgress, mergeWatchedEpisodes, mergeWatchlist, snapshotOf, stubItem } from './merge'
 import type { Op } from './store'
 
 const item = (type: 'movie' | 'show', id: number, extra: Partial<MediaItem> = {}): MediaItem => ({ type, id, title: `T${id}`, overview: 'o', genres: [], poster: '/p.jpg', ...extra })
@@ -214,5 +214,30 @@ describe('applying a pull', () => {
   it('leaves the library as it was when there is nothing to apply', () => {
     const lib = library({ watchlist: [listEntry('movie', 1)] })
     expect(applyPull(lib, {})).toEqual(lib)
+  })
+})
+
+describe('favourites', () => {
+  it('turn a heart tapped here into a change for the favourites list, and leave the watchlist out of it', () => {
+    const before = snapshotOf(library({ favourites: [listEntry('movie', 1)], watchlist: [listEntry('show', 4)] }))
+    const lib = library({ favourites: [listEntry('movie', 1), listEntry('show', 2)], watchlist: [listEntry('show', 4)] })
+    expect(diffLibrary(before, lib)).toEqual([{ kind: 'favourite', type: 'show', id: 2, on: true }])
+    expect(diffLibrary(snapshotOf(lib), library({ favourites: [listEntry('show', 2)], watchlist: [listEntry('show', 4)] }))).toEqual([{ kind: 'favourite', type: 'movie', id: 1, on: false }])
+  })
+
+  it('merge with the same rules as the watchlist, pushing favourite changes and not watchlist ones', () => {
+    const out = mergeFavourites({ local: [listEntry('movie', 1), listEntry('movie', 2)], remote: [listed('movie', 2), listed('show', 3)], baseline: null, pending: [{ kind: 'watchlist', type: 'show', id: 3, on: false }] })
+    expect(out.add.map((r) => r.tmdb)).toEqual([3])
+    expect(out.push).toEqual([{ kind: 'favourite', type: 'movie', id: 1, on: true }])
+    // A queued favourite removal is respected, and a watchlist one is not mistaken for it.
+    const removing = mergeFavourites({ local: [], remote: [listed('movie', 1)], baseline: ['movie:1'], pending: [{ kind: 'favourite', type: 'movie', id: 1, on: false }] })
+    expect(removing.add).toEqual([])
+  })
+
+  it('are folded into the library without touching the watchlist', () => {
+    const merged = mergeFavourites({ local: [listEntry('movie', 1)], remote: [listed('show', 3)], baseline: ['movie:1'], pending: [] })
+    const lib = applyPull(library({ favourites: [listEntry('movie', 1)], watchlist: [listEntry('movie', 8)] }), { favourites: merged })
+    expect(lib.favourites.map((e) => e.key)).toEqual(['show:3'])
+    expect(lib.watchlist.map((e) => e.key)).toEqual(['movie:8'])
   })
 })

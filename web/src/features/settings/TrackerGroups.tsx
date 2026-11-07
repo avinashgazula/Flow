@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent } from 'react'
 import { Icon } from '../../components/Icon'
-import { settingsStore, useSettings } from '../../lib/store/settings'
+import { settingsStore, useSettings, type ListDestination } from '../../lib/store/settings'
 import { syncStatus } from '../../lib/sync/engine'
+import { destinationChoices, hasRole, listDestination, rolesOf, type ListKind } from '../../lib/tracking/destinations'
 import { trackerBlurb, trackerName, trackerOrder, unavailable } from '../../lib/tracking/labels'
+import { syncIntervalLabel, syncIntervalOf, syncIntervals } from '../../lib/tracking/schedule'
 import { activeTracker, type TrackerKind } from '../../lib/tracking/service'
 import { checkSimklClientID, finishPin, signOutOfSimkl, startPin, type Pin } from '../../lib/tracking/session'
 import { useService, type ServiceState } from '../../lib/tracking/store'
-import { ConfirmButton, Group, Note, Row } from './controls'
+import { ConfirmButton, Group, Note, Row, Select, Switch } from './controls'
 import s from './SettingsScreen.module.css'
 import { ago } from './SyncGroup'
 import t from './TrackerGroups.module.css'
@@ -35,7 +37,9 @@ function useNow(running: boolean): number {
   return now
 }
 
-const choose = (kind: TrackerKind) => settingsStore.set({ tracker: kind })
+/** Choosing a service also points the watchlist at it, as the apps do, so a list follows tracking until it is set apart
+ *  below. This Device takes the watchlist back too: nothing should leave the browser after choosing it. */
+const choose = (kind: TrackerKind) => settingsStore.set({ tracker: kind, ...(kind === 'publicMetaDB' ? {} : { watchlistDestination: kind }) })
 
 // MARK: Tracking With
 
@@ -92,6 +96,66 @@ export function TrackingWithGroup() {
           )
         })}
       </div>
+    </Group>
+  )
+}
+
+// MARK: Saved To, Sync
+
+const listLabel: Record<ListKind, string> = { watchlist: 'Watchlist Saved To', favourites: 'Favourites Saved To' }
+
+function SavedTo({ list }: { list: ListKind }) {
+  const settings = useSettings((x) => x)
+  const value = listDestination(settings, list)
+  const id = `${list}-destination`
+  return (
+    <Row label={listLabel[list]} htmlFor={id}>
+      <Select
+        id={id}
+        label={listLabel[list]}
+        value={value}
+        onChange={(v) => settingsStore.set(list === 'watchlist' ? { watchlistDestination: v } : { favouritesDestination: v })}
+        options={destinationChoices(list, settings).map((d: ListDestination) => ({ value: d, label: trackerName[d] }))}
+      />
+    </Row>
+  )
+}
+
+/** Which service each list goes to. Tracking With decides where history and progress go; the two lists can go
+ *  elsewhere, as the apps' Watchlist Provider and Favourites Provider do. */
+export function ListsGroup() {
+  return (
+    <Group
+      title="Lists"
+      footer="Where Add to Watchlist and the heart button save. A service keeps the list in step both ways; This Device keeps it in this browser only. A service appears here once you are signed in or have added its key, and only Trakt keeps favourites."
+    >
+      <SavedTo list="watchlist" />
+      <SavedTo list="favourites" />
+    </Group>
+  )
+}
+
+/** How often history syncs by itself, and whether the player says what is playing. */
+export function SyncPreferencesGroup() {
+  const interval = useSettings(syncIntervalOf)
+  const scrobble = useSettings((x) => x.scrobble !== false)
+  return (
+    <Group
+      title="Sync"
+      footer="How often Flow syncs your history by itself when you open it or come back to it. Sync Now always syncs, and changes you make are sent within moments. Scrobbling tells your tracker what is playing as you watch, so Resume follows you to your other devices. With it off, a title is still marked watched when you finish it, but its resume point isn’t sent."
+    >
+      <Row label="Sync Interval" htmlFor="sync-interval">
+        <Select
+          id="sync-interval"
+          label="Sync interval"
+          value={String(interval)}
+          onChange={(v) => settingsStore.set({ syncInterval: Number(v) })}
+          options={syncIntervals.map((n) => ({ value: String(n), label: syncIntervalLabel[n] }))}
+        />
+      </Row>
+      <Row label="Scrobble While Watching">
+        <Switch label="Scrobble while watching" checked={scrobble} onChange={(on) => settingsStore.set({ scrobble: on })} />
+      </Row>
     </Group>
   )
 }
@@ -169,7 +233,8 @@ type SignIn = { step: 'idle' } | { step: 'asking' } | { step: 'code'; pin: Pin; 
 export function SimklGroup() {
   const clientID = useSettings((x) => x.simklClientID.trim())
   const account = useSettings((x) => x.simklAccount)
-  const tracking = useSettings((x) => activeTracker(x) === 'simkl')
+  // Holding the watchlist is a job too, with a sync to show.
+  const working = useSettings((x) => hasRole(rolesOf('simkl', x)))
   const state = useService('simkl', (x) => x)
   const [flow, setFlow] = useState<SignIn>({ step: 'idle' })
   const [problem, setProblem] = useState<string>()
@@ -279,12 +344,12 @@ export function SimklGroup() {
 
   return (
     <Group title="Simkl">
-      <Row label={state.username ? `Signed in as ${state.username}` : 'Signed in to Simkl'} detail={tracking ? syncDetail(state, syncing, now) : 'Choose Simkl under Tracking With to track with it'}>
+      <Row label={state.username ? `Signed in as ${state.username}` : 'Signed in to Simkl'} detail={working ? syncDetail(state, syncing, now) : 'Choose Simkl under Tracking With to track with it'}>
         {state.signInAgain ? (
           <button type="button" className="btn btn-primary btn-compact" onClick={() => void signIn()} disabled={!clientID || flow.step === 'asking'}>
             Sign In Again
           </button>
-        ) : tracking ? (
+        ) : working ? (
           <button type="button" className="btn btn-secondary btn-compact" onClick={() => void syncNow()} disabled={syncing}>
             <Icon name="refresh" size={16} /> Sync Now
           </button>
@@ -294,7 +359,7 @@ export function SimklGroup() {
           </button>
         )}
       </Row>
-      {tracking && issue && (
+      {working && issue && (
         <div className={s.pad}>
           <Note tone="error">{issue}</Note>
         </div>
@@ -312,9 +377,10 @@ export function SimklGroup() {
 export function MDBListGroup() {
   const key = useSettings((x) => !!x.mdblistKey?.trim())
   const tracking = useSettings((x) => activeTracker(x) === 'mdblist')
+  const working = useSettings((x) => hasRole(rolesOf('mdblist', x)))
   const state = useService('mdblist', (x) => x)
   const [syncing, setSyncing] = useState(false)
-  const now = useNow(tracking)
+  const now = useNow(working)
 
   async function syncNow() {
     setSyncing(true)
@@ -342,8 +408,8 @@ export function MDBListGroup() {
             Add API Key
           </a>
         </Row>
-      ) : tracking ? (
-        <Row label={state.username ? `Tracking as ${state.username}` : 'Tracking With MDBList'} detail={syncDetail(state, syncing, now)}>
+      ) : working ? (
+        <Row label={tracking ? (state.username ? `Tracking as ${state.username}` : 'Tracking With MDBList') : state.username ? `Watchlist as ${state.username}` : 'Holding Your Watchlist'} detail={syncDetail(state, syncing, now)}>
           <button type="button" className="btn btn-secondary btn-compact" onClick={() => void syncNow()} disabled={syncing}>
             <Icon name="refresh" size={16} /> Sync Now
           </button>
@@ -355,7 +421,7 @@ export function MDBListGroup() {
           </button>
         </Row>
       )}
-      {tracking && state.error && (
+      {working && state.error && (
         <div className={s.pad}>
           <Note tone="error">{state.error}</Note>
         </div>

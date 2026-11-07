@@ -38,6 +38,10 @@ export function activeTracker(s: Settings): TrackerKind {
 export type OtherTracker = 'simkl' | 'mdblist'
 export const isOtherTracker = (kind: TrackerKind): kind is OtherTracker => kind === 'simkl' || kind === 'mdblist'
 
+/** Whether the player tells the tracker what is playing (Settings → Account → Scrobble While Watching). On unless
+ *  switched off. Plays still reach the service when it is off: the library's own mark of a finished title is sent. */
+export const scrobbleEnabled = (s: Pick<Settings, 'scrobble'>) => s.scrobble !== false
+
 /** The code that sends a title's rating or an un-watch to the service tracking now, loaded only when there is one.
  *  Undefined when this device tracks: nothing leaves, and nothing is downloaded. */
 export function trackerEngine() {

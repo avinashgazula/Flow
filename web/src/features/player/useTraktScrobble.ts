@@ -1,10 +1,10 @@
 import { useEffect, type RefObject } from 'react'
 import { settingsStore } from '../../lib/store/settings'
-import { activeTracker, isOtherTracker } from '../../lib/tracking/service'
+import { activeTracker, isOtherTracker, scrobbleEnabled } from '../../lib/tracking/service'
 import type { Reading } from '../../lib/trakt/scrobble'
 
 /** Tells the service that tracks (Trakt, Simkl or MDBList, as chosen in Settings → Account) what is playing: start,
- *  pause and stop with how far in, from the video element's own events. Nothing loads when this device tracks; each
+ *  pause and stop with how far in, from the video element's own events. Nothing loads when this device tracks or Scrobble While Watching is off; each
  *  scrobbler is its own chunk. `read` says what is playing and how far in (the player keeps those in refs), and null
  *  before there is anything. */
 export function useTraktScrobble(video: RefObject<HTMLVideoElement | null>, active: boolean, read: () => Reading | null) {
@@ -12,7 +12,7 @@ export function useTraktScrobble(video: RefObject<HTMLVideoElement | null>, acti
     // Sample streams are not something to tell a tracker about.
     const s = settingsStore.get()
     const kind = activeTracker(s)
-    if (!active || s.demo || kind === 'local') return
+    if (!active || s.demo || kind === 'local' || !scrobbleEnabled(s)) return
     let stop: (() => void) | undefined
     let gone = false
     const started = (start: (el: HTMLVideoElement) => () => void) => {

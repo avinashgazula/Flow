@@ -52,6 +52,10 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   onlyShowServerContent: (v) => typeof v === 'boolean',
   useServerArtwork: (v) => typeof v === 'boolean',
   trackOnlyWithTracker: (v) => typeof v === 'boolean',
+  watchlistDestination: (v) => ['trakt', 'simkl', 'mdblist', 'local'].includes(v as string),
+  favouritesDestination: (v) => ['trakt', 'simkl', 'mdblist', 'local'].includes(v as string),
+  syncInterval: (v) => [0, 900, 3600, 10800, 43200, 86400].includes(v as number),
+  scrobble: (v) => typeof v === 'boolean',
   serverHomeRowIDs: (v) => Array.isArray(v) && v.every((x) => typeof x === 'string' && x.length > 0),
   webDAV: (v) =>
     Array.isArray(v) &&

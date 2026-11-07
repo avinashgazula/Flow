@@ -63,7 +63,7 @@ export async function finishPin(pin: Pin, signal: AbortSignal, now: () => number
     try {
       const token = await client.pollPin(pin.code)
       if (token) {
-        settingsStore.set({ simklAccount: { accessToken: token, refreshToken: null, expiresAt: null, redirectURI: null }, tracker: 'simkl' })
+        settingsStore.set({ simklAccount: { accessToken: token, refreshToken: null, expiresAt: null, redirectURI: null }, tracker: 'simkl', watchlistDestination: 'simkl' })
         setService('simkl', { ...emptyService })
         await pushToSync().catch(() => undefined)
         void rememberProfile('simkl')

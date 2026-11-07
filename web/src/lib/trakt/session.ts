@@ -136,7 +136,7 @@ export async function finishSignIn(search: string): Promise<{ ok: true } | { ok:
   try {
     const token = await exchangeCode(fetch, { clientID: pending.clientID, code: code.code, verifier: pending.verifier, redirect: pending.redirect })
     // Signing in is choosing to track with it, as in the apps.
-    settingsStore.set({ traktAccount: token, tracker: 'trakt' })
+    settingsStore.set({ traktAccount: token, tracker: 'trakt', watchlistDestination: 'trakt' })
     traktStore.set({ signInAgain: false, error: null })
     await pushToSync().catch(() => undefined)
     await rememberProfile()
