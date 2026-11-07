@@ -631,10 +631,12 @@ struct RatingsRow: View {
             } else {
                 Text(source.title)
                     .font(.system(.caption))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                     .foregroundStyle(Theme.Palette.textTertiary)
             }
         }
-        .fixedSize()
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(source.spokenScore(value))
     }
