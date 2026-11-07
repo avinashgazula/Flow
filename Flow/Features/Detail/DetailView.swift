@@ -1,7 +1,7 @@
 import SwiftUI
 import FlowKit
 
-/// A title's page: a masthead (the title, its plain facts, ratings as numbers, the one pink action, the best
+/// A title's page: a masthead (the title, its plain facts, ratings as numbers, the one yellow action, the best
 /// version) beside or under a framed still, then episodes as listings, cast, and the rest.
 struct DetailView: View {
     let item: MediaItem
@@ -31,7 +31,7 @@ struct DetailView: View {
     private var general: GeneralSettings { model.settings.general }
     private var current: MediaItem { detail?.item ?? item }
     /// The still beside the text once there's room for both; above it otherwise.
-    private var wide: Bool { Platform.isTV || width >= 820 }
+    private var wide: Bool { Platform.isTV || width >= 680 }
 
     var body: some View {
         ScrollView {
@@ -106,7 +106,8 @@ struct DetailView: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    visual
+                    // Above the text a still never needs more than this, which keeps the title in view in a short window.
+                    visual.frame(maxWidth: Platform.isPhone ? .infinity : 560, alignment: .leading)
                     textColumn
                 }
             }
@@ -551,16 +552,31 @@ struct RatingsRow: View {
     /// The title, so a score can open its site's page when Tap a Rating is on.
     var item: MediaItem?
     @Environment(AppModel.self) private var model
+    @State private var showAll = false
 
     private var metadata: MetadataSettings { model.settings.metadata }
     /// Only while a pack URL is set, so clearing the field brings the plain names straight back.
     private var iconPack: RatingIconPack? { metadata.ratingIconPackURL == nil ? nil : model.ratingIconPack }
 
+    /// The sources with a score for this title, in the order chosen.
+    private var shown: [RatingSource] { metadata.ratingsShown.filter { text(for: $0) != nil } }
+    /// Four is as many as a phone holds in a row, so the rest sit behind More.
+    private var visible: [RatingSource] { Platform.isPhone && !showAll ? Array(shown.prefix(4)) : shown }
+
     var body: some View {
-        // One line when it fits; otherwise a second line, never a score cut off at the screen's edge.
-        WrappingRow(spacing: 28 * Theme.scale, lineSpacing: 14 * Theme.scale) {
-            ForEach(metadata.ratingsShown) { source in
-                score(source)
+        // Equal columns, so the numbers of a second line stand under the first line's: a table, not a wrapped row.
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 76 * Theme.scale), spacing: 12 * Theme.scale, alignment: .leading)],
+                      alignment: .leading, spacing: 14 * Theme.scale) {
+                ForEach(visible) { source in
+                    score(source)
+                }
+            }
+            if Platform.isPhone && !showAll && shown.count > 4 {
+                Button("More Ratings") { withAnimation(Theme.Motion.gentle) { showAll = true } }
+                    .font(.system(.subheadline, weight: .semibold))
+                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .buttonStyle(.plain)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -131,7 +131,8 @@ enum Platform {
         #elseif os(macOS)
         24
         #else
-        18
+        // A tablet's content would hug the edge below a centred top bar at the phone's margin.
+        UIDevice.current.userInterfaceIdiom == .pad ? 24 : 18
         #endif
     }
 
