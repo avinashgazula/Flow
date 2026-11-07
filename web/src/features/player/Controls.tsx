@@ -1,11 +1,13 @@
 import { useRef, type ReactNode } from 'react'
 import { Icon, type IconName } from '../../components/Icon'
 import type { Source } from '../../lib/sources'
+import { useSettings } from '../../lib/store/settings'
 import type { Episode } from '../../lib/tmdb/types'
 import { usePlayer, volumeSettable, type Panel, type PlayerController } from './controller'
 import { EpisodeShelf } from './EpisodeShelf'
 import { OptionsPanel } from './OptionsPanel'
 import { PlayerIcon, type PlayerIconName } from './playerIcons'
+import { playbackPreferences } from './preferences'
 import { Scrubber } from './Scrubber'
 import s from './Controls.module.css'
 
@@ -158,20 +160,22 @@ function Volume({ controller, hover }: { controller: PlayerController; hover: Ho
   )
 }
 
-/** A finger held on Back 10 Seconds asks "What Did They Say?" (the apps do the same); the lift that ends the hold isn't a tap. */
+/** A finger held on Back asks "What Did They Say?" (the apps do the same); the lift that ends the hold isn't a tap. */
 const askMs = 500
 
 function Transport({ controller, hover }: { controller: PlayerController; hover: Hover }) {
   const paused = usePlayer(controller, (st) => st.paused)
+  const back = useSettings((st) => playbackPreferences(st).seekBack)
+  const forward = useSettings((st) => playbackPreferences(st).seekForward)
   const held = useRef({ timer: 0, asked: false })
   return (
     <div className={s.transport}>
       <button
         className={`${s.round} ${s.skip} ${s.interactive}`}
-        aria-label="Back 10 Seconds"
+        aria-label={`Back ${back} Seconds`}
         onClick={() => {
           if (held.current.asked) held.current.asked = false
-          else controller.seekBy(-10)
+          else controller.skip(-1)
         }}
         onPointerDown={(e) => {
           if (e.pointerType === 'mouse') return
@@ -192,25 +196,25 @@ function Transport({ controller, hover }: { controller: PlayerController; hover:
           hover.onPointerLeave()
         }}
       >
-        <SkipGlyph forward={false} />
+        <SkipGlyph forward={false} seconds={back} />
       </button>
       <button className={`${s.round} ${s.play} ${s.interactive}`} aria-label={paused ? 'Play' : 'Pause'} onClick={controller.togglePlay} onMouseDown={keepFocus} {...hover}>
         <Icon name={paused ? 'play' : 'pause'} size={34} />
       </button>
-      <button className={`${s.round} ${s.skip} ${s.interactive}`} aria-label="Forward 10 Seconds" onClick={() => controller.seekBy(10)} onMouseDown={keepFocus} {...hover}>
-        <SkipGlyph forward />
+      <button className={`${s.round} ${s.skip} ${s.interactive}`} aria-label={`Forward ${forward} Seconds`} onClick={() => controller.skip(1)} onMouseDown={keepFocus} {...hover}>
+        <SkipGlyph forward seconds={forward} />
       </button>
     </div>
   )
 }
 
-/** The go-back and go-forward arrows with "10" inside, as SF Symbols draws them. */
-export function SkipGlyph({ forward, size = 30 }: { forward: boolean; size?: number }) {
+/** The go-back and go-forward arrows with the seconds inside (10 unless set), as SF Symbols draws them. */
+export function SkipGlyph({ forward, size = 30, seconds = 10 }: { forward: boolean; size?: number; seconds?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d={forward ? 'M13 4.6h3.6V1M16.3 4.5A8.6 8.6 0 1 0 20.6 12' : 'M11 4.6H7.4V1M7.7 4.5A8.6 8.6 0 1 1 3.4 12'} />
       <text x="12" y="15.6" textAnchor="middle" fontSize="7.6" fontWeight="700" fill="currentColor" stroke="none" fontFamily="-apple-system, system-ui, sans-serif">
-        10
+        {seconds}
       </text>
     </svg>
   )

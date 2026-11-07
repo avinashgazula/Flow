@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectPlatform, externalPlayerTitle, launchURL, playersFor, streamLink } from './externalPlayers'
+import { detectPlatform, externalPlayerTitle, launchURL, matroskaHandOff, playersFor, streamLink } from './externalPlayers'
 
 const iphone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
 const mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15'
@@ -75,5 +75,31 @@ describe('the links', () => {
 
   it('has no link for the built-in player', () => {
     expect(launchURL('none', stream)).toBeUndefined()
+  })
+})
+
+describe('MKV Files set to External Player', () => {
+  const mkv = { url: 'https://cdn.example.com/Film.mkv', engine: 'remux' as const, filename: 'Film.mkv' }
+
+  it('hands an MKV to the chosen app, with the resume point for Infuse', () => {
+    expect(matroskaHandOff(mkv, 'external', 'infuse', 'ios', 120)).toBe('infuse://x-callback-url/play?url=https%3A%2F%2Fcdn.example.com%2FFilm.mkv&position=120&filename=Film.mkv')
+    expect(matroskaHandOff(mkv, 'external', 'vlc', 'ios')).toBe('vlc-x-callback://x-callback-url/stream?url=https%3A%2F%2Fcdn.example.com%2FFilm.mkv')
+  })
+
+  it('plays in Flow unless every part of that is true', () => {
+    expect(matroskaHandOff(mkv, undefined, 'infuse', 'ios')).toBeUndefined()
+    expect(matroskaHandOff(mkv, 'remux', 'infuse', 'ios')).toBeUndefined()
+    expect(matroskaHandOff(mkv, 'external', 'none', 'ios')).toBeUndefined()
+    expect(matroskaHandOff(mkv, 'external', undefined, 'ios')).toBeUndefined()
+    // No Apple device, or an app that is not on this one.
+    expect(matroskaHandOff(mkv, 'external', 'infuse', undefined)).toBeUndefined()
+    expect(matroskaHandOff(mkv, 'external', 'iina', 'ios')).toBeUndefined()
+    // Not a file Flow would remux, or one an app can't fetch by its address alone.
+    expect(matroskaHandOff({ ...mkv, engine: 'native' }, 'external', 'infuse', 'ios')).toBeUndefined()
+    expect(matroskaHandOff({ ...mkv, headers: { Authorization: 'x' } }, 'external', 'infuse', 'ios')).toBeUndefined()
+  })
+
+  it('leaves out a resume point too early to matter', () => {
+    expect(matroskaHandOff(mkv, 'external', 'infuse', 'macos', 10)).not.toContain('position')
   })
 })

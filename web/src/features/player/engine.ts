@@ -354,7 +354,9 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
   // attempt sends none.
   // "Never Use Dolby Vision" plays a Dolby Vision file as its HDR10 picture: the remuxer leaves out its configuration.
   const hdr10Only = settingsStore.get().neverUseDolbyVision
-  const open = (viaProxy: boolean) => attachMatroska(video, viaProxy ? proxied(source.url) : source.url, { headers: viaProxy ? undefined : source.headers, viaProxy, hdr10Only, startAt, signal })
+  // Decode DTS and Dolby TrueHD off: those tracks are listed as unavailable instead of being converted.
+  const convertAudio = settingsStore.get().decodeLosslessAudio !== false
+  const open = (viaProxy: boolean) => attachMatroska(video, viaProxy ? proxied(source.url) : source.url, { headers: viaProxy ? undefined : source.headers, viaProxy, hdr10Only, convertAudio, startAt, signal })
   const failedWith = (error: unknown, name: string) => (error as Error).name === name
 
   let session

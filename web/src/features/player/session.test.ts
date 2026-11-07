@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Source } from '../../lib/sources'
 import type { Episode } from '../../lib/tmdb/types'
-import { matchSource, nextEpisode, nextSource, resolutionHeight, resumePosition, shouldResume } from './session'
+import { matchSource, nextEpisode, nextSource, resolutionHeight, resumePosition, shouldResume, titleChoices } from './session'
 
 const src = (id: string, extra: Partial<Source> = {}): Source => ({ id, origin: 'addon', provider: 'P', title: id, url: `https://x/${id}`, engine: 'native', resolution: '1080p', ...extra }) as Source
 const ep = (number: number, airDate?: string): Episode => ({ id: number, season: 1, number, name: `E${number}`, overview: '', airDate })
@@ -94,5 +94,22 @@ describe('nextSource below a resolution', () => {
     expect(resolutionHeight('2160p')).toBe(2160)
     expect(resolutionHeight('SD')).toBe(480)
     expect(resolutionHeight(undefined)).toBeUndefined()
+  })
+})
+
+describe('remembered tracks', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('forgets every show’s picks and leaves films alone', () => {
+    const data = new Map<string, string>()
+    vi.stubGlobal('localStorage', { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v) })
+    titleChoices.set('show:1', { audio: 'ja', subtitle: 'en' })
+    titleChoices.set('show:2', { subtitle: null })
+    titleChoices.set('movie:3', { audio: 'fr' })
+    expect(titleChoices.showCount()).toBe(2)
+    titleChoices.forgetShows()
+    expect(titleChoices.showCount()).toBe(0)
+    expect(titleChoices.get('show:1')).toBeUndefined()
+    expect(titleChoices.get('movie:3')).toMatchObject({ audio: 'fr' })
   })
 })

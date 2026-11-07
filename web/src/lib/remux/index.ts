@@ -151,6 +151,8 @@ export interface RemuxOptions {
   viaProxy?: boolean
   /** Play Dolby Vision as its HDR10 picture alone (profile 5, which has none, stays Dolby Vision). */
   hdr10Only?: boolean
+  /** Convert audio the browser can't decode (DTS, TrueHD) while playing. False lists those tracks as unavailable; the default is on. */
+  convertAudio?: boolean
   startAt?: number
   signal?: AbortSignal
 }
@@ -281,7 +283,7 @@ class Session implements RemuxSession {
     const info = await Promise.race([header, failed])
     await Promise.race([opened, failed])
 
-    this.plan = makePlan(info, typeSupported, canConvertAudio())
+    this.plan = makePlan(info, typeSupported, canConvertAudio() && options.convertAudio !== false)
     this.declared = info.duration ?? 0
     this.audioTracks = this.plan.audio.map(({ mime: _mime, ...track }) => track)
     this.subtitleTracks = this.plan.subtitles
