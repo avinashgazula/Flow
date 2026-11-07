@@ -2,14 +2,14 @@ import { useEffect, useState, useSyncExternalStore, type FormEvent } from 'react
 import { Icon } from '../../components/Icon'
 import { settingsStore, useSettings } from '../../lib/store/settings'
 import { syncStatus } from '../../lib/sync/engine'
-import { activeTracker } from '../../lib/tracking/service'
+import { hasRole, rolesOf } from '../../lib/tracking/destinations'
 import { callbackPath } from '../../lib/trakt/arrive'
 import { redirectURI } from '../../lib/trakt/oauth'
 import { beginSignIn, checkClientID, finishingSignIn, signOut } from '../../lib/trakt/session'
 import { useTrakt } from '../../lib/trakt/store'
 import { ConfirmButton, Group, Note, Row } from './controls'
 import s from './SettingsScreen.module.css'
-import { MDBListGroup, SimklAppGroup, SimklGroup, TrackingWithGroup, syncDetail } from './TrackerGroups'
+import { ListsGroup, MDBListGroup, SimklAppGroup, SimklGroup, SyncPreferencesGroup, TrackingWithGroup, syncDetail } from './TrackerGroups'
 
 /* Settings → Account: which service tracks (TrackerGroups.tsx), the Trakt app Flow signs in with and the sign-in
    itself, then Simkl and MDBList. The sign-in is a setting that Flow Sync carries, so signing in on any device signs
@@ -109,7 +109,8 @@ function AppGroup() {
 function SignInGroup() {
   const clientID = useSettings((x) => x.traktClientID.trim())
   const account = useSettings((x) => x.traktAccount)
-  const tracking = useSettings((x) => activeTracker(x) === 'trakt')
+  // Holding the watchlist or favourites is a job too, with a sync to show.
+  const tracking = useSettings((x) => hasRole(rolesOf('trakt', x)))
   const trakt = useTrakt((x) => x)
   const sync = useSyncExternalStore(syncStatus.subscribe, syncStatus.get)
   const finishing = useSyncExternalStore(finishingSignIn.subscribe, finishingSignIn.get)
@@ -179,7 +180,7 @@ function SignInGroup() {
             <Icon name="refresh" size={16} /> Sync Now
           </button>
         ) : (
-          <button type="button" className="btn btn-primary btn-compact" onClick={() => settingsStore.set({ tracker: 'trakt' })}>
+          <button type="button" className="btn btn-primary btn-compact" onClick={() => settingsStore.set({ tracker: 'trakt', watchlistDestination: 'trakt' })}>
             Track With Trakt
           </button>
         )}
@@ -200,6 +201,8 @@ export function AccountSection() {
   return (
     <>
       <TrackingWithGroup />
+      <ListsGroup />
+      <SyncPreferencesGroup />
       <AppGroup />
       <SignInGroup />
       <SimklAppGroup />

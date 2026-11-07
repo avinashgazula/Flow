@@ -8,7 +8,9 @@ import type { Op } from './store'
 
 const keyOf = (o: { type: string; id: number }) => `${o.type}:${o.id}`
 
-type Api = Pick<TraktClient, 'addToWatchlist' | 'removeFromWatchlist' | 'addHistory' | 'removeHistory' | 'rate' | 'unrate' | 'playback' | 'deletePlayback'>
+type Api = Pick<TraktClient, 'addToWatchlist' | 'removeFromWatchlist' | 'addHistory' | 'removeHistory' | 'rate' | 'unrate' | 'playback' | 'deletePlayback'> &
+  // Only Trakt keeps favourites; a service without them is never given one to send (lib/tracking/destinations.ts).
+  Partial<Pick<TraktClient, 'addToFavourites' | 'removeFromFavourites'>>
 
 export interface FlushResult {
   /** What is still to send. */
@@ -44,11 +46,13 @@ export async function flushOps(api: Api, ops: Op[], known: Record<string, number
 
   const entries = (group: Op[]): Entry[] =>
     group.flatMap((o) =>
-      o.kind === 'watchlist' ? [{ type: o.type, id: o.id }] : o.kind === 'watched' ? [{ type: o.type, id: o.id, season: o.season, episode: o.episode, at: o.at }] : o.kind === 'unwatched' ? [{ type: o.type, id: o.id, season: o.season, episode: o.episode }] : o.kind === 'rate' ? [{ type: o.type, id: o.id, rating: o.rating ?? undefined }] : [],
+      o.kind === 'watchlist' || o.kind === 'favourite' ? [{ type: o.type, id: o.id }] : o.kind === 'watched' ? [{ type: o.type, id: o.id, season: o.season, episode: o.episode, at: o.at }] : o.kind === 'unwatched' ? [{ type: o.type, id: o.id, season: o.season, episode: o.episode }] : o.kind === 'rate' ? [{ type: o.type, id: o.id, rating: o.rating ?? undefined }] : [],
     )
 
   const adds = ops.filter((o) => o.kind === 'watchlist' && o.on)
   const removes = ops.filter((o) => o.kind === 'watchlist' && !o.on)
+  const favs = ops.filter((o) => o.kind === 'favourite' && o.on)
+  const unfavs = ops.filter((o) => o.kind === 'favourite' && !o.on)
   const watched = ops.filter((o) => o.kind === 'watched')
   const unwatched = ops.filter((o) => o.kind === 'unwatched')
   const rated = ops.filter((o) => o.kind === 'rate' && o.rating !== null)
@@ -58,6 +62,8 @@ export async function flushOps(api: Api, ops: Op[], known: Record<string, number
   const steps: [Op[], () => Promise<unknown>][] = [
     [adds, () => api.addToWatchlist(entries(adds))],
     [removes, () => api.removeFromWatchlist(entries(removes))],
+    [favs, async () => void (await api.addToFavourites?.(entries(favs)))],
+    [unfavs, async () => void (await api.removeFromFavourites?.(entries(unfavs)))],
     [watched, () => api.addHistory(entries(watched))],
     [unwatched, () => api.removeHistory(entries(unwatched))],
     [rated, () => api.rate(entries(rated))],

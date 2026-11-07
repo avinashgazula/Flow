@@ -213,9 +213,9 @@ export function simklBackend(client: SimklClient, ready: () => boolean): Backend
     kind: 'simkl',
     name: simklName,
     ready,
-    async pull({ full, limit }: PullOptions): Promise<Pulled> {
+    async pull({ full, limit, track = true, watchlist: lists = true }: PullOptions): Promise<Pulled> {
       // The watched lists are the costly part (every show with every episode), so they come only on a full pull.
-      const [watchlist, resumes, watched] = await Promise.all([client.watchlist(), client.playback(), full ? client.watched(limit) : Promise.resolve(undefined)])
+      const [watchlist, resumes, watched] = await Promise.all([lists ? client.watchlist() : [], track ? client.playback() : [], track && full ? client.watched(limit) : Promise.resolve(undefined)])
       return { watchlist, resumes, history: watched?.history ?? [], ...(watched ? { shows: watched.shows } : {}) }
     },
     username: () => client.profile(),

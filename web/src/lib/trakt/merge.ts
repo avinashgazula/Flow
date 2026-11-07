@@ -2,7 +2,7 @@
    are tested without a browser or a server. The library keeps working signed out exactly as before; signed in,
    Trakt adds what it has that this browser lacks, and what changes here is sent to Trakt.
 
-   - Watchlist: two-way, and the only list where a removal has to travel. A title missing on one side is either new
+   - Watchlist and favourites: two-way, and the only lists where a removal has to travel. A title missing on one side is either new
      on the other or removed here, and the lists as they stood at the last sync (the baseline) tell which.
    - History and watched episodes: additions only. Clearing history here never un-watches anything on Trakt.
    - Resume points: Trakt's win when they are newer than this browser's, unless the title was finished since. */
@@ -47,6 +47,7 @@ export const enqueueAll = (ops: Op[], more: Op[]) => more.reduce(enqueue, ops)
 
 export interface Snapshot {
   watchlist: Set<string>
+  favourites: Set<string>
   history: Set<string>
   progress: Set<string>
 }
@@ -54,7 +55,7 @@ export interface Snapshot {
 const historyId = (h: HistoryEntry) => `${h.key}|${h.episode ? `${h.episode.season}x${h.episode.episode}` : ''}|${h.watchedAt}`
 
 export function snapshotOf(library: Library): Snapshot {
-  return { watchlist: new Set(library.watchlist.map((e) => e.key)), history: new Set(library.history.map(historyId)), progress: new Set(Object.keys(library.progress)) }
+  return { watchlist: new Set(library.watchlist.map((e) => e.key)), favourites: new Set(library.favourites.map((e) => e.key)), history: new Set(library.history.map(historyId)), progress: new Set(Object.keys(library.progress)) }
 }
 
 const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z')
@@ -68,6 +69,10 @@ export function diffLibrary(prev: Snapshot, library: Library, claimed: (entry: H
   const byKey = new Map(library.watchlist.map((e) => [e.key, e]))
   for (const key of now.watchlist) if (!prev.watchlist.has(key)) ops.push({ kind: 'watchlist', type: byKey.get(key)!.item.type, id: byKey.get(key)!.item.id, on: true })
   for (const key of prev.watchlist) if (!now.watchlist.has(key)) ops.push({ kind: 'watchlist', ...typeAndId(key), on: false })
+
+  const favByKey = new Map(library.favourites.map((e) => [e.key, e]))
+  for (const key of now.favourites) if (!prev.favourites.has(key)) ops.push({ kind: 'favourite', type: favByKey.get(key)!.item.type, id: favByKey.get(key)!.item.id, on: true })
+  for (const key of prev.favourites) if (!now.favourites.has(key)) ops.push({ kind: 'favourite', ...typeAndId(key), on: false })
 
   const finished = new Set<string>()
   for (const h of library.history) {
@@ -100,13 +105,18 @@ export interface WatchlistMerge {
   baseline: string[]
 }
 
-export function mergeWatchlist(args: { local: ListEntry[]; remote: Listed[]; baseline: string[] | null; pending: Op[] }): WatchlistMerge {
+export const mergeWatchlist = (args: { local: ListEntry[]; remote: Listed[]; baseline: string[] | null; pending: Op[] }): WatchlistMerge => mergeList({ ...args, kind: 'watchlist' })
+
+/** Favourites follow the watchlist's rules exactly: two-way, with a removal told from a new title by the baseline. */
+export const mergeFavourites = (args: { local: ListEntry[]; remote: Listed[]; baseline: string[] | null; pending: Op[] }): WatchlistMerge => mergeList({ ...args, kind: 'favourite' })
+
+function mergeList(args: { local: ListEntry[]; remote: Listed[]; baseline: string[] | null; pending: Op[]; kind: 'watchlist' | 'favourite' }): WatchlistMerge {
   const local = new Set(args.local.map((e) => e.key))
   const remote = new Map(args.remote.map((r) => [mediaKey(r.type, r.tmdb), r]))
   const before = new Set(args.baseline ?? [])
   // What is still on its way, by key: the last word on it.
   const waiting = new Map<string, boolean>()
-  for (const op of args.pending) if (op.kind === 'watchlist') waiting.set(mediaKey(op.type, op.id), op.on)
+  for (const op of args.pending) if (op.kind === args.kind) waiting.set(mediaKey(op.type, op.id), op.on)
 
   const add: Listed[] = []
   for (const [key, r] of remote) {
@@ -116,11 +126,11 @@ export function mergeWatchlist(args: { local: ListEntry[]; remote: Listed[]; bas
   const remove: string[] = []
   for (const key of local) if (before.has(key) && !remote.has(key) && waiting.get(key) !== true) remove.push(key)
   const push: Op[] = []
-  for (const e of args.local) if (!remote.has(e.key) && !before.has(e.key) && waiting.get(e.key) !== true) push.push({ kind: 'watchlist', type: e.item.type, id: e.item.id, on: true })
+  for (const e of args.local) if (!remote.has(e.key) && !before.has(e.key) && waiting.get(e.key) !== true) push.push({ kind: args.kind, type: e.item.type, id: e.item.id, on: true })
 
   const after = new Set(remote.keys())
   for (const [key, on] of waiting) on ? after.add(key) : after.delete(key)
-  for (const op of push) if (op.kind === 'watchlist') after.add(mediaKey(op.type, op.id))
+  for (const op of push) if (op.kind === args.kind) after.add(mediaKey(op.type, op.id))
   return { add, remove, push, baseline: [...after] }
 }
 
@@ -204,14 +214,19 @@ export function mergeProgress(args: { local: Record<string, Progress>; remote: R
 /** The library with Trakt's contributions folded in. Existing entries (and their artwork) are kept as they are. */
 export function applyPull(
   library: Library,
-  pulled: { watchlist?: WatchlistMerge; history?: Watch[]; episodes?: Record<string, number>; progress?: Progress[] },
+  pulled: { watchlist?: WatchlistMerge; favourites?: WatchlistMerge; history?: Watch[]; episodes?: Record<string, number>; progress?: Progress[] },
   historyLimit = 500,
 ): Library {
-  let { watchlist, history, watchedEpisodes, progress } = library
+  let { watchlist, favourites, history, watchedEpisodes, progress } = library
   if (pulled.watchlist) {
     const drop = new Set(pulled.watchlist.remove)
     const added: ListEntry[] = pulled.watchlist.add.map((r) => ({ key: mediaKey(r.type, r.tmdb), item: stubItem(r.type, r.tmdb, r.title, r.year), addedAt: r.at }))
     watchlist = [...added, ...watchlist.filter((e) => !drop.has(e.key))].sort((a, b) => b.addedAt - a.addedAt)
+  }
+  if (pulled.favourites) {
+    const drop = new Set(pulled.favourites.remove)
+    const added: ListEntry[] = pulled.favourites.add.map((r) => ({ key: mediaKey(r.type, r.tmdb), item: stubItem(r.type, r.tmdb, r.title, r.year), addedAt: r.at }))
+    favourites = [...added, ...favourites.filter((e) => !drop.has(e.key))].sort((a, b) => b.addedAt - a.addedAt)
   }
   if (pulled.history?.length) {
     const added: HistoryEntry[] = pulled.history.map((w) => ({
@@ -227,5 +242,5 @@ export function applyPull(
   }
   if (pulled.episodes && Object.keys(pulled.episodes).length) watchedEpisodes = { ...pulled.episodes, ...watchedEpisodes }
   if (pulled.progress?.length) progress = { ...progress, ...Object.fromEntries(pulled.progress.map((p) => [p.key, p])) }
-  return { ...library, watchlist, history, watchedEpisodes, progress }
+  return { ...library, watchlist, favourites, history, watchedEpisodes, progress }
 }

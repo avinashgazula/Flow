@@ -76,6 +76,9 @@ export interface TraktToken {
 /** The service that keeps watch history, as the apps' TrackerKind. */
 export type TrackerKind = 'trakt' | 'simkl' | 'publicMetaDB' | 'mdblist' | 'local'
 
+/** A place a list can be saved, as the apps' ListDestination (PublicMetaDB and a media server are apps only). */
+export type ListDestination = 'trakt' | 'simkl' | 'mdblist' | 'local'
+
 /** How large a title page's text is set, as the apps' DetailTextSize (Default is the page's own size). */
 export type DetailTextSize = 'small' | 'standard' | 'large' | 'extraLarge'
 
@@ -93,6 +96,15 @@ export interface Settings {
   /** The one service that tracks (Settings → Account → Tracking With). Absent means never chosen: the first sign-in
    *  (Trakt, then Simkl) tracks, as when the apps adopt a sign-in that arrives through Sync. */
   tracker?: TrackerKind
+  /** Where Add to Watchlist and the heart button save (Settings → Account), as the apps' `watchlistDestination` and
+   *  `favouritesDestination`. Absent: the watchlist follows Tracking With, and favourites stay on this device. */
+  watchlistDestination?: ListDestination
+  favouritesDestination?: ListDestination
+  /** How often history syncs by itself, in seconds (the apps' `syncInterval`): 0 is whenever Flow opens or is
+   *  returned to, then 900, 3600, 10800, 43200 or 86400. Absent is three hours. Sync Now always syncs. */
+  syncInterval?: number
+  /** Tell the tracking service what is playing while it plays (the apps' `scrobble`). Absent is on. */
+  scrobble?: boolean
   /** Sample data: every screen fills without keys or accounts. */
   demo: boolean
   onboarded: boolean

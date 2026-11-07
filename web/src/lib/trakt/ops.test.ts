@@ -16,6 +16,8 @@ function fakeApi(fail: Record<string, TraktError> = {}, playback: Resume[] = [])
     api: {
       addToWatchlist: call('addToWatchlist'),
       removeFromWatchlist: call('removeFromWatchlist'),
+      addToFavourites: call('addToFavourites'),
+      removeFromFavourites: call('removeFromFavourites'),
       addHistory: call('addHistory'),
       removeHistory: call('removeHistory'),
       rate: call('rate'),
@@ -100,5 +102,32 @@ describe('sending changes', () => {
       },
     }
     await expect(flushOps(api, ops)).rejects.toThrow('bug')
+  })
+})
+
+describe('favourites', () => {
+  const favs: Op[] = [
+    { kind: 'favourite', type: 'movie', id: 1, on: true },
+    { kind: 'favourite', type: 'show', id: 2, on: false },
+  ]
+
+  it('go to the favourites list in their own requests, apart from the watchlist', async () => {
+    const trakt = fakeApi()
+    const out = await flushOps(trakt.api, [...favs, { kind: 'watchlist', type: 'movie', id: 3, on: true }])
+    expect(out.remaining).toEqual([])
+    expect(trakt.calls).toEqual([
+      ['addToWatchlist', [{ type: 'movie', id: 3 }]],
+      ['addToFavourites', [{ type: 'movie', id: 1 }]],
+      ['removeFromFavourites', [{ type: 'show', id: 2 }]],
+    ])
+  })
+
+  it('wait for a failure that will pass, and are dropped when refused', async () => {
+    const down = fakeApi({ addToFavourites: new TraktError('Couldn’t reach Trakt. Check your connection.', 'network') })
+    expect((await flushOps(down.api, favs)).remaining).toEqual(favs)
+    const refused = fakeApi({ addToFavourites: new TraktError('no', 'rejected', 420) })
+    const out = await flushOps(refused.api, favs)
+    expect(out.remaining).toEqual([])
+    expect(out.dropped?.kind).toBe('rejected')
   })
 })
