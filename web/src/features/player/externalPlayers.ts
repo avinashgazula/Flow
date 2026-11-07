@@ -84,3 +84,19 @@ export function launchURL(id: ExternalPlayerId, stream: string, options: { posit
   if (id === 'none') return undefined
   return players[id].link({ raw: stream, encoded: encodeURIComponent(stream) }, options)
 }
+
+/** With MKV Files set to External Player, the link that hands an MKV the page would remux to the chosen app, with the resume
+ *  point where it takes one. Undefined means play it in Flow: another kind of file, no app chosen, none that runs on this
+ *  device, or an address an app couldn't fetch on its own (the apps fall back to their own player in the same cases). */
+export function matroskaHandOff(
+  source: Pick<Source, 'url' | 'headers' | 'engine' | 'filename'>,
+  matroskaPlayback: 'remux' | 'external' | undefined,
+  player: ExternalPlayerId | undefined,
+  platform: DevicePlatform | undefined,
+  position?: number,
+): string | undefined {
+  if (matroskaPlayback !== 'external' || source.engine !== 'remux' || !player || player === 'none' || !platform) return undefined
+  if (!players[player].platforms.includes(platform)) return undefined
+  const address = streamLink(source, platform)
+  return address ? launchURL(player, address, { position: position && position > 30 ? position : undefined, filename: source.filename }) : undefined
+}

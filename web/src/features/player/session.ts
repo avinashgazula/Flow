@@ -165,4 +165,11 @@ export const titleChoices = {
   set(key: string, patch: TitleChoice) {
     write(choicesKey, mergeChoice(read<TitleChoices>(choicesKey, {}), key, patch))
   },
+  /** Settings' Forget Remembered Tracks: what was picked by hand for every show. */
+  forgetShows() {
+    const all = read<TitleChoices>(choicesKey, {})
+    write(choicesKey, Object.fromEntries(Object.entries(all).filter(([key]) => !key.startsWith('show:'))))
+  },
+  /** How many shows have a remembered pick. */
+  showCount: (): number => Object.keys(read<TitleChoices>(choicesKey, {})).filter((key) => key.startsWith('show:')).length,
 }

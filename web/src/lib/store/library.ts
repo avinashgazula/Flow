@@ -1,5 +1,6 @@
 import type { MediaItem, MediaType } from '../tmdb/types'
 import { createStore, useStore } from './createStore'
+import { settingsStore } from './settings'
 
 export const mediaKey = (type: MediaType, id: number) => `${type}:${id}`
 
@@ -61,7 +62,10 @@ export const useLibrary = <S,>(selector: (l: Library) => S) => useStore(libraryS
 
 /** Below this a title hasn't really been started; above the credits threshold it's finished. */
 const startedAfter = 30
-const finishedAt = 0.92
+
+/** The share of a title that counts it as watched: Settings' Mark Watched At (80, 85, 90 or 95 percent), 90 as in the apps. */
+export const watchedChoices = [80, 85, 90, 95] as const
+export const watchedFraction = (percent: number | undefined): number => (watchedChoices.includes(percent as 90) ? (percent as number) : 90) / 100
 
 export const library = {
   toggleWatchlist(item: MediaItem) {
@@ -84,7 +88,7 @@ export const library = {
   saveProgress(item: MediaItem, position: number, duration: number, episode?: Progress['episode']) {
     if (!Number.isFinite(duration) || duration <= 0 || position < startedAfter) return
     const key = mediaKey(item.type, item.id)
-    if (position / duration >= finishedAt) {
+    if (position / duration >= watchedFraction(settingsStore.get().watchedThresholdPercent)) {
       library.markWatched(item, episode, minutesOf(duration))
       return
     }

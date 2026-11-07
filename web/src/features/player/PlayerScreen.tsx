@@ -22,6 +22,7 @@ import { NoSoundNotice } from './NoSound'
 import { PlaybackInfo } from './PlaybackInfo'
 import { FilmExtras } from './FilmExtras'
 import { PictureSubtitles } from './PictureSubtitles'
+import { currentConnection, overLimit, playbackPreferences, resolutionLimit } from './preferences'
 import { Buffering, FeedbackFlash, Notes, SubtitleOverlay, TapLayer } from './Overlays'
 import { demoSegments, segmentsFromChapters, type SkipSegment } from './segments'
 import { lookupSegments } from './segmentSources'
@@ -29,6 +30,7 @@ import { lastSources, matchSource, nextEpisode, nextSource, resolutionHeight, re
 import { Skip } from './Skip'
 import { StillWatchingPrompt } from './StillWatchingPrompt'
 import type { StillWatching } from './stillWatching'
+import { detectPlatform, matroskaHandOff } from './externalPlayers'
 import { StruggleNotice } from './Struggle'
 import { UpNext } from './UpNext'
 import { useServerReport } from './useServerReport'
@@ -96,6 +98,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   const current: Episode | undefined = seasonEpisodes?.find((e) => e.number === episode)
   const next = epRef ? nextEpisode(epRef, seasonEpisodes, nextSeasonEpisodes) : undefined
   const autoplayNext = useSettings((st) => st.autoplayNext)
+  const showProgress = useSettings((st) => st.showLoadingProgress !== false)
 
   useEffect(warmEngines, [])
 
@@ -202,6 +205,18 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     library.saveProgress(it, position.current, length.current, ep && { ...ep, name: cur?.name, still: cur?.still })
   }
 
+  /** Hands an MKV to the external player when Settings say so and an app can take the link; false plays it in Flow, as the
+   *  apps do when the hand-off isn't possible. The page then closes: playback continues in the other app. */
+  const handOff = (next: Source, position?: number): boolean => {
+    const { matroskaPlayback, externalPlayer } = settingsStore.get()
+    const url = matroskaHandOff(next, matroskaPlayback, externalPlayer, detectPlatform(navigator.userAgent, navigator.maxTouchPoints), position)
+    if (!url) return false
+    window.location.href = url
+    // A moment for the system to take the link before this page steps back to the title.
+    window.setTimeout(close, 700)
+    return true
+  }
+
   const start = (next: Source, at?: number) => {
     tried.current.add(next.id)
     let from = at
@@ -212,9 +227,12 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
       const resume = resumePosition(saved, epRef, settingsStore.get().trackOnlyWithTracker ? undefined : next.serverPosition)
       if (resume) {
         from = resume
-        setResumeAt(resume)
+        // Ask Before Resuming off: the place is taken up without the question.
+        if (playbackPreferences(settingsStore.get()).askToResume) setResumeAt(resume)
       }
     }
+    // MKV Files set to External Player: the first source of a screen goes to the app instead, where it can be handed over.
+    if (at === undefined && !started.current && handOff(next, from)) return
     startAt.current = from
     setError(null)
     setPicker(false)
@@ -277,9 +295,9 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   }
 
   const fail = (err: PlaybackError) => {
-    if (!started.current) {
-      // Nothing has played yet: move on to the next source quietly, as the apps do. Sources marked
-      // unsupported are left for the viewer to choose: they'd only fail the same way, or play silent.
+    if (!started.current && settingsStore.get().tryNextSourceOnFailure !== false) {
+      // Nothing has played yet: move on to the next source quietly, as the apps do (Try the Next Source Automatically).
+      // Sources marked unsupported are left for the viewer to choose: they'd only fail the same way, or play silent.
       const candidate = nextSource(latest.current.sources, latest.current.source ?? undefined, tried.current, { playableOnly: true })
       if (candidate) {
         start(candidate, startAt.current)
@@ -306,7 +324,11 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     // picker's record of the title, which also seeds sample data.
     const recorded = remember ? lastSourceStore.get().byTitle[key] : undefined
     const sameEpisode = !epRef || (remembered?.episode?.season === epRef.season && remembered.episode.episode === epRef.episode)
-    const direct = sourceId ? (remembered?.source.id === sourceId ? remembered.source : undefined) : sameEpisode ? remembered?.source : undefined
+    const rememberedHere = sourceId ? (remembered?.source.id === sourceId ? remembered.source : undefined) : sameEpisode ? remembered?.source : undefined
+    // Resolution on Cellular: on Data Saver or a slow link a remembered source taller than the cap isn't started as it is;
+    // the list is searched for one under it. A source named in the address is the viewer's own choice and stands.
+    const limit = resolutionLimit(settingsStore.get().cellularResolutionCap, currentConnection())
+    const direct = rememberedHere && (sourceId || !overLimit(rememberedHere.resolution, limit)) ? rememberedHere : undefined
     if (direct) {
       start(direct)
       return () => abort.abort()
@@ -320,7 +342,9 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
         const list = full ? await findSources(requestFor(full, type, epRef), { signal: abort.signal }).catch(() => []) : []
         if (abort.signal.aborted) return
         setSources(list)
-        const found = sourceId ? list.find((x) => x.id === sourceId) : (remembered ? matchSource(remembered.source, list) : undefined) ?? matchLastSource(recorded, list)
+        const matched = sourceId ? list.find((x) => x.id === sourceId) : (remembered ? matchSource(remembered.source, list) : undefined) ?? matchLastSource(recorded, list)
+        const capped = !sourceId && overLimit(matched?.resolution, limit)
+        const found = capped ? nextSource(list, undefined, new Set(), { best: true, playableOnly: true, below: (limit ?? 0) + 1 }) : matched
         if (found) {
           start(found)
           return
@@ -565,8 +589,8 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     const handlers: [MediaSessionAction, MediaSessionActionHandler | null][] = [
       ['play', () => controller.play()],
       ['pause', () => controller.pause()],
-      ['seekbackward', (d) => (binge.noteInteraction(), controller.seekBy(-(d.seekOffset ?? 10)))],
-      ['seekforward', (d) => (binge.noteInteraction(), controller.seekBy(d.seekOffset ?? 10))],
+      ['seekbackward', (d) => (binge.noteInteraction(), controller.seekBy(-(d.seekOffset ?? playbackPreferences(settingsStore.get()).seekBack)))],
+      ['seekforward', (d) => (binge.noteInteraction(), controller.seekBy(d.seekOffset ?? playbackPreferences(settingsStore.get()).seekForward))],
       ['seekto', (d) => d.seekTime !== undefined && (binge.noteInteraction(), controller.seekTo(d.seekTime))],
       ['nexttrack', next ? () => (binge.noteInteraction(), playEpisode(next)) : null],
     ]
@@ -635,15 +659,13 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
           break
         case 'ArrowLeft':
         case 'j':
-          c.seekBy(-10)
-          c.flash('back10')
+          c.skip(-1)
           c.poke()
           c.peek(c.currentTime())
           break
         case 'ArrowRight':
         case 'l':
-          c.seekBy(10)
-          c.flash('forward10')
+          c.skip(1)
           c.poke()
           c.peek(c.currentTime())
           break
@@ -814,7 +836,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
               : [phase === 'finding' ? 'Finding a source' : 'Choose a source']
           }
           sourceKey={source ? `${source.id}#${attempt}` : undefined}
-          progress={phase === 'connecting' || phase === 'playing' ? progress : phase === 'finding' ? 'idle' : undefined}
+          progress={!showProgress ? undefined : phase === 'connecting' || phase === 'playing' ? progress : phase === 'finding' ? 'idle' : undefined}
           resumeAt={resumeAt}
           leaving={phase === 'playing'}
           onResume={() => answerResume(true)}

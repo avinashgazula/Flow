@@ -16,6 +16,7 @@ import type { ClearKind, Clearance } from './clearance'
 import { animeRule, audioLanguagesFor, decideSubtitle, isAnime, isForced, pickAudio, pickSubtitle, releaseLanguage, trackLanguage } from './languages'
 import { detectPlatform, launchURL, streamLink, externalPlayerTitle, type ExternalPlayerId } from './externalPlayers'
 import { planReplay, replayDone, replaySeconds } from './replay'
+import { playbackPreferences, remembersChoices } from './preferences'
 import { prefs, titleChoices } from './session'
 import type { Chapter, SkipSegment } from './segments'
 import { sleepDoneNotice, sleepSetNotice, sleepTimer, type SleepChoice } from './sleepTimer'
@@ -56,6 +57,8 @@ export interface Feedback {
   id: number
   icon: FeedbackIcon
   text?: string
+  /** The seconds a back or forward skip moved, for the number inside its arrow (Settings → Skip Back, Skip Forward). Ten when absent. */
+  seconds?: number
   /** Double-tap skips flash at the side that was tapped, as in the apps. */
   side?: 'left' | 'right'
 }
@@ -352,7 +355,7 @@ export class PlayerController {
   setContext(key: string, original?: string) {
     const late = original !== this.context.original
     this.context = { key, original }
-    this.set({ subtitleDelay: rememberedDelay(key) })
+    this.set({ subtitleDelay: rememberedDelay(key, settingsStore.get().defaultSubtitleOffset) })
     if (late && this.engine && !this.manual.audio) {
       this.applied = { audio: false }
       this.applyPreferences()
@@ -392,6 +395,9 @@ export class PlayerController {
     this.applyPreferences()
   }
 
+  /** Whether a hand-picked track is kept for this title: always for a film, for a show unless Remember Tracks for Each Show is off. */
+  private remembers = (): boolean => !!this.context.key && remembersChoices(this.context.key, settingsStore.get().rememberTracksPerShow)
+
   /** Audio and subtitles for the start: the viewer's pick for this title if there is one, else
    *  Settings → Playback (see languages.ts). Runs as tracks appear, since some engines list them late. */
   private applyPreferences() {
@@ -400,7 +406,7 @@ export class PlayerController {
     const options = normaliseSubtitleOptions(settings.subtitleOptions)
     // Anime Audio: Sub tries Japanese audio first and always shows subtitles; Dub shows none.
     const rule = animeRule(this.anime, options.animeAudio)
-    const choice = this.context.key ? titleChoices.get(this.context.key) : undefined
+    const choice = this.remembers() ? titleChoices.get(this.context.key!) : undefined
     let heard = audio.find((t) => t.id === audioId)
     if (!this.applied.audio && !this.manual.audio && audio.length > 0) {
       this.applied.audio = true
@@ -447,6 +453,15 @@ export class PlayerController {
     else if (this.video) this.video.currentTime = target
   }
   seekBy = (delta: number) => this.seekTo(this.currentTime() + delta)
+
+  /** The Back and Forward buttons, double-tap and arrow keys: Skip Back or Skip Forward seconds from Settings, with the flash
+   *  that says so. `side` is where a double-tap landed. */
+  skip(direction: -1 | 1, side?: Feedback['side']) {
+    const { seekBack, seekForward } = playbackPreferences(settingsStore.get())
+    const seconds = direction < 0 ? seekBack : seekForward
+    this.seekBy(direction * seconds)
+    this.flash(direction < 0 ? 'back10' : 'forward10', side ? `${seconds} seconds` : undefined, side, seconds)
+  }
 
   /** Shows the seek preview at `time` for a moment, for seeks that aren't made on the scrubber (the arrow keys). */
   peek(time: number) {
@@ -696,7 +711,7 @@ export class PlayerController {
     if (remember) {
       this.manual.audio = true
       const language = track && trackLanguage(track)
-      if (this.context.key && language) titleChoices.set(this.context.key, { audio: language })
+      if (this.remembers() && language) titleChoices.set(this.context.key!, { audio: language })
     }
     // Subtitles follow what's heard (Foreign Audio Only), unless they were chosen by hand too.
     this.applyPreferences()
@@ -711,7 +726,7 @@ export class PlayerController {
     this.set({ subtitleId: id, subtitleTrack: null, picture: null })
     if (remember) {
       this.manual.subtitles = true
-      if (this.context.key) titleChoices.set(this.context.key, { subtitle: id ? info && trackLanguage(info) : null })
+      if (this.remembers()) titleChoices.set(this.context.key!, { subtitle: id ? info && trackLanguage(info) : null })
     }
     if (!id) {
       await this.engine?.selectSubtitle(null)
@@ -1040,8 +1055,8 @@ export class PlayerController {
     this.feedbackListeners.add(listener)
     return () => void this.feedbackListeners.delete(listener)
   }
-  flash(icon: FeedbackIcon, text?: string, side?: Feedback['side']) {
-    const f = { id: ++this.feedbackId, icon, text, side }
+  flash(icon: FeedbackIcon, text?: string, side?: Feedback['side'], seconds?: number) {
+    const f = { id: ++this.feedbackId, icon, text, side, seconds }
     this.feedbackListeners.forEach((l) => l(f))
   }
 

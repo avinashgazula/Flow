@@ -179,6 +179,31 @@ export interface Settings {
   volumeBoostDB?: number
   /** The app "Open in" leads with in the player's options. It is never opened by itself: a web page can't tell whether the app is installed. */
   externalPlayer?: ExternalPlayerId
+  // Resume, seeking and failing over (Settings → Playback → Resume & Progress and Formats). Absent means the apps' default,
+  // noted on each; features/player/preferences.ts reads them.
+  /** Ask Resume or Start Over before playing from a saved place (the apps' `askToResume`). Absent is on; off resumes quietly. */
+  askToResume?: boolean
+  /** Played this far, a title counts as watched (`watchedThresholdPercent`): 80, 85, 90 or 95. Absent is 90. */
+  watchedThresholdPercent?: number
+  /** The Back and Forward buttons, double-tap and arrow keys (`seekBackwardSeconds`, `seekForwardSeconds`): 5, 10, 15 or 30. Absent is 10. */
+  seekBackwardSeconds?: number
+  seekForwardSeconds?: number
+  /** Seconds on Up Next's countdown (`nextEpisodeCountdownSeconds`): 5, 10, 15, 20 or 30. Absent is 10. */
+  nextEpisodeCountdownSeconds?: number
+  /** A show starts every episode with the audio and subtitle languages picked in its first (`rememberTracksPerShow`). Absent is on. */
+  rememberTracksPerShow?: boolean
+  /** A source that fails to start gives way to the next one without asking (`tryNextSourceOnFailure`). Absent is on. */
+  tryNextSourceOnFailure?: boolean
+  /** The progress bar on the loading screen (`showLoadingProgress`). Absent is on. */
+  showLoadingProgress?: boolean
+  /** MKV files play in Flow, or are handed to the external player above (`matroskaPlayback`). Absent is in Flow. */
+  matroskaPlayback?: 'remux' | 'external'
+  /** Decode DTS and Dolby TrueHD while playing (`decodeLosslessAudio`). Absent is on. */
+  decodeLosslessAudio?: boolean
+  /** The tallest picture picked for you while the browser reports Data Saver or a slow connection (`cellularResolutionCap`). Absent is no cap. */
+  cellularResolutionCap?: CellularCap
+  /** Subtitle Sync Offset: where every title's subtitle delay starts, in seconds (`subtitles.defaultOffsetSeconds`). Absent is none. */
+  defaultSubtitleOffset?: number
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
   /** The picker offers the source a title was last played from first. */
   rememberLastSource: boolean
@@ -230,6 +255,9 @@ export interface Settings {
   showWatchedBadges: boolean
   showEpisodesRemaining: boolean
 }
+
+/** The pictures Resolution on Cellular can cap at, as heights in the names the sources use. */
+export type CellularCap = '2160p' | '1440p' | '1080p' | '720p' | '480p'
 
 const browserLanguage = typeof navigator === 'undefined' ? 'en-US' : navigator.language || 'en-US'
 

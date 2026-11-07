@@ -105,7 +105,7 @@ export function FeedbackFlash({ controller }: { controller: PlayerController }) 
   if (!flash) return null
   const glyph =
     flash.icon === 'back10' || flash.icon === 'forward10' ? (
-      <SkipGlyph forward={flash.icon === 'forward10'} size={flash.side ? 30 : 38} />
+      <SkipGlyph forward={flash.icon === 'forward10'} size={flash.side ? 30 : 38} seconds={flash.seconds} />
     ) : (
       <Icon name={flash.icon} size={34} strokeWidth={2.2} />
     )
@@ -234,8 +234,7 @@ export function TapLayer({ controller }: { controller: PlayerController }) {
         const now = performance.now()
         if (now - lastTap.current.at < 320 && lastTap.current.side === side) {
           clearTimeout(single.current)
-          controller.seekBy(side === 'left' ? -10 : 10)
-          controller.flash(side === 'left' ? 'back10' : 'forward10', '10 seconds', side)
+          controller.skip(side === 'left' ? -1 : 1, side)
           // Further taps on the same side keep skipping, as long as they come quickly.
           lastTap.current = { at: now, side }
           return

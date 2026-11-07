@@ -51,11 +51,16 @@ export function activeCueText(cues: ArrayLike<CueLike>, time: number, delay: num
 
 const remembered = new Map<string, number>()
 
-/** The delay set for a title (a show counts once) earlier in this visit; none means no delay. */
-export const rememberedDelay = (key: string | undefined): number => (key ? (remembered.get(key) ?? 0) : 0)
+/** The delay set for a title (a show counts once) earlier in this visit, else Settings' Sync Offset (`fallback`), else none.
+ *  A title put back to none stays at none even when the Sync Offset isn't. */
+export const rememberedDelay = (key: string | undefined, fallback = 0): number => (key && remembered.has(key) ? remembered.get(key)! : clampDelay(fallback))
 
 export function rememberDelay(key: string | undefined, seconds: number) {
-  if (!key) return
-  if (seconds === 0) remembered.delete(key)
-  else remembered.set(key, seconds)
+  if (key) remembered.set(key, seconds)
 }
+
+/** The Sync Offset choices: from 5 seconds early to 5 late in half seconds, as the apps' picker. */
+export const offsetChoices: number[] = Array.from({ length: 21 }, (_, i) => (i - 10) / 2)
+
+/** "None", else "+1.5 s" (the apps' Sync Offset labels). */
+export const offsetLabel = (seconds: number): string => (seconds === 0 ? 'None' : delayLabel(seconds))

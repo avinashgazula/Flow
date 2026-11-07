@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { library, libraryStore, mediaKey } from './library'
+import { library, libraryStore, mediaKey, watchedFraction } from './library'
+import { settingsStore } from './settings'
 import { titleLibrary } from './titleLibrary'
 import type { MediaItem } from '../tmdb/types'
 
@@ -24,6 +25,20 @@ describe('Library', () => {
     library.saveProgress(film, 8500, 9000)
     expect(libraryStore.get().progress).toEqual({})
     expect(libraryStore.get().history[0]?.key).toBe('movie:155')
+  })
+
+  it('counts a title as watched at Mark Watched At, 90 percent unless set', () => {
+    expect(watchedFraction(undefined)).toBe(0.9)
+    expect(watchedFraction(95)).toBe(0.95)
+    expect(watchedFraction(70)).toBe(0.9)
+    settingsStore.set({ watchedThresholdPercent: 95 })
+    library.saveProgress(film, 8500, 9000)
+    expect(libraryStore.get().history).toEqual([])
+    expect(libraryStore.get().progress[mediaKey('movie', 155)]?.position).toBe(8500)
+    settingsStore.set({ watchedThresholdPercent: 80 })
+    library.saveProgress(film, 7300, 9000)
+    expect(libraryStore.get().history[0]?.key).toBe('movie:155')
+    settingsStore.set({ watchedThresholdPercent: undefined })
   })
 
   it('marks a finished episode watched', () => {

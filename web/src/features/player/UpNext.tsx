@@ -5,28 +5,31 @@ import type { Episode } from '../../lib/tmdb/types'
 import { useSettings } from '../../lib/store/settings'
 import { usePlayer, type PlayerController } from './controller'
 import { keepFocus } from './Controls'
+import { playbackPreferences } from './preferences'
 import { creditsStart } from './segments'
 import s from './Controls.module.css'
 
-const countdownFrom = 10
+/** The countdown's length when Settings don't say (the apps' `nextEpisodeCountdownSeconds`). */
+const defaultCountdown = 10
 /** How close to the end the card comes up, without a credits segment to go on. */
 const tail = 30
 
 /** When the card comes up for an episode `duration` long: as the credits begin when a segment says where, else
  *  in the last 30 seconds. With `waitsForEnd` ("Wait for the Episode to End") it comes up just early enough for
- *  its countdown to finish as the episode does, whatever the credits say. Undefined while the length isn't known
- *  (or is too short for any of these). */
-export function upNextDueAt(duration: number, creditsAt: number | undefined, waitsForEnd = false): number | undefined {
+ *  its countdown (`countdown` seconds) to finish as the episode does, whatever the credits say. Without credits, a
+ *  countdown longer than the last 30 seconds starts early enough to run out as the episode does. Undefined while the
+ *  length isn't known (or is too short for any of these). */
+export function upNextDueAt(duration: number, creditsAt: number | undefined, waitsForEnd = false, countdown = defaultCountdown): number | undefined {
   if (Number.isNaN(duration)) return undefined
-  if (waitsForEnd) return duration > tail ? duration - countdownFrom - 1 : undefined
+  if (waitsForEnd) return duration > tail ? duration - countdown - 1 : undefined
   if (creditsAt !== undefined) return duration > tail ? creditsAt : undefined
-  return duration > 60 ? duration - tail : undefined
+  return duration > 60 ? duration - Math.max(tail, countdown) : undefined
 }
 
 /** The seconds on the countdown when it runs to the end of the episode: what is left of it, never more than the
  *  countdown's length. It is read from the picture's clock, so it ends with the episode however playback goes
  *  (paused, slowed down, skipped about). */
-export const secondsToEnd = (duration: number, time: number): number => Math.max(0, Math.min(countdownFrom, Math.ceil(duration - time)))
+export const secondsToEnd = (duration: number, time: number, countdown = defaultCountdown): number => Math.max(0, Math.min(countdown, Math.ceil(duration - time)))
 
 /** The next episode's still and name, with a "Next Episode" button and a strip whose perforations empty as the
  *  countdown runs. It comes up as the credits begin (or in the last 30 seconds), and goes on by itself when the
@@ -36,6 +39,11 @@ export const secondsToEnd = (duration: number, time: number): number => Math.max
 export function UpNext({ controller, next, autoplay, fallbackStill, onPlay }: { controller: PlayerController; next: Episode; autoplay: boolean; fallbackStill?: string; onPlay: (automatic: boolean) => void }) {
   const segments = usePlayer(controller, (st) => st.segments)
   const waits = useSettings((st) => st.upNextWaitsForEnd)
+  const countdownFrom = useSettings((st) => playbackPreferences(st).countdown)
+  const countdownRef = useRef(countdownFrom)
+  useEffect(() => {
+    countdownRef.current = countdownFrom
+  }, [countdownFrom])
   const sleeping = usePlayer(controller, (st) => st.sleep === 'end')
   const waitsRef = useRef(waits)
   useEffect(() => {
@@ -57,15 +65,15 @@ export function UpNext({ controller, next, autoplay, fallbackStill, onPlay }: { 
     if (!video) return
     const check = () => {
       const d = controller.duration()
-      const at = upNextDueAt(d, creditsStart(segmentsRef.current, d), waitsRef.current)
+      const at = upNextDueAt(d, creditsStart(segmentsRef.current, d), waitsRef.current, countdownRef.current)
       const now = at !== undefined && video.currentTime >= at
       if (now !== dueRef.current) {
         dueRef.current = now
         setDue(now)
-        if (!now) setLeft(countdownFrom)
+        if (!now) setLeft(countdownRef.current)
       }
       // Running to the end of the episode, the count is what is left of it.
-      if (now && waitsRef.current) setLeft(secondsToEnd(d, video.currentTime))
+      if (now && waitsRef.current) setLeft(secondsToEnd(d, video.currentTime, countdownRef.current))
     }
     const ended = () => {
       if (autoplay && !dismissed) onPlay(true)

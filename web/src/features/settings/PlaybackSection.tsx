@@ -1,13 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { proxyProblem } from '../../lib/sources/proxy'
 import { settingsStore, useSettings, type Settings, type SkipBehaviour, type SubtitleMode } from '../../lib/store/settings'
-import { Group, Note, Row, Select, Switch } from './controls'
+import { ConfirmButton, Group, Note, Row, Select, Switch } from './controls'
 import { LearnMore } from './LearnMore'
 import { SubtitleServicesGroup } from './SubtitleServicesGroup'
 import { SubtitleStyleGroup } from './SubtitleStyleGroup'
 import { animeAudios, normaliseSubtitleOptions, subtitleTypes } from '../../lib/subtitles/options'
 import { audioChoices, subtitleChoices, withCurrent } from './options'
 import { detectPlatform, externalPlayerTitle, playersFor } from '../player/externalPlayers'
+import { cellularChoices, countdownChoices, currentConnection, playbackPreferences, seekChoices, watchedChoices } from '../player/preferences'
+import { titleChoices } from '../player/session'
+import { offsetChoices, offsetLabel } from '../player/subtitleDelay'
 import s from './SettingsScreen.module.css'
 
 const qualities: { value: Settings['preferredQuality']; label: string }[] = [
@@ -168,6 +171,37 @@ const subtitleModes: { value: SubtitleMode; label: string }[] = [
   { value: 'off', label: 'Off' },
 ]
 
+const secondsChoice = (n: number) => ({ value: String(n), label: `${n}s` })
+const seekOptions = seekChoices.map(secondsChoice)
+const countdownOptions = countdownChoices.map((n) => ({ value: String(n), label: `${n} seconds` }))
+const watchedOptions = watchedChoices.map((n) => ({ value: String(n), label: `${n}%` }))
+const offsetOptions = (current: number) => (offsetChoices.includes(current) ? offsetChoices : [...offsetChoices, current].sort((a, b) => a - b)).map((n) => ({ value: String(n), label: offsetLabel(n) }))
+
+/** Remember Tracks for Each Show, and the button that forgets what it kept. The picks live on this device, so the
+ *  count is read when the section opens and again after forgetting. */
+function RememberedTracks() {
+  const remember = useSettings((x) => x.rememberTracksPerShow !== false)
+  const [shows, setShows] = useState(() => titleChoices.showCount())
+  return (
+    <Group footer="Pick Japanese audio and English subtitles once, and the rest of the show starts that way. They are kept on this device.">
+      <Row label="Remember Tracks for Each Show">
+        <Switch label="Remember tracks for each show" checked={remember} onChange={(on) => settingsStore.set({ rememberTracksPerShow: on })} />
+      </Row>
+      <Row label="Forget Remembered Tracks" detail={shows === 0 ? 'No shows remembered' : shows === 1 ? '1 show' : `${shows} shows`}>
+        <ConfirmButton
+          label="Forget"
+          confirm="Forget All"
+          disabled={shows === 0}
+          onConfirm={() => {
+            titleChoices.forgetShows()
+            setShows(0)
+          }}
+        />
+      </Row>
+    </Group>
+  )
+}
+
 export function PlaybackSection() {
   const quality = useSettings((x) => x.preferredQuality)
   const audioLanguages = useSettings((x) => x.audioLanguages)
@@ -189,6 +223,20 @@ export function PlaybackSection() {
   const becauseYouWatched = useSettings((x) => x.becauseYouWatched !== false)
   const xrayWhenPaused = useSettings((x) => x.xrayWhenPaused !== false)
   const externalPlayer = useSettings((x) => x.externalPlayer ?? 'none')
+  // One primitive each: a selector that built an object would be a new snapshot every time.
+  const askToResume = useSettings((x) => playbackPreferences(x).askToResume)
+  const watchedAt = useSettings((x) => Math.round(playbackPreferences(x).watchedAt * 100))
+  const seekBack = useSettings((x) => playbackPreferences(x).seekBack)
+  const seekForward = useSettings((x) => playbackPreferences(x).seekForward)
+  const countdown = useSettings((x) => playbackPreferences(x).countdown)
+  const showProgress = useSettings((x) => x.showLoadingProgress !== false)
+  const tryNext = useSettings((x) => x.tryNextSourceOnFailure !== false)
+  const decodeLossless = useSettings((x) => x.decodeLosslessAudio !== false)
+  const matroska = useSettings((x) => x.matroskaPlayback ?? 'remux')
+  const cellular = useSettings((x) => x.cellularResolutionCap ?? '2160p')
+  const syncOffset = useSettings((x) => x.defaultSubtitleOffset ?? 0)
+  // The Network Information API is Chromium's alone; elsewhere there is nothing to tell a metered link by.
+  const hasConnection = currentConnection() !== undefined
   // The apps exist on iPhone, iPad and Mac only; elsewhere the setting would have nothing to choose.
   const platform = typeof navigator === 'undefined' ? undefined : detectPlatform(navigator.userAgent, navigator.maxTouchPoints)
   const audioFirst = audioLanguages[0] ?? ''
@@ -204,10 +252,17 @@ export function PlaybackSection() {
 
   return (
     <>
-      <Group footer="The picker puts this resolution first when a title has it, then the next best. Anything this browser can’t play is marked and never chosen for you.">
+      <Group
+        footer={`The picker puts this resolution first when a title has it, then the next best. Anything this browser can’t play is marked and never chosen for you.${hasConnection ? ' Resolution on Cellular applies instead when the browser reports Data Saver or a slow connection: Flow then starts a source no taller than that, and the picker still lists the rest.' : ''}`}
+      >
         <Row label="Preferred Quality" htmlFor="quality">
           <Select id="quality" label="Preferred quality" value={quality} onChange={(v) => settingsStore.set({ preferredQuality: v })} options={qualities} />
         </Row>
+        {hasConnection && (
+          <Row label="Resolution on Cellular" htmlFor="cellular-cap">
+            <Select id="cellular-cap" label="Resolution on cellular" value={cellular} onChange={(v) => settingsStore.set({ cellularResolutionCap: v })} options={cellularChoices} />
+          </Row>
+        )}
         <Row label="HDR When Available" detail="Rank HDR releases first on an HDR screen">
           <Switch label="HDR when available" checked={preferHDR} onChange={(on) => settingsStore.set({ preferHDR: on })} />
         </Row>
@@ -223,7 +278,12 @@ export function PlaybackSection() {
           <Switch label="Never use Dolby Vision" checked={neverDolbyVision} onChange={(on) => settingsStore.set({ neverUseDolbyVision: on })} />
         </Row>
       </Group>
-      <Group footer="Flow starts each title on the first of these it has, and never on commentary. A track you choose in the player is remembered for that title or show.">
+      <Group title="Loading Screen">
+        <Row label="Show Progress Bar">
+          <Switch label="Show progress bar" checked={showProgress} onChange={(on) => settingsStore.set({ showLoadingProgress: on })} />
+        </Row>
+      </Group>
+      <Group footer="Flow starts each title on the first of these it has, and never on commentary. A track you choose in the player is remembered for that film, and for that show unless Remember Tracks for Each Show is off.">
         <Row label="Audio Language" htmlFor="audio-1">
           <Select id="audio-1" label="Audio language" value={audioFirst} onChange={(v) => setAudio(v, v ? audioSecond : '')} options={audioOptions(audioFirst, 'Stream Default')} />
         </Row>
@@ -234,6 +294,7 @@ export function PlaybackSection() {
           <Select id="anime-audio" label="Anime audio" value={extras.animeAudio} onChange={(v) => setExtras({ animeAudio: v })} options={animeAudios} />
         </Row>
       </Group>
+      <RememberedTracks />
       <Group footer="Foreign Audio Only turns subtitles on when the audio isn’t in your Subtitle Language, and shows only forced ones otherwise. Subtitle Type picks SDH (with sound cues and speakers) or standard subtitles where a language has both.">
         <Row label="Show Subtitles" htmlFor="subtitle-mode">
           <Select id="subtitle-mode" label="When to show subtitles" value={subtitleMode} onChange={(v) => settingsStore.set({ subtitleMode: v })} options={subtitleModes} />
@@ -247,6 +308,9 @@ export function PlaybackSection() {
         <Row label="Subtitle Type" htmlFor="subtitle-type">
           <Select id="subtitle-type" label="Subtitle type" value={extras.type} onChange={(v) => setExtras({ type: v })} options={subtitleTypes} />
         </Row>
+        <Row label="Sync Offset" detail="Where every title’s subtitle delay starts" htmlFor="sync-offset">
+          <Select id="sync-offset" label="Subtitle sync offset" value={String(syncOffset)} onChange={(v) => settingsStore.set({ defaultSubtitleOffset: Number(v) })} options={offsetOptions(syncOffset)} />
+        </Row>
       </Group>
       <SubtitleStyleGroup />
       <Group footer="Draws ASS and SSA subtitles the way their author styled them, instead of the style above. It matters mostly for anime, and loads a 1 MB drawing engine the first time one shows. Subtitles inside an MKV keep your style.">
@@ -258,6 +322,9 @@ export function PlaybackSection() {
       <Group footer="The next episode starts after a countdown you can cancel, from where the credits begin or in the last 30 seconds. After the number of episodes you pick with nobody touching anything, Flow asks before the next.">
         <Row label="Autoplay Next Episode">
           <Switch label="Autoplay next episode" checked={autoplay} onChange={(on) => settingsStore.set({ autoplayNext: on })} />
+        </Row>
+        <Row label="Countdown" htmlFor="countdown">
+          <Select id="countdown" label="Up Next countdown" value={String(countdown)} onChange={(v) => settingsStore.set({ nextEpisodeCountdownSeconds: Number(v) })} options={countdownOptions} disabled={!autoplay} />
         </Row>
         <Row label="Wait for the Episode to End">
           <Switch label="Wait for the episode to end" checked={waitsForEnd} onChange={(on) => settingsStore.set({ upNextWaitsForEnd: on })} disabled={!autoplay} />
@@ -271,6 +338,45 @@ export function PlaybackSection() {
             options={stillWatchingChoices.some((c) => c.value === String(stillWatching)) ? stillWatchingChoices : [...stillWatchingChoices, { value: String(stillWatching), label: `After ${stillWatching} Episodes` }]}
           />
         </Row>
+      </Group>
+      <Group title="Resume & Progress" footer="Without the question, a title picks up where you left it. Mark Watched At moves a title to History once this much of it has played.">
+        <Row label="Ask Before Resuming">
+          <Switch label="Ask before resuming" checked={askToResume} onChange={(on) => settingsStore.set({ askToResume: on })} />
+        </Row>
+        <Row label="Mark Watched At" htmlFor="watched-at">
+          <Select id="watched-at" label="Mark watched at" value={String(watchedAt)} onChange={(v) => settingsStore.set({ watchedThresholdPercent: Number(v) })} options={watchedOptions} />
+        </Row>
+        <Row label="Skip Back" htmlFor="skip-back">
+          <Select id="skip-back" label="Skip back" value={String(seekBack)} onChange={(v) => settingsStore.set({ seekBackwardSeconds: Number(v) })} options={seekOptions} />
+        </Row>
+        <Row label="Skip Forward" htmlFor="skip-forward">
+          <Select id="skip-forward" label="Skip forward" value={String(seekForward)} onChange={(v) => settingsStore.set({ seekForwardSeconds: Number(v) })} options={seekOptions} />
+        </Row>
+      </Group>
+      <Group
+        title="Formats"
+        footer={`Flow plays MKV files itself by repackaging them on the fly, without re-encoding. DTS and Dolby TrueHD, which browsers can’t play, are decoded and re-encoded as stereo while you watch where the browser can; with that off those tracks are marked unavailable. When a source won’t start, Flow moves to the next one${platform ? ', or hands an MKV to your external player when MKV Files says so' : ''}.`}
+      >
+        <Row label="Try the Next Source Automatically">
+          <Switch label="Try the next source automatically" checked={tryNext} onChange={(on) => settingsStore.set({ tryNextSourceOnFailure: on })} />
+        </Row>
+        <Row label="Decode DTS and Dolby TrueHD">
+          <Switch label="Decode DTS and Dolby TrueHD" checked={decodeLossless} onChange={(on) => settingsStore.set({ decodeLosslessAudio: on })} />
+        </Row>
+        {platform && (
+          <Row label="MKV Files" htmlFor="mkv-files" detail={externalPlayer === 'none' ? 'Choose an external player below first' : undefined}>
+            <Select
+              id="mkv-files"
+              label="MKV files"
+              value={matroska}
+              onChange={(v) => settingsStore.set({ matroskaPlayback: v })}
+              options={[
+                { value: 'remux', label: 'Play in Flow' },
+                { value: 'external', label: 'External Player' },
+              ]}
+            />
+          </Row>
+        )}
       </Group>
       <Group footer="Segments come from your media server, IntroDB, PublicMetaDB or the file’s chapters. Show Button puts a Skip button over the picture (press Enter or S); Skip Automatically skips as the segment begins and lets you undo it.">
         <Row label="Skip Intro" htmlFor="skip-intro">

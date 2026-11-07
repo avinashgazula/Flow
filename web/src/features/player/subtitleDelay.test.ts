@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeCueText, clampDelay, delayLabel, rememberDelay, rememberedDelay } from './subtitleDelay'
+import { activeCueText, clampDelay, delayLabel, offsetChoices, offsetLabel, rememberDelay, rememberedDelay } from './subtitleDelay'
 
 const cue = (startTime: number, endTime: number, text: string) => ({ startTime, endTime, text })
 
@@ -28,6 +28,26 @@ describe('the delay', () => {
     expect(rememberedDelay('show:1')).toBe(0)
     rememberDelay(undefined, 3)
     expect(rememberedDelay(undefined)).toBe(0)
+  })
+
+  it('starts at Settings’ Sync Offset, which a title’s own choice (even none) overrides', () => {
+    expect(rememberedDelay('movie:7', 1.5)).toBe(1.5)
+    expect(rememberedDelay('movie:7', -0.5)).toBe(-0.5)
+    expect(rememberedDelay('movie:7', 99)).toBe(10)
+    rememberDelay('movie:7', 0)
+    expect(rememberedDelay('movie:7', 1.5)).toBe(0)
+    rememberDelay('movie:7', 2)
+    expect(rememberedDelay('movie:7', 1.5)).toBe(2)
+  })
+
+  it('offers the apps’ Sync Offset choices', () => {
+    expect(offsetChoices[0]).toBe(-5)
+    expect(offsetChoices).toContain(0)
+    expect(offsetChoices.at(-1)).toBe(5)
+    expect(offsetChoices).toHaveLength(21)
+    expect(offsetLabel(0)).toBe('None')
+    expect(offsetLabel(1.5)).toBe('+1.5 s')
+    expect(offsetLabel(-0.5)).toBe('−0.5 s')
   })
 })
 

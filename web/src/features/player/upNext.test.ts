@@ -39,3 +39,22 @@ describe('Wait for the Episode to End', () => {
     expect(secondsToEnd(2700, 2650)).toBe(10)
   })
 })
+
+describe('Countdown seconds', () => {
+  it('moves the card earlier for a countdown longer than the last 30 seconds, and never later', () => {
+    expect(upNextDueAt(2700, undefined, false, 5)).toBe(2670)
+    expect(upNextDueAt(2700, undefined, false, 30)).toBe(2670)
+    expect(upNextDueAt(2700, 2600, false, 30)).toBe(2600)
+  })
+
+  it('starts the wait-for-the-end card a countdown plus a second before the end', () => {
+    expect(upNextDueAt(2700, 2600, true, 5)).toBe(2694)
+    expect(upNextDueAt(2700, 2600, true, 30)).toBe(2669)
+  })
+
+  it('counts what is left of the episode, up to the countdown', () => {
+    expect(secondsToEnd(2700, 2650, 30)).toBe(30)
+    expect(secondsToEnd(2700, 2680.5, 30)).toBe(20)
+    expect(secondsToEnd(2700, 2690, 5)).toBe(5)
+  })
+})
