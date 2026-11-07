@@ -123,12 +123,15 @@ struct SettingsRootView: View {
             if query.isEmpty {
                 if model.isDemo {
                     Section {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Label("You're exploring sample data", systemImage: "sparkles").font(.headline)
+                        VStack(alignment: .leading, spacing: Theme.Space.s) {
+                            Text("You're exploring sample data").font(.headline)
                             Text("Nothing here touches your accounts. Leave the demo to set Flow up with your own sources.")
-                                .font(.footnote).foregroundStyle(.secondary)
+                                .font(Platform.isTV ? .callout : .footnote)
+                                .foregroundStyle(Theme.Palette.textSecondary)
+                            Button("Leave Demo") { model.showSettings = false; model.setDemoMode(false) }
+                                .buttonStyle(GlassButtonStyle(compact: true))
                         }
-                        Button("Leave Demo") { model.showSettings = false; model.setDemoMode(false) }
+                        .padding(.vertical, Theme.Space.xs)
                     }
                 }
                 if let profile = model.profile, model.settings.account.tracker != .local {

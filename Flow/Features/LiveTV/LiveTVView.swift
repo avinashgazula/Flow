@@ -209,13 +209,8 @@ struct LiveTVView: View {
     private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(.subheadline, weight: .semibold))
-                .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs + 1)
-                .frame(minHeight: 44 * Theme.scale)
-                .background(selected ? Theme.Palette.stock : Theme.Palette.control, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
-                .foregroundStyle(selected ? Theme.Palette.onStock : Theme.Palette.text)
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(FilterTabStyle(selected: selected))
     }
 
     private func refresh() {

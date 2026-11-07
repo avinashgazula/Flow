@@ -776,8 +776,47 @@ struct Monogram: View {
     }
 }
 
-/// A capsule action beside a row of filter chips (Filters, Refresh, Guide): how tvOS reaches what
-/// other platforms keep in the navigation bar.
+/// A text tab in a filter row (genres, channel groups, periods): the current one is paper with a stock underline,
+/// the rest are ink-2, so yellow marks selection without a filled pill. On Apple TV the focused tab gets a base-3
+/// plate and a stock ring, so something always reads as focused.
+struct FilterTabStyle: ButtonStyle {
+    var selected: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        FilterTabBody(configuration: configuration, selected: selected)
+    }
+}
+
+private struct FilterTabBody: View {
+    let configuration: ButtonStyleConfiguration
+    let selected: Bool
+    @Environment(\.isFocused) private var focused
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+        configuration.label
+            .font(.system(.subheadline, weight: .semibold))
+            .foregroundStyle(selected || focused ? Theme.Palette.text : Theme.Palette.textSecondary)
+            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs + 1)
+            .frame(minHeight: 44 * Theme.scale)
+            .overlay(alignment: .bottom) {
+                if selected {
+                    Capsule().fill(Theme.Palette.stock)
+                        .frame(height: 2 * Theme.scale)
+                        .padding(.horizontal, Theme.Space.m)
+                }
+            }
+            .background { if focused { shape.fill(Theme.Palette.control) } }
+            .overlay { if focused { shape.strokeBorder(Theme.Palette.stock, lineWidth: 4) } }
+            .contentShape(shape)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(Theme.Motion.snappy, value: configuration.isPressed)
+            .modifier(FocusLift(scale: 1.04))
+    }
+}
+
+/// An action beside a row of filter tabs (Filters, Refresh, Guide): how tvOS reaches what other platforms keep
+/// in the navigation bar. It is a base-3 control, with the selected look only while it is switched on.
 struct ActionChip: View {
     let title: String?
     let systemImage: String
@@ -790,13 +829,8 @@ struct ActionChip: View {
                 Image(systemName: systemImage)
                 if let title { Text(title) }
             }
-            .font(.system(.subheadline, weight: .semibold))
-            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs + 1)
-            .frame(minHeight: 44 * Theme.scale)
-            .foregroundStyle(active ? Theme.Palette.onSpot : Theme.Palette.text)
-            .background(active ? Theme.Palette.spot : Theme.Palette.control, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(FilterTabStyle(selected: active))
         .accessibilityLabel(title ?? "")
     }
 }

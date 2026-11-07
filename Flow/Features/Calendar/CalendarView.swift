@@ -58,6 +58,8 @@ struct CalendarView: View {
         }
         .background(AmbientBackground(url: upcomingDays.first?.entries.first?.item.smallBackdropURL, intensity: 0.55))
         .flowPageTitle("Upcoming", inset: Theme.Space.gutter)
+        // Large like the other tabs on every platform; iPad and Mac otherwise settle on a small centred one.
+        .largeNavigationTitle()
         .task(id: model.contentVersion) {
             let loaded = await model.calendar()
             withAnimation(Theme.Motion.fade) { entries = loaded }

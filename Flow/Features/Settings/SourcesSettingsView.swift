@@ -88,7 +88,7 @@ struct SourcesSettingsView: View {
             }
         }
         #if os(iOS)
-        .toolbar { EditButton() }
+        .toolbar { EditButton().tint(Theme.Palette.text) }
         #endif
     }
 
@@ -285,7 +285,7 @@ struct AddonsSettingsView: View {
             }
         }
         #if os(iOS)
-        .toolbar { EditButton() }
+        .toolbar { EditButton().tint(Theme.Palette.text) }
         #endif
     }
 

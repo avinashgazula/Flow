@@ -299,7 +299,7 @@ struct TopResultCard: View {
                 Button { Task { await model.play(item) } } label: {
                     Label("Play", systemImage: "play.fill").labelStyle(.titleAndIcon)
                 }
-                .buttonStyle(PrimaryButtonStyle(compact: true))
+                .buttonStyle(GlassButtonStyle(compact: true))
                 Button { Task { await model.toggleWatchlist(item) } } label: {
                     Image(systemName: model.isWatchlisted(item) ? "checkmark" : "plus")
                         .contentTransition(.symbolEffect(.replace))

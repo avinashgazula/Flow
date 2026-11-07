@@ -491,6 +491,17 @@ extension View {
         #endif
     }
 
+    /// Apple TV settings lists: Title Case section titles like iOS (the system capitalises them). tvOS has no
+    /// row or section spacing modifiers.
+    @ViewBuilder
+    fileprivate func tvListRhythm() -> some View {
+        #if os(tvOS)
+        textCase(nil)
+        #else
+        self
+        #endif
+    }
+
     /// Rows on base-2, so a group of settings reads as a panel on the ground. Apple TV keeps the system's own row
     /// and focus look, which a custom row background would replace.
     @ViewBuilder
@@ -583,6 +594,7 @@ struct FilmForm<Content: View>: View {
 
     var body: some View {
         Form { content.filmRows() }
+            .tvListRhythm()
             #if os(macOS)
             // Grouped panels like System Settings, rather than the Mac's default two-column form.
             .formStyle(.grouped)
@@ -600,9 +612,24 @@ struct FilmList<Content: View>: View {
 
     var body: some View {
         List { content.filmRows() }
+            .tvListRhythm()
             .filmGround()
             #if os(tvOS)
             .toggleStyle(FilmToggleStyle())
             #endif
     }
 }
+
+#if os(iOS)
+/// UIKit controls SwiftUI can't restyle: segmented controls sit on base-3 with paper on the selected segment,
+/// instead of the system grey.
+enum FilmAppearance {
+    static func install() {
+        let control = UISegmentedControl.appearance()
+        control.backgroundColor = UIColor(Theme.Palette.control)
+        control.selectedSegmentTintColor = UIColor(Theme.Palette.lineStrong)
+        control.setTitleTextAttributes([.foregroundColor: UIColor(Theme.Palette.textSecondary)], for: .normal)
+        control.setTitleTextAttributes([.foregroundColor: UIColor(Theme.Palette.text)], for: .selected)
+    }
+}
+#endif

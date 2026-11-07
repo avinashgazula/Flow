@@ -25,6 +25,9 @@ struct ExploreView: View {
                     Text("TV Shows").tag(MediaType.show)
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
+                // Full width on a phone; capped elsewhere, where stretched across the window it reads as a bar.
+                .frame(maxWidth: Platform.isPhone ? .infinity : 360, alignment: .leading)
                 .padding(.horizontal, Platform.horizontalPadding)
 
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -103,13 +106,8 @@ struct ExploreView: View {
             }
         } label: {
             Text(title)
-                .font(.system(.subheadline, weight: .semibold))
-                .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs + 1)
-                .frame(minHeight: 44 * Theme.scale)
-                .foregroundStyle(selected ? Theme.Palette.onStock : Theme.Palette.text)
-                .background(selected ? Theme.Palette.stock : Theme.Palette.control, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(FilterTabStyle(selected: selected))
     }
 
     private func reload() async {

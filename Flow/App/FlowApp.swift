@@ -17,6 +17,9 @@ struct FlowApp: App {
 
     init() {
         NotificationScheduler.install()
+        #if os(iOS)
+        FilmAppearance.install()
+        #endif
     }
 
     var body: some Scene {
