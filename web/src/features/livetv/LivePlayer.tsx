@@ -10,10 +10,11 @@ import { streamProxy } from '../../lib/sources/proxy'
 import type { Source } from '../../lib/sources'
 import { settingsStore } from '../../lib/store/settings'
 import { PlayerController, usePlayer } from '../player/controller'
+import { VolumeControl } from '../player/Volume'
 import { attachSource, type Engine } from '../player/engine'
 import { mediaErrorMessage, PlaybackError } from '../player/errors'
 import { neighbour, timeText } from './logic'
-import { ChannelLogo, LiveBadge, useNow } from './shared'
+import { ChannelLogo, useNow } from './shared'
 import s from './LivePlayer.module.css'
 
 /** How long a stream gets to start before the next way of opening it is tried. */
@@ -63,8 +64,9 @@ export function failureMessage(channel: Pick<Channel, 'name'>, last: PlaybackErr
   return last.message
 }
 
-/** The live player: the channel full screen with a now-and-next card, channel up and down (arrow keys, swipe,
- *  buttons), a channel list, and back to the guide. It opens the stream with the same engine as films (hls.js
+/** The live player: the channel full screen with what is on and next, one control row in the film player's own language
+ *  (play, volume and a Live mark on the left; channel up and down, the channel list, Picture in Picture and full
+ *  screen on the right), channel up and down by arrow keys and swipe too, and back to the guide. It opens the stream with the same engine as films (hls.js
  *  where the browser has no HLS of its own) and takes volume, full screen, Picture in Picture and the idle
  *  cursor from the same controller. */
 export function LivePlayer({ channel, lineup, epg, onTune, onClose }: { channel: Channel; lineup: Channel[]; epg: EPG; onTune: (channel: Channel) => void; onClose: () => void }) {
@@ -75,8 +77,7 @@ export function LivePlayer({ channel, lineup, epg, onTune, onClose }: { channel:
   const [attempt, setAttempt] = useState(0)
   const [listOpen, setListOpen] = useState(false)
   const controls = usePlayer(controller, (x) => x.controls)
-  const muted = usePlayer(controller, (x) => x.muted)
-  const paused = usePlayer(controller, (x) => x.paused)
+    const paused = usePlayer(controller, (x) => x.paused)
   const waiting = usePlayer(controller, (x) => x.waiting)
   const fullscreen = usePlayer(controller, (x) => x.fullscreen)
   const now = useNow(15_000)
@@ -295,12 +296,13 @@ export function LivePlayer({ channel, lineup, epg, onTune, onClose }: { channel:
           <p className={s.connectingText}>
             Connecting to <strong>{channel.name}</strong>…
           </p>
+          <span className={s.buffering} aria-hidden="true" />
         </div>
       )}
       {phase.kind === 'playing' && (waiting || paused) && (
         <div className={s.centre} aria-hidden={!paused}>
           {paused ? (
-            <button type="button" className={`btn btn-secondary btn-circle ${s.bigPlay}`} onClick={controller.togglePlay} aria-label="Play">
+            <button type="button" className={s.bigPlay} onClick={controller.togglePlay} aria-label="Play">
               <Icon name="play" size={28} />
             </button>
           ) : (
@@ -311,40 +313,23 @@ export function LivePlayer({ channel, lineup, epg, onTune, onClose }: { channel:
 
       <div className={s.chrome} data-visible={show ? '' : undefined} data-list={listOpen ? '' : undefined}>
         <div className={s.top}>
-          <button type="button" className={`btn btn-secondary ${s.back}`} onClick={onClose} aria-label="Back to the guide" title="Back (Esc)">
-            <Icon name="chevronLeft" size={18} strokeWidth={2.4} /> Guide
+          <button type="button" className={s.back} onClick={onClose} aria-label="Back to the guide" title="Back (Esc)">
+            <Icon name="chevronLeft" size={20} strokeWidth={2.2} /> Guide
           </button>
-          <div className={s.cluster}>
-            <button type="button" className={s.round} onClick={() => setListOpen((x) => !x)} aria-pressed={listOpen} aria-label="Channels" title="Channels (L)">
-              <Icon name="list" size={20} />
-            </button>
-            <button type="button" className={s.round} onClick={controller.toggleMute} aria-pressed={muted} aria-label={muted ? 'Unmute' : 'Mute'} title={muted ? 'Unmute (M)' : 'Mute (M)'}>
-              <Icon name={muted ? 'mute' : 'volume'} size={20} />
-            </button>
-            {controller.canPip && (
-              <button type="button" className={s.round} onClick={controller.togglePip} aria-label="Picture in Picture" title="Picture in Picture (P)">
-                <Icon name="pip" size={20} />
-              </button>
-            )}
-            <button type="button" className={s.round} onClick={controller.toggleFullscreen} aria-label={fullscreen ? 'Exit Full Screen' : 'Full Screen'} title={fullscreen ? 'Exit Full Screen (F)' : 'Full Screen (F)'}>
-              <Icon name={fullscreen ? 'exitFullscreen' : 'fullscreen'} size={20} />
-            </button>
-          </div>
         </div>
 
         <div className={s.bottom}>
-          <div className={s.card}>
+          <div className={s.info}>
             <div className={s.cardHead}>
               {channel.number !== undefined && <span className={`num ${s.number}`}>{channel.number}</span>}
               <span className={s.channelName}>{channel.name}</span>
-              <LiveBadge />
             </div>
             {on ? (
               <>
                 <p className={s.programme}>{on.title}</p>
                 <div className={`num ${s.times}`}>
                   <span>{timeText(on.start)}</span>
-                  <span className={s.bar} role="progressbar" aria-label="How far through" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress(on, now) * 100)}>
+                  <span className={s.progress} role="progressbar" aria-label="How far through" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress(on, now) * 100)}>
                     <span style={{ width: `${progress(on, now) * 100}%` }} />
                   </span>
                   <span>{timeText(on.end)}</span>
@@ -359,16 +344,42 @@ export function LivePlayer({ channel, lineup, epg, onTune, onClose }: { channel:
               </p>
             )}
           </div>
-          {canZap && (
-            <div className={s.zap}>
-              <button type="button" className={s.round} onClick={() => zap(-1)} aria-label="Previous Channel" title="Previous Channel (↑)">
-                <Icon name="chevronUp" size={22} strokeWidth={2.4} />
+
+          <div className={s.bar}>
+            <div className={s.left}>
+              <button type="button" className={s.iconButton} onClick={controller.togglePlay} aria-label={paused ? 'Play' : 'Pause'} title={paused ? 'Play (Space)' : 'Pause (Space)'}>
+                <Icon name={paused ? 'play' : 'pause'} size={24} />
               </button>
-              <button type="button" className={s.round} onClick={() => zap(1)} aria-label="Next Channel" title="Next Channel (↓)">
-                <Icon name="chevronDown" size={22} strokeWidth={2.4} />
+              <VolumeControl controller={controller} />
+              <span className={s.livePill}>
+                <span className={s.liveDot} aria-hidden="true" />
+                Live
+              </span>
+            </div>
+            <div className={s.right}>
+              {canZap && (
+                <>
+                  <button type="button" className={s.iconButton} onClick={() => zap(-1)} aria-label="Previous Channel" title="Previous Channel (↑)">
+                    <Icon name="chevronUp" size={22} strokeWidth={2} />
+                  </button>
+                  <button type="button" className={s.iconButton} onClick={() => zap(1)} aria-label="Next Channel" title="Next Channel (↓)">
+                    <Icon name="chevronDown" size={22} strokeWidth={2} />
+                  </button>
+                </>
+              )}
+              <button type="button" className={s.iconButton} onClick={() => setListOpen((x) => !x)} aria-pressed={listOpen} aria-label="Channels" title="Channels (L)">
+                <Icon name="list" size={22} strokeWidth={2} />
+              </button>
+              {controller.canPip && (
+                <button type="button" className={s.iconButton} onClick={controller.togglePip} aria-label="Picture in Picture" title="Picture in Picture (P)">
+                  <Icon name="pip" size={22} strokeWidth={2} />
+                </button>
+              )}
+              <button type="button" className={s.iconButton} onClick={controller.toggleFullscreen} aria-label={fullscreen ? 'Exit Full Screen' : 'Full Screen'} title={fullscreen ? 'Exit Full Screen (F)' : 'Full Screen (F)'}>
+                <Icon name={fullscreen ? 'exitFullscreen' : 'fullscreen'} size={22} strokeWidth={2} />
               </button>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -421,7 +432,7 @@ function ChannelPanel({ lineup, current, epg, now, onPick, onClose }: { lineup: 
     <aside className={s.panel} aria-label="Channels">
       <div className={s.panelHead}>
         <h2 className={s.panelTitle}>Channels</h2>
-        <button type="button" className={s.round} onClick={onClose} aria-label="Close channel list">
+        <button type="button" className={s.iconButton} onClick={onClose} aria-label="Close channel list">
           <Icon name="close" size={20} strokeWidth={2.4} />
         </button>
       </div>

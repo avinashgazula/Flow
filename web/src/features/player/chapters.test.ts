@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chapterAt, chapterTicks, chapterTitle, markedChapters, MAX_TICKS } from './chapters'
+import { chapterAt, chapterTitle, markedChapters, MAX_TICKS } from './chapters'
 
 const chapters = [
   { title: 'Prologue', start: 0 },
@@ -35,21 +35,14 @@ describe('naming a chapter', () => {
   })
 })
 
-describe('the scrubber’s ticks', () => {
-  it('mark where each chapter after the first begins', () => {
+describe('the chapters the progress bar marks', () => {
+  it('are each one after the first', () => {
     expect(markedChapters(chapters).map((c) => c.title)).toEqual(['Opening', '', 'Ending'])
-    expect(chapterTicks(chapters, 1800)).toEqual([95 / 1800, 600 / 1800, 1290 / 1800])
-  })
-
-  it('leave out a chapter outside the film, and wait for the length', () => {
-    expect(chapterTicks([{ title: 'a', start: 10 }, { title: 'b', start: 2000 }], 1800)).toEqual([10 / 1800, null])
-    expect(chapterTicks(chapters, Number.NaN)).toEqual([null, null, null])
-    expect(chapterTicks(chapters, 0)).toEqual([null, null, null])
   })
 
   it('are left off when there are too many to read', () => {
     const many = Array.from({ length: MAX_TICKS + 1 }, (_, i) => ({ title: `${i}`, start: i * 10 }))
-    expect(chapterTicks(many, 10_000)).toEqual([])
-    expect(chapterTicks(many.slice(0, MAX_TICKS), 10_000)).toHaveLength(MAX_TICKS - 1)
+    expect(markedChapters(many)).toEqual([])
+    expect(markedChapters(many.slice(0, MAX_TICKS))).toHaveLength(MAX_TICKS - 1)
   })
 })

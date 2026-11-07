@@ -1,6 +1,7 @@
 import { useImperativeHandle, useRef, type Ref } from 'react'
 import type { PlayerController } from './controller'
 import type { Engine } from './engine'
+import { chapterAt, chapterTitle } from './chapters'
 import { clock } from './format'
 import { DEFAULT_ASPECT, type PreviewSource, type PreviewState } from './preview'
 import s from './SeekPreview.module.css'
@@ -16,15 +17,15 @@ export interface SeekPreviewHandle {
 /** How long a picture may take before the old one is dimmed: pictures from the cache come in a frame, and dimming for those would flicker. */
 const DIM_AFTER_MS = 120
 
-/** The small frame above the scrubber: a picture of where you would land, with the time under it on a
- *  strip, like a frame of film with its edge print. Where there is no picture (the browser can't make
+/** The tooltip above the progress bar: a rounded picture of where you would land, with the time under it and the
+ *  chapter's name when the film has chapters. Where there is no picture (the browser can't make
  *  one, or the stream's engine can't) it is the time alone. It never takes a click, and it is moved and
  *  filled by writing to the DOM, like the scrubber, so hovering never re-renders React. */
 export function SeekPreview({ controller, ref }: { controller: PlayerController; ref: Ref<SeekPreviewHandle> }) {
   const root = useRef<HTMLDivElement>(null)
   const frame = useRef<HTMLDivElement>(null)
   const label = useRef<HTMLSpanElement>(null)
-  const reel = useRef<HTMLSpanElement>(null)
+  const chapter = useRef<HTMLSpanElement>(null)
   const mine = useRef<{ engine: Engine | null; source: PreviewSource | null; state: PreviewState; dim: number }>({ engine: null, source: null, state: 'loading', dim: 0 })
 
   useImperativeHandle(
@@ -69,15 +70,19 @@ export function SeekPreview({ controller, ref }: { controller: PlayerController;
           if (!el || !label.current) return
           const src = source()
           label.current.textContent = clock(time)
-          // The strip's perforations show how far into the film that is, as they do on every frame.
-          const d = controller.duration()
-          reel.current?.style.setProperty('--p', String(Number.isNaN(d) || d <= 0 ? 0 : Math.min(1, Math.max(0, time / d))))
+          const list = controller.get().chapters
+          const at = chapterAt(list, time)
+          const name = at >= 0 && list.length > 1 ? chapterTitle(list[at]!, at) : ''
+          if (chapter.current) {
+            chapter.current.textContent = name
+            chapter.current.hidden = !name
+          }
           if (src && m.state !== 'none') {
             el.dataset.mode = 'frame'
             if (el.dataset.state === 'ready') dim(el)
             src.show(time)
           } else el.dataset.mode = 'time'
-          // Kept inside the track, which runs to the player's margins, so the frame never leaves the screen.
+          // Kept inside the track, so the tooltip never leaves the screen.
           const half = el.offsetWidth / 2
           el.style.transform = `translateX(${Math.min(width - half, Math.max(half, x)) - half}px)`
           el.dataset.on = ''
@@ -99,13 +104,11 @@ export function SeekPreview({ controller, ref }: { controller: PlayerController;
     <div ref={root} className={s.preview} style={{ '--preview-aspect': DEFAULT_ASPECT } as React.CSSProperties} aria-hidden="true" data-mode="time">
       <div className={s.card}>
         <div ref={frame} className={s.frame} />
-        <div className={s.strip}>
-          <span className={s.perfs} aria-hidden="true">
-            <span ref={reel} className={s.watched} />
-          </span>
+        <div className={s.caption}>
           <span ref={label} className={s.time}>
             0:00
           </span>
+          <span ref={chapter} className={s.chapter} hidden />
         </div>
       </div>
     </div>

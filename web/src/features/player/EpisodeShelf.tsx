@@ -1,4 +1,4 @@
-import { Plate } from '../../components/Frame'
+import { Artwork } from '../../components/Artwork'
 import { Icon } from '../../components/Icon'
 import type { Episode } from '../../lib/tmdb/types'
 import { keepFocus } from './Controls'
@@ -6,7 +6,7 @@ import type { PlayerController } from './controller'
 import { useSheetClear } from './useSheetClear'
 import s from './Controls.module.css'
 
-/** The rest of the season as a flat shelf over the scrubber, opened scrolled to the episode on
+/** The rest of the season as a flat shelf over the controls, opened scrolled to the episode on
  *  screen so what's next is a glance away. */
 export function EpisodeShelf({ controller, season, current, list, onPick, onClose, fallbackStill }: {
   controller: PlayerController
@@ -47,18 +47,18 @@ export function EpisodeShelf({ controller, season, current, list, onPick, onClos
                 aria-current={isCurrent ? 'true' : undefined}
                 aria-label={`Episode ${e.number}, ${e.name}${isCurrent ? ', now playing' : aired ? '' : ', not out yet'}`}
               >
-                <Plate
-                  className={s.episodeStill}
-                  shape="still"
-                  artPath={e.still ?? fallbackStill}
-                  artKind={e.still ? 'still' : 'backdrop'}
+                <Artwork
+                  className={`${s.still} ${s.episodeStill}`}
+                  path={e.still ?? fallbackStill}
+                  kind={e.still ? 'still' : 'backdrop'}
+                  alt=""
                   sizes="200px"
                   fallback={`Episode ${e.number}`}
-                  stripSize="still"
-                  print={[`E${e.number}`, isCurrent ? { key: 'Now playing' } : aired ? (e.runtime ? `${e.runtime} min` : '') : 'Not out yet']}
-                  hideStrip
                 />
-                <span className={s.episodeName}>{e.name}</span>
+                <span className={s.episodeName}>
+                  {e.number}. {e.name}
+                </span>
+                <span className={s.episodeMeta}>{isCurrent ? 'Now playing' : aired ? (e.runtime ? `${e.runtime} min` : '') : 'Not out yet'}</span>
               </button>
             </li>
           )

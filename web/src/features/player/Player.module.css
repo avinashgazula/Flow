@@ -1,7 +1,8 @@
 /* The watch page fills the viewport, picture edge to edge. Controls keep clear of the notch and
    home indicator through the safe-area insets, which every layer reads from these variables.
    Everything over the picture is flat: no blur, no glass. The warm base at 94% (--panel) holds panels
-   and notices; a warm-black scrim (the edge colour) sits only behind the controls that need it. */
+   and notices; a black gradient (Controls.module.css) sits only behind the controls that need it. The player is the one
+   page without Film Stock's motifs: no edge strips, perforations or edge print here. */
 .root {
   --inset-top: env(safe-area-inset-top, 0px);
   --inset-right: env(safe-area-inset-right, 0px);
@@ -11,8 +12,8 @@
   --margin: 28px;
   /* base-2 at 94%: panels, notices, the Up Next card. */
   --panel: color-mix(in srgb, var(--base-2) 94%, transparent);
-  /* The base at 70%: the transport's circles. */
-  --over-video: color-mix(in srgb, var(--base) 70%, transparent);
+  /* Black at 45%: the discs behind a glyph that sits straight on the picture. */
+  --over-video: rgb(0 0 0 / 0.45);
   position: fixed;
   inset: 0;
   z-index: 50;
@@ -109,7 +110,7 @@
 /* With the controls up the line clears the scrubber, or stays where the viewer put it when that's higher. */
 .subtitles[data-lifted] { transform: translateY(calc(-1 * max(var(--lift, 96px), var(--sub-lift, 0) * var(--sub-room)))); }
 @media (max-height: 500px) {
-  .subtitles { --lift: 78px; --sub-base: clamp(17px, 2vw + 1vh, 28px); --rest: 16px; }
+  .subtitles { --lift: 84px; --sub-base: clamp(17px, 2vw + 1vh, 28px); --rest: 16px; }
 }
 @media (max-width: 720px), (max-height: 500px) {
   .subtitles { --card-lift: 94px; }
@@ -161,7 +162,7 @@
   .root[data-clear-info] .subtitles { right: calc(var(--inset-right) + var(--margin) + var(--clear-info-w, 0px) + 24px); }
 }
 
-/* Keyboard feedback: a flat disc in the middle that's gone in half a second. */
+/* Play or pause (and the other keyboard actions) flashes in the middle and is gone in half a second, as on Netflix and YouTube. */
 .feedback {
   position: absolute;
   z-index: 5;
@@ -176,8 +177,8 @@
   animation: feedback 0.6s var(--ease-out) forwards;
 }
 .feedbackDisc {
-  width: 92px;
-  height: 92px;
+  width: 84px;
+  height: 84px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -228,47 +229,39 @@
   100% { opacity: 0; }
 }
 
-/* Buffering while the controls are away: a short row of perforations that fills in yellow, on a flat
-   card so it reads over any picture. Eight holes, one more lit at each step. */
+/* Buffering while the controls are away: a ring that turns, on a faint disc so it reads over any picture. */
 .buffering {
   position: absolute;
   z-index: 3;
   left: 50%;
   top: 50%;
-  padding: 12px 14px;
-  border-radius: var(--radius-label);
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
   background: var(--over-video);
   transform: translate(-50%, -50%);
   pointer-events: none;
   animation: appear var(--dur-move) 0.4s both;
 }
 @keyframes appear { from { opacity: 0; } }
-.holes {
-  position: relative;
-  display: block;
-  width: calc(8 * 11px - 4px);
-  height: 9px;
-  background: var(--base-4);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E") 0 0 / 11px 9px repeat-x;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E") 0 0 / 11px 9px repeat-x;
-  overflow: hidden;
+.ring {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--paper) 28%, transparent);
+  border-top-color: var(--paper);
+  animation: turn 0.9s linear infinite;
 }
-.holes::after {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: calc(8 * 11px);
-  background: var(--stock);
-  animation: fill 1.2s steps(8, jump-end) infinite;
-}
-@keyframes fill { from { width: 0; } to { width: calc(8 * 11px); } }
+@keyframes turn { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
-  /* Still: three of the eight lit, and no movement. */
-  .holes::after { animation: none; width: calc(3 * 11px); }
+  /* Still: a ring with a gap, and no movement. */
+  .ring { animation: none; }
 }
 
-/* Connecting: the title's still as a frame, with the stream opening on its strip. Flat base, nothing
-   over the artwork. */
+/* Connecting: the title's still as a rounded picture with a thin line along its foot while the stream opens. Flat base,
+   nothing over the artwork. */
 .connecting {
   position: absolute;
   inset: 0;
@@ -303,9 +296,21 @@
   width: 100%;
   margin-bottom: var(--space-m);
 }
-/* Fewer holes on a narrow frame, so the strip's print (where it comes from, the format) is never cut. */
-@media (max-width: 720px) {
-  div.connectingFrame span[data-size='lead'] { --perfs: 6; }
+.connectingArt { width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; }
+/* The progress line under the picture: 3px, paper on a faint track, filling as the stream buffers, or sliding. */
+.connectingLine {
+  position: relative;
+  height: 3px;
+  margin-top: 12px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--paper) 22%, transparent);
+  overflow: hidden;
+}
+.connectingLine > span { position: absolute; inset: 0 auto 0 0; width: calc(var(--filled, 0) * 100%); border-radius: 2px; background: var(--paper); transition: width 0.4s ease; }
+.connectingLine[data-idle] > span { width: 40%; transition: none; animation: slide 1.3s ease-in-out infinite; }
+@keyframes slide { from { left: -40%; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .connectingLine[data-idle] > span { animation: none; left: 0; width: 25%; }
 }
 .connectingTitle {
   font: 700 var(--fs-title3) / 1.15 var(--font-display);
@@ -313,7 +318,8 @@
   text-wrap: balance;
 }
 .connectingLogo { max-width: min(320px, 70%); max-height: 72px; object-fit: contain; }
-.connectingLine { font: 400 var(--fs-small) / 1.3 var(--font); color: var(--ink-2); }
+.connectingSub { font: 400 var(--fs-small) / 1.3 var(--font); color: var(--ink-2); }
+.connectingFacts { font: 400 var(--fs-footnote) / 1.3 var(--font); color: var(--ink-2); }
 .connectingFoot {
   display: flex;
   flex-direction: column;
@@ -339,6 +345,7 @@
   .connectingBody { padding-top: calc(var(--inset-top) + 16px); padding-bottom: calc(var(--inset-bottom) + var(--space-m)); }
   .connectingCentre { width: min(560px, 100%); }
   .connectingFrame { width: min(300px, 50%); margin-bottom: var(--space-s); }
+  .connectingArt { border-radius: 8px; }
   .connectingFoot { margin-top: var(--space-s); }
   .resume { width: min(440px, 100%); grid-template-columns: 1fr 1fr; }
 }
@@ -362,14 +369,14 @@
 .errorTitle { font: 700 var(--fs-title3) / 1.2 var(--font-display); letter-spacing: -0.02em; }
 .errorMessage { max-width: 460px; color: var(--ink-2); font-size: var(--fs-small); line-height: 1.5; text-wrap: pretty; }
 .errorActions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xs); margin-top: var(--space-s); }
-/* The technical reason is data: set out on the edge band in print, selectable so it can be copied. */
+/* The technical reason is data: set apart on a darker band, selectable so it can be copied. */
 .errorDetail {
   max-width: min(460px, 100%);
   margin-top: var(--space-s);
   padding: 8px 10px;
   border-radius: var(--radius-label);
-  background: var(--edge);
-  color: var(--print);
+  background: var(--base);
+  color: var(--ink-2);
   font: 400 var(--fs-caption) / 1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
   overflow-wrap: anywhere;
   -webkit-user-select: text;

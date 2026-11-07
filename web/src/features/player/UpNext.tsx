@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plate } from '../../components/Frame'
+import { Artwork } from '../../components/Artwork'
 import { Icon } from '../../components/Icon'
 import type { Episode } from '../../lib/tmdb/types'
 import { useSettings } from '../../lib/store/settings'
@@ -31,8 +31,8 @@ export function upNextDueAt(duration: number, creditsAt: number | undefined, wai
  *  (paused, slowed down, skipped about). */
 export const secondsToEnd = (duration: number, time: number, countdown = defaultCountdown): number => Math.max(0, Math.min(countdown, Math.ceil(duration - time)))
 
-/** The next episode's still and name, with a "Next Episode" button and a strip whose perforations empty as the
- *  countdown runs. It comes up as the credits begin (or in the last 30 seconds), and goes on by itself when the
+/** The next episode's still and name, with a "Next Episode" button and a thin line that empties as the
+ *  countdown runs, with "Starts in 9s" in words. It comes up as the credits begin (or in the last 30 seconds), and goes on by itself when the
  *  countdown ends, which `onPlay(true)` says. With Wait for the Episode to End the countdown is the last seconds
  *  of the episode itself. It watches the clock itself and re-renders only when it comes or goes, and once a
  *  second while counting down. The sleep timer's "end of episode" lets the episode finish instead of going on. */
@@ -123,29 +123,24 @@ export function UpNext({ controller, next, autoplay, fallbackStill, onPlay }: { 
     <aside className={s.upNext} data-lifted={lifted ? '' : undefined} aria-label={counting ? `Up Next, starting in ${left} seconds` : 'Up Next'}>
       <button className={s.upNextStill} onClick={() => onPlay(false)} onMouseDown={keepFocus} tabIndex={-1} aria-hidden="true">
         <span className={s.upNextFrame}>
-          <Plate
-            className={s.upNextPlate}
-            shape="still"
-            artPath={next.still ?? fallbackStill}
-            artKind={next.still ? 'still' : 'backdrop'}
-            sizes="148px"
-            stripSize="still"
-            hideStrip
-            progress={counting ? left / countdownFrom : undefined}
-            print={counting ? [{ key: `${left}s` }] : undefined}
-          />
+          <Artwork className={`${s.still} ${s.upNextPlate}`} path={next.still ?? fallbackStill} kind={next.still ? 'still' : 'backdrop'} alt="" sizes="148px" />
           <span className={s.upNextPlay}>
             <Icon name="play" size={14} />
           </span>
+          {counting && (
+            <span className={s.upNextLine} aria-hidden="true">
+              <span style={{ '--left': Math.max(0, left - 1) / countdownFrom } as React.CSSProperties} />
+            </span>
+          )}
         </span>
       </button>
       <div className={s.upNextText}>
         <span className={s.upNextName}>{next.name}</span>
         <span className={s.upNextMeta}>
-          Season {next.season}, Episode {next.number}
+          {counting ? `Starts in ${left}s` : `Season ${next.season}, Episode ${next.number}`}
         </span>
         <div className={s.upNextActions}>
-          <button className="btn btn-primary btn-compact" onClick={() => onPlay(false)} onMouseDown={keepFocus}>
+          <button className={`btn btn-primary btn-compact ${s.skipButton}`} onClick={() => onPlay(false)} onMouseDown={keepFocus}>
             Next Episode
           </button>
           <button className={s.upNextCancel} onClick={() => setDismissed(true)} onMouseDown={keepFocus}>

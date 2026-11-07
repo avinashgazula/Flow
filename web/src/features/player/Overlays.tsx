@@ -107,7 +107,7 @@ export function FeedbackFlash({ controller }: { controller: PlayerController }) 
     flash.icon === 'back10' || flash.icon === 'forward10' ? (
       <SkipGlyph forward={flash.icon === 'forward10'} size={flash.side ? 30 : 38} seconds={flash.seconds} />
     ) : (
-      <Icon name={flash.icon} size={34} strokeWidth={2.2} />
+      <Icon name={flash.icon} size={34} strokeWidth={2} />
     )
   if (flash.side) {
     return (
@@ -164,13 +164,12 @@ export function Notes({ controller }: { controller: PlayerController }) {
   )
 }
 
-/** Buffering, shown only while the controls are away (the play button is the centre otherwise): a row of
- *  perforations filling in yellow, on a flat card. */
+/** Buffering, shown only while the controls are away (the play button is the centre otherwise): a ring that turns. */
 export function Buffering({ controller }: { controller: PlayerController }) {
   const waiting = usePlayer(controller, (st) => st.waiting && !st.paused && !st.controls)
   return waiting ? (
     <div className={s.buffering} role="status" aria-label="Loading">
-      <span className={s.holes} />
+      <span className={s.ring} />
     </div>
   ) : null
 }

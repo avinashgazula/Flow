@@ -17,7 +17,7 @@ const sentence = (ids: readonly ProviderId[]) => {
 
 const languagesSentence = (names: string[]) => (names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`)
 
-/** One hole for each service asked, lit as it answers: the strip of film the player's other waiting states use. */
+/** One dot for each service asked, lit as it answers. */
 function Strip({ asked, answered }: { asked: ProviderId[]; answered: ProviderId[] }) {
   return (
     <span className={s.strip} aria-hidden="true">

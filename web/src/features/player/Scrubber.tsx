@@ -1,57 +1,59 @@
 import { useEffect, useRef } from 'react'
 import { usePlayer, type PlayerController } from './controller'
 import { endTime, formatClock, userLocale } from '../../lib/time'
-import { chapterAt, chapterTicks, chapterTitle, markedChapters } from './chapters'
-import { clock } from './format'
+import { chapterAt, chapterTitle } from './chapters'
+import { clock, endLabel } from './format'
+import { gapFractions, gapMask, otherMode, type TimeMode } from './scrubberLayout'
 import { SeekPreview, type SeekPreviewHandle } from './SeekPreview'
 import s from './Controls.module.css'
 
-/** The scrubber is an edge strip: a row of perforations as the track (buffered, then played in yellow) with the timecode, the
- *  time left and when it would end in edge print under it. It paints itself from the
+const modeKey = 'flow.player.timeMode'
+const savedMode = (): TimeMode => {
+  try {
+    return localStorage.getItem(modeKey) === 'total' ? 'total' : 'remaining'
+  } catch {
+    return 'remaining'
+  }
+}
+
+/** The progress bar: one track with the time played to its left and the time left to its right (a tap on that one
+ *  swaps it for the whole length). Chapters and skippable segments are small gaps in the track. It paints itself from the
  *  video on each animation frame while the controls show, writing straight to the DOM, so playback
- *  never re-renders React. Over the bar (and while dragging) a small frame shows where you would land
+ *  never re-renders React. Over the bar (and while dragging) a small tooltip shows where you would land
  *  (SeekPreview). Dragging moves the time at once; the real seek happens on release. Where there is no
  *  preview picture (a phone playing a plain file, say) the video itself follows a drag a few times a second. */
 export function Scrubber({ controller }: { controller: PlayerController }) {
   const visible = usePlayer(controller, (st) => st.controls)
   const segments = usePlayer(controller, (st) => st.segments)
   const chapters = usePlayer(controller, (st) => st.chapters)
-  const ticks = useRef<(HTMLDivElement | null)[]>([])
-  const marked = markedChapters(chapters)
-  // The paint loop below is set up once per showing of the controls, so it reads the chapters from here.
+  // The paint loop below is set up once per showing of the controls, so it reads these from here.
   const chaptersNow = useRef(chapters)
   chaptersNow.current = chapters
-  const marks = useRef<(HTMLDivElement | null)[]>([])
+  const segmentsNow = useRef(segments)
+  segmentsNow.current = segments
   const track = useRef<HTMLDivElement>(null)
+  const rail = useRef<HTMLDivElement>(null)
   const fill = useRef<HTMLDivElement>(null)
   const buffer = useRef<HTMLDivElement>(null)
   const thumb = useRef<HTMLDivElement>(null)
   const ends = useRef<HTMLSpanElement>(null)
   const elapsed = useRef<HTMLSpanElement>(null)
-  const remaining = useRef<HTMLSpanElement>(null)
+  const remaining = useRef<HTMLButtonElement>(null)
   const preview = useRef<SeekPreviewHandle>(null)
   const peeking = useRef(0)
   const drag = useRef<number | null>(null)
+  const mode = useRef<TimeMode>(savedMode())
   const last = useRef({ t: -1, d: -1, b: -1, second: -1, minute: -1 })
 
-  /** Where each segment's mark lies along the rail, once the length is known. */
-  const placeMarks = (d: number) => {
-    chapterTicks(chapters, d).forEach((fraction, i) => {
-      const tick = ticks.current[i]
-      if (!tick) return
-      tick.style.left = fraction === null ? '0' : `${fraction * 100}%`
-      tick.hidden = fraction === null
-    })
-    segments.forEach((segment, i) => {
-      const mark = marks.current[i]
-      if (!mark) return
-      const known = !Number.isNaN(d)
-      mark.style.left = known ? `${Math.min(100, (segment.start / d) * 100)}%` : '0'
-      mark.style.width = known ? `${Math.max(0, Math.min(100, (segment.end / d) * 100) - Math.min(100, (segment.start / d) * 100))}%` : '0'
-    })
+  /** Cuts the track where chapters and segments begin and end, once the length is known. */
+  const placeGaps = (d: number) => {
+    const mask = gapMask(gapFractions(chaptersNow.current, segmentsNow.current, d)) ?? ''
+    if (!rail.current) return
+    rail.current.style.maskImage = mask
+    rail.current.style.webkitMaskImage = mask
   }
   useEffect(() => {
-    placeMarks(controller.duration())
+    placeGaps(controller.duration())
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segments, chapters])
 
@@ -69,7 +71,7 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
     const minute = Math.floor(Date.now() / 60_000)
     if (t === prev.t && d === prev.d && b === prev.b && minute === prev.minute) return
     const known = !Number.isNaN(d)
-    if (d !== prev.d) placeMarks(d)
+    if (d !== prev.d) placeGaps(d)
     const played = known ? Math.min(1, t / d) : 0
     fill.current!.style.transform = `scaleX(${played})`
     thumb.current!.style.left = `${played * 100}%`
@@ -77,8 +79,8 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
     const second = Math.floor(t)
     if (second !== prev.second || d !== prev.d || minute !== prev.minute) {
       elapsed.current!.textContent = clock(t)
-      remaining.current!.textContent = known ? `\u2212${clock(Math.max(0, d - t))}` : '--:--'
-      ends.current!.textContent = known ? ` \u00b7 Ends ${formatClock(endTime(Date.now(), d - t), userLocale)}` : ''
+      remaining.current!.textContent = endLabel(mode.current, t, d)
+      ends.current!.textContent = known ? `Ends ${formatClock(endTime(Date.now(), d - t), userLocale)}` : ''
       const list = chaptersNow.current
       const at = chapterAt(list, t)
       const where = at >= 0 && list.length > 1 ? `, ${chapterTitle(list[at]!, at)}` : ''
@@ -119,7 +121,7 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
     preview.current?.hide()
   }
 
-  // The arrow keys seek from outside the scrubber: the frame shows where they landed, for a moment.
+  // The arrow keys seek from outside the scrubber: the tooltip shows where they landed, for a moment.
   useEffect(
     () =>
       controller.onPeek((time) => {
@@ -134,8 +136,22 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
   )
   useEffect(() => () => clearTimeout(peeking.current), [])
 
+  const swapMode = () => {
+    mode.current = otherMode(mode.current)
+    try {
+      localStorage.setItem(modeKey, mode.current)
+    } catch {
+      // Private windows and blocked storage just forget the choice.
+    }
+    last.current = { ...last.current, second: -1 }
+    paint()
+  }
+
   return (
     <div className={s.scrubber}>
+      <span ref={elapsed} className={s.time} aria-hidden="true">
+        0:00
+      </span>
       <div
         ref={track}
         className={s.track}
@@ -182,30 +198,17 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
           if (drag.current === null) hideTip()
         }}
       >
-        <div className={s.rail}>
+        <div ref={rail} className={s.rail}>
           <div ref={buffer} className={s.buffered} />
           <div ref={fill} className={s.played} />
         </div>
-        {segments.map((segment, i) => (
-          <div key={`${segment.kind}:${segment.start}`} ref={(el) => void (marks.current[i] = el)} className={s.mark} data-kind={segment.kind} />
-        ))}
-        {marked.length > 0 && (
-          <div className={s.ticks} aria-hidden="true">
-            {marked.map((chapter, i) => (
-              <div key={chapter.start} ref={(el) => void (ticks.current[i] = el)} className={s.tick} hidden />
-            ))}
-          </div>
-        )}
         <div ref={thumb} className={s.thumb} />
         <SeekPreview controller={controller} ref={preview} />
       </div>
-      <div className={s.times}>
-        <span ref={elapsed}>0:00</span>
-        <span>
-          <em ref={remaining}>--:--</em>
-          <span ref={ends} />
-        </span>
-      </div>
+      <button ref={remaining} type="button" className={`${s.time} ${s.timeEnd}`} onClick={swapMode} title="Switch between time left and length" aria-label="Switch between time left and length">
+        --:--
+      </button>
+      <span ref={ends} className={s.ends} aria-hidden="true" />
     </div>
   )
 }

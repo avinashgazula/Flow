@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plate } from '../../components/Frame'
+import { Artwork } from '../../components/Artwork'
 import { Icon } from '../../components/Icon'
 import { imageURL } from '../../lib/tmdb/images'
 import { keepFocus } from './Controls'
@@ -7,20 +7,16 @@ import { clock } from './format'
 import s from './Player.module.css'
 
 const slowAfter = 15_000
-/** How often the strip's next perforation lights while there is nothing to measure yet. */
-const chaseMs = 260
-const chaseHoles = 30
-
-/** While a stream opens: the title's still as a frame on the flat base, its edge strip saying where the
- *  stream comes from and what format it is, and the strip's perforations filling in yellow as it
- *  buffers. Under it, the title and the episode. Offers Resume when there's somewhere to resume from.
+/** While a stream opens: the title's still as a plain rounded picture on the flat base, a thin progress line under it, and
+ *  the title and the episode, with where the stream comes from and its format as a quiet line. The line fills as the
+ *  stream buffers, and slides while there is nothing to measure yet. Offers Resume when there's somewhere to resume from.
  *  After the native ConnectingView. */
 export function ConnectingView({ backdrop, logo, title, line, print, sourceKey, progress, resumeAt, leaving, onResume, onStartOver, onTryAnother, onClose, onGone }: {
   backdrop?: string
   logo?: string
   title: string
   line?: string
-  /** The strip's facts: where it comes from, the format. Always at least one. */
+  /** Where it comes from, the format. Always at least one. */
   print: string[]
   sourceKey?: string
   /** 0–1 as the stream opens, 'idle' while looking for a source, undefined for none. */
@@ -43,34 +39,33 @@ export function ConnectingView({ backdrop, logo, title, line, print, sourceKey, 
   }, [sourceKey, leaving])
   const slow = !!sourceKey && slowFor === sourceKey && resumeAt === null
 
-  // With nothing to measure yet the next perforation lights on each beat and the row starts over, like a
-  // reel being threaded. Reduce Motion gets one lit hole, still.
-  const [beat, setBeat] = useState(1)
+  // With nothing to measure yet the line slides along (still, for Reduce Motion).
   const chasing = progress === 'idle' && resumeAt === null
-  useEffect(() => {
-    if (!chasing || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const timer = setInterval(() => setBeat((n) => (n >= chaseHoles + 3 ? 1 : n + 1)), chaseMs)
-    return () => clearInterval(timer)
-  }, [chasing])
-  const filled = resumeAt !== null ? undefined : typeof progress === 'number' ? Math.max(0.04, Math.min(1, progress)) : chasing ? Math.min(1, beat / chaseHoles) : undefined
+  const filled = resumeAt !== null ? undefined : typeof progress === 'number' ? Math.max(0.04, Math.min(1, progress)) : undefined
 
   return (
     <div className={s.connecting} data-leaving={leaving ? '' : undefined} onTransitionEnd={(e) => leaving && e.target === e.currentTarget && onGone()}>
       <div className={s.connectingBody}>
         <div className={s.connectingCentre}>
-          <div
-            className={s.connectingFrame}
-            role={typeof progress === 'number' && filled !== undefined ? 'progressbar' : undefined}
-            aria-label={typeof progress === 'number' && filled !== undefined ? 'Loading' : undefined}
-            aria-valuemin={typeof progress === 'number' && filled !== undefined ? 0 : undefined}
-            aria-valuemax={typeof progress === 'number' && filled !== undefined ? 100 : undefined}
-            aria-valuenow={typeof progress === 'number' && filled !== undefined ? Math.round(progress * 100) : undefined}
-          >
-            <Plate shape="still" artPath={backdrop} sizes="(max-width: 720px) 100vw, 560px" priority stripSize="lead" progress={filled} print={print} />
+          <div className={s.connectingFrame}>
+            <Artwork className={s.connectingArt} path={backdrop} kind="backdrop" alt="" sizes="(max-width: 720px) 100vw, 560px" priority />
+            {(filled !== undefined || chasing) && (
+              <div
+                className={s.connectingLine}
+                data-idle={chasing ? '' : undefined}
+                role="progressbar"
+                aria-label="Loading"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={filled !== undefined && typeof progress === 'number' ? Math.round(progress * 100) : undefined}
+              >
+                <span style={filled !== undefined ? ({ '--filled': filled } as React.CSSProperties) : undefined} />
+              </div>
+            )}
           </div>
-          {chasing && <span role="progressbar" aria-label="Loading" className="sr-only" />}
           {logo ? <img className={s.connectingLogo} src={imageURL(logo, 500)} alt={title} /> : <h1 className={s.connectingTitle}>{title}</h1>}
-          {line && <p className={s.connectingLine}>{line}</p>}
+          {line && <p className={s.connectingSub}>{line}</p>}
+          <p className={s.connectingFacts}>{print.join(' · ')}</p>
         </div>
         <div className={s.connectingFoot}>
           {resumeAt !== null ? (

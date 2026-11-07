@@ -85,6 +85,18 @@
         ],
         "createdAt": "2026-10-26T06:08:46.584Z",
         "reason": "True black behind live video."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "src/features/player/Controls.module.css",
+          "src/features/player/Player.module.css",
+          "src/features/player/SeekPreview.module.css",
+          "src/features/livetv/LivePlayer.module.css"
+        ],
+        "createdAt": "2026-11-07T18:30:00.000Z",
+        "reason": "The player is a conventional player (DESIGN.md, Player Chrome and Scrubber): black gradients, white tints for hover discs and the track, and a white Skip button are its own neutrals, not site colours."
       }
     ]
   }

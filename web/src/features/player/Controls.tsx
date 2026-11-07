@@ -3,12 +3,13 @@ import { Icon, type IconName } from '../../components/Icon'
 import type { Source } from '../../lib/sources'
 import { useSettings } from '../../lib/store/settings'
 import type { Episode } from '../../lib/tmdb/types'
-import { usePlayer, volumeSettable, type Panel, type PlayerController } from './controller'
+import { usePlayer, type Panel, type PlayerController } from './controller'
 import { EpisodeShelf } from './EpisodeShelf'
 import { OptionsPanel } from './OptionsPanel'
 import { PlayerIcon, type PlayerIconName } from './playerIcons'
 import { playbackPreferences } from './preferences'
 import { Scrubber } from './Scrubber'
+import { VolumeControl } from './Volume'
 import s from './Controls.module.css'
 
 export interface ControlsProps {
@@ -24,8 +25,9 @@ export interface ControlsProps {
   episodes?: { season: number; current: number; list: Episode[] | undefined; onPick: (episode: Episode) => void; fallbackStill?: string }
 }
 
-/** Laid out like Apple's own players: what you leave by top left, sound top right, the title along the
- *  bottom with the panels' buttons at its end, the scrubber's strip under them, the transport in the middle.
+/** Laid out like any modern player: Close top left (with the title beside it on a phone), one progress bar over a single row of
+ *  controls (play, skip back and forward, volume and the title on the left; Episodes, X-Ray, Audio and Subtitles, Options,
+ *  Picture in Picture and full screen on the right), and for a finger the transport in the middle.
  *  Re-renders only when it shows, hides or opens a panel; each part subscribes to its own state. */
 export function Controls({ controller, title, line, onClose, sources, source, onPickSource, onMoreSources, episodes }: ControlsProps) {
   const visible = usePlayer(controller, (st) => st.controls)
@@ -48,30 +50,33 @@ export function Controls({ controller, title, line, onClose, sources, source, on
         <div className={s.top}>
           <Cluster {...hover}>
             <ClusterButton icon="close" label="Close Player" onClick={onClose} />
-            <PipButton controller={controller} />
-            <CastButton controller={controller} />
-            <FullscreenButton controller={controller} />
           </Cluster>
-          <Volume controller={controller} hover={hover} />
+          <Titles where="top" title={title} line={line} />
         </div>
 
         <Transport controller={controller} hover={hover} />
 
         <div className={s.bottom}>
-          <div className={s.bottomRow}>
-            <div className={s.titles}>
-              <p className={s.title}>{title}</p>
-              {line && <p className={s.line}>{line}</p>}
+          <div className={s.interactive} {...hover}>
+            <Scrubber controller={controller} />
+          </div>
+          <div className={`${s.bar} ${s.interactive}`} {...hover}>
+            <div className={s.left}>
+              <PlayButton controller={controller} />
+              <SkipButton controller={controller} direction={-1} />
+              <SkipButton controller={controller} direction={1} />
+              <VolumeControl controller={controller} />
+              <Titles where="bar" title={title} line={line} />
             </div>
-            <Cluster {...hover}>
+            <div className={s.right}>
               {episodes && <ClusterButton icon="grid" label="Episodes" active={panel === 'episodes'} onClick={() => toggle('episodes')} />}
               <ClusterButton icon="xray" label="X-Ray" active={panel === 'xray'} onClick={controller.toggleXRay} />
               <ClusterButton icon="subtitles" label="Audio and Subtitles" active={panel === 'tracks'} onClick={() => toggle('tracks')} />
               <ClusterButton icon="settings" label="Options" active={panel === 'options'} onClick={() => toggle('options')} />
-            </Cluster>
-          </div>
-          <div className={s.interactive} {...hover}>
-            <Scrubber controller={controller} />
+              <CastButton controller={controller} />
+              <PipButton controller={controller} />
+              <FullscreenButton controller={controller} />
+            </div>
           </div>
         </div>
 
@@ -92,6 +97,16 @@ export function Controls({ controller, title, line, onClose, sources, source, on
   )
 }
 
+/** The title, and "S1 E1 · Episode name" under it. Two copies stand in the page, the one for the window's size shown (a phone has the room beside Close, not in the bottom row). */
+function Titles({ where, title, line }: { where: 'top' | 'bar'; title: string; line?: string }) {
+  return (
+    <div className={s.titles} data-where={where}>
+      <p className={s.title}>{title}</p>
+      {line && <p className={s.line}>{line}</p>}
+    </div>
+  )
+}
+
 /** Keeps focus where it was when a control is clicked with a mouse, so Space still plays and
  *  pauses instead of pressing the last button again. Keyboard focus is untouched. */
 export const keepFocus = (e: React.MouseEvent) => e.preventDefault()
@@ -107,7 +122,7 @@ function Cluster({ children, ...rest }: { children: ReactNode } & React.HTMLAttr
 function ClusterButton({ icon, label, onClick, active }: { icon: IconName | PlayerIconName; label: string; onClick: () => void; active?: boolean }) {
   return (
     <button className={s.clusterButton} aria-label={label} title={label} aria-pressed={active} onClick={onClick} onMouseDown={keepFocus}>
-      <PlayerIcon name={icon} size={20} strokeWidth={2.2} />
+      <PlayerIcon name={icon} size={22} strokeWidth={2} />
     </button>
   )
 }
@@ -131,79 +146,68 @@ function FullscreenButton({ controller }: { controller: PlayerController }) {
 
 type Hover = { onPointerEnter: (e: React.PointerEvent) => void; onPointerLeave: () => void }
 
-function Volume({ controller, hover }: { controller: PlayerController; hover: Hover }) {
-  const volume = usePlayer(controller, (st) => st.volume)
-  const muted = usePlayer(controller, (st) => st.muted)
-  const level = muted ? 0 : volume
+function PlayButton({ controller }: { controller: PlayerController }) {
+  const paused = usePlayer(controller, (st) => st.paused)
   return (
-    <div className={`${s.cluster} ${s.volume} ${s.interactive}`} data-compact={volumeSettable ? undefined : ''} {...hover}>
-      <button className={s.clusterButton} aria-label={muted ? 'Unmute' : 'Mute'} title={muted ? 'Unmute (M)' : 'Mute (M)'} onClick={controller.toggleMute} onMouseDown={keepFocus}>
-        <Icon name={level === 0 ? 'mute' : 'volume'} size={20} strokeWidth={2.2} />
-      </button>
-      {volumeSettable && (
-        <>
-          <span className={s.percent}>{Math.round(level * 100)}%</span>
-          <input
-            className={s.slider}
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={level}
-            aria-label="Volume"
-            style={{ '--level': level } as React.CSSProperties}
-            onChange={(e) => controller.setVolume(Number(e.target.value))}
-          />
-        </>
-      )}
-    </div>
+    <button className={`${s.clusterButton} ${s.rowTransport}`} aria-label={paused ? 'Play' : 'Pause'} title={paused ? 'Play (Space)' : 'Pause (Space)'} onClick={controller.togglePlay} onMouseDown={keepFocus}>
+      <Icon name={paused ? 'play' : 'pause'} size={24} />
+    </button>
   )
 }
 
 /** A finger held on Back asks "What Did They Say?" (the apps do the same); the lift that ends the hold isn't a tap. */
 const askMs = 500
 
-function Transport({ controller, hover }: { controller: PlayerController; hover: Hover }) {
-  const paused = usePlayer(controller, (st) => st.paused)
+/** Skip back or forward by the seconds Settings say. `round` is the touch transport's translucent disc, otherwise a button of the control row. */
+function SkipButton({ controller, direction, round, hover }: { controller: PlayerController; direction: -1 | 1; round?: boolean; hover?: Hover }) {
   const back = useSettings((st) => playbackPreferences(st).seekBack)
   const forward = useSettings((st) => playbackPreferences(st).seekForward)
   const held = useRef({ timer: 0, asked: false })
+  const onBack = direction < 0
+  const seconds = onBack ? back : forward
+  return (
+    <button
+      className={round ? `${s.round} ${s.skip} ${s.interactive}` : `${s.clusterButton} ${s.rowTransport}`}
+      aria-label={`${onBack ? 'Back' : 'Forward'} ${seconds} Seconds`}
+      title={`${onBack ? 'Back' : 'Forward'} ${seconds} seconds`}
+      onClick={() => {
+        if (held.current.asked) held.current.asked = false
+        else controller.skip(direction)
+      }}
+      onPointerDown={(e) => {
+        if (!onBack || e.pointerType === 'mouse') return
+        held.current.asked = false
+        clearTimeout(held.current.timer)
+        held.current.timer = window.setTimeout(() => {
+          held.current.asked = true
+          controller.replayWithSubtitles()
+        }, askMs)
+      }}
+      onPointerUp={() => clearTimeout(held.current.timer)}
+      onPointerCancel={() => clearTimeout(held.current.timer)}
+      onContextMenu={onBack ? (e) => e.preventDefault() : undefined}
+      onMouseDown={keepFocus}
+      {...hover}
+      onPointerLeave={() => {
+        clearTimeout(held.current.timer)
+        hover?.onPointerLeave()
+      }}
+    >
+      <SkipGlyph forward={!onBack} seconds={seconds} size={round ? 32 : 26} />
+    </button>
+  )
+}
+
+/** The middle of the picture, for a finger: skip back, play or pause, skip forward. A mouse has these in the control row. */
+function Transport({ controller, hover }: { controller: PlayerController; hover: Hover }) {
+  const paused = usePlayer(controller, (st) => st.paused)
   return (
     <div className={s.transport}>
-      <button
-        className={`${s.round} ${s.skip} ${s.interactive}`}
-        aria-label={`Back ${back} Seconds`}
-        onClick={() => {
-          if (held.current.asked) held.current.asked = false
-          else controller.skip(-1)
-        }}
-        onPointerDown={(e) => {
-          if (e.pointerType === 'mouse') return
-          held.current.asked = false
-          clearTimeout(held.current.timer)
-          held.current.timer = window.setTimeout(() => {
-            held.current.asked = true
-            controller.replayWithSubtitles()
-          }, askMs)
-        }}
-        onPointerUp={() => clearTimeout(held.current.timer)}
-        onPointerCancel={() => clearTimeout(held.current.timer)}
-        onContextMenu={(e) => e.preventDefault()}
-        onMouseDown={keepFocus}
-        {...hover}
-        onPointerLeave={() => {
-          clearTimeout(held.current.timer)
-          hover.onPointerLeave()
-        }}
-      >
-        <SkipGlyph forward={false} seconds={back} />
-      </button>
+      <SkipButton controller={controller} direction={-1} round hover={hover} />
       <button className={`${s.round} ${s.play} ${s.interactive}`} aria-label={paused ? 'Play' : 'Pause'} onClick={controller.togglePlay} onMouseDown={keepFocus} {...hover}>
         <Icon name={paused ? 'play' : 'pause'} size={34} />
       </button>
-      <button className={`${s.round} ${s.skip} ${s.interactive}`} aria-label={`Forward ${forward} Seconds`} onClick={() => controller.skip(1)} onMouseDown={keepFocus} {...hover}>
-        <SkipGlyph forward seconds={forward} />
-      </button>
+      <SkipButton controller={controller} direction={1} round hover={hover} />
     </div>
   )
 }

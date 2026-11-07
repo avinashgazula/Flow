@@ -14,6 +14,12 @@ export function clock(seconds: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`
 }
 
+/** The time at the bar's right end: what is left (with a true minus sign) or the whole length; dashes until the length is known. */
+export function endLabel(mode: 'remaining' | 'total', time: number, duration: number): string {
+  if (Number.isNaN(duration)) return '--:--'
+  return mode === 'total' ? clock(duration) : `−${clock(Math.max(0, duration - time))}`
+}
+
 /** "S1 E2 · Pilot" under the title, or just "S1 E2" before the episode's name is known. */
 export function episodeLine(season?: number, episode?: number, name?: string): string | undefined {
   if (season === undefined || episode === undefined) return undefined

@@ -1,5 +1,7 @@
-/* The live player: black, the whole window, the picture edge to edge. Flat like the film player: the chrome is
-   paper on the picture over a warm-black scrim, panels sit on the base at 94% with a hairline, no blur.
+/* The live player: black, the whole window, the picture edge to edge. The same control language as the film player
+   (Player.module.css and Controls.module.css): white line icons on the picture over a black gradient, one row of controls
+   along the bottom with what is on above it. Panels sit on the base at 94% with a hairline, no blur. There is no progress
+   bar to drag, because there is nothing to seek in: the line above the row is how far through the programme it is.
    The same custom properties as the film player (--margin, --panel, --over-video) are set here. */
 .root {
   --inset-top: env(safe-area-inset-top, 0px);
@@ -8,7 +10,7 @@
   --inset-left: env(safe-area-inset-left, 0px);
   --margin: 28px;
   --panel: color-mix(in srgb, var(--base-2) 94%, transparent);
-  --over-video: color-mix(in srgb, var(--base) 70%, transparent);
+  --over-video: rgb(0 0 0 / 0.45);
   position: fixed;
   inset: 0;
   z-index: 60;
@@ -31,7 +33,7 @@
 .video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
 .tap { position: absolute; inset: 0; z-index: 1; touch-action: none; }
 
-/* Opening the stream: the channel's logo and name on the flat base. */
+/* Opening the stream: the channel's logo and name on the flat base, with a ring that turns. */
 .connecting {
   position: absolute;
   inset: 0;
@@ -49,13 +51,14 @@
 
 .centre { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; }
 .centre > * { pointer-events: auto; }
-.bigPlay { width: 72px; height: 72px; border-radius: var(--radius-full); background: var(--over-video); }
-.bigPlay svg { width: 28px; height: 28px; }
+.bigPlay { width: 72px; height: 72px; display: grid; place-items: center; border-radius: var(--radius-full); background: var(--over-video); color: var(--paper); transition: transform var(--dur-state) var(--ease-out); }
+.bigPlay:active { transform: scale(0.94); }
+.bigPlay svg { width: 30px; height: 30px; }
 /* Buffering: a ring in paper that turns, because the stream is moving and not yet showing. */
 .buffering { width: 40px; height: 40px; border-radius: var(--radius-full); border: 3px solid color-mix(in srgb, var(--paper) 25%, transparent); border-top-color: var(--paper); animation: turn 0.9s linear infinite; }
 @keyframes turn { to { transform: rotate(360deg); } }
 
-/* The chrome: back and the cluster along the top, the card along the bottom, a scrim behind each. */
+/* The chrome: Guide at the top left, what is on and the control row along the bottom, a black gradient behind each. */
 .chrome {
   position: absolute;
   inset: 0;
@@ -63,59 +66,67 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: calc(var(--inset-top) + 12px) calc(var(--inset-right) + var(--margin)) calc(var(--inset-bottom) + 20px) calc(var(--inset-left) + var(--margin));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--edge) 62%, transparent) 0%, transparent 22%, transparent 52%, color-mix(in srgb, var(--edge) 80%, transparent) 100%);
+  padding: calc(var(--inset-top) + 12px) calc(var(--inset-right) + var(--margin)) calc(var(--inset-bottom) + 12px) calc(var(--inset-left) + var(--margin));
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 0.65), transparent) top / 100% 150px no-repeat,
+    linear-gradient(0deg, rgb(0 0 0 / 0.85), rgb(0 0 0 / 0.5) 55%, transparent) bottom / 100% 300px no-repeat;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
   transition: opacity var(--dur-move) ease, visibility 0s linear var(--dur-move);
 }
 .chrome[data-visible] { opacity: 1; visibility: visible; transition: opacity var(--dur-state) ease, visibility 0s; }
-.chrome[data-visible] :is(button, .card) { pointer-events: auto; }
-/* With the channel list open its panel sits over the cluster, the card and the channel buttons, so they step aside and only the panel reads. */
-.chrome[data-list] :is(.cluster, .zap, .card) { visibility: hidden; }
+.chrome[data-visible] :is(button, input, .info) { pointer-events: auto; }
+/* With the channel list open its panel sits over the row and the card, so they step aside and only the panel reads. */
+.chrome[data-list] :is(.bottom) { visibility: hidden; }
 
 .top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); }
-.back { background: var(--over-video); }
-.back:hover { background: var(--panel); }
-.cluster { display: flex; align-items: center; gap: 4px; }
-.round {
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 44px;
+  padding: 0 14px 0 8px;
+  border-radius: var(--radius-full);
+  color: var(--paper);
+  font: 600 var(--fs-small) / 1 var(--font);
+  transition: background-color var(--dur-state) ease;
+}
+.back:hover { background: rgb(255 255 255 / 0.16); }
+.iconButton {
   display: grid;
   place-items: center;
   flex: none;
   width: 44px;
   height: 44px;
-  border-radius: var(--radius-full);
+  border-radius: 50%;
   color: var(--paper);
-  background: var(--over-video);
   transition: background-color var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
   -webkit-tap-highlight-color: transparent;
 }
-.round:hover { background: var(--panel); }
-.round:active { transform: scale(0.96); }
-.round[aria-pressed='true'] { background: var(--base-4); }
+.iconButton:hover { background: rgb(255 255 255 / 0.16); }
+.iconButton:active { transform: scale(0.94); background: rgb(255 255 255 / 0.24); }
+.iconButton[aria-pressed='true'] { background: rgb(255 255 255 / 0.2); }
 
-.bottom { display: flex; align-items: flex-end; gap: var(--space-m); }
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: min(480px, 100%);
-  padding: var(--space-m) var(--space-m) 14px;
-  border-radius: var(--radius-panel);
-  background: var(--panel);
-  box-shadow: 0 0 0 1px var(--rule);
-}
+.bottom { display: flex; flex-direction: column; gap: var(--space-xs); }
+/* What is on: the channel, the programme, how far through it is, and what is next. Plain text on the gradient. */
+.info { display: flex; flex-direction: column; gap: 4px; width: min(560px, 100%); }
 .cardHead { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; }
-.number { font: 600 var(--fs-small) / 1 var(--font); color: var(--ink-2); }
-.channelName { font: 600 var(--fs-small) / 1.2 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.programme { font: 600 var(--fs-headline) / 1.25 var(--font); letter-spacing: -0.005em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.times { display: flex; align-items: center; gap: var(--space-s); font-size: var(--fs-footnote); color: var(--ink-2); }
-.bar { flex: 1; height: 3px; border-radius: var(--radius-perf); background: var(--base-4); overflow: hidden; }
-.bar > span { display: block; height: 100%; background: var(--red); }
+.number { font: 600 var(--fs-footnote) / 1 var(--font); color: var(--ink-2); }
+.channelName { font: 600 var(--fs-footnote) / 1.2 var(--font); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.programme { font: 600 var(--fs-headline) / 1.25 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.times { display: flex; align-items: center; gap: var(--space-s); font-size: var(--fs-footnote); color: var(--paper); }
+.progress { flex: 1; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--paper) 25%, transparent); overflow: hidden; }
+.progress > span { display: block; height: 100%; background: var(--paper); }
 .next { font-size: var(--fs-footnote); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .noGuide { font-size: var(--fs-footnote); color: var(--ink-2); }
-.zap { display: flex; flex-direction: column; gap: var(--space-xs); margin-left: auto; }
+
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
+.left { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.right { display: flex; align-items: center; gap: 2px; flex: none; }
+/* Live, as a red dot and the word: there is no time to show. */
+.livePill { display: inline-flex; align-items: center; gap: 8px; margin-left: 12px; font: 600 var(--fs-footnote) / 1 var(--font); letter-spacing: 0.02em; }
+.liveDot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
 
 /* The channel list: right side on a wide window, the bottom of a phone's. */
 .panel {
@@ -178,11 +189,9 @@
 .failedDetail { font-size: var(--fs-caption); color: var(--ink-3); }
 
 @media (max-width: 720px) {
-  .card { width: 100%; padding: var(--space-s) var(--space-s) 12px; }
   .programme { font-size: var(--fs-body); }
   .panel { top: auto; left: 0; width: 100%; height: min(70dvh, 520px); padding-right: 0; border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: 0 -1px 0 var(--rule); animation-name: rise; }
 }
 @media (max-height: 500px) {
-  .card { padding: 10px 14px; gap: 4px; }
   .programme { font-size: var(--fs-small); }
 }

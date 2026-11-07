@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FrameCard } from '../../components/Frame'
+import { Artwork } from '../../components/Artwork'
 import { Icon } from '../../components/Icon'
 import { prefetchDetail, q } from '../../lib/queries'
-import { formatRuntime, useMinuteTick } from '../../lib/time'
-import { pickMeta, pickPrint, spokenPick } from '../home/logic'
+import { formatRuntime } from '../../lib/time'
+import { pickMeta, spokenPick } from '../home/logic'
 import { libraryStore, mediaKey } from '../../lib/store/library'
 import { useSettings } from '../../lib/store/settings'
 import { creditsAlert, type CreditsScenes } from '../../lib/tmdb/creditsScenes'
@@ -170,27 +170,19 @@ function EndScreen({ film, suggestions, onOpen, onClose }: { film: MediaDetail |
   )
 }
 
-/** One suggested film, as a still anywhere else in Flow is: its frame and edge strip (runtime and rating through the
- *  same strip layout), the title and a line of facts under it (the year and genres). Each fact is said once: the strip
- *  has what is Film or its length, the line under the title has the rest. `detailed` asks for the runtime. */
+/** One suggested film: a plain rounded still, its title and a line of facts under it (the year and genres, and the
+ *  length where `detailed` asks for it). */
 function Suggestion({ item, sizes, detailed, onOpen }: { item: MediaItem; sizes: string; detailed?: boolean; onOpen: (item: MediaItem) => void }) {
-  const now = useMinuteTick()
   const { data } = useQuery({ ...q.detail(item.type, item.id), enabled: !!detailed })
   const detail = data && data.runtime ? data : undefined
-  const print = pickPrint(item, detail, now)
+  const facts = [pickMeta(item, { kind: false }), detail?.runtime ? formatRuntime(detail.runtime * 60) : undefined].filter(Boolean).join(' · ')
   return (
-    <FrameCard
-      shape="still"
-      artPath={item.backdrop}
-      artKind="backdrop"
-      sizes={sizes}
-      print={print}
-      title={item.title}
-      meta={pickMeta(item, { kind: false })}
-      label={spokenPick(item, detail)}
-      fallback={item.title}
-      onSelect={() => onOpen(item)}
-      onIntent={() => prefetchDetail(item)}
-    />
+    <li>
+      <button className={s.suggestion} aria-label={spokenPick(item, detail)} onClick={() => onOpen(item)} onMouseDown={keepFocus} onPointerEnter={(e) => e.pointerType === 'mouse' && prefetchDetail(item)}>
+        <Artwork className={`${s.still} ${s.suggestionStill}`} path={item.backdrop} kind="backdrop" alt="" sizes={sizes} fallback={item.title} />
+        <span className={s.suggestionTitle}>{item.title}</span>
+        {facts && <span className={s.suggestionMeta}>{facts}</span>}
+      </button>
+    </li>
   )
 }

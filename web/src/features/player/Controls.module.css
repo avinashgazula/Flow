@@ -1,11 +1,13 @@
-/* The player's chrome. Flat: paper icons on the picture, a warm-black scrim only where controls sit, the
-   transport on ink circles, panels and notices on base-2 at 94%. No blur. The scrubber is an edge strip:
-   a row of perforations on the strip's band (the track), with the timecode and what's left in edge print under it.
-   Colours and sizes come from the tokens; --margin, --panel and --over-video are set on the player's root. */
+/* The player's chrome: a conventional streaming player, as Apple TV+ on the web, Netflix and YouTube draw one. White line
+   icons straight on the picture over a black gradient at the top and bottom, one continuous progress bar over a single
+   row of controls, a flash of play or pause in the middle. The player is the one place Film Stock's motifs (edge strips,
+   perforations, edge print) do not apply: the picture is what people came for, and its controls should look like every
+   other player's. Panels and notices stay on base-2 at 94%. No blur. --margin, --panel and --over-video are set on the
+   player's root. */
 
 .controls {
-  /* Room the bottom row and scrubber take, so panels, Up Next and subtitles sit just above it. */
-  --bottom-band: 124px;
+  /* Room the control row and progress bar take, so panels, Up Next and subtitles sit just above it. */
+  --bottom-band: 96px;
   position: absolute;
   inset: 0;
   z-index: 3;
@@ -26,7 +28,8 @@
 .controls[data-visible] .interactive { pointer-events: auto; }
 .scrim[data-visible] { opacity: 1; transition-duration: var(--dur-state); }
 
-/* In the edge colour, so the dark is warm; light enough that the picture still reads through it. */
+/* Black to transparent, behind the top row and the bottom controls only: enough that white text reads on a bright
+   frame, little enough that the picture still shows through. Its own layer under the subtitles, so it never dims them. */
 .scrim {
   position: absolute;
   inset: 0;
@@ -34,79 +37,66 @@
   pointer-events: none;
   opacity: 0;
   transition: opacity var(--dur-move) ease;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--edge) 62%, transparent) 0%,
-    transparent 20%,
-    transparent 56%,
-    color-mix(in srgb, var(--edge) 72%, transparent) 100%
-  );
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 0.65), transparent) top / 100% 150px no-repeat,
+    linear-gradient(0deg, rgb(0 0 0 / 0.85), rgb(0 0 0 / 0.5) 45%, transparent) bottom / 100% 240px no-repeat;
 }
 
-.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* Close on the left, and on a phone the title beside it (the bottom row has no room for it there). */
+.top { grid-row: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
 
-.cluster { display: flex; align-items: center; gap: 4px; }
+.cluster { display: flex; align-items: center; gap: 2px; }
 .clusterButton {
   width: 44px;
   height: 44px;
   display: grid;
   place-items: center;
   flex: none;
-  border-radius: var(--radius-control);
+  border-radius: 50%;
   color: var(--paper);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
 }
-/* Paper on the picture; a flat backing appears only when the pointer is on it. */
-.clusterButton:hover { background: var(--overlay); }
-.clusterButton:active { transform: scale(0.94); background: var(--base-3); }
-/* The panel this button opened is the current selection. */
-.clusterButton[aria-pressed='true'] { color: var(--stock); }
+/* Paper on the picture; a faint disc appears only when the pointer is on it. */
+.clusterButton:hover { background: rgb(255 255 255 / 0.16); }
+.clusterButton:active { transform: scale(0.94); background: rgb(255 255 255 / 0.24); }
+/* The panel this button opened is the current selection: a steady disc, not a colour. */
+.clusterButton[aria-pressed='true'] { background: rgb(255 255 255 / 0.2); }
 
-/* Volume is a slider on the picture, so it keeps a flat backing to stay readable over any scene. */
-.volume {
-  gap: 4px;
-  padding-right: 14px;
-  border-radius: var(--radius-control);
-  background: var(--overlay);
-}
-.volume .clusterButton:hover { background: var(--base-3); }
-.percent {
-  width: 40px;
-  text-align: right;
-  font: 600 var(--fs-footnote) / 1 var(--font);
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-2);
-}
+/* Volume: the speaker, and a slider that opens beside it for a pointer or the keyboard. */
+.volume { display: flex; align-items: center; }
 .slider {
   -webkit-appearance: none;
   appearance: none;
-  width: 140px;
+  width: 0;
   height: 28px;
-  margin: 0 0 0 10px;
+  margin: 0;
+  opacity: 0;
   background: transparent;
   cursor: pointer;
+  transition: width 0.2s var(--ease-out), margin 0.2s var(--ease-out), opacity 0.15s ease;
 }
+.volume:hover .slider, .volume:focus-within .slider { width: 84px; margin: 0 10px 0 2px; opacity: 1; }
 .slider::-webkit-slider-runnable-track {
   height: 4px;
-  border-radius: var(--radius-perf);
-  background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), var(--base-4) 0);
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), color-mix(in srgb, var(--paper) 30%, transparent) 0);
 }
 .slider::-moz-range-track {
   height: 4px;
-  border-radius: var(--radius-perf);
-  background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), var(--base-4) 0);
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), color-mix(in srgb, var(--paper) 30%, transparent) 0);
 }
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  margin-top: -5px;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
   border-radius: 50%;
   background: var(--paper);
 }
 .slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border: 0;
   border-radius: 50%;
   background: var(--paper);
@@ -115,78 +105,98 @@
 .slider:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--stock); outline-offset: 2px; }
 .slider:focus-visible::-moz-range-thumb { outline: 2px solid var(--stock); outline-offset: 2px; }
 
-/* The transport, in the middle: flat ink circles, paper icons. Keyboard focus is the yellow ring. */
+/* The transport in the middle is for a finger: translucent discs with clean glyphs, as on a phone's player. With a mouse
+   the same buttons are in the control row and the middle is the picture, with a flash of play or pause when it toggles. */
 .transport {
   align-self: center;
   justify-self: center;
   display: flex;
   align-items: center;
-  gap: 40px;
+  gap: 36px;
 }
 .round {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--over-video);
+  background: rgb(0 0 0 / 0.5);
   color: var(--paper);
   transition: transform var(--dur-state) var(--ease-out), background-color var(--dur-state) ease;
 }
-.round:hover { background: var(--overlay); }
-.round:active { transform: scale(0.94); }
+.round:active { transform: scale(0.94); background: rgb(0 0 0 / 0.58); }
 .skip { width: 60px; height: 60px; }
-.play { width: 84px; height: 84px; }
+.play { width: 76px; height: 76px; }
 .play svg { width: 34px; height: 34px; }
+@media (pointer: fine) {
+  .transport { display: none; }
+}
+/* On a touch screen the control row leaves out what the middle already has. */
+@media (pointer: coarse) {
+  .bar .rowTransport, .volume { display: none; }
+}
 
-/* The title and the panel buttons, then the scrubber's strip, along the bottom. */
-.bottom { display: flex; flex-direction: column; gap: 8px; }
-.bottomRow { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
-.titles { min-width: 0; }
+/* The bottom: the progress bar, then the control row. */
+.bottom { grid-row: 3; display: flex; flex-direction: column; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
+.left { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1; }
+.right { display: flex; align-items: center; gap: 2px; flex: none; }
+.titles { min-width: 0; margin-left: 12px; }
 .title {
-  font: 600 var(--fs-headline) / 1.2 var(--font);
+  font: 600 var(--fs-small) / 1.3 var(--font);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .line {
-  margin-top: 2px;
-  font: 400 var(--fs-footnote) / 1.3 var(--font);
+  font: 400 var(--fs-caption) / 1.3 var(--font);
   color: var(--ink-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.titles[data-where='top'] { display: none; margin-left: 4px; }
 
-/* The scrubber: the printed edge of the stock, full width. A strip always has facts: here they are the
-   timecode, the time left (yellow, the one thing in it that matters) and when it would end. */
-.scrubber {
-  padding: 2px 16px 10px;
-  border-radius: var(--radius-art);
-  background: color-mix(in srgb, var(--edge) 94%, transparent);
+/* The progress bar: the time played, one track, the time left. Times are in the interface face with tabular figures,
+   so nothing shifts as they tick. */
+.scrubber { display: flex; align-items: center; gap: 14px; }
+.time {
+  flex: none;
+  min-width: 3.4em;
+  font: 500 var(--fs-footnote) / 1 var(--font);
+  font-variant-numeric: tabular-nums;
+  color: var(--paper);
+  white-space: nowrap;
 }
+.timeEnd { min-width: 4.2em; padding: 12px 0 12px 6px; margin: -12px 0; text-align: right; cursor: pointer; border-radius: var(--radius-label); }
+.timeEnd:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* When it would end, quietly, where there is the room for it. */
+.ends { display: none; flex: none; font: 400 var(--fs-footnote) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
+@media (min-width: 1100px) {
+  .ends { display: block; }
+}
+/* The hit area is taller than the bar, so seeking stays easy to hit. */
 .track {
   position: relative;
-  height: 26px;
+  flex: 1;
+  min-width: 0;
+  height: 32px;
   cursor: pointer;
   touch-action: none;
 }
 .track:focus-visible { outline: none; }
+/* 4px, and 6 under the pointer, while dragging and on focus. The gaps for chapters are a mask on it (Scrubber). */
 .rail {
   position: absolute;
   left: 0;
   right: 0;
   top: 50%;
-  height: 9px;
-  transform: translateY(-50%);
-  /* The track is a row of perforations, the same hole as on every strip (7 by 9 on an 11 px pitch, the pitch
-     stretched a hair so the row ends on a whole hole). Read-ahead and played fill the holes. The 26 px
-     track around it is the hit area, so seeking stays as precise and as easy to hit as a plain bar. */
-  background: var(--base-4);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E") 0 0 / 11px 9px round no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E") 0 0 / 11px 9px round no-repeat;
-  -webkit-mask-repeat: round no-repeat;
-  mask-repeat: round no-repeat;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--paper) 25%, transparent);
   overflow: hidden;
+  transition: height 0.15s var(--ease-out), margin-top 0.15s var(--ease-out);
 }
+.track:hover .rail, .track[data-dragging] .rail, .track:focus-visible .rail { height: 6px; margin-top: -3px; }
 .buffered, .played {
   position: absolute;
   inset: 0;
@@ -194,41 +204,10 @@
   transform-origin: left;
   will-change: transform;
 }
-/* Read-ahead is the lighter of the two greys; the yellow is how far you are. */
-.buffered { background: var(--ink-3); opacity: 0.55; }
-.played { background: var(--stock); }
-/* An intro, recap or the credits: a thin tick under the perforation row, in the warm second ink, across the stretch
-   that can be skipped. It sits beneath the holes, not over them, so a played hole stays pure film-stock yellow and
-   the row keeps meaning progress. It belongs to the track, not the rail, so the rail's hole mask doesn't cut it. */
-.mark {
-  position: absolute;
-  top: calc(50% + 7px);
-  height: 2px;
-  left: 0;
-  width: 0;
-  border-radius: 1px;
-  background: var(--ink-2);
-  pointer-events: none;
-}
-/* Where a chapter begins: a thin Ink 2 tick under the rail's holes, never on them (the holes keep their colours). The
-   rail is 9px in the middle of the 26px track, so the ticks sit in the space below it. */
-.ticks {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(50% + 7px);
-  height: 5px;
-  pointer-events: none;
-}
-.tick {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--ink-2);
-}
+.buffered { background: color-mix(in srgb, var(--paper) 30%, transparent); }
+/* Paper, not the brand yellow: yellow means the next action and the focus ring everywhere else in Flow, and a white bar
+   is what reads best on the black gradient, over bright and dark frames alike. */
+.played { background: var(--paper); }
 /* The thumb is only there when you are using the bar: under the pointer, while dragging, or on focus. */
 .thumb {
   position: absolute;
@@ -244,19 +223,12 @@
   pointer-events: none;
 }
 .track:hover .thumb, .track[data-dragging] .thumb, .track:focus-visible .thumb { opacity: 1; }
-.track:focus-visible .thumb { box-shadow: 0 0 0 2px var(--edge), 0 0 0 4px var(--stock); }
-.times {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font: 600 var(--fs-caption) / 1 var(--font-edge);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-variant-numeric: tabular-nums;
-  color: var(--print);
-  white-space: nowrap;
+.track:focus-visible .thumb { box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--stock); }
+@media (pointer: coarse) {
+  /* A finger hides the bar, so it keeps the thumb on show and the track is a little taller to hit. */
+  .thumb { opacity: 1; }
+  .track { height: 40px; }
 }
-.times em { font-style: normal; color: var(--stock); }
 
 /* Options and Audio and Subtitles: one card above the buttons that open it. */
 .panel, .shelf, .upNext, .info, .noSound {
@@ -365,14 +337,14 @@
   color: var(--ink-2);
 }
 .groupFooter a { color: var(--paper); text-decoration: underline; text-underline-offset: 2px; }
-/* A reason from the network or the proxy is data: on the edge band, in print, selectable to copy. */
+/* A reason from the network or the proxy is data: set apart on a darker band, selectable to copy. */
 .groupReason, .noSoundReason {
   display: block;
   margin-top: 8px;
   padding: 8px 10px;
   border-radius: var(--radius-label);
-  background: var(--edge);
-  color: var(--print);
+  background: var(--base);
+  color: var(--ink-2);
   overflow-wrap: anywhere;
   user-select: text;
 }
@@ -401,22 +373,24 @@
 }
 .shelfRow::-webkit-scrollbar { display: none; }
 .shelfRow > li { flex: none; width: 200px; scroll-snap-align: start; }
-.shelfGhost { height: 150px; border-radius: var(--radius-art); background: var(--base-3); }
+.shelfGhost { height: 150px; border-radius: 8px; background: var(--base-3); }
 .episodeCard { width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left; color: var(--paper); }
 .episodeCard:disabled { opacity: 0.5; cursor: default; }
-/* The frame and its strip are one object; the current episode gets the yellow ring round both. */
-.episodeCard[aria-current] .episodeStill { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }
+/* Every still in the player is a plain rounded picture; the current episode gets the focus ring round it. */
+.still { aspect-ratio: 16 / 9; border-radius: 8px; }
+.episodeCard[aria-current] .episodeStill { outline: 2px solid var(--stock); outline-offset: 3px; }
 .episodeCard:focus-visible { outline: none; }
-.episodeCard:focus-visible .episodeStill { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }
+.episodeCard:focus-visible .episodeStill { outline: 2px solid var(--stock); outline-offset: 3px; }
 .episodeStill { display: block; transition: opacity var(--dur-state) ease; }
 .episodeCard:not(:disabled):hover .episodeStill { opacity: 0.88; }
 .episodeName { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.episodeMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Up Next: bottom right, above the scrubber while the controls show. The still has a strip whose
-   perforations empty as the countdown runs. */
+/* Up Next: bottom right, above the control row while the controls show. A plain thumbnail with a thin line along its
+   foot that runs down with the countdown, the name, and "Starts in 9s" in words. */
 .upNext {
   /* Up Next sits beside Controls, not inside it, so it needs the band's height of its own. */
-  --bottom-band: 124px;
+  --bottom-band: 96px;
   position: absolute;
   z-index: 4;
   right: calc(var(--inset-right) + var(--margin));
@@ -433,12 +407,12 @@
 @keyframes upNext { from { opacity: 0; } }
 .upNextStill { --w: 148px; display: block; width: var(--w); flex: none; text-align: left; }
 .upNextStill:focus-visible { outline: none; }
-.upNextStill:focus-visible .upNextPlate { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }
+.upNextStill:focus-visible .upNextPlate { outline: 2px solid var(--stock); outline-offset: 3px; }
 .upNextPlate { display: block; }
 .upNextPlay {
   position: absolute;
   left: 50%;
-  top: calc(var(--w) * 9 / 32);
+  top: 50%;
   width: 36px;
   height: 36px;
   margin: -18px 0 0 -18px;
@@ -448,7 +422,10 @@
   background: var(--over-video);
   color: var(--paper);
 }
-.upNextFrame { position: relative; display: block; }
+.upNextFrame { position: relative; display: block; border-radius: 8px; overflow: hidden; }
+/* The countdown: a 3px line along the thumbnail's foot, emptying from the right. */
+.upNextLine { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgb(0 0 0 / 0.5); }
+.upNextLine > span { display: block; height: 100%; width: calc(var(--left, 1) * 100%); background: var(--paper); transition: width 1s linear; }
 .upNextText { width: 188px; display: flex; flex-direction: column; gap: 3px; padding-top: 2px; }
 .upNextName {
   font: 600 var(--fs-small) / 1.25 var(--font);
@@ -457,21 +434,22 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.upNextMeta { font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--ink-2); }
+.upNextMeta { font: 400 var(--fs-caption) / 1.25 var(--font); font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .upNextActions { display: flex; align-items: center; gap: 4px; margin: 6px 0 0 -2px; }
 .upNextCancel {
   height: 36px;
-  padding: 0 6px;
+  padding: 0 10px;
   border-radius: var(--radius-label);
   font: 600 var(--fs-caption) / 1 var(--font);
   color: var(--ink-2);
 }
 .upNextCancel:hover { color: var(--paper); text-decoration: underline; text-underline-offset: 3px; }
 
-/* Skip Intro, Skip Recap, Skip Credits: bottom right above the scrubber, where Up Next also comes (never both).
-   The one yellow fill on the screen is the next action. It rides up with the controls and fades after its segment. */
+/* Skip Intro, Skip Recap, Skip Credits: bottom right above the control row, where Up Next also comes (never both).
+   A solid white button with dark text, as Netflix draws it, so it is the clearest thing on the screen. It rides up with
+   the controls and fades after its segment. */
 .skipLayer {
-  --bottom-band: 124px;
+  --bottom-band: 96px;
   position: absolute;
   z-index: 4;
   right: calc(var(--inset-right) + var(--margin));
@@ -490,6 +468,11 @@
 }
 .skipLayer .skipButton[data-leaving] { opacity: 0; pointer-events: none; }
 .skipButton svg { width: 16px; height: 16px; }
+.skipLayer .skipButton, .upNextActions .skipButton { background: var(--paper); color: #141414; }
+.skipLayer .skipButton:hover, .upNextActions .skipButton:hover { background: #fff; }
+.skipLayer .skipButton:active, .upNextActions .skipButton:active { background: #d9d4cb; }
+/* A button that waits quietly (the credits of a film told to stay for its last scene) is the translucent one. */
+.skipLayer .skipButton[data-quiet], .skipLayer .skipButton[data-quiet]:hover { background: rgb(40 40 40 / 0.9); color: var(--paper); }
 /* "Skipped intro" with Undo, after Skip Automatically: flat, on the panel colour, quiet. */
 .skipNote {
   display: flex;
@@ -523,7 +506,7 @@
   display: grid;
   place-items: center;
   padding: calc(var(--inset-top) + 16px) calc(var(--inset-right) + 16px) calc(var(--inset-bottom) + 16px) calc(var(--inset-left) + 16px);
-  background: color-mix(in srgb, var(--edge) 82%, transparent);
+  background: rgb(0 0 0 / 0.78);
   animation: panel var(--dur-state) var(--ease-out);
 }
 .askCard {
@@ -610,11 +593,8 @@
   font: 400 var(--fs-caption) / 1.35 var(--font);
 }
 .infoRow:first-child { border-top: 0; }
-/* The labels are edge print: the card reads like the data block on a film can. */
 .infoRow dt {
-  font: 600 var(--fs-caption) / 1.25 var(--font-edge);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font: 400 var(--fs-caption) / 1.25 var(--font);
   color: var(--ink-2);
   white-space: nowrap;
 }
@@ -628,9 +608,10 @@
 
 /* Phones and short windows: tighter, and the transport shrinks to fit a landscape iPhone. */
 @media (max-width: 720px), (max-height: 500px) {
-  .controls { --bottom-band: 112px; }
-  .upNext, .skipLayer { --bottom-band: 112px; }
   .upNextStill { --w: 112px; }
+  /* The bottom row has no room for the title here: it goes beside Close. */
+  .titles[data-where='top'] { display: block; }
+  .titles[data-where='bar'] { display: none; }
   /* A phone's width holds one card: a notice (No Sound, Playback Is Struggling) takes it. */
   .noSound ~ .info { display: none; }
   /* As wide as the notices, and dense enough to stay above the transport in the middle. */
@@ -640,11 +621,8 @@
   .noSoundActions { display: grid; grid-template-columns: 1fr 1fr; }
   .noSoundActions :global(.btn) { padding: 0 8px; font-size: var(--fs-footnote); }
   .noSoundHint { font-size: var(--fs-caption); }
-  .title { font-size: var(--fs-body); }
   .transport { gap: 32px; }
-  .clusterButton { width: 40px; height: 40px; }
-  .slider { width: 110px; }
-  .scrubber { padding: 0 12px 8px; }
+  .scrubber { gap: 10px; }
 }
 @media (max-height: 500px) {
   .controls { padding-top: calc(var(--inset-top) + 8px); padding-bottom: calc(var(--inset-bottom) + 8px); }
@@ -652,6 +630,9 @@
   .play { width: 68px; height: 68px; }
   .play svg { width: 28px; height: 28px; }
   .upNext { padding: 8px 12px 8px 8px; gap: 10px; }
+  /* No room beside the transport for a picture: the card is the name, the countdown and the buttons. */
+  .upNextText { width: 196px; }
+  .upNextStill { display: none; }
   /* A landscape phone's transport sits in the middle: keep to the left of it, and leave the hint out. */
   .noSound { top: calc(var(--inset-top) + 8px + 40px + 6px); width: min(272px, 38%); gap: 6px; padding: 10px 12px; }
   .noSoundTitle { font-size: var(--fs-small); }
@@ -666,7 +647,6 @@
   .infoTitle { font-size: var(--fs-small); }
   .infoClose { width: 24px; height: 24px; }
   .infoRow { padding: 0; font-size: var(--fs-caption); line-height: 1.25; gap: 10px; }
-  .upNextStill { --w: 112px; }
   /* A shelf that stays below the top row of buttons: smaller stills, tighter header. */
   .shelf { padding: 6px 0 10px; }
   .shelfHeader h2 { font-size: var(--fs-small); }
@@ -681,16 +661,18 @@
 @media (max-width: 720px) and (min-height: 501px) {
   .controls[data-panel='xray'] .transport { visibility: hidden; }
 }
-/* An iPhone held upright has no room for the volume capsule; its side buttons do the job. */
 @media (max-width: 520px) and (orientation: portrait) {
-  .volume { display: none; }
   .transport { gap: 28px; }
+}
+/* A finger's progress bar is taller to hit, so the band is a little taller too. */
+@media (pointer: coarse) {
+  .controls, .upNext, .skipLayer, .suggest { --bottom-band: 100px; }
 }
 
 /* Because You Watched, beside a film's credits: a few films like it, bottom right where Up Next stands (it takes
-   the Skip button's corner too, until it is closed). Flat, on the panel colour. */
+   the Skip button's corner too, until it is closed). Plain rounded thumbnails, flat, on the panel colour. */
 .suggest {
-  --bottom-band: 124px;
+  --bottom-band: 96px;
   --w: 148px;
   position: absolute;
   z-index: 4;
@@ -732,6 +714,14 @@
 .suggestClose:hover { background: var(--base-3); color: var(--paper); }
 .suggestRow { display: flex; gap: 10px; }
 .suggestRow > li { width: var(--w); flex: none; }
+/* One suggested film: a rounded still, its title and its facts. */
+.suggestion { width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; color: var(--paper); }
+.suggestion:focus-visible { outline: none; }
+.suggestion:focus-visible .suggestionStill { outline: 2px solid var(--stock); outline-offset: 3px; }
+.suggestionStill { display: block; transition: opacity var(--dur-state) ease; }
+.suggestion:hover .suggestionStill { opacity: 0.88; }
+.suggestionTitle { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suggestionMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* A phone held upright has room for two frames in a card as wide as its screen, not three: the rest wait out of sight
    rather than run past the card's edge, and the two share the width. */
 @media (max-width: 420px) {
@@ -740,7 +730,7 @@
   .suggestRow > li:nth-child(n + 3) { display: none; }
 }
 /* Where the film ends: the film just finished as one quiet line, then Because You Watched, its row of stills and Done,
-   in the middle of the screen on the flat edge colour over the last frame. Matte: no backdrop, no blur. */
+   in the middle of the screen on near-black over the last frame. Matte: no backdrop, no blur. */
 .suggestEnd {
   position: absolute;
   z-index: 6;
@@ -750,7 +740,7 @@
   justify-content: center;
   padding: calc(var(--inset-top) + 16px) 0 calc(var(--inset-bottom) + 16px) calc(var(--inset-left) + var(--margin));
   /* Solid: the controls under it are still there, and none of them should show. */
-  background: var(--edge);
+  background: #0a0a0a;
   overflow-y: auto;
   animation: panel var(--dur-state) var(--ease-out);
 }
@@ -783,7 +773,7 @@
 }
 .suggestEndRow > li { width: 240px; flex: none; }
 @media (max-width: 720px), (max-height: 500px) {
-  .suggest { --bottom-band: 112px; --w: 112px; }
+  .suggest { --w: 112px; }
   .suggestEndRow > li { width: 168px; }
 }
 @media (max-height: 500px) {
