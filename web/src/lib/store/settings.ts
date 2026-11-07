@@ -264,6 +264,17 @@ export interface Settings {
   /** WATCHED on a poster's strip, and the episodes of a series left. */
   showWatchedBadges: boolean
   showEpisodesRemaining: boolean
+  // Home and posters, as the apps' `general.*`. Left out of the defaults like the fields above; absent means the apps' default, noted on each.
+  /** The top pick as a framed still beside Up Next (Card, the default) or as the backdrop edge to edge (Fullscreen). */
+  heroStyle?: 'card' | 'fullscreen'
+  /** The title under each poster. Absent is on. */
+  showPosterTitles?: boolean
+  /** The release year under a poster's title, or alone when titles are hidden. Absent is off. */
+  showReleaseYear?: boolean
+  /** The release year ends a Continue Watching card's line of facts. Absent is on. */
+  showContinueWatchingReleaseDate?: boolean
+  /** The tab the site opens on, by id (lib/tabs.ts). Absent is Home. */
+  startTab?: string
 }
 
 /** The pictures Resolution on Cellular can cap at, as heights in the names the sources use. */

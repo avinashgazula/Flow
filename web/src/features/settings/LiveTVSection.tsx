@@ -25,6 +25,7 @@ export function LiveTVSection() {
   const providers = useProviders()
   const sample = useSettings((x) => x.demo)
   const hours = useSettings((x) => x.liveTV?.epgRefreshHours ?? 12)
+  const hideEmpty = useSettings((x) => x.liveTV?.hideEmptyGroups !== false)
   const favourites = useFavouriteIDs()
   const [editing, setEditing] = useState<IPTVProviderConfig | undefined>()
   const [refresh, setRefresh] = useState<{ kind: 'idle' | 'working' } | { kind: 'ok' | 'error'; text: string }>({ kind: 'idle' })
@@ -68,6 +69,9 @@ export function LiveTVSection() {
       <Group title="Guide" footer="The guide and channel list are kept in this browser and downloaded again after this long, or when you refresh.">
         <Row label="Refresh Guide Every" htmlFor="livetv-refresh">
           <Select id="livetv-refresh" label="Refresh Guide Every" value={String(hours)} options={refreshChoices} onChange={(v) => updateLiveTV({ epgRefreshHours: Number(v) })} />
+        </Row>
+        <Row label="Hide Empty Groups" detail="While you search, groups with no match leave the chips">
+          <Switch checked={hideEmpty} onChange={(on) => updateLiveTV({ hideEmptyGroups: on })} label="Hide empty groups" />
         </Row>
         <Row label="Refresh Now" detail={refresh.kind === 'ok' || refresh.kind === 'error' ? refresh.text : 'Download the channels and the guide again.'}>
           <button type="button" className="btn btn-secondary btn-compact" onClick={refreshNow} disabled={refresh.kind === 'working' || (!sample && providers.every((p) => !p.enabled))}>

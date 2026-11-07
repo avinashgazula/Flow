@@ -40,6 +40,10 @@
 .mark[data-on] { color: var(--stock); }
 .mark:active { transform: scale(0.96); }
 
+/* The More button sits beside the mark, which is always there. */
+.more.more { right: 48px; }
+@media (max-width: 720px) { .more.more { right: 46px; } }
+
 /* Episode Spoilers off: an aired episode not yet watched keeps its still blurred. The marker sits beside the
    card (FrameCard takes no flag for it), and the image is the only thing of the card that is picture. */
 .veil { display: none; }

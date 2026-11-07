@@ -1,5 +1,12 @@
 :global(.page).screen { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 
+/* The title with Refresh Library beside it, on the title's line. */
+.head { display: flex; align-items: center; gap: var(--space-m); margin-bottom: var(--space-l); }
+.head > :global(.page-title) { margin-bottom: 0; }
+.refresh[data-working] svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .refresh[data-working] svg { animation: none; } }
+
 /* Sections: a plain heading, its count, and a link to the whole list. More room above than below. */
 .section { margin-top: var(--section); }
 .section:first-of-type { margin-top: 0; }

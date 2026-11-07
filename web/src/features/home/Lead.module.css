@@ -56,3 +56,26 @@
 .ghostFrame { display: block; aspect-ratio: 16 / 9; border-radius: var(--radius-art) var(--radius-art) 0 0; background: var(--base-2); overflow: hidden; }
 .ghostImg { display: block; width: 100%; height: 100%; object-fit: cover; }
 .ghostStrip { display: block; height: 26px; border-radius: 0 0 var(--radius-art) var(--radius-art); background: var(--edge); }
+
+/* Fullscreen: the plate runs edge to edge (no radius, as nothing is left to round), and the words sit on its lower
+   part over a flat scrim of the film base, which is the colour the strip under it already is. The picture's height
+   is 4:5 on a phone and 21:9 from 721px, never more than 72% of the window. */
+.lead[data-style='fullscreen'] { position: relative; flex-direction: column; align-items: stretch; gap: 0; }
+.lead[data-style='fullscreen'] .plate { width: 100%; }
+.lead[data-style='fullscreen'] .plate > span > :first-child, .lead[data-style='fullscreen'] .ghostFrame { aspect-ratio: 4 / 5; max-height: 72vh; border-radius: 0; }
+.lead[data-style='fullscreen'] .plate > span > :last-child, .lead[data-style='fullscreen'] .ghostStrip { border-radius: 0; }
+.lead[data-style='fullscreen']::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 26px 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to top, rgb(21 18 15 / 0.96) 0%, rgb(21 18 15 / 0.78) 30%, rgb(21 18 15 / 0) 68%);
+}
+.lead[data-style='fullscreen'] .info { position: absolute; z-index: 2; inset: auto 0 calc(26px + var(--space-m)); width: 100%; max-width: calc(1360px + 2 * var(--page-inset)); margin-inline: auto; padding-inline: var(--page-inset); }
+.lead[data-style='fullscreen'] .stack { margin-top: 0; }
+.lead[data-style='fullscreen'] .meta { color: var(--paper); }
+.lead[data-style='fullscreen'] .ghostFrame { background: var(--base-2); }
+@media (min-width: 721px) {
+  .lead[data-style='fullscreen'] .plate > span > :first-child, .lead[data-style='fullscreen'] .ghostFrame { aspect-ratio: 21 / 9; }
+}

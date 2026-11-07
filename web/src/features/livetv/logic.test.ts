@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Channel, Programme } from '../../lib/livetv/types'
-import { favouritesGroup, groupsOf, guideStart, monogram, neighbour, timingText, visibleChannels } from './logic'
+import { favouritesGroup, groupsMatching, groupsOf, guideStart, monogram, neighbour, timingText, visibleChannels } from './logic'
 
 const channel = (id: string, name: string, group: string): Channel => ({ id, providerID: 'p', name, group, streamURL: `https://s.example/${id}.m3u8`, hasCatchup: false })
 const channels = [channel('1', 'Flow News', 'News'), channel('2', 'Cinema One', 'Movies'), channel('3', 'World 24', 'News'), channel('4', 'Arena', 'Sports')]
@@ -8,6 +8,13 @@ const channels = [channel('1', 'Flow News', 'News'), channel('2', 'Cinema One', 
 describe('groups and filters', () => {
   it('lists groups in the order channels first use them', () => {
     expect(groupsOf(channels)).toEqual(['News', 'Movies', 'Sports'])
+  })
+
+  it('Hide Empty Groups keeps only the groups with a channel that matches the search', () => {
+    expect(groupsMatching(channels, '')).toEqual(['News', 'Movies', 'Sports'])
+    expect(groupsMatching(channels, ' world ')).toEqual(['News'])
+    expect(groupsMatching(channels, 'a')).toEqual(['Movies', 'Sports'])
+    expect(groupsMatching(channels, 'zzz')).toEqual([])
   })
 
   it('filters by group, by favourites and by search, in any mix', () => {

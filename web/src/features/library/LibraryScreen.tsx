@@ -1,8 +1,11 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { lazy, Suspense, useEffect, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
 import { PosterItem, ResumeItem } from '../../components/TitleCards'
 import { useFollowedTeams } from '../../lib/sports/settings'
+import { useSettings } from '../../lib/store/settings'
+import { activeTracker } from '../../lib/tracking/service'
+import { enabledServers, refreshServerIndex } from '../home/marks'
 import { library, useLibrary, type Progress } from '../../lib/store/library'
 import type { MediaType } from '../../lib/tmdb/types'
 import { Segmented, Select, StateView } from '../explore/Controls'
@@ -46,7 +49,10 @@ function Overview() {
 
   return (
     <>
-      <h1 className="page-title">Library</h1>
+      <div className={s.head}>
+        <h1 className="page-title">Library</h1>
+        <RefreshLibrary />
+      </div>
       <Pages watched={history.length} />
       {empty ? (
         <StateView
@@ -91,6 +97,39 @@ function Overview() {
           {history.length > 0 && <RecentHistory />}
         </>
       )}
+    </>
+  )
+}
+
+/** Refresh Library, as the apps' button in this place: bring in what the tracker has now, and ask the media servers what
+ *  they hold again. It shows only when there is something to ask: a service tracking, or a server. */
+function RefreshLibrary() {
+  const tracker = useSettings(activeTracker)
+  const servers = enabledServers(useSettings((x) => x.servers))
+  const [state, setState] = useState<'idle' | 'working' | 'done'>('idle')
+  if (tracker === 'local' && servers.length === 0) return null
+
+  async function refresh() {
+    setState('working')
+    try {
+      await Promise.all([
+        tracker === 'trakt' ? import('../../lib/trakt/engine').then((m) => m.syncTrakt()) : tracker === 'simkl' || tracker === 'mdblist' ? import('../../lib/tracking/engine').then((m) => m.syncTracker()) : undefined,
+        servers.length > 0 ? refreshServerIndex() : undefined,
+      ])
+    } catch {
+      // Each service reports its own trouble in Settings; this button only asks again.
+    }
+    setState('done')
+  }
+
+  return (
+    <>
+      <button type="button" className={`btn btn-secondary btn-circle ${s.refresh}`} aria-label="Refresh Library" onClick={() => void refresh()} disabled={state === 'working'} data-working={state === 'working' ? '' : undefined}>
+        <Icon name="refresh" size={18} strokeWidth={2.2} />
+      </button>
+      <span className="sr-only" role="status">
+        {state === 'working' ? 'Refreshing your library…' : state === 'done' ? 'Library refreshed.' : ''}
+      </span>
     </>
   )
 }

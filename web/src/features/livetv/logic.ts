@@ -14,6 +14,13 @@ export function groupsOf(channels: Channel[]): string[] {
   return out
 }
 
+/** Group names that have at least one channel matching the search, as Hide Empty Groups asks. With no search every
+ *  group has its channels, so this is `groupsOf`. */
+export function groupsMatching(channels: Channel[], search: string): string[] {
+  const needle = search.trim().toLowerCase()
+  return groupsOf(needle ? channels.filter((c) => c.name.toLowerCase().includes(needle)) : channels)
+}
+
 export interface ViewFilter {
   group?: string
   favourites: ReadonlySet<string>

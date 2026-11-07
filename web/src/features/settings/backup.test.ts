@@ -257,6 +257,17 @@ describe('settings backup', () => {
     expect(parse({ sources: { playFromLibraryOnly: 'yes' } }).ok).toBe(false)
   })
 
+  it('keeps the top pick style, the poster switches and the opening tab, and skips ones that are not', () => {
+    const parse = (settings: object) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings }))
+    const good = parse({ heroStyle: 'fullscreen', showPosterTitles: false, showReleaseYear: true, showContinueWatchingReleaseDate: false, startTab: 'library' })
+    expect(good.ok && good.skipped).toEqual([])
+    expect(good.ok && good.settings).toEqual({ heroStyle: 'fullscreen', showPosterTitles: false, showReleaseYear: true, showContinueWatchingReleaseDate: false, startTab: 'library' })
+    const bad = parse({ autoplayNext: true, heroStyle: 'wide', showPosterTitles: 'no', showReleaseYear: 1, showContinueWatchingReleaseDate: null, startTab: '' })
+    expect(bad.ok && bad.skipped.sort()).toEqual(['heroStyle', 'showContinueWatchingReleaseDate', 'showPosterTitles', 'showReleaseYear', 'startTab'])
+    // Left out of the defaults, so they cost the first page nothing; absent means the apps' defaults.
+    for (const key of ['heroStyle', 'showPosterTitles', 'showReleaseYear', 'showContinueWatchingReleaseDate', 'startTab']) expect(key in defaultSettings).toBe(false)
+  })
+
   it('Reset Everything clears the settings the defaults leave out, such as a WebDAV login', () => {
     settingsStore.set({ webDAV: [{ id: 'd1', name: 'NAS', url: 'https://nas.example.com/dav', password: 'pw', moviesPath: '/Movies', showsPath: '/TV Shows', enabled: true }], onlyShowServerContent: true })
     resetEverything()

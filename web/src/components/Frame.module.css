@@ -69,6 +69,10 @@
   text-align: left;
   color: var(--paper);
   -webkit-tap-highlight-color: transparent;
+  /* A long press opens the card's menu; the browser's own link menu and text selection would fight it. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .title {
   display: block;
@@ -87,6 +91,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* With the title hidden (Show Titles Under Posters off) the year is the first line under the frame. */
+.plate + .meta { margin-top: var(--space-xs); }
 @media (hover: hover) {
   .card:hover .plate { transform: translateY(-2px); }
   .card:hover .print { color: var(--paper); }

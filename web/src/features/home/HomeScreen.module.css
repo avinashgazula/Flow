@@ -21,6 +21,13 @@
 
 /* The lead, and Up Next beside it on desktop (below it, scrolling sideways, on a phone). */
 .top > * { min-width: 0; }
+/* Fullscreen top pick: it bleeds out to the window's edges, and Continue Watching goes under it, full width. */
+.bleed { margin: 0 calc(var(--page-inset) * -1) var(--space-l); }
+.top[data-hero='fullscreen'] { display: block; }
+.top[data-hero='fullscreen'] .side { margin-top: 0; }
+@media (min-width: 1100px) {
+  .top[data-hero='fullscreen'] .stills { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
 .top[data-lead='none'] { display: block; }
 @media (min-width: 1100px) {
   .top { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); column-gap: var(--space-xl); align-items: start; }
