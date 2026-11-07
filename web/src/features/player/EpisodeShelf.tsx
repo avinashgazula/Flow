@@ -2,11 +2,14 @@ import { Plate } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
 import type { Episode } from '../../lib/tmdb/types'
 import { keepFocus } from './Controls'
+import type { PlayerController } from './controller'
+import { useSheetClear } from './useSheetClear'
 import s from './Controls.module.css'
 
 /** The rest of the season as a flat shelf over the scrubber, opened scrolled to the episode on
  *  screen so what's next is a glance away. */
-export function EpisodeShelf({ season, current, list, onPick, onClose, fallbackStill }: {
+export function EpisodeShelf({ controller, season, current, list, onPick, onClose, fallbackStill }: {
+  controller: PlayerController
   season: number
   current: number
   list: Episode[] | undefined
@@ -14,9 +17,10 @@ export function EpisodeShelf({ season, current, list, onPick, onClose, fallbackS
   onClose: () => void
   fallbackStill?: string
 }) {
+  const clear = useSheetClear<HTMLDivElement>(controller, 'shelf')
   const today = new Date().toISOString().slice(0, 10)
   return (
-    <div className={`${s.shelf} ${s.interactive}`} role="dialog" aria-label={`Season ${season}`}>
+    <div ref={clear} className={`${s.shelf} ${s.interactive}`} role="dialog" aria-label={`Season ${season}`}>
       <div className={s.shelfHeader}>
         <h2>Season {season}</h2>
         <button className={s.clusterButton} aria-label="Close Episodes" onClick={onClose} onMouseDown={keepFocus}>

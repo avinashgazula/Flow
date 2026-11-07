@@ -279,6 +279,9 @@
 /* Subtitle Style, on a narrow window: the panel hangs from the top instead of standing on the buttons, so the
    subtitle line it's changing stays in view underneath (Player.module.css moves the line clear on wide ones). */
 @media (max-width: 899px) and (min-height: 501px) {
+  /* Under 900 the card is a sheet over the picture's lower part, with the subtitle line riding above it
+     (Player.module.css): short enough that a strip of the picture stays above it for the line to sit on. */
+  .panel { max-height: min(46%, calc(100% - var(--inset-top) - var(--inset-bottom) - var(--bottom-band) - 72px)); }
   .panel:is([data-page='style'], [data-page='delay']) {
     top: calc(var(--inset-top) + 64px);
     bottom: auto;

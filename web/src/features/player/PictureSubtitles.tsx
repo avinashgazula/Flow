@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 import type { PictureCue } from '../../lib/remux/pictures'
 import { useSettings } from '../../lib/store/settings'
 import { usePlayer, type PlayerController } from './controller'
-import { liftFor, placeObjects, rgbaOf, sitsHigh } from './pictureLayout'
+import { takeAll } from './clearance'
+import { clearBoxes, liftFor, placeObjects, rgbaOf, sitsHigh } from './pictureLayout'
 import { normaliseSubtitleStyle } from '../../lib/store/subtitleStyle'
 import s from './PictureSubtitles.module.css'
 
@@ -14,6 +15,7 @@ export function PictureSubtitles({ controller }: { controller: PlayerController 
   const lifted = usePlayer(controller, (st) => st.controls)
   const delay = usePlayer(controller, (st) => st.subtitleDelay)
   const fit = usePlayer(controller, (st) => st.fit)
+  const styling = usePlayer(controller, (st) => st.styling !== null)
   const position = useSettings((st) => normaliseSubtitleStyle(st.subtitleStyle).verticalPosition)
   const canvas = useRef<HTMLCanvasElement>(null)
 
@@ -44,14 +46,17 @@ export function PictureSubtitles({ controller }: { controller: PlayerController 
       g.clearRect(0, 0, el.width, el.height)
       if (!shown) return
       const ratio = el.width / Math.max(1, el.clientWidth)
-      const boxes = placeObjects(shown, { width: el.clientWidth, height: el.clientHeight }, picture.video, fit)
+      const container = { width: el.clientWidth, height: el.clientHeight }
+      // A panel over the picture (Options, X-Ray, the episodes) takes room: the cue is moved or scaled into what is left.
+      const take = takeAll(controller.clearances.values(), container, controller.get().styling !== null)
+      const boxes = clearBoxes(placeObjects(shown, container, picture.video, fit), container, take)
       const pieces = bitmapsOf(shown)
       g.imageSmoothingEnabled = true
       g.imageSmoothingQuality = 'high'
       boxes.forEach((b, i) => g.drawImage(pieces[i]!, b.x * ratio, b.y * ratio, b.width * ratio, b.height * ratio))
       // The band the controls cover, from the bottom of the window (the same figures as the text subtitles').
       const band = lifted ? (window.innerHeight <= 500 ? 78 : 96) : 0
-      const shift = liftFor({ container: el.clientHeight, bottom: Math.max(...boxes.map((b) => b.y + b.height)), controls: band, user: position, high: sitsHigh(shown) })
+      const shift = liftFor({ container: el.clientHeight, bottom: Math.max(...boxes.map((b) => b.y + b.height)), controls: band, user: position, high: sitsHigh(shown), sheet: take.bottom })
       el.style.setProperty('--shift', `${Math.round(shift)}px`)
     }
     const update = () => {
@@ -70,6 +75,7 @@ export function PictureSubtitles({ controller }: { controller: PlayerController 
     update()
     const observer = new ResizeObserver(resize)
     observer.observe(el)
+    const unclear = controller.onClearance(draw)
 
     // While playing, every frame; otherwise once on each seek or pause.
     let frame = 0
@@ -91,10 +97,11 @@ export function PictureSubtitles({ controller }: { controller: PlayerController 
     return () => {
       cancelAnimationFrame(frame)
       observer.disconnect()
+      unclear()
       for (const [name, fn] of events) video.removeEventListener(name, fn)
       g.clearRect(0, 0, el.width, el.height)
     }
-  }, [controller, picture, delay, fit, lifted, position])
+  }, [controller, picture, delay, fit, lifted, position, styling])
 
   if (!picture) return null
   return <canvas ref={canvas} className={s.canvas} aria-hidden="true" />

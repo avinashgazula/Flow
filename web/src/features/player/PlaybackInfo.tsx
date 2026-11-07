@@ -6,6 +6,7 @@ import { keepFocus } from './Controls'
 import { type PlayerController, usePlayer } from './controller'
 import { codecName } from './format'
 import { bufferAhead, megabits } from './struggle'
+import { useSheetClear } from './useSheetClear'
 import s from './Controls.module.css'
 
 type Row = [label: string, value: string]
@@ -53,6 +54,7 @@ export function readInfo(controller: PlayerController, source: Source | null, au
 export function PlaybackInfo({ controller, source }: { controller: PlayerController; source: Source | null }) {
   const audio = usePlayer(controller, (st) => st.audio)
   const audioId = usePlayer(controller, (st) => st.audioId)
+  const clear = useSheetClear<HTMLElement>(controller, 'info')
   const track = audio.find((t) => t.id === audioId)
   const [rows, setRows] = useState<Row[]>(() => readInfo(controller, source, track))
 
@@ -64,7 +66,7 @@ export function PlaybackInfo({ controller, source }: { controller: PlayerControl
   }, [controller, source, track])
 
   return (
-    <aside className={s.info} aria-label="Playback info">
+    <aside ref={clear} className={s.info} aria-label="Playback info">
       <header className={s.infoHeader}>
         <h2 className={s.infoTitle}>Playback Info</h2>
         <button className={s.infoClose} aria-label="Close Playback Info" title="Close (I)" onClick={controller.toggleInfo} onMouseDown={keepFocus}>

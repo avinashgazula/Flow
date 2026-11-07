@@ -136,6 +136,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* A filter or toggle in a row of choices. Current is a lighter base and paper text, never yellow. */
 .chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   height: 36px;
@@ -149,6 +150,11 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 }
 .chip:hover { color: var(--paper); background: var(--base-4); }
 .chip[aria-pressed='true'], .chip[aria-current='page'] { background: var(--base-4); color: var(--paper); }
+/* A finger needs 44px: the chip stays 36px to look at and its hit area reaches 4px past it above and below, as the
+   segmented control's does. The rows that scroll keep that much room around their chips. */
+@media (pointer: coarse) {
+  .chip::before { content: ''; position: absolute; inset: -4px 0; }
+}
 
 .muted { color: var(--ink-2); }
 .faint { color: var(--ink-3); }

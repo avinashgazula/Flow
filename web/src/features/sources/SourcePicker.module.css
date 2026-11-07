@@ -43,7 +43,8 @@
 .searching { display: inline-flex; align-items: center; gap: 6px; }
 .spinner { width: 11px; height: 11px; border-radius: 50%; border: 1.6px solid var(--base-4); border-top-color: var(--ink-2); animation: spin 0.8s linear infinite; }
 
-.chips { display: flex; gap: var(--space-xs); padding: 0 var(--space-l) var(--space-s); overflow-x: auto; scrollbar-width: none; flex: none; }
+/* 4px above and 4px less below: the room a chip's 44px touch target (global.css) reaches into, which the scroll box would clip. */
+.chips { display: flex; gap: var(--space-xs); padding: 4px var(--space-l) var(--space-xs); overflow-x: auto; scrollbar-width: none; flex: none; }
 .chips::-webkit-scrollbar { display: none; }
 .chips :global(.chip) { background: var(--base-3); }
 .chips :global(.chip[aria-pressed='true']) { background: var(--base-4); }

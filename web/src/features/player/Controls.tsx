@@ -84,7 +84,7 @@ export function Controls({ controller, title, line, onClose, sources, source, on
             onMoreSources={onMoreSources}
           />
         )}
-        {panel === 'episodes' && episodes && <EpisodeShelf {...episodes} onClose={() => controller.setPanel(null)} />}
+        {panel === 'episodes' && episodes && <EpisodeShelf controller={controller} {...episodes} onClose={() => controller.setPanel(null)} />}
       </div>
     </>
   )

@@ -12,6 +12,7 @@ import type { ProviderOutcome, SearchOutcome } from '../../lib/subtitles/search'
 import { providerNames, SubtitleError, type Credentials, type ProviderId, type SubtitleQuery, type SubtitleResult } from '../../lib/subtitles/types'
 import type { AssHandle } from './ass'
 import { ownTracks, type Engine, type PictureSource, type Track } from './engine'
+import type { ClearKind, Clearance } from './clearance'
 import { animeRule, audioLanguagesFor, decideSubtitle, isAnime, isForced, pickAudio, pickSubtitle, releaseLanguage, trackLanguage } from './languages'
 import { detectPlatform, launchURL, streamLink, externalPlayerTitle, type ExternalPlayerId } from './externalPlayers'
 import { planReplay, replayDone, replaySeconds } from './replay'
@@ -973,6 +974,7 @@ export class PlayerController {
    *  stylesheet, which keeps the subtitles clear of it. `room` is the height from the window's bottom edge to the panel's
    *  top. Written to the element, as Because You Watched's card is, so the screen doesn't re-render. `null` when it goes. */
   setXRayClear = (size: { width: number; room: number } | null) => {
+    this.noteClearance('xray', size)
     const root = this.root
     if (!root) return
     root.toggleAttribute('data-xray', size !== null)
@@ -983,6 +985,36 @@ export class PlayerController {
       root.style.removeProperty('--xray-w')
       root.style.removeProperty('--xray-room')
     }
+  }
+
+  /** Options, Audio and Subtitles, the episodes shelf and Playback Info do what X-Ray does: their size goes to the
+   *  stylesheet, which keeps the text subtitles clear (beside the panel on a wide window, above it on a phone held
+   *  upright), and to the picture subtitles, which ask `clearances`. `null` when the panel goes. */
+  setSheetClear = (kind: 'panel' | 'shelf' | 'info', size: { width: number; room: number } | null) => {
+    this.noteClearance(kind, size)
+    const root = this.root
+    if (!root) return
+    root.toggleAttribute(`data-clear-${kind}`, size !== null)
+    if (size) {
+      root.style.setProperty(`--clear-${kind}-w`, `${Math.ceil(size.width)}px`)
+      root.style.setProperty(`--clear-${kind}-room`, `${Math.ceil(size.room)}px`)
+    } else {
+      root.style.removeProperty(`--clear-${kind}-w`)
+      root.style.removeProperty(`--clear-${kind}-room`)
+    }
+  }
+
+  /** The panels that are over the picture, and when they change. Not state: the screen doesn't re-render for it. */
+  clearances = new Map<ClearKind, Clearance>()
+  private clearanceListeners = new Set<() => void>()
+  onClearance(listener: () => void) {
+    this.clearanceListeners.add(listener)
+    return () => void this.clearanceListeners.delete(listener)
+  }
+  private noteClearance(kind: ClearKind, size: { width: number; room: number } | null) {
+    if (size) this.clearances.set(kind, { kind, width: Math.ceil(size.width), room: Math.ceil(size.room) })
+    else if (!this.clearances.delete(kind)) return
+    this.clearanceListeners.forEach((l) => l())
   }
 
   /** The lines of the subtitles being shown, whichever way they're drawn (libass has none on the overlay's track), for

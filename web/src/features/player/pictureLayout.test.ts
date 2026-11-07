@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PictureCue } from '../../lib/remux/pictures'
-import { liftFor, pictureBox, placeObjects, shownShape, sitsHigh } from './pictureLayout'
+import { clearBoxes, liftFor, pictureBox, placeObjects, shownShape, sitsHigh } from './pictureLayout'
 
 const cue = (canvas: [number, number], objects: { x: number; y: number; width: number; height: number }[]): PictureCue => ({
   start: 0,
@@ -91,5 +91,65 @@ describe('raising a subtitle clear of the controls', () => {
 
   it('leaves a title or a sign in the upper half alone', () => {
     expect(liftFor({ ...base, bottom: 990, user: 0.3, high: true })).toBe(0)
+  })
+})
+
+describe('raising a subtitle clear of a panel over the lower part', () => {
+  const base = { container: 800, controls: 96, user: 0, high: false }
+  it('raises every line to just above the panel', () => {
+    expect(liftFor({ ...base, bottom: 790, sheet: 412 })).toBe(402)
+    expect(liftFor({ ...base, bottom: 700, sheet: 412 })).toBe(312)
+  })
+
+  it('leaves a line that is already above the panel where it is', () => {
+    expect(liftFor({ ...base, bottom: 300, sheet: 412, controls: 0 })).toBe(0)
+  })
+
+  it('raises a title in the upper half only when the panel reaches it', () => {
+    expect(liftFor({ ...base, bottom: 200, sheet: 412, high: true })).toBe(0)
+    expect(liftFor({ ...base, bottom: 500, sheet: 412, high: true })).toBe(112)
+  })
+
+  it('does nothing without a panel', () => {
+    expect(liftFor({ ...base, bottom: 790, controls: 0 })).toBe(0)
+  })
+})
+
+describe('keeping a cue clear of a panel beside the picture', () => {
+  const window = { width: 1000, height: 600 }
+  const line = { x: 300, y: 500, width: 400, height: 60 }
+
+  it('leaves a cue that is already clear alone', () => {
+    const boxes = [line]
+    expect(clearBoxes(boxes, window, { right: 300, bottom: 0 })).toBe(boxes)
+    expect(clearBoxes(boxes, window, { right: 0, bottom: 0 })).toBe(boxes)
+  })
+
+  it('moves a cue that overlaps the panel left, without resizing it', () => {
+    const [box] = clearBoxes([line], window, { right: 500, bottom: 0 })
+    // 500 pixels are free, so the line (300 to 700) ends at 500.
+    expect(box).toEqual({ x: 100, y: 500, width: 400, height: 60 })
+  })
+
+  it('scales a cue wider than the room left, about its lower edge, and keeps it inside', () => {
+    const [box] = clearBoxes([{ x: 100, y: 500, width: 800, height: 80 }], window, { right: 400, bottom: 0 })
+    expect(box!.width).toBeCloseTo(600, 6)
+    expect(box!.height).toBeCloseTo(60, 6)
+    expect(box!.x).toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width).toBeLessThanOrEqual(600 + 1e-6)
+    expect(box!.y + box!.height).toBeCloseTo(580, 6)
+  })
+
+  it('moves every object of a cue together, keeping their arrangement', () => {
+    const [a, b] = clearBoxes([{ x: 300, y: 400, width: 400, height: 40 }, { x: 350, y: 500, width: 300, height: 50 }], window, { right: 500, bottom: 0 })
+    expect(a!.x).toBe(100)
+    expect(b!.x).toBe(150)
+    expect(b!.y - a!.y).toBe(100)
+  })
+
+  it('shrinks a cue too tall for the room above a panel over the lower part', () => {
+    const [box] = clearBoxes([{ x: 300, y: 100, width: 400, height: 500 }], window, { right: 0, bottom: 300 })
+    expect(box!.height).toBeCloseTo(300, 6)
+    expect(box!.width).toBeCloseTo(240, 6)
   })
 })

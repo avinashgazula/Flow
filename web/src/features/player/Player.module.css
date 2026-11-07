@@ -145,6 +145,22 @@
   .root[data-xray] .subtitles[data-lifted] { transform: translateY(calc(-1 * max(0px, var(--xray-room, 0px) + 12px - var(--inset-bottom) - var(--rest)))); }
 }
 
+/* The other panels stand over the picture's lower part and measure themselves onto the player's element
+   (useSheetClear), as X-Ray's card does. The episodes shelf spans the window at every size, so the line rides above it
+   everywhere. Options and Audio and Subtitles do that where they are not beside the picture (the query above): a phone held
+   upright. Subtitle Style and Delay hang from the top there, and leave the line where it is. */
+.root[data-clear-shelf] .subtitles,
+.root[data-clear-shelf] .subtitles[data-lifted] { transform: translateY(calc(-1 * max(0px, var(--clear-shelf-room, 0px) + 12px - var(--inset-bottom) - var(--rest)))); }
+@media (max-width: 899px) and (min-height: 501px) {
+  .root[data-clear-panel]:not([data-styling]) .subtitles,
+  .root[data-clear-panel]:not([data-styling]) .subtitles[data-lifted] { transform: translateY(calc(-1 * max(0px, var(--clear-panel-room, 0px) + 12px - var(--inset-bottom) - var(--rest)))); }
+}
+/* Playback Info stands in the top corner, and reaches the line only in a window as short as a phone held sideways, where
+   the line keeps to the picture beside it. */
+@media (max-height: 500px) {
+  .root[data-clear-info] .subtitles { right: calc(var(--inset-right) + var(--margin) + var(--clear-info-w, 0px) + 24px); }
+}
+
 /* Keyboard feedback: a flat disc in the middle that's gone in half a second. */
 .feedback {
   position: absolute;

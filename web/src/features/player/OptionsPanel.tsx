@@ -5,6 +5,7 @@ import { PlayerIcon, type PlayerIconName } from './playerIcons'
 import type { Source } from '../../lib/sources'
 import { useSettings } from '../../lib/store/settings'
 import { usePlayer, type PlayerController } from './controller'
+import { useSheetClear } from './useSheetClear'
 import { keepFocus } from './Controls'
 import { externalPlayerTitle, playersFor } from './externalPlayers'
 import { BoostPage, DelayPage } from './ExtraPages'
@@ -67,6 +68,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   onPickSource: (source: Source) => void
   onMoreSources: () => void
 }) {
+  const clear = useSheetClear<HTMLDivElement>(controller, 'panel')
   const [page, setPage] = useState<Page>(start)
   const chapters = usePlayer(controller, (st) => st.chapters)
   const scroller = useRef<HTMLDivElement>(null)
@@ -305,7 +307,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
 
   const showHeader = page !== 'root' && page !== start
   return (
-    <div className={`${s.panel} ${s.interactive}`} data-page={page} role="dialog" aria-label={titles[page]} onPointerEnter={() => (controller.hovering = true)} onPointerLeave={() => (controller.hovering = false)}>
+    <div ref={clear} className={`${s.panel} ${s.interactive}`} data-page={page} role="dialog" aria-label={titles[page]} onPointerEnter={() => (controller.hovering = true)} onPointerLeave={() => (controller.hovering = false)}>
       {showHeader && (
         <button className={s.panelHeader} onClick={back} onMouseDown={keepFocus} aria-label={`Back to ${titles[page === 'search' ? searchFrom : home]}`}>
           <Icon name="chevronLeft" size={16} strokeWidth={2.6} />

@@ -51,6 +51,34 @@ export function placeObjects(cue: PictureCue, container: { width: number; height
   return cue.objects.map((o) => ({ x: box.x + o.x * scaleX, y: originY + o.y * scaleY, width: o.width * scaleX, height: o.height * scaleY }))
 }
 
+/** Keeps a cue's boxes out of what a panel takes (clearance.ts): `right` is a strip down the window's right edge, `bottom`
+ *  one along its lower edge. A cue that overlaps the strip is moved left out of it; one too big for the room left is
+ *  scaled down, about the middle of its lower edge, to fit. The bitmaps themselves are only moved and scaled, as the text
+ *  subtitles' line is moved, never restyled; a cue that is already clear is untouched. The bottom strip is cleared by
+ *  raising the canvas (liftFor), so only the size is checked against it here. */
+export function clearBoxes(boxes: Box[], container: { width: number; height: number }, take: { right: number; bottom: number }): Box[] {
+  if (boxes.length === 0 || (take.right <= 0 && take.bottom <= 0)) return boxes
+  const left = Math.min(...boxes.map((b) => b.x))
+  const top = Math.min(...boxes.map((b) => b.y))
+  const right = Math.max(...boxes.map((b) => b.x + b.width))
+  const bottom = Math.max(...boxes.map((b) => b.y + b.height))
+  const freeWidth = Math.max(1, container.width - take.right)
+  const freeHeight = Math.max(1, container.height - take.bottom)
+  const scale = Math.min(1, freeWidth / Math.max(1, right - left), freeHeight / Math.max(1, bottom - top))
+  const centre = (left + right) / 2
+  // Scaled about the cue's middle, then moved left only as far as it takes to leave the strip, and no further than the edge.
+  const scaledLeft = centre - (centre - left) * scale
+  const scaledRight = centre + (right - centre) * scale
+  const shift = -Math.min(Math.max(0, scaledRight - freeWidth), Math.max(0, scaledLeft))
+  if (scale === 1 && shift === 0) return boxes
+  return boxes.map((b) => ({
+    x: centre + (b.x - centre) * scale + shift,
+    y: bottom + (b.y - bottom) * scale,
+    width: b.width * scale,
+    height: b.height * scale,
+  }))
+}
+
 /** True when the cue sits in the upper half of the canvas (signs and titles), which the controls and the viewer's
  *  subtitle position (both about the lower edge) leave where it is. */
 export function sitsHigh(cue: PictureCue): boolean {
@@ -64,10 +92,13 @@ export function sitsHigh(cue: PictureCue): boolean {
  *  (`user`); with the controls up (`controls` is the band they cover, 0 when they are away) a line that would sit in that
  *  band is raised just clear of it, and one already above it stays. The text subtitles are always at the bottom of the
  *  window, so they take the whole band; a bitmap sits where the disc drew it, which in a tall window (a phone held
- *  upright) can be well above the band. A subtitle in the upper half of the picture isn't raised at all. */
-export function liftFor({ container, bottom, controls, user, high }: { container: number; bottom: number; controls: number; user: number; high: boolean }): number {
-  if (high) return 0
-  return Math.max(0, user * container, controls - (container - bottom))
+ *  upright) can be well above the band. A subtitle in the upper half of the picture isn't raised at all, unless a panel
+ *  over the window's lower part (`sheet` is the height it covers) reaches it: then it is raised just clear of the panel,
+ *  as every line is. */
+export function liftFor({ container, bottom, controls, user, high, sheet = 0 }: { container: number; bottom: number; controls: number; user: number; high: boolean; sheet?: number }): number {
+  const clear = Math.max(0, sheet - (container - bottom))
+  if (high) return clear
+  return Math.max(0, user * container, controls - (container - bottom), clear)
 }
 
 /** The pixels of one object as straight RGBA, for `ImageData`. Indices past the palette are transparent. */
