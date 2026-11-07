@@ -10,7 +10,7 @@ import { ChipRow } from '../explore/ChipRow'
 import { Segmented, StateView } from '../explore/Controls'
 import { ChannelList } from './ChannelList'
 import { Guide } from './Guide'
-import { favouritesGroup, groupsOf, visibleChannels } from './logic'
+import { favouritesGroup, groupsMatching, groupsOf, visibleChannels } from './logic'
 import { useNow, usePhone } from './shared'
 import s from './LiveScreen.module.css'
 
@@ -53,7 +53,9 @@ export function LiveScreen({ search }: { search: LiveSearch }) {
     void loadLiveTV(providers, { refreshHours: hours })
   }, [providers, hours])
 
-  const groups = useMemo(() => groupsOf(live.channels), [live.channels])
+  // Hide Empty Groups (on unless turned off): while searching, only the groups that still have a match keep their chip.
+  const hideEmpty = useSettings((x) => x.liveTV?.hideEmptyGroups !== false)
+  const groups = useMemo(() => (hideEmpty ? groupsMatching(live.channels, text) : groupsOf(live.channels)), [live.channels, hideEmpty, text])
   const hasFavourites = live.channels.some((c) => favourites.has(c.id))
   const group = search.group === favouritesGroup ? (hasFavourites ? favouritesGroup : undefined) : groups.includes(search.group ?? '') ? search.group : undefined
   const visible = useMemo(() => visibleChannels(live.channels, { group, favourites, search: text }), [live.channels, group, favourites, text])

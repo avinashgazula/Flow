@@ -10,7 +10,9 @@ import { formatLeft, formatRuntime, userLocale, useMinuteTick } from '../../lib/
 import { useNearScreen } from '../../lib/useNearScreen'
 import { continueEntries, episodesLeftText, followedShows, showStatus, type ContinueEntry } from './continue'
 import { endsPart, episodeLine, episodeShort, inProgress, resumePrint, secondsLeft, spokenResume, watchedFraction } from './logic'
+import { LazyCardMenu } from './LazyCardMenu'
 import { watchedShowsOf } from './marks'
+import { continueMeta } from './posterText'
 import s from './HomeScreen.module.css'
 
 /** How wide an Up Next still renders, for `srcset`: two across beside the lead on a desktop, a scrolling row below. */
@@ -71,6 +73,7 @@ function ContinueCard({ entry, said }: { entry: ContinueEntry; said: boolean }) 
   const marks = useLibrary((l) => l.watchedEpisodes)
   const rewatches = useLibrary((l) => l.rewatches)
   const showLeft = useSettings((x) => x.showEpisodesRemaining)
+  const showDate = useSettings((x) => x.showContinueWatchingReleaseDate !== false)
   const isShow = item.type === 'show'
   const detail = useQuery({ ...q.detail(item.type, item.id), enabled: near && isShow })
   // A next episode names itself and has its own still once its season is known.
@@ -113,10 +116,12 @@ function ContinueCard({ entry, said }: { entry: ContinueEntry; said: boolean }) 
       progress={progress ? watchedFraction(progress) : 0}
       print={print}
       title={item.title}
-      meta={meta}
+      meta={continueMeta(meta, item.year, showDate)}
       label={label}
       fallback={item.title}
       onIntent={() => prefetchDetail(item)}
-    />
+    >
+      <LazyCardMenu item={item} entry={{ progress, episode }} />
+    </FrameCard>
   )
 }

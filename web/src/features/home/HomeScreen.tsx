@@ -7,7 +7,7 @@ import { useSettings } from '../../lib/store/settings'
 import { formatWeekdayDate, greetingTitle, userLocale, useMinuteTick } from '../../lib/time'
 import { srcSet } from '../../lib/tmdb/images'
 import type { MediaItem } from '../../lib/tmdb/types'
-import { Lead, LeadGhost, leadSizes, type LeadItem } from './Lead'
+import { fullSizes, Lead, LeadGhost, leadSizes, type LeadItem } from './Lead'
 import { inProgress } from './logic'
 import { heroPicks, maxSlides } from './shelfQuery'
 import { UpNext } from './UpNext'
@@ -29,6 +29,7 @@ export function HomeScreen() {
   const primary = useSettings((x) => x.heroSource)
   const secondary = useSettings((x) => x.heroSecondarySource)
   const auto = useSettings((x) => x.heroAutoAdvance)
+  const fullscreen = useSettings((x) => x.heroStyle === 'fullscreen')
 
   // The sources of the top picks. Each is asked for only if it is chosen; trending is the one Home paints from.
   const uses = (source: string) => primary === source || secondary === source
@@ -52,11 +53,11 @@ export function HomeScreen() {
   useEffect(() => {
     if (!still) return
     try {
-      localStorage.setItem('flow.lcp', JSON.stringify({ path: location.pathname, d: srcSet(still, 'backdrop'), s: leadSizes }))
+      localStorage.setItem('flow.lcp', JSON.stringify({ path: location.pathname, d: srcSet(still, 'backdrop'), s: fullscreen ? fullSizes : leadSizes }))
     } catch {
       // Only a head start for the next visit.
     }
-  }, [still])
+  }, [still, fullscreen])
 
   // Continue Watching and Up Next are the apps' two shelves for this place. Continue Watching holds both what is in
   // progress and what is next, so it names the place when it is on; Up Next alone holds only the next episodes.
@@ -65,6 +66,9 @@ export function HomeScreen() {
   const upNext = continuing ?? beside[0]
   const none = slides.length === 0 && !pending && failed
 
+  const lead = slides.length ? <Lead slides={slides} auto={auto} fullscreen={fullscreen} /> : pending ? <LeadGhost fullscreen={fullscreen} /> : null
+  const side = upNext && <UpNext leadKey={resume && resumeKey} title={upNext.title} nextOnly={!continuing} />
+
   return (
     <div className={s.home}>
       <div className={s.wrap}>
@@ -72,20 +76,21 @@ export function HomeScreen() {
           <h1 className={s.title}>{greetingTitle(now)}</h1>
           <p className={`${s.date} num`}>{formatWeekdayDate(now, userLocale)}</p>
         </header>
-        {none ? (
-          <Setup error />
-        ) : (
-          <>
-            <div className={s.top} data-lead={slides.length || pending ? undefined : 'none'}>
-              {slides.length ? <Lead slides={slides} auto={auto} /> : pending ? <LeadGhost /> : null}
-              {upNext && <UpNext leadKey={resume && resumeKey} title={upNext.title} nextOnly={!continuing} />}
-            </div>
-            <Suspense fallback={null}>
-              <Shelves />
-            </Suspense>
-          </>
-        )}
+        {none && <Setup error />}
       </div>
+      {/* Fullscreen takes the lead out of the page's column, so it can run to the window's edges. */}
+      {!none && fullscreen && lead && <div className={s.bleed}>{lead}</div>}
+      {!none && (
+        <div className={s.wrap}>
+          <div className={s.top} data-lead={slides.length || pending ? undefined : 'none'} data-hero={fullscreen && lead ? 'fullscreen' : undefined}>
+            {!fullscreen && lead}
+            {side}
+          </div>
+          <Suspense fallback={null}>
+            <Shelves />
+          </Suspense>
+        </div>
+      )}
     </div>
   )
 }

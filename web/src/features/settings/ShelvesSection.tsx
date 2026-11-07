@@ -5,6 +5,7 @@ import { addBuiltInShelf, addDiscoverShelf, missingBuiltIns, moveShelf, parseShe
 import { settingsStore, useSettings } from '../../lib/store/settings'
 import { filmDateKinds } from '../home/upcoming'
 import { DiscoverEditor } from './DiscoverEditor'
+import { ListShelfPickers } from './ListShelfPickers'
 import { ConfirmButton, Group, Note, Row, Select, Switch } from './controls'
 import s from './SettingsScreen.module.css'
 
@@ -33,6 +34,10 @@ const heroOptions: { value: HeroSource; label: string }[] = [
   { value: 'trending', label: 'Trending' },
   { value: 'popular', label: 'Popular' },
   { value: 'watchlist', label: 'Watchlist' },
+]
+const styles: { value: 'card' | 'fullscreen'; label: string }[] = [
+  { value: 'card', label: 'Card' },
+  { value: 'fullscreen', label: 'Fullscreen' },
 ]
 const lengths = [10, 20, 30, 40].map((n) => ({ value: String(n), label: String(n) }))
 const limits = [{ value: 'all', label: 'All' }, ...[5, 10, 20].map((n) => ({ value: String(n), label: String(n) }))]
@@ -162,12 +167,13 @@ function ShelfList() {
           }}
         />
       ) : (
-        <Group title="Add a Shelf" footer="A Discover shelf is a row from TMDB’s catalogue that you filter yourself: a genre, a streaming service, a decade or a rating.">
+        <Group title="Add a Shelf" footer="A Discover shelf is a row from TMDB’s catalogue that you filter yourself: a genre, a streaming service, a decade or a rating. Trakt lists appear once a Trakt Client ID is set in Account, MDBList lists once its key is set in Metadata, and a server’s libraries once the server is in Media Servers.">
           <Row label="Discover Shelf" detail="Choose what it holds">
             <button type="button" className="btn btn-secondary btn-compact" onClick={() => setEditing({})}>
               <Icon name="plus" size={16} /> Add
             </button>
           </Row>
+          <ListShelfPickers />
           {missing.length > 0 && (
             <Row label="Built-in Shelf" detail={`${missing.length} not on your list`}>
               <Select
@@ -195,8 +201,12 @@ function TopPick() {
   const primary = useSettings((x) => x.heroSource)
   const secondary = useSettings((x) => x.heroSecondarySource)
   const auto = useSettings((x) => x.heroAutoAdvance)
+  const style = useSettings((x) => x.heroStyle ?? 'card')
   return (
-    <Group title="Top Pick" footer="When nothing is in progress, Home leads with the first title from these sources, and turns through up to ten of them. With something in progress it leads with that and stays put.">
+    <Group title="Top Pick" footer="When nothing is in progress, Home leads with the first title from these sources, and turns through up to ten of them. With something in progress it leads with that and stays put. Card is a framed still beside Continue Watching; Fullscreen draws the picture across the whole width, with Continue Watching under it.">
+      <Row label="Style" htmlFor="hero-style">
+        <Select id="hero-style" value={style} onChange={(v) => settingsStore.set({ heroStyle: v })} options={styles} label="Top pick style" />
+      </Row>
       <Row label="Primary Source" htmlFor="hero-primary">
         <Select id="hero-primary" value={primary} onChange={(v) => settingsStore.set({ heroSource: v })} options={heroOptions} label="Primary source" />
       </Row>
@@ -227,6 +237,9 @@ function HomeSwitches() {
   const filmDates = useSettings((x) => x.filmDates ?? 'digital')
   const watched = useSettings((x) => x.showWatchedBadges)
   const left = useSettings((x) => x.showEpisodesRemaining)
+  const date = useSettings((x) => x.showContinueWatchingReleaseDate !== false)
+  const year = useSettings((x) => x.showReleaseYear === true)
+  const titles = useSettings((x) => x.showPosterTitles !== false)
   return (
     <>
       <Group title="Home" footer="How many titles a content shelf such as Trending holds. Upcoming lists the next episode of series you’re caught up on, and Watchlist Premieres adds new seasons and unreleased films from your watchlist.">
@@ -238,6 +251,9 @@ function HomeSwitches() {
         </Row>
         <Row label="Shelf Limit" detail="Most recent kept in Continue Watching" htmlFor="shelf-limit">
           <Select id="shelf-limit" value={limit === null ? 'all' : String(limit)} onChange={(v) => settingsStore.set({ continueWatchingLimit: v === 'all' ? null : Number(v) })} options={limits} label="Continue Watching limit" disabled={!showContinue} />
+        </Row>
+        <Row label="Show Continue Watching Release Date" detail="Ends each card’s line with the year">
+          <Switch checked={date} onChange={(on) => settingsStore.set({ showContinueWatchingReleaseDate: on })} label="Show Continue Watching release date" disabled={!showContinue} />
         </Row>
         <Row label="Show Upcoming">
           <Switch checked={showUpcoming} onChange={(on) => settingsStore.set({ showUpcoming: on })} label="Show Upcoming" />
@@ -252,7 +268,13 @@ function HomeSwitches() {
           <Select id="upcoming-within" value={String(within)} onChange={(v) => settingsStore.set({ upcomingWithinDays: Number(v) })} options={windows} label="Upcoming within" disabled={!showUpcoming} />
         </Row>
       </Group>
-      <Group title="Posters" footer="Show Watched Marks prints WATCHED on the strip of a title you’ve finished. Show Episodes Left adds how many episodes you’ve watched of those aired (3/10) to a series’ strip, and “5 episodes left” to Continue Watching.">
+      <Group title="Posters" footer="The year appears under the title, or alone when titles are hidden. Show Watched Marks prints WATCHED on the strip of a title you’ve finished. Show Episodes Left adds how many episodes you’ve watched of those aired (3/10) to a series’ strip, and “5 episodes left” to Continue Watching.">
+        <Row label="Show Release Year">
+          <Switch checked={year} onChange={(on) => settingsStore.set({ showReleaseYear: on })} label="Show release year" />
+        </Row>
+        <Row label="Show Titles Under Posters">
+          <Switch checked={titles} onChange={(on) => settingsStore.set({ showPosterTitles: on })} label="Show titles under posters" />
+        </Row>
         <Row label="Show Watched Marks">
           <Switch checked={watched} onChange={(on) => settingsStore.set({ showWatchedBadges: on })} label="Show watched marks" />
         </Row>

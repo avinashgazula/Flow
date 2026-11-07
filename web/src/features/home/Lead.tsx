@@ -27,6 +27,8 @@ export interface LeadItem {
 /** How wide the lead still renders, for `srcset`. index.html preloads the same still with the same string,
  *  so the browser reuses the download; keep the two in step with the layout in Lead.module.css. */
 export const leadSizes = '(min-width: 1500px) 738px, (min-width: 1100px) 52vw, (min-width: 721px) 420px, calc(100vw - 32px)'
+/** The Fullscreen style draws the still across the whole window. */
+export const fullSizes = '100vw'
 
 /** How long a pick stays up before the next one. */
 const dwell = 8000
@@ -50,8 +52,11 @@ function useReducedMotion() {
  *
  *  With several titles it turns through them (up to ten: what's in progress first, then the top picks), with a
  *  row of perforations under it for the page you are on. It turns by itself only when nothing is in progress,
- *  never while the pointer or keyboard focus is in it, and never under reduced motion. */
-export function Lead({ slides, auto }: { slides: LeadItem[]; auto: boolean }) {
+ *  never while the pointer or keyboard focus is in it, and never under reduced motion.
+ *
+ *  `fullscreen` is the apps' Fullscreen top pick: the same one object, drawn edge to edge, with its title, facts and
+ *  buttons on the picture's lower part and the strip as the band along its foot. */
+export function Lead({ slides, auto, fullscreen }: { slides: LeadItem[]; auto: boolean; fullscreen?: boolean }) {
   const [index, setIndex] = useState(0)
   const [hold, setHold] = useState(false)
   const [stopped, setStopped] = useState(false)
@@ -96,6 +101,7 @@ export function Lead({ slides, auto }: { slides: LeadItem[]; auto: boolean }) {
   return (
     <section
       className={s.lead}
+      data-style={fullscreen ? 'fullscreen' : undefined}
       aria-roledescription={many ? 'carousel' : undefined}
       aria-label={many ? 'Featured titles' : undefined}
       onPointerEnter={() => setHold(true)}
@@ -104,7 +110,7 @@ export function Lead({ slides, auto }: { slides: LeadItem[]; auto: boolean }) {
       onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setHold(false)}
     >
       <Link key={key} to="/title/$type/$id" params={{ type: item.type, id: item.id }} search={season} className={s.plate} onPointerEnter={() => prefetchDetail(item)} viewTransition tabIndex={-1} aria-hidden="true">
-        <Plate shape="still" artPath={item.backdrop} sizes={leadSizes} priority={at === 0} progress={progress ? watchedFraction(progress) : seen?.progress} print={print} stripSize="lead" fallback={item.title} />
+        <Plate shape="still" artPath={item.backdrop} sizes={fullscreen ? fullSizes : leadSizes} priority={at === 0} progress={progress ? watchedFraction(progress) : seen?.progress} print={print} stripSize="lead" fallback={item.title} />
       </Link>
       <div className={s.info}>
         {/* Every slide's words sit in one cell of a grid, so the block is as tall as the tallest and nothing
@@ -209,10 +215,10 @@ function Reel({ titles, at, onGo, running, stopped, onToggle }: { titles: string
 
 /** The lead's place while nothing is known yet: the still from the last visit if there is one (the page's
  *  HTML painted it already), else a flat block. Either way the box is the final size, so nothing moves. */
-export function LeadGhost() {
+export function LeadGhost({ fullscreen }: { fullscreen?: boolean }) {
   const still = lastLead()
   return (
-    <div className={s.lead} aria-hidden="true">
+    <div className={s.lead} data-style={fullscreen ? 'fullscreen' : undefined} aria-hidden="true">
       <div className={s.plate}>
         <span className={s.ghostFrame}>{still && <img className={s.ghostImg} src={still.d.split(' ')[0]} srcSet={still.d} sizes={leadSizes} alt="" fetchPriority="high" />}</span>
         <span className={s.ghostStrip} />

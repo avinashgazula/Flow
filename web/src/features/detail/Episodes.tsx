@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { ChoiceSelect, Segmented } from '../../components/Choice'
+import ContextMenu, { type MenuItem } from '../../components/ContextMenu'
 import { FrameCard } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
 import { q } from '../../lib/queries'
@@ -11,6 +12,7 @@ import { spokenDuration, userLocale, useMinuteTick } from '../../lib/time'
 import type { Episode, MediaDetail } from '../../lib/tmdb/types'
 import { isAired, isWatched } from '../../lib/watching'
 import { cardOf, episodePrint, formatDay, realSeasons, todayOf } from './logic'
+import { episodesUpTo } from './upToHere'
 import s from './Episodes.module.css'
 
 const label = (n: number) => (n === 0 ? 'Specials' : `Season ${n}`)
@@ -65,7 +67,7 @@ export function Episodes({ detail, initial, onPlay }: { detail: MediaDetail; ini
               const done = isWatched(lib, detail.id, ref)
               const partial = progress?.episode?.season === e.season && progress.episode.episode === e.number && progress.duration > 0 ? progress.position / progress.duration : undefined
               const veiled = !spoilers && isAired(e.airDate, today) && !done
-              return <EpisodeCard key={e.id} episode={e} aired={aired} watched={done} partial={partial} veiled={veiled} now={now} onPlay={() => onPlay(ref)} onToggle={() => (done ? titleLibrary.markUnwatched(item, [ref]) : titleLibrary.markEpisodesWatched(item, [ref]))} />
+              return <EpisodeCard key={e.id} episode={e} aired={aired} watched={done} partial={partial} veiled={veiled} now={now} onPlay={() => onPlay(ref)} onToggle={() => (done ? titleLibrary.markUnwatched(item, [ref]) : titleLibrary.markEpisodesWatched(item, [ref]))} onUpToHere={() => titleLibrary.markEpisodesWatched(item, episodesUpTo(episodes, e))} />
             })}
       </ol>
       {!isPending && episodes?.length === 0 && <p className={s.empty}>TMDB doesn’t list episodes for this season yet.</p>}
@@ -87,6 +89,7 @@ function EpisodeCard({
   now,
   onPlay,
   onToggle,
+  onUpToHere,
 }: {
   episode: Episode
   aired: boolean
@@ -96,6 +99,7 @@ function EpisodeCard({
   now: number
   onPlay: () => void
   onToggle: () => void
+  onUpToHere: () => void
 }) {
   const day = formatDay(e.airDate, userLocale)
   const print = episodePrint(e, { aired, watched, now })
@@ -108,6 +112,12 @@ function EpisodeCard({
   ]
     .filter(Boolean)
     .join(', ')
+  // The apps' episode menu: play it, mark it either way, or mark it and every episode before it in the season.
+  const items: MenuItem[] = [
+    { id: 'play', label: 'Play', icon: 'play', onSelect: onPlay },
+    { id: 'toggle', label: watched ? 'Mark as Unwatched' : 'Mark as Watched', icon: watched ? 'close' : 'check', onSelect: onToggle },
+    { id: 'upTo', label: 'Mark Watched Up to Here', icon: 'check', onSelect: onUpToHere },
+  ]
   return (
     <FrameCard
       shape="still"
@@ -126,6 +136,7 @@ function EpisodeCard({
     >
       {/* The still is blurred by CSS when this is here (Episodes.module.css), which a FrameCard can't be told. */}
       {veiled && <span className={s.veil} aria-hidden="true" />}
+      {aired && <ContextMenu label={`More options for episode ${e.number}, ${e.name}`} items={items} className={s.more} />}
       {aired && (
         <button type="button" className={s.mark} data-on={watched ? '' : undefined} onClick={onToggle} aria-label={`${watched ? 'Mark as unwatched' : 'Mark as watched'}: episode ${e.number}, ${e.name}`}>
           {/* An empty ring until it is watched, then the check: the state is the shape, not only the colour. */}

@@ -11,6 +11,7 @@ import type { MediaItem } from '../lib/tmdb/types'
 import { useNearScreen } from '../lib/useNearScreen'
 import { posterMarks, useOnServer, watchedMovieKeys, watchedShowsOf } from '../features/home/marks'
 import { episodeLine, pickPrint, resumePrint, secondsLeft, spokenPick, spokenResume, watchedFraction, type PickDetail } from '../features/home/logic'
+import { continueMeta, posterCaption } from '../features/home/posterText'
 import { FrameCard } from './Frame'
 
 /* The two kinds of item every browsing screen lists: a title not started (a poster with print only) and
@@ -47,6 +48,10 @@ export function PosterItem({ item, meta, sizes = posterSizes, children }: { item
   const showWatched = useSettings((x) => x.showWatchedBadges)
   const showEpisodes = useSettings((x) => x.showEpisodesRemaining)
   const onServer = useOnServer(item)
+  // Show Titles Under Posters and Show Release Year (the apps' Posters switches); absent is the apps' default.
+  const showTitles = useSettings((x) => x.showPosterTitles !== false)
+  const showYear = useSettings((x) => x.showReleaseYear === true)
+  const caption = posterCaption(item, { showTitles, showYear }, meta)
   const marks = posterMarks(item, { movies: watchedMovieKeys(history), shows: watchedShowsOf(episodes, rewatches) }, detail, now, { watched: showWatched, episodes: showEpisodes }, onServer)
   return (
     <FrameCard
@@ -57,8 +62,8 @@ export function PosterItem({ item, meta, sizes = posterSizes, children }: { item
       sizes={sizes}
       progress={marks.progress}
       print={[...marks.parts, ...pickPrint(item, detail, now), ...(marks.tail ?? [])]}
-      title={item.title}
-      meta={meta}
+      title={caption.title}
+      meta={caption.meta}
       label={[spokenPick(item, detail), marks.spoken].filter(Boolean).join(', ')}
       fallback={item.title}
       onIntent={() => prefetchDetail(item)}
@@ -74,6 +79,7 @@ export function ResumeItem({ p, sizes, children }: { p: Progress; sizes: string;
   const now = useMinuteTick()
   const last = useStore(lastSourceStore, (st) => st.byTitle[p.key])
   const still = p.episode?.still
+  const showDate = useSettings((x) => x.showContinueWatchingReleaseDate !== false)
   return (
     <FrameCard
       link={{ to: '/title/$type/$id', params: { type: p.item.type, id: p.item.id }, search: p.episode ? { season: p.episode.season } : undefined }}
@@ -84,7 +90,7 @@ export function ResumeItem({ p, sizes, children }: { p: Progress; sizes: string;
       progress={watchedFraction(p)}
       print={resumePrint(p, now, last, userLocale)}
       title={p.item.title}
-      meta={episodeLine(p.episode) ?? formatLeft(secondsLeft(p))}
+      meta={continueMeta(episodeLine(p.episode) ?? formatLeft(secondsLeft(p)), p.item.year, showDate)}
       label={spokenResume(p, now, userLocale, last)}
       fallback={p.item.title}
       onIntent={() => prefetchDetail(p.item)}

@@ -15,6 +15,8 @@ import { hasCatalog, useSettings, type ServerConfig } from '../../lib/store/sett
 import { userLocale, useMinuteTick } from '../../lib/time'
 import type { MediaItem, Page } from '../../lib/tmdb/types'
 import { useNearScreen } from '../../lib/useNearScreen'
+import CardMenu from './CardMenu'
+import { LazyCardMenu, provideCardMenu } from './LazyCardMenu'
 import { followedShows, showStatus } from './continue'
 import { genreTiles, serviceTiles } from './folders'
 import { episodeShort, pickMeta, pickPrint, spokenPick } from './logic'
@@ -26,6 +28,10 @@ import s from './HomeScreen.module.css'
 /* Everything on Home under the lead and Up Next: the shelves, in the order Settings → Shelves gives them. Each
    asks for its titles only once it is near the screen, so a long list of shelves costs nothing until scrolled to.
    This file is its own chunk, loaded beside the page's first data rather than ahead of the first paint. */
+
+/* The card menu lives in this chunk, which the page asks for beside its first data, and hands itself to the cards at the
+   top of Home (Continue Watching, drawn before this arrives) when it loads. */
+provideCardMenu(CardMenu)
 
 /** Continue Watching and Up Next live beside the lead, not in the rows. */
 const besideLead: ReadonlySet<BuiltInShelf> = new Set(['continueWatching', 'nextUp'])
@@ -84,8 +90,7 @@ function ShelfSection({ shelf }: { shelf: ShelfConfig }) {
   }
   if (source.kind === 'discover') return <TitleShelf shelf={shelf} />
   if (source.kind === 'mediaServerLibrary') return <LibraryShelf title={shelf.title} serverId={source.serverID} libraryId={source.libraryID} />
-  // Trakt lists and MDBList lists are kept in the list and shown once those sources exist.
-  return null
+  return <ListShelf title={shelf.title} source={source} />
 }
 
 // MARK: Rows of titles
@@ -182,7 +187,11 @@ function TitleShelf({ shelf }: { shelf: ShelfConfig }) {
         <>
         <RowHead id={id} title={title} see={see} />
         <ul className={s.row} aria-busy={pending || undefined}>
-          {pending ? Array.from({ length: 7 }, (_, i) => <PosterGhost key={i} />) : shown.map((m) => <PosterItem key={mediaKey(m.type, m.id)} item={m} sizes="(max-width: 720px) 112px, 180px" />)}
+          {pending ? Array.from({ length: 7 }, (_, i) => <PosterGhost key={i} />) : shown.map((m) => (
+            <PosterItem key={mediaKey(m.type, m.id)} item={m} sizes="(max-width: 720px) 112px, 180px">
+              <LazyCardMenu item={m} />
+            </PosterItem>
+          ))}
         </ul>
         </>
       )}
@@ -233,7 +242,9 @@ function StillItem({ item }: { item: MediaItem }) {
       label={spokenPick(item, detail)}
       fallback={item.title}
       onIntent={() => prefetchDetail(item)}
-    />
+    >
+      <LazyCardMenu item={item} />
+    </FrameCard>
   )
 }
 
@@ -430,8 +441,53 @@ function ServerRow({ id, title, titles, pending, libraryServerId, near, sectionR
           ? Array.from({ length: 7 }, (_, i) => <PosterGhost key={i} />)
           : shown.map((t, i) => {
               const item = asMediaItem(t, details[i]?.data, artwork)
-              return item && <PosterItem key={mediaKey(item.type, item.id)} item={item} sizes="(max-width: 720px) 112px, 180px" />
+              return (
+                item && (
+                  <PosterItem key={mediaKey(item.type, item.id)} item={item} sizes="(max-width: 720px) 112px, 180px">
+                    <LazyCardMenu item={item} />
+                  </PosterItem>
+                )
+              )
             })}
+      </ul>
+    </section>
+  )
+}
+
+/** A Trakt list or an MDBList list as posters. Each title is read from TMDB for its artwork and facts, as a server's are.
+ *  Without the Client ID or the key the list needs, the row is left out rather than shown empty. */
+function ListShelf({ title, source }: { title: string; source: Extract<ShelfConfig['source'], { kind: 'traktList' | 'mdblist' }> }) {
+  const [near, ref] = useNearScreen<HTMLElement>()
+  const id = useId()
+  const ready = useSettings((x) => (source.kind === 'traktList' ? x.traktClientID.trim().length > 0 : !!x.mdblistKey?.trim()))
+  const catalogue = useSettings(hasCatalog)
+  const titles = useQuery({
+    queryKey: ['lists', ...(source.kind === 'traktList' ? ['trakt', source.user, source.slug] : ['mdblist', source.id])],
+    queryFn: async () => {
+      const lists = await import('../../lib/listTitles')
+      return source.kind === 'traktList' ? lists.traktListTitles(source.user, source.slug) : lists.mdblistTitles(source.id)
+    },
+    enabled: near && ready,
+    staleTime: sixMinutes,
+    retry: false,
+  })
+  const shown = (titles.data ?? []).slice(0, 40)
+  const details = useQueries({ queries: shown.map((t) => ({ ...q.detail(t.type, t.tmdb), enabled: near && catalogue, retry: false })) })
+  const loading = !near || titles.isPending || details.some((d) => d.isPending && d.fetchStatus !== 'idle')
+  if (!ready || !catalogue || (!loading && shown.length === 0)) return null
+  return (
+    <section ref={ref} className={s.rowSection} aria-labelledby={id}>
+      <RowHead id={id} title={title} />
+      <ul className={s.row} aria-busy={loading || undefined}>
+        {loading
+          ? Array.from({ length: 7 }, (_, i) => <PosterGhost key={i} />)
+          : details
+              .flatMap((d) => (d.data ? [d.data] : []))
+              .map((item) => (
+                <PosterItem key={mediaKey(item.type, item.id)} item={item} sizes="(max-width: 720px) 112px, 180px">
+                  <LazyCardMenu item={item} />
+                </PosterItem>
+              ))}
       </ul>
     </section>
   )

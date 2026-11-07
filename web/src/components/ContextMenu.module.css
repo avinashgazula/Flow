@@ -1,0 +1,59 @@
+/* The More button on a card: a flat 36px chip on the overlay, like the mark on an episode. A mouse sees it when the
+   card is hovered or has focus; a touch screen always does, since it has no hover. It is 36px to look at and 44px to hit. */
+.trigger {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-control);
+  background: var(--overlay);
+  color: var(--ink-2);
+  opacity: 0;
+  transition: opacity var(--dur-state) ease, color var(--dur-state) ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.trigger::after { content: ''; position: absolute; inset: -4px; }
+li:hover > .trigger, li:focus-within > .trigger, .trigger:focus-visible, .trigger[aria-expanded='true'] { opacity: 1; }
+.trigger:hover { color: var(--paper); }
+@media (hover: none) { .trigger { opacity: 1; } }
+/* A poster in a phone's row is 112px wide: the chip shrinks with it. */
+@media (max-width: 720px) {
+  .trigger { top: 4px; right: 4px; width: 28px; height: 28px; border-radius: var(--radius-label); }
+  .trigger::after { inset: -8px; }
+  .trigger svg { width: 16px; height: 16px; }
+}
+
+/* The menu is a panel: Film Base 2 with a hairline ring, flat, over everything (the nav is 50). */
+.menu {
+  position: fixed;
+  z-index: 80;
+  min-width: 232px;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: 6px;
+  border-radius: var(--radius-panel);
+  background: var(--base-2);
+  box-shadow: 0 0 0 1px var(--rule);
+  animation: rise var(--dur-state) var(--ease-out);
+}
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } }
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-s);
+  border-radius: var(--radius-label);
+  color: var(--paper);
+  font: 600 var(--fs-small) / 1.2 var(--font);
+  text-align: left;
+  transition: background-color var(--dur-state) ease;
+}
+.item svg { flex: none; color: var(--ink-2); }
+.item:hover, .item:focus-visible { background: var(--base-3); }
+.item:focus-visible { outline-offset: -2px; }
+@media (prefers-reduced-motion: reduce) { .menu { animation: none; } }

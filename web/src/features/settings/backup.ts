@@ -122,6 +122,11 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   filmDates: (v) => v === 'digital' || v === 'theatrical',
   showWatchedBadges: (v) => typeof v === 'boolean',
   showEpisodesRemaining: (v) => typeof v === 'boolean',
+  heroStyle: (v) => v === 'card' || v === 'fullscreen',
+  showPosterTitles: (v) => typeof v === 'boolean',
+  showReleaseYear: (v) => typeof v === 'boolean',
+  showContinueWatchingReleaseDate: (v) => typeof v === 'boolean',
+  startTab: (v) => typeof v === 'string' && v.length > 0 && v.length <= 40,
 }
 
 const libraryTypes: { [K in keyof Library]: (v: unknown) => boolean } = {

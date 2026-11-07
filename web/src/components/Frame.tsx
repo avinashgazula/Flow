@@ -156,7 +156,8 @@ export interface FrameCardProps extends Omit<PlateProps, 'hideStrip' | 'classNam
   link?: LinkProps
   /** Or runs something. One of `link` and `onSelect` is needed. */
   onSelect?: () => void
-  title: string
+  /** Left out when Show Titles Under Posters is off: the label still names the item. */
+  title?: string
   /** One line of plain facts under the title, ink-2. */
   meta?: string
   /** What a screen reader says: "Breaking Bad, season 3 episode 7, 18 minutes left, ends 9:30 PM". */
@@ -181,7 +182,7 @@ export function FrameCard({ link, onSelect, title, meta, label, onIntent, itemRe
   const inside = (
     <>
       <Plate {...plate} hideStrip />
-      <span className={s.title}>{title}</span>
+      {title && <span className={s.title}>{title}</span>}
       {meta && <span className={s.meta}>{meta}</span>}
       {extra}
     </>
