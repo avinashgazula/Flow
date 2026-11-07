@@ -149,6 +149,13 @@ struct HomeView: View {
         return min(760, max(320, available * 0.55))
     }
 
+    /// Two columns of Up Next beside the lead when there is room, one in a narrower window; two rows either way keeps
+    /// the column about as tall as the lead.
+    private func upNextColumns(in width: CGFloat) -> Int {
+        let beside = width - Theme.Space.gutter * 2 - Theme.Space.xl - leadWidth(in: width)
+        return beside >= 460 ? 2 : 1
+    }
+
     private func page(wide: Bool, width: CGFloat) -> some View {
         LazyVStack(alignment: .leading, spacing: Theme.Space.section) {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
@@ -160,7 +167,7 @@ struct HomeView: View {
                                 .frame(width: leadWidth(in: width), alignment: .topLeading)
                         }
                         if showsUpNext {
-                            UpNextSection(leadEntryID: lead?.entryID, grid: true)
+                            UpNextSection(leadEntryID: lead?.entryID, grid: true, columns: upNextColumns(in: width))
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                         }
                     }
@@ -173,6 +180,9 @@ struct HomeView: View {
             }
             if !wide && showsUpNext {
                 UpNextSection(leadEntryID: lead?.entryID, grid: false)
+            } else if wide && !Platform.isTV && showsUpNext {
+                // What doesn't fit beside the lead runs on as a row, so neither column ends in a hole.
+                UpNextSection(leadEntryID: lead?.entryID, grid: false, skip: upNextColumns(in: width) * 2, showsHeader: false)
             }
             ForEach(rowShelves) { shelf in
                 HomeRow(shelf: shelf)
@@ -252,9 +262,9 @@ struct LeadBlock: View {
         return ["S\(episode.season) E\(episode.episode)"]
     }
 
+    /// The strip already says the episode or the year, so this line carries what it doesn't: the genres.
     private var meta: String {
-        if let episode = lead.episode { return "Season \(episode.season), Episode \(episode.episode)" }
-        return item.shortMeta
+        item.genres.prefix(2).map(\.name).joined(separator: ", ")
     }
 
     private var spoken: String {
@@ -322,29 +332,38 @@ private struct UpNextSection: View {
     let leadEntryID: String?
     /// A two-column grid beside the lead; otherwise one row that scrolls sideways.
     let grid: Bool
+    /// Beside the lead: how many columns of stills (two rows each).
+    var columns = 2
+    /// Entries already shown beside the lead, when this is the row that carries on from them.
+    var skip = 0
+    var showsHeader = true
     @Environment(AppModel.self) private var model
     @State private var items: [MediaKey: MediaItem] = [:]
+
+    private var gridCount: Int { Platform.isTV ? 6 : columns * 2 }
 
     /// Most recent first, so a limit keeps the latest; the lead is already on the page.
     private var entries: [ContinueWatchingBuilder.Entry] {
         let all = model.continueWatching
         let limited = model.settings.general.continueWatchingLimit.map { Array(all.prefix($0)) } ?? all
-        return limited.filter { $0.id != leadEntryID }
+        return Array(limited.filter { $0.id != leadEntryID }.dropFirst(skip))
     }
 
     var body: some View {
         if !entries.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                SectionHeader("Up Next", route: .library(.continueWatching))
-                    .padding(.horizontal, grid ? -Theme.Space.gutter : 0)
+                if showsHeader {
+                    SectionHeader("Up Next", route: .library(.continueWatching))
+                        .padding(.horizontal, grid ? -Theme.Space.gutter : 0)
+                }
                 if grid {
                     // One column when the space beside the lead is narrow, two when there is room. Apple TV always
                     // has room, and two smaller stills show more of the queue on the first screen than one big one.
                     LazyVGrid(columns: Platform.isTV
                                 ? Array(repeating: GridItem(.flexible(), spacing: Theme.Space.m, alignment: .top), count: 2)
-                                : [GridItem(.adaptive(minimum: 220), spacing: Theme.Space.m, alignment: .top)],
+                                : Array(repeating: GridItem(.flexible(), spacing: Theme.Space.m, alignment: .top), count: columns),
                               alignment: .leading, spacing: Theme.Space.m) {
-                        ForEach(entries.prefix(6)) { entry in
+                        ForEach(entries.prefix(gridCount)) { entry in
                             if let item = items[entry.key] { UpNextCell(entry: entry, item: item, width: nil) }
                         }
                     }
@@ -697,8 +716,11 @@ struct ShelfGridView: View {
                     Text("TV Shows").tag(MediaType.show)
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(maxWidth: 360 * Theme.scale)
                 .padding(.horizontal, Theme.Space.gutter)
                 .padding(.vertical, Theme.Space.xs)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             ShelfGridContent(shelf: typed).id(type)
         }

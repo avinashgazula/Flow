@@ -21,7 +21,7 @@ struct SourcePickerView: View {
     }
 
     /// The source auto-play would start: the one this title was last played from when it's still
-    /// offered, else the first playable one in the providers' order. Its row carries the pink Play.
+    /// offered, else the first playable one in the providers' order. Its row carries the yellow Play.
     private func preferred(in list: [StreamSource]) -> StreamSource? {
         model.lastSource(for: request, in: list) ?? list.first(where: \.isPlayable)
     }
@@ -115,6 +115,18 @@ struct SourcePickerView: View {
     /// Glass circles over the artwork instead of a navigation bar: search again at the leading edge, close at the trailing one.
     /// tvOS leaves out Close: the remote's Back button dismisses every sheet.
     private var controls: some View {
+        #if os(macOS)
+        // A Mac sheet has text buttons, not floating circles.
+        HStack {
+            Button("Search Again") { reloadToken += 1 }
+                .disabled(!finished)
+            Spacer()
+            Button("Cancel") { dismiss() }
+                .keyboardShortcut(.cancelAction)
+        }
+        .padding(.horizontal, Theme.Space.gutter)
+        .padding(.vertical, Theme.Space.xs)
+        #else
         HStack {
             Button { reloadToken += 1 } label: { Image(systemName: "arrow.clockwise") }
                 .buttonStyle(GlassButtonStyle(circle: true))
@@ -125,14 +137,12 @@ struct SourcePickerView: View {
             #if !os(tvOS)
             Button { dismiss() } label: { Image(systemName: "xmark") }
                 .buttonStyle(GlassButtonStyle(circle: true))
-                #if os(macOS)
-                .keyboardShortcut(.cancelAction)
-                #endif
                 .accessibilityLabel("Close")
             #endif
         }
         .padding(.horizontal, Theme.Space.gutter)
         .padding(.vertical, Theme.Space.xs)
+        #endif
     }
 
     private func header(count: Int) -> some View {
@@ -408,14 +418,21 @@ struct SourceRow: View {
         let notCached = source.traits.isCached == false && source.category == .addons
         let needsDebrid: Bool = { if !source.isPlayable, case .torrent = source.location { return true }; return false }()
         let decoderNote = Reel.versionNote(for: source.traits, decodesAV1: Platform.decodesAV1, convertsLosslessAudio: false)
-        if lastPlayed || notCached || needsDebrid || decoderNote != nil {
+        // The best row says why it is the one: it plays as it is, with nothing to convert.
+        let playsDirect = isBest && decoderNote?.isWarning != true
+        if lastPlayed || notCached || needsDebrid || decoderNote != nil || playsDirect {
             VStack(alignment: .leading, spacing: 2) {
-                if lastPlayed { Text("Last played").foregroundStyle(secondary) }
-                if notCached { Text("Not cached").foregroundStyle(warning) }
-                if needsDebrid { Text("Needs a debrid-enabled add-on").foregroundStyle(warning) }
-                if let decoderNote { Text(decoderNote.text).foregroundStyle(warning) }
+                if playsDirect {
+                    Text("Plays direct" + (decoderNote.map { " · " + $0.text } ?? ""))
+                        .font(Theme.Typeface.edgePrint)
+                        .edgePrint()
+                        .foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.print)
+                }
+                if lastPlayed { Text("Last played").font(.system(.footnote)).foregroundStyle(secondary) }
+                if notCached { Text("Not cached").font(.system(.footnote)).foregroundStyle(warning) }
+                if needsDebrid { Text("Needs a debrid-enabled add-on").font(.system(.footnote)).foregroundStyle(warning) }
+                if let decoderNote, !playsDirect { Text(decoderNote.text).font(.system(.footnote)).foregroundStyle(warning) }
             }
-            .font(.system(.footnote))
         }
     }
 

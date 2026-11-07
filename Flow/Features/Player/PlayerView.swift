@@ -157,26 +157,24 @@ struct PlayerView: View {
             .ignoresSafeArea()
         #else
         MacPlayerView(player: session.player)
+            .overlay(alignment: .topLeading) {
+                // Close sits top left, where a Mac window's own close lives; Esc does the same.
+                MacControlBar {
+                    MacBarButton(systemImage: "xmark", label: "Close Player") { session.stop() }
+                }
+                .padding(12)
+            }
             .overlay(alignment: .topTrailing) {
-                // Top right, clear of the window's traffic lights.
-                HStack {
+                MacControlBar {
                     if !session.chapters.isEmpty {
                         Menu {
                             ForEach(session.chapters) { chapter in
                                 Button(chapter.title.isEmpty ? TimeFormat.clock(chapter.start) : chapter.title) { session.seek(toChapter: chapter) }
                             }
                         } label: {
-                            Image(systemName: "list.bullet")
-                                .font(.system(size: 16, weight: .semibold))
+                            Image(systemName: "list.bullet").macBarIcon()
                         }
-                        .menuStyle(.borderlessButton)
-                        .menuIndicator(.hidden)
-                        .fixedSize()
-                        .frame(width: 44, height: 44)
-                        .contentShape(Circle())
-                        .flowGlass(Circle(), interactive: true)
-                        .accessibilityLabel("Chapters")
-                        .help("Chapters")
+                        .macBarMenu(label: "Chapters")
                     }
                     if !session.bitmapTracks.isEmpty {
                         Menu {
@@ -186,25 +184,16 @@ struct PlayerView: View {
                             }
                             .pickerStyle(.inline)
                         } label: {
-                            Image(systemName: session.selectedBitmapTrack == nil ? "captions.bubble" : "captions.bubble.fill")
-                                .font(.system(size: 16, weight: .semibold))
+                            Image(systemName: session.selectedBitmapTrack == nil ? "captions.bubble" : "captions.bubble.fill").macBarIcon()
                         }
-                        .menuStyle(.borderlessButton)
-                        .menuIndicator(.hidden)
-                        .fixedSize()
-                        .frame(width: 44, height: 44)
-                        .contentShape(Circle())
-                        .flowGlass(Circle(), interactive: true)
-                        .accessibilityLabel("Disc Subtitles")
-                        .help("Disc Subtitles")
+                        .macBarMenu(label: "Disc Subtitles")
                     }
                     MacPlayerMenu(session: session)
-                    CircleButton(systemImage: "person.crop.rectangle.stack", label: "X-Ray") { session.showsXRay.toggle() }
-                    CircleButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle", label: "Playback Info") { session.showsInfo.toggle() }
-                    CircleButton(systemImage: "magnifyingglass", label: "Search Subtitles") { showSubtitles = true }
-                    CircleButton(systemImage: "xmark", label: "Close Player") { session.stop() }
+                    MacBarButton(systemImage: "person.crop.rectangle.stack", label: "X-Ray") { session.showsXRay.toggle() }
+                    MacBarButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle", label: "Playback Info") { session.showsInfo.toggle() }
+                    MacBarButton(systemImage: "magnifyingglass", label: "Search Subtitles") { showSubtitles = true }
                 }
-                .padding(16)
+                .padding(12)
             }
         #endif
     }
@@ -294,13 +283,8 @@ struct ConnectingView: View {
             #if !os(tvOS)
             VStack {
                 HStack {
-                    #if os(macOS)
-                    Spacer()
-                    #endif
                     CircleButton(systemImage: "xmark", label: "Close Player") { session.stop() }
-                    #if !os(macOS)
                     Spacer()
-                    #endif
                 }
                 Spacer()
             }
@@ -970,6 +954,12 @@ struct IOSPlayerControls: View {
         .animation(.easeInOut(duration: 0.2), value: visible)
         .onAppear { scheduleHide() }
         // The controls stay up while a panel or the sheet is open, then go back to timing out.
+        // Options and the Info and X-Ray panels share the leading side, so opening one closes the others.
+        .onChange(of: showsOptions) { _, open in
+            if open { session.showsInfo = false; session.showsXRay = false }
+        }
+        .onChange(of: session.showsInfo) { _, open in if open { showsOptions = false } }
+        .onChange(of: session.showsXRay) { _, open in if open { showsOptions = false } }
         .onChange(of: overlayOpen) { _, open in
             session.panelOpen = showsOptions || showsEpisodes || showsChapters
             if open { hideTask?.cancel(); visible = true } else { scheduleHide() }

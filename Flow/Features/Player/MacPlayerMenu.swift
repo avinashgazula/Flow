@@ -83,17 +83,9 @@ struct MacPlayerMenu: View {
                 }
             }
         } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 16, weight: .bold))
+            Image(systemName: "ellipsis").macBarIcon()
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        // A borderless menu draws only its label's image, so the glass goes around the menu itself.
-        .frame(width: 44, height: 44)
-        .contentShape(Circle())
-        .flowGlass(Circle(), interactive: true)
-        .accessibilityLabel("Options")
+        .macBarMenu(label: "Options")
         .onAppear { speed = session.player.defaultRate }
     }
 
@@ -117,6 +109,67 @@ struct MacPlayerMenu: View {
     @ViewBuilder
     private func checked(_ title: String, _ isOn: Bool) -> some View {
         if isOn { Label(title, systemImage: "checkmark") } else { Text(title) }
+    }
+}
+
+/// The Mac player's controls are a compact bar of small icon buttons like a toolbar's, not the phone's round
+/// glass buttons: one rounded glass strip over the picture, each button lighting under the pointer.
+struct MacControlBar<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        GlassGroup(spacing: 4) {
+            HStack(spacing: 2) { content }
+                .padding(3)
+                .flowGlass(RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous), tint: Theme.Palette.overPicture)
+        }
+    }
+}
+
+extension View {
+    /// A bar icon: white, small, and the same size whichever control it sits in.
+    func macBarIcon() -> some View {
+        font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
+    }
+
+    /// A borderless menu dressed as a bar button.
+    func macBarMenu(label: String) -> some View {
+        menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .modifier(MacBarHover())
+            .accessibilityLabel(label)
+            .help(label)
+    }
+}
+
+/// A soft fill under the pointer, as a toolbar button gives.
+struct MacBarHover: ViewModifier {
+    @State private var hovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .frame(width: 30, height: 28)
+            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(.white.opacity(hovering ? 0.18 : 0)))
+            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .onHover { hovering = $0 }
+            .animation(Theme.Motion.fade, value: hovering)
+    }
+}
+
+struct MacBarButton: View {
+    let systemImage: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage).macBarIcon()
+                .modifier(MacBarHover())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .help(label)
     }
 }
 #endif
