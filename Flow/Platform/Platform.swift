@@ -491,14 +491,12 @@ extension View {
         #endif
     }
 
-    /// Apple TV settings lists: Title Case section titles like iOS (the system capitalises them), and a gap between
-    /// rows and between sections so ten-foot focus has room.
+    /// Apple TV settings lists: Title Case section titles like iOS (the system capitalises them). tvOS has no
+    /// row or section spacing modifiers.
     @ViewBuilder
     fileprivate func tvListRhythm() -> some View {
         #if os(tvOS)
         textCase(nil)
-            .listRowSpacing(Theme.Space.s)
-            .listSectionSpacing(Theme.Space.l)
         #else
         self
         #endif
