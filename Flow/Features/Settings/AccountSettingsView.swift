@@ -35,7 +35,7 @@ struct AccountSettingsView: View {
                     .disabled(!isAvailable(kind))
                 }
             } header: {
-                Text("Tracking With")
+                FilmSectionHeader("Tracking With")
             } footer: { FilmFooter {
                 Text("Only one of these can track at a time — choosing another moves your tracking to it. This Device needs no account and is the default.")
             } }
@@ -72,7 +72,7 @@ struct AccountSettingsView: View {
                     #endif
                 }
             } header: {
-                Text("Trakt")
+                FilmSectionHeader("Trakt")
             } footer: { FilmFooter {
                 if let traktError {
                     Text(traktError).foregroundStyle(.red)
@@ -83,7 +83,7 @@ struct AccountSettingsView: View {
                 }
             } }
 
-            Section("Simkl") {
+            Section(film: "Simkl") {
                 if model.credentials.simklToken != nil {
                     accountRow(name: model.settings.account.tracker == .simkl ? model.profile?.username : nil, service: "Simkl", tracker: .simkl)
                     Button("Sign Out", role: .destructive) {
@@ -117,7 +117,7 @@ struct AccountSettingsView: View {
                 }
                 Toggle("Scrobble While Watching", isOn: $model.settings.account.scrobble)
             } header: {
-                Text("Sync")
+                FilmSectionHeader("Sync")
             } footer: { FilmFooter {
                 Text("How often watch history syncs when reopening the app. With Trakt, Simkl, PublicMetaDB or MDBList connected, resume positions come from that service alone — Flow keeps no progress of its own, so Resume goes exactly as far as your tracker records it.")
             } }
@@ -127,7 +127,7 @@ struct AccountSettingsView: View {
                     ForEach(destinations) { Text($0.displayName).tag($0) }
                 }
             } header: {
-                Text("Watchlist Provider")
+                FilmSectionHeader("Watchlist Provider")
             } footer: { FilmFooter {
                 Text("Where Add/Remove Watchlist actions are saved. PublicMetaDB and MDBList appear once their API key is set.")
             } }
@@ -137,7 +137,7 @@ struct AccountSettingsView: View {
                     ForEach(destinations.filter { $0 != .simkl && $0 != .mdblist && $0 != .publicMetaDB }) { Text($0.displayName).tag($0) }
                 }
             } header: {
-                Text("Favourites Provider")
+                FilmSectionHeader("Favourites Provider")
             } footer: { FilmFooter {
                 Text("Where the heart (Favourite) button saves to, and which source the Library's Favourites row shows. Trakt appears when signed in; Media Server when one is connected.")
             } }
@@ -341,22 +341,22 @@ struct APIKeysView: View {
             Section {
                 OptionalTextField(title: "MDBList API Key", text: $model.credentials.mdblistAPIKey, secure: true)
                 Link("Get a key at mdblist.com", destination: URL(string: "https://mdblist.com/preferences/")!)
-            } header: { Text("MDBList") } footer: { FilmFooter { Text("Ratings, list shelves, and optional tracking/watchlist.") } }
+            } header: { FilmSectionHeader("MDBList") } footer: { FilmFooter { Text("Ratings, list shelves, and optional tracking/watchlist.") } }
 
             Section {
                 OptionalTextField(title: "PublicMetaDB API Key", text: $model.credentials.publicMetaDBAPIKey, secure: true)
                 TextField("Base URL", text: $model.settings.account.publicMetaDBBaseURL).autocorrectionDisabled()
-            } header: { Text("PublicMetaDB") } footer: { FilmFooter { Text("Tracking, watchlist and skip segments.") } }
+            } header: { FilmSectionHeader("PublicMetaDB") } footer: { FilmFooter { Text("Tracking, watchlist and skip segments.") } }
 
             Section {
                 OptionalTextField(title: "IntroDB API Key", text: $model.credentials.introDBAPIKey, secure: true)
                 TextField("Base URL", text: $model.settings.account.introDBBaseURL).autocorrectionDisabled()
-            } header: { Text("IntroDB") } footer: { FilmFooter { Text("Intro, recap and credits timestamps for the Skip button. A key isn't needed to read them; add one if you have it.") } }
+            } header: { FilmSectionHeader("IntroDB") } footer: { FilmFooter { Text("Intro, recap and credits timestamps for the Skip button. A key isn't needed to read them; add one if you have it.") } }
 
             Section {
                 OptionalTextField(title: "RPDB API Key", text: $model.credentials.rpdbAPIKey, secure: true)
                 Link("Get a key at ratingposterdb.com", destination: URL(string: "https://ratingposterdb.com")!)
-            } header: { Text("RatingPosterDB") } footer: { FilmFooter { Text("Posters with ratings drawn on, for Poster Enhancement in Metadata settings.") } }
+            } header: { FilmSectionHeader("RatingPosterDB") } footer: { FilmFooter { Text("Posters with ratings drawn on, for Poster Enhancement in Metadata settings.") } }
 
             Section {
                 OptionalTextField(title: "OpenSubtitles API Key", text: $model.credentials.openSubtitlesAPIKey, secure: true)
@@ -366,13 +366,13 @@ struct APIKeysView: View {
                 OptionalTextField(title: "SubSource API Key", text: $model.credentials.subSourceAPIKey, secure: true)
                 OptionalTextField(title: "Wyzie API Key", text: $model.credentials.wyzieAPIKey, secure: true)
                 Link("Get a free Wyzie key at store.wyzie.io/redeem", destination: URL(string: "https://store.wyzie.io/redeem")!)
-            } header: { Text("Subtitle Sources") } footer: { FilmFooter { Text("Wyzie needs a free key. Claim one at store.wyzie.io/redeem and paste it here.") } }
+            } header: { FilmSectionHeader("Subtitle Sources") } footer: { FilmFooter { Text("Wyzie needs a free key. Claim one at store.wyzie.io/redeem and paste it here.") } }
 
             Section {
                 OptionalTextField(title: "Trakt Client ID", text: $model.credentials.traktClientID, prompt: BundleKeys.traktClientID == nil ? "Client ID" : "Using built-in app")
                 OptionalTextField(title: "Simkl Client ID", text: $model.credentials.simklClientID, prompt: BundleKeys.simklClientID == nil ? "Client ID" : "Using built-in app")
             } header: {
-                Text("OAuth Apps")
+                FilmSectionHeader("OAuth Apps")
             } footer: { FilmFooter {
                 Text("Create an app at trakt.tv/oauth/applications with the redirect URI \(TraktOAuth.redirectURI). Trakt no longer issues a client secret, and Flow doesn't need one. Or create a Simkl app at simkl.com/settings/developer.")
             } }
@@ -382,7 +382,7 @@ struct APIKeysView: View {
                 Toggle("Show Score Spoilers", isOn: $model.settings.sports.showScoreSpoilers)
                 Toggle("Choose Channel on Tap", isOn: $model.settings.sports.chooseChannelOnTap)
             } header: {
-                Text("Sports")
+                FilmSectionHeader("Sports")
             } footer: { FilmFooter {
                 Text("Hide Score Spoilers blurs live and final scores so results stay hidden until you're ready. Tap a finished game to reveal its score. Choose Channel on Tap opens the channel list when you tap a game so you can pick a broadcast; press and hold to start the best match. Off taps straight into the best match and press-and-hold opens the list.")
             } }

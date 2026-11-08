@@ -58,7 +58,7 @@ struct SyncSettingsView: View {
             // Also what turned Sync off by itself, like an erase from another device.
             if let message = failure ?? model.syncError { Text(message).font(.footnote).foregroundStyle(Theme.Palette.red) }
         } header: {
-            Text("Turn On Sync")
+            FilmSectionHeader("Turn On Sync")
         } footer: { FilmFooter {
             Text(syncExplainer + " Use the stream proxy Worker from web/proxy, with a KV namespace bound as SYNC.")
         } }
@@ -109,7 +109,7 @@ struct SyncSettingsView: View {
                 .foregroundStyle(Theme.Palette.warn)
             }
         } header: {
-            Text("Flow Sync")
+            FilmSectionHeader("Flow Sync")
         } footer: { FilmFooter {
             Text(syncExplainer)
         } }
@@ -290,7 +290,7 @@ struct SyncJoinView: View {
                 Button("Paste") { link = Platform.pasteboardString() ?? "" }
                 if let linkProblem { Text(linkProblem).font(.footnote).foregroundStyle(Theme.Palette.red) }
             } header: {
-                Text("Pairing Link")
+                FilmSectionHeader("Pairing Link")
             } footer: { FilmFooter {
                 Text("Paste the link from Show Pairing Link on your other device, or scan its code with the camera.")
             } }
@@ -303,7 +303,7 @@ struct SyncJoinView: View {
                 TextField("Worker Address", text: $server, prompt: Text(verbatim: "https://your-worker.workers.dev")).syncField(url: true)
                 SecureField("Token", text: $token, prompt: Text(verbatim: "The Worker's token")).syncField()
             } header: {
-                Text(Platform.isTV ? "Key, Server and Token" : "Or Type Them In")
+                FilmSectionHeader(Platform.isTV ? "Key, Server and Token" : "Or Type Them In")
             } footer: { FilmFooter {
                 if Platform.isTV {
                     Text("The key is on the Sync page of your other device, under Show Pairing Link. Letters and numbers only; dashes are optional.")

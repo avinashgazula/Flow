@@ -44,6 +44,14 @@ enum Platform {
         #endif
     }
 
+    static var isPad: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad
+        #else
+        false
+        #endif
+    }
+
     static var isTV: Bool {
         #if os(tvOS)
         true
@@ -536,7 +544,50 @@ struct FilmFooter<Content: View>: View {
     }
 }
 
+/// A settings section header. tvOS's grouped list uppercases a plain string header itself, and a case reset set on
+/// the Form or the rows doesn't reach it, so the reset sits on the header's own Text. On Apple TV the title is also
+/// set larger, in secondary paper, for a screen read from a sofa; elsewhere it is the system's own header. Every
+/// settings Section header goes through this (or `Section(film:)`), so the casing and sizing live in one place.
+struct FilmSectionHeader: View {
+    let title: String
+
+    init(_ title: String) { self.title = title }
+
+    var body: some View {
+        #if os(tvOS)
+        Text(title)
+            .textCase(nil)
+            .font(.callout.weight(.semibold))
+            .foregroundStyle(Theme.Palette.textSecondary)
+        #else
+        Text(title)
+        #endif
+    }
+}
+
+extension Section where Parent == FilmSectionHeader, Content: View, Footer == EmptyView {
+    /// A titled section whose header is a `FilmSectionHeader`, in place of the string initialiser.
+    init(film title: String, @ViewBuilder content: () -> Content) {
+        self.init(content: content, header: { FilmSectionHeader(title) })
+    }
+}
+
 extension View {
+    /// Sheets with a lot in them (sources, settings) open as a small centred form on iPad, which cramps their lists.
+    /// From iOS 18 they take the full page size; iPhone, Mac and earlier systems keep the system's sheet.
+    @ViewBuilder
+    func largeSheetOnPad() -> some View {
+        #if os(iOS) && compiler(>=6.0)
+        if #available(iOS 18.0, *) {
+            if Platform.isPad { presentationSizing(.page) } else { self }
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
     /// A pushed page's title. Apple TV draws the system's title dim and centred, so it reads as disabled: there the
     /// navigation bar is hidden and the page sets its own large title in paper, lined up with its content (`inset`
     /// is the content's leading padding). Everywhere else this is the ordinary navigation title.

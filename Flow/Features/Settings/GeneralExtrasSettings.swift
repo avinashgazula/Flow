@@ -39,7 +39,7 @@ struct AppIconSection: View {
     private let choices: [AppIconChoice] = [.light, .dark]
 
     var body: some View {
-        Section("App Icon") {
+        Section(film: "App Icon") {
             HStack(spacing: Theme.Space.xl) {
                 ForEach(choices) { tile($0) }
             }
@@ -92,7 +92,7 @@ struct NavigationSettingsSection: View {
             }
             NavigationLink("Tab Order") { TabOrderView() }
         } header: {
-            Text("Navigation")
+            FilmSectionHeader("Navigation")
         } footer: { FilmFooter {
             Text("Opening Tab is where the app opens on launch. Tab Order sets how the tabs are arranged.")
         } }
@@ -164,7 +164,7 @@ struct NotificationsSection: View {
             Toggle("Match Starting", isOn: binding(\.matchStartNotifications))
             Toggle("Match Results", isOn: binding(\.matchResultNotifications))
         } header: {
-            Text("Notifications")
+            FilmSectionHeader("Notifications")
         } footer: { FilmFooter {
             Text("Get notified when a new episode of a show you're watching airs. Match Starting alerts you 10 minutes before any followed team plays. Match Results sends the final score, and arrives while Flow is running.")
         } }

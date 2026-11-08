@@ -37,7 +37,7 @@ struct SourcesSettingsView: View {
                 }
                 .onMove { model.settings.sources.categoryOrder.move(fromOffsets: $0, toOffset: $1) }
             } header: {
-                Text("Category Order")
+                FilmSectionHeader("Category Order")
             } footer: { FilmFooter {
                 Text("Sources from earlier categories appear first in the player picker. Category and provider order work on their own — the switch above is only for the sort rules, filters and result cap.")
             } }
@@ -82,7 +82,7 @@ struct SourcesSettingsView: View {
             Section {
                 Toggle("Play From This Library Only", isOn: $model.settings.sources.playFromLibraryOnly)
             } header: {
-                Text("Library")
+                FilmSectionHeader("Library")
             } footer: { FilmFooter {
                 Text("A title opened from a library in the Library tab (a media server, an IPTV provider's On Demand or a WebDAV share) lists only that library's sources, so they're ready sooner and Play picks from them. If that library has no source for the title, every source is searched as usual. Titles opened anywhere else are unchanged.")
             } }
@@ -115,7 +115,7 @@ struct SourcesSettingsView: View {
                 } label: { Label("Add Rule", systemImage: "plus") }
             }
         } header: {
-            Text("Sort Rules")
+            FilmSectionHeader("Sort Rules")
         } footer: { FilmFooter {
             Text("Applied top to bottom within each provider.")
         } }
@@ -123,7 +123,7 @@ struct SourcesSettingsView: View {
 
     private var filtersSection: some View {
         @Bindable var model = model
-        return Section("Filters") {
+        return Section(film: "Filters") {
             Toggle("Hide CAM / TS / Screeners", isOn: $model.settings.sources.filters.excludeCinemaCaptures)
             Toggle("Hide Uncached Torrents", isOn: $model.settings.sources.filters.excludeUncached)
             FilmPicker("Minimum Resolution", selection: $model.settings.sources.filters.minResolution) {
@@ -217,7 +217,7 @@ struct SourceAppearanceView: View {
             } footer: { FilmFooter {
                 Text("Add-on formatting shows each add-on's own text (emoji and all). Turn it off for a clean summary parsed from the release name. Badges marks Dolby Vision, HDR and premium audio: Colored tints picture and sound formats apart, Monochrome keeps them white, Minimal shows at most two, None hides them.")
             } }
-            Section("Preview") {
+            Section(film: "Preview") {
                 SourceRow(source: Self.sample, appearance: model.settings.sources.appearance)
                     .listRowInsets(EdgeInsets())
             }
@@ -261,7 +261,7 @@ struct AddonsSettingsView: View {
                 .onDelete { model.settings.sources.addons.remove(atOffsets: $0) }
                 .onMove { model.settings.sources.addons.move(fromOffsets: $0, toOffset: $1) }
             } header: {
-                Text("Installed")
+                FilmSectionHeader("Installed")
             }
             Section {
                 TextField("Manifest URL", text: $manifestText, prompt: Text("https://…/manifest.json"))
@@ -279,7 +279,7 @@ struct AddonsSettingsView: View {
                 .disabled(manifestText.isEmpty || adding)
                 if let error { Text(error).font(.caption).foregroundStyle(.red) }
             } header: {
-                Text("Add")
+                FilmSectionHeader("Add")
             } footer: { FilmFooter {
                 Text("Paste the manifest link from a Stremio-compatible add-on's configure page (for example AIOStreams). Only add-ons that provide streams are used.")
             } }

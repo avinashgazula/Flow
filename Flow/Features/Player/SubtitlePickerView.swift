@@ -24,7 +24,7 @@ struct SubtitlePickerView: View {
                         }
                     }
                 }
-                Section("Timing") {
+                Section(film: "Timing") {
                     HStack {
                         Text("Offset")
                         Spacer()
@@ -72,7 +72,7 @@ struct SubtitlePickerView: View {
                         }
                     }
                 } header: {
-                    Text("Online")
+                    FilmSectionHeader("Online")
                 }
             }
             .navigationTitle("Subtitles")

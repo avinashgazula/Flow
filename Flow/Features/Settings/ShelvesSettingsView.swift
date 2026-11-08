@@ -31,12 +31,12 @@ struct ShelvesSettingsView: View {
                     model.settings.shelves.remove(atOffsets: IndexSet(removable))
                 }
             } header: {
-                Text("Home Shelves")
+                FilmSectionHeader("Home Shelves")
             } footer: { FilmFooter {
                 Text("Turn rows on or off and drag to reorder. Long-press for more options.")
             } }
 
-            Section("Add Shelf") {
+            Section(film: "Add Shelf") {
                 Button { addingDiscover = true } label: { Label("Discover Shelf…", systemImage: "sparkles.rectangle.stack") }
                 Button { addingList = true } label: { Label("List Shelf…", systemImage: "list.bullet.rectangle") }
                 let missing = BuiltInShelf.allCases.filter { b in !model.settings.shelves.contains { $0.source == .builtIn(b) } }
@@ -59,7 +59,7 @@ struct ShelvesSettingsView: View {
                     ForEach(HeroSource.allCases) { Text($0.title).tag(HeroSource?.some($0)) }
                 }
             } header: {
-                Text("Top Pick")
+                FilmSectionHeader("Top Pick")
             } footer: { FilmFooter {
                 Text("When nothing is in progress, Home leads with the first title from these sources.")
             } }
@@ -72,7 +72,7 @@ struct ShelvesSettingsView: View {
                     ))
                 }
             } header: {
-                Text("Server Home Rows")
+                FilmSectionHeader("Server Home Rows")
             } footer: { FilmFooter {
                 Text("Adds a row to Home showing a server's own libraries and collections, in the order and with the covers set on that server. Your other shelves stay.")
             } }
@@ -82,7 +82,7 @@ struct ShelvesSettingsView: View {
                 Button("Copy to Clipboard") { exportShelves() }
                 Button("Import from Clipboard") { importShelves() }
             } header: {
-                Text("Import / Export")
+                FilmSectionHeader("Import / Export")
             } footer: { FilmFooter {
                 Text("Copies your shelves as JSON to share or keep, and replaces them with shelves copied the same way.")
             } }
@@ -187,7 +187,7 @@ struct DiscoverShelfEditor: View {
                     Text("TV Shows").tag(MediaType.show)
                 }
                 Button("Filters…") { showFilters = true }
-                Section("Preview") {
+                Section(film: "Preview") {
                     DiscoverPreview(query: query)
                 }
             }
@@ -248,7 +248,7 @@ struct ListShelfPicker: View {
         NavigationStack {
             FilmForm {
                 if model.trakt != nil {
-                    Section("Trakt") {
+                    Section(film: "Trakt") {
                         ForEach(traktLists, id: \.ids.slug) { list in
                             Button(list.name) { add(list.name, .traktList(user: "me", slug: list.ids.slug)) }
                         }
@@ -259,7 +259,7 @@ struct ListShelfPicker: View {
                     }
                 }
                 if model.mdblist != nil {
-                    Section("MDBList") {
+                    Section(film: "MDBList") {
                         if mdbLists.isEmpty { Text("No lists found").foregroundStyle(.secondary) }
                         ForEach(mdbLists) { list in
                             Button("\(list.name) (\(list.itemCount))") { add(list.name, .mdblist(id: list.id)) }
@@ -267,7 +267,7 @@ struct ListShelfPicker: View {
                     }
                 }
                 if !libraries.isEmpty {
-                    Section("Media Server Libraries") {
+                    Section(film: "Media Server Libraries") {
                         ForEach(libraries, id: \.1.id) { server, library in
                             Button("\(library.name) — \(server.name)") { add(library.name, .mediaServerLibrary(serverID: server.id, libraryID: library.id)) }
                         }

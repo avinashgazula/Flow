@@ -31,7 +31,7 @@ struct SubtitleAppearanceSections: View {
 
     var body: some View {
         @Bindable var model = model
-        Section("Appearance") {
+        Section(film: "Appearance") {
             FilmPicker("Font", selection: $model.settings.subtitles.font) {
                 ForEach(SubtitleFont.allCases) { Text($0.title).tag($0) }
             }
@@ -45,7 +45,7 @@ struct SubtitleAppearanceSections: View {
                 ForEach(SubtitleColor.allCases) { Text($0.title).tag($0) }
             }
         }
-        Section("Style") {
+        Section(film: "Style") {
             FilmPicker("Text Edge Style", selection: $model.settings.subtitles.edgeStyle) {
                 ForEach(SubtitleEdgeStyle.allCases) { Text($0.title).tag($0) }
             }
@@ -70,14 +70,14 @@ struct SubtitleAppearanceSections: View {
                 ForEach(Self.choices(Self.offsets, including: model.settings.subtitles.defaultOffsetSeconds), id: \.self) { Text(Self.offsetLabel($0)).tag($0) }
             }
         } header: {
-            Text("Position")
+            FilmSectionHeader("Position")
         } footer: { FilmFooter {
             Text("Every subtitle style syncs across your devices.")
         } }
         Section {
             Toggle("Keep original ASS styling", isOn: $model.settings.subtitles.keepASSStyling)
         } header: {
-            Text("Advanced")
+            FilmSectionHeader("Advanced")
         } footer: { FilmFooter {
             Text("Draw ASS/SSA subtitles the way their author styled them (colour, weight, size and placement) instead of the settings above. Mostly matters for anime, whose subtitles style each sign and speaker differently. Karaoke and animated effects aren't drawn. Applies to subtitles Flow draws itself; anything a subtitle leaves unspecified keeps your settings.")
         } }

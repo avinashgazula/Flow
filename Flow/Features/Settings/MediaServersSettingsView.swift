@@ -32,7 +32,7 @@ struct MediaServersSettingsView: View {
                 }
                 .onDelete { model.settings.mediaServers.servers.remove(atOffsets: $0) }
             } header: {
-                Text("Servers")
+                FilmSectionHeader("Servers")
             } footer: { FilmFooter {
                 Text("Swipe to remove. Toggle to enable or disable.")
             } }
@@ -45,7 +45,7 @@ struct MediaServersSettingsView: View {
 
             Section {
                 Toggle("Show Badge on Posters", isOn: $model.settings.mediaServers.showBadgeOnPosters)
-            } header: { Text("Display") } footer: { FilmFooter {
+            } header: { FilmSectionHeader("Display") } footer: { FilmFooter {
                 Text("Adds a small server icon to the top-right of any poster whose content is available on one of your media servers.")
             } }
             Section {
@@ -160,7 +160,7 @@ struct AddServerView: View {
     @ViewBuilder
     private var plexSection: some View {
         if !plexServers.isEmpty {
-            Section("Choose Servers") {
+            Section(film: "Choose Servers") {
                 ForEach(plexServers) { server in
                     Button {
                         Task { await addPlex(server) }

@@ -15,7 +15,7 @@ struct SeerrSettingsSection: View {
                 Button { connecting = true } label: { Label("Connect Seerr", systemImage: "plus.circle.fill") }
             }
         } header: {
-            Text("Requests")
+            FilmSectionHeader("Requests")
         } footer: { FilmFooter {
             Text("Connect a Seerr, Overseerr or Jellyseerr instance to request movies and shows that aren't in your library yet. A Request button appears on titles you don't already have on a media server.")
         } }

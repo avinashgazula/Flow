@@ -56,7 +56,7 @@ struct DataStorageView: View {
                     }
                 }
             } header: {
-                Text("iCloud")
+                FilmSectionHeader("iCloud")
             } footer: { FilmFooter {
                 Text("Keeps playback progress, settings, rewatch state, shuffle history and your on-device watchlist, watch history and favourites the same on all your devices. Anything you remove stays removed everywhere. Builds installed without a developer account can't use iCloud: Flow Sync (in Settings) shares your keys, add-ons, servers, Seerr connection, followed teams and playback preferences through your own Worker instead.")
             } }
@@ -73,7 +73,7 @@ struct DataStorageView: View {
                     }
                 }
             } header: {
-                Text("Cache")
+                FilmSectionHeader("Cache")
             } footer: { FilmFooter {
                 Text("Clearing the Trakt cache re-fetches your watchlist, history and progress from Trakt.")
             } }
@@ -89,7 +89,7 @@ struct DataStorageView: View {
                 }
                 #endif
             } header: {
-                Text("On-Device Tracking")
+                FilmSectionHeader("On-Device Tracking")
             } footer: { FilmFooter {
                 Text((model.settings.sync.iCloudEnabled ? "Re-download reads the whole iCloud copy and merges anything missing into this device. Reset replaces the iCloud copy with this device's. " : "")
                      + "Export saves your watch history, watchlist, favourites, resume positions and rewatches as a JSON file.")
@@ -105,7 +105,7 @@ struct DataStorageView: View {
                     #endif
                     NavigationLink(value: Route.downloads) { Label("Manage Downloads", systemImage: "arrow.down.circle") }
                 } header: {
-                    Text("Downloads")
+                    FilmSectionHeader("Downloads")
                 } footer: { FilmFooter {
                     #if os(iOS)
                     Text("Files App keeps downloads in Flow's folder in the Files app, so you can copy them off this device. App Storage keeps them inside Flow and out of backups. Downloads already saved stay where they are.")
@@ -126,7 +126,7 @@ struct DataStorageView: View {
                     }
                     Toggle("Download Automatically", isOn: $model.settings.downloads.downloadAutomatically)
                 } header: {
-                    Text("Download Limits")
+                    FilmSectionHeader("Download Limits")
                 } footer: { FilmFooter {
                     Text("Applies to downloads only: playing still offers every source. With Download Automatically on, Download takes the best source within these limits, in your source order, and the source list opens only when nothing fits. Sources that don't report their size or resolution aren't picked automatically.")
                 } }
@@ -135,7 +135,7 @@ struct DataStorageView: View {
                     Toggle("Delete Watched Episodes", isOn: $model.settings.downloads.deleteWatchedDownloads)
                     Toggle("Download Next Episode", isOn: $model.settings.downloads.downloadNextEpisode)
                 } header: {
-                    Text("Smart Downloads")
+                    FilmSectionHeader("Smart Downloads")
                 } footer: { FilmFooter {
                     Text("These apply to episodes you've downloaded. Delete Watched Episodes removes a download once you've watched it to the end. Download Next Episode then saves the next episode that has aired, within the download limits above; when no source fits, it tells you instead of opening the source list.")
                 } }
@@ -153,7 +153,7 @@ struct DataStorageView: View {
                 Button(role: .destructive) { confirmClear = .cloud } label: { Label("Erase iCloud Data", systemImage: "icloud.slash") }
                 Button(role: .destructive) { confirmClear = .tracking } label: { Label("Delete All Tracking Data", systemImage: "person.crop.circle.badge.xmark") }
             } header: {
-                Text("Danger Zone")
+                FilmSectionHeader("Danger Zone")
             } footer: { FilmFooter {
                 Text("Clear All Cache removes artwork, metadata and stream header caches; they download again as needed. Delete All Tracking Data erases your on-device history, watchlist, favourites, resume positions and rewatches, along with their iCloud copy. It can't be undone.")
             } }
@@ -243,7 +243,7 @@ struct ShareSetupView: View {
                 Text("Exports every setting — shelves, sources, add-ons, servers, IPTV providers. Leave keys out when sharing with someone else. Tracker sign-ins are never exported.")
             } }
             if let qr = QRCode.image(for: link), link.count < 2800 {
-                Section("Scan on another device") {
+                Section(film: "Scan on another device") {
                     qr.interpolation(.none).resizable().scaledToFit().frame(maxWidth: 280).padding(12)
                         .background(.white, in: RoundedRectangle(cornerRadius: 14))
                         .frame(maxWidth: .infinity)
@@ -298,7 +298,7 @@ struct ImportSetupView: View {
             } }
             if let error { Section { Text(error).foregroundStyle(.red) } }
             if let bundle {
-                Section("This setup contains") {
+                Section(film: "This setup contains") {
                     LabeledContent("Shelves", value: "\(bundle.settings.shelves.count)")
                     LabeledContent("Media Servers", value: "\(bundle.settings.mediaServers.servers.count)")
                     LabeledContent("WebDAV Shares", value: "\(bundle.settings.webDAV.count)")

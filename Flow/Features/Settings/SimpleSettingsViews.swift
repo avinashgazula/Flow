@@ -12,10 +12,10 @@ struct LicencesView: View {
 
     var body: some View {
         FilmList {
-            Section("FFmpeg") {
+            Section(film: "FFmpeg") {
                 Text(FFmpegLicence.notice)
             }
-            Section("GNU Lesser General Public License 2.1") {
+            Section(film: "GNU Lesser General Public License 2.1") {
                 ForEach(Array(paragraphs.enumerated()), id: \.offset) { _, paragraph in
                     Text(paragraph).font(.footnote).foregroundStyle(.secondary)
                 }
@@ -38,7 +38,7 @@ struct GeneralSettingsView: View {
             #if !os(tvOS)
             NotificationsSection()
             #endif
-            Section("Appearance") {
+            Section(film: "Appearance") {
                 FilmPicker("Accent Colour", selection: $model.settings.general.accent) {
                     ForEach(AccentColorChoice.allCases) { choice in
                         Label(choice == .white ? "Flow" : choice.rawValue.capitalized, systemImage: "circle.fill").foregroundStyle(choice.color).tag(choice)
@@ -46,7 +46,7 @@ struct GeneralSettingsView: View {
                 }
                 Toggle("Show Watched Check Marks", isOn: $model.settings.general.showWatchedBadges)
             }
-            Section("Home") {
+            Section(film: "Home") {
                 FilmPicker("Top Pick From", selection: $model.settings.general.heroSource) {
                     ForEach(HeroSource.allCases) { Text($0.title).tag($0) }
                 }
@@ -58,7 +58,7 @@ struct GeneralSettingsView: View {
                 Toggle("Episode Spoilers", isOn: $model.settings.general.showEpisodeSpoilers)
                 Toggle("Specials Season", isOn: $model.settings.general.showSpecialsSeason)
             } header: {
-                Text("Detail Views")
+                FilmSectionHeader("Detail Views")
             } footer: { FilmFooter {
                 Text("About always lists the release date, runtime, director and rating at the foot of the page; this adds status, language, country, budget, revenue and production companies. Where to Watch shows streaming, rent and buy availability (JustWatch via TMDB). Reviews shows TMDB and Trakt reviews. Episode Spoilers off blurs the stills of aired episodes you haven't watched. Specials Season adds season 0 to a show's seasons.")
             } }
@@ -92,7 +92,7 @@ struct GeneralSettingsView: View {
                 }
                 .disabled(!model.settings.general.showUpcoming)
             } header: {
-                Text("Home Shelves")
+                FilmSectionHeader("Home Shelves")
             } footer: { FilmFooter {
                 Text("Content shelves such as Trending hold this many titles. Upcoming lists the next episode of shows you're caught up on, with its air date. Watchlist premieres add new seasons and unreleased films from your watchlist, dated by their digital or theatrical release.")
             } }
@@ -101,7 +101,7 @@ struct GeneralSettingsView: View {
                 Toggle("Show Titles Under Posters", isOn: $model.settings.general.showPosterTitles)
                 Toggle("Show Episodes Left", isOn: $model.settings.general.showEpisodesRemaining)
             } header: {
-                Text("Posters")
+                FilmSectionHeader("Posters")
             } footer: { FilmFooter {
                 Text("The year appears under the title, or alone when titles are hidden. Show Episodes Left adds watched/aired counts such as 3/10 to series posters and \"6 episodes left\" to Continue Watching cards.")
             } }
@@ -110,7 +110,7 @@ struct GeneralSettingsView: View {
                     ForEach(DetailTextSize.allCases) { Text($0.title).tag($0) }
                 }
             } header: {
-                Text("Display")
+                FilmSectionHeader("Display")
             } footer: { FilmFooter {
                 Text("Adjusts the size of titles, synopsis and other text on detail screens.")
             } }
@@ -119,7 +119,7 @@ struct GeneralSettingsView: View {
                 Toggle("Haptics", isOn: $model.settings.general.haptics)
             }
             #endif
-            Section("About") {
+            Section(film: "About") {
                 NavigationLink("Open Source Licences") { LicencesView() }
             }
         }
@@ -174,18 +174,18 @@ struct PlaybackSettingsView: View {
                 Toggle("Convert Profile 7 to Profile 8.1", isOn: $model.settings.playback.convertDolbyVisionProfile7)
                     .disabled(model.settings.playback.neverUseDolbyVision)
             } header: {
-                Text("Dolby Vision")
+                FilmSectionHeader("Dolby Vision")
             } footer: { FilmFooter {
                 Text("Never Use Dolby Vision plays its HDR10 picture instead (profile 5, which has none, still plays as Dolby Vision). Profile 7, from UHD Blu-ray remuxes, can't play as Dolby Vision on Apple devices; converting keeps the HDR10 picture and the Dolby Vision metadata for each shot, as profile 8.1. Off plays it as plain HDR10. Applies to MKV files Flow plays itself.")
             } }
-            Section("Loading Screen") {
+            Section(film: "Loading Screen") {
                 Toggle("Show Progress Bar", isOn: $model.settings.playback.showLoadingProgress)
             }
             #if !os(tvOS)
             Section {
                 Toggle("Show X-Ray When Paused", isOn: $model.settings.playback.xrayWhenPaused)
             } header: {
-                Text("X-Ray")
+                FilmSectionHeader("X-Ray")
             } footer: { FilmFooter {
                 Text("X-Ray shows the cast and crew, jumps to scenes, and names who's in the scene from the last few minutes of dialogue: from the subtitles on screen, or a file fetched for X-Ray from your subtitle services. Open it any time with the X-Ray button.")
             } }
@@ -202,7 +202,7 @@ struct PlaybackSettingsView: View {
                 }
                 Toggle("Reuse Last Source For Show", isOn: $model.settings.playback.rememberLastSourcePerShow)
             } header: {
-                Text("Episodes")
+                FilmSectionHeader("Episodes")
             } footer: { FilmFooter {
                 Text("Up Next counts down as the credits start, or, with Wait for the Episode to End, so the next one begins as this one finishes.")
             } }
@@ -211,7 +211,7 @@ struct PlaybackSettingsView: View {
                 FilmPicker("Recap", selection: $model.settings.playback.skipRecap) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
                 FilmPicker("Credits", selection: $model.settings.playback.skipCredits) { ForEach(SkipBehaviour.allCases) { Text($0.title).tag($0) } }
             } header: {
-                Text("Skip Segments")
+                FilmSectionHeader("Skip Segments")
             } footer: { FilmFooter {
                 Text("Segments come from your media server (Jellyfin media segments, Plex markers), IntroDB, PublicMetaDB or the file's chapter names.")
             } }
@@ -219,11 +219,11 @@ struct PlaybackSettingsView: View {
                 Toggle("Post-Credits Scene Alert", isOn: $model.settings.playback.postCreditsAlert)
                 Toggle("Because You Watched", isOn: $model.settings.playback.becauseYouWatched)
             } header: {
-                Text("Films")
+                FilmSectionHeader("Films")
             } footer: { FilmFooter {
                 Text("When a film has a scene during or after its credits, Flow says so as they begin and won't skip them by itself. Because You Watched suggests what to watch next as the credits roll, and when the film ends.")
             } }
-            Section("Resume & Progress") {
+            Section(film: "Resume & Progress") {
                 Toggle("Ask Before Resuming", isOn: $model.settings.playback.askToResume)
                 FilmPicker("Mark Watched At", selection: $model.settings.playback.watchedThresholdPercent) {
                     ForEach([80.0, 85, 90, 95], id: \.self) { Text("\(Int($0))%").tag($0) }
@@ -263,7 +263,7 @@ struct PlaybackSettingsView: View {
                     ForEach(AnimeAudio.allCases) { Text($0.title).tag($0) }
                 }
             } header: {
-                Text("Language")
+                FilmSectionHeader("Language")
             } footer: { FilmFooter {
                 Text("Automatic turns subtitles on only when the audio isn't in your subtitle language, such as a foreign-language film: your first language before your second, and a subtitle in the file before an online one. When the audio is in your subtitle language it shows only a forced subtitle from the file, for foreign-language scenes. Always turns them on for everything, Forced Only shows forced subtitles only, Never leaves them off. Audio Language also sorts sources: matching ones come first. For anime, Sub plays Japanese audio with subtitles and Dub plays your audio language without them.")
             } }
@@ -273,7 +273,7 @@ struct PlaybackSettingsView: View {
                     Button("Forget Remembered Tracks", role: .destructive) { model.settings.playback.showTracks = [:] }
                 }
             } header: {
-                Text("Audio")
+                FilmSectionHeader("Audio")
             } footer: { FilmFooter {
                 Text("Pick Japanese audio and English subtitles once, and the rest of the show starts that way.")
             } }
@@ -287,7 +287,7 @@ struct PlaybackSettingsView: View {
                 }
                 #endif
             } header: {
-                Text("Formats")
+                FilmSectionHeader("Formats")
             } footer: { FilmFooter {
                 Text("Flow plays MKV files itself by repackaging them on the fly for Apple's player, without re-encoding: HDR, Dolby Vision, Dolby Atmos, embedded and disc subtitles and chapters all come through, and DTS and TrueHD are decoded to lossless FLAC. When a file still can't play, Flow moves to the next source or offers your external player.")
             } }
@@ -300,7 +300,7 @@ struct PlaybackSettingsView: View {
                 Toggle("Picture in Picture", isOn: $model.settings.playback.pictureInPicture)
                 #endif
             } header: {
-                Text("Player")
+                FilmSectionHeader("Player")
             } footer: { FilmFooter {
                 Text("Another player gets the stream's link (Infuse also the resume point). Flow tracks progress only in its own player.")
             } }
@@ -327,7 +327,7 @@ struct SubtitleSettingsView: View {
             Section {
                 Toggle("Auto-sync", isOn: $model.settings.subtitles.autoSync)
             } header: {
-                Text("Auto-sync (Beta)")
+                FilmSectionHeader("Auto-sync (Beta)")
             } footer: { FilmFooter {
                 Text("Aligns out-of-sync subtitles to the dialogue. Turn it on, start playback, and an Auto-sync action appears in the player's subtitle options after a minute of watching. Works with subtitles Flow loads itself, on files Flow plays itself (MKVs).")
             } }
@@ -346,11 +346,11 @@ struct SubtitleSettingsView: View {
                     }
                 }
             } header: {
-                Text("Preferred Languages")
+                FilmSectionHeader("Preferred Languages")
             } footer: { FilmFooter {
                 Text("Tap in order of preference. Numbers show the order used to rank search results.")
             } }
-            Section("Behaviour") {
+            Section(film: "Behaviour") {
                 FilmPicker("Auto-Select", selection: $model.settings.subtitles.autoSelect) {
                     ForEach(AutoSubtitleMode.allCases) { Text($0.title).tag($0) }
                 }
@@ -358,7 +358,7 @@ struct SubtitleSettingsView: View {
                     ForEach(SubtitleTypePreference.allCases) { Text($0.title).tag($0) }
                 }
             }
-            Section("Sources") {
+            Section(film: "Sources") {
                 ForEach([("opensubtitles", "OpenSubtitles"), ("subdl", "SubDL"), ("wyzie", "Wyzie"), ("subsource", "SubSource")], id: \.0) { id, name in
                     Toggle(name, isOn: Binding(
                         get: { model.settings.subtitles.enabledProviders.contains(id) },
@@ -385,18 +385,18 @@ struct MetadataSettingsView: View {
                 }
                 Toggle("Air Dates in My Time Zone", isOn: $model.settings.metadata.airDatesInLocalTimeZone)
             } header: {
-                Text("Episode Data")
+                FilmSectionHeader("Episode Data")
             } footer: { FilmFooter {
                 Text("Sets where season/episode numbering, episode titles, and air dates come from. TVDB matches the numbering most stream sources use, so multi-part premieres and other ordering edge cases line up correctly. Trakt and TMDB use their own ordering. Posters and episode stills always come from TMDB. Takes effect on the next show you open.\n\nAir Dates in My Time Zone shows episodes with a known air time at that time where you are. An air date without a time is always shown as that day.")
             } }
             Section {
                 Toggle("Show Unreleased Titles", isOn: $model.settings.metadata.showUnreleasedTitles)
             } header: {
-                Text("Availability")
+                FilmSectionHeader("Availability")
             } footer: { FilmFooter {
                 Text("Switch this off and Flow uses TMDB release dates to drop titles you can't play yet — a film with only a cinema release, or one that hasn't opened at all — from home shelves, the hero, Show All, Discover and the trending rows.\n\nRows that exist to show what's coming are left alone: watchlists, Continue Watching, Upcoming, Now Playing, Anticipated, calendars, and any Discover shelf you pointed at future dates. Search still finds everything, so you can add a title before it's out.")
             } }
-            Section("Source") {
+            Section(film: "Source") {
                 FilmPicker("Primary Source", selection: $model.settings.metadata.primarySource) {
                     ForEach(PrimaryMetadataSource.allCases) { Text($0.title).tag($0) }
                 }
@@ -410,7 +410,7 @@ struct MetadataSettingsView: View {
                 }
                 Toggle("Include Adult Titles", isOn: $model.settings.metadata.includeAdult)
             } header: {
-                Text("Language")
+                FilmSectionHeader("Language")
             } footer: { FilmFooter {
                 Text("Changes the language for titles, descriptions, and other metadata from TMDB. Region sets certifications and streaming providers.")
             } }
@@ -418,19 +418,19 @@ struct MetadataSettingsView: View {
                 OptionalTextField(title: "TMDB API Key", text: $model.credentials.tmdbAPIKey, secure: true, prompt: BundleKeys.tmdb == nil ? "v3 key or v4 read token" : "Using built-in key")
                 Link("Get a free key at themoviedb.org", destination: URL(string: "https://www.themoviedb.org/settings/api")!)
             } header: {
-                Text("TMDB API Key")
+                FilmSectionHeader("TMDB API Key")
             }
             Section {
                 OptionalTextField(title: "TVDB API Key", text: $model.credentials.tvdbAPIKey, secure: true, prompt: BundleKeys.tvdb == nil ? "v4 project key" : "Using built-in key")
             } header: {
-                Text("TVDB API Key")
+                FilmSectionHeader("TVDB API Key")
             } footer: { FilmFooter {
                 Text("Needed for the TVDB episode source. Without it Flow falls back to TMDB ordering.")
             } }
             Section {
                 Toggle("Prefetch on Detail View", isOn: $model.settings.metadata.prefetchOnDetail)
             } header: {
-                Text("Performance")
+                FilmSectionHeader("Performance")
             } footer: { FilmFooter {
                 Text("Loads sources in the background when you open a detail page so tapping Play is instant. Turn off to save bandwidth on slow connections; Play then fetches sources on demand.")
             } }
@@ -441,7 +441,7 @@ struct MetadataSettingsView: View {
                 .pickerStyle(.segmented)
                 OptionalTextField(title: "RPDB API Key", text: $model.credentials.rpdbAPIKey, secure: true)
             } header: {
-                Text("Poster Enhancement")
+                FilmSectionHeader("Poster Enhancement")
             } footer: { FilmFooter {
                 Text("Draws ratings onto poster art across every shelf, from RatingPosterDB (needs your RPDB key). Applies to newly loaded posters.")
             } }
@@ -449,14 +449,14 @@ struct MetadataSettingsView: View {
                 NavigationLink("Ratings Shown") { RatingsShownView() }
                 Toggle("Tap a Rating to Open Its Reviews", isOn: $model.settings.metadata.tapRatingOpensReviews)
             } header: {
-                Text("Ratings")
+                FilmSectionHeader("Ratings")
             } footer: { FilmFooter {
                 Text("Ratings Shown picks which scores appear on detail pages and in what order. With Tap a Rating on, each score opens that site's page for the title, in its app if you have it installed.")
             } }
             Section {
                 RatingIconPackField(url: $model.settings.metadata.ratingIconPackURL)
             } header: {
-                Text("Rating Icons")
+                FilmSectionHeader("Rating Icons")
             } footer: { FilmFooter {
                 Text("Custom icons for the ratings row on detail pages: a URL to a JSON array of {\"name\", \"url\"}. Names: imdb, tomatometer, popcornmeter, metacritic, tmdb, letterboxd, trakt, mal.")
             } }

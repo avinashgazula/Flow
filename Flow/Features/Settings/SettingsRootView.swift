@@ -266,12 +266,12 @@ struct AboutView: View {
                 .frame(maxWidth: .infinity)
                 .padding()
             }
-            Section("Data Providers") {
+            Section(film: "Data Providers") {
                 Text("Metadata and images from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.")
                 Text("Episode data from TheTVDB. Ratings via MDBList. Sports data from TheSportsDB.")
             }
             .font(.footnote)
-            Section("Content") {
+            Section(film: "Content") {
                 Text("Flow does not host or provide any content. It plays media from servers, shares, providers and add-ons that you configure and are responsible for.")
                     .font(.footnote)
             }

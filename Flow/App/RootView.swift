@@ -48,6 +48,7 @@ struct RootView: View {
         .flowModal(item: $model.sourcePickerRequest) { request in
             SourcePickerView(request: request)
                 .environment(model)
+                .largeSheetOnPad()
         }
         #if !os(macOS)
         .flowModal(isPresented: Binding(get: { model.showSettings && !model.settingsInTab }, set: { model.showSettings = $0 })) {
@@ -66,6 +67,7 @@ struct RootView: View {
             // Styles set at the app's root don't reach into sheets.
             .switchTint(model.settings.general.accent)
             .environment(model)
+            .largeSheetOnPad()
         }
         #endif
     }

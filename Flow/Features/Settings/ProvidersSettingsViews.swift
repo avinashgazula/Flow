@@ -133,9 +133,9 @@ struct LiveTVSettingsView: View {
                     editing = IPTVProviderConfig(name: "IPTV", kind: .m3u, url: URL(string: "https://example.invalid")!)
                 } label: { Label("Add Provider", systemImage: "plus.circle.fill") }
             } header: {
-                Text("IPTV Providers")
+                FilmSectionHeader("IPTV Providers")
             }
-            Section("Guide") {
+            Section(film: "Guide") {
                 FilmPicker("Refresh Guide Every", selection: $model.settings.liveTV.epgRefreshHours) {
                     ForEach([3, 6, 12, 24, 48], id: \.self) { Text("\($0) hours").tag($0) }
                 }

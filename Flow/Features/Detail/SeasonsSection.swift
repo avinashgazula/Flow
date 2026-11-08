@@ -120,7 +120,7 @@ struct EpisodeListing: View {
     private var aired: Bool { (episode.airDate ?? .distantFuture) <= Date() }
     private var watched: Bool { model.isEpisodeWatched(show, episode.ref) }
     private var hidden: Bool { model.hidesSpoilers(show, episode) }
-    private var frameWidth: CGFloat { Platform.isTV ? 420 : (Platform.isPhone ? 168 : 240) }
+    private var frameWidth: CGFloat { Platform.isTV ? 420 : (Platform.isPhone ? 168 : (Platform.isPad ? 200 : 240)) }
 
     /// With Episode Spoilers off, an aired, unwatched episode's still stays out of sight.
     private var art: ProgrammeArt {

@@ -74,7 +74,7 @@ struct DetailView: View {
         .task(id: item.id) { await watchBestVersion() }
         .advertisesTitle(current)
         .sheet(item: $downloadRequest) { request in
-            SourcePickerView(request: request, forDownload: true).environment(model)
+            SourcePickerView(request: request, forDownload: true).environment(model).largeSheetOnPad()
         }
     }
 
@@ -304,12 +304,27 @@ struct DetailView: View {
             }
             if current.type == .show {
                 textAction("Shuffle", active: false, accessibility: "Shuffle Play") { Task { await model.shufflePlay(current) } }
-                textAction(rewatching ? "End Rewatch" : "Rewatch", active: rewatching, accessibility: rewatching ? "End Rewatch" : "Rewatch") { toggleRewatch() }
             }
-            #if !os(tvOS)
-            TitleShareLink(item: current) { Text("Share") }
+            if Platform.isPad {
+                // On an iPad the row would wrap its last two actions onto a second line, so they share a menu.
+                Menu {
+                    if current.type == .show {
+                        Button(rewatching ? "End Rewatch" : "Rewatch") { toggleRewatch() }
+                    }
+                    TitleShareLink(item: current) { Label("Share", systemImage: "square.and.arrow.up") }
+                } label: {
+                    Text("More")
+                }
                 .buttonStyle(PlainActionButtonStyle())
-            #endif
+            } else {
+                if current.type == .show {
+                    textAction(rewatching ? "End Rewatch" : "Rewatch", active: rewatching, accessibility: rewatching ? "End Rewatch" : "Rewatch") { toggleRewatch() }
+                }
+                #if !os(tvOS)
+                TitleShareLink(item: current) { Text("Share") }
+                    .buttonStyle(PlainActionButtonStyle())
+                #endif
+            }
         }
     }
 
@@ -560,8 +575,10 @@ struct RatingsRow: View {
 
     /// The sources with a score for this title, in the order chosen.
     private var shown: [RatingSource] { metadata.ratingsShown.filter { text(for: $0) != nil } }
-    /// Four is as many as a phone holds in a row, so the rest sit behind More.
-    private var visible: [RatingSource] { Platform.isPhone && !showAll ? Array(shown.prefix(4)) : shown }
+    /// Four is as many as a phone holds in a row, and on an iPad a fifth or sixth would wrap and leave one score
+    /// alone on a second line, so the rest sit behind More on both.
+    private var limited: Bool { Platform.isPhone || Platform.isPad }
+    private var visible: [RatingSource] { limited && !showAll ? Array(shown.prefix(4)) : shown }
 
     var body: some View {
         // Equal columns, so the numbers of a second line stand under the first line's: a table, not a wrapped row.
@@ -572,7 +589,7 @@ struct RatingsRow: View {
                     score(source)
                 }
             }
-            if Platform.isPhone && !showAll && shown.count > 4 {
+            if limited && !showAll && shown.count > 4 {
                 Button("More Ratings") { withAnimation(Theme.Motion.gentle) { showAll = true } }
                     .font(.system(.subheadline, weight: .semibold))
                     .foregroundStyle(Theme.Palette.textSecondary)
