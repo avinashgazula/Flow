@@ -32,9 +32,9 @@ struct ShelvesSettingsView: View {
                 }
             } header: {
                 Text("Home Shelves")
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Turn rows on or off and drag to reorder. Long-press for more options.")
-            }
+            } }
 
             Section("Add Shelf") {
                 Button { addingDiscover = true } label: { Label("Discover Shelf…", systemImage: "sparkles.rectangle.stack") }
@@ -60,9 +60,9 @@ struct ShelvesSettingsView: View {
                 }
             } header: {
                 Text("Top Pick")
-            } footer: {
+            } footer: { FilmFooter {
                 Text("When nothing is in progress, Home leads with the first title from these sources.")
-            }
+            } }
 
             Section {
                 ForEach(model.settings.mediaServers.servers.filter(\.enabled)) { server in
@@ -73,9 +73,9 @@ struct ShelvesSettingsView: View {
                 }
             } header: {
                 Text("Server Home Rows")
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Adds a row to Home showing a server's own libraries and collections, in the order and with the covers set on that server. Your other shelves stay.")
-            }
+            } }
 
             #if !os(tvOS)
             Section {
@@ -83,9 +83,9 @@ struct ShelvesSettingsView: View {
                 Button("Import from Clipboard") { importShelves() }
             } header: {
                 Text("Import / Export")
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Copies your shelves as JSON to share or keep, and replaces them with shelves copied the same way.")
-            }
+            } }
             #endif
         }
         #if os(iOS)

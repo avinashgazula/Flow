@@ -93,9 +93,9 @@ struct NavigationSettingsSection: View {
             NavigationLink("Tab Order") { TabOrderView() }
         } header: {
             Text("Navigation")
-        } footer: {
+        } footer: { FilmFooter {
             Text("Opening Tab is where the app opens on launch. Tab Order sets how the tabs are arranged.")
-        }
+        } }
     }
 }
 
@@ -165,9 +165,9 @@ struct NotificationsSection: View {
             Toggle("Match Results", isOn: binding(\.matchResultNotifications))
         } header: {
             Text("Notifications")
-        } footer: {
+        } footer: { FilmFooter {
             Text("Get notified when a new episode of a show you're watching airs. Match Starting alerts you 10 minutes before any followed team plays. Match Results sends the final score, and arrives while Flow is running.")
-        }
+        } }
     }
 
     /// Turning one on asks for permission; if it's refused the switch goes back off.

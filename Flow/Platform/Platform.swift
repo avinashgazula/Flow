@@ -504,13 +504,32 @@ extension View {
     }
 
     /// Rows on base-2, so a group of settings reads as a panel on the ground. Apple TV keeps the system's own row
-    /// and focus look, which a custom row background would replace.
+    /// and focus look, which a custom row background would replace; it gets taller rows instead.
     @ViewBuilder
     fileprivate func filmRows() -> some View {
         #if os(tvOS)
-        self
+        // Taller rows, so a list read from across the room has air between its focus platters.
+        listRowInsets(EdgeInsets(top: Theme.Space.s, leading: 20, bottom: Theme.Space.s, trailing: 20))
         #else
         listRowBackground(Theme.Palette.panel)
+        #endif
+    }
+}
+
+/// A settings footer. On Apple TV the system's footer is small and dim for a screen read from a sofa, so it is set
+/// larger, in secondary paper, with room above; elsewhere it is the system's own footer. Every Section footer in
+/// the settings pages goes through this, so the ten-foot sizing lives in one place.
+struct FilmFooter<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        #if os(tvOS)
+        content
+            .font(.callout)
+            .foregroundStyle(Theme.Palette.textSecondary)
+            .padding(.top, Theme.Space.xs)
+        #else
+        content
         #endif
     }
 }

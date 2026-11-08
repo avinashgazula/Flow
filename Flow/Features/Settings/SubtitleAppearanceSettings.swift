@@ -71,16 +71,16 @@ struct SubtitleAppearanceSections: View {
             }
         } header: {
             Text("Position")
-        } footer: {
+        } footer: { FilmFooter {
             Text("Every subtitle style syncs across your devices.")
-        }
+        } }
         Section {
             Toggle("Keep original ASS styling", isOn: $model.settings.subtitles.keepASSStyling)
         } header: {
             Text("Advanced")
-        } footer: {
+        } footer: { FilmFooter {
             Text("Draw ASS/SSA subtitles the way their author styled them (colour, weight, size and placement) instead of the settings above. Mostly matters for anime, whose subtitles style each sign and speaker differently. Karaoke and animated effects aren't drawn. Applies to subtitles Flow draws itself; anything a subtitle leaves unspecified keeps your settings.")
-        }
+        } }
         Section {
             Button("Reset to Defaults", role: .destructive) { confirmingReset = true }
                 .confirmationDialog("Reset subtitle appearance?", isPresented: $confirmingReset, titleVisibility: .visible) {

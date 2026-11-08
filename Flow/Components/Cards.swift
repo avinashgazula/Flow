@@ -274,7 +274,9 @@ struct FilmCard: View {
                         Text(title)
                             .font(Theme.Typeface.headline)
                             .foregroundStyle(Theme.Palette.text)
-                            .lineLimit(1)
+                            // Two lines, so "Dune: Part Two" on a phone's narrow poster isn't cut to "Dune: Part T...".
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     if let meta, !meta.isEmpty {
                         Text(meta)

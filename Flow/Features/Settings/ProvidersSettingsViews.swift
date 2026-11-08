@@ -31,9 +31,9 @@ struct WebDAVSettingsView: View {
                 Button {
                     editing = WebDAVConfig(name: "My NAS", baseURL: URL(string: "https://example.invalid")!)
                 } label: { Label("Add WebDAV Share", systemImage: "plus.circle.fill") }
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Flow scans the Movies and TV Shows folders for files named like “Movie (2020).mkv” or “Show/Season 1/Show S01E02.mkv” and offers them as sources.")
-            }
+            } }
         }
         .sheet(item: $editing) { config in WebDAVEditor(config: config).environment(model) }
     }
@@ -180,9 +180,9 @@ struct IPTVEditor: View {
                 }
                 Section {
                     Toggle("Offer VOD as Sources", isOn: $config.useForVOD)
-                } footer: {
+                } footer: { FilmFooter {
                     Text("Movies and series from this provider appear in the source picker under IPTV / VOD.")
-                }
+                } }
                 Section {
                     Button { Task { await test() } } label: { HStack { Text("Test"); if testing { Spacer(); ProgressView() } } }
                     if let status { Text(status).font(.caption).foregroundStyle(.secondary) }
