@@ -299,21 +299,29 @@ struct DetailView: View {
             textAction("Favourite", active: favourite, accessibility: favourite ? "Remove from Favourites" : "Add to Favourites") {
                 Task { await model.toggleFavourite(current) }
             }
-            if Platform.supportsDownloads {
-                textAction("Download", active: false, accessibility: "Download") { Task { await download() } }
-            }
-            if current.type == .show {
-                textAction("Shuffle", active: false, accessibility: "Shuffle Play") { Task { await model.shufflePlay(current) } }
-            }
             #if os(iOS)
             let shareInMenu = Platform.isPad
             #else
             let shareInMenu = false
             #endif
+            if !shareInMenu {
+                if Platform.supportsDownloads {
+                    textAction("Download", active: false, accessibility: "Download") { Task { await download() } }
+                }
+                if current.type == .show {
+                    textAction("Shuffle", active: false, accessibility: "Shuffle Play") { Task { await model.shufflePlay(current) } }
+                }
+            }
             if shareInMenu {
                 #if os(iOS)
-                // On an iPad the row would wrap its last two actions onto a second line, so they share a menu.
+                // On an iPad the row would wrap onto a second line, so everything after the three list actions shares a menu.
                 Menu {
+                    if Platform.supportsDownloads {
+                        Button("Download") { Task { await download() } }
+                    }
+                    if current.type == .show {
+                        Button("Shuffle") { Task { await model.shufflePlay(current) } }
+                    }
                     if current.type == .show {
                         Button(rewatching ? "End Rewatch" : "Rewatch") { toggleRewatch() }
                     }

@@ -555,10 +555,15 @@ struct FilmSectionHeader: View {
 
     var body: some View {
         #if os(tvOS)
-        Text(title)
-            .textCase(nil)
-            .font(.callout.weight(.semibold))
-            .foregroundStyle(Theme.Palette.textSecondary)
+        // A header that is only a Text goes to the system's own header label, which capitalises it whatever
+        // textCase says; inside a stack it stays a custom view and keeps its Title Case.
+        HStack(spacing: 0) {
+            Text(title)
+                .textCase(nil)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(Theme.Palette.textSecondary)
+            Spacer(minLength: 0)
+        }
         #else
         Text(title)
         #endif
