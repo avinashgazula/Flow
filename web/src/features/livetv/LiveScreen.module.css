@@ -30,7 +30,7 @@
   color: var(--paper);
   transition: background-color var(--dur-state) ease;
 }
-.search input:hover { background: var(--base-4); }
+@media (hover: hover) { .search input:hover { background: var(--base-4); } }
 .search input:focus-visible { outline-offset: 2px; }
 .search input::placeholder { color: var(--ink-2); }
 .searchToggle { display: none; }

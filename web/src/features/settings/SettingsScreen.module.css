@@ -22,7 +22,7 @@
   font: 600 var(--fs-small) / 1.2 var(--font);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-.toc a:hover { color: var(--paper); background: var(--base-2); }
+@media (hover: hover) { .toc a:hover { color: var(--paper); background: var(--base-2); } }
 .toc a[aria-current='true'] { color: var(--paper); background: var(--base-3); }
 
 .content { display: flex; flex-direction: column; gap: var(--section); min-width: 0; }
@@ -43,7 +43,7 @@
 .group > * + * { border-top: 1px solid var(--rule); }
 .footer { padding: 0 var(--space-xxs); font-size: var(--fs-footnote); line-height: 1.45; color: var(--ink-3); text-wrap: pretty; max-width: var(--measure); }
 .footer a { color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
-.footer a:hover { color: var(--paper); text-decoration-color: var(--paper); }
+@media (hover: hover) { .footer a:hover { color: var(--paper); text-decoration-color: var(--paper); } }
 /* A literal address or host name stays in the interface face, a step heavier: the sync key is the one monospace. */
 .footer code, .hint code { font: inherit; font-weight: 500; color: var(--ink-2); overflow-wrap: anywhere; }
 
@@ -70,6 +70,11 @@
 .rowControl > input:global(.field):only-child { width: 100%; }
 @media (max-width: 720px) {
   .rowControl:has(> input:global(.field):only-child) { flex: 1 1 100%; margin-left: 0; }
+  /* A select always sits beside its label, never on a line of its own: it takes at most 52% of the row and
+     truncates a long value with an ellipsis, so every select on a phone lines up on the right edge. */
+  .row:has(> .rowControl > .select) { flex-wrap: nowrap; }
+  .rowControl:has(> .select) { flex: 0 1 52%; min-width: 0; }
+  .rowControl > .select { width: 100%; min-width: 0; text-overflow: ellipsis; }
 }
 
 /* The switch: a base-4 track with a paper knob; on, the track is film-stock yellow and the knob dark.
@@ -115,11 +120,19 @@
    change length as the number does. */
 .slide { display: inline-flex; align-items: center; gap: var(--space-s); width: min(260px, 52vw); }
 .slideValue { flex: none; width: 52px; text-align: right; font: 500 var(--fs-small) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+/* On a phone a slider is wide for its row, so it takes the line under its label, whole and left-aligned. */
+@media (max-width: 720px) {
+  .rowControl:has(> .slide) { flex: 1 1 100%; margin-left: 0; }
+  /* Two or more buttons (Export and Copy Link) share the line under their label rather than hang right of it. */
+  .rowControl:has(> :global(.btn:not(.btn-circle)) ~ :global(.btn:not(.btn-circle))) { flex: 1 1 100%; margin-left: 0; }
+  .rowControl:has(> :global(.btn:not(.btn-circle)) ~ :global(.btn:not(.btn-circle))) > :global(.btn:not(.btn-circle)) { flex: 1 1 0; }
+  .slide { width: 100%; }
+}
 
 /* Destructive actions read red; the armed state is a solid red button beside Cancel. */
 .danger { color: var(--red); }
 .dangerSolid { background: var(--red); color: var(--on-stock); }
-.dangerSolid:hover { background: var(--red); filter: brightness(1.08); }
+@media (hover: hover) { .dangerSolid:hover { background: var(--red); filter: brightness(1.08); } }
 .confirm { display: inline-flex; gap: var(--space-xs); }
 
 .note { font-size: var(--fs-footnote); line-height: 1.4; color: var(--ink-2); text-wrap: pretty; }
@@ -129,7 +142,7 @@
 .note a { text-decoration: underline; text-underline-offset: 0.2em; }
 /* A word inside a row's detail that acts, like "Change": reads as part of the sentence. */
 .inlineLink { padding: 0; border: 0; background: none; font: inherit; color: var(--paper); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; cursor: pointer; }
-.inlineLink:hover { text-decoration-color: var(--paper); }
+@media (hover: hover) { .inlineLink:hover { text-decoration-color: var(--paper); } }
 /* The padding grows the tap area to 32px tall without moving the word. */
 .inlineLink { padding: 8px 6px; margin: -8px -6px; }
 /* A host name on a line of its own, so a phone breaks the sentence before it rather than at its hyphens. */
@@ -211,7 +224,7 @@ img.logo { padding: 4px; }
   transition: background-color var(--dur-state) ease, box-shadow var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
 }
-.face:hover { background: var(--base-3); }
+@media (hover: hover) { .face:hover { background: var(--base-3); } }
 .face[data-selected] { background: var(--base-3); box-shadow: inset 0 0 0 2px var(--paper); }
 .face:has(:focus-visible) { outline: 2px solid var(--stock); outline-offset: 3px; }
 .sample { display: flex; flex-direction: column; gap: 6px; flex: 1; padding-right: 22px; color: var(--paper); }

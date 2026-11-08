@@ -57,7 +57,7 @@
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
 }
 /* Paper on the picture; a faint disc appears only when the pointer is on it. */
-.clusterButton:hover { background: rgb(255 255 255 / 0.16); }
+@media (hover: hover) { .clusterButton:hover { background: rgb(255 255 255 / 0.16); } }
 .clusterButton:active { transform: scale(0.94); background: rgb(255 255 255 / 0.24); }
 /* The panel this button opened is the current selection: a steady disc, not a colour. */
 .clusterButton[aria-pressed='true'] { background: rgb(255 255 255 / 0.2); }
@@ -75,7 +75,8 @@
   cursor: pointer;
   transition: width 0.2s var(--ease-out), margin 0.2s var(--ease-out), opacity 0.15s ease;
 }
-.volume:hover .slider, .volume:focus-within .slider { width: 84px; margin: 0 10px 0 2px; opacity: 1; }
+.volume:focus-within .slider { width: 84px; margin: 0 10px 0 2px; opacity: 1; }
+@media (hover: hover) { .volume:hover .slider { width: 84px; margin: 0 10px 0 2px; opacity: 1; } }
 .slider::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 2px;
@@ -167,7 +168,7 @@
   white-space: nowrap;
 }
 .timeEnd { min-width: 4.2em; padding: 12px 0 12px 6px; margin: -12px 0; text-align: right; cursor: pointer; border-radius: var(--radius-label); }
-.timeEnd:hover { text-decoration: underline; text-underline-offset: 3px; }
+@media (hover: hover) { .timeEnd:hover { text-decoration: underline; text-underline-offset: 3px; } }
 /* When it would end, quietly, where there is the room for it. */
 .ends { display: none; flex: none; font: 400 var(--fs-footnote) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
 @media (min-width: 1100px) {
@@ -196,7 +197,8 @@
   overflow: hidden;
   transition: height 0.15s var(--ease-out), margin-top 0.15s var(--ease-out);
 }
-.track:hover .rail, .track[data-dragging] .rail, .track:focus-visible .rail { height: 6px; margin-top: -3px; }
+.track[data-dragging] .rail, .track:focus-visible .rail { height: 6px; margin-top: -3px; }
+@media (hover: hover) { .track:hover .rail { height: 6px; margin-top: -3px; } }
 .buffered, .played {
   position: absolute;
   inset: 0;
@@ -222,7 +224,8 @@
   transition: opacity var(--dur-state) ease;
   pointer-events: none;
 }
-.track:hover .thumb, .track[data-dragging] .thumb, .track:focus-visible .thumb { opacity: 1; }
+.track[data-dragging] .thumb, .track:focus-visible .thumb { opacity: 1; }
+@media (hover: hover) { .track:hover .thumb { opacity: 1; } }
 .track:focus-visible .thumb { box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--stock); }
 @media (pointer: coarse) {
   /* A finger hides the bar, so it keeps the thumb on show and the track is a little taller to hit. */
@@ -299,7 +302,7 @@
   color: var(--paper);
   transition: background-color var(--dur-state) ease;
 }
-.row:hover { background: var(--base-3); }
+@media (hover: hover) { .row:hover { background: var(--base-3); } }
 .row:active { background: var(--base-4); }
 .row:disabled { opacity: 0.5; cursor: default; }
 .row[data-plain]:disabled { opacity: 1; }
@@ -382,7 +385,7 @@
 .episodeCard:focus-visible { outline: none; }
 .episodeCard:focus-visible .episodeStill { outline: 2px solid var(--stock); outline-offset: 3px; }
 .episodeStill { display: block; transition: opacity var(--dur-state) ease; }
-.episodeCard:not(:disabled):hover .episodeStill { opacity: 0.88; }
+@media (hover: hover) { .episodeCard:not(:disabled):hover .episodeStill { opacity: 0.88; } }
 .episodeName { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .episodeMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -443,7 +446,7 @@
   font: 600 var(--fs-caption) / 1 var(--font);
   color: var(--ink-2);
 }
-.upNextCancel:hover { color: var(--paper); text-decoration: underline; text-underline-offset: 3px; }
+@media (hover: hover) { .upNextCancel:hover { color: var(--paper); text-decoration: underline; text-underline-offset: 3px; } }
 
 /* Skip Intro, Skip Recap, Skip Credits: bottom right above the control row, where Up Next also comes (never both).
    A solid white button with dark text, as Netflix draws it, so it is the clearest thing on the screen. It rides up with
@@ -469,7 +472,7 @@
 .skipLayer .skipButton[data-leaving] { opacity: 0; pointer-events: none; }
 .skipButton svg { width: 16px; height: 16px; }
 .skipLayer .skipButton, .upNextActions .skipButton { background: var(--paper); color: #141414; }
-.skipLayer .skipButton:hover, .upNextActions .skipButton:hover { background: #fff; }
+@media (hover: hover) { .skipLayer .skipButton:hover, .upNextActions .skipButton:hover { background: #fff; } }
 .skipLayer .skipButton:active, .upNextActions .skipButton:active { background: #d9d4cb; }
 /* A button that waits quietly (the credits of a film told to stay for its last scene) is the translucent one. */
 .skipLayer .skipButton[data-quiet], .skipLayer .skipButton[data-quiet]:hover { background: rgb(40 40 40 / 0.9); color: var(--paper); }
@@ -496,7 +499,7 @@
   text-underline-offset: 3px;
   transition: background-color var(--dur-state) ease;
 }
-.skipUndo:hover { background: var(--base-3); }
+@media (hover: hover) { .skipUndo:hover { background: var(--base-3); } }
 
 /* Are You Still Watching?: over the paused picture, one question and two answers. */
 .ask {
@@ -581,7 +584,7 @@
   color: var(--ink-2);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-.infoClose:hover { background: var(--base-3); color: var(--paper); }
+@media (hover: hover) { .infoClose:hover { background: var(--base-3); color: var(--paper); } }
 .infoRows { display: grid; }
 .infoRow {
   display: grid;
@@ -711,7 +714,7 @@
   color: var(--ink-2);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-.suggestClose:hover { background: var(--base-3); color: var(--paper); }
+@media (hover: hover) { .suggestClose:hover { background: var(--base-3); color: var(--paper); } }
 .suggestRow { display: flex; gap: 10px; }
 .suggestRow > li { width: var(--w); flex: none; }
 /* One suggested film: a rounded still, its title and its facts. */
@@ -719,7 +722,7 @@
 .suggestion:focus-visible { outline: none; }
 .suggestion:focus-visible .suggestionStill { outline: 2px solid var(--stock); outline-offset: 3px; }
 .suggestionStill { display: block; transition: opacity var(--dur-state) ease; }
-.suggestion:hover .suggestionStill { opacity: 0.88; }
+@media (hover: hover) { .suggestion:hover .suggestionStill { opacity: 0.88; } }
 .suggestionTitle { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .suggestionMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* A phone held upright has room for two frames in a card as wide as its screen, not three: the rest wait out of sight

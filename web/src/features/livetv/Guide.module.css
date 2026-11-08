@@ -59,10 +59,10 @@
   transition: background-color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
 }
-.channel:hover { background: var(--base-3); }
+@media (hover: hover) { .channel:hover { background: var(--base-3); } }
 .channel:focus-visible { outline-offset: -3px; }
 .channelName { min-width: 0; font: 600 var(--fs-footnote) / 1.25 var(--font); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.channel:hover .channelName { color: var(--paper); }
+@media (hover: hover) { .channel:hover .channelName { color: var(--paper); } }
 
 .cells { position: absolute; top: 0; height: 100%; }
 .empty { position: absolute; inset: 5px 0 5px 0; display: flex; align-items: center; padding-left: var(--space-s); border-radius: var(--radius-label); background: var(--base); color: var(--ink-2); font-size: var(--fs-footnote); }
@@ -86,9 +86,9 @@
   transition: background-color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
 }
-.programme:hover { background: var(--base-3); }
+@media (hover: hover) { .programme:hover { background: var(--base-3); } }
 .programme[data-live] { background: var(--base-3); }
-.programme[data-live]:hover { background: var(--base-4); }
+@media (hover: hover) { .programme[data-live]:hover { background: var(--base-4); } }
 .programme[data-selected] { background: var(--base-4); box-shadow: inset 0 0 0 2px var(--paper); }
 .programme:focus-visible { outline-offset: 2px; z-index: 1; }
 .label {

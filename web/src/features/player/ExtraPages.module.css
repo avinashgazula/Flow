@@ -24,7 +24,7 @@
   color: var(--paper);
   transition: background-color var(--dur-state) ease, transform var(--dur-state) ease;
 }
-.step:hover:not(:disabled) { background: var(--base-4); }
+@media (hover: hover) { .step:hover:not(:disabled) { background: var(--base-4); } }
 .step:active:not(:disabled) { transform: scale(0.98); }
 .step:disabled { color: var(--ink-3); cursor: default; }
 .slide { padding: 8px 16px 12px; }
