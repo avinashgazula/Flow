@@ -64,3 +64,31 @@ export const offsetChoices: number[] = Array.from({ length: 21 }, (_, i) => (i -
 
 /** "None", else "+1.5 s" (the apps' Sync Offset labels). */
 export const offsetLabel = (seconds: number): string => (seconds === 0 ? 'None' : delayLabel(seconds))
+
+/** What Auto-sync is doing, for the Subtitle Delay page: listening (with the seconds still to go), and the sentence
+ *  about how the last try went. `left` is meaningful only while `listening`. */
+export interface SyncState {
+  listening: boolean
+  left: number
+  note: string
+}
+
+export const idleSync: SyncState = { listening: false, left: 0, note: '' }
+
+/** What Auto-sync did to the delay, in the apps' words: "Subtitles moved 1.2 s later". */
+export function syncMoved(change: number): string {
+  const by = Math.abs(clampDelay(change))
+  if (by === 0) return 'Subtitles already line up.'
+  return `Subtitles moved ${by.toFixed(1)} s ${change > 0 ? 'later' : 'earlier'}.`
+}
+
+/** The ways Auto-sync can't go ahead or comes back empty, each saying what to do next. */
+export const syncProblems = {
+  deaf: 'Auto-sync can’t hear this video, because the site it plays from doesn’t let web pages use its sound. Use the slider instead.',
+  none: 'Auto-sync couldn’t find a confident match. Try again during a scene with plenty of dialogue.',
+  noSubtitles: 'Turn on subtitles, then try again.',
+  picture: 'Auto-sync can’t read picture subtitles. Choose a text subtitle, then try again.',
+  muted: 'Unmute the video so Auto-sync can hear the dialogue.',
+  paused: 'Play the video, then try again. Auto-sync listens as it plays.',
+  changed: 'The subtitles changed while Auto-sync was listening, so it stopped.',
+} as const

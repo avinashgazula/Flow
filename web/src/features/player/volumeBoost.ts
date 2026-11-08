@@ -33,6 +33,7 @@ export class VolumeBoost {
   private context: AudioContext | null = null
   private gain: GainNode | null = null
   private limiter: DynamicsCompressorNode | null = null
+  private source: MediaElementAudioSourceNode | null = null
   /** The element is wired into a graph and can't be taken out again; the level at 0 dB is a plain pass-through. */
   private wired = false
   private failed = false
@@ -63,6 +64,14 @@ export class VolumeBoost {
       if (!(await this.wire())) return
     }
     this.apply()
+  }
+
+  /** The element's sound as a Web Audio node, for listening to it (subtitle auto-sync). Wires the element in at 0 dB if
+   *  nothing has yet, so it carries the same promise as `set`: from a tap or a click, and null when the browser won't
+   *  run the context. */
+  async tap(): Promise<{ context: AudioContext; source: MediaElementAudioSourceNode } | null> {
+    if (!this.wired && !(await this.wire())) return null
+    return this.context && this.source ? { context: this.context, source: this.source } : null
   }
 
   /** Resumes the context after the browser suspended it (a phone call, a tab in the background); called when playback starts. */
@@ -100,6 +109,7 @@ export class VolumeBoost {
         source.connect(gain)
         gain.connect(context.destination)
         this.context = context
+        this.source = source
         this.gain = gain
         this.wired = true
         try {

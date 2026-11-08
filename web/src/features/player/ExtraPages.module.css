@@ -27,6 +27,7 @@
 .step:hover:not(:disabled) { background: var(--base-4); }
 .step:active:not(:disabled) { transform: scale(0.98); }
 .step:disabled { color: var(--ink-3); cursor: default; }
+.syncNote { color: var(--paper); padding-block: 10px 4px; }
 .slide { padding: 8px 16px 12px; }
 .slide input { width: 100%; }
 @media (max-height: 500px) {

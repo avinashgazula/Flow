@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeCueText, clampDelay, delayLabel, offsetChoices, offsetLabel, rememberDelay, rememberedDelay } from './subtitleDelay'
+import { activeCueText, clampDelay, delayLabel, offsetChoices, offsetLabel, rememberDelay, rememberedDelay, syncMoved } from './subtitleDelay'
 
 const cue = (startTime: number, endTime: number, text: string) => ({ startTime, endTime, text })
 
@@ -79,5 +79,14 @@ describe('which subtitles show with a delay', () => {
   it('copes with no cues and with a long cue still showing', () => {
     expect(activeCueText([], 50, 0)).toBe('')
     expect(activeCueText([cue(0, 25, 'Long'), cue(30, 31, 'x')], 20, 0)).toBe('Long')
+  })
+})
+
+describe('what Auto-sync reports', () => {
+  it('says which way and how far the subtitles moved', () => {
+    expect(syncMoved(1.24)).toBe('Subtitles moved 1.2 s later.')
+    expect(syncMoved(-3)).toBe('Subtitles moved 3.0 s earlier.')
+    expect(syncMoved(0.04)).toBe('Subtitles already line up.')
+    expect(syncMoved(0)).toBe('Subtitles already line up.')
   })
 })
