@@ -59,9 +59,9 @@ struct SyncSettingsView: View {
             if let message = failure ?? model.syncError { Text(message).font(.footnote).foregroundStyle(Theme.Palette.red) }
         } header: {
             Text("Turn On Sync")
-        } footer: {
+        } footer: { FilmFooter {
             Text(syncExplainer + " Use the stream proxy Worker from web/proxy, with a KV namespace bound as SYNC.")
-        }
+        } }
 
         Section {
             NavigationLink {
@@ -69,9 +69,9 @@ struct SyncSettingsView: View {
             } label: {
                 Text("Join a Sync")
             }
-        } footer: {
+        } footer: { FilmFooter {
             Text("Already syncing on another device? Join it with its pairing link, or with its key, server and token.")
-        }
+        } }
     }
 
     // MARK: On
@@ -110,9 +110,9 @@ struct SyncSettingsView: View {
             }
         } header: {
             Text("Flow Sync")
-        } footer: {
+        } footer: { FilmFooter {
             Text(syncExplainer)
-        }
+        } }
 
         Section {
             Button { model.syncNow() } label: {
@@ -136,9 +136,9 @@ struct SyncSettingsView: View {
             }
             Button("Turn Off and Erase", role: .destructive) { confirmErase = true }
             if let failure { Text(failure).font(.footnote).foregroundStyle(Theme.Palette.red) }
-        } footer: {
+        } footer: { FilmFooter {
             Text("Turn Off Sync forgets the key on this device and keeps your settings. Turn Off and Erase also deletes the synced copy from your Worker, so no other device can sync until you turn it on again.")
-        }
+        } }
     }
 
     // MARK: Actions
@@ -291,9 +291,9 @@ struct SyncJoinView: View {
                 if let linkProblem { Text(linkProblem).font(.footnote).foregroundStyle(Theme.Palette.red) }
             } header: {
                 Text("Pairing Link")
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Paste the link from Show Pairing Link on your other device, or scan its code with the camera.")
-            }
+            } }
             #endif
 
             Section {
@@ -304,11 +304,11 @@ struct SyncJoinView: View {
                 SecureField("Token", text: $token, prompt: Text(verbatim: "The Worker's token")).syncField()
             } header: {
                 Text(Platform.isTV ? "Key, Server and Token" : "Or Type Them In")
-            } footer: {
+            } footer: { FilmFooter {
                 if Platform.isTV {
                     Text("The key is on the Sync page of your other device, under Show Pairing Link. Letters and numbers only; dashes are optional.")
                 }
-            }
+            } }
 
             Section {
                 Button {
@@ -321,13 +321,13 @@ struct SyncJoinView: View {
                 }
                 .disabled(!canJoin)
                 if let failure { Text(failure).font(.footnote).foregroundStyle(Theme.Palette.red) }
-            } footer: {
+            } footer: { FilmFooter {
                 if model.syncIsOn {
                     Text("This device is already syncing. Joining another sync replaces that one here and leaves it as it is on the server.")
                 } else {
                     Text("This device's settings are kept; anything the sync has that this device doesn't is added.")
                 }
-            }
+            } }
         }
         // Pushed from Settings, the page already has its title; as a sheet it needs its own.
         .modifier(JoinTitle(isSheet: isSheet))

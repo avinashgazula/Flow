@@ -141,12 +141,15 @@ struct HomeView: View {
         #endif
     }
 
-    /// The lead takes about 55% of a wide page, never more than 760 pt, so a big window doesn't blow it up.
+    /// The lead takes about 55% of a wide page, never more than 760 pt, so a big window doesn't blow it up. When what
+    /// is left beside it fits only one column of Up Next, the lead grows to 65% instead: its frame, title and buttons
+    /// then stand about as tall as two stacked stills, rather than leaving a hole under the buttons.
     /// Apple TV fixes it at 700 so its buttons stay on the first screen.
     private func leadWidth(in width: CGFloat) -> CGFloat {
         if Platform.isTV { return 700 }
         let available = width - Theme.Space.gutter * 2 - Theme.Space.xl
-        return min(760, max(320, available * 0.55))
+        let share = available * 0.45 < 460 ? 0.65 : 0.55
+        return min(760, max(320, available * share))
     }
 
     /// Two columns of Up Next beside the lead when there is room, one in a narrower window; two rows either way keeps

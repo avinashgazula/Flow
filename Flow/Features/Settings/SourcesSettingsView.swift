@@ -11,13 +11,13 @@ struct SourcesSettingsView: View {
                 Toggle(isOn: $model.settings.sources.useCustomOrdering) {
                     Label("Use Custom Source Ordering", systemImage: "list.number")
                 }
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Adds the sort rules, filters and result cap below. Category and provider order apply whether this is on or off. Your Preferred Resolution cap from Playback still applies above everything here.")
-            }
+            } }
 
             Section {
                 NavigationLink(value: Route.settings(.sourceAppearance)) { Label("Source Appearance", systemImage: "textformat") }
-            } footer: { Text("Formatting, title display and badge packs.") }
+            } footer: { FilmFooter { Text("Formatting, title display and badge packs.") } }
 
             Section {
                 ForEach(model.settings.sources.categoryOrder) { category in
@@ -38,9 +38,9 @@ struct SourcesSettingsView: View {
                 .onMove { model.settings.sources.categoryOrder.move(fromOffsets: $0, toOffset: $1) }
             } header: {
                 Text("Category Order")
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Sources from earlier categories appear first in the player picker. Category and provider order work on their own — the switch above is only for the sort rules, filters and result cap.")
-            }
+            } }
 
             ForEach(model.settings.sources.categoryOrder) { category in
                 let providers = model.providerEntries(for: category)
@@ -64,9 +64,9 @@ struct SourcesSettingsView: View {
                 FilmPicker("Provider Timeout", selection: $model.settings.sources.timeoutSeconds) {
                     ForEach([5.0, 10, 15, 20, 30], id: \.self) { Text("\(Int($0)) seconds").tag($0) }
                 }
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Sources are listed in the order your add-ons and servers give them. With Remember Last Source on, a title you've played before offers the source you used first, and the next episode of a show comes from the same release when it can.")
-            }
+            } }
 
             if model.settings.sources.useCustomOrdering {
                 sortRulesSection
@@ -76,16 +76,16 @@ struct SourcesSettingsView: View {
                         Text("No Limit").tag(0)
                         ForEach([5, 10, 15, 20, 30, 50], id: \.self) { Text("\($0) sources").tag($0) }
                     }
-                } footer: { Text("Shows at most this many sources after sorting and filtering.") }
+                } footer: { FilmFooter { Text("Shows at most this many sources after sorting and filtering.") } }
             }
 
             Section {
                 Toggle("Play From This Library Only", isOn: $model.settings.sources.playFromLibraryOnly)
             } header: {
                 Text("Library")
-            } footer: {
+            } footer: { FilmFooter {
                 Text("A title opened from a library in the Library tab (a media server, an IPTV provider's On Demand or a WebDAV share) lists only that library's sources, so they're ready sooner and Play picks from them. If that library has no source for the title, every source is searched as usual. Titles opened anywhere else are unchanged.")
-            }
+            } }
         }
         #if os(iOS)
         .toolbar { EditButton().tint(Theme.Palette.text) }
@@ -116,9 +116,9 @@ struct SourcesSettingsView: View {
             }
         } header: {
             Text("Sort Rules")
-        } footer: {
+        } footer: { FilmFooter {
             Text("Applied top to bottom within each provider.")
-        }
+        } }
     }
 
     private var filtersSection: some View {
@@ -214,9 +214,9 @@ struct SourceAppearanceView: View {
                 }
                 Toggle("Show File Size", isOn: $model.settings.sources.appearance.showSize)
                 Toggle("Compact Rows", isOn: $model.settings.sources.appearance.compact)
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Add-on formatting shows each add-on's own text (emoji and all). Turn it off for a clean summary parsed from the release name. Badges marks Dolby Vision, HDR and premium audio: Colored tints picture and sound formats apart, Monochrome keeps them white, Minimal shows at most two, None hides them.")
-            }
+            } }
             Section("Preview") {
                 SourceRow(source: Self.sample, appearance: model.settings.sources.appearance)
                     .listRowInsets(EdgeInsets())
@@ -280,9 +280,9 @@ struct AddonsSettingsView: View {
                 if let error { Text(error).font(.caption).foregroundStyle(.red) }
             } header: {
                 Text("Add")
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Paste the manifest link from a Stremio-compatible add-on's configure page (for example AIOStreams). Only add-ons that provide streams are used.")
-            }
+            } }
         }
         #if os(iOS)
         .toolbar { EditButton().tint(Theme.Palette.text) }

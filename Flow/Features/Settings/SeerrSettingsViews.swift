@@ -16,9 +16,9 @@ struct SeerrSettingsSection: View {
             }
         } header: {
             Text("Requests")
-        } footer: {
+        } footer: { FilmFooter {
             Text("Connect a Seerr, Overseerr or Jellyseerr instance to request movies and shows that aren't in your library yet. A Request button appears on titles you don't already have on a media server.")
-        }
+        } }
         .sheet(isPresented: $connecting) { ConnectSeerrView().environment(model) }
     }
 }
@@ -43,9 +43,9 @@ struct ConnectSeerrView: View {
                         .keyboardType(.URL)
                         #endif
                     SecureField("API Key", text: $apiKey)
-                } footer: {
+                } footer: { FilmFooter {
                     Text("Find the API key in Seerr under Settings, General.")
-                }
+                } }
                 Section {
                     Button {
                         Task { await save() }

@@ -33,36 +33,36 @@ struct MediaServersSettingsView: View {
                 .onDelete { model.settings.mediaServers.servers.remove(atOffsets: $0) }
             } header: {
                 Text("Servers")
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Swipe to remove. Toggle to enable or disable.")
-            }
+            } }
 
             Section {
                 Button { adding = true } label: { Label("Add Server", systemImage: "plus.circle.fill") }
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Connect your Jellyfin, Emby, or Plex media server to stream from your own library.")
-            }
+            } }
 
             Section {
                 Toggle("Show Badge on Posters", isOn: $model.settings.mediaServers.showBadgeOnPosters)
-            } header: { Text("Display") } footer: {
+            } header: { Text("Display") } footer: { FilmFooter {
                 Text("Adds a small server icon to the top-right of any poster whose content is available on one of your media servers.")
-            }
+            } }
             Section {
                 Toggle("Only Show My Server's Content", isOn: $model.settings.mediaServers.onlyShowServerContent)
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Hides every movie and show that isn't in your media server library — across Home, Search, and Discover. Live TV channels are unaffected.")
-            }
+            } }
             Section {
                 Toggle("Use Server Artwork", isOn: $model.settings.mediaServers.useServerArtwork)
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Uses posters and backdrops from your media server for titles in its library. Everything else — and all text details — still comes from TMDB.")
-            }
+            } }
             Section {
                 Toggle("Track Only With Your Tracking Service", isOn: $model.settings.mediaServers.trackOnlyWithTracker)
-            } footer: {
+            } footer: { FilmFooter {
                 Text("Ignores the media server's own watched state, resume position and Continue Watching, and stops reporting playback to it. Progress comes only from your tracking service. The server still provides artwork and streams.")
-            }
+            } }
             Section {
                 Button("Refresh Library Index") { Task { await model.refreshServerIndex() } }
                 LabeledContent("Indexed Titles", value: "\(model.serverKeys.count)")
@@ -135,9 +135,9 @@ struct AddServerView: View {
                             .textInputAutocapitalization(.never)
                             #endif
                         SecureField("Password", text: $password)
-                    } footer: {
+                    } footer: { FilmFooter {
                         Text(kind == .emby ? "Include /emby in the address if your server uses it." : "Use the address you open Jellyfin with in a browser.")
-                    }
+                    } }
                     Section {
                         Button {
                             Task { await signIn() }
@@ -195,9 +195,9 @@ struct AddServerView: View {
                 } label: {
                     HStack { Text("Link Plex Account"); if working { Spacer(); ProgressView() } }
                 }
-            } footer: {
+            } footer: { FilmFooter {
                 Text("You'll get a 4-character code to enter at plex.tv/link. Flow then finds the servers on your account.")
-            }
+            } }
         }
     }
 

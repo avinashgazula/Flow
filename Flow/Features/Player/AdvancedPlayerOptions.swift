@@ -52,18 +52,18 @@ struct AdvancedPlayerOptions: View {
                     }
                 } header: {
                     Text("Subtitles")
-                } footer: {
+                } footer: { FilmFooter {
                     Text("Font, size, colour, edge, background and position apply to subtitles Flow draws itself. Weight, opacity and ASS styling are in Settings.")
-                }
+                } }
                 Section {
                     volumeBoost
                 } header: {
                     Text("Audio")
-                } footer: {
+                } footer: { FilmFooter {
                     Text(session.volumeBoostHeadroom > 0
                          ? "Gives back the loudness Dolby Digital soundtracks hold in reserve: this one plays up to \(session.volumeBoostHeadroom) dB louder. Applies straight away and stays on for other films."
                          : "Volume Boost works on Dolby Digital and Dolby Digital Plus soundtracks in MKV files that leave headroom in their mix.")
-                }
+                } }
                 Section("Playback") {
                     Picker("Speed", selection: Binding(get: { media.speed }, set: { media.setSpeed($0) })) {
                         ForEach(PlaybackSpeed.choices, id: \.self) { Text(PlaybackSpeed.label($0)).tag($0) }

@@ -65,8 +65,8 @@ struct PersonView: View {
         .scrollIndicators(.hidden)
         .background(AmbientBackground(url: TMDBImage.url(person?.profilePath, size: .profile), intensity: 0.8))
         #if !os(tvOS)
-        // The header already shows the name; on TV a second, larger copy would sit right above it.
-        .navigationTitle(name)
+        // The header already shows the name, so the bar stays empty rather than repeat it a few points above.
+        .navigationTitle("")
         .inlineNavigationTitle()
         #endif
         .task {

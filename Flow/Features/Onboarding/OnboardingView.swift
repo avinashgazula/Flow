@@ -11,7 +11,9 @@ struct OnboardingView: View {
     @State private var joiningSync = false
     @State private var appeared = false
 
-    private static var bandHeight: CGFloat { Platform.isTV ? 300 : 130 }
+    private static var bandHeight: CGFloat { Platform.isTV ? 300 : Platform.isMac ? 96 : 130 }
+    /// The Mac's window can be as short as 768 pt: tighter gaps keep the three ways in on screen without scrolling.
+    private static var gap: CGFloat { Platform.isMac ? Theme.Space.l : Theme.Space.xl }
 
     var body: some View {
         NavigationStack {
@@ -25,7 +27,7 @@ struct OnboardingView: View {
                                          startPoint: .top, endPoint: .bottom))
                     .frame(maxHeight: .infinity, alignment: .top)
                 ScrollView {
-                    VStack(spacing: Theme.Space.xl) {
+                    VStack(spacing: Self.gap) {
                         Spacer(minLength: Self.bandHeight)
                         VStack(spacing: Theme.Space.s) {
                             Text("Flow")
@@ -46,14 +48,12 @@ struct OnboardingView: View {
                         VStack(spacing: Theme.Space.m) {
                             Button("Explore with Sample Data") { model.setDemoMode(true) }
                                 .buttonStyle(GlassButtonStyle())
-                            Button("I have a setup from another device") { importing = true }
-                                .font(Theme.Typeface.body)
-                                .foregroundStyle(Theme.Palette.textSecondary)
-                                .buttonStyle(.plain)
-                            Button("Join Flow Sync") { joiningSync = true }
-                                .font(Theme.Typeface.body)
-                                .foregroundStyle(Theme.Palette.textSecondary)
-                                .buttonStyle(.plain)
+                            #if os(macOS)
+                            // Side by side on the Mac, where the window has the width and not the height.
+                            HStack(spacing: Theme.Space.l) { otherWays }
+                            #else
+                            otherWays
+                            #endif
                         }
                         .opacity(appeared ? 1 : 0)
                     }
@@ -71,6 +71,18 @@ struct OnboardingView: View {
             }
             .onAppear { withAnimation(.easeOut(duration: 1.1)) { appeared = true } }
         }
+    }
+
+    @ViewBuilder
+    private var otherWays: some View {
+        Button("I have a setup from another device") { importing = true }
+            .font(Theme.Typeface.body)
+            .foregroundStyle(Theme.Palette.textSecondary)
+            .buttonStyle(.plain)
+        Button("Join Flow Sync") { joiningSync = true }
+            .font(Theme.Typeface.body)
+            .foregroundStyle(Theme.Palette.textSecondary)
+            .buttonStyle(.plain)
     }
 
     private var card: some View {
