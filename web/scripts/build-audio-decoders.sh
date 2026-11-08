@@ -2,7 +2,7 @@
 # Builds FFmpeg's AC-3, E-AC-3, DTS and Dolby TrueHD decoders (libavcodec + libavutil, nothing else)
 # plus native/flow-audio/flow_audio.c into one small WebAssembly module,
 # src/lib/audio/pkg/flow-audio.wasm. Browsers can't decode these formats, so the player converts
-# them to stereo PCM with this module (src/lib/audio/decoder.ts).
+# them to stereo or 5.1 PCM with this module (src/lib/audio/decoder.ts).
 #
 # LGPL 2.1: no GPL or non-free parts are enabled, the module is loaded as a separate file so it can
 # be swapped for one built from modified FFmpeg, and the source is the unmodified release tarball.

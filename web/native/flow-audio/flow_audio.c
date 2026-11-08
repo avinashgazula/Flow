@@ -2,22 +2,26 @@
    small C ABI, built to one WebAssembly module (web/scripts/build-audio-decoders.sh).
 
    Browsers can't decode these four formats, so the player decodes them here and plays the result
-   through Web Audio. The output is always stereo, interleaved float32, at the rate the caller asks
-   for, because that is all a browser's output needs and it keeps the JS side trivial.
+   through Web Audio or re-encodes it. The output is interleaved float32 at the rate the caller asks
+   for: stereo by default, because that is all most outputs need, or (when the stream is opened with
+   the surround flag and the source has three or more channels) 5.1 in Vorbis order, which is the order
+   Opus's channel mapping family 1 and the Web Audio API both use for six channels.
 
    Calling convention (the TypeScript wrapper in src/lib/audio/decoder.ts is the only caller):
 
-     h = fa_open(codec, 48000)         codec: 1 AC-3, 2 E-AC-3, 3 DTS, 4 TrueHD; 0 when it fails
+     h = fa_open(codec, 48000)         codec: 1 AC-3, 2 E-AC-3, 3 DTS, 4 TrueHD; 0 when it fails.
+                                       Add 0x200 to keep 5.1 (7.1 is mixed down to 5.1) instead of stereo
      p = fa_input(h, n)                a buffer of at least n bytes; JS writes compressed bytes there
      frames = fa_decode(h, n)          decodes those n bytes; < 0 is a hard error (-1 bad handle or
-                                       size, -2 out of memory), anything else is the number of stereo
-                                       sample pairs this call produced
-     out = fa_output(h)                the float32 pairs, valid until the next fa_decode or fa_close
+                                       size, -2 out of memory), anything else is the number of sample
+                                       frames (one value per output channel) this call produced
+     out = fa_output(h)                the interleaved float32 frames, valid until the next fa_decode or fa_close
      fa_flush(h)                       after a seek
      frames = fa_finish(h)             at the end of the stream: what the parser, decoder and resampler
                                        were still holding; the stream is then as after fa_flush
      fa_info(h, key)                   1 source channels, 2 source sample rate, 3 source sample frames
-                                       decoded so far, 4 errors so far
+                                       decoded so far, 4 errors so far, 5 output channels (2 or 6; 0
+                                       until the first frame has been decoded, then fixed for the stream)
      fa_close(h)
 
    Input is any slice of the elementary stream: a Matroska block can hold several frames or only part
@@ -41,7 +45,8 @@
 #include <libavutil/samplefmt.h>
 
 enum { CODEC_AC3 = 1, CODEC_EAC3 = 2, CODEC_DTS = 3, CODEC_TRUEHD = 4 };
-enum { INFO_CHANNELS = 1, INFO_RATE = 2, INFO_FRAMES = 3, INFO_ERRORS = 4 };
+enum { INFO_CHANNELS = 1, INFO_RATE = 2, INFO_FRAMES = 3, INFO_ERRORS = 4, INFO_OUT_CHANNELS = 5 };
+#define SURROUND_CHANNELS 6
 
 /* Resampler shape. Eight zero crossings on each side of a Blackman-Harris windowed sinc keeps
    aliasing below about -90 dB, which is far under what anyone hears, and 512 phases with linear
@@ -56,7 +61,8 @@ typedef struct {
   double step;  /* input samples per output sample */
   int hw;       /* taps on each side of the centre */
   float *table; /* (RS_PHASES + 1) rows of 2 * hw taps */
-  float *buf;   /* stereo pairs: history, then input not yet used up */
+  int nch;      /* values per frame in buf */
+  float *buf;   /* frames of nch values: history, then input not yet used up */
   int len, cap;
   double pos;   /* where the next output sample falls in buf, in input samples */
 } Resampler;
@@ -72,9 +78,9 @@ typedef struct {
   uint8_t *in;
   size_t in_cap;
   float *out;
-  size_t out_cap; /* in stereo pairs */
+  size_t out_cap; /* in frames of out_channels values */
   size_t out_len;
-  float *stage; /* one frame's worth of stereo before resampling */
+  float *stage; /* one decoded frame's worth of output-layout samples before resampling */
   size_t stage_cap;
   float *chan;  /* one channel converted to float */
   size_t chan_cap;
@@ -85,6 +91,8 @@ typedef struct {
   int keep_layout; /* see fa_open */
   int src_channels;
   int src_rate;
+  int surround;      /* see fa_open */
+  int out_channels;  /* 2 or SURROUND_CHANNELS, fixed by the first frame; 0 before */
   int64_t frames;
   int errors;
 } FA;
@@ -302,6 +310,67 @@ static int to_stereo(FA *fa, const AVFrame *f) {
   return n;
 }
 
+/* Where each source channel goes in 5.1, in Vorbis order: front left, centre, front right, surround
+   left, surround right, LFE. A channel feeds one slot fully, or two at -3 dB (a back centre). */
+static void surround_gain(int id, float g[SURROUND_CHANNELS]) {
+  const float s = 0.70710678f;
+  memset(g, 0, SURROUND_CHANNELS * sizeof(float));
+  switch (id) {
+    case AV_CHAN_FRONT_LEFT: case AV_CHAN_STEREO_LEFT: case AV_CHAN_FRONT_LEFT_OF_CENTER:
+    case AV_CHAN_WIDE_LEFT: case AV_CHAN_TOP_FRONT_LEFT: g[0] = 1; break;
+    case AV_CHAN_FRONT_CENTER: case AV_CHAN_TOP_FRONT_CENTER: g[1] = 1; break;
+    case AV_CHAN_FRONT_RIGHT: case AV_CHAN_STEREO_RIGHT: case AV_CHAN_FRONT_RIGHT_OF_CENTER:
+    case AV_CHAN_WIDE_RIGHT: case AV_CHAN_TOP_FRONT_RIGHT: g[2] = 1; break;
+    case AV_CHAN_BACK_LEFT: case AV_CHAN_SIDE_LEFT: case AV_CHAN_SURROUND_DIRECT_LEFT:
+    case AV_CHAN_TOP_BACK_LEFT: case AV_CHAN_TOP_SIDE_LEFT: g[3] = 1; break;
+    case AV_CHAN_BACK_RIGHT: case AV_CHAN_SIDE_RIGHT: case AV_CHAN_SURROUND_DIRECT_RIGHT:
+    case AV_CHAN_TOP_BACK_RIGHT: case AV_CHAN_TOP_SIDE_RIGHT: g[4] = 1; break;
+    case AV_CHAN_BACK_CENTER: case AV_CHAN_TOP_BACK_CENTER: g[3] = g[4] = s; break;
+    case AV_CHAN_TOP_CENTER: g[0] = g[2] = s; break;
+    case AV_CHAN_LOW_FREQUENCY: case AV_CHAN_LOW_FREQUENCY_2: g[5] = 1; break;
+    default: break;
+  }
+}
+
+/* Turns a decoded frame into 5.1 frames (Vorbis order) in fa->stage; returns the frame count or -1 when
+   out of memory. A 5.1 source is only reordered. Extra channels (the 7.1 pairs) share their slot, scaled
+   so that all of them at full scale can't clip. */
+static int to_surround(FA *fa, const AVFrame *f) {
+  int n = f->nb_samples, nch = f->ch_layout.nb_channels;
+  float *st = grow(fa->stage, &fa->stage_cap, (size_t)n * SURROUND_CHANNELS, sizeof(float));
+  if (!st) return -1;
+  fa->stage = st;
+  float *ch = grow(fa->chan, &fa->chan_cap, (size_t)n, sizeof(float));
+  if (!ch) return -1;
+  fa->chan = ch;
+  if (nch <= 0 || nch > 32) return 0;
+
+  AVChannelLayout layout = {0};
+  if (f->ch_layout.order == AV_CHANNEL_ORDER_UNSPEC) av_channel_layout_default(&layout, nch);
+  else av_channel_layout_copy(&layout, &f->ch_layout);
+  float gain[32][SURROUND_CHANNELS], total[SURROUND_CHANNELS] = {0};
+  for (int c = 0; c < nch; c++) {
+    surround_gain((int)av_channel_layout_channel_from_index(&layout, c), gain[c]);
+    for (int k = 0; k < SURROUND_CHANNELS; k++) total[k] += gain[c][k];
+  }
+  av_channel_layout_uninit(&layout);
+  float norm[SURROUND_CHANNELS];
+  for (int k = 0; k < SURROUND_CHANNELS; k++) norm[k] = 1.0f / fmaxf(1.0f, total[k]);
+  memset(st, 0, (size_t)n * SURROUND_CHANNELS * sizeof(float));
+  for (int c = 0; c < nch; c++) {
+    int used = 0;
+    for (int k = 0; k < SURROUND_CHANNELS; k++) used |= gain[c][k] != 0;
+    if (!used) continue;
+    load_channel(f, c, ch);
+    for (int k = 0; k < SURROUND_CHANNELS; k++) {
+      float a = gain[c][k] * norm[k];
+      if (a == 0) continue;
+      for (int i = 0; i < n; i++) st[SURROUND_CHANNELS * i + k] += ch[i] * a;
+    }
+  }
+  return n;
+}
+
 /* ---- Resampler ---- */
 
 static double window(double x) {
@@ -320,11 +389,11 @@ static void rs_free(Resampler *r) {
 /* Restarts the stream: a zero history so the first output sees silence before the signal. */
 static void rs_reset(Resampler *r) {
   r->len = r->hw;
-  if (r->buf) memset(r->buf, 0, (size_t)r->hw * 2 * sizeof(float));
+  if (r->buf) memset(r->buf, 0, (size_t)r->hw * r->nch * sizeof(float));
   r->pos = r->hw;
 }
 
-static int rs_setup(Resampler *r, int in_rate, int out_rate) {
+static int rs_setup(Resampler *r, int in_rate, int out_rate, int nch) {
   rs_free(r);
   if (in_rate == out_rate || in_rate <= 0) return 0;
   const double pi = 3.14159265358979323846;
@@ -347,9 +416,10 @@ static int rs_setup(Resampler *r, int in_rate, int out_rate) {
     for (int j = 0; j < taps; j++) row[j] = (float)(row[j] / sum); /* unity gain at DC in every phase */
   }
   r->hw = hw;
+  r->nch = nch;
   r->step = (double)in_rate / out_rate;
   r->cap = 4096;
-  r->buf = malloc((size_t)r->cap * 2 * sizeof(float));
+  r->buf = malloc((size_t)r->cap * nch * sizeof(float));
   if (!r->buf) { rs_free(r); return -1; }
   r->active = 1;
   rs_reset(r);
@@ -358,14 +428,15 @@ static int rs_setup(Resampler *r, int in_rate, int out_rate) {
 
 /* Appends n input pairs and writes every output pair that now has all its taps (and falls before
    `limit`, a position in the buffer; at the end of a stream that is where the real signal stops, so the
-   zero padding that completes the last taps doesn't add a tail). Returns the count. */
+   zero padding that completes the last taps doesn't add a tail). Frames hold r->nch values. Returns the count. */
 static int rs_run(Resampler *r, const float *in, int n, float *out, int max_out, double limit) {
   size_t cap = (size_t)r->cap;
-  float *b = grow(r->buf, &cap, (size_t)r->len + n, 2 * sizeof(float));
+  int nch = r->nch;
+  float *b = grow(r->buf, &cap, (size_t)r->len + n, (size_t)nch * sizeof(float));
   if (!b) return -1;
   r->buf = b;
   r->cap = (int)cap;
-  memcpy(r->buf + (size_t)r->len * 2, in, (size_t)n * 2 * sizeof(float));
+  memcpy(r->buf + (size_t)r->len * nch, in, (size_t)n * nch * sizeof(float));
   r->len += n;
 
   int taps = r->hw * 2, produced = 0;
@@ -377,21 +448,19 @@ static int rs_run(Resampler *r, const float *in, int n, float *out, int max_out,
     int p = (int)fp;
     float w = (float)(fp - p);
     const float *a = r->table + (size_t)p * taps, *c = a + taps;
-    const float *src = r->buf + (size_t)(ipos - r->hw + 1) * 2;
-    float l = 0, rr = 0;
+    const float *src = r->buf + (size_t)(ipos - r->hw + 1) * nch;
+    float acc[SURROUND_CHANNELS] = {0};
     for (int j = 0; j < taps; j++) {
       float k = a[j] + (c[j] - a[j]) * w;
-      l += src[2 * j] * k;
-      rr += src[2 * j + 1] * k;
+      for (int ch = 0; ch < nch; ch++) acc[ch] += src[nch * j + ch] * k;
     }
-    out[2 * produced] = l;
-    out[2 * produced + 1] = rr;
+    for (int ch = 0; ch < nch; ch++) out[nch * produced + ch] = acc[ch];
     produced++;
     r->pos += r->step;
   }
   int base = (int)r->pos - r->hw + 1; /* what the next output still needs starts here */
   if (base > 0) {
-    memmove(r->buf, r->buf + (size_t)base * 2, (size_t)(r->len - base) * 2 * sizeof(float));
+    memmove(r->buf, r->buf + (size_t)base * nch, (size_t)(r->len - base) * nch * sizeof(float));
     r->len -= base;
     r->pos -= base;
   }
@@ -400,13 +469,14 @@ static int rs_run(Resampler *r, const float *in, int n, float *out, int max_out,
 
 /* ---- Decoding ---- */
 
-static int emit(FA *fa, const float *pairs, int n) {
-  float *o = grow(fa->out, &fa->out_cap, fa->out_len + n, 2 * sizeof(float));
+static int emit(FA *fa, const float *samples, int n) {
+  int nch = fa->out_channels;
+  float *o = grow(fa->out, &fa->out_cap, fa->out_len + n, (size_t)nch * sizeof(float));
   if (!o) return -1;
   fa->out = o;
-  float *d = fa->out + fa->out_len * 2;
-  for (int i = 0; i < n * 2; i++) {
-    float v = pairs[i];
+  float *d = fa->out + fa->out_len * nch;
+  for (int i = 0; i < n * nch; i++) {
+    float v = samples[i];
     d[i] = v > 1.0f ? 1.0f : (v < -1.0f ? -1.0f : v); /* a resampler's overshoot must not wrap a 16-bit output */
   }
   fa->out_len += n;
@@ -414,21 +484,27 @@ static int emit(FA *fa, const float *pairs, int n) {
 }
 
 static int handle_frame(FA *fa, const AVFrame *f) {
+  if (!fa->out_channels) {
+    /* Fixed by the first frame, so one stream never changes shape under its consumer. Mono and stereo
+       stay two channels even when surround is on: a six-channel Opus stream of a stereo source would
+       spend bits on four silent channels. */
+    fa->out_channels = fa->surround && f->ch_layout.nb_channels >= 3 ? SURROUND_CHANNELS : 2;
+  }
   if (f->sample_rate != fa->src_rate || fa->rs_rate != f->sample_rate) {
     fa->src_rate = f->sample_rate;
     fa->rs_rate = f->sample_rate;
-    if (rs_setup(&fa->rs, f->sample_rate, fa->out_rate) < 0) return -1;
+    if (rs_setup(&fa->rs, f->sample_rate, fa->out_rate, fa->out_channels) < 0) return -1;
   }
   if (f->ch_layout.nb_channels > fa->src_channels) fa->src_channels = f->ch_layout.nb_channels;
   fa->frames += f->nb_samples;
 
-  int n = to_stereo(fa, f);
+  int n = fa->out_channels == 2 ? to_stereo(fa, f) : to_surround(fa, f);
   if (n < 0) return -1;
   if (n == 0) return 0;
   if (!fa->rs.active) return emit(fa, fa->stage, n);
 
   int max_out = (int)((double)(n + 2) / fa->rs.step) + 4;
-  float *tmp = grow(fa->rsout, &fa->rsout_cap, (size_t)max_out * 2, sizeof(float));
+  float *tmp = grow(fa->rsout, &fa->rsout_cap, (size_t)max_out * fa->out_channels, sizeof(float));
   if (!tmp) return -1;
   fa->rsout = tmp;
   int m = rs_run(&fa->rs, fa->stage, n, tmp, max_out, 1e300);
@@ -442,9 +518,9 @@ static int rs_finish(FA *fa) {
   if (!r->active) return 0;
   double end = r->len;
   int pad = r->hw;
-  float *zeros = calloc((size_t)pad * 2, sizeof(float));
+  float *zeros = calloc((size_t)pad * r->nch, sizeof(float));
   int max_out = (int)((end - r->pos) / r->step) + 4;
-  float *tmp = grow(fa->rsout, &fa->rsout_cap, (size_t)(max_out > 0 ? max_out : 4) * 2, sizeof(float));
+  float *tmp = grow(fa->rsout, &fa->rsout_cap, (size_t)(max_out > 0 ? max_out : 4) * r->nch, sizeof(float));
   int ret = -1;
   if (zeros && tmp) {
     fa->rsout = tmp;
@@ -499,11 +575,17 @@ static int open_decoder(FA *fa) {
   avcodec_free_context(&fa->dec);
   fa->dec = avcodec_alloc_context3(c);
   if (!fa->dec) return -1;
-  if (!fa->keep_layout) {
+  if (!fa->keep_layout && !fa->surround) {
     /* Ask the decoder for stereo: it uses the stream's own downmix coefficients, and for TrueHD it
        then decodes only the two-channel substream, which is several times cheaper than 7.1. */
     AVChannelLayout stereo = AV_CHANNEL_LAYOUT_STEREO;
     av_opt_set_chlayout(fa->dec->priv_data, "downmix", &stereo, 0);
+  } else if (!fa->keep_layout && fa->codec == CODEC_TRUEHD) {
+    /* A 7.1 TrueHD track carries a 5.1 substream of its own mix; take that rather than decoding eight
+       channels only to fold two of them away. Where the stream has no such substream the decoder
+       ignores the request and the mix in to_surround does the folding. */
+    AVChannelLayout five_one = AV_CHANNEL_LAYOUT_5POINT1;
+    av_opt_set_chlayout(fa->dec->priv_data, "downmix", &five_one, 0);
   }
   /* DTS-HD Master Audio carries a lossy core plus a lossless extension. Stereo doesn't need the
      extension, and skipping it saves most of the decoding work. */
@@ -515,12 +597,14 @@ int fa_open(int codec, int out_rate) {
   /* Bit 8 of codec keeps the decoder's own channel layout, so the wrapper's downmix does the mixing. Only the
      tests use it: every decoder can downmix by itself, so without this nothing would exercise the wrapper's mix. */
   int keep_layout = (codec & 0x100) != 0;
+  int surround = (codec & 0x200) != 0;
   codec &= 0xff;
   if (codec < CODEC_AC3 || codec > CODEC_TRUEHD || out_rate < 8000 || out_rate > 384000) return 0;
   FA *fa = calloc(1, sizeof *fa);
   if (!fa) return 0;
   fa->codec = codec;
   fa->keep_layout = keep_layout;
+  fa->surround = surround;
   fa->out_rate = out_rate;
   fa->pctx = avcodec_alloc_context3(NULL);
   fa->pkt = av_packet_alloc();
@@ -634,6 +718,7 @@ int fa_info(int handle, int key) {
     case INFO_RATE: return fa->src_rate;
     case INFO_FRAMES: return fa->frames > INT32_MAX ? INT32_MAX : (int)fa->frames;
     case INFO_ERRORS: return fa->errors;
+    case INFO_OUT_CHANNELS: return fa->out_channels;
     default: return 0;
   }
 }

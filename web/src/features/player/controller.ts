@@ -20,7 +20,7 @@ import { playbackPreferences, remembersChoices } from './preferences'
 import { prefs, titleChoices } from './session'
 import type { Chapter, SkipSegment } from './segments'
 import { sleepDoneNotice, sleepSetNotice, sleepTimer, type SleepChoice } from './sleepTimer'
-import { clampDelay, rememberDelay, rememberedDelay } from './subtitleDelay'
+import { clampDelay, idleSync, rememberDelay, rememberedDelay, syncMoved, syncProblems, type SyncState } from './subtitleDelay'
 import { parseSubtitles, type SubtitleFormat } from './subtitles'
 import { canBoost, clampBoost, VolumeBoost } from './volumeBoost'
 import { ScreenAwake, wantsWakeLock } from './wakeLock'
@@ -109,6 +109,8 @@ export interface PlayerState {
   subtitleDelay: number
   /** Volume Boost can be offered: this stream goes through Web Audio without being silenced (see volumeBoost.ts). */
   boostable: boolean
+  /** Subtitle auto-sync: listening to the soundtrack, and how the last try went. */
+  sync: SyncState
 }
 
 const hideAfter = 3000
@@ -172,6 +174,7 @@ export class PlayerController {
     fast: false,
     subtitleDelay: 0,
     boostable: false,
+    sync: idleSync,
   }
   private listeners = new Set<() => void>()
   private feedbackListeners = new Set<(f: Feedback) => void>()
@@ -187,6 +190,7 @@ export class PlayerController {
   /** What What Did They Say? turned on, until it turns it off again. */
   private replay: { id: string; until: number; startedAt: number; last: string | null; timer: number } | null = null
   private boost: VolumeBoost | null = null
+  private syncing: AbortController | null = null
   private hideTimer = 0
   private previewTimer = 0
   private previewAt = 0
@@ -326,6 +330,7 @@ export class PlayerController {
       this.holdFast(false)
       void awake.release()
       this.cancelAutoSearch()
+      this.cancelSync()
       this.stopAss()
     }
   }
@@ -637,6 +642,57 @@ export class PlayerController {
     rememberDelay(this.context.key, delay)
     this.set({ subtitleDelay: delay })
     this.ass?.setDelay(delay)
+  }
+
+  // MARK: Subtitle auto-sync
+
+  /** Listens to the soundtrack for about a minute as it plays and moves the subtitles to fit the dialogue, as the apps'
+   *  Auto-sync does. The result is an absolute delay (the cues are compared as the file wrote them), so it replaces the
+   *  current one, Settings' Sync Offset included; the viewer can still nudge it. Needs Web Audio to be allowed to hear
+   *  the stream, which is the same condition as Volume Boost. */
+  async syncSubtitles() {
+    const video = this.video
+    if (!video || this.syncing) return
+    const say = (note: string) => {
+      this.set({ sync: { listening: false, left: 0, note } })
+      // The panel is the place to read it; with the panel closed, a notice says it.
+      if (!this.state.panel) this.notify(note)
+    }
+    const id = this.state.subtitleId
+    const cues = this.subtitleCues()
+    if (id === null) return say(syncProblems.noSubtitles)
+    if (this.state.picture) return say(syncProblems.picture)
+    if (!cues) return say(syncProblems.noSubtitles)
+    if (!this.state.boostable) return say(syncProblems.deaf)
+    if (video.muted) return say(syncProblems.muted)
+    if (video.paused) return say(syncProblems.paused)
+
+    const abort = (this.syncing = new AbortController())
+    this.set({ sync: { listening: true, left: 60, note: '' } })
+    try {
+      // Called from the viewer's own click, which Web Audio needs before it will run.
+      const tap = await this.boost?.tap()
+      if (!tap) return say(syncProblems.deaf)
+      const spans = Array.from({ length: cues.length }, (_, i) => ({ start: cues[i]!.startTime, end: cues[i]!.endTime }))
+      const { listen } = await import('./subtitleListen')
+      const heard = await listen({ tap, video, cues: spans, signal: abort.signal, progress: (left) => this.set({ sync: { listening: true, left, note: '' } }) })
+      if (heard.kind === 'cancelled') return this.set({ sync: idleSync })
+      if (this.state.subtitleId !== id) return say(syncProblems.changed)
+      if (heard.kind === 'deaf') return say(syncProblems.deaf)
+      if (heard.kind === 'none') return say(syncProblems.none)
+      const delay = clampDelay(heard.offset)
+      const change = delay - this.state.subtitleDelay
+      this.setSubtitleDelay(delay)
+      say(syncMoved(change))
+    } finally {
+      if (this.syncing === abort) this.syncing = null
+    }
+  }
+
+  cancelSync() {
+    this.syncing?.abort()
+    this.syncing = null
+    if (this.state.sync.listening) this.set({ sync: idleSync })
   }
 
   // MARK: Volume Boost
@@ -1034,7 +1090,7 @@ export class PlayerController {
 
   /** The lines of the subtitles being shown, whichever way they're drawn (libass has none on the overlay's track), for
    *  X-Ray to read who is named. Null for picture subtitles and when there are none. */
-  subtitleCues(): ArrayLike<{ startTime: number; text: string }> | null {
+  subtitleCues(): ArrayLike<{ startTime: number; endTime: number; text: string }> | null {
     const id = this.state.subtitleId
     const track = this.state.subtitleTrack ?? (id ? (this.online.get(id)?.track ?? this.external.get(id)) : undefined)
     return track?.cues && track.cues.length > 0 ? (track.cues as unknown as ArrayLike<VTTCue>) : null

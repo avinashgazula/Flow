@@ -5,27 +5,35 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
    input byte into one stereo frame, the encoder makes a 960-frame packet for every 960 frames it is
    given (and pads the last one when flushed), and the muxer records what it was asked to wrap. */
 
-const decoderState = { throwOn: Infinity, calls: 0, closed: 0, flushed: 0, tail: 0 }
+const decoderState = { throwOn: Infinity, calls: 0, closed: 0, flushed: 0, tail: 0, surroundSource: false, opened: [] as unknown[] }
 vi.mock('../audio/decoder', () => ({
   loadAudioDecoders: async () => ({
-    open: () => ({
+    open: (_codec: string, _rate: number, options?: { surround?: boolean }) => {
+      decoderState.opened.push(options)
+      // Like the real decoder: 5.1 out only when asked for and the source has more than two channels.
+      const channels = options?.surround && decoderState.surroundSource ? 6 : 2
+      return {
+      outputChannels: channels,
       decode(bytes: Uint8Array) {
         if (++decoderState.calls >= decoderState.throwOn) throw new Error('wasm trapped')
-        return new Float32Array(bytes.length * 2)
+        return new Float32Array(bytes.length * channels)
       },
       flush: () => void decoderState.flushed++,
-      finish: () => new Float32Array(decoderState.tail * 2),
+      finish: () => new Float32Array(decoderState.tail * channels),
       close: () => void decoderState.closed++,
-    }),
+      }
+    },
   }),
 }))
 
 const muxed: { base: number; sizes: number[]; durations: number[] }[] = []
 let preSkipSeen = -1
+const muxerChannels: number[] = []
 vi.mock('./pkg/flow_remux.js', () => ({
   OpusMuxer: class {
-    constructor(_channels: number, preSkip: number) {
+    constructor(channels: number, preSkip: number) {
       preSkipSeen = preSkip
+      muxerChannels.push(channels)
     }
     init = () => new Uint8Array([1, 2, 3])
     fragment(base: number, data: Uint8Array, sizes: Uint32Array, durations: Uint32Array) {
@@ -71,7 +79,8 @@ class FakeEncoder {
     const metadata = encoders.length === 1 && !this.emitted ? { decoderConfig: { description: opusHead(400) } } : undefined
     this.emitted = true
     this.pending = Math.max(0, this.pending - 960)
-    this.init.output({ timestamp: this.at, duration: 20000, byteLength: 4, copyTo: (to: Uint8Array) => to.fill(7) }, metadata)
+    // A code 0 packet (one frame), which is what a 20 ms libopus packet is.
+    this.init.output({ timestamp: this.at, duration: 20000, byteLength: 4, copyTo: (to: Uint8Array) => (to.fill(7), (to[0] = 0x78)) }, metadata)
     this.at += 20000
   }
   private emitted = false
@@ -85,14 +94,14 @@ const opusHead = (preSkip: number) => {
   return head
 }
 
-const given: { timestamp: number; frames: number }[] = []
+const given: { timestamp: number; frames: number; channels: number; values: number }[] = []
 class FakeAudioData {
   timestamp: number
   numberOfFrames: number
-  constructor(init: { timestamp: number; numberOfFrames: number }) {
+  constructor(init: { timestamp: number; numberOfFrames: number; numberOfChannels: number; data: Float32Array }) {
     this.timestamp = init.timestamp
     this.numberOfFrames = init.numberOfFrames
-    given.push({ timestamp: init.timestamp, frames: init.numberOfFrames })
+    given.push({ timestamp: init.timestamp, frames: init.numberOfFrames, channels: init.numberOfChannels, values: init.data.length })
   }
   close() {}
 }
@@ -122,9 +131,10 @@ beforeEach(() => {
   vi.stubGlobal('AudioEncoder', FakeEncoder)
   vi.stubGlobal('AudioData', FakeAudioData)
   encoders.length = 0
+  muxerChannels.length = 0
   given.length = 0
   muxed.length = 0
-  Object.assign(decoderState, { throwOn: Infinity, calls: 0, closed: 0, flushed: 0, tail: 0 })
+  Object.assign(decoderState, { throwOn: Infinity, calls: 0, closed: 0, flushed: 0, tail: 0, surroundSource: false, opened: [] })
 })
 afterEach(() => vi.unstubAllGlobals())
 
@@ -212,7 +222,7 @@ describe('AudioConverter', () => {
     await converter.feed(0, frames(48000))
     decoderState.tail = 1920
     await converter.finish()
-    expect(given.at(-1)).toEqual({ timestamp: 1_000_000, frames: 1920 })
+    expect(given.at(-1)).toMatchObject({ timestamp: 1_000_000, frames: 1920 })
   })
 
   it('reports a decoder that traps once, drops everything after, and says it is no longer working', async () => {
@@ -257,5 +267,73 @@ describe('AudioConverter', () => {
     converter.begin(1)
     await converter.feed(0, frames(1000))
     expect(h.events).toEqual([{ type: 'failed', epoch: 1, message: 'unsupported' }])
+  })
+})
+
+describe('surround', () => {
+  async function surroundStarted(sourceHasSurround = true) {
+    decoderState.surroundSource = sourceHasSurround
+    const h = host()
+    const converter = new AudioConverter(h)
+    await converter.use('truehd', 1, true)
+    converter.begin(1)
+    return { converter, h }
+  }
+
+  it('asks the decoder for surround only when told to', async () => {
+    await started()
+    expect(decoderState.opened.at(-1)).toEqual({ surround: false })
+    await surroundStarted()
+    expect(decoderState.opened.at(-1)).toEqual({ surround: true })
+  })
+
+  it('encodes 5.1 as four streams (L R, Ls Rs, C, LFE) and muxes one six-channel track', async () => {
+    const { converter, h } = await surroundStarted()
+    // Nothing is configured until the first sound shows what shape the source has.
+    expect(encoders).toHaveLength(0)
+    await converter.feed(3, frames(48000))
+    await converter.finish()
+    expect(encoders).toHaveLength(4)
+    expect(muxerChannels).toEqual([6])
+    // Each slice goes to every encoder with the same time: two stereo pairs, then two mono streams.
+    const first = given.filter((g) => g.timestamp === 3_000_000)
+    expect(first.map((g) => g.channels)).toEqual([2, 2, 1, 1])
+    expect(first.map((g) => g.values)).toEqual([2 * 24000, 2 * 24000, 24000, 24000])
+    // One multistream packet per 20 ms: three self-delimited packets (TOC, size, 3 bytes: 5 bytes each) and a plain one.
+    expect(muxed[0]!.sizes.every((s) => s === 3 * 5 + 4)).toBe(true)
+    expect(muxed[0]!.durations.every((d) => d === 960)).toBe(true)
+    expect(h.events.filter((e) => e.type === 'init')).toHaveLength(1)
+    expect(h.events.filter((e) => e.type === 'fragment').length).toBeGreaterThan(0)
+  })
+
+  it('keeps a stereo source stereo, with one encoder, even with surround on', async () => {
+    const { converter } = await surroundStarted(false)
+    await converter.feed(0, frames(48000))
+    await converter.finish()
+    expect(encoders).toHaveLength(1)
+    expect(muxerChannels).toEqual([2])
+    expect(given.every((g) => g.channels === 2)).toBe(true)
+  })
+
+  it('resets every encoder on a seek and keeps the streams in step', async () => {
+    const { converter, h } = await surroundStarted()
+    await converter.feed(5, frames(24000))
+    converter.begin(2)
+    expect(encoders.map((e) => e.resets)).toEqual([1, 1, 1, 1])
+    await converter.feed(40, frames(48000))
+    await converter.finish()
+    expect(encoders).toHaveLength(4)
+    expect(muxerChannels).toEqual([6])
+    expect(h.events.at(-1)).toMatchObject({ type: 'fragment', epoch: 2 })
+    expect(muxed.at(-1)!.base).toBe(40 * 48000)
+  })
+
+  it('closes all the encoders when it fails', async () => {
+    const { converter, h } = await surroundStarted()
+    await converter.feed(0, frames(48000))
+    const encoder = encoders[2]! as unknown as { init: { error: (e: Error) => void } }
+    encoder.init.error(new Error('mono encoder died'))
+    expect(h.events.at(-1)).toEqual({ type: 'failed', epoch: 1, message: 'mono encoder died' })
+    expect(encoders.every((e) => e.state === 'closed')).toBe(true)
   })
 })

@@ -14,6 +14,7 @@ import s from './ExtraPages.module.css'
 export function DelayPage({ controller }: { controller: PlayerController }) {
   const delay = usePlayer(controller, (st) => st.subtitleDelay)
   const subtitleId = usePlayer(controller, (st) => st.subtitleId)
+  const sync = usePlayer(controller, (st) => st.sync)
   const nudge = (by: number) => controller.setSubtitleDelay(clampDelay(delay + by))
   return (
     <>
@@ -31,13 +32,25 @@ export function DelayPage({ controller }: { controller: PlayerController }) {
       <div className={s.slide}>
         <Slider label="Subtitle delay" value={delay} min={delayRange.min} max={delayRange.max} step={delayRange.step} valueText={delayLabel(delay)} onChange={(v) => controller.setSubtitleDelay(v)} />
       </div>
-      <button className={c.row} disabled={delay === 0} onClick={() => controller.setSubtitleDelay(0)} onMouseDown={keepFocus}>
+      <button className={c.row} aria-busy={sync.listening} onClick={() => (sync.listening ? controller.cancelSync() : void controller.syncSubtitles())} onMouseDown={keepFocus}>
+        <span className={c.rowText}>
+          <span className={c.rowTitle}>{sync.listening ? 'Stop Listening' : 'Auto-sync'}</span>
+          <span className={c.rowDetail}>Listens to the dialogue and sets the delay to match.</span>
+        </span>
+        {sync.listening && <span className={c.rowValue}>Listening… {sync.left} s</span>}
+      </button>
+      {sync.note && (
+        <p className={`${c.groupFooter} ${s.syncNote}`} role="status">
+          {sync.note}
+        </p>
+      )}
+      <button className={c.row} disabled={delay === 0 || sync.listening} onClick={() => controller.setSubtitleDelay(0)} onMouseDown={keepFocus}>
         <span className={c.rowText}>
           <span className={c.rowTitle}>Reset</span>
         </span>
       </button>
       <p className={c.groupFooter}>
-        Positive shows subtitles later, negative earlier. Kept for this title until you close the player.
+        Positive shows subtitles later, negative earlier. Kept for this title until you close the player. Auto-sync listens for about a minute, is in beta, and needs a scene with dialogue.
         {subtitleId === null && ' Subtitles are off; the delay applies when you turn them on.'}
       </p>
     </>
