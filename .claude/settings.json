@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*impeccable/scripts/impeccable detect*)",
+      "Bash(IMPECCABLE_BROWSER=* *impeccable/scripts/impeccable detect*)"
+    ]
+  }
+}
