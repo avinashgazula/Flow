@@ -70,11 +70,18 @@
 .rowControl > input:global(.field):only-child { width: 100%; }
 @media (max-width: 720px) {
   .rowControl:has(> input:global(.field):only-child) { flex: 1 1 100%; margin-left: 0; }
-  /* A select always sits beside its label, never on a line of its own: it takes at most 52% of the row and
-     truncates a long value with an ellipsis, so every select on a phone lines up on the right edge. */
+  /* A select sits beside its label, never on a line of its own: it takes two thirds of the row, so the label column gives
+     way first (a long label wraps to a second line) and the longest option still shows whole. The ellipsis is only
+     a last resort for a saved value no option names. */
   .row:has(> .rowControl > .select) { flex-wrap: nowrap; }
-  .rowControl:has(> .select) { flex: 0 1 52%; min-width: 0; }
+  .row:has(> .rowControl > .select) > .rowText { flex-basis: 0; }
+  .rowControl:has(> .select) { flex: 0 1 66%; min-width: 0; }
   .rowControl > .select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+  /* A select with a button beside it (Add) has no room for both on a line: the pair takes the line under the label. */
+  .row:has(> .rowControl > .select + button) { flex-wrap: wrap; }
+  .rowControl:has(> .select + button) { flex: 1 1 100%; margin-left: 0; }
+  .rowControl > .select + button { flex: none; }
+  .rowControl:has(> .select + button) > .select { flex: 1; width: auto; max-width: none; }
 }
 
 /* The switch: a base-4 track with a paper knob; on, the track is film-stock yellow and the knob dark.
@@ -91,6 +98,7 @@
 }
 .switch::after { content: ''; position: absolute; inset: -8px -4px; }
 .switch[aria-checked='true'] { background: var(--stock); }
+.switch[aria-checked='true']:focus-visible { outline-color: var(--paper); }
 .switch[disabled] { opacity: 0.4; pointer-events: none; }
 .knob {
   position: absolute;
@@ -178,7 +186,10 @@ img.logo { padding: 4px; }
 .inline .field { flex: 1; min-width: 0; height: 40px; background: var(--base-3); }
 .pad { padding: var(--space-s) var(--space-m); }
 /* A group's own Save button, in a row of its own under the fields. */
-.saveRow { padding: var(--space-s) var(--space-m); }
+.saveRow { display: flex; justify-content: flex-end; padding: var(--space-s) var(--space-m); }
+/* One rule for Save: a yellow compact button at the trailing end, beside its field or under its fields, and the
+   width of the group on a phone (see .inline button). */
+@media (max-width: 560px) { .saveRow button { flex: 1; } }
 .inline + .pad { margin-top: -4px; padding-top: 0; }
 /* An address shown as data (the Redirect URI): the interface face at caption size, wrapping anywhere so a long one never pushes its row wide, and selected whole on a click. */
 .whole { white-space: nowrap; }

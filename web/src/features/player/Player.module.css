@@ -325,7 +325,9 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-s);
-  min-height: 24px;
+  /* Room for Resume and Start Over (two 44px buttons and the gap) from the first frame, so the picture doesn't
+     move when the question arrives or is answered. */
+  min-height: 96px;
   margin-top: var(--space-l);
 }
 .slow { font: 400 var(--fs-footnote) / 1.3 var(--font); color: var(--ink-2); animation: appear var(--dur-move) ease; }
@@ -346,7 +348,7 @@
   .connectingCentre { width: min(560px, 100%); }
   .connectingFrame { width: min(300px, 50%); margin-bottom: var(--space-s); }
   .connectingArt { border-radius: 8px; }
-  .connectingFoot { margin-top: var(--space-s); }
+  .connectingFoot { margin-top: var(--space-s); min-height: 44px; }
   .resume { width: min(440px, 100%); grid-template-columns: 1fr 1fr; }
 }
 

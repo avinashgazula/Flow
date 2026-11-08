@@ -5,7 +5,7 @@ import type { DetailTextSize, FontChoice } from '../../lib/store/settings'
 
 export const languages: { value: string; label: string }[] = [
   ['en-US', 'English (US)'], ['en-GB', 'English (UK)'], ['es-ES', 'Spanish (Spain)'], ['es-MX', 'Spanish (Mexico)'], ['fr-FR', 'French'],
-  ['de-DE', 'German'], ['it-IT', 'Italian'], ['pt-BR', 'Portuguese (Brazil)'], ['pt-PT', 'Portuguese (Portugal)'], ['nl-NL', 'Dutch'],
+  ['de-DE', 'German'], ['it-IT', 'Italian'], ['pt-BR', 'Portuguese (BR)'], ['pt-PT', 'Portuguese (PT)'], ['nl-NL', 'Dutch'],
   ['sv-SE', 'Swedish'], ['da-DK', 'Danish'], ['nb-NO', 'Norwegian'], ['fi-FI', 'Finnish'], ['pl-PL', 'Polish'], ['cs-CZ', 'Czech'],
   ['tr-TR', 'Turkish'], ['ru-RU', 'Russian'], ['uk-UA', 'Ukrainian'], ['el-GR', 'Greek'], ['he-IL', 'Hebrew'], ['ar-SA', 'Arabic'],
   ['hi-IN', 'Hindi'], ['ta-IN', 'Tamil'], ['te-IN', 'Telugu'], ['th-TH', 'Thai'], ['id-ID', 'Indonesian'], ['vi-VN', 'Vietnamese'],
@@ -17,7 +17,7 @@ export const regions: { value: string; label: string }[] = [
   ['DE', 'Germany'], ['FR', 'France'], ['ES', 'Spain'], ['IT', 'Italy'], ['NL', 'Netherlands'], ['BE', 'Belgium'], ['CH', 'Switzerland'],
   ['AT', 'Austria'], ['SE', 'Sweden'], ['NO', 'Norway'], ['DK', 'Denmark'], ['FI', 'Finland'], ['PL', 'Poland'], ['PT', 'Portugal'],
   ['BR', 'Brazil'], ['MX', 'Mexico'], ['AR', 'Argentina'], ['IN', 'India'], ['JP', 'Japan'], ['KR', 'South Korea'], ['SG', 'Singapore'],
-  ['ZA', 'South Africa'], ['AE', 'United Arab Emirates'], ['TR', 'Türkiye'],
+  ['ZA', 'South Africa'], ['AE', 'UAE'], ['TR', 'Türkiye'],
 ].map(([value, label]) => ({ value: value!, label: label! }))
 
 /** Subtitle languages as two-letter codes, which is what the subtitle tracks and add-ons carry. */

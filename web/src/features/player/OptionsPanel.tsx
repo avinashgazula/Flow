@@ -113,7 +113,9 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   const back = () => setPage(page === 'search' ? searchFrom : start === 'tracks' && page !== 'root' ? 'tracks' : 'root')
 
   const proxy = useSettings((st) => st.streamProxy) !== ''
-  const currentAudio = audio.find((t) => t.id === audioId)
+  // The engine names no selection when a file carries one track: that track is the one playing, so it gets the check.
+  const playingAudio = audioId ?? audio[0]?.id
+  const currentAudio = audio.find((t) => t.id === playingAudio)
   const currentSubtitle = subtitles.find((t) => t.id === subtitleId)
 
   // What the source says it carries ("English · Hindi"), for when the engine can't list tracks itself.
@@ -129,7 +131,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
           title: t.label,
           detail: t.unavailable ?? t.note,
           disabled: !!t.unavailable,
-          checked: t.id === audioId,
+          checked: t.id === playingAudio,
           action: () => {
             void controller.selectAudio(t.id)
             after()
@@ -155,7 +157,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
     }
     return {
       title,
-      rows: [listed ? { id: 'listed', title: listed, detail: 'Listed by the source', disabled: true, plain: true, action: noop } : { id: 'default', title: 'Default', checked: true, disabled: true, plain: true, action: noop }],
+      rows: [listed ? { id: 'listed', title: listed, detail: 'Listed by the source', checked: true, disabled: true, plain: true, action: noop } : { id: 'default', title: 'Default', checked: true, disabled: true, plain: true, action: noop }],
     }
   }
   const subtitleRows = (after: () => void): Row[] => [
@@ -210,7 +212,8 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
       rows.push({
         id: 'zoom',
         icon: fit === 'cover' ? 'exitFullscreen' : 'fullscreen',
-        title: `Zoom · ${fit === 'cover' ? 'Fill' : 'Fit'}`,
+        title: 'Zoom',
+        value: fit === 'cover' ? 'Fill' : 'Fit',
         action: () => controller.setFit(fit === 'cover' ? 'contain' : 'cover'),
       })
       const more: Row[] = [

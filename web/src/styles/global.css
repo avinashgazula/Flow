@@ -106,6 +106,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .btn-primary { background: var(--stock); color: var(--on-stock); }
 @media (hover: hover) { .btn-primary:hover { background: var(--stock-hover); } }
 .btn-primary:active { background: var(--stock-press); }
+/* A yellow ring around a yellow fill reads as a double ring: on yellow the ring is Paper, same 2 px and offset. */
+.btn-primary:focus-visible { outline-color: var(--paper); }
 .btn-secondary, .btn-glass { background: var(--base-3); color: var(--paper); }
 .btn-quiet { background: transparent; color: var(--ink-2); padding: 0 12px; }
 @media (hover: hover) { .btn-quiet:hover { background: var(--base-2); color: var(--paper); } }

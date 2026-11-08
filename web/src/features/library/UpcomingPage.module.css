@@ -49,6 +49,11 @@
 .stills { display: flex; gap: var(--space-m); overflow-x: auto; scrollbar-width: none; padding: 6px; margin: -6px; }
 .stills::-webkit-scrollbar { display: none; }
 .still { flex: 0 0 280px; min-width: 0; }
+/* From a tablet up the row shows whole stills, three across (the edge print needs about 280px to keep the episode),
+   as Home's rows do, so it never ends mid-card at the column's edge; the rest are a press of the arrows away. On a
+   phone the cut-off still says there is more. */
+.justAired { container-type: inline-size; }
+@container (min-width: 700px) { .still { flex-basis: calc((100% - 2 * var(--space-m)) / 3); } }
 .stillLink { display: block; color: var(--paper); -webkit-tap-highlight-color: transparent; }
 .stillLink:focus-visible { outline: none; }
 .stillLink:focus-visible > :first-child { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }

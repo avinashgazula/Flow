@@ -195,7 +195,15 @@ function DayStrip({ now, marked, onSelect }: { now: number; marked: ReadonlySet<
 /** The last seven days' episodes and releases, newest first. Aired episodes play straight away. */
 function JustAired({ children }: { children: React.ReactNode }) {
   const row = useRef<HTMLUListElement>(null)
-  const scroll = (direction: 1 | -1) => row.current?.scrollBy({ left: direction * row.current.clientWidth * 0.85, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  // A page at a time, in whole stills, so the row rests on a card boundary after each press.
+  const scroll = (direction: 1 | -1) => {
+    const list = row.current
+    if (!list) return
+    const [first, second] = [list.children[0] as HTMLElement | undefined, list.children[1] as HTMLElement | undefined]
+    const step = first && second ? second.offsetLeft - first.offsetLeft : list.clientWidth
+    const page = Math.max(1, Math.floor(list.clientWidth / step)) * step
+    list.scrollBy({ left: direction * page, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }
   return (
     <section className={s.justAired} aria-labelledby="just-aired">
       <header className={s.dayHead}>

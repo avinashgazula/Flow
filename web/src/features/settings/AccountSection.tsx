@@ -75,7 +75,7 @@ function AppGroup() {
           autoCapitalize="off"
           spellCheck={false}
         />
-        <button className="btn btn-secondary btn-compact" type="submit" disabled={id.trim() === saved || state.kind === 'checking'}>
+        <button className="btn btn-primary btn-compact" type="submit" disabled={id.trim() === saved || state.kind === 'checking'}>
           {state.kind === 'checking' ? 'Checking…' : 'Save'}
         </button>
       </form>

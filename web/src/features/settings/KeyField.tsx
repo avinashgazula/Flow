@@ -75,7 +75,7 @@ export function KeyField({
           autoCapitalize="off"
           spellCheck={false}
         />
-        <button className="btn btn-secondary btn-compact" type="submit" disabled={state.kind === 'checking' || next === saved}>
+        <button className={`btn btn-compact ${removing ? 'btn-secondary' : 'btn-primary'}`} type="submit" disabled={state.kind === 'checking' || next === saved}>
           {state.kind === 'checking' ? 'Checking…' : removing ? 'Remove Key' : 'Save'}
         </button>
       </form>
