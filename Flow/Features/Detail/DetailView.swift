@@ -305,7 +305,13 @@ struct DetailView: View {
             if current.type == .show {
                 textAction("Shuffle", active: false, accessibility: "Shuffle Play") { Task { await model.shufflePlay(current) } }
             }
-            if Platform.isPad {
+            #if os(iOS)
+            let shareInMenu = Platform.isPad
+            #else
+            let shareInMenu = false
+            #endif
+            if shareInMenu {
+                #if os(iOS)
                 // On an iPad the row would wrap its last two actions onto a second line, so they share a menu.
                 Menu {
                     if current.type == .show {
@@ -316,6 +322,7 @@ struct DetailView: View {
                     Text("More")
                 }
                 .buttonStyle(PlainActionButtonStyle())
+                #endif
             } else {
                 if current.type == .show {
                     textAction(rewatching ? "End Rewatch" : "Rewatch", active: rewatching, accessibility: rewatching ? "End Rewatch" : "Rewatch") { toggleRewatch() }
