@@ -102,12 +102,30 @@ bitrate and the requests in flight about once a second.
 **Audio conversion.** A track the browser can't play (TrueHD, DTS, and Dolby Digital where there's
 no decoder) is handed to `src/lib/remux/convert.ts` raw, as the worker reads it. FFmpeg's decoders,
 built to a 290 KB WebAssembly module (LGPL, `src/lib/audio/pkg/flow-audio.wasm`, rebuilt with
-`npm run audio-wasm`), turn it into stereo PCM; `AudioEncoder` makes Opus; `OpusMuxer` wraps the
-packets in fragmented MP4 about a second at a time. The module is fetched only when such a track is
+`npm run audio-wasm`), turn it into PCM (stereo, or 5.1 when the page asked for surround: see below);
+`AudioEncoder` makes Opus; `OpusMuxer` wraps the packets in fragmented MP4 about a second at a time. The module is fetched only when such a track is
 chosen, so nothing about it is in the first-load code. Sound is counted in samples from the first
 fragment after a start or seek and re-anchored when the file has a gap, so it stays with the
 picture. Tracks that play as they are are never converted, and a failure at any step (the module
 won't load, a decoder crashes, the encoder errors) drops the audio buffer so the picture plays on.
+
+**Surround.** Converted sound keeps 5.1 (a 7.1 source is mixed down to 5.1) when `checkSurroundAudio()`
+(`lib/audio/surround.ts`) says yes: the browser has `AudioEncoder` for mono and stereo Opus, MediaCapabilities
+accepts 5.1 Opus in `audio/mp4` for MSE, and `AudioContext.destination.maxChannelCount` is 6 or more. Otherwise
+it stays stereo, mixed by the decoder with the stream's own downmix coefficients, which sounds better than
+whatever a browser folds six channels into on headphones or laptop speakers. There is no Surround Sound
+setting because the apps have none either: they follow the output device the same way, and Decode DTS and
+Dolby TrueHD still switches the whole conversion off. WebCodecs only encodes one or two channels, so 5.1 is four
+encoders (L R, Ls Rs, C, LFE) whose packets `remux/multistream.ts` stitches into one Opus multistream packet
+(channel mapping family 1, Vorbis order, the layout libopus uses for six channels). The `dOps` box in
+`crates/flow-remux/src/opus_mux.rs` carries the matching mapping table (4 streams, 2 coupled,
+`0 4 1 2 3 5`), and its test checks every layout from 3 to 8 channels against RFC 7845. The decoder
+(`flow_audio.c`, opened with the 0x200 flag) outputs 6-value frames in that order and asks TrueHD for its 5.1
+substream; a source with two channels or fewer stays stereo, since six channels of it would spend bits on silence.
+Safari stays stereo until its six-channel Opus in MSE has been confirmed on a device. Checked in Chromium 153 with
+the real converter: DTS, TrueHD, Dolby Digital and Dolby Digital Plus 5.1 test streams play with six distinct
+channels (the same as an ffmpeg/libopus family 1 file does there), and ffmpeg decodes the output with every
+channel in place.
 
 **Chapters.** The remuxer reads the chapter list the way the apps do: the default edition (else the first), nested
 chapters included, hidden and disabled ones left out, an unnamed one numbered by the player. A list before the clusters
@@ -528,8 +546,9 @@ them playing within the hour with a channel on air in the sample guide.
 - **Codecs:** browsers can't decode DTS or TrueHD audio, and some have no Dolby Digital decoder
   either (Chrome on Linux and Firefox). Flow plays another audio track when the file has one that
   plays as it is. Otherwise it converts the sound: a Web Worker decodes it with FFmpeg's decoders
-  (WebAssembly) and WebCodecs' `AudioEncoder` makes stereo Opus of it, which the page plays. That
+  (WebAssembly) and WebCodecs' `AudioEncoder` makes Opus of it, which the page plays. That
   needs a browser that can encode Opus (Chrome, Edge, Firefox and Safari 26) and a file Flow can
-  read: not one behind a host that blocks web pages and no stream proxy. Converted sound is stereo
-  (5.1 and 7.1 are mixed down), and the audio menu says so. If the conversion fails, the picture
+  read: not one behind a host that blocks web pages and no stream proxy. Converted sound is 5.1
+  where the browser can play it and the output device has the speakers for it (7.1 is mixed down to 5.1);
+  otherwise stereo (surround is mixed down), and the audio menu says which. If the conversion fails, the picture
   plays on without sound and the player says why.

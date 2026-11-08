@@ -833,6 +833,56 @@ fn opus_muxer_surround_uses_a_channel_mapping() {
 }
 
 #[test]
+fn opus_dops_matches_the_spec_for_every_surround_layout() {
+    // RFC 7845 section 5.1.1.2 (mapping family 1, Vorbis order) and the Opus-in-ISOBMFF box (version 0,
+    // so everything is big-endian): OutputChannelCount, PreSkip, InputSampleRate, OutputGain,
+    // ChannelMappingFamily, then StreamCount, CoupledCount and the ChannelMapping table. The tables are
+    // libopus's vorbis_mappings, which the spec's table is the same as.
+    let spec: [(u32, u8, u8, &[u8]); 6] = [
+        (3, 2, 1, &[0, 2, 1]),
+        (4, 2, 2, &[0, 1, 2, 3]),
+        (5, 3, 2, &[0, 4, 1, 2, 3]),
+        (6, 4, 2, &[0, 4, 1, 2, 3, 5]),
+        (7, 5, 2, &[0, 4, 1, 2, 3, 5, 6]),
+        (8, 5, 3, &[0, 6, 1, 2, 3, 4, 5, 7]),
+    ];
+    for (channels, streams, coupled, table) in spec {
+        let init = OpusMuxer::new(channels, 312).init();
+        let dops = whole_box(&init, b"dOps");
+        assert_eq!(be32(dops, 0) as usize, dops.len(), "{channels} channels: the box size covers the whole box");
+        let body = &dops[8..];
+        assert_eq!(body.len(), 11 + 2 + table.len(), "{channels} channels: length");
+        assert_eq!(body[0], 0, "version");
+        assert_eq!(body[1] as u32, channels, "OutputChannelCount");
+        assert_eq!(u16::from_be_bytes([body[2], body[3]]), 312, "PreSkip");
+        assert_eq!(be32(body, 4), 48000, "InputSampleRate");
+        assert_eq!(i16::from_be_bytes([body[8], body[9]]), 0, "OutputGain");
+        assert_eq!(body[10], 1, "ChannelMappingFamily");
+        assert_eq!(body[11], streams, "StreamCount");
+        assert_eq!(body[12], coupled, "CoupledCount");
+        assert_eq!(&body[13..], table, "ChannelMapping");
+        // Every stream channel is used exactly once, and the stream count adds up (coupled streams carry two).
+        let mut used: Vec<u8> = table.to_vec();
+        used.sort_unstable();
+        assert_eq!(used, (0..channels as u8).collect::<Vec<_>>(), "{channels} channels: a permutation");
+        assert_eq!(streams as u32 + coupled as u32, channels, "{channels} channels: streams plus coupled streams");
+        // The sample entry above it declares the same count, and the dOps ends it.
+        let entry = whole_box(&init, b"Opus");
+        assert_eq!(u16::from_be_bytes([entry[24], entry[25]]) as u32, channels, "sample entry channel count");
+        assert!(entry.ends_with(dops));
+    }
+    // Mono and stereo are family 0: no stream counts or table.
+    for channels in [1u32, 2] {
+        let init = OpusMuxer::new(channels, 0).init();
+        let body = &whole_box(&init, b"dOps")[8..];
+        assert_eq!(body.len(), 11);
+        assert_eq!(body[10], 0, "family 0");
+    }
+    // More than eight channels isn't a layout Opus's family 1 defines.
+    assert_eq!(OpusMuxer::new(12, 0).init(), OpusMuxer::new(8, 0).init());
+}
+
+#[test]
 fn opus_muxer_fragments() {
     let mut muxer = OpusMuxer::new(2, 312);
     let payload: Vec<u8> = (0..30u8).collect();

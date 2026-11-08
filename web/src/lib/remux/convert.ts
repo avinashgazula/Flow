@@ -1,9 +1,16 @@
 /* Audio conversion in the remux worker, for sound a browser can't decode (Dolby TrueHD, DTS, and
    Dolby Digital where the browser has no decoder). The remuxer hands over a track's raw frames;
-   FFmpeg's decoders in WebAssembly (src/lib/audio) turn them into stereo PCM; WebCodecs' AudioEncoder
+   FFmpeg's decoders in WebAssembly (src/lib/audio) turn them into PCM; WebCodecs' AudioEncoder
    makes Opus of that; and OpusMuxer wraps the packets in fragmented MP4, so the page appends them
    like any other audio. Only the worker imports this file, and only when such a track is chosen: the
    decoder's WebAssembly isn't fetched before that.
+
+   Channels. The PCM is stereo, or 5.1 (7.1 is mixed down to it) when the page asked for surround and
+   the source has more than two channels. WebCodecs encodes at most two channels, so 5.1 is four
+   encoders (L R, Ls Rs, C, LFE) whose packets are stitched into one Opus multistream packet each
+   (multistream.ts), and the init segment's dOps box describes that layout (opus_mux.rs). The encoders
+   are made when the first PCM shows the stream's shape, so nothing is configured for a shape the
+   source doesn't have.
 
    Time. The first raw fragment after a start or seek anchors the timeline at its first payload's
    time. From there audio is counted in samples: a sample's time is the anchor plus how many samples
@@ -16,6 +23,7 @@
    `use`. The worker keeps reading the picture. */
 
 import { type AudioCodec, type AudioDecoders, type AudioStreamDecoder, loadAudioDecoders } from '../audio/decoder'
+import { multistreamPacket, type StreamLayout, splitStreams, streamLayout } from './multistream'
 import { OpusMuxer } from './pkg/flow_remux.js'
 
 const RATE = 48000
@@ -31,7 +39,7 @@ const QUEUE_LIMIT = 4
 /** An encoder that takes nothing for this long is stuck. */
 const STALL_MS = 15000
 
-const ENCODER_CONFIG = { codec: 'opus', sampleRate: RATE, numberOfChannels: 2, bitrate: 160000 }
+const STEREO_BITRATE = 160000
 
 export interface ConvertHost {
   /** True until the page has been sent the init segment for the audio it is now playing. */
@@ -63,7 +71,14 @@ export class AudioConverter {
   private decoders: Promise<AudioDecoders> | undefined
   private stream: AudioStreamDecoder | null = null
   private opened: Promise<void> = Promise.resolve()
-  private encoder: AudioEncoder | null = null
+  /** One encoder for stereo, one per stream for 5.1 (see `layout`); empty until the stream's shape is known. */
+  private encoders: AudioEncoder[] = []
+  /** Opus packets that came out of each encoder and wait for the other streams' packet of the same time. */
+  private waiting: EncodedAudioChunk[][] = []
+  private preSkip = DEFAULT_PRE_SKIP
+  /** Values per PCM frame: 0 until known, then 2 or 6. */
+  private channels = 0
+  private layout: StreamLayout[] | null = null
   private muxer: OpusMuxer | null = null
   /** Bumped by every reset, so work that was waiting (on the encoder, on a flush) notices its stream was replaced and stops. */
   private generation = 0
@@ -80,15 +95,19 @@ export class AudioConverter {
   }
 
   /** Loads the decoders (the first time) and opens one for `codec`. Fails quietly into `host.failed`. */
-  use(codec: AudioCodec, epoch: number): Promise<void> {
+  use(codec: AudioCodec, epoch: number, surround = false): Promise<void> {
     this.epoch = epoch
     this.dead = false
+    // Stereo is known up front; surround waits for the first frame to say whether the source has more.
+    this.channels = surround ? 0 : 2
+    this.closeEncoders()
+    this.muxer = null
     this.opened = (async () => {
       try {
         const decoders = await (this.decoders ??= loadAudioDecoders())
         this.stream?.close()
         this.stream = null
-        this.stream = decoders.open(codec)
+        this.stream = decoders.open(codec, RATE, { surround })
       } catch (error) {
         this.fail(error)
       }
@@ -110,13 +129,13 @@ export class AudioConverter {
     } catch (error) {
       return this.fail(error)
     }
-    this.resetEncoder()
+    if (this.channels) this.resetEncoders()
   }
 
   /** Converts one raw fragment: `bytes` are its payloads back to back, `start` the first one's time. */
   async feed(start: number, bytes: Uint8Array): Promise<void> {
     await this.opened
-    if (this.dead || !this.stream || !this.encoder) return
+    if (this.dead || !this.stream) return
     const generation = this.generation
     try {
       if (this.anchor === null) {
@@ -135,12 +154,12 @@ export class AudioConverter {
   /** The end of the file: the decoder's last frames, the encoder's last packets, then the final fragment. Everything is posted when this resolves. */
   async finish(): Promise<void> {
     await this.opened
-    if (this.dead || !this.stream || !this.encoder) return
+    if (this.dead || !this.stream) return
     const generation = this.generation
     try {
       if (this.anchor !== null) await this.encode(this.stream.finish(), generation)
       if (generation !== this.generation || this.dead) return
-      await this.encoder.flush()
+      await this.flushEncoders()
       if (generation === this.generation) this.post()
     } catch (error) {
       this.fail(error)
@@ -150,10 +169,7 @@ export class AudioConverter {
   close() {
     this.dead = true
     this.generation++
-    try {
-      this.encoder?.close()
-    } catch {}
-    this.encoder = null
+    this.closeEncoders()
     try {
       this.stream?.close()
     } catch {}
@@ -164,7 +180,7 @@ export class AudioConverter {
 
   /** A hole in the file: what's been encoded is sent first, then the count starts again from `start`. */
   private async reanchor(start: number) {
-    await this.encoder!.flush()
+    await this.flushEncoders()
     this.post()
     this.stream!.flush()
     this.anchor = Math.round(start * RATE)
@@ -172,18 +188,29 @@ export class AudioConverter {
   }
 
   private async encode(pcm: Float32Array, generation: number) {
-    const frames = pcm.length >> 1
+    if (pcm.length === 0) return
+    // The decoder knows the shape once it has produced anything; one that doesn't say (a stub) means stereo.
+    const channels = this.stream?.outputChannels || 2
+    if (!this.encoders.length || this.channels !== channels) {
+      this.channels = channels
+      this.resetEncoders()
+      if (this.dead) return
+    }
+    const frames = pcm.length / channels
     for (let at = 0; at < frames; ) {
       await this.room(generation)
-      if (generation !== this.generation || this.dead || !this.encoder) return
+      if (generation !== this.generation || this.dead || !this.encoders.length) return
       const count = Math.min(frames - at, SLICE_FRAMES)
-      const ticks = this.anchor! + this.fed
-      const data = new AudioData({ format: 'f32', sampleRate: RATE, numberOfFrames: count, numberOfChannels: 2, timestamp: Math.round((ticks * 1e6) / RATE), data: (pcm as Float32Array<ArrayBuffer>).subarray(at * 2, (at + count) * 2) })
-      try {
-        this.encoder.encode(data)
-      } finally {
-        data.close()
-      }
+      const timestamp = Math.round(((this.anchor! + this.fed) * 1e6) / RATE)
+      const slices = this.layout ? splitStreams(pcm, channels, this.layout, at, count) : [pcm.subarray(at * channels, (at + count) * channels)]
+      slices.forEach((slice, i) => {
+        const data = new AudioData({ format: 'f32', sampleRate: RATE, numberOfFrames: count, numberOfChannels: this.layout?.[i]?.channels.length ?? channels, timestamp, data: slice as Float32Array<ArrayBuffer> })
+        try {
+          this.encoders[i]!.encode(data)
+        } finally {
+          data.close()
+        }
+      })
       this.fed += count
       at += count
     }
@@ -192,7 +219,7 @@ export class AudioConverter {
   /** Backpressure: waits while the encoder has a few slices queued, so decoding never runs far ahead of it. */
   private async room(generation: number) {
     const began = performance.now()
-    while (this.encoder && this.encoder.encodeQueueSize >= QUEUE_LIMIT && !this.dead && generation === this.generation) {
+    while (this.encoders.some((e) => e.encodeQueueSize >= QUEUE_LIMIT) && !this.dead && generation === this.generation) {
       if (performance.now() - began > STALL_MS) throw new Error('The audio encoder stopped responding.')
       await new Promise((resolve) => setTimeout(resolve, 4))
     }
@@ -200,35 +227,80 @@ export class AudioConverter {
 
   // MARK: Encoder
 
-  private resetEncoder() {
+  /** Brings every encoder to the start of a new stream, making them (and the 5.1 layout) when the shape is new. */
+  private resetEncoders() {
     try {
-      if (!this.encoder || this.encoder.state === 'closed') {
-        // `reset()` stops the old stream's results from arriving, so a packet that does arrive belongs to this one.
-        this.encoder = new AudioEncoder({ output: (chunk, metadata) => this.packet(chunk, metadata), error: (error) => this.fail(error) })
+      const layout = streamLayout(this.channels)
+      const configs = layout ? layout.map((l) => ({ channels: l.channels.length, bitrate: l.bitrate })) : [{ channels: this.channels, bitrate: STEREO_BITRATE }]
+      if (this.encoders.length !== configs.length || this.layout !== layout) {
+        this.closeEncoders()
+        this.layout = layout
+        // A new shape needs a new init segment (the page only appends one per audio track, so the shape is fixed per stream).
+        this.muxer = null
+        this.encoders = configs.map((_, i) => new AudioEncoder({ output: (chunk, metadata) => this.collect(i, chunk, metadata), error: (error) => this.fail(error) }))
       } else {
-        this.encoder.reset()
+        // `reset()` stops the old stream's results from arriving, so a packet that does arrive belongs to this one.
+        for (const e of this.encoders) if (e.state !== 'closed') e.reset()
       }
-      try {
-        // 20 ms packets are what the muxer's durations and the page's buffering assume.
-        this.encoder.configure({ ...ENCODER_CONFIG, opus: { frameDuration: 20000 } } as AudioEncoderConfig)
-      } catch {
-        this.encoder.configure(ENCODER_CONFIG)
-      }
+      this.waiting = configs.map(() => [])
+      this.encoders.forEach((encoder, i) => {
+        const config = { codec: 'opus', sampleRate: RATE, numberOfChannels: configs[i]!.channels, bitrate: configs[i]!.bitrate }
+        try {
+          // 20 ms packets are what the muxer's durations and the page's buffering assume.
+          encoder.configure({ ...config, opus: { frameDuration: 20000 } } as AudioEncoderConfig)
+        } catch {
+          encoder.configure(config)
+        }
+      })
     } catch (error) {
       this.fail(error)
     }
   }
 
-  private packet(chunk: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata | undefined) {
+  private closeEncoders() {
+    for (const e of this.encoders) {
+      try {
+        e.close()
+      } catch {}
+    }
+    this.encoders = []
+    this.waiting = []
+    this.layout = null
+  }
+
+  private async flushEncoders() {
+    await Promise.all(this.encoders.map((e) => e.flush()))
+  }
+
+  /** One stream's packet arrived. A packet for the stream layout is complete when every encoder has produced
+   *  its share of the same 20 ms, which they do in step because they're fed the same slices. */
+  private collect(index: number, chunk: EncodedAudioChunk, metadata: EncodedAudioChunkMetadata | undefined) {
+    if (this.dead) return
+    if (index === 0 && metadata?.decoderConfig?.description) this.preSkip = preSkipOf(metadata.decoderConfig.description)
+    this.waiting[index]?.push(chunk)
+    while (this.waiting.length && this.waiting.every((q) => q.length > 0)) {
+      const parts = this.waiting.map((q) => q.shift()!)
+      const bytes = parts.map((c) => {
+        const b = new Uint8Array(c.byteLength)
+        c.copyTo(b)
+        return b
+      })
+      try {
+        this.packet(parts[0]!, this.layout ? multistreamPacket(bytes) : bytes[0]!)
+      } catch (error) {
+        return this.fail(error)
+      }
+    }
+  }
+
+  private packet(chunk: EncodedAudioChunk, bytes: Uint8Array) {
     if (this.dead) return
     try {
-      if (!this.muxer) this.muxer = new OpusMuxer(2, preSkipOf(metadata?.decoderConfig?.description))
+      if (!this.muxer) this.muxer = new OpusMuxer(this.channels, this.preSkip)
       if (this.host.initNeeded()) {
         const init = this.muxer.init()
         this.host.init(this.epoch, init.buffer as ArrayBuffer)
       }
-      const bytes = new Uint8Array(chunk.byteLength)
-      chunk.copyTo(bytes)
       const ticks = Math.round((chunk.timestamp * RATE) / 1e6)
       const length = chunk.duration ? Math.round((chunk.duration * RATE) / 1e6) : 960
       const last = this.packets[this.packets.length - 1]

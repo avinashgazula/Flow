@@ -1,11 +1,13 @@
 /* In-browser decoding for the audio browsers can't play: Dolby Digital (AC-3), Dolby Digital Plus
    (E-AC-3), DTS and Dolby TrueHD. FFmpeg's own decoders, built to a small WebAssembly module
-   (pkg/flow-audio.wasm, rebuilt with `npm run audio-wasm`), turn compressed bytes into stereo PCM
-   that Web Audio can play.
+   (pkg/flow-audio.wasm, rebuilt with `npm run audio-wasm`), turn compressed bytes into PCM that Web
+   Audio can play: stereo, or 5.1 when the stream is opened with `surround`.
 
    const decoders = await loadAudioDecoders()
    const track = decoders.open('truehd')            // 48 kHz stereo out, whatever the source
    const pcm = track.decode(blockBytes)             // Float32Array, interleaved L R L R, possibly empty
+   // open('truehd', 48000, { surround: true }) keeps 5.1 (7.1 is mixed down to it): frames of six
+   // values in Vorbis order, L C R Ls Rs LFE. track.outputChannels says which shape a stream has.
    track.flush()                                    // after a seek
    track.close()
 
@@ -16,7 +18,7 @@
 export type AudioCodec = 'ac3' | 'eac3' | 'dts' | 'truehd'
 
 export interface AudioStreamDecoder {
-  /** Compressed bytes in, stereo float32 PCM out (a copy). Any slice of the elementary stream works: a
+  /** Compressed bytes in, interleaved float32 PCM out (a copy; `outputChannels` values per frame). Any slice of the elementary stream works: a
    *  Matroska block can hold several frames or half of one, and a partial frame waits for the next call. */
   decode(bytes: Uint8Array): Float32Array
   /** Forgets everything buffered. Call after a seek, before the first block of the new position. */
@@ -25,6 +27,9 @@ export interface AudioStreamDecoder {
    *  bytes arrive (or are told there are none). The stream is then ready for a new position, as after flush(). */
   finish(): Float32Array
   close(): void
+  /** Values per output frame: 2, or 6 for a surround stream whose source has three or more channels.
+   *  0 until the first frame has been decoded, then fixed for the life of the stream. */
+  readonly outputChannels: number
   /** What the stream's first frame declares (a 7.1 TrueHD track says 8); 0 until a frame has been seen. */
   readonly sourceChannels: number
   /** The stream's own sample rate, before it was converted to the output rate; 0 until a frame has been decoded. */
@@ -34,8 +39,9 @@ export interface AudioStreamDecoder {
 }
 
 export interface AudioDecoders {
-  /** The output is always interleaved stereo at `sampleRate`, 48000 by default. */
-  open(codec: AudioCodec, sampleRate?: number): AudioStreamDecoder
+  /** Interleaved float32 at `sampleRate` (48000 by default): stereo, or with `surround` 5.1 in Vorbis order
+   *  for any source of three or more channels (mono and stereo sources stay stereo). */
+  open(codec: AudioCodec, sampleRate?: number, options?: { surround?: boolean }): AudioStreamDecoder
 }
 
 const CODEC_IDS: Record<AudioCodec, number> = { ac3: 1, eac3: 2, dts: 3, truehd: 4 }
@@ -43,6 +49,9 @@ const CODEC_IDS: Record<AudioCodec, number> = { ac3: 1, eac3: 2, dts: 3, truehd:
 const INFO_CHANNELS = 1
 const INFO_RATE = 2
 const INFO_ERRORS = 4
+const INFO_OUT_CHANNELS = 5
+/** Added to the codec id: keep 5.1 instead of mixing down to stereo. */
+const SURROUND_FLAG = 0x200
 
 interface Exports {
   memory: WebAssembly.Memory
@@ -139,8 +148,8 @@ export async function loadAudioDecoders(source?: BufferSource | URL): Promise<Au
   const exports = instance.exports as unknown as Exports
   memory = exports.memory
   return {
-    open(codec, sampleRate = 48000) {
-      const handle = exports.fa_open(CODEC_IDS[codec], sampleRate)
+    open(codec, sampleRate = 48000, options) {
+      const handle = exports.fa_open(CODEC_IDS[codec] | (options?.surround ? SURROUND_FLAG : 0), sampleRate)
       if (!handle) throw new Error(`The ${codec} decoder couldn't start (sample rate ${sampleRate}).`)
       return new Stream(exports, handle >>> 0)
     },
@@ -171,7 +180,7 @@ class Stream implements AudioStreamDecoder {
   private take(handle: number, frames: number): Float32Array {
     if (frames < 0) throw new Error(frames === -2 ? 'The audio decoder ran out of memory.' : 'The audio decoder was handed a bad buffer.')
     if (frames === 0) return new Float32Array(0)
-    return new Float32Array(this.wasm.memory.buffer, this.wasm.fa_output(handle) >>> 0, frames * 2).slice()
+    return new Float32Array(this.wasm.memory.buffer, this.wasm.fa_output(handle) >>> 0, frames * this.wasm.fa_info(handle, INFO_OUT_CHANNELS)).slice()
   }
 
   flush(): void {
@@ -187,6 +196,10 @@ class Stream implements AudioStreamDecoder {
     if (!this.handle) return
     this.wasm.fa_close(this.handle)
     this.handle = 0
+  }
+
+  get outputChannels(): number {
+    return this.handle ? this.wasm.fa_info(this.handle, INFO_OUT_CHANNELS) : 0
   }
 
   get sourceChannels(): number {

@@ -4,7 +4,7 @@ flow-audio.wasm
 What it is
 ----------
 A WebAssembly module that decodes Dolby Digital (AC-3), Dolby Digital Plus (E-AC-3), DTS and Dolby
-TrueHD to stereo PCM, because browsers can't. Flow's web player loads it only when a track in one of
+TrueHD to stereo or 5.1 PCM, because browsers can't. Flow's web player loads it only when a track in one of
 those formats plays (src/lib/audio/decoder.ts), and plays the result through Web Audio.
 
 It contains FFmpeg's libavcodec and libavutil, configured with only these parts:
@@ -13,7 +13,7 @@ It contains FFmpeg's libavcodec and libavutil, configured with only these parts:
   parsers   ac3 (also E-AC-3), dca, mlp (also TrueHD)
 
 plus a small C wrapper, web/native/flow-audio/flow_audio.c (this project's own code), that adds a stream
-parser loop, a downmix to stereo and a sample-rate converter. No other FFmpeg library (libavformat,
+parser loop, a downmix to stereo or 5.1 and a sample-rate converter. No other FFmpeg library (libavformat,
 libswresample and so on) is included, and no encoder.
 
 Licence
@@ -47,8 +47,8 @@ Interface (C, all integers)
 ---------------------------
   fa_open(codec, out_rate)   1 AC-3, 2 E-AC-3, 3 DTS, 4 TrueHD; returns a handle, 0 on failure
   fa_input(h, size)          pointer to a buffer to write `size` compressed bytes into
-  fa_decode(h, size)         decodes them; returns stereo frames now at fa_output(h), or < 0 on error
-  fa_output(h)               pointer to interleaved float32 stereo at out_rate
+  fa_decode(h, size)         decodes them; returns frames (2 or 6 values each) now at fa_output(h), or < 0 on error
+  fa_output(h)               pointer to interleaved float32 (stereo, or 5.1 in Vorbis order with the 0x200 codec flag) at out_rate
   fa_flush(h)                after a seek
   fa_finish(h)               at the end: what is still buffered (then as after fa_flush)
   fa_info(h, key)            1 source channels, 2 source sample rate, 3 source frames decoded, 4 errors
