@@ -40,7 +40,7 @@ export interface RemuxAudioTrack {
   channels?: number
   /** False when this browser can't decode it (DTS, TrueHD) and can't convert it either. */
   playable: boolean
-  /** Plays after being decoded in WebAssembly and re-encoded as stereo Opus. */
+  /** Plays after being decoded in WebAssembly and re-encoded as Opus: stereo, or 5.1 when the session was opened with `surroundAudio`. */
   converted: boolean
   default: boolean
 }
@@ -153,6 +153,9 @@ export interface RemuxOptions {
   hdr10Only?: boolean
   /** Convert audio the browser can't decode (DTS, TrueHD) while playing. False lists those tracks as unavailable; the default is on. */
   convertAudio?: boolean
+  /** Keep 5.1 in converted audio (7.1 is mixed down to it) instead of mixing to stereo. Only for a browser and output that
+   *  can play it (`checkSurroundAudio`); the default is stereo. */
+  surroundAudio?: boolean
   startAt?: number
   signal?: AbortSignal
 }
@@ -277,7 +280,7 @@ class Session implements RemuxSession {
     this.cleanups.push(() => options.signal?.removeEventListener('abort', onAbort))
     if (options.signal?.aborted) throw new DOMException('Stopped', 'AbortError')
 
-    this.send({ type: 'open', url: this.url, headers: options.headers ?? {}, viaProxy: options.viaProxy ?? false, hdr10Only: options.hdr10Only ?? false })
+    this.send({ type: 'open', url: this.url, headers: options.headers ?? {}, viaProxy: options.viaProxy ?? false, hdr10Only: options.hdr10Only ?? false, surround: options.surroundAudio ?? false })
     const opened = this.sink.open()
     opened.catch((error: Error) => this.fail(error.message))
     const info = await Promise.race([header, failed])

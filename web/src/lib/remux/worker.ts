@@ -42,6 +42,8 @@ let sent = { video: false, audio: false }
 let decodes = new Map<number, AudioCodec>()
 /** The codec of the audio track being converted, or null while the audio plays as it is. */
 let convertCodec: AudioCodec | null = null
+/** Converted audio keeps 5.1 (the page checked that this browser and output can play it). */
+let surroundAudio = false
 /** Loaded the first time a track is converted: the decoder's WebAssembly comes with it. */
 let converter: AudioConverter | null = null
 let cuesReady: Promise<void> = Promise.resolve()
@@ -376,7 +378,7 @@ async function useConverter(epoch: number) {
     converter = null
     return void post({ type: 'audio-failed', epoch, message: error instanceof Error ? error.message : String(error) })
   }
-  void converter.use(convertCodec, epoch)
+  void converter.use(convertCodec, epoch, surroundAudio)
 }
 
 function postStats() {
@@ -732,6 +734,7 @@ ctx.onmessage = (event: MessageEvent<ToWorker>) => {
     .then(async () => {
       switch (message.type) {
         case 'open':
+          surroundAudio = message.surround === true
           await open(message)
           break
         case 'start':

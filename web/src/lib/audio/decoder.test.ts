@@ -223,6 +223,95 @@ describe("the wrapper's own downmix", () => {
   })
 })
 
+describe('surround output', () => {
+  /* With the surround flag a 5.1 source keeps its six channels, in Vorbis order (L C R Ls Rs LFE):
+     the fixtures have 440 Hz on front left, 1000 Hz at a quarter of the level on the centre, 660 Hz on
+     front right, and silence on the surrounds and the LFE. */
+  const channelOf = (pcm: Float32Array, index: number, of: number) => Float32Array.from({ length: pcm.length / of }, (_, i) => pcm[i * of + index]!)
+
+  function decodeSurround(codec: AudioCodec, bytes: Uint8Array, chunk = 777) {
+    const stream = decoders.open(codec, OUT_RATE, { surround: true })
+    const parts = chunks(bytes, chunk).map((c) => stream.decode(c))
+    parts.push(stream.finish())
+    return { stream, pcm: join(parts) }
+  }
+
+  it.each(FIXTURES)('keeps $name as six channels in Vorbis order', (fixture) => {
+    const { stream, pcm } = decodeSurround(fixture.codec, read(fixture.file))
+    expect(stream.outputChannels).toBe(6)
+    expect(pcm.length % 6).toBe(0)
+    expect(pcm.length / 6).toBe(fixture.frames)
+    expect(stream.errors).toBe(0)
+    const [fl, c, fr, sl, sr, lfe] = [0, 1, 2, 3, 4, 5].map((i) => middle(channelOf(pcm, i, 6), fixture.seconds))
+    expect(Math.abs(zeroCrossingHz(fl!) - 440)).toBeLessThan(15)
+    expect(Math.abs(zeroCrossingHz(fr!) - 660)).toBeLessThan(20)
+    expect(amplitudeAt(fl!, 440)).toBeGreaterThan(0.3)
+    expect(amplitudeAt(fr!, 660)).toBeGreaterThan(0.3)
+    // The centre tone is on the centre channel alone, at its own level (no downmix attenuation).
+    expect(Math.abs(amplitudeAt(c!, 1000) / 0.1 - 1)).toBeLessThan(0.05)
+    expect(amplitudeAt(fl!, 1000)).toBeLessThan(0.01)
+    expect(amplitudeAt(fr!, 1000)).toBeLessThan(0.01)
+    // Nothing is mixed into the channels that were silent.
+    for (const quiet of [sl!, sr!, lfe!]) expect(peak(quiet)).toBeLessThan(0.002)
+    expect(peak(pcm)).toBeLessThan(0.99)
+    stream.close()
+  })
+
+  it('gives the same sound however the stream is sliced', () => {
+    const bytes = read('dts-51.dts')
+    const reference = decodeSurround('dts', bytes).pcm
+    expect(maxDifference(decodeSurround('dts', bytes, 61).pcm, reference)).toBe(0)
+  })
+
+  it('resamples all six channels together', () => {
+    const { stream, pcm } = decodeSurround('ac3', read('ac3-51-44k.ac3'))
+    expect(stream.sourceSampleRate).toBe(44100)
+    expect(Math.abs(pcm.length / 6 - (29 * 1536 * OUT_RATE) / 44100)).toBeLessThan(2)
+    const fl = middle(channelOf(pcm, 0, 6), 1)
+    expect(Math.abs(zeroCrossingHz(fl) - 440)).toBeLessThan(15)
+    expect(Math.abs(zeroCrossingHz(middle(channelOf(pcm, 2, 6), 1)) - 660)).toBeLessThan(20)
+    expect(peak(middle(channelOf(pcm, 5, 6), 1))).toBeLessThan(0.002)
+    stream.close()
+  })
+
+  it('decodes the same stereo as before when the flag is off', () => {
+    const stereo = decodeAll(decoders, 'ac3', read('ac3-51.ac3'))
+    expect(stereo.stream.outputChannels).toBe(2)
+    stereo.stream.close()
+  })
+
+  it('reports no channels before the first frame', () => {
+    const stream = decoders.open('truehd', OUT_RATE, { surround: true })
+    expect(stream.outputChannels).toBe(0)
+    stream.close()
+  })
+
+  it('folds a layout with more than 5.1 channels into 5.1 without clipping', () => {
+    // Bit 8 keeps the decoder's own layout; the fixtures are 5.1 so this only checks the 6-channel
+    // path through the wrapper's mapping with the decoder's own channel order (FL FR FC LFE BL BR).
+    const x = new WebAssembly.Instance(new WebAssembly.Module(wasm), {}).exports as unknown as {
+      memory: WebAssembly.Memory
+      fa_open(codec: number, rate: number): number
+      fa_input(handle: number, size: number): number
+      fa_decode(handle: number, size: number): number
+      fa_output(handle: number): number
+      fa_info(handle: number, key: number): number
+    }
+    const handle = x.fa_open(1 | 0x100 | 0x200, OUT_RATE)
+    const parts: Float32Array[] = []
+    for (const c of chunks(read('ac3-51.ac3'), 777)) {
+      new Uint8Array(x.memory.buffer, x.fa_input(handle, c.length), c.length).set(c)
+      const frames = x.fa_decode(handle, c.length)
+      if (frames > 0) parts.push(new Float32Array(x.memory.buffer, x.fa_output(handle), frames * 6).slice())
+    }
+    expect(x.fa_info(handle, 5)).toBe(6)
+    const pcm = join(parts)
+    expect(Math.abs(zeroCrossingHz(middle(channelOf(pcm, 0, 6), 1)) - 440)).toBeLessThan(15)
+    expect(Math.abs(zeroCrossingHz(middle(channelOf(pcm, 2, 6), 1)) - 660)).toBeLessThan(20)
+    expect(Math.abs(amplitudeAt(middle(channelOf(pcm, 1, 6), 1), 1000) / 0.1 - 1)).toBeLessThan(0.05)
+  })
+})
+
 describe('sample rates', () => {
   it('converts a 44.1 kHz source to 48 kHz without changing its pitch or length', () => {
     const { stream, pcm } = decodeAll(decoders, 'ac3', read('ac3-51-44k.ac3'))

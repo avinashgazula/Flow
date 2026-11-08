@@ -356,7 +356,9 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
   const hdr10Only = settingsStore.get().neverUseDolbyVision
   // Decode DTS and Dolby TrueHD off: those tracks are listed as unavailable instead of being converted.
   const convertAudio = settingsStore.get().decodeLosslessAudio !== false
-  const open = (viaProxy: boolean) => attachMatroska(video, viaProxy ? proxied(source.url) : source.url, { headers: viaProxy ? undefined : source.headers, viaProxy, hdr10Only, convertAudio, startAt, signal })
+  // Converted sound keeps 5.1 where the browser can play it and the output has the speakers; otherwise stereo.
+  const surroundAudio = convertAudio && (await (await import('../../lib/audio/surround')).checkSurroundAudio())
+  const open = (viaProxy: boolean) => attachMatroska(video, viaProxy ? proxied(source.url) : source.url, { headers: viaProxy ? undefined : source.headers, viaProxy, hdr10Only, convertAudio, surroundAudio, startAt, signal })
   const failedWith = (error: unknown, name: string) => (error as Error).name === name
 
   let session
@@ -418,8 +420,9 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
         label: trackLabel({ name: t.label, language: t.language }),
         language: t.language,
         unavailable: t.playable ? undefined : `${t.codec} can’t play in this browser`,
-        // Surround is mixed down; a track that was stereo already is only converted.
-        note: t.converted ? ((t.channels ?? 0) > 2 ? 'Converted to stereo' : 'Converted') : undefined,
+        // Surround is mixed down to stereo unless this browser and output can play 5.1 (7.1 is mixed down to 5.1);
+        // a track that was stereo already is only converted.
+        note: t.converted ? ((t.channels ?? 0) > 2 ? (surroundAudio ? 'Converted to 5.1' : 'Converted to stereo') : 'Converted') : undefined,
         converted: t.converted || undefined,
       })),
       selected: String(remux.audioId ?? ''),
