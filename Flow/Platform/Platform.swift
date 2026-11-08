@@ -508,8 +508,10 @@ extension View {
     @ViewBuilder
     fileprivate func filmRows() -> some View {
         #if os(tvOS)
-        // Taller rows, so a list read from across the room has air between its focus platters.
+        // Taller rows, so a list read from across the room has air between its focus platters. The section headers
+        // uppercase themselves inside the list, so the case reset has to be set on the sections, not outside the Form.
         listRowInsets(EdgeInsets(top: Theme.Space.s, leading: 20, bottom: Theme.Space.s, trailing: 20))
+            .textCase(nil)
         #else
         listRowBackground(Theme.Palette.panel)
         #endif
