@@ -182,15 +182,16 @@ export function FrameCard({ link, onSelect, title, meta, label, onIntent, itemRe
   const inside = (
     <>
       <Plate {...plate} hideStrip />
-      {title && <span className={s.title}>{title}</span>}
-      {meta && <span className={s.meta}>{meta}</span>}
+      {/* The spoken label is the name: it starts with the title, and says the print and meta in full words. */}
+      <span className="sr-only">{label}</span>
+      {title && <span className={s.title} aria-hidden="true">{title}</span>}
+      {meta && <span className={s.meta} aria-hidden="true">{meta}</span>}
       {extra}
     </>
   )
   const shared = {
     className: s.card,
     'data-dimmed': dimmed || disabled ? '' : undefined,
-    'aria-label': label,
     onPointerEnter: (e: { pointerType: string }) => e.pointerType === 'mouse' && onIntent?.(),
     onFocus: onIntent,
   }

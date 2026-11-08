@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { usePlayer, type PlayerController } from './controller'
 import { endTime, formatClock, userLocale } from '../../lib/time'
 import { chapterAt, chapterTitle } from './chapters'
@@ -23,6 +23,7 @@ const savedMode = (): TimeMode => {
  *  (SeekPreview). Dragging moves the time at once; the real seek happens on release. Where there is no
  *  preview picture (a phone playing a plain file, say) the video itself follows a drag a few times a second. */
 export function Scrubber({ controller }: { controller: PlayerController }) {
+  const swapHint = useId()
   const visible = usePlayer(controller, (st) => st.controls)
   const segments = usePlayer(controller, (st) => st.segments)
   const chapters = usePlayer(controller, (st) => st.chapters)
@@ -205,9 +206,13 @@ export function Scrubber({ controller }: { controller: PlayerController }) {
         <div ref={thumb} className={s.thumb} />
         <SeekPreview controller={controller} ref={preview} />
       </div>
-      <button ref={remaining} type="button" className={`${s.time} ${s.timeEnd}`} onClick={swapMode} title="Switch between time left and length" aria-label="Switch between time left and length">
+      {/* The button's name is the time it shows (what a voice-control user says); what it does is its description. */}
+      <button ref={remaining} type="button" className={`${s.time} ${s.timeEnd}`} onClick={swapMode} title="Switch between time left and length" aria-describedby={swapHint}>
         --:--
       </button>
+      <span id={swapHint} className="sr-only">
+        Switch between time left and length
+      </span>
       <span ref={ends} className={s.ends} aria-hidden="true" />
     </div>
   )

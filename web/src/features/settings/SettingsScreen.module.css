@@ -199,6 +199,7 @@ img.logo { padding: 4px; }
 .fieldLabel { margin-top: var(--space-xs); font: 600 var(--fs-caption) / 1.2 var(--font); color: var(--ink-2); }
 .fieldLabel:first-child { margin-top: 0; }
 .form .field { height: 42px; }
+.pending { min-height: 12rem; }
 .hint { font-size: var(--fs-footnote); color: var(--ink-2); line-height: 1.45; text-wrap: pretty; }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-s); margin-top: var(--space-xs); }
 .pad .segmented { margin-top: var(--space-xs); }

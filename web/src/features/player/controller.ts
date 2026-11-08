@@ -988,6 +988,9 @@ export class PlayerController {
     clearTimeout(this.hideTimer)
     this.hideTimer = window.setTimeout(() => {
       if (this.video?.paused || this.scrubbing || this.hovering || this.state.panel) return
+      // Someone tabbing through the controls is using them: they stay until focus leaves.
+      const focus = document.activeElement
+      if (focus && focus !== this.video && this.root?.contains(focus) && focus.matches(':focus-visible')) return this.scheduleHide()
       this.hideControls()
     }, hideAfter)
   }

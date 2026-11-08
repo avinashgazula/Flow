@@ -4,6 +4,7 @@ import type { Episode } from '../../lib/tmdb/types'
 import { keepFocus } from './Controls'
 import type { PlayerController } from './controller'
 import { useSheetClear } from './useSheetClear'
+import { usePanelFocus } from './usePanelFocus'
 import s from './Controls.module.css'
 
 /** The rest of the season as a flat shelf over the controls, opened scrolled to the episode on
@@ -18,6 +19,7 @@ export function EpisodeShelf({ controller, season, current, list, onPick, onClos
   fallbackStill?: string
 }) {
   const clear = useSheetClear<HTMLDivElement>(controller, 'shelf')
+  usePanelFocus(clear)
   const today = new Date().toISOString().slice(0, 10)
   return (
     <div ref={clear} className={`${s.shelf} ${s.interactive}`} role="dialog" aria-label={`Season ${season}`}>

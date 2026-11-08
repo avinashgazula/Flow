@@ -140,6 +140,8 @@ export function LiveScreen({ search }: { search: LiveSearch }) {
           </ChipRow>
           </div>
         )}
+        {/* Holds the chips' place while the channels load, so the list doesn't drop when they arrive. */}
+        {live.channels.length === 0 && live.status !== 'ready' && !live.error && <div className={s.chipsHold} aria-hidden="true" />}
         {live.error && (
           <p className={s.warning} data-tone="error" role="alert">
             <Icon name="warning" size={16} /> {live.error}

@@ -25,9 +25,10 @@ export function ChannelList({ channels, epg, favourites, now, onPlay, onToggleFa
           const { now: on, next } = nowAndNext(epg, channel.epgID, now)
           return (
             <div key={channel.id} role="listitem" className={s.row} data-first={item.index === 0 ? '' : undefined} style={{ height: item.size, transform: `translateY(${item.start}px)` }}>
-              <button type="button" className={s.main} onClick={() => onPlay(channel)} aria-label={`Watch ${channel.name}${on ? `, now ${on.title}` : ''}`}>
+              <button type="button" className={s.main} onClick={() => onPlay(channel)}>
                 <ChannelLogo channel={channel} />
-                <span className={s.text}>
+                <span className="sr-only">{`Watch ${channel.name}${on ? `, now ${on.title}` : ''}`}</span>
+                <span className={s.text} aria-hidden="true">
                   <span className={s.name}>
                     {channel.number !== undefined && <span className={`num ${s.number}`}>{channel.number}</span>}
                     <span className={s.nameText}>{channel.name}</span>

@@ -132,7 +132,7 @@ function EpisodeCard({
       label={spoken}
       onSelect={onPlay}
       disabled={!aired}
-      extra={aired && e.overview && !veiled ? <span className={s.overview}>{e.overview}</span> : undefined}
+      extra={aired && e.overview && !veiled ? <span className={s.overview} aria-hidden="true">{e.overview}</span> : undefined}
     >
       {/* The still is blurred by CSS when this is here (Episodes.module.css), which a FrameCard can't be told. */}
       {veiled && <span className={s.veil} aria-hidden="true" />}

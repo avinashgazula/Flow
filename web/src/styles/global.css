@@ -29,6 +29,23 @@ body {
 
 /* The tab bar on phones covers the bottom of the page; leave room for it. */
 main[data-tabbar] { padding-bottom: var(--tabbar-height); }
+/* Focused by the page changing or the skip link, never a control of its own: no ring on a whole page. */
+main:focus { outline: none; }
+
+/* Off screen until keyboard focus reaches it, as the first stop on every page. */
+.skip-link {
+  position: fixed;
+  top: var(--space-s);
+  left: var(--space-s);
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: var(--radius-control);
+  background: var(--paper);
+  color: var(--base);
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+.skip-link:focus-visible { transform: none; outline-offset: 2px; }
 
 img { display: block; max-width: 100%; }
 a { color: inherit; text-decoration: none; }

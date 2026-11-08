@@ -63,6 +63,7 @@
 /* An item: the plate, a title and one line of facts. */
 .item { position: relative; display: block; min-width: 0; }
 .card {
+  position: relative;
   display: block;
   width: 100%;
   min-width: 0;

@@ -77,7 +77,7 @@ export function FilmCan({ search, best, lastPlayed, onOpen }: { search: SearchUp
               <Icon name="chevronRight" size={14} strokeWidth={2.6} />
             </button>
           ) : (
-            <button type="button" className={s.open} onClick={onOpen} aria-label={`${sources.length} sources from ${providers.filter((p) => p.state === 'done' && p.count > 0).map((p) => p.name).join(' and ')}. Choose one.`}>
+            <button type="button" className={s.open} onClick={onOpen}>
               {sourcesSummary(sources.length, providers)}
               {hidden > 0 && ` · ${hidden} hidden`}
               {!finished && ' · still looking'}

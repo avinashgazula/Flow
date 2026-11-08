@@ -106,9 +106,10 @@ export function Guide({ channels, epg, now, onPlay }: { channels: Channel[]; epg
             const programmes = schedule(epg, channel.epgID, start, guideHours)
             return (
               <div key={channel.id} className={s.row} style={{ height: item.size, transform: `translateY(${rulerHeight + item.start}px)`, width: columnWidth + timelineWidth }}>
-                <button type="button" className={s.channel} style={{ width: columnWidth }} onClick={() => onPlay(channel)} aria-label={`Watch ${channel.name}`}>
+                <button type="button" className={s.channel} style={{ width: columnWidth }} onClick={() => onPlay(channel)}>
                   <ChannelLogo channel={channel} size={phone ? 's' : 'm'} />
-                  {!phone && <span className={s.channelName}>{channel.name}</span>}
+                  <span className="sr-only">{`Watch ${channel.name}`}</span>
+                  {!phone && <span className={s.channelName} aria-hidden="true">{channel.name}</span>}
                 </button>
                 <div className={s.cells} style={{ left: columnWidth, width: timelineWidth, ['--col' as string]: `${columnWidth}px` }}>
                   {programmes.length === 0 && <span className={s.empty}>No guide information</span>}
@@ -131,11 +132,11 @@ export function Guide({ channels, epg, now, onPlay }: { channels: Channel[]; epg
                         data-selected={chosen ? '' : undefined}
                         style={{ left: x, width }}
                         aria-pressed={chosen}
-                        aria-label={`${p.title}, ${timeRange(p)}, ${channel.name}${live ? ', on now' : ''}`}
                         onClick={() => setSelected(chosen ? undefined : { channel, programme: p })}
                       >
+                        <span className="sr-only">{`${p.title}, ${timeRange(p)}, ${channel.name}${live ? ', on now' : ''}`}</span>
                         {words && (
-                          <span ref={watchLabel} className={s.label} style={{ marginLeft: words.offset, maxWidth: words.room }}>
+                          <span ref={watchLabel} className={s.label} aria-hidden="true" style={{ marginLeft: words.offset, maxWidth: words.room }}>
                             <span className={s.title}>{p.title}</span>
                             <span className={`num ${s.when}`}>{timeRange(p)}</span>
                           </span>

@@ -35,6 +35,7 @@
 .search input::placeholder { color: var(--ink-2); }
 .searchToggle { display: none; }
 
+.chipsHold { height: 48px; flex: none; }
 .chipStar { margin-right: 6px; flex: none; }
 
 .warning { display: flex; align-items: flex-start; gap: var(--space-xs); font-size: var(--fs-footnote); line-height: 1.4; color: var(--warn); max-width: 80ch; text-wrap: pretty; }

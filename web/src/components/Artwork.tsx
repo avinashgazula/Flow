@@ -23,7 +23,7 @@ interface Props {
 export function Artwork({ path, kind, alt, sizes, priority, className, style, fallback, zoom }: Props) {
   if (!path) {
     return (
-      <div className={`${s.box} ${s.empty} ${className ?? ''}`} style={style} role="img" aria-label={alt} data-zoom={zoom ? '' : undefined}>
+      <div className={`${s.box} ${s.empty} ${className ?? ''}`} style={style} role={alt ? 'img' : undefined} aria-label={alt || undefined} aria-hidden={alt ? undefined : true} data-zoom={zoom ? '' : undefined}>
         {fallback && <span className={s.fallback}>{fallback}</span>}
       </div>
     )

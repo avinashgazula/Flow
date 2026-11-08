@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useNavigate } from '@tanstack/react-router'
-import { Fragment, lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useRouter } from '@tanstack/react-router'
+import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Artwork } from '../../components/Artwork'
 import { Plate } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
@@ -44,6 +44,7 @@ const stillSizes = '(min-width: 1360px) 600px, (min-width: 1000px) 44vw, calc(10
 export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: MediaType; id: number; initialSeason?: number; autoPlay?: boolean }) {
   const { data: d, isPlaceholderData, isError, error } = useQuery(q.detail(type, id))
   const navigate = useNavigate()
+  const router = useRouter()
   const now = useMinuteTick()
   const [trailer, setTrailer] = useState(false)
   const [picker, setPicker] = useState(false)
@@ -81,6 +82,16 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   const firstEpisode = type === 'show' ? { season: d?.seasons.find((x) => x.number > 0)?.number ?? 1, episode: 1 } : undefined
   const upNext = type === 'show' ? (nextUp(episodes.aired, seen) ?? firstEpisode) : undefined
   const target = progress?.episode ?? upNext
+
+  // Play is a button, not a link, so the router never sees the intent a link gets: warm the player's page and its
+  // video engine when a pointer or finger reaches Play, so the click doesn't wait on code.
+  const warmed = useRef(false)
+  const warmPlayer = () => {
+    if (warmed.current) return
+    warmed.current = true
+    void router.preloadRoute({ to: '/watch/$type/$id', params: { type, id } })
+    void import('../player/engine').then((m) => m.warmEngines())
+  }
 
   const play = (episode?: { season: number; episode: number }, source?: Source) => {
     const at = episode ?? target
@@ -178,7 +189,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
           {!phone && <Ratings detail={d} ready={loaded} />}
 
           <div className={s.actions}>
-            <button className="btn btn-primary btn-large" onClick={() => (search.choose ? setPicker(true) : play())} aria-label={label.spoken}>
+            <button className="btn btn-primary btn-large" onClick={() => (search.choose ? setPicker(true) : play())} onPointerEnter={warmPlayer} onFocus={warmPlayer} aria-label={label.spoken}>
               <Icon name="play" size={18} /> {label.text}
             </button>
             {trailers.length > 0 && (

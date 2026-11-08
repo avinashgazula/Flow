@@ -6,6 +6,7 @@ import type { Source } from '../../lib/sources'
 import { useSettings } from '../../lib/store/settings'
 import { usePlayer, type PlayerController } from './controller'
 import { useSheetClear } from './useSheetClear'
+import { usePanelFocus } from './usePanelFocus'
 import { keepFocus } from './Controls'
 import { externalPlayerTitle, playersFor } from './externalPlayers'
 import { BoostPage, DelayPage } from './ExtraPages'
@@ -70,6 +71,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
 }) {
   const clear = useSheetClear<HTMLDivElement>(controller, 'panel')
   const [page, setPage] = useState<Page>(start)
+  usePanelFocus(clear, page)
   const chapters = usePlayer(controller, (st) => st.chapters)
   const scroller = useRef<HTMLDivElement>(null)
   // Which chapter is playing, kept up to date while the page is open (the clock is read from the video, not from React).

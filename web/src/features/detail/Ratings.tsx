@@ -33,18 +33,19 @@ export function Ratings({ detail: d, ready }: { detail: MediaDetail; ready: bool
         const spoken = spokenScore(source, text) + votesFor(source, ratings)
         const inside = (
           <>
-            <b className={s.score}>{text}</b>
-            <span className={s.source}>{ratingTitle(source)}</span>
+            <b className={s.score} aria-hidden="true">{text}</b>
+            <span className={s.source} aria-hidden="true">{ratingTitle(source)}</span>
+            <span className="sr-only">{href ? `${spoken}. Opens ${ratingTitle(source)}.` : spoken}</span>
           </>
         )
         return (
           <li key={source}>
             {href ? (
-              <a href={href} target="_blank" rel="noreferrer" aria-label={`${spoken}. Opens ${ratingTitle(source)}.`}>
+              <a href={href} target="_blank" rel="noreferrer">
                 {inside}
               </a>
             ) : (
-              <div className={s.plain} role="group" aria-label={spoken}>
+              <div className={s.plain}>
                 {inside}
               </div>
             )}

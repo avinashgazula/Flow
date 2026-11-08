@@ -641,6 +641,11 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
       const el = c.video
       if (!el) return
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key
+      // Hidden controls can't take focus: Tab brings them back first, and then moves to the first one.
+      if (key === 'Tab') {
+        c.poke()
+        return
+      }
       if (askingRef.current) {
         // "Are You Still Watching?" takes the keys: its buttons answer, and Escape stops.
         if (key === 'Escape') {
