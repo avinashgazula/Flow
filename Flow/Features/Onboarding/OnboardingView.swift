@@ -94,6 +94,10 @@ struct OnboardingView: View {
                 .foregroundStyle(Theme.Palette.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             SecureField("API key or read access token", text: $key)
+                #if os(macOS)
+                // The Mac's own bezel would draw a second box inside the card's field.
+                .textFieldStyle(.plain)
+                #endif
                 .padding(.horizontal, Theme.Space.m)
                 .frame(height: 48 * Theme.scale)
                 .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
