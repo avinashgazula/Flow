@@ -538,6 +538,11 @@ struct FilmFooter<Content: View>: View {
             .font(.callout)
             .foregroundStyle(Theme.Palette.textSecondary)
             .padding(.top, Theme.Space.xs)
+        #elseif os(macOS)
+        // A Mac list centres a wrapped footer under its rows; it reads better flush with the rows' edge.
+        content
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         #else
         content
         #endif

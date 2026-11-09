@@ -82,6 +82,8 @@ struct CalendarView: View {
             }
             .scrollTargetBehavior(.viewAligned)
             .scrollClipDisabled()
+            // A Mac draws a scrollbar under a view-aligned row whatever the indicator flag says.
+            .scrollIndicators(.hidden)
         }
     }
 
@@ -103,6 +105,7 @@ struct CalendarView: View {
                     .padding(.vertical, Platform.isTV ? 36 : 4)
                 }
                 .scrollClipDisabled()
+                .scrollIndicators(.hidden)
             }
         }
     }
