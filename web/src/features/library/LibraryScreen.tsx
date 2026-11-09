@@ -300,6 +300,7 @@ function Saved({ list, type, sort, filter, sortMenu }: { list: 'watchlist' | 'fa
   const order = useLibrary((l) => l.watchlistOrder)
   // Custom is the Watchlist's alone; an address that asks for it on Favourites gets them as they were added.
   const custom = list === 'watchlist' && sort === 'custom'
+  const [arranging, setArranging] = useState(false)
   const shown = sortEntries(entries, custom || sort !== 'custom' ? sort : 'added', type, order)
   if (!entries.length)
     return list === 'watchlist' ? (
@@ -313,11 +314,16 @@ function Saved({ list, type, sort, filter, sortMenu }: { list: 'watchlist' | 'fa
         {filter}
         <span className={s.toolbarEnd}>
           <span className="faint num">{titles(shown.length)}</span>
+          {custom && !type && shown.length > 1 && (
+            <button type="button" className="btn btn-secondary btn-compact" aria-pressed={arranging} onClick={() => setArranging(!arranging)}>
+              {arranging ? 'Done' : 'Arrange'}
+            </button>
+          )}
           {sortMenu}
         </span>
       </div>
       {custom && type && <p className={`${s.hint} faint`}>Choose All to rearrange your watchlist.</p>}
-      {!shown.length ? <FilteredEmpty type={type} /> : custom && !type ? <ReorderGrid entries={shown} /> : <PosterGrid items={shown.map((e) => e.item)} label={listTitles[list]} />}
+      {!shown.length ? <FilteredEmpty type={type} /> : custom && !type ? <ReorderGrid entries={shown} arranging={arranging} /> : <PosterGrid items={shown.map((e) => e.item)} label={listTitles[list]} />}
     </>
   )
 }

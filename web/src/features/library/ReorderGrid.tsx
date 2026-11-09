@@ -12,7 +12,7 @@ const sizes = '(max-width: 720px) 34vw, 200px'
  *  or hold Alt and press an arrow key on it. Every way keeps one saved order (`library.watchlistOrder`) and says where the
  *  title ended up, so the grid works without a mouse. The posters are not virtualised, as a dragged poster has to
  *  be able to reach any other. `entries` are the whole list, already in the order shown. */
-export function ReorderGrid({ entries }: { entries: ListEntry[] }) {
+export function ReorderGrid({ entries, arranging }: { entries: ListEntry[]; arranging: boolean }) {
   const keys = entries.map((e) => e.key)
   const list = useRef<HTMLUListElement>(null)
   const [note, setNote] = useState('')
@@ -115,8 +115,8 @@ export function ReorderGrid({ entries }: { entries: ListEntry[] }) {
 
   return (
     <>
-      <p className={`${s.hint} faint`}>Drag posters to rearrange them. With a keyboard, use a poster’s arrow buttons, or press Alt with an arrow key while it has focus.</p>
-      <ul ref={list} className={s.reorder} aria-label="Watchlist, in your order" onKeyDown={onKeyDown} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop} onDragEnd={onDragEnd} onDragLeave={(e) => e.currentTarget === e.target && clearMarks()}>
+      <p className={`${s.hint} faint`}>{arranging ? 'Use the arrows under a poster to move it earlier or later.' : 'Drag posters to rearrange them, or press Alt with an arrow key on one. On a phone, choose Arrange.'}</p>
+      <ul ref={list} className={s.reorder} data-arranging={arranging ? '' : undefined} aria-label="Watchlist, in your order" onKeyDown={onKeyDown} onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop} onDragEnd={onDragEnd} onDragLeave={(e) => e.currentTarget === e.target && clearMarks()}>
         {entries.map((e, i) => (
           <PosterItem key={e.key} item={e.item} meta={e.item.year ? String(e.item.year) : undefined} sizes={sizes}>
             <span className={s.move} role="group" aria-label={`Move ${e.item.title}`}>
