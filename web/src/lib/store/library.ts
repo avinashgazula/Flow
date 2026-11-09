@@ -47,6 +47,9 @@ export interface Library {
   rewatches?: Record<string, Rewatch>
   /** Episodes Shuffle has already picked in this round, by show key, as "s3e7". */
   shuffled?: Record<string, string[]>
+  /** The order the viewer arranged the watchlist in (Library, Watchlist, Custom), as keys. Kept beside the list and laid
+   *  over it, as the apps' watchlist order: titles added since come after. */
+  watchlistOrder?: string[]
 }
 
 /** As FlowKit's Rewatch: when it began and which episodes have been watched again since. */
@@ -126,7 +129,7 @@ export const library = {
     libraryStore.set({ progress: {} })
   },
   clearWatchlist() {
-    libraryStore.set({ watchlist: [] })
+    libraryStore.set({ watchlist: [], watchlistOrder: [] })
   },
 }
 

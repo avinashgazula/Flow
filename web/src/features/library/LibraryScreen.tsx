@@ -11,13 +11,17 @@ import type { MediaType } from '../../lib/tmdb/types'
 import { Segmented, Select, StateView } from '../explore/Controls'
 import { PosterGrid } from '../explore/PosterGrid'
 import { HistoryItem, HistoryList } from './HistoryList'
-import { groupHistory, historyRows, isLibraryPage, listSorts, listTitles, sortEntries, titles, type LibraryList, type LibraryPage, type ListSort } from './logic'
+import { groupHistory, historyRows, isLibraryPage, listSorts, listTitles, sortEntries, titles, watchlistSorts, type LibraryList, type LibraryPage, type ListSort } from './logic'
+import { ReorderGrid } from './ReorderGrid'
 import s from './LibraryScreen.module.css'
 
 /* Upcoming, Sports and Stats are each their own chunk: Library's overview carries none of their code. */
 const UpcomingPage = lazy(() => import('./UpcomingPage'))
 const SportsPage = lazy(() => import('./SportsPage'))
 const StatsPage = lazy(() => import('./StatsPage'))
+/* The list shelves are Home's, and so is their code: a chunk of its own, asked for as the overview opens. */
+const ListShelves = lazy(() => import('../home/Shelves').then((m) => ({ default: m.LibraryListShelves })))
+const ShelfPage = lazy(() => import('./ShelfPage'))
 
 type Filter = 'all' | MediaType
 const filters = [
@@ -30,11 +34,11 @@ const stillSizes = '(min-width: 1100px) 22vw, (min-width: 721px) 30vw, 240px'
 
 /** Library: what you're watching, saving and have watched. The overview shows a little of each list;
  *  "See all" opens the whole list (`?list=`), with filters for the long ones. */
-export function LibraryScreen({ list, type, sort }: { list?: LibraryList; type?: MediaType; sort: ListSort }) {
+export function LibraryScreen({ list, type, sort, shelf }: { list?: LibraryList; type?: MediaType; sort: ListSort; shelf?: string }) {
   useEffect(() => {
     window.scrollTo(0, 0)
-  }, [list])
-  return <div className={`page ${s.screen}`}>{isLibraryPage(list) ? <ReadingPage page={list} /> : list ? <FullList list={list} type={type} sort={sort} /> : <Overview />}</div>
+  }, [list, shelf])
+  return <div className={`page ${s.screen}`}>{shelf && !list ? <OneShelf shelf={shelf} type={type} /> : isLibraryPage(list) ? <ReadingPage page={list} /> : list ? <FullList list={list} type={type} sort={sort} /> : <Overview />}</div>
 }
 
 // MARK: Overview
@@ -97,7 +101,22 @@ function Overview() {
           {history.length > 0 && <RecentHistory />}
         </>
       )}
+      <div className={s.listShelves}>
+        <Suspense fallback={null}>
+          <ListShelves />
+        </Suspense>
+      </div>
     </>
+  )
+}
+
+/** A list shelf as a whole grid, under Library's back link (See all on the shelf). */
+function OneShelf({ shelf, type }: { shelf: string; type?: MediaType }) {
+  const navigate = useNavigate({ from: '/library' })
+  return (
+    <Suspense fallback={<p className="muted" role="status">Loading…</p>}>
+      <ShelfPage shelfId={shelf} type={type} onType={(t) => void navigate({ search: (prev) => ({ ...prev, type: t }), replace: true, resetScroll: false })} />
+    </Suspense>
   )
 }
 
@@ -257,7 +276,7 @@ function FullList({ list, type, sort }: { list: Exclude<LibraryList, LibraryPage
       ) : list === 'history' ? (
         <History type={type} filter={filter} />
       ) : (
-        <Saved list={list} type={type} sort={sort} filter={filter} sortMenu={<Select options={listSorts} value={sort} onChange={setSort} label="Sort by" />} />
+        <Saved list={list} type={type} sort={sort} filter={filter} sortMenu={<Select options={list === 'watchlist' ? watchlistSorts : listSorts} value={list === 'watchlist' || sort !== 'custom' ? sort : 'added'} onChange={setSort} label="Sort by" />} />
       )}
     </>
   )
@@ -278,7 +297,11 @@ function ContinueList() {
 
 function Saved({ list, type, sort, filter, sortMenu }: { list: 'watchlist' | 'favourites'; type?: MediaType; sort: ListSort; filter: ReactNode; sortMenu: ReactNode }) {
   const entries = useLibrary((l) => (list === 'watchlist' ? l.watchlist : l.favourites))
-  const shown = sortEntries(entries, sort, type)
+  const order = useLibrary((l) => l.watchlistOrder)
+  // Custom is the Watchlist's alone; an address that asks for it on Favourites gets them as they were added.
+  const custom = list === 'watchlist' && sort === 'custom'
+  const [arranging, setArranging] = useState(false)
+  const shown = sortEntries(entries, custom || sort !== 'custom' ? sort : 'added', type, order)
   if (!entries.length)
     return list === 'watchlist' ? (
       <StateView icon="bookmark" title="Nothing in Your Watchlist" message="Tap + on any title to save it here for later." action={<BrowseButton />} />
@@ -291,10 +314,16 @@ function Saved({ list, type, sort, filter, sortMenu }: { list: 'watchlist' | 'fa
         {filter}
         <span className={s.toolbarEnd}>
           <span className="faint num">{titles(shown.length)}</span>
+          {custom && !type && shown.length > 1 && (
+            <button type="button" className="btn btn-secondary btn-compact" aria-pressed={arranging} onClick={() => setArranging(!arranging)}>
+              {arranging ? 'Done' : 'Arrange'}
+            </button>
+          )}
           {sortMenu}
         </span>
       </div>
-      {shown.length ? <PosterGrid items={shown.map((e) => e.item)} label={listTitles[list]} /> : <FilteredEmpty type={type} />}
+      {custom && type && <p className={`${s.hint} faint`}>Choose All to rearrange your watchlist.</p>}
+      {!shown.length ? <FilteredEmpty type={type} /> : custom && !type ? <ReorderGrid entries={shown} arranging={arranging} /> : <PosterGrid items={shown.map((e) => e.item)} label={listTitles[list]} />}
     </>
   )
 }

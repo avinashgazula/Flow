@@ -15,6 +15,7 @@ import { Route as LibraryRouteImport } from './routes/library'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as CollectionIdRouteImport } from './routes/collection/$id'
 import { Route as PersonIdRouteImport } from './routes/person/$id'
 import { Route as TitleTypeIdRouteImport } from './routes/title/$type.$id'
 import { Route as WatchTypeIdRouteImport } from './routes/watch/$type.$id'
@@ -49,6 +50,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CollectionIdRoute = CollectionIdRouteImport.update({
+  id: '/collection/$id',
+  path: '/collection/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PersonIdRoute = PersonIdRouteImport.update({
   id: '/person/$id',
   path: '/person/$id',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/live': typeof LiveRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
+  '/collection/$id': typeof CollectionIdRoute
   '/person/$id': typeof PersonIdRoute
   '/title/$type/$id': typeof TitleTypeIdRoute
   '/watch/$type/$id': typeof WatchTypeIdRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/live': typeof LiveRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
+  '/collection/$id': typeof CollectionIdRoute
   '/person/$id': typeof PersonIdRoute
   '/title/$type/$id': typeof TitleTypeIdRoute
   '/watch/$type/$id': typeof WatchTypeIdRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/live': typeof LiveRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
+  '/collection/$id': typeof CollectionIdRoute
   '/person/$id': typeof PersonIdRoute
   '/title/$type/$id': typeof TitleTypeIdRoute
   '/watch/$type/$id': typeof WatchTypeIdRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/live'
     | '/search'
     | '/settings'
+    | '/collection/$id'
     | '/person/$id'
     | '/title/$type/$id'
     | '/watch/$type/$id'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/live'
     | '/search'
     | '/settings'
+    | '/collection/$id'
     | '/person/$id'
     | '/title/$type/$id'
     | '/watch/$type/$id'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/live'
     | '/search'
     | '/settings'
+    | '/collection/$id'
     | '/person/$id'
     | '/title/$type/$id'
     | '/watch/$type/$id'
@@ -142,6 +154,7 @@ export interface RootRouteChildren {
   LiveRoute: typeof LiveRoute
   SearchRoute: typeof SearchRoute
   SettingsRoute: typeof SettingsRoute
+  CollectionIdRoute: typeof CollectionIdRoute
   PersonIdRoute: typeof PersonIdRoute
   TitleTypeIdRoute: typeof TitleTypeIdRoute
   WatchTypeIdRoute: typeof WatchTypeIdRoute
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/collection/$id': {
+      id: '/collection/$id'
+      path: '/collection/$id'
+      fullPath: '/collection/$id'
+      preLoaderRoute: typeof CollectionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/person/$id': {
       id: '/person/$id'
       path: '/person/$id'
@@ -222,6 +242,7 @@ const rootRouteChildren: RootRouteChildren = {
   LiveRoute: LiveRoute,
   SearchRoute: SearchRoute,
   SettingsRoute: SettingsRoute,
+  CollectionIdRoute: CollectionIdRoute,
   PersonIdRoute: PersonIdRoute,
   TitleTypeIdRoute: TitleTypeIdRoute,
   WatchTypeIdRoute: WatchTypeIdRoute,

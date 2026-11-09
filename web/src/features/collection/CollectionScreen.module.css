@@ -1,0 +1,24 @@
+/* A collection: its still and the facts beside it, then every film at one poster size. */
+.wrap { max-width: 1360px; margin: 0 auto; }
+
+.header { display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 1fr); gap: var(--space-l) var(--space-xl); align-items: end; }
+.still { min-width: 0; }
+.facts { min-width: 0; }
+.name { font: 700 var(--fs-page-title) / 1.1 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
+@media (min-width: 721px) { .name { font-size: 46px; line-height: 1.05; } }
+.overview { margin-top: var(--space-s); max-width: var(--measure); font-size: var(--fs-body); line-height: 1.55; color: var(--ink-2); text-wrap: pretty; }
+
+.films { margin-top: var(--section); }
+.sectionTitle { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; margin-bottom: var(--space-m); }
+
+.state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); max-width: 440px; margin: var(--section) 0; color: var(--ink-2); }
+.stateTitle { font: 700 var(--fs-title2) / 1.15 var(--font-display); letter-spacing: -0.015em; color: var(--paper); }
+.state :global(.btn) { margin-top: var(--space-xs); }
+
+.ghost { background: var(--base-2); border-radius: var(--radius-art); }
+.ghostStill { aspect-ratio: 16 / 9; }
+.ghostName { width: min(320px, 80%); height: 44px; border-radius: 8px; }
+
+@media (max-width: 720px) {
+  .header { grid-template-columns: minmax(0, 1fr); align-items: start; }
+}

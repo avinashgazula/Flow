@@ -1,5 +1,6 @@
 import type { HistoryEntry, ListEntry } from '../../lib/store/library'
 import type { MediaType } from '../../lib/tmdb/types'
+import { applying } from '../../lib/watchlistOrder'
 
 /** Library's pages: the four lists of titles, and the three that read your library rather than list it. Each is
  *  `/library?list=`, so Library stays one place and the PWA shortcut to Upcoming is `library?list=upcoming`. */
@@ -82,11 +83,20 @@ export const listSorts = [
   { id: 'year', label: 'Release Date' },
   { id: 'rating', label: 'Rating' },
 ] as const
-export type ListSort = (typeof listSorts)[number]['id']
+/** The Watchlist alone can also be put in the viewer's own order (the apps' watchlist order), which they arrange by hand. */
+export const watchlistSorts = [...listSorts, { id: 'custom', label: 'Custom' }] as const
+export type ListSort = (typeof watchlistSorts)[number]['id']
 
-export const parseListSort = (value: unknown): ListSort => (listSorts.some((s) => s.id === value) ? (value as ListSort) : 'added')
+export const parseListSort = (value: unknown): ListSort => (watchlistSorts.some((s) => s.id === value) ? (value as ListSort) : 'added')
 
-export function sortEntries(entries: ListEntry[], sort: ListSort, type?: MediaType): ListEntry[] {
+/** The entries in the chosen order. Custom lays the saved `order` (keys) over them, as the apps do; with none saved it is
+ *  the order they were added in. */
+export function sortEntries(entries: ListEntry[], sort: ListSort, type?: MediaType, order: readonly string[] = []): ListEntry[] {
+  if (sort === 'custom') {
+    const byKey = new Map(entries.map((e) => [e.key, e]))
+    const arranged = applying(order, entries.map((e) => e.key)).map((k) => byKey.get(k)!)
+    return type ? arranged.filter((e) => e.item.type === type) : arranged
+  }
   const list = type ? entries.filter((e) => e.item.type === type) : [...entries]
   const byTitle = (a: ListEntry, b: ListEntry) => a.item.title.localeCompare(b.item.title, undefined, { sensitivity: 'base', ignorePunctuation: true, numeric: true })
   switch (sort) {
@@ -103,3 +113,6 @@ export function sortEntries(entries: ListEntry[], sort: ListSort, type?: MediaTy
 
 /** "1 title", "12 titles". */
 export const titles = (n: number) => (n === 1 ? '1 title' : `${n.toLocaleString()} titles`)
+
+/** What a screen reader hears after a title is moved: "Dune moved to position 3 of 12." `index` counts from 0. */
+export const movedText = (title: string, index: number, total: number) => `${title} moved to position ${index + 1} of ${total}.`

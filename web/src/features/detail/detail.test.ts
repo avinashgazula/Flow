@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { ProviderState, Source } from '../../lib/sources'
-import { aboutRows, airedRefs, bestSource, cardOf, playsFirst, episodePrint, isNew, metaLine, playFacts, playLabel, realSeasons, runtimeText, sourcesSummary, starsOf, statusLabel, titlePrint, todayOf, versionParts } from './logic'
+import { buildICS } from '../../lib/ics'
+import { icsEvent } from '../library/calendar'
+import { aboutRows, airedRefs, airsLine, nextEpisodeEntry, relatedRows, bestSource, cardOf, playsFirst, episodePrint, isNew, metaLine, playFacts, playLabel, realSeasons, runtimeText, sourcesSummary, starsOf, statusLabel, titlePrint, todayOf, versionParts } from './logic'
 import { toFacts } from '../../components/stripLayout'
 import type { PrintPart } from '../../components/stripLayout'
 
@@ -189,5 +191,39 @@ describe('series helpers', () => {
 
   it('turns a 1 to 10 score into whole stars, two points each', () => {
     expect([undefined, 1, 2, 7, 10].map(starsOf)).toEqual([0, 0, 1, 3, 5])
+  })
+})
+
+describe('next episode line', () => {
+  const now = new Date(2026, 10, 9, 12).getTime()
+  it('says the day it airs, in the viewer’s own day', () => {
+    expect(airsLine({ season: 2, number: 5, airDate: '2026-11-09' }, now, 'en-US')).toEqual({ text: 'S2 E5 airs today', spoken: 'Season 2 episode 5 airs today' })
+    expect(airsLine({ season: 2, number: 5, airDate: '2026-11-10' }, now, 'en-US')?.text).toBe('S2 E5 airs tomorrow')
+    expect(airsLine({ season: 2, number: 5, airDate: '2026-11-14' }, now, 'en-US')?.text).toBe('S2 E5 airs Sat, Nov 14')
+    expect(airsLine({ season: 2, number: 5, airDate: '2027-01-08' }, now, 'en-US')?.text).toContain('2027')
+  })
+  it('says nothing without a day', () => {
+    expect(airsLine(undefined, now)).toBeUndefined()
+    expect(airsLine({ season: 1, number: 1 }, now)).toBeUndefined()
+  })
+  it('makes the same one-day calendar event Upcoming makes', () => {
+    const entry = nextEpisodeEntry({ type: 'show', id: 1396, title: 'Breaking Bad', overview: 'x', genres: [], nextEpisode: { id: 1, season: 2, number: 5, name: 'Gray Matter', overview: 'Walt.', airDate: '2026-11-14' } })
+    expect(entry).toMatchObject({ id: 'show:1396:s2e5', iso: '2026-11-14' })
+    const event = icsEvent(entry!)
+    expect(event).toMatchObject({ uid: 'show-1396-s2e5@flow-web', title: 'Breaking Bad — S2E5 · Gray Matter', day: '2026-11-14', description: 'Walt.' })
+    expect(buildICS([event], now)).toContain('DTSTART;VALUE=DATE:20261114')
+  })
+  it('has no event for a day it does not know', () => {
+    expect(nextEpisodeEntry({ type: 'show', id: 1, title: 'A', overview: '', genres: [], nextEpisode: { id: 1, season: 1, number: 1, name: '', overview: '' } })).toBeUndefined()
+  })
+})
+
+describe('More Like This and Similar', () => {
+  const list = (n: number) => Array.from({ length: n }, (_, i) => ({ type: 'movie' as const, id: i, title: '', overview: '', genres: [] }))
+  it('shows Similar only when fewer than six are recommended', () => {
+    expect(relatedRows({ recommendations: list(5), similar: list(4) })).toEqual({ recommendations: true, similar: true })
+    expect(relatedRows({ recommendations: list(6), similar: list(4) })).toEqual({ recommendations: true, similar: false })
+    expect(relatedRows({ recommendations: list(0), similar: list(4) })).toEqual({ recommendations: false, similar: true })
+    expect(relatedRows({ recommendations: list(2), similar: [] }).similar).toBe(false)
   })
 })

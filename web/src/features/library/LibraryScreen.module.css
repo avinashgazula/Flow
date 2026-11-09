@@ -131,3 +131,33 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
   /* The plate and the date leave a phone's title little room: let it take a second line before it truncates (the row's height has room). */
   .historyTitle { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 }
+
+/* The watchlist in your own order: posters wrap at one size, each with its two arrows on the corner (shown on hover or focus,
+   always on touch), and a bar where a dragged poster would land. Dragging works on any poster, so none of them is virtualised. */
+.hint { margin-bottom: var(--space-m); font-size: var(--fs-footnote); line-height: 1.4; max-width: var(--measure); }
+.reorder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-l) var(--space-s); }
+.reorder > * { content-visibility: auto; contain-intrinsic-size: auto 260px; }
+@media (min-width: 721px) { .reorder { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-l) var(--space-m); } }
+/* The pictures aren't draggable themselves, so a press on one has to reach the poster's link, which is. */
+.reorder img { pointer-events: none; }
+.move { display: none; gap: 4px; }
+.move > button[aria-disabled='true'] { opacity: 0.45; cursor: default; }
+/* Arrange mode (the way on a phone): the arrows sit under the poster, clear of the art. */
+.reorder[data-arranging] .move { display: flex; justify-content: center; margin-top: var(--space-xxs); }
+/* With a pointer, the arrows come to the poster's corner on hover or focus; dragging needs no mode. */
+@media (hover: hover) {
+  .reorder:not([data-arranging]) .move { display: flex; position: absolute; top: 8px; right: 8px; opacity: 0; transition: opacity var(--dur-state) ease; }
+  .reorder:not([data-arranging]) li:hover > .move, .reorder:not([data-arranging]) li:focus-within > .move { opacity: 1; }
+}
+.reorder > li { position: relative; }
+.reorder > li[data-dragging] { opacity: 0.4; }
+.reorder > li[data-drop]::before { content: ''; position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--paper); z-index: 2; pointer-events: none; }
+.reorder > li[data-drop='before']::before { left: calc(var(--space-s) / -2 - 1.5px); }
+.reorder > li[data-drop='after']::before { right: calc(var(--space-s) / -2 - 1.5px); }
+@media (min-width: 721px) {
+  .reorder > li[data-drop='before']::before { left: calc(var(--space-m) / -2 - 1.5px); }
+  .reorder > li[data-drop='after']::before { right: calc(var(--space-m) / -2 - 1.5px); }
+}
+
+/* The list shelves are Home's rows; here their See all sits at the end of the heading, as the other sections' do. */
+.listShelves h2 + a { margin-left: auto; }

@@ -228,6 +228,10 @@ function demoEpisode(t: Title, season: number, number: number, airDate: string) 
   }
 }
 
+/** The one franchise the sample data holds: the two Dune films, so a title page has a Collection row to show. */
+const dune = { id: 726871, name: 'Dune Collection', parts: [438631, 693134], overview: 'Paul Atreides’ journey from a noble house on Caladan to the sands of Arrakis.', poster: '/d5NXSklXo0qyIYkgV94XAgMIckC.jpg', backdrop: '/jYEW5xZkZk2WTrdbMGAPFuBqbDc.jpg' }
+const collectionOf = (t: Title) => (dune.parts.includes(t.id) ? dune : undefined)
+
 function detail(t: Title) {
   const o: Record<string, any> = listJSON(t)
   o.genres = t.genres.map((id) => ({ id, name: genreName(id) }))
@@ -258,6 +262,8 @@ function detail(t: Title) {
     if (facts.revenue) o.revenue = facts.revenue
   }
   o['watch/providers'] = { results: { US: region } }
+  const franchise = collectionOf(t)
+  if (franchise) o.belongs_to_collection = { id: franchise.id, name: franchise.name, poster_path: franchise.poster, backdrop_path: franchise.backdrop }
   const similar = shuffled(titles.filter((x) => x.type === t.type && x.id !== t.id), t.id)
   o.recommendations = page(similar.slice(0, 10))
   o.similar = page(similar.slice(-6))
@@ -370,6 +376,10 @@ export async function demoTmdb(rawPath: string, query: Record<string, unknown>):
       if (parts[2] === 'keywords') return { keywords: t.id % 3 === 2 ? [{ id: 1, name: 'aftercreditsstinger' }] : t.id % 3 === 1 ? [{ id: 2, name: 'duringcreditsstinger' }] : [] }
       if (parts[2] === 'external_ids') return { imdb_id: t.imdb, tvdb_id: t.id + 70000 }
       throw new Error('Not in the sample data')
+    }
+    case 'collection': {
+      if (Number(parts[1]) !== dune.id) throw new Error('Not in the sample data')
+      return { id: dune.id, name: dune.name, overview: dune.overview, poster_path: dune.poster, backdrop_path: dune.backdrop, parts: dune.parts.map((id) => listJSON(byId.get(id)!)) }
     }
     case 'find':
       return { movie_results: [], tv_results: [] }

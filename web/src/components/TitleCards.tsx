@@ -5,13 +5,14 @@ import { prefetchDetail, q } from '../lib/queries'
 import { lastSourceStore } from '../lib/sources/lastSource'
 import { useStore } from '../lib/store/createStore'
 import { useLibrary, type Progress } from '../lib/store/library'
-import { useSettings } from '../lib/store/settings'
+import { useSettings, useSkipDetails } from '../lib/store/settings'
 import { formatLeft, userLocale, useMinuteTick } from '../lib/time'
 import type { MediaItem } from '../lib/tmdb/types'
 import { useNearScreen } from '../lib/useNearScreen'
 import { posterMarks, useOnServer, watchedMovieKeys, watchedShowsOf } from '../features/home/marks'
 import { episodeLine, pickPrint, resumePrint, secondsLeft, spokenPick, spokenResume, watchedFraction, type PickDetail } from '../features/home/logic'
 import { continueMeta, posterCaption } from '../features/home/posterText'
+import { continueLink } from '../features/home/skipDetails'
 import { FrameCard } from './Frame'
 
 /* The two kinds of item every browsing screen lists: a title not started (a poster with print only) and
@@ -80,9 +81,10 @@ export function ResumeItem({ p, sizes, children }: { p: Progress; sizes: string;
   const last = useStore(lastSourceStore, (st) => st.byTitle[p.key])
   const still = p.episode?.still
   const showDate = useSettings((x) => x.showContinueWatchingReleaseDate !== false)
+  const skipDetails = useSkipDetails()
   return (
     <FrameCard
-      link={{ to: '/title/$type/$id', params: { type: p.item.type, id: p.item.id }, search: p.episode ? { season: p.episode.season } : undefined }}
+      link={continueLink({ item: p.item, progress: p }, skipDetails)}
       shape="still"
       artPath={still ?? p.item.backdrop}
       artKind={still ? 'still' : 'backdrop'}

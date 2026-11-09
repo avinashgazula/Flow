@@ -5,7 +5,7 @@ import { prefetchDetail, q } from '../../lib/queries'
 import { lastSourceStore } from '../../lib/sources/lastSource'
 import { useStore } from '../../lib/store/createStore'
 import { useLibrary } from '../../lib/store/library'
-import { useSettings } from '../../lib/store/settings'
+import { useSettings, useSkipDetails } from '../../lib/store/settings'
 import { formatLeft, formatRuntime, userLocale, useMinuteTick } from '../../lib/time'
 import { useNearScreen } from '../../lib/useNearScreen'
 import { continueEntries, episodesLeftText, followedShows, showStatus, type ContinueEntry } from './continue'
@@ -13,6 +13,7 @@ import { endsPart, episodeLine, episodeShort, inProgress, resumePrint, secondsLe
 import { LazyCardMenu } from './LazyCardMenu'
 import { watchedShowsOf } from './marks'
 import { continueMeta } from './posterText'
+import { continueLink } from './skipDetails'
 import s from './HomeScreen.module.css'
 
 /** How wide an Up Next still renders, for `srcset`: two across beside the lead on a desktop, a scrolling row below. */
@@ -74,6 +75,7 @@ function ContinueCard({ entry, said }: { entry: ContinueEntry; said: boolean }) 
   const rewatches = useLibrary((l) => l.rewatches)
   const showLeft = useSettings((x) => x.showEpisodesRemaining)
   const showDate = useSettings((x) => x.showContinueWatchingReleaseDate !== false)
+  const skipDetails = useSkipDetails()
   const isShow = item.type === 'show'
   const detail = useQuery({ ...q.detail(item.type, item.id), enabled: near && isShow })
   // A next episode names itself and has its own still once its season is known.
@@ -104,10 +106,9 @@ function ContinueCard({ entry, said }: { entry: ContinueEntry; said: boolean }) 
     meta = episodeLine(episode && { ...episode, name: ep?.name }) ?? ''
     still = ep?.still
   }
-  const season1 = (progress?.episode ?? episode)?.season
   return (
     <FrameCard
-      link={{ to: '/title/$type/$id', params: { type: item.type, id: item.id }, search: season1 ? { season: season1 } : undefined }}
+      link={continueLink(entry, skipDetails)}
       itemRef={itemRef}
       shape="still"
       artPath={still ?? item.backdrop}
