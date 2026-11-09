@@ -153,6 +153,9 @@ const fields: Field[] = [
   same('volumeBoostDB', 'playback.volumeBoostDB', 0),
   same('decodeLosslessAudio', 'playback.decodeLosslessAudio', true),
   same('rememberTracksPerShow', 'playback.rememberTracksPerShow', true),
+  same('skipDetailsOnContinueWatching', 'playback.skipDetailsOnContinueWatching', true),
+  same('pictureInPicture', 'playback.pictureInPicture', true),
+  same('autoRotate', 'playback.autoRotate', true),
   same('preferHDR', 'playback.preferHDR', true),
   same('neverUseDolbyVision', 'playback.neverUseDolbyVision', false),
   same('showLoadingProgress', 'playback.showLoadingProgress', true),
@@ -165,6 +168,7 @@ const fields: Field[] = [
   // subtitles
   same('subtitleLanguages', 'subtitles.preferredLanguages'),
   same('defaultSubtitleOffset', 'subtitles.defaultOffsetSeconds', 0),
+  same('subtitleAutoSync', 'subtitles.autoSync', false),
   { web: 'subtitleMode', path: 'subtitles.autoSelect', write: (v: keyof typeof modeToApp) => modeToApp[v], read: (v) => (isString(v) ? modeFromApp[v] : undefined) },
   // sources
   same('rememberLastSource', 'sources.rememberLastSource'),

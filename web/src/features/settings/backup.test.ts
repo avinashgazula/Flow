@@ -17,6 +17,14 @@ describe('settings backup', () => {
     }
   })
 
+  it('imports the player switches, and skips one that is not on or off', () => {
+    const backup = (settings: unknown) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings }))
+    const good = backup({ skipDetailsOnContinueWatching: false, pictureInPicture: false, autoRotate: false, subtitleAutoSync: true })
+    expect(good.ok && good.settings).toMatchObject({ skipDetailsOnContinueWatching: false, pictureInPicture: false, autoRotate: false, subtitleAutoSync: true })
+    const bad = backup({ autoRotate: 'yes', subtitleAutoSync: true })
+    expect(bad.ok && bad.skipped).toEqual(['autoRotate'])
+  })
+
   it('imports source ordering, filling in what a file lacks and skipping what is wrong', () => {
     const backup = (sources: unknown) => parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { sources } }))
     const good = backup({ useCustomOrdering: true, sortRules: [{ key: 'size', descending: false }], filters: { maxSizeGB: 10 }, resultCap: 20, appearance: { badgePack: 'colored' } })

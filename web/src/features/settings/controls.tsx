@@ -6,10 +6,14 @@ import s from './SettingsScreen.module.css'
 
 export function Group({ title, footer, children }: { title?: string; footer?: ReactNode; children: ReactNode }) {
   return (
-    <div className={s.groupWrap}>
+    <div className={s.groupWrap} data-settings-group="">
       {title && <h3 className={s.groupTitle}>{title}</h3>}
       <div className={s.group}>{children}</div>
-      {footer && <p className={s.footer}>{footer}</p>}
+      {footer && (
+        <p className={s.footer} data-settings-footer="">
+          {footer}
+        </p>
+      )}
     </div>
   )
 }
@@ -17,12 +21,16 @@ export function Group({ title, footer, children }: { title?: string; footer?: Re
 export function Row({ label, detail, htmlFor, children }: { label: ReactNode; detail?: ReactNode; htmlFor?: string; children?: ReactNode }) {
   const Label = htmlFor ? 'label' : 'span'
   return (
-    <div className={s.row}>
+    <div className={s.row} data-settings-row="">
       <span className={s.rowText}>
-        <Label className={s.rowLabel} htmlFor={htmlFor}>
+        <Label className={s.rowLabel} htmlFor={htmlFor} data-row-label="">
           {label}
         </Label>
-        {detail && <span className={s.rowDetail}>{detail}</span>}
+        {detail && (
+          <span className={s.rowDetail} data-row-detail="">
+            {detail}
+          </span>
+        )}
       </span>
       {children && <span className={s.rowControl}>{children}</span>}
     </div>

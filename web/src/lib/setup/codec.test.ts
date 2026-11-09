@@ -76,6 +76,11 @@ describe('reading the apps’ setup', () => {
       subtitleStyle: { fontScale: 1.4, color: 'yellow', font: 'serif', weight: 'bold', edgeStyle: 'outline', background: 'solid', backgroundOpacity: 0.8, verticalPosition: 0.1 },
       subtitleOptions: { type: 'sdh', animeAudio: 'sub', keepASSStyling: true, providers: ['opensubtitles', 'wyzie'] },
       rememberLastSource: false,
+      // The apps' switches, now settings of their own rather than carried along.
+      skipDetailsOnContinueWatching: false,
+      pictureInPicture: false,
+      autoRotate: false,
+      subtitleAutoSync: true,
     })
   })
 
@@ -250,6 +255,12 @@ describe('keeping what the website has no setting for', () => {
     expect(out.mediaServers.servers[0].isRemote).toBe(false)
     expect(out.subtitles.autoSync).toBe(true)
     expect(out.sync).toEqual({ iCloudEnabled: false })
+  })
+
+  it('writes the switches it now owns under the apps’ names, and leaves the apps’ defaults out of nothing', () => {
+    const out = exportSetup({ ...defaultSettings, skipDetailsOnContinueWatching: false, subtitleAutoSync: true }, { includeSecrets: false, extras: { settings: {}, credentials: {} } }).settings as Record<string, any>
+    expect(out.playback).toMatchObject({ skipDetailsOnContinueWatching: false, pictureInPicture: true, autoRotate: true })
+    expect(out.subtitles.autoSync).toBe(true)
   })
 
   it('keeps a client secret the website has no field for, and only with keys', () => {

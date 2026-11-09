@@ -226,6 +226,14 @@ export interface Settings {
   cellularResolutionCap?: CellularCap
   /** Subtitle Sync Offset: where every title's subtitle delay starts, in seconds (`subtitles.defaultOffsetSeconds`). Absent is none. */
   defaultSubtitleOffset?: number
+  /** Subtitle Auto-sync is offered in the player's Subtitle Delay page (`subtitles.autoSync`). Absent is off, as in the apps. */
+  subtitleAutoSync?: boolean
+  /** Tapping a Continue Watching card plays at once instead of opening the title (`playback.skipDetailsOnContinueWatching`). Absent is on. Read it with `useSkipDetails`. */
+  skipDetailsOnContinueWatching?: boolean
+  /** The player's Picture in Picture button (`playback.pictureInPicture`). Absent is on. */
+  pictureInPicture?: boolean
+  /** Full screen turns a phone to landscape where the browser allows it (`playback.autoRotate`). Absent is on. */
+  autoRotate?: boolean
   preferredQuality: '2160p' | '1080p' | '720p' | 'any'
   /** The picker offers the source a title was last played from first. */
   rememberLastSource: boolean
@@ -337,7 +345,7 @@ export const defaultSettings: Settings = {
   contentShelfLength: 20,
   showContinueWatching: true,
   continueWatchingLimit: null,
-  showUpcoming: true,
+  showUpcoming: false,
   includeWatchlistPremieres: false,
   upcomingWithinDays: 7,
   showWatchedBadges: true,
@@ -353,3 +361,7 @@ if (typeof location !== 'undefined' && new URLSearchParams(location.search).has(
 
 export const useSettings = <S,>(selector: (s: Settings) => S) => useStore(settingsStore, selector)
 export const hasCatalog = (s: Settings) => s.demo || s.tmdbKey.length > 0
+
+/** Whether a Continue Watching card should play straight away (true, the apps' default) or open the title. Home's
+ *  Lead and Continue cards read this to choose their link. */
+export const useSkipDetails = () => useSettings((x) => x.skipDetailsOnContinueWatching !== false)

@@ -6,6 +6,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Source } from '../../lib/sources'
 import { settingsStore } from '../../lib/store/settings'
+import { rotateForFullscreen } from './orientation'
 import { learn, planFor } from '../../lib/subtitles/reach'
 import { credentialsOf, normaliseSubtitleOptions, usableProviders } from '../../lib/subtitles/options'
 import type { ProviderOutcome, SearchOutcome } from '../../lib/subtitles/search'
@@ -256,7 +257,9 @@ export class PlayerController {
     const pip = () => this.set({ pip: document.pictureInPictureElement === video || v.webkitPresentationMode === 'picture-in-picture' })
     const fullscreen = () => {
       const d = document as WebKitDocument
-      this.set({ fullscreen: !!(d.fullscreenElement ?? d.webkitFullscreenElement) })
+      const full = !!(d.fullscreenElement ?? d.webkitFullscreenElement)
+      this.set({ fullscreen: full })
+      rotateForFullscreen(full, settingsStore.get().autoRotate !== false)
     }
     const airplay = (e: Event) => this.set({ cast: (e as Event & { availability?: string }).availability === 'available' ? 'airplay' : null })
     // The screen stays awake while the picture plays and the page shows.
@@ -1138,7 +1141,7 @@ export class PlayerController {
 
   get canPip() {
     const v = this.video as WebKitVideo | null
-    return !!v && ((document.pictureInPictureEnabled && !v.disablePictureInPicture) || !!v.webkitSupportsPresentationMode?.('picture-in-picture'))
+    return !!v && settingsStore.get().pictureInPicture !== false && ((document.pictureInPictureEnabled && !v.disablePictureInPicture) || !!v.webkitSupportsPresentationMode?.('picture-in-picture'))
   }
   togglePip = () => {
     const v = this.video as WebKitVideo | null
