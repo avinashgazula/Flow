@@ -136,6 +136,8 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
 .reorder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-l) var(--space-s); }
 .reorder > * { content-visibility: auto; contain-intrinsic-size: auto 260px; }
 @media (min-width: 721px) { .reorder { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-l) var(--space-m); } }
+/* The pictures aren't draggable themselves, so a press on one has to reach the poster's link, which is. */
+.reorder img { pointer-events: none; }
 .move { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: 0; transition: opacity var(--dur-state) ease; }
 li:hover > .move, li:focus-within > .move { opacity: 1; }
 @media (hover: none) { .move { opacity: 1; } }

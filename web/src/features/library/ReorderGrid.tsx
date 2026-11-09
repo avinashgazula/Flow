@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 'react'
 import { Icon } from '../../components/Icon'
 import { PosterItem } from '../../components/TitleCards'
-import { library, type ListEntry } from '../../lib/store/library'
+import { libraryStore, type ListEntry } from '../../lib/store/library'
 import { moving, shifting } from '../../lib/watchlistOrder'
 import { movedText } from './logic'
 import s from './LibraryScreen.module.css'
@@ -40,7 +40,7 @@ export function ReorderGrid({ entries }: { entries: ListEntry[] }) {
       setNote(`${titleOf(key)} is already ${step < 0 ? 'first' : 'last'}.`)
       return
     }
-    library.setWatchlistOrder(shifting(key, step, keys))
+    libraryStore.set({ watchlistOrder: shifting(key, step, keys) })
     refocus.current = { key, on }
     setNote(movedText(titleOf(key), at + step, keys.length))
   }
@@ -104,7 +104,7 @@ export function ReorderGrid({ entries }: { entries: ListEntry[] }) {
     const before = sideOf(e, li) === 'before' ? key : keys[keys.indexOf(key) + 1]
     const next = moving([moved], before, keys)
     if (next.join() === keys.join()) return
-    library.setWatchlistOrder(next)
+    libraryStore.set({ watchlistOrder: next })
     setNote(movedText(titleOf(moved), next.indexOf(moved), next.length))
   }
 

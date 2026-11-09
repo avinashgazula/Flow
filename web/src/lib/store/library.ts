@@ -131,9 +131,6 @@ export const library = {
   clearWatchlist() {
     libraryStore.set({ watchlist: [], watchlistOrder: [] })
   },
-  setWatchlistOrder(keys: string[]) {
-    libraryStore.set({ watchlistOrder: keys })
-  },
 }
 
 /** A length in seconds as whole minutes for History, or nothing when it isn't a real length. */
