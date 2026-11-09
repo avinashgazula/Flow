@@ -128,4 +128,6 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
   .toolbar > :first-child { flex: 1 1 100%; }
   .toolbarEnd { flex: 1 1 100%; justify-content: space-between; }
   .toolbarEnd:has(> :only-child) { justify-content: flex-end; }
+  /* The plate and the date leave a phone's title little room: let it take a second line before it truncates (the row's height has room). */
+  .historyTitle { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 }

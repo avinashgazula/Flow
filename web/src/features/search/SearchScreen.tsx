@@ -12,7 +12,7 @@ import { prefetchDetail, q } from '../../lib/queries'
 import { library, mediaKey, useLibrary } from '../../lib/store/library'
 import { userLocale, useMinuteTick } from '../../lib/time'
 import type { SearchResult } from '../../lib/tmdb/types'
-import { StateView, errorMessage } from '../explore/Controls'
+import { RetryAction, StateView, errorMessage } from '../explore/Controls'
 import { pickPrint } from '../home/logic'
 import { serverPrint, useOnServer, useServerLookup } from '../home/marks'
 import { groupResults, minimumQuery, neighbour, topResult, type Direction, type MediaResult, type PersonResult } from './logic'
@@ -189,11 +189,7 @@ export function SearchScreen({ initial }: { initial: string }) {
             icon="info"
             title="Search Failed"
             message={errorMessage(search.error)}
-            action={
-              <button className="btn btn-secondary" onClick={() => void search.refetch()}>
-                Try Again
-              </button>
-            }
+            action={<RetryAction error={search.error} onRetry={() => void search.refetch()} />}
           />
         ) : search.isPending || (server.only && server.pending) ? (
           <section aria-label="Searching" aria-busy="true">

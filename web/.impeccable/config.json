@@ -81,6 +81,15 @@
         "rule": "design-system-color",
         "value": "#000",
         "files": [
+          "src/features/player/xray/XRayPanel.module.css"
+        ],
+        "createdAt": "2026-11-09T09:00:00.000Z",
+        "reason": "An alpha mask for the list's fade-out: only its opacity is read, so it paints no colour."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#000",
+        "files": [
           "src/features/livetv/LivePlayer.module.css"
         ],
         "createdAt": "2026-10-26T06:08:46.584Z",

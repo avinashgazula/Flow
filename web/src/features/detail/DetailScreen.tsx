@@ -17,6 +17,7 @@ import type { MediaDetail, MediaType } from '../../lib/tmdb/types'
 import { useNearScreen } from '../../lib/useNearScreen'
 import { allWatched, nextUp, pickShuffle, watchedEpisodes } from '../../lib/watching'
 import { watchedFraction } from '../home/logic'
+import { RetryAction, StateView, errorMessage } from '../explore/Controls'
 import { About } from './About'
 import { Ratings } from './Ratings'
 import { RequestButton } from './RequestButton'
@@ -42,7 +43,7 @@ const stillSizes = '(min-width: 1360px) 600px, (min-width: 1000px) 44vw, calc(10
  *  the facts, ratings, the one yellow Play and what the viewer can do with the title. Below: episodes,
  *  where to watch, more like it. */
 export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: MediaType; id: number; initialSeason?: number; autoPlay?: boolean }) {
-  const { data: d, isPlaceholderData, isError, error } = useQuery(q.detail(type, id))
+  const { data: d, isPlaceholderData, isError, error, refetch, isRefetching } = useQuery(q.detail(type, id))
   const navigate = useNavigate()
   const router = useRouter()
   const now = useMinuteTick()
@@ -130,8 +131,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   if (isError && !d) {
     return (
       <div className="page">
-        <h1 className="page-title">Couldn’t Load This Title</h1>
-        <p className="muted">{(error as Error).message}</p>
+        <StateView heading="h1" icon="info" title="Couldn’t Load This Title" message={errorMessage(error)} action={<RetryAction error={error} onRetry={() => void refetch()} busy={isRefetching} />} />
       </div>
     )
   }

@@ -59,7 +59,7 @@ export function CatalogueSection() {
               setKey(e.target.value)
               setState({ kind: 'idle' })
             }}
-            placeholder="Paste your API key or read-access token"
+            placeholder="API key or read-access token"
             aria-label="TMDB API Key"
             type="password"
             autoComplete="off"
