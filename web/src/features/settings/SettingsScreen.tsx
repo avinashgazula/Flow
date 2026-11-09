@@ -1,6 +1,9 @@
-import { useEffect, useState, type ComponentType } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentType, type KeyboardEvent } from 'react'
+import { flushSync } from 'react-dom'
+import { Icon } from '../../components/Icon'
 import { AppearanceSection } from './AppearanceSection'
 import { CatalogueSection } from './CatalogueSection'
+import { buildIndex, search, step, type Entry, type RawRow } from './searchIndex'
 import s from './SettingsScreen.module.css'
 
 /** The first two sections are in the page's own code; the rest are chunks fetched one at a time while the
@@ -51,6 +54,33 @@ function fetchSection(x: Section): Promise<void> {
 
 const idle = () => new Promise<void>((resolve) => (window.requestIdleCallback ? window.requestIdleCallback(() => resolve(), { timeout: 400 }) : setTimeout(resolve, 60)))
 
+const text = (el: Element | null | undefined) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim()
+
+/** Every row on the page, with the group and section it sits in, read off what is drawn: a row is searchable the day
+ *  it is added, and what a row says (its count, its state) is what is searched. */
+function scanRows(): { rows: RawRow[]; elements: Map<string, HTMLElement> } {
+  const rows: RawRow[] = []
+  const elements = new Map<string, HTMLElement>()
+  for (const x of sections) {
+    const root = document.getElementById(x.id)
+    root?.querySelectorAll<HTMLElement>('[data-settings-row]').forEach((el, i) => {
+      const group = el.closest('[data-settings-group]')
+      const key = `${x.id}:${i}`
+      elements.set(key, el)
+      rows.push({
+        key,
+        section: x.id,
+        sectionTitle: x.title,
+        group: text(group?.querySelector('h3')),
+        title: text(el.querySelector('[data-row-label]')),
+        detail: text(el.querySelector('[data-row-detail]')),
+        footer: text(group?.querySelector('[data-settings-footer]')),
+      })
+    })
+  }
+  return { rows, elements }
+}
+
 /** Settings, sectioned like the native screen: a list of anchors beside the sections on wide
  *  screens, and the sections one after another on a phone. */
 export function SettingsScreen() {
@@ -58,6 +88,13 @@ export function SettingsScreen() {
   // A copy, so a section arriving is a state change the compiler's memoising can see (the module's map is mutated in place).
   const [bodies, setBodies] = useState(() => new Map(loaded))
   const refresh = () => setBodies(new Map(loaded))
+  const [query, setQuery] = useState('')
+  const [active, setActive] = useState(0)
+  const [index, setIndex] = useState<Entry[]>([])
+  const elements = useRef(new Map<string, HTMLElement>())
+  const mark = useRef<{ el: HTMLElement; timer: number } | undefined>(undefined)
+  const searching = query.trim() !== ''
+  const everyBody = sections.every((x) => x.body || bodies.has(x.id) || failed.has(x.id))
 
   // Fetch the sections in order, one per idle moment, so no single task parses more than one of them.
   useEffect(() => {
@@ -79,6 +116,61 @@ export function SettingsScreen() {
     await Promise.all(sections.map(fetchSection))
     refresh()
     await new Promise((resolve) => requestAnimationFrame(resolve))
+  }
+
+  // Searching reads every section, so they all load the moment someone starts to type (or aims at the field).
+  useEffect(() => {
+    if (searching) void everything()
+  }, [searching])
+  useEffect(() => {
+    if (!searching) return
+    const { rows, elements: found } = scanRows()
+    elements.current = found
+    setIndex(buildIndex(rows))
+  }, [searching, bodies])
+  useEffect(() => () => window.clearTimeout(mark.current?.timer), [])
+
+  const results = useMemo(
+    () =>
+      search(
+        index,
+        query,
+        sections.map((x) => x.id),
+      ),
+    [index, query],
+  )
+  const flat = results.flatMap((r) => r.hits)
+  const at = Math.min(active, flat.length - 1)
+  useEffect(() => {
+    if (searching && at >= 0) document.getElementById(`settings-hit-${at}`)?.scrollIntoView({ block: 'nearest' })
+  }, [at, searching])
+
+  /** Back to the sections, scrolled to the row and quietly outlined for a moment. */
+  const choose = (key: string) => {
+    const el = elements.current.get(key)
+    flushSync(() => setQuery(''))
+    if (!el) return
+    el.scrollIntoView({ block: 'center' })
+    window.clearTimeout(mark.current?.timer)
+    mark.current?.el.removeAttribute('data-found')
+    el.setAttribute('data-found', '')
+    mark.current = { el, timer: window.setTimeout(() => el.removeAttribute('data-found'), 2400) }
+    el.querySelector<HTMLElement>('button, select, input, a[href]')?.focus({ preventScroll: true })
+  }
+
+  const onSearchKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape' && query) {
+      e.preventDefault()
+      setQuery('')
+    } else if (!searching || flat.length === 0) {
+      return
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActive(step(at, e.key === 'ArrowDown' ? 1 : -1, flat.length))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      choose(flat[Math.max(at, 0)]!.entry.key)
+    }
   }
 
   // A link from elsewhere (the player's no-sound notice) names a section in the address.
@@ -139,6 +231,37 @@ export function SettingsScreen() {
     <div className="page">
       <h1 className="page-title">Settings</h1>
       <div className={s.layout}>
+        <div className={s.search}>
+          <Icon name="search" size={18} strokeWidth={2.2} className={s.searchIcon} />
+          <input
+            type="search"
+            role="combobox"
+            aria-expanded={searching}
+            aria-controls="settings-results"
+            aria-activedescendant={searching && at >= 0 ? `settings-hit-${at}` : undefined}
+            aria-autocomplete="list"
+            className={`field ${s.searchInput}`}
+            placeholder="Search Settings"
+            aria-label="Search Settings"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setActive(0)
+            }}
+            onFocus={() => void everything()}
+            onKeyDown={onSearchKey}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            enterKeyHint="go"
+          />
+          {query && (
+            <button type="button" className={`btn btn-quiet btn-circle btn-compact ${s.searchClear}`} aria-label="Clear Search" onClick={() => setQuery('')}>
+              <Icon name="close" size={14} strokeWidth={2.8} />
+            </button>
+          )}
+        </div>
         <nav className={s.toc} aria-label="Settings sections">
           {sections.map((x) => (
             <a
@@ -149,6 +272,7 @@ export function SettingsScreen() {
               onFocus={() => void fetchSection(x)}
               onClick={(e) => {
                 e.preventDefault()
+                setQuery('')
                 setCurrent(x.id)
                 void everything().then(() => document.getElementById(x.id)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }))
               }}
@@ -157,7 +281,51 @@ export function SettingsScreen() {
             </a>
           ))}
         </nav>
-        <div className={s.content}>
+        {searching && (
+          <div className={s.results} id="settings-results" role="listbox" aria-label="Matching settings">
+            {results.map((r) => {
+              const first = flat.findIndex((h) => h.entry.section === r.section)
+              return (
+                <div key={r.section} className={s.groupWrap} role="group" aria-label={r.sectionTitle}>
+                  <h3 className={s.groupTitle} aria-hidden>
+                    {r.sectionTitle}
+                  </h3>
+                  <div className={s.group}>
+                    {r.hits.map((hit, i) => {
+                      const n = first + i
+                      const more = [hit.entry.group, hit.entry.detail].filter(Boolean).join(' · ')
+                      return (
+                        <button
+                          key={hit.entry.key}
+                          type="button"
+                          role="option"
+                          id={`settings-hit-${n}`}
+                          aria-selected={n === at}
+                          tabIndex={-1}
+                          className={s.hit}
+                          onMouseMove={() => n !== at && setActive(n)}
+                          onClick={() => choose(hit.entry.key)}
+                        >
+                          <span className={s.rowLabel}>{hit.entry.title}</span>
+                          {more && <span className={s.rowDetail}>{more}</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+            {results.length === 0 && (
+              <p className={s.hint}>
+                {everyBody ? `Nothing in Settings matches “${query.trim()}”. Try a shorter word, or something like “subtitles”, “server”, “skip” or “quality”.` : 'Looking through every section…'}
+              </p>
+            )}
+            <p className="sr-only" role="status">
+              {everyBody || results.length > 0 ? `${flat.length} ${flat.length === 1 ? 'setting' : 'settings'} found` : ''}
+            </p>
+          </div>
+        )}
+        <div className={s.content} hidden={searching}>
           {sections.map((x) => {
             const Body = x.body ?? bodies.get(x.id)
             return (
