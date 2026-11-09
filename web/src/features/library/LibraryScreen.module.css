@@ -129,3 +129,23 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
   .toolbarEnd { flex: 1 1 100%; justify-content: space-between; }
   .toolbarEnd:has(> :only-child) { justify-content: flex-end; }
 }
+
+/* The watchlist in your own order: posters wrap at one size, each with its two arrows on the corner (shown on hover or focus,
+   always on touch), and a bar where a dragged poster would land. Dragging works on any poster, so none of them is virtualised. */
+.hint { margin-bottom: var(--space-m); font-size: var(--fs-footnote); line-height: 1.4; max-width: var(--measure); }
+.reorder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-l) var(--space-s); }
+.reorder > * { content-visibility: auto; contain-intrinsic-size: auto 260px; }
+@media (min-width: 721px) { .reorder { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-l) var(--space-m); } }
+.move { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: 0; transition: opacity var(--dur-state) ease; }
+li:hover > .move, li:focus-within > .move { opacity: 1; }
+@media (hover: none) { .move { opacity: 1; } }
+.move > button[aria-disabled='true'] { opacity: 0.45; cursor: default; }
+.reorder > li { position: relative; }
+.reorder > li[data-dragging] { opacity: 0.4; }
+.reorder > li[data-drop]::before { content: ''; position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--paper); z-index: 2; pointer-events: none; }
+.reorder > li[data-drop='before']::before { left: calc(var(--space-s) / -2 - 1.5px); }
+.reorder > li[data-drop='after']::before { right: calc(var(--space-s) / -2 - 1.5px); }
+@media (min-width: 721px) {
+  .reorder > li[data-drop='before']::before { left: calc(var(--space-m) / -2 - 1.5px); }
+  .reorder > li[data-drop='after']::before { right: calc(var(--space-m) / -2 - 1.5px); }
+}

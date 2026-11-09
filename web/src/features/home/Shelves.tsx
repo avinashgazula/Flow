@@ -89,8 +89,15 @@ function ShelfSection({ shelf }: { shelf: ShelfConfig }) {
     }
   }
   if (source.kind === 'discover') return <TitleShelf shelf={shelf} />
-  if (source.kind === 'mediaServerLibrary') return <LibraryShelf title={shelf.title} serverId={source.serverID} libraryId={source.libraryID} />
-  return <ListShelf title={shelf.title} source={source} />
+  if (source.kind === 'mediaServerLibrary') return <LibraryShelf title={shelf.title} serverId={source.serverID} libraryId={source.libraryID} shelfId={shelf.id} />
+  return <ListShelf title={shelf.title} source={source} shelfId={shelf.id} />
+}
+
+/** The shelves the viewer added from their own lists (Trakt, MDBList, a server's library), for Library's overview, as the
+ *  apps' Library tab shows them. Unlike Home they show whether or not the shelf is switched on there. */
+export function LibraryListShelves() {
+  const shelves = useSettings((x) => x.shelves)
+  return shelves.filter((sh) => sh.source.kind === 'traktList' || sh.source.kind === 'mdblist' || sh.source.kind === 'mediaServerLibrary').map((sh) => <ShelfSection key={sh.id} shelf={sh} />)
 }
 
 // MARK: Rows of titles
@@ -205,7 +212,8 @@ const PosterGhost = () => (
   </li>
 )
 
-function RowHead({ id, title, see, children }: { id: string; title: string; see?: ExploreLink; children?: ReactNode }) {
+/** `shelf` is a list shelf's id, whose See all is its page in Library (these have no Explore query to open). */
+function RowHead({ id, title, see, shelf, children }: { id: string; title: string; see?: ExploreLink; shelf?: string; children?: ReactNode }) {
   return (
     <div className={s.rowHead}>
       <h2 id={id} className={s.rowTitle}>
@@ -213,6 +221,11 @@ function RowHead({ id, title, see, children }: { id: string; title: string; see?
       </h2>
       {see && (
         <Link to="/explore" search={see} className={s.seeAll}>
+          See all
+        </Link>
+      )}
+      {!see && shelf && (
+        <Link to="/library" search={{ shelf }} className={s.seeAll} aria-label={`See all of ${title}`}>
           See all
         </Link>
       )}
@@ -412,7 +425,7 @@ const idsOf = (servers: readonly ServerConfig[]) => servers.map((v) => v.id).joi
 /** A row of a server's titles as posters. The titles a server lists carry TMDB ids; each is read from TMDB for its
  *  artwork and facts (the request its poster would make anyway), and Use Server Artwork puts the server's own
  *  pictures over TMDB's. Printed "Server" like any title on one. Nothing is asked until the row is near the screen. */
-function ServerRow({ id, title, titles, pending, libraryServerId, near, sectionRef }: { id: string; title: string; titles: ServerTitle[] | undefined; pending: boolean; libraryServerId?: string; near: boolean; sectionRef: React.Ref<HTMLElement> }) {
+function ServerRow({ id, title, titles, pending, libraryServerId, shelfId, near, sectionRef }: { id: string; title: string; titles: ServerTitle[] | undefined; pending: boolean; libraryServerId?: string; shelfId?: string; near: boolean; sectionRef: React.Ref<HTMLElement> }) {
   const artwork = useSettings((x) => x.useServerArtwork === true)
   const catalogue = useSettings(hasCatalog)
   const shown = (titles ?? []).filter((t) => t.tmdb).slice(0, 40)
@@ -423,7 +436,7 @@ function ServerRow({ id, title, titles, pending, libraryServerId, near, sectionR
   if (!pending && shown.length === 0) return null
   return (
     <section ref={sectionRef} className={s.rowSection} aria-labelledby={id}>
-      <RowHead id={id} title={title} />
+      <RowHead id={id} title={title} shelf={shelfId} />
       <ul
         className={s.row}
         aria-busy={loading || undefined}
@@ -456,7 +469,7 @@ function ServerRow({ id, title, titles, pending, libraryServerId, near, sectionR
 
 /** A Trakt list or an MDBList list as posters. Each title is read from TMDB for its artwork and facts, as a server's are.
  *  Without the Client ID or the key the list needs, the row is left out rather than shown empty. */
-function ListShelf({ title, source }: { title: string; source: Extract<ShelfConfig['source'], { kind: 'traktList' | 'mdblist' }> }) {
+function ListShelf({ title, source, shelfId }: { title: string; shelfId?: string; source: Extract<ShelfConfig['source'], { kind: 'traktList' | 'mdblist' }> }) {
   const [near, ref] = useNearScreen<HTMLElement>()
   const id = useId()
   const ready = useSettings((x) => (source.kind === 'traktList' ? x.traktClientID.trim().length > 0 : !!x.mdblistKey?.trim()))
@@ -477,7 +490,7 @@ function ListShelf({ title, source }: { title: string; source: Extract<ShelfConf
   if (!ready || !catalogue || (!loading && shown.length === 0)) return null
   return (
     <section ref={ref} className={s.rowSection} aria-labelledby={id}>
-      <RowHead id={id} title={title} />
+      <RowHead id={id} title={title} shelf={shelfId} />
       <ul className={s.row} aria-busy={loading || undefined}>
         {loading
           ? Array.from({ length: 7 }, (_, i) => <PosterGhost key={i} />)
@@ -509,7 +522,7 @@ function RecentServerShelf({ title }: { title: string }) {
 }
 
 /** One library of one server, as a shelf in the list (the apps' `mediaServerLibrary` source). */
-function LibraryShelf({ title, serverId, libraryId }: { title: string; serverId: string; libraryId: string }) {
+function LibraryShelf({ title, serverId, libraryId, shelfId }: { title: string; serverId: string; libraryId: string; shelfId?: string }) {
   const [near, ref] = useNearScreen<HTMLElement>()
   const id = useId()
   const server = useSettings((x) => x.servers.find((v) => v.id === serverId && v.enabled))
@@ -520,7 +533,7 @@ function LibraryShelf({ title, serverId, libraryId }: { title: string; serverId:
     staleTime: sixMinutes,
   })
   if (!server) return null
-  return <ServerRow id={id} title={title} titles={titles.data} pending={!near || titles.isPending} libraryServerId={serverId} near={near} sectionRef={ref} />
+  return <ServerRow id={id} title={title} titles={titles.data} pending={!near || titles.isPending} libraryServerId={serverId} shelfId={shelfId} near={near} sectionRef={ref} />
 }
 
 /** Server Home Rows (Settings → Shelves): each switched-on server's libraries, one row each, in the order the server

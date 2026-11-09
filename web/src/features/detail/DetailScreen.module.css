@@ -109,6 +109,10 @@
 @media (hover: hover) { .person:hover .face { transform: translateY(-2px); } }
 .personName { font: 600 var(--fs-footnote) / 1.25 var(--font); overflow-wrap: anywhere; }
 .personRole { font: 400 var(--fs-caption) / 1.3 var(--font); color: var(--ink-3); overflow-wrap: anywhere; }
+.seeAll { font-size: var(--fs-small); line-height: 1.3; color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+.seeAll:hover { color: var(--paper); text-decoration-color: var(--paper); }
+.airs { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--space-m); margin-top: var(--space-xxs); font-size: var(--fs-small); color: var(--ink-2); }
+.airsText { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
 .more { margin-top: var(--space-s); height: 36px; padding-right: 8px; font: 500 var(--fs-small) / 1 var(--font); color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.25em; }
 .more:hover { color: var(--paper); text-decoration-color: var(--paper); }
 

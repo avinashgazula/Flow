@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { HistoryEntry, ListEntry } from '../../lib/store/library'
 import type { MediaItem } from '../../lib/tmdb/types'
-import { dayGroup, episodeLabel, groupHistory, historyRows, parseListSort, sortEntries } from './logic'
+import { dayGroup, episodeLabel, groupHistory, historyRows, movedText, parseListSort, sortEntries } from './logic'
 
 // Noon local time on a Wednesday, so day boundaries are unambiguous in any zone the tests run in.
 const now = new Date(2026, 9, 14, 12, 0).getTime()
@@ -69,8 +69,21 @@ describe('sortEntries', () => {
     expect(ids(sortEntries(list, 'added', 'show'))).toEqual([2])
     expect(ids(list)).toEqual([1, 2, 3, 4])
   })
+  it('lays the saved custom order over the list, newer titles after it', () => {
+    // The saved order has c and a; z left the watchlist.
+    expect(ids(sortEntries(list, 'custom', undefined, ['c', 'z', 'a']))).toEqual([3, 1, 2, 4])
+    expect(ids(sortEntries(list, 'custom'))).toEqual([1, 2, 3, 4])
+    expect(ids(sortEntries(list, 'custom', 'show', ['c']))).toEqual([2])
+  })
   it('reads unknown sorts as Recently Added', () => {
+    expect(parseListSort('custom')).toBe('custom')
     expect(parseListSort('rating')).toBe('rating')
     expect(parseListSort('nope')).toBe('added')
+  })
+})
+
+describe('movedText', () => {
+  it('says the new place, counting from one', () => {
+    expect(movedText('Dune', 2, 12)).toBe('Dune moved to position 3 of 12.')
   })
 })

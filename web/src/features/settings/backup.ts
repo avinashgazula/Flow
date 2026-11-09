@@ -162,6 +162,7 @@ const libraryTypes: { [K in keyof Library]: (v: unknown) => boolean } = {
   ratings: isObject,
   rewatches: isObject,
   shuffled: isObject,
+  watchlistOrder: (v) => Array.isArray(v) && v.every((k) => typeof k === 'string'),
 }
 
 /** The settings in `raw` that import accepts, and the keys it had to skip. Shared by the backup and the apps' setup file. */
@@ -218,7 +219,7 @@ export function resetEverything() {
   // Settings the defaults leave out (WebDAV logins, the source order…) have to be cleared by name, or the merge keeps them.
   const optional = Object.fromEntries(Object.keys(settingsStore.get()).filter((k) => !(k in defaultSettings)).map((k) => [k, undefined]))
   settingsStore.set({ ...optional, ...defaultSettings })
-  libraryStore.set({ progress: {}, watchlist: [], favourites: [], history: [], watchedEpisodes: {}, ratings: {}, rewatches: {}, shuffled: {} })
+  libraryStore.set({ progress: {}, watchlist: [], favourites: [], history: [], watchedEpisodes: {}, ratings: {}, rewatches: {}, shuffled: {}, watchlistOrder: [] })
   lastSourceStore.set({ byTitle: {} })
   setupExtrasStore.set(noExtras)
 }

@@ -7,6 +7,8 @@ import { compactMoney } from '../../lib/reviewText'
 import type { Episode, MediaDetail, MediaItem } from '../../lib/tmdb/types'
 import { isAired } from '../../lib/watching'
 import { endsPart, leftPart, secondsLeft } from '../home/logic'
+import { episodeId, localDay, startOfDay } from '../home/upcoming'
+import type { CalendarEntry } from '../library/calendar'
 
 /* What the title page says, as plain functions: the strip under the still, and the film-can label's rows. */
 
@@ -226,3 +228,40 @@ export const cardOf = (d: MediaItem): MediaItem => ({
   genres: d.genres,
   originalLanguage: d.originalLanguage,
 })
+
+// MARK: Next episode
+
+/** The line under a show's actions, "S2 E5 airs Fri 14 Nov" (the apps' airsLine), and what a screen reader says. TMDB gives a
+ *  bare day, so it is read as the viewer's own day. Nothing without a day to say. */
+export function airsLine(next: Pick<Episode, 'season' | 'number' | 'airDate'> | undefined, now: number, locale?: string): { text: string; spoken: string } | undefined {
+  if (!next?.airDate) return undefined
+  const date = localDay(next.airDate)
+  if (Number.isNaN(date)) return undefined
+  const days = Math.round((date - startOfDay(now)) / (24 * 60 * 60_000))
+  const sameYear = new Date(date).getFullYear() === new Date(now).getFullYear()
+  const when = days <= 0 ? 'today' : days === 1 ? 'tomorrow' : new Date(date).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) })
+  const code = `S${next.season} E${next.number}`
+  return { text: `${code} airs ${when}`, spoken: `Season ${next.season} episode ${next.number} airs ${days <= 0 ? 'today' : days === 1 ? 'tomorrow' : new Date(date).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}` }
+}
+
+/** The next episode as the Upcoming page's entry for it, so Add to Calendar here makes the very event Upcoming does (same
+ *  title, same UID: adding it twice updates it). */
+export function nextEpisodeEntry(d: Pick<MediaDetail, 'nextEpisode'> & MediaItem): CalendarEntry | undefined {
+  const next = d.nextEpisode
+  if (!next?.airDate || Number.isNaN(localDay(next.airDate))) return undefined
+  return {
+    id: episodeId(d, next),
+    item: cardOf(d),
+    episode: { season: next.season, number: next.number, name: next.name, overview: next.overview },
+    iso: next.airDate,
+    date: localDay(next.airDate),
+  }
+}
+
+// MARK: More Like This
+
+/** Which related rows a title shows, as the apps do: More Like This whenever TMDB recommends something, and Similar
+ *  only when it recommends fewer than six, to fill the page rather than repeat it. */
+export function relatedRows(d: Pick<MediaDetail, 'recommendations' | 'similar'>): { recommendations: boolean; similar: boolean } {
+  return { recommendations: d.recommendations.length > 0, similar: d.similar.length > 0 && d.recommendations.length < 6 }
+}

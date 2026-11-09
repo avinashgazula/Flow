@@ -8,6 +8,8 @@ export interface LibrarySearch {
   list?: LibraryList
   type?: MediaType
   sort?: string
+  /** One list shelf (Trakt, MDBList or a server's library) as a whole grid: the shelf's id. */
+  shelf?: string
 }
 
 export const Route = createFileRoute('/library')({
@@ -15,11 +17,12 @@ export const Route = createFileRoute('/library')({
     list: libraryLists.includes(search.list as LibraryList) ? (search.list as LibraryList) : undefined,
     type: search.type === 'show' ? 'show' : search.type === 'movie' ? 'movie' : undefined,
     sort: typeof search.sort === 'string' ? search.sort : undefined,
+    shelf: typeof search.shelf === 'string' && search.shelf ? search.shelf : undefined,
   }),
   component: Library,
 })
 
 function Library() {
   const search = Route.useSearch()
-  return <LibraryScreen list={search.list} type={search.type} sort={parseListSort(search.sort)} />
+  return <LibraryScreen list={search.list} type={search.type} sort={parseListSort(search.sort)} shelf={search.shelf} />
 }

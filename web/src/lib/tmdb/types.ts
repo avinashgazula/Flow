@@ -91,7 +91,7 @@ export interface MediaDetail extends MediaItem {
   lastEpisode?: Episode
   networks: string[]
   voteCount?: number
-  collection?: { id: number; name: string }
+  collection?: { id: number; name: string; backdrop?: string }
   /** ISO 3166-1 codes of where it was made. */
   originCountries?: string[]
   /** Dollars; left out when TMDB has none (it says 0). */
@@ -139,4 +139,14 @@ export interface Page<T> {
 export interface Genre {
   id: number
   name: string
+}
+
+/** A film collection (a franchise): its films in release order, oldest first, those without a date last. */
+export interface Collection {
+  id: number
+  name: string
+  overview: string
+  poster?: string
+  backdrop?: string
+  parts: MediaItem[]
 }

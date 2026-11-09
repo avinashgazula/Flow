@@ -7,6 +7,7 @@ import { Icon } from '../../components/Icon'
 import { PosterRow } from '../../components/PosterRow'
 import { genreNames } from '../../lib/genres'
 import { q } from '../../lib/queries'
+import { buildICS, downloadICS, icsFileName } from '../../lib/ics'
 import { lastSourceFor, type PlaybackRequest, type Source } from '../../lib/sources'
 import { lastSources, matchSource } from '../player/session'
 import { library, libraryStore, mediaKey, useLibrary } from '../../lib/store/library'
@@ -17,12 +18,14 @@ import type { MediaDetail, MediaType } from '../../lib/tmdb/types'
 import { useNearScreen } from '../../lib/useNearScreen'
 import { allWatched, nextUp, pickShuffle, watchedEpisodes } from '../../lib/watching'
 import { watchedFraction } from '../home/logic'
+import { eventFileName, icsEvent } from '../library/calendar'
 import { About } from './About'
+import { CollectionRow } from './CollectionRow'
 import { Ratings } from './Ratings'
 import { RequestButton } from './RequestButton'
 import { Episodes } from './Episodes'
 import { FilmCan } from './FilmCan'
-import { airedRefs, cardOf, metaParts, playLabel, playsFirst, titlePrint, todayOf } from './logic'
+import { airedRefs, airsLine, cardOf, metaParts, nextEpisodeEntry, relatedRows, playLabel, playsFirst, titlePrint, todayOf } from './logic'
 import { fetchEpisodes, useShowEpisodes } from './shows'
 import { StarRating, useRating } from './StarRating'
 import { TitleName } from './TitleName'
@@ -144,6 +147,8 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   const ready = loaded && (type === 'movie' || episodes.ready)
   // A title watched through says so on its strip, with every hole filled, as its poster does on Home.
   const marked = isWatched && showWatchedMark && !progress
+  const related = relatedRows(d)
+  const airs = airsLine(d.nextEpisode, now, userLocale)
 
   /** Shuffle: a random episode, one not yet picked this round, preferring one not yet watched. */
   async function shuffle() {
@@ -156,6 +161,14 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
     }
     titleLibrary.rememberShuffled(card, pick.played)
     play(pick.pick)
+  }
+  // One .ics event, the same one Upcoming makes for this episode, so adding it twice updates it.
+  function addToCalendar() {
+    const entry = nextEpisodeEntry(d!)
+    if (!entry) return
+    const file = icsFileName(eventFileName(entry))
+    downloadICS(buildICS([icsEvent(entry)], Date.now()), file)
+    setNote(`Saved ${file}. Open it to add the episode to your calendar.`)
   }
   const toggleWatched = () => {
     if (type === 'movie') return watched ? titleLibrary.markUnwatched(card) : library.markWatched(card, undefined, d.runtime)
@@ -218,6 +231,16 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
             />
           </div>
 
+          {airs && (
+            <p className={s.airs}>
+              <span className={s.airsText}>
+                <Icon name="calendar" size={15} />
+                <span aria-label={airs.spoken}>{airs.text}</span>
+              </span>
+              <TextAction label="Add to Calendar" onClick={addToCalendar} />
+            </p>
+          )}
+
           {phone && <Ratings detail={d} ready={loaded} />}
 
           {(isWatched || score !== undefined) && (
@@ -266,8 +289,9 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
         </div>
       )}
 
-      <PosterRow title="You Might Also Like" items={d.recommendations} now={now} />
-      <PosterRow title="Similar" items={d.similar} now={now} />
+      {type === 'movie' && <CollectionRow detail={d} now={now} />}
+      <PosterRow title="More Like This" items={d.recommendations} now={now} />
+      {related.similar && <PosterRow title="Similar" items={d.similar} now={now} />}
 
       {!isPlaceholderData && <About detail={d} />}
 

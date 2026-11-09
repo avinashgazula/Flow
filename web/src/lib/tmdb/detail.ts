@@ -122,7 +122,7 @@ export function buildDetail(type: MediaType, raw: any, lang: string, regionCode:
     lastEpisode: raw.last_episode_to_air ? episode(raw.last_episode_to_air) : undefined,
     networks: (raw.networks ?? []).map((n: any) => n.name),
     voteCount: raw.vote_count,
-    collection: raw.belongs_to_collection ? { id: raw.belongs_to_collection.id, name: raw.belongs_to_collection.name } : undefined,
+    collection: raw.belongs_to_collection ? { id: raw.belongs_to_collection.id, name: raw.belongs_to_collection.name, backdrop: raw.belongs_to_collection.backdrop_path ?? undefined } : undefined,
     originCountries: countries(raw),
     budget: raw.budget > 0 ? raw.budget : undefined,
     revenue: raw.revenue > 0 ? raw.revenue : undefined,
