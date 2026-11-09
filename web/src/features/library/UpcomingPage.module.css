@@ -46,7 +46,7 @@
 
 /* Just Aired: stills at one size, scrolling sideways at every width. No scroll snapping: episodes arrive as each show's
    details load, and a snapping row follows the card it had settled on, so new ones in front would scroll it away. */
-.stills { display: flex; gap: var(--space-m); overflow-x: auto; scrollbar-width: none; padding: 6px; margin: -6px; }
+.stills { display: flex; gap: var(--space-m); overflow-x: auto; scrollbar-width: none; padding: 8px; margin: -8px; }
 .stills::-webkit-scrollbar { display: none; }
 .still { flex: 0 0 280px; min-width: 0; }
 /* From a tablet up the row shows whole stills, three across (the edge print needs about 280px to keep the episode),

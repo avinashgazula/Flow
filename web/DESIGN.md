@@ -372,6 +372,7 @@ Grouped Film Base 2 lists with a Rule between rows and a sentence-case footer un
 - **Don't** mix poster and still scales in one row or vary perforation counts within a row.
 - **Don't** carry Film Stock into the player: no edge strips, perforations or edge print over the picture. It is a conventional player.
 - **Don't** introduce a light appearance; Flow is dark only.
+- **Don't** show a browser's own error text or offer "Try Again" for a problem a retry can't fix: a failed fetch says Flow couldn’t reach TMDB, and a refused key says so and offers the one yellow action, Open Settings.
 
 ## Notes
 

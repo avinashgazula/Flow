@@ -9,7 +9,7 @@ import { useSettings } from '../../lib/store/settings'
 import { useServerLookup } from '../home/marks'
 import type { Genre, MediaType } from '../../lib/tmdb/types'
 import { ChipRow } from './ChipRow'
-import { Segmented, Select, StateView, errorMessage } from './Controls'
+import { RetryAction, Segmented, Select, StateView, errorMessage } from './Controls'
 import { summarizeFilters } from './filterQuery'
 import { filtersToSearch, isFiltered, noFilters, type ExploreFilters } from './filters'
 import { PosterGrid } from './PosterGrid'
@@ -127,11 +127,7 @@ export function ExploreScreen({ type, sort, genre, filters }: { type: MediaType;
             icon="info"
             title="Couldn’t Load Titles"
             message={errorMessage(query.error)}
-            action={
-              <button className="btn btn-secondary" onClick={() => void query.refetch()}>
-                Try Again
-              </button>
-            }
+            action={<RetryAction error={query.error} onRetry={() => void query.refetch()} />}
           />
         ) : !query.isPending && !waiting && items.length === 0 && !hasMore ? (
           filtering && listed.length > 0 ? (

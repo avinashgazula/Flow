@@ -6,6 +6,7 @@ import { PosterRow, PosterWall } from '../../components/PosterRow'
 import { q } from '../../lib/queries'
 import { useMinuteTick } from '../../lib/time'
 import type { MediaType, Person } from '../../lib/tmdb/types'
+import { RetryAction, StateView, errorMessage } from '../explore/Controls'
 import { creditSorts, filmography, lifeLine, type CreditSort } from './logic'
 import s from './PersonScreen.module.css'
 
@@ -27,13 +28,7 @@ export function PersonScreen({ id }: { id: number }) {
     if (isError)
       return (
         <div className="page">
-          <div className={s.state} role="status">
-            <h1 className={s.stateTitle}>Couldn’t Load This Person</h1>
-            <p>{error instanceof Error && error.message ? `${error.message.replace(/[.!?]$/, '')}. Try again in a moment.` : 'Flow couldn’t reach TMDB. Check your connection, then try again.'}</p>
-            <button className="btn btn-secondary" onClick={() => void refetch()} disabled={isRefetching}>
-              Try Again
-            </button>
-          </div>
+          <StateView heading="h1" icon="info" title="Couldn’t Load This Person" message={errorMessage(error)} action={<RetryAction error={error} onRetry={() => void refetch()} busy={isRefetching} />} />
         </div>
       )
     return <Skeleton />
@@ -64,7 +59,8 @@ function Loaded({ person }: { person: Person }) {
 
         {person.credits.length > 0 ? (
           <>
-            <PosterRow title="Known For" items={person.credits.slice(0, 12)} now={now} />
+            {/* A short career is already all on show below: a "Known For" row would repeat it. */}
+            {person.credits.length > 6 && <PosterRow title="Known For" items={person.credits.slice(0, 12)} now={now} />}
             <section className={s.filmography} aria-labelledby="filmography-title">
               <header className={s.filmHeader}>
                 <h2 id="filmography-title" className={s.sectionTitle}>

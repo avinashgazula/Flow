@@ -69,7 +69,7 @@ export function Welcome() {
                   setKey(e.target.value)
                   setState('idle')
                 }}
-                placeholder="Paste your API key or read-access token"
+                placeholder="API key or read-access token"
                 autoComplete="off"
                 spellCheck={false}
               />
