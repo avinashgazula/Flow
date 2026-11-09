@@ -66,7 +66,7 @@ struct SeasonsSection: View {
                 .padding(.horizontal, Theme.Space.gutter)
                 .shimmering()
             } else {
-                LazyVStack(alignment: .leading, spacing: Theme.Space.m) {
+                LazyVGrid(columns: episodeColumns, alignment: .leading, spacing: Theme.Space.m) {
                     ForEach(episodes) { episode in
                         EpisodeListing(show: show, episode: episode, libraryProviderID: libraryProviderID)
                     }
@@ -76,6 +76,14 @@ struct SeasonsSection: View {
         }
         .onAppear(perform: keepSelectionVisible)
         .onChange(of: model.settings.general.showSpecialsSeason) { _, _ in keepSelectionVisible() }
+    }
+
+    /// One column on iPhone and Apple TV; on iPad and Mac the rows pair up so a short synopsis doesn't leave a
+    /// wide empty strip beside its still.
+    private var episodeColumns: [GridItem] {
+        Platform.isPhone || Platform.isTV
+            ? [GridItem(.flexible(), alignment: .top)]
+            : [GridItem(.adaptive(minimum: 420), spacing: Theme.Space.m, alignment: .top)]
     }
 
     /// Specials turned off while season 0 was the one in view.
