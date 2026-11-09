@@ -101,9 +101,11 @@ function Overview() {
           {history.length > 0 && <RecentHistory />}
         </>
       )}
-      <Suspense fallback={null}>
-        <ListShelves />
-      </Suspense>
+      <div className={s.listShelves}>
+        <Suspense fallback={null}>
+          <ListShelves />
+        </Suspense>
+      </div>
     </>
   )
 }

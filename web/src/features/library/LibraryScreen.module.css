@@ -151,3 +151,6 @@ li:hover > .move, li:focus-within > .move { opacity: 1; }
   .reorder > li[data-drop='before']::before { left: calc(var(--space-m) / -2 - 1.5px); }
   .reorder > li[data-drop='after']::before { right: calc(var(--space-m) / -2 - 1.5px); }
 }
+
+/* The list shelves are Home's rows; here their See all sits at the end of the heading, as the other sections' do. */
+.listShelves h2 + a { margin-left: auto; }

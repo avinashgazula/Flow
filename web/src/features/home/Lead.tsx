@@ -7,7 +7,7 @@ import { prefetchDetail, q } from '../../lib/queries'
 import { lastSourceStore } from '../../lib/sources/lastSource'
 import { useStore } from '../../lib/store/createStore'
 import { mediaKey, useLibrary, type Progress } from '../../lib/store/library'
-import { useSettings } from '../../lib/store/settings'
+import { useSettings, useSkipDetails } from '../../lib/store/settings'
 import { userLocale, useMinuteTick } from '../../lib/time'
 import { imageURL, srcSet } from '../../lib/tmdb/images'
 import type { MediaDetail, MediaItem } from '../../lib/tmdb/types'
@@ -16,6 +16,7 @@ import { episodesLeftText, showStatus } from './continue'
 import { pickMeta, pickPrint, resumePrint, watchedFraction } from './logic'
 import { posterMarks, watchedMovieKeys, watchedShowsOf } from './marks'
 import { advancesByItself } from './shelfQuery'
+import { continueLink } from './skipDetails'
 import s from './Lead.module.css'
 
 /** A title the lead can show, and where the viewer left off when they have. */
@@ -82,6 +83,7 @@ export function Lead({ slides, auto, fullscreen }: { slides: LeadItem[]; auto: b
   const marks = useLibrary((x) => x.watchedEpisodes)
   const rewatches = useLibrary((x) => x.rewatches)
   const showLeft = useSettings((x) => x.showEpisodesRemaining)
+  const skipDetails = useSkipDetails()
   const left = progress && item.type === 'show' && detail.data ? showStatus(watchedShowsOf(marks, rewatches).get(item.id) ?? [], detail.data, now).left : 0
   const leftPrint: PrintPart[] = showLeft && left > 0 ? [{ text: episodesLeftText(left), rank: rank.episodesLeft }] : []
   // A pick the viewer has already seen says so on its strip, as a poster does.
@@ -122,7 +124,7 @@ export function Lead({ slides, auto, fullscreen }: { slides: LeadItem[]; auto: b
         </div>
         <div className={s.actions}>
           {progress ? (
-            <Link to="/watch/$type/$id" params={{ type: item.type, id: item.id }} search={progress.episode ? { season: progress.episode.season, episode: progress.episode.episode } : {}} className="btn btn-primary btn-large" onPointerEnter={() => prefetchDetail(item)}>
+            <Link {...continueLink({ item, progress }, skipDetails)} className="btn btn-primary btn-large" onPointerEnter={() => prefetchDetail(item)}>
               <Icon name="play" size={18} /> Resume
             </Link>
           ) : (

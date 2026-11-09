@@ -5,7 +5,7 @@ import { prefetchDetail, q } from '../../lib/queries'
 import { lastSourceStore } from '../../lib/sources/lastSource'
 import { useStore } from '../../lib/store/createStore'
 import { useLibrary } from '../../lib/store/library'
-import { useSettings } from '../../lib/store/settings'
+import { useSettings, useSkipDetails } from '../../lib/store/settings'
 import { formatLeft, formatRuntime, userLocale, useMinuteTick } from '../../lib/time'
 import { useNearScreen } from '../../lib/useNearScreen'
 import { continueEntries, episodesLeftText, followedShows, showStatus, type ContinueEntry } from './continue'
@@ -13,7 +13,7 @@ import { endsPart, episodeLine, episodeShort, inProgress, resumePrint, secondsLe
 import { LazyCardMenu } from './LazyCardMenu'
 import { watchedShowsOf } from './marks'
 import { continueMeta } from './posterText'
-import { continueLink, useSkipDetails } from './skipDetails'
+import { continueLink } from './skipDetails'
 import s from './HomeScreen.module.css'
 
 /** How wide an Up Next still renders, for `srcset`: two across beside the lead on a desktop, a scrolling row below. */
