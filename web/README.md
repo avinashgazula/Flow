@@ -75,6 +75,14 @@ is named after a fingerprint of its contents, so a deploy that changes any file 
   builds only (`lib/pwa/update.ts`).
 - **Address bar search.** The build writes `opensearch.xml` (`search?q={searchTerms}`) with absolute addresses, from
   `FLOW_SITE_URL`, `PAGES_DOMAIN` or the GitHub repository; a local build gets relative ones, which browsers ignore.
+- **Search Settings.** The field at the top of Settings reads every row off the sections once they are drawn (`Row` and `Group` carry
+  `data-settings-*` marks) and matches a row's title, its keywords (`rowKeywords` in `features/settings/searchIndex.ts`, spread from the
+  apps' per-page `SettingsPage.keywords`), its detail line, then its group's and section's names and its footer. Results sit under their
+  section names; arrows and Enter pick one, and Settings scrolls to the row and outlines it for a moment. Typing loads every lazy section first.
+- **Player switches** (Settings → Playback): **Skip Details on Continue Watching** (`useSkipDetails()` in `lib/store/settings.ts`, on, as the
+  apps), **Picture in Picture** (hides the button; on), **Auto Rotate to Landscape** (only where `screen.orientation.lock` exists on a touch
+  device, in practice Android Chromium, and only in full screen; `player/orientation.ts`) and **Auto-sync** (off; the Subtitle Delay page
+  shows its Auto-sync row only when on). All four travel in the setup file under the apps' names. Show Upcoming now defaults to off, as in the apps.
 - **Install.** Settings → About has Install Flow where the browser sends `beforeinstallprompt`, and one sentence about Share
   → Add to Home Screen on iPhone and iPad. Nothing asks unprompted.
 

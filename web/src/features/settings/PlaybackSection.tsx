@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { proxyProblem } from '../../lib/sources/proxy'
-import { settingsStore, useSettings, type Settings, type SkipBehaviour, type SubtitleMode } from '../../lib/store/settings'
+import { settingsStore, useSettings, useSkipDetails, type Settings, type SkipBehaviour, type SubtitleMode } from '../../lib/store/settings'
 import { ConfirmButton, Group, Note, Row, Select, Switch } from './controls'
 import { LearnMore } from './LearnMore'
 import { SubtitleServicesGroup } from './SubtitleServicesGroup'
@@ -11,6 +11,7 @@ import { detectPlatform, externalPlayerTitle, playersFor } from '../player/exter
 import { cellularChoices, countdownChoices, currentConnection, playbackPreferences, seekChoices, watchedChoices } from '../player/preferences'
 import { titleChoices } from '../player/session'
 import { offsetChoices, offsetLabel } from '../player/subtitleDelay'
+import { canAutoRotate } from '../player/orientation'
 import s from './SettingsScreen.module.css'
 
 const qualities: { value: Settings['preferredQuality']; label: string }[] = [
@@ -235,6 +236,13 @@ export function PlaybackSection() {
   const matroska = useSettings((x) => x.matroskaPlayback ?? 'remux')
   const cellular = useSettings((x) => x.cellularResolutionCap ?? '2160p')
   const syncOffset = useSettings((x) => x.defaultSubtitleOffset ?? 0)
+  const autoSync = useSettings((x) => x.subtitleAutoSync === true)
+  const skipDetails = useSkipDetails()
+  const pip = useSettings((x) => x.pictureInPicture !== false)
+  const autoRotate = useSettings((x) => x.autoRotate !== false)
+  // Both switches appear only where the browser can act on them.
+  const hasPip = typeof document !== 'undefined' && (document.pictureInPictureEnabled || (typeof HTMLVideoElement !== 'undefined' && 'webkitSetPresentationMode' in HTMLVideoElement.prototype))
+  const canRotate = canAutoRotate()
   // The Network Information API is Chromium's alone; elsewhere there is nothing to tell a metered link by.
   const hasConnection = currentConnection() !== undefined
   // The apps exist on iPhone, iPad and Mac only; elsewhere the setting would have nothing to choose.
@@ -252,6 +260,21 @@ export function PlaybackSection() {
 
   return (
     <>
+      <Group footer={`Skip Details on Continue Watching plays a title from its card on Home instead of opening its page.${canRotate ? ' Auto Rotate to Landscape turns the phone sideways when the player goes full screen.' : ''}`}>
+        <Row label="Skip Details on Continue Watching" detail="Play from the card instead of opening the title">
+          <Switch label="Skip details on Continue Watching" checked={skipDetails} onChange={(on) => settingsStore.set({ skipDetailsOnContinueWatching: on })} />
+        </Row>
+        {canRotate && (
+          <Row label="Auto Rotate to Landscape" detail="When the player goes full screen">
+            <Switch label="Auto rotate to landscape" checked={autoRotate} onChange={(on) => settingsStore.set({ autoRotate: on })} />
+          </Row>
+        )}
+        {hasPip && (
+          <Row label="Picture in Picture" detail="Show the button in the player">
+            <Switch label="Picture in Picture" checked={pip} onChange={(on) => settingsStore.set({ pictureInPicture: on })} />
+          </Row>
+        )}
+      </Group>
       <Group
         footer={`The picker puts this resolution first when a title has it, then the next best. Anything this browser can’t play is marked and never chosen for you.${hasConnection ? ' Resolution on Cellular applies instead when the browser reports Data Saver or a slow connection: Flow then starts a source no taller than that, and the picker still lists the rest.' : ''}`}
       >
@@ -313,6 +336,11 @@ export function PlaybackSection() {
         </Row>
       </Group>
       <SubtitleStyleGroup />
+      <Group title="Auto-sync (Beta)" footer="Aligns out-of-sync subtitles to the dialogue. Turn it on, start playback, and an Auto-sync action appears on the player’s Subtitle Delay page. It needs a video whose sound this browser may read, and a scene with dialogue.">
+        <Row label="Auto-sync">
+          <Switch label="Auto-sync" checked={autoSync} onChange={(on) => settingsStore.set({ subtitleAutoSync: on })} />
+        </Row>
+      </Group>
       <Group footer="Draws ASS and SSA subtitles the way their author styled them, instead of the style above. It matters mostly for anime, and loads a 1 MB drawing engine the first time one shows. Subtitles inside an MKV keep your style.">
         <Row label="Keep Original ASS Styling">
           <Switch label="Keep original ASS styling" checked={extras.keepASSStyling} onChange={(on) => setExtras({ keepASSStyling: on })} />
