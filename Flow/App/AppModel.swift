@@ -155,6 +155,8 @@ final class AppModel {
     /// Bumped by the screenshot tour on the Mac, whose Settings is a window that only a view can open.
     var settingsWindowRequest = 0
     var searchText = ""
+    /// Set by the "/" shortcut: the Search screen takes it when it appears, then puts the cursor in its field.
+    var searchFocusPending = false
     /// Lets the screenshot tour show the welcome screen inside demo mode.
     var previewOnboarding = false
 
