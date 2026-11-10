@@ -76,7 +76,11 @@ struct SearchView: View {
             .padding(.vertical)
         }
         .navigationTitle("Search")
+        #if os(tvOS)
+        .searchable(text: $model.searchText, prompt: "Movies, shows, and people")
+        #else
         .searchable(text: $model.searchText, isPresented: $searchPresented, prompt: "Movies, shows, and people")
+        #endif
         .onSubmit(of: .search) { model.rememberSearch(text); recents = model.recentSearches }
         .task(id: text) { await runSearch() }
         .onAppear { recents = model.recentSearches; takeFocusRequest() }
