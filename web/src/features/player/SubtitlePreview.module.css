@@ -7,7 +7,8 @@
   position: relative;
   height: var(--sub-room);
   overflow: hidden;
-  background: linear-gradient(180deg, var(--ink-3), var(--base-3) 55%, var(--edge));
+  /* A picture, not a surface: the same in light and dark. */
+  background: linear-gradient(180deg, #7d7d7a, #3a3a38 55%, #0d0d0d);
 }
 .line {
   position: absolute;

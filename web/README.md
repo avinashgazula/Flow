@@ -25,9 +25,11 @@ npm test             # unit tests (Vitest)
 - **TanStack Virtual** for long grids (Explore, Library).
 - **Rust → WebAssembly** (`crates/`) for the work that's actually heavy in a browser: demuxing
   Matroska and remuxing it to fragmented MP4 for Media Source Extensions, in a Web Worker.
-- **CSS Modules + tokens** (`src/styles/tokens.css`: Film Stock: warm film-base black and one film-stock yellow, with edge-print type). No
-  CSS-in-JS runtime. The default typeface is the system's (SF on Apple devices); Settings →
-  Appearance offers Inter, Geist, Manrope and Ioskeley Mono, and only the chosen one downloads.
+- **CSS Modules + tokens** (`src/styles/tokens.css`: Index: paper and ink in light and dark, 3px rules, one red and one blue; see
+  `DESIGN.md`). No CSS-in-JS runtime. Four self-hosted open-source faces from `@fontsource` (Archivo, IBM Plex Mono,
+  Sans Condensed and Serif; `src/styles/fonts.css`), latin and latin-ext only, with the two first-paint faces preloaded.
+  Light or dark follows the system until the Light/Dark cell in the top bar is used; the choice is saved per browser
+  (`src/lib/theme.ts`, and an inline script in `index.html` that sets it before first paint).
 
 | Path | What's there |
 | --- | --- |
@@ -58,10 +60,10 @@ npm test             # unit tests (Vitest)
 
 ## Installing and offline
 
-Flow is an installable web app (`public/manifest.webmanifest`: Film Base colours, maskable icons, shortcuts for Continue
+Flow is an installable web app (`public/manifest.webmanifest`: Index colours, maskable icons, shortcuts for Continue
 Watching, Upcoming and Search) and opens with no network. `scripts/pwa.ts` runs after the build: it lists the hashed code
 and styles (Vite's output, without sourcemaps, wasm or anything over 300 KB, which is hls.js), adds the page, the offline
-page, the manifest, the icon and the edge-print font, and builds `src/sw/sw.ts` with that list into `dist/sw.js`. The cache
+page, the manifest and the icon (the preloaded first-paint fonts come with the page), and builds `src/sw/sw.ts` with that list into `dist/sw.js`. The cache
 is named after a fingerprint of its contents, so a deploy that changes any file replaces the whole cache.
 
 - **What it caches** is decided by `src/sw/rules.ts` and its tests: Flow's own origin and base path only, GET only, nothing

@@ -73,7 +73,7 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
   gap: var(--space-m);
   height: 100%;
   padding: 8px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--hair);
   -webkit-tap-highlight-color: transparent;
 }
 .historyPlate { flex: none; width: 144px; }

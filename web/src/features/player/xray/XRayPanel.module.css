@@ -19,7 +19,7 @@
   flex-direction: column;
   min-height: 0;
   background: var(--base-2);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--hair);
   border-radius: var(--radius-panel);
   overflow: hidden;
   animation: appear var(--dur-state) var(--ease-out);
@@ -91,7 +91,7 @@
   display: flex;
   gap: 6px;
   padding: 0 16px 12px;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--hair);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -157,7 +157,7 @@
   width: 44px;
   aspect-ratio: 3 / 4;
   border-radius: var(--radius-art);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--hair);
   background: var(--base-3);
 }
 .who { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -198,7 +198,7 @@
   width: 96px;
   aspect-ratio: 2 / 3;
   border-radius: var(--radius-art);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--hair);
   background: var(--base-3);
 }
 .personWho { min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-bottom: 2px; }
@@ -242,7 +242,7 @@
   width: 100%;
   aspect-ratio: 2 / 3;
   border-radius: var(--radius-art);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--hair);
   transition: opacity var(--dur-state) ease;
 }
 .also a:hover .poster { opacity: 0.85; }

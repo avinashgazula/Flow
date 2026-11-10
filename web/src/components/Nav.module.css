@@ -1,65 +1,93 @@
-/* The top bar is flat ground ink, so page content scrolls under a solid edge; a hairline appears once
-   it does. The current section is paper with a 2 px yellow underline; the others are ink-2. */
+/* The top bar: bordered cells on a 3px rule, as the reference's. Fixed, so pages keep their own top padding
+   (--nav-height); it slides up out of the way while scrolling down. Cells are 56px high, uppercase mono, with a
+   3px ink border on the left; current is inverted, hover is blue. */
 .top {
   position: fixed;
   inset: 0 0 auto;
   z-index: 50;
-  height: var(--nav-height);
+  display: flex;
+  align-items: stretch;
+  padding-top: env(safe-area-inset-top);
+  background: var(--bg);
+  border-bottom: var(--rule);
+  font: 600 14px / 1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: transform var(--dur-move) ease;
+}
+.top[data-away] { transform: translateY(-100%); }
+
+/* The logo cell: the wordmark in Plex Sans Condensed on a blue block. */
+.brand {
   display: flex;
   align-items: center;
-  gap: var(--space-xl);
-  padding: 0 var(--page-inset);
-  padding-top: env(safe-area-inset-top);
-  background: var(--base);
-  transition: box-shadow var(--dur-move) ease;
+  padding: 0 24px;
+  min-height: 56px;
+  border-right: var(--rule);
+  background: var(--blue);
+  color: var(--onblue);
+  font: 700 24px / 1 var(--font-cond);
+  letter-spacing: 0;
+  text-transform: none;
 }
-.top[data-scrolled] { box-shadow: 0 1px 0 var(--rule); }
+@media (hover: hover) { .brand:hover { background: var(--fg); color: var(--bg); } }
 
-.brand {
-  display: inline-flex;
+.links { display: flex; align-items: stretch; margin-left: auto; }
+.end { display: flex; align-items: stretch; }
+
+.cell {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  font: 600 var(--fs-headline) / 1 var(--font-display);
-  letter-spacing: -0.01em;
-  color: var(--paper);
-  padding: var(--space-xs) 0;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 24px;
+  border: 0;
+  border-left: var(--rule);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-
-.mark { width: 12px; height: 16px; border-radius: var(--radius-perf); background: var(--stock); }
-
-.links { display: flex; gap: var(--space-l); height: 100%; align-items: stretch; margin-right: auto; }
-.link {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  font: 500 var(--fs-small) / 1 var(--font);
-  color: var(--ink-2);
-  transition: color var(--dur-state) ease;
-}
-.link:hover { color: var(--paper); }
-.link[aria-current='page'] { color: var(--paper); font-weight: 600; }
-.link[aria-current='page']::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 10px;
-  height: 2px;
-  border-radius: var(--radius-hair);
-  background: var(--stock);
-}
-
-.end { display: flex; align-items: center; gap: var(--space-xs); }
-.sample { font: 400 var(--fs-caption) / 1 var(--font); color: var(--ink-3); transition: color var(--dur-state) ease; }
-.sample:hover { color: var(--paper); }
-.settings { margin-right: -10px; }
-.settings[aria-current='page'] { color: var(--stock); }
+@media (hover: hover) { .cell:hover { background: var(--blue); color: var(--onblue); } }
+.cell[aria-current='page'], .cell[aria-pressed='true']:not(:hover) { background: var(--fg); color: var(--bg); }
+/* The toggle shows the state it switches to ("Dark" while light), so it isn't "current": only the icon says which
+   half is lit. Its pressed state is for assistive tech, not for an inverted fill. */
+.theme[aria-pressed='true']:not(:hover) { background: transparent; color: var(--fg); }
+.cell:focus-visible { outline-offset: -6px; background: var(--blue); color: var(--onblue); outline-color: var(--onblue); }
+.sample, .sample[aria-current='page'] { background: transparent; color: var(--red); }
+@media (hover: hover) { .sample:hover, .sample[aria-current='page']:hover { background: var(--blue); color: var(--onblue); } }
+.cell svg { flex: none; }
 
 .bottom { display: none; }
 
+/* Between a phone and a laptop the cells tighten and Settings and the toggle keep their icons only, so the whole
+   bar still fits (it has to, down to 721px). Their spoken labels stay. */
+@media (max-width: 1100px) {
+  .cell { padding: 0 14px; }
+  .brand { padding: 0 18px; }
+  .wide { display: none; }
+  .settings, .theme { padding: 0; min-width: 56px; }
+}
+
+@media (min-width: 721px) and (max-width: 800px) {
+  .cell { padding: 0 10px; }
+  .brand { padding: 0 14px; }
+}
+
 @media (max-width: 720px) {
-  .top { justify-content: space-between; }
+  .top { font-size: 12px; }
+  .top .brand { flex: 1 1 auto; min-height: 52px; border-right: 0; }
   .links { display: none; }
+  .cell { min-height: 52px; padding: 0; min-width: 52px; }
+  .sample { padding: 0 12px; }
+  /* "Sample" stays, "Data" goes: the cell is there to say the screen's contents are made up. */
+  .sample .wide { display: none; }
+
   .bottom {
     position: fixed;
     z-index: 50;
@@ -69,21 +97,29 @@
     grid-auto-columns: 1fr;
     height: var(--tabbar-height);
     padding-bottom: env(safe-area-inset-bottom);
-    background: var(--base-2);
-    box-shadow: 0 -1px 0 var(--rule);
+    background: var(--bg);
+    border-top: var(--rule);
   }
   .bottomTab {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    font: 500 var(--fs-caption) / 1 var(--font);
-    color: var(--ink-2);
+    gap: 5px;
+    min-width: 0;
+    border-left: var(--rule);
+    font: 600 12px / 1 var(--font);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg);
     -webkit-tap-highlight-color: transparent;
-    transition: color var(--dur-state) ease;
   }
-  .bottomTab[aria-current='page'] { color: var(--stock); }
-  .bottomTab:active { transform: scale(0.98); }
-  .bottomTab:focus-visible { outline-offset: -4px; }
+  .bottomTab:first-child { border-left: 0; }
+  .bottomTab[aria-current='page'] { background: var(--fg); color: var(--bg); }
+  .bottomTab:active { background: var(--blue); color: var(--onblue); }
+  .bottomTab:focus-visible { outline-offset: -6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .top { transition: none; }
 }

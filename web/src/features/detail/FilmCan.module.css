@@ -3,7 +3,7 @@
 .can {
   margin-top: var(--space-m);
   padding: var(--space-xs) var(--space-m);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--hair);
   border-radius: var(--radius-label);
   background: var(--base-2);
 }

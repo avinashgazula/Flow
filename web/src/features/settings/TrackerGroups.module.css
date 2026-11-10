@@ -1,7 +1,7 @@
 /* Tracking With: one row for each service, a mark on the right for the one that tracks. The mark is a ring that
    fills with paper and a check, so the choice never rests on colour alone; yellow is left for the group's next
    action and for focus. A service that can't be chosen yet has no ring and says why under its name. */
-.options > * + * { border-top: 1px solid var(--rule); }
+.options > * + * { border-top: 1px solid var(--hair); }
 .option {
   display: flex;
   align-items: center;

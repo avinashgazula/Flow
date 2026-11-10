@@ -47,8 +47,8 @@ export interface WebDAVConfig {
   enabled: boolean
 }
 
-/** The typefaces Settings offers. The ids are also the keys in index.html's pre-paint script and the
- *  `[data-font]` rules in styles/tokens.css. */
+/** The typeface choice of the old design. Flow is set in Index's four faces now and nothing reads this; the
+ *  ids stay valid so a backup or a synced setting from before still loads. */
 export type FontChoice = 'system' | 'inter' | 'geist' | 'manrope' | 'ioskeley'
 
 /** When subtitles turn on by themselves: never, only when the audio isn't in the viewer's own
@@ -241,7 +241,7 @@ export interface Settings {
    *  Absent until the viewer changes something; read it through `normaliseSourceOrdering`, which supplies the
    *  defaults. That keeps the defaults out of the code that loads first. */
   sources?: SourceOrdering
-  /** The typeface the whole site is set in; System is the device's own and downloads nothing. */
+  /** Retired (see FontChoice): kept so saved settings, backups and syncs that carry it stay valid. */
   font: FontChoice
   /** The order of the sections in the top bar and the phone's tab bar, by id (lib/tabs.ts). A section this
    *  list doesn't name yet takes its default place. */

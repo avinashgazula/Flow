@@ -141,7 +141,6 @@ export const rowKeywords: Record<string, string> = {
   'join a sync': 'flow sync pairing link key devices',
   'pairing link': 'flow sync qr code share devices',
   'text size': 'detail font accessibility larger',
-  'font': 'typeface inter geist manrope',
   'install flow': 'pwa app home screen',
   'sample data': 'demo leave demo',
   'open source licences': 'licenses legal',

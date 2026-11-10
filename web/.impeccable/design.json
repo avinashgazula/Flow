@@ -1,362 +1,265 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-22T16:03:05Z",
+  "generatedAt": "2026-11-10T00:00:00Z",
   "title": "Design System: Flow",
   "extensions": {
     "colorMeta": {
-      "film-stock": {
+      "blue": {
         "role": "primary",
-        "displayName": "Film-Stock Yellow",
-        "canonical": "oklch(81% 0.165 82)",
+        "displayName": "Action Blue",
+        "canonical": "oklch(46% 0.27 265)",
         "tonalRamp": [
-          "#140900",
-          "#362000",
-          "#5d3a00",
-          "#875600",
-          "#b37400",
-          "#d69900",
-          "#ebc37a",
-          "#ffeccb"
+          "#040926",
+          "#08124c",
+          "#0d1e80",
+          "#122bb2",
+          "#5f77ff",
+          "#8c9eff",
+          "#bac5ff",
+          "#e8ecff"
         ]
       },
-      "film-stock-hover": {
+      "dark-blue": {
         "role": "primary",
-        "displayName": "Film-Stock Yellow Hover",
-        "canonical": "#ffc233",
+        "displayName": "Action Blue (dark)",
+        "canonical": "oklch(75% 0.12 270)",
         "tonalRamp": [
-          "#140900",
-          "#362000",
-          "#5d3a00",
-          "#875600",
-          "#b37400",
-          "#d69900",
-          "#ebc37a",
-          "#ffeccb"
+          "#151826",
+          "#2b314c",
+          "#485180",
+          "#6471b2",
+          "#b1beff",
+          "#c7d0ff",
+          "#dde3ff",
+          "#f4f6ff"
         ]
       },
-      "film-stock-press": {
-        "role": "primary",
-        "displayName": "Film-Stock Yellow Pressed",
-        "canonical": "#dda00a",
-        "tonalRamp": [
-          "#140900",
-          "#362000",
-          "#5d3a00",
-          "#875600",
-          "#b37400",
-          "#d69900",
-          "#ebc37a",
-          "#ffeccb"
-        ]
-      },
-      "on-stock": {
-        "role": "neutral",
-        "displayName": "On-Stock",
-        "canonical": "#15120f",
-        "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
-        ]
-      },
-      "signal-red": {
+      "red": {
         "role": "secondary",
-        "displayName": "Signal Red",
-        "canonical": "oklch(67% 0.189 31)",
+        "displayName": "Index Red",
+        "canonical": "oklch(55% 0.22 28)",
         "tonalRamp": [
-          "#1b0301",
-          "#451008",
-          "#742115",
-          "#a73322",
-          "#dc4732",
-          "#ff725b",
-          "#ffac9a",
-          "#ffe2d8"
+          "#200302",
+          "#400603",
+          "#6a0a06",
+          "#940e08",
+          "#e15a54",
+          "#ea8a85",
+          "#f2b8b6",
+          "#fbe8e7"
         ]
       },
-      "warn-amber": {
+      "dark-red": {
         "role": "secondary",
-        "displayName": "Warn Amber",
-        "canonical": "oklch(79% 0.154 61)",
+        "displayName": "Index Red (dark)",
+        "canonical": "oklch(69% 0.2 27)",
         "tonalRamp": [
-          "#160700",
-          "#3c1b00",
-          "#663300",
-          "#934c00",
-          "#c26700",
-          "#e68d36",
-          "#f7bb89",
-          "#ffe8d1"
+          "#260e0c",
+          "#4c1b17",
+          "#802d27",
+          "#b23f37",
+          "#ff8c83",
+          "#ffaca6",
+          "#ffceca",
+          "#ffeeed"
         ]
       },
-      "film-base": {
-        "role": "neutral",
-        "displayName": "Film Base",
-        "canonical": "#15120f",
-        "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
-        ]
-      },
-      "film-base-2": {
-        "role": "neutral",
-        "displayName": "Film Base 2",
-        "canonical": "#1f1b17",
-        "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
-        ]
-      },
-      "film-base-3": {
-        "role": "neutral",
-        "displayName": "Film Base 3",
-        "canonical": "#2a251f",
-        "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
-        ]
-      },
-      "film-base-4": {
-        "role": "neutral",
-        "displayName": "Film Base 4",
-        "canonical": "#3a342c",
-        "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
-        ]
-      },
-      "edge-band": {
-        "role": "neutral",
-        "displayName": "Edge Band",
-        "canonical": "#0d0b09",
-        "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
-        ]
-      },
-      "paper": {
+      "bg": {
         "role": "neutral",
         "displayName": "Paper",
-        "canonical": "#f4efe6",
+        "canonical": "oklch(100% 0 0)",
         "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
+          "#262626",
+          "#4c4c4c",
+          "#808080",
+          "#b2b2b2",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
         ]
       },
-      "ink-2": {
+      "fg": {
         "role": "neutral",
-        "displayName": "Ink 2",
-        "canonical": "#bfb5a6",
+        "displayName": "Ink",
+        "canonical": "oklch(14% 0 0)",
         "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
+          "#020202",
+          "#030303",
+          "#050505",
+          "#070707",
+          "#545454",
+          "#848484",
+          "#b6b6b6",
+          "#e6e6e6"
         ]
       },
-      "ink-3": {
+      "dark-bg": {
         "role": "neutral",
-        "displayName": "Ink 3",
-        "canonical": "#8d8476",
+        "displayName": "Ink (dark ground)",
+        "canonical": "oklch(14% 0 0)",
         "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
+          "#020202",
+          "#030303",
+          "#050505",
+          "#070707",
+          "#545454",
+          "#848484",
+          "#b6b6b6",
+          "#e6e6e6"
         ]
       },
-      "edge-print": {
+      "dark-fg": {
         "role": "neutral",
-        "displayName": "Edge Print",
-        "canonical": "#d9cdb6",
+        "displayName": "Paper (dark text)",
+        "canonical": "oklch(95% 0.005 100)",
         "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
+          "#242424",
+          "#494947",
+          "#797977",
+          "#a9a9a7",
+          "#f6f6f3",
+          "#f8f8f6",
+          "#fbfbfa",
+          "#fefefd"
         ]
       },
-      "rule": {
+      "muted": {
         "role": "neutral",
-        "displayName": "Rule",
-        "canonical": "rgb(255 236 200 / 0.1)",
+        "displayName": "Muted",
+        "canonical": "oklch(44% 0 0)",
         "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
+          "#0d0d0d",
+          "#1a1a1a",
+          "#2a2a2a",
+          "#3c3c3c",
+          "#888888",
+          "#aaaaaa",
+          "#cccccc",
+          "#eeeeee"
         ]
       },
-      "overlay": {
+      "faint": {
         "role": "neutral",
-        "displayName": "Overlay",
-        "canonical": "rgb(21 18 15 / 0.94)",
+        "displayName": "Faint",
+        "canonical": "oklch(54% 0 0)",
         "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
+          "#101010",
+          "#202020",
+          "#363636",
+          "#4b4b4b",
+          "#979797",
+          "#b5b5b5",
+          "#d3d3d3",
+          "#f0f0f0"
         ]
       },
-      "selection": {
+      "tint-1": {
         "role": "neutral",
-        "displayName": "Selection",
-        "canonical": "rgb(246 180 14 / 0.3)",
+        "displayName": "Tint 1",
+        "canonical": "oklch(97% 0.003 100)",
         "tonalRamp": [
-          "#0d0b09",
-          "#15120f",
-          "#1f1b17",
-          "#2a251f",
-          "#3a342c",
-          "#8d8476",
-          "#bfb5a6",
-          "#f4efe6"
+          "#242424",
+          "#494948",
+          "#7a7a78",
+          "#aaaaa8",
+          "#f7f7f4",
+          "#f9f9f8",
+          "#fbfbfa",
+          "#fefefe"
+        ]
+      },
+      "tint-2": {
+        "role": "neutral",
+        "displayName": "Tint 2",
+        "canonical": "oklch(92% 0.004 100)",
+        "tonalRamp": [
+          "#232322",
+          "#454544",
+          "#747472",
+          "#a2a29f",
+          "#eeeeeb",
+          "#f3f3f1",
+          "#f8f8f7",
+          "#fdfdfc"
+        ]
+      },
+      "warn": {
+        "role": "tertiary",
+        "displayName": "Warn",
+        "canonical": "oklch(50% 0.13 55)",
+        "tonalRamp": [
+          "#190b00",
+          "#321600",
+          "#532600",
+          "#743400",
+          "#c1814c",
+          "#d2a580",
+          "#e4c9b2",
+          "#f6ede6"
         ]
       }
     },
     "typographyMeta": {
       "display": {
         "displayName": "Display",
-        "purpose": "Page titles and the home greeting; 34px on phones, 40px from 721px."
+        "purpose": "Page titles and the Home lead: Archivo 700, uppercase, huge, with a 3px rule under it."
       },
       "title": {
         "displayName": "Title",
-        "purpose": "The lead's title and sheet titles."
+        "purpose": "A title page or a person: Plex Sans Condensed 700."
       },
-      "headline": {
-        "displayName": "Headline",
-        "purpose": "Section headings."
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "Section names and row titles: Plex Sans Condensed 700; uppercase for categories."
+      },
+      "reading": {
+        "displayName": "Reading",
+        "purpose": "Overviews, reviews, biographies: Plex Serif 400."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "Running text, 62ch measure."
+        "purpose": "Interface text: Plex Mono 400."
       },
       "control": {
         "displayName": "Control",
-        "purpose": "Buttons, chips, segmented choices and item titles."
+        "purpose": "Buttons, chips, nav cells: Plex Mono 600, uppercase, .06em."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "A section label above its list: red mono capitals, .12em."
       },
       "meta": {
         "displayName": "Meta",
-        "purpose": "The one line of plain facts under an item's title."
-      },
-      "edge-print": {
-        "displayName": "Edge Print",
-        "purpose": "Strips, film-can labels, seek time and small format labels only; Barlow Condensed 600, uppercase, tracked."
+        "purpose": "Facts under artwork: Plex Mono 12px, muted."
       }
     },
-    "shadows": [
-      {
-        "name": "hairline-ring",
-        "value": "0 0 0 1px rgb(255 236 200 / 0.1)",
-        "purpose": "Edge of a sheet or the seek preview card, in place of a border."
-      },
-      {
-        "name": "scrolled-nav-rule",
-        "value": "0 1px 0 rgb(255 236 200 / 0.1)",
-        "purpose": "Nav underline once content scrolls under it."
-      },
-      {
-        "name": "selection-ring",
-        "value": "inset 0 0 0 2px #f4efe6",
-        "purpose": "The chosen typeface card in Settings, with a check."
-      },
-      {
-        "name": "thumb-focus",
-        "value": "0 0 0 2px #0d0b09, 0 0 0 4px #f6b40e",
-        "purpose": "The scrubber thumb's focus state on the dark band."
-      },
-      {
-        "name": "subtitle-halo",
-        "value": "0 1px 2px rgb(0 0 0 / 0.95), 0 0 6px rgb(0 0 0 / 0.55), 0 2px 14px rgb(0 0 0 / 0.35)",
-        "purpose": "Subtitle legibility over any picture; belongs to the picture."
-      }
-    ],
+    "shadows": [],
     "motion": [
+      {
+        "name": "nav-slide",
+        "value": "250ms ease",
+        "purpose": "The top bar leaving on scroll down and returning on scroll up; none with reduced motion."
+      },
       {
         "name": "ease-out",
         "value": "cubic-bezier(0.22, 1, 0.36, 1)",
         "purpose": "The one easing, for every move."
       },
       {
-        "name": "dur-state",
-        "value": "0.15s",
-        "purpose": "Colour, background, press and panel fade state changes."
+        "name": "state",
+        "value": "150ms",
+        "purpose": "Hover and press colour changes."
       },
       {
-        "name": "dur-move",
-        "value": "0.22s",
-        "purpose": "Moves: sheet rise, Up Next, view-transition zoom."
+        "name": "progress",
+        "value": "200ms width",
+        "purpose": "A progress bar filling."
       },
       {
-        "name": "hover-lift",
-        "value": "translateY(-2px) over 0.15s",
-        "purpose": "A frame item under a mouse; press scales to 0.98. Both off under reduced motion."
-      },
-      {
-        "name": "seek-preview",
-        "value": "0.12s ease",
-        "purpose": "The seek preview's fade and 4px rise."
+        "name": "spinner",
+        "value": "900ms linear",
+        "purpose": "The loading ring; three seconds per turn with reduced motion."
       }
     ],
     "breakpoints": [
@@ -365,19 +268,15 @@
         "value": "720px"
       },
       {
-        "name": "tablet",
-        "value": "721px"
-      },
-      {
-        "name": "desktop",
+        "name": "nav-compact",
         "value": "1100px"
       },
       {
-        "name": "home-wrap",
-        "value": "1360px"
+        "name": "nav-tight",
+        "value": "800px"
       },
       {
-        "name": "page-inset-max",
+        "name": "gutter-cap",
         "value": "1800px"
       }
     ]
@@ -387,154 +286,142 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one next action on a screen: Resume or Play.",
+      "description": "The one next action on a screen: Resume or Play. Solid ink.",
       "html": "<button class=\"ds-btn-primary\">Resume</button>",
-      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;border:0;border-radius:var(--radius-control,10px);background:var(--film-stock,#f6b40e);color:var(--on-stock,#15120f);font:600 15px/1 system-ui,sans-serif;cursor:pointer;transition:transform .15s cubic-bezier(.22,1,.36,1),background-color .15s ease}.ds-btn-primary:hover{background:#ffc233}.ds-btn-primary:active{background:#dda00a;transform:scale(.98)}.ds-btn-primary:focus-visible{outline:2px solid #f6b40e;outline-offset:3px;}"
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 18px;border:3px solid #0a0a0a;border-radius:0;background:#fff;color:#0a0a0a;font:600 13px/1.1 \"IBM Plex Mono\",monospace;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;background:#0a0a0a;color:#fff}.ds-btn-primary:hover{background:#1a3dff;border-color:#1a3dff;color:#fff}.ds-btn-primary:focus-visible{outline:3px solid #1a3dff;outline-offset:2px}"
     },
     {
       "name": "Secondary Button",
       "kind": "button",
-      "refersTo": "button-secondary",
-      "description": "Sits beside the primary, such as Details.",
-      "html": "<button class=\"ds-btn-secondary\">Details</button>",
-      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;border:0;border-radius:10px;background:#2a251f;color:#f4efe6;font:600 15px/1 system-ui,sans-serif;cursor:pointer;transition:transform .15s cubic-bezier(.22,1,.36,1),background-color .15s ease}.ds-btn-secondary:hover{background:#3a342c}.ds-btn-secondary:active{transform:scale(.98)}.ds-btn-secondary:focus-visible{outline:2px solid #f6b40e;outline-offset:3px;}"
+      "refersTo": "button",
+      "description": "Sits beside the primary, such as Details. Bordered, paper inside.",
+      "html": "<button class=\"ds-btn\">Details</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 18px;border:3px solid #0a0a0a;border-radius:0;background:#fff;color:#0a0a0a;font:600 13px/1.1 \"IBM Plex Mono\",monospace;text-transform:uppercase;letter-spacing:.06em;cursor:pointer}.ds-btn:hover{background:#1a3dff;border-color:#1a3dff;color:#fff}.ds-btn:focus-visible{outline:3px solid #1a3dff;outline-offset:2px}"
     },
     {
       "name": "Quiet Button",
       "kind": "button",
-      "refersTo": "button-quiet",
-      "description": "Text-only action for low-priority moves.",
-      "html": "<button class=\"ds-btn-quiet\">Not Now</button>",
-      "css": ".ds-btn-quiet{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:#bfb5a6;font:600 15px/1 system-ui,sans-serif;cursor:pointer;transition:background-color .15s ease,color .15s ease}.ds-btn-quiet:hover{background:#1f1b17;color:#f4efe6}.ds-btn-quiet:focus-visible{outline:2px solid #f6b40e;outline-offset:3px;}"
+      "refersTo": "button",
+      "description": "No border: icons and small actions. Hover fills blue.",
+      "html": "<button class=\"ds-btn-quiet\">Clear</button>",
+      "css": ".ds-btn-quiet{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 18px;border:3px solid #0a0a0a;border-radius:0;background:#fff;color:#0a0a0a;font:600 13px/1.1 \"IBM Plex Mono\",monospace;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;border-color:transparent;background:transparent}.ds-btn-quiet:hover{background:#1a3dff;color:#fff}"
     },
     {
       "name": "Filter Chip",
       "kind": "chip",
       "refersTo": "chip",
-      "description": "A filter in a scrolling row; the current one is a lighter base, never yellow.",
-      "html": "<div class=\"ds-chips\"><button class=\"ds-chip\" aria-pressed=\"true\">Drama</button><button class=\"ds-chip\">Comedy</button></div>",
-      "css": ".ds-chips{display:flex;gap:8px}.ds-chip{display:inline-flex;align-items:center;height:36px;padding:0 14px;border:0;border-radius:10px;background:#2a251f;color:#bfb5a6;font:600 15px/1 system-ui,sans-serif;cursor:pointer;transition:background-color .15s ease,color .15s ease}.ds-chip:hover{color:#f4efe6;background:#3a342c}.ds-chip[aria-pressed=true]{background:#3a342c;color:#f4efe6}.ds-chip:focus-visible{outline:2px solid #f6b40e;outline-offset:3px;}"
-    },
-    {
-      "name": "Segmented Control",
-      "kind": "custom",
-      "refersTo": "chip-current",
-      "description": "A few choices on a base-3 track; current is lighter with a yellow underline.",
-      "html": "<div class=\"ds-seg\" role=\"radiogroup\"><button class=\"ds-seg-b\" role=\"radio\" aria-checked=\"true\">Season 1</button><button class=\"ds-seg-b\" role=\"radio\" aria-checked=\"false\">Season 2</button></div>",
-      "css": ".ds-seg{display:inline-flex;padding:3px;gap:2px;border-radius:10px;background:#2a251f}.ds-seg-b{position:relative;height:34px;padding:0 14px;border:0;border-radius:8px;background:transparent;color:#bfb5a6;font:600 15px/1 system-ui,sans-serif;cursor:pointer;transition:background-color .15s ease,color .15s ease}.ds-seg-b:hover{color:#f4efe6}.ds-seg-b[aria-checked=true]{background:#3a342c;color:#f4efe6}.ds-seg-b[aria-checked=true]::after{content:'';position:absolute;left:14px;right:14px;bottom:3px;height:2px;border-radius:1px;background:#f6b40e}.ds-seg-b:focus-visible{outline:2px solid #f6b40e;outline-offset:-2px}"
+      "description": "A bordered mono cell in a row of choices; current is inverted.",
+      "html": "<span><button class=\"ds-chip\">Movies</button> <button class=\"ds-chip ds-current\">Shows</button></span>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border:3px solid #0a0a0a;background:#fff;color:#0a0a0a;font:600 13px/1 \"IBM Plex Mono\",monospace;text-transform:uppercase;letter-spacing:.06em}.ds-chip:hover{background:#1a3dff;border-color:#1a3dff;color:#fff}.ds-current{background:#0a0a0a;color:#fff}"
     },
     {
       "name": "Search Field",
       "kind": "input",
       "refersTo": "field",
-      "description": "Base-3 field with no stroke; hover lightens, focus is the yellow ring.",
-      "html": "<input class=\"ds-field\" placeholder=\"Search titles\" />",
-      "css": ".ds-field{width:260px;height:44px;padding:0 16px;border:0;border-radius:10px;background:#2a251f;color:#f4efe6;font:400 15px system-ui,sans-serif;transition:background-color .15s ease}.ds-field::placeholder{color:#bfb5a6;opacity:1}.ds-field:hover{background:#3a342c}.ds-field:focus-visible{background:#2a251f;outline:2px solid #f6b40e;outline-offset:2px}"
+      "description": "Square, 3px ink border, mono.",
+      "html": "<input class=\"ds-field\" placeholder=\"Search Titles\">",
+      "css": ".ds-field{width:260px;min-height:48px;padding:0 14px;border:3px solid #0a0a0a;border-radius:0;background:#fff;color:#0a0a0a;font:400 15px/1.2 \"IBM Plex Mono\",monospace}.ds-field:focus-visible{outline:3px solid #1a3dff;outline-offset:2px}"
     },
     {
-      "name": "Frame Item",
+      "name": "List Row",
       "kind": "card",
-      "refersTo": "edge-strip",
-      "description": "A still with its edge strip: perforations are progress, print is the facts, time left is yellow.",
-      "html": "<a class=\"ds-item\" href=\"#\"><span class=\"ds-plate\"><span class=\"ds-frame\"></span><span class=\"ds-strip\"><span class=\"ds-perfs\"><span class=\"ds-watched\"></span></span><span class=\"ds-print\">S3 E7 · <em>18M LEFT</em> · ENDS 21:30 · 2160P</span></span></span><span class=\"ds-title\">Breaking Bad</span><span class=\"ds-meta\">Season 3, Episode 7</span></a>",
-      "css": ".ds-item{display:block;width:280px;color:#f4efe6;text-decoration:none}.ds-plate{display:block;transition:transform .15s cubic-bezier(.22,1,.36,1)}.ds-frame{display:block;aspect-ratio:16/9;border-radius:6px 6px 0 0;background:linear-gradient(135deg,#3a342c,#1f1b17)}.ds-strip{display:flex;align-items:center;gap:12px;height:26px;padding:0 10px;background:#0d0b09;border-radius:0 0 6px 6px;overflow:hidden}.ds-perfs{position:relative;flex:none;width:40px;height:9px;background:#3a342c;-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E\") 0 0/11px 9px repeat-x;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E\") 0 0/11px 9px repeat-x;overflow:hidden}.ds-watched{position:absolute;inset:0 auto 0 0;width:22px;background:#f6b40e}.ds-print{min-width:0;font:600 12px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.14em;text-transform:uppercase;font-variant-numeric:tabular-nums;color:#d9cdb6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .15s ease}.ds-print em{font-style:normal;color:#f6b40e}.ds-title{display:block;margin-top:8px;font:600 15px/1.3 system-ui,sans-serif}.ds-meta{display:block;margin-top:2px;font:400 13px/1.35 system-ui,sans-serif;color:#bfb5a6}.ds-item:hover .ds-plate{transform:translateY(-2px)}.ds-item:hover .ds-print{color:#f4efe6}.ds-item:focus-visible{outline:none}.ds-item:focus-visible .ds-plate{outline:2px solid #f6b40e;outline-offset:3px;border-radius:6px}"
+      "refersTo": "row-hover",
+      "description": "A full-width row with a red numeral and a condensed title; it inverts to blue on hover.",
+      "html": "<div class=\"ds-row\"><b>01</b><span>Science Fiction</span><i>1,204</i></div>",
+      "css": ".ds-row{display:flex;align-items:baseline;gap:16px;width:320px;padding:14px 12px;border-top:3px solid #0a0a0a;border-bottom:1px solid #0a0a0a;color:#0a0a0a;font:400 13px \"IBM Plex Mono\",monospace}.ds-row b{font:700 22px/1 \"IBM Plex Sans Condensed\",sans-serif;color:#d4140b}.ds-row span{flex:1;font:700 20px/1.1 \"IBM Plex Sans Condensed\",sans-serif;text-transform:uppercase}.ds-row i{font-style:normal}.ds-row:hover{background:#1a3dff;color:#fff}.ds-row:hover b{color:#fff}"
     },
     {
-      "name": "Poster Item",
+      "name": "Page Head",
       "kind": "card",
-      "refersTo": "frame",
-      "description": "A title not started: poster with a print-only strip and all perforations unfilled.",
-      "html": "<a class=\"ds-pitem\" href=\"#\"><span class=\"ds-pframe\"></span><span class=\"ds-pstrip\"><span class=\"ds-pperfs\"></span><span class=\"ds-pprint\">2H 46M · 8.2</span></span><span class=\"ds-ptitle\">Dune: Part Two</span></a>",
-      "css": ".ds-pitem{display:block;width:150px;color:#f4efe6;text-decoration:none}.ds-pframe{display:block;aspect-ratio:2/3;border-radius:6px 6px 0 0;background:linear-gradient(160deg,#3a342c,#1f1b17)}.ds-pstrip{display:flex;align-items:center;gap:8px;height:22px;padding:0 8px;background:#0d0b09;border-radius:0 0 6px 6px;overflow:hidden}.ds-pperfs{flex:none;width:32px;height:9px;background:#3a342c;-webkit-mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E\") 0 0/11px 9px repeat-x;mask:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E\") 0 0/11px 9px repeat-x}.ds-pprint{font:600 11px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.1em;text-transform:uppercase;font-variant-numeric:tabular-nums;color:#d9cdb6;white-space:nowrap}.ds-ptitle{display:block;margin-top:8px;font:600 15px/1.3 system-ui,sans-serif}.ds-pitem:focus-visible{outline:2px solid #f6b40e;outline-offset:3px;border-radius:6px}"
-    },
-    {
-      "name": "Film-Can Label",
-      "kind": "custom",
-      "refersTo": "film-can",
-      "description": "The title page's answer to will it play well, in rows of edge print.",
-      "html": "<section class=\"ds-can\"><dl><div class=\"ds-can-row\"><dt>Best version</dt><dd>2160P · DV · 18.4 GB</dd></div><div class=\"ds-can-row\"><dt>Plays</dt><dd><span class=\"ds-direct\">Direct play</span> · <span class=\"ds-warn\">May stutter</span></dd></div></dl></section>",
-      "css": ".ds-can{padding:8px 16px;border:1px solid rgb(255 236 200/.1);border-radius:8px;background:#1f1b17;width:360px}.ds-can dl{margin:0}.ds-can-row{display:grid;grid-template-columns:112px minmax(0,1fr);column-gap:16px;align-items:baseline;padding:7px 0;min-height:34px}.ds-can dt{font:600 12px/1.6 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#8d8476}.ds-can dd{margin:0;font:600 15px/1.5 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.08em;text-transform:uppercase;font-variant-numeric:tabular-nums;color:#f4efe6}.ds-direct{color:#f6b40e}.ds-warn{color:#ff9f43}"
+      "refersTo": "typography.display",
+      "description": "The giant Archivo title with the 3px rule under it.",
+      "html": "<div class=\"ds-head\">Library</div>",
+      "css": ".ds-head{padding:24px 0 12px;border-bottom:3px solid #0a0a0a;font:700 72px/.84 Archivo,Helvetica,sans-serif;text-transform:uppercase;letter-spacing:-.03em;color:#0a0a0a}"
     },
     {
       "name": "Top Navigation",
-      "kind": "nav",
-      "refersTo": "button-quiet",
-      "description": "Solid film-base bar; the current link is paper with a 2px yellow underline.",
-      "html": "<nav class=\"ds-nav\"><span class=\"ds-brand\"><span class=\"ds-mark\"></span>Flow</span><a class=\"ds-link\" aria-current=\"page\" href=\"#\">Home</a><a class=\"ds-link\" href=\"#\">Explore</a><a class=\"ds-link\" href=\"#\">Library</a></nav>",
-      "css": ".ds-nav{display:flex;align-items:center;gap:24px;height:64px;padding:0 24px;background:#15120f;box-shadow:0 1px 0 rgb(255 236 200/.1)}.ds-brand{display:inline-flex;align-items:center;gap:8px;margin-right:8px;font:600 20px/1 system-ui,sans-serif;letter-spacing:-.01em;color:#f4efe6}.ds-mark{width:12px;height:16px;border-radius:2px;background:#f6b40e}.ds-link{position:relative;display:inline-flex;align-items:center;height:64px;font:500 15px/1 system-ui,sans-serif;color:#bfb5a6;text-decoration:none;transition:color .15s ease}.ds-link:hover{color:#f4efe6}.ds-link[aria-current=page]{color:#f4efe6;font-weight:600}.ds-link[aria-current=page]::after{content:'';position:absolute;left:0;right:0;bottom:10px;height:2px;border-radius:1px;background:#f6b40e}.ds-link:focus-visible{outline:2px solid #f6b40e;outline-offset:3px}"
+      "kind": "navigation",
+      "refersTo": "nav-cell",
+      "description": "A blue logo cell, then 3px-bordered uppercase cells: current inverted, hover blue, a Light/Dark toggle at the end.",
+      "html": "<nav class=\"ds-nav\"><b>Flow</b><i></i><a>Home</a><a class=\"ds-current\">Library</a><a>Search</a><a>Dark</a></nav>",
+      "css": ".ds-nav{display:flex;align-items:stretch;width:100%;border-bottom:3px solid #0a0a0a;font:600 14px/1 \"IBM Plex Mono\",monospace;text-transform:uppercase;letter-spacing:.06em}.ds-nav b{display:flex;align-items:center;padding:0 24px;min-height:56px;background:#1a3dff;color:#fff;font:700 24px/1 \"IBM Plex Sans Condensed\",sans-serif;text-transform:none;letter-spacing:0;border-right:3px solid #0a0a0a}.ds-nav i{flex:1}.ds-nav a{display:flex;align-items:center;padding:0 24px;border-left:3px solid #0a0a0a;color:#0a0a0a}.ds-nav a:hover{background:#1a3dff;color:#fff}.ds-nav .ds-current{background:#0a0a0a;color:#fff}"
+    },
+    {
+      "name": "Empty State",
+      "kind": "card",
+      "refersTo": "typography.title",
+      "description": "A condensed headline, one serif sentence on what to do, an action.",
+      "html": "<div class=\"ds-empty\"><h3>Nothing Watched Yet</h3><p>Titles you finish appear here, newest first.</p><button class=\"ds-btn\">Browse</button></div>",
+      "css": ".ds-empty{display:flex;flex-direction:column;align-items:flex-start;gap:12px;max-width:360px}.ds-empty h3{margin:0;font:700 32px/1.1 \"IBM Plex Sans Condensed\",sans-serif}.ds-empty p{margin:0;font:400 17px/1.6 \"IBM Plex Serif\",serif;color:#0a0a0a}.ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 18px;border:3px solid #0a0a0a;border-radius:0;background:#fff;color:#0a0a0a;font:600 13px/1.1 \"IBM Plex Mono\",monospace;text-transform:uppercase;letter-spacing:.06em;cursor:pointer}"
     }
   ],
   "narrative": {
-    "northStar": "The Film Stock",
-    "overview": "**Creative North Star: \"The Film Stock\"**\n\nFlow treats every title as a reel of film it knows about. Each still and poster carries an edge strip beneath it, like the printed edge of 35mm stock: a row of perforations that fill as you watch, and a line of condensed print that says how long is left, when it ends and what format it plays in. The page is the dark between screenings in an evening living room: a warm film-base black that owns every surface, paper-white type with warm second and third inks, and one film-stock yellow that appears only where something can be done next. The scene is dark only; no light appearance exists.\n\nThe system is matte and flat. Content has no glass, glow, blur or drop shadow; depth comes from four steps of warm base, hairline rules and the fixed relationship between a frame and its strip. Hierarchy is set by size and weight in the interface face. Facts that other apps turn into badges (format, HDR, rating, time left) are printed on the strip or on a film-can label instead. The result is calm and exact rather than busy: one lead item per screen, rows at one artwork scale, and the same object (frame plus strip) wherever a title turns up.\n\nThe web build uses web controls (44px buttons, segmented controls, native selects, hover lift for a mouse) rather than imitating iOS chrome. The Apple apps share this palette and scale in SwiftUI, with system materials kept for system bars only; this document records what the web build shows.",
+    "northStar": "The Index",
+    "overview": "**Creative North Star: \"The Index\"**\n\nFlow for the web is an index of what the viewer owns, set like a printed index made brutal: paper ruled in 3px ink lines, one giant word to open each page, everything below in rows and cells. Both light and dark are first-class. Red marks, blue acts, and nothing is soft: no radius, shadow, blur or gradient outside the video player.",
     "keyCharacteristics": [
-      "Warm film-base black on every surface; no pure black except behind video.",
-      "One accent, film-stock yellow, meaning \"next action, focus, current, watched\".",
-      "The frame with its attached edge strip is the one repeating object.",
-      "Condensed edge print for facts, in a single face and weight, only where the world prints (strips, film-can labels, seek time, small format labels).",
-      "Flat and matte: space, base steps and 1px rules instead of shadows.",
-      "Motion is 150 to 220 ms ease-out and answers state changes only."
+      "Paper #ffffff and ink #0a0a0a (dark: ink ground, #f2f2ee text); one red for markers and one blue for action.",
+      "3px ink rules divide the page; 1px lines divide rows; cells share borders.",
+      "Archivo for the giant title, Plex Sans Condensed for headings, Plex Mono for the interface, Plex Serif for reading.",
+      "Hover is a blue fill, current is inverted ink, focus is a 3px blue ring.",
+      "Every radius is 0 outside the player.",
+      "Artwork is the colour: square, framed by rules, with facts as mono text beneath.",
+      "The player is a conventional dark player with the system faces and square panels."
     ],
     "rules": [
       {
-        "name": "The One Next Action Rule",
-        "body": "Yellow marks the one thing to do next, the place keyboard focus is, the current place in navigation and the progress that has been watched. If two things on a screen are yellow fills, one of them is wrong.",
+        "name": "The Two Accents Rule",
+        "body": "Red marks, blue acts. A screen has no third colour besides artwork; if something is both, it is blue.",
         "section": "colors"
       },
       {
-        "name": "The Warm Ink Rule",
-        "body": "Text is paper and its two warm inks. Grey is never introduced; every neutral carries the same brown-yellow undertone as the base.",
+        "name": "The Inversion Rule",
+        "body": "The current place and every hover are shown by swapping colours, never by tint, glow, shadow or underline weight.",
         "section": "colors"
       },
       {
-        "name": "The Current Is Lighter Rule",
-        "body": "In chips and segmented controls the current choice is a lighter base with paper text. Yellow appears there only as the 2px underline on a segmented choice.",
+        "name": "The Contrast Rule",
+        "body": "Every text pair is AA in both themes; red and blue are checked on paper, on ink and on each other's fills.",
         "section": "colors"
       },
       {
-        "name": "The Print Only Where Printed Rule",
-        "body": "The condensed uppercase voice belongs to strips, film-can labels, the seek preview's time and small format labels. Titles, headings, buttons and navigation stay in the interface face.",
+        "name": "The Mono Is the Interface Rule",
+        "body": "What you press, and every label and number, is mono. Sentences are serif. Headings are condensed. Only the giant title is Archivo.",
         "section": "typography"
       },
       {
         "name": "The Tabular Rule",
-        "body": "Times, durations, sizes, ratings and counts use tabular figures (`.num`, `time`, tables, and edge print), so a ticking clock never shimmers.",
+        "body": "Times, durations, sizes, ratings and counts use tabular figures.",
         "section": "typography"
       },
       {
-        "name": "The Set By Weight Rule",
-        "body": "Hierarchy comes from size and weight, never from colour or capsules. Section headings are plain sentence-case titles, not labels above titles.",
-        "section": "typography"
+        "name": "The Rule Is the Divider Rule",
+        "body": "Separate things with a line, not space or a fill: 3px to open a section, 1px between its items.",
+        "section": "layout"
       },
       {
-        "name": "The Matte Content Rule",
-        "body": "Artwork, cards and strips are never lifted by a shadow or softened by blur. A hover lift is a 2px translate, never a shadow.",
+        "name": "The Flat Rule",
+        "body": "No box-shadow, backdrop-filter, gradient or radius outside the player.",
         "section": "elevation"
-      },
-      {
-        "name": "The One Object Rule",
-        "body": "A frame never appears without its attached radius logic: if it has a strip, 6 on top and 6 below; if it has none, 6 all round. Never round the join.",
-        "section": "shapes"
       }
     ],
     "dos": [
-      "**Do** put the page on Film Base (#15120f) and lift only with the next base step (#1f1b17, #2a251f, #3a342c).",
-      "**Do** reserve Film-Stock Yellow (#f6b40e) for the next action, keyboard focus, the current place in navigation, watched perforations and the one time-left fact.",
-      "**Do** show a format, rating, runtime or end time as edge print on a strip or film-can label, ranked by the fixed priority.",
-      "**Do** pair every frame with the same strip logic and keep all frames in a row at one scale.",
-      "**Do** give every screen one dominant item (the lead, the answer, the player) and let size and weight carry the rest.",
-      "**Do** use tabular figures for anything numeric and 150 to 220ms ease-out for state changes.",
-      "**Do** keep the 2px yellow focus ring at a 3px offset (2px on fields), following the element's corners.",
-      "**Do** keep the secondary text at Ink 2 or better, and Ink 3 only for captions and keys."
+      "**Do** open every page with the giant Archivo title and its 3px rule.",
+      "**Do** divide with rules: 3px to open a block, 1px between rows.",
+      "**Do** show hover by a blue fill and the current place by inverted ink.",
+      "**Do** keep both themes AA, and check red and blue on both grounds.",
+      "**Do** set sentences in Plex Serif and everything you press in Plex Mono.",
+      "**Do** keep targets at 44px or more and a 3px blue focus ring on everything focusable.",
+      "**Do** keep artwork square and framed, with its facts as mono text beneath.",
+      "**Do** use the tokens (--bg --fg --red --blue --onblue --muted --faint --rule) and let data-theme do the rest."
     ],
     "donts": [
-      "**Don't** use yellow for decoration, for a second filled button on a screen, or for the current chip.",
-      "**Don't** put drop shadows, glow, blur or glass on content, chrome over video, or sheets. Hairline rings are the allowed edge.",
-      "**Don't** use the condensed face for titles, headings, buttons or navigation, and don't set edge print in another weight.",
-      "**Don't** make a strip without facts, or invent a fact to fill one; and don't cut print mid-word to fit it.",
-      "**Don't** introduce grey text or a cool tint; every neutral keeps the warm undertone.",
-      "**Don't** mix poster and still scales in one row or vary perforation counts within a row.",
-      "**Don't** introduce a light appearance; Flow is dark only."
+      "**Don't** round a corner or add a shadow, blur, gradient or glass outside the player.",
+      "**Don't** use red or blue as decoration: red marks, blue acts.",
+      "**Don't** put a pill, badge or kicker on content; labels are red mono text.",
+      "**Don't** hard-code a colour or a font; use the tokens so both themes and the player's dark scope follow.",
+      "**Don't** colour the current chip or tab blue: current is inverted ink.",
+      "**Don't** use a second accent, an icon container or a filled, rounded card.",
+      "**Don't** copy the reference's words, name, logo or images."
     ]
   }
 }

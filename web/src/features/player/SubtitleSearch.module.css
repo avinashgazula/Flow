@@ -71,7 +71,7 @@
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 4px 14px;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--hair);
   font: 400 var(--fs-caption) / 1.4 var(--font);
 }
 .notes li { display: contents; }

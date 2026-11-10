@@ -20,7 +20,7 @@
   flex-direction: column;
   border-radius: var(--radius-panel);
   background: var(--base-2);
-  box-shadow: 0 0 0 1px var(--rule);
+  box-shadow: 0 0 0 1px var(--hair);
   overflow: hidden;
   animation: rise var(--dur-move) var(--ease-out);
 }
@@ -72,7 +72,7 @@
   cursor: pointer;
   transition: background-color var(--dur-state) ease;
 }
-.row[data-divider]::before { content: ''; position: absolute; top: 0; left: var(--space-s); right: var(--space-s); border-top: 1px solid var(--rule); }
+.row[data-divider]::before { content: ''; position: absolute; top: 0; left: var(--space-s); right: var(--space-s); border-top: 1px solid var(--hair); }
 .row[data-active] { background: var(--base-3); }
 /* Compact Rows: the same row with less air around it. */
 .row[data-compact] { padding-block: 8px; }

@@ -141,7 +141,7 @@
   padding-top: var(--inset-top);
   padding-right: var(--inset-right);
   background: var(--panel);
-  box-shadow: -1px 0 0 var(--rule);
+  box-shadow: -1px 0 0 var(--hair);
   animation: slide var(--dur-move) var(--ease-out);
 }
 @keyframes rise { from { opacity: 0; transform: translateY(16px); } }
@@ -190,7 +190,7 @@
 
 @media (max-width: 720px) {
   .programme { font-size: var(--fs-body); }
-  .panel { top: auto; left: 0; width: 100%; height: min(70dvh, 520px); padding-right: 0; border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: 0 -1px 0 var(--rule); animation-name: rise; }
+  .panel { top: auto; left: 0; width: 100%; height: min(70dvh, 520px); padding-right: 0; border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: 0 -1px 0 var(--hair); animation-name: rise; }
 }
 @media (max-height: 500px) {
   .programme { font-size: var(--fs-small); }

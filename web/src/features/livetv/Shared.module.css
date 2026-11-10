@@ -9,7 +9,7 @@
   height: 36px;
   border-radius: var(--radius-art);
   background: var(--base-3);
-  box-shadow: 0 0 0 1px var(--rule);
+  box-shadow: 0 0 0 1px var(--hair);
   overflow: hidden;
 }
 .logo[data-size='s'] { width: 40px; height: 26px; }

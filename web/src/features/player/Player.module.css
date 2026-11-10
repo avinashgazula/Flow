@@ -65,7 +65,7 @@
   padding: 11px 16px;
   border-radius: var(--radius-control);
   background: var(--panel);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--hair);
   font: 600 var(--fs-small) / 1.3 var(--font);
   font-variant-numeric: tabular-nums;
   text-align: center;

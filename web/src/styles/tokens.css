@@ -1,35 +1,75 @@
-/* Flow's design tokens: Film Stock. Every title is a reel of film Flow knows about; each still and poster
-   carries an edge strip under its frame, like the printed edge of 35mm stock (components/Frame). A warm
-   film-base black owns every surface, and one film-stock yellow marks only the next action (Resume, Play),
-   keyboard focus, the current selection in navigation, the watched perforations of a progress meter, and
-   the "time left" fact in edge print. Never decoration. Dark only: the scene is an evening living room.
-   The same palette, scale and rules drive the apps (Flow/Design/Theme.swift). */
+/* Flow's design tokens: Index. Paper and ink, ruled with 3px lines, one red for markers and one blue for
+   action. No gradient, shadow, blur or rounded corner anywhere but the video player. Light and dark are both
+   first-class: `<html data-theme>` is set before first paint (index.html) from the saved choice or the system,
+   and the Light/Dark cell in the top bar changes it. The player (and anything else that sits on video) is dark in
+   both themes: give its root data-theme="dark" and every token below follows.
+
+   Older screens still use the names of the previous system (--base, --paper, --ink-2, --stock ...). They are
+   remapped here so those screens keep working while each is restyled; new code uses the semantic names first
+   (--bg --fg --red --blue --onblue --muted). */
+:root,
+[data-theme='light'] {
+  --bg: #ffffff;
+  --fg: #0a0a0a;
+  --red: #d4140b; /* markers, numbers, labels, progress; 5:1 on --bg */
+  --blue: #1a3dff; /* action: links, hover fills, selection, focus; 7:1 on --bg */
+  --onblue: #ffffff;
+  --onred: #ffffff;
+  --muted: #555555; /* secondary text, 7.5:1 */
+  --faint: #6b6b6b; /* captions and placeholders, 5.3:1; never for body copy */
+  --warn: #a64b00; /* degraded states: "may stutter" */
+  /* Quiet fills for what has no border yet: tracks, skeletons, a hovered menu item. */
+  --tint-1: #f3f3f0;
+  --tint-2: #e7e7e3;
+  --tint-3: #d4d4ce;
+  --overlay: rgb(10 10 10 / 0.94); /* player chrome and notices over video: flat, no blur */
+  color-scheme: light;
+}
+:root[data-theme='dark'],
+[data-theme='dark'] {
+  --bg: #0a0a0a;
+  --fg: #f2f2ee;
+  --red: #ff5a4e;
+  --blue: #8fa2ff;
+  --onblue: #0a0a0a;
+  --onred: #0a0a0a;
+  --muted: #b0b0ac;
+  --faint: #8f8f8b;
+  --warn: #ff9f43;
+  --tint-1: #151515;
+  --tint-2: #212121;
+  --tint-3: #333333;
+  --overlay: rgb(10 10 10 / 0.94);
+  color-scheme: dark;
+}
+
+:root,
+[data-theme] {
+  /* Derived from the colours above, so they are declared wherever the colours are (a dark scope inside a light
+     page, the player, needs them recomputed, not inherited). */
+  /* The rules. A 3px ink line divides everything: the top bar, page heads, toolbars, grids of cells (cells share
+     borders) and the top of a list. A list's rows are separated by 1px ink lines (--hair). */
+  --rule: 3px solid var(--fg);
+  --hair: var(--fg);
+
+  /* The previous system's names, remapped (see above). */
+  --base: var(--bg);
+  --base-2: var(--tint-1);
+  --base-3: var(--tint-2);
+  --base-4: var(--tint-3);
+  --edge: var(--tint-2);
+  --paper: var(--fg);
+  --ink-2: var(--muted);
+  --ink-3: var(--faint);
+  --print: var(--fg);
+  --stock: var(--blue);
+  --stock-hover: var(--fg);
+  --stock-press: var(--fg);
+  --on-stock: var(--onblue);
+  --selection: var(--blue);
+}
+
 :root {
-  /* Film base: every surface, from the ground up. */
-  --base: #15120f; /* every page background */
-  --base-2: #1f1b17; /* panels, sheets, hovered items, labels */
-  --base-3: #2a251f; /* secondary buttons, inputs, segmented controls, tracks */
-  --base-4: #3a342c; /* unwatched perforations, strong dividers, scrollbar thumbs */
-  --edge: #0d0b09; /* the edge strip's band */
-  --rule: rgb(255 236 200 / 0.1); /* hairlines; prefer space */
-
-  /* Type colours: warm, never grey. */
-  --paper: #f4efe6; /* primary text, 16:1 */
-  --ink-2: #bfb5a6; /* secondary text and meta, 9.2:1 */
-  --ink-3: #8d8476; /* captions and labels, 5.1:1; never for body copy */
-  --print: #d9cdb6; /* edge print on the edge band, 12.5:1 */
-
-  /* The one accent. */
-  --stock: #f6b40e; /* 10:1 on the base */
-  --stock-hover: #ffc233;
-  --stock-press: #dda00a;
-  --on-stock: #15120f; /* text and icons on a yellow fill, 10:1 */
-
-  --red: #f25c45; /* live, recording, errors */
-  --warn: #ff9f43; /* degraded states: "may stutter" */
-  --overlay: rgb(21 18 15 / 0.94); /* player chrome and notices over video: flat, no blur */
-  --selection: rgb(246 180 14 / 0.3);
-
   /* Space, on a 4-pt base. More above a section heading (--section) than below it (--space-s to m). */
   --space-xxs: 4px;
   --space-xs: 8px;
@@ -39,49 +79,61 @@
   --space-xl: 32px;
   --space-xxl: 48px;
   --space-xxxl: 64px;
-  --gutter: clamp(16px, 4vw, 48px);
+  --gutter: clamp(20px, 4vw, 64px);
   /* The page's side padding: the gutter, growing on very wide screens so content stops at 1800px. The nav
      uses it too, so the wordmark and the page title share one left edge. */
-  --page-inset: max(var(--gutter), calc(50% - 900px));
+  --page-inset: max(var(--gutter), calc(50vw - 900px));
   --section: 40px;
 
-  /* Shape. A frame is 6 on top and its edge strip 6 below, so the two read as one object. Panels 8 to 12;
-     web buttons 10. */
-  --radius-art: 6px;
-  --radius-label: 8px;
-  --radius-panel: 12px;
-  --radius-control: 10px;
-  /* Perforations, slider tracks and the nav mark; underlines; bars and skeleton lines that end round. */
-  --radius-perf: 2px;
-  --radius-hair: 1px;
-  --radius-full: 999px;
+  /* Shape: square. The tokens stay so every older rule still resolves; they are all 0. Only the video player
+     rounds anything, and it uses --radius-player. */
+  --radius-art: 0;
+  --radius-label: 0;
+  --radius-panel: 0;
+  --radius-control: 0;
+  --radius-perf: 0;
+  --radius-hair: 0;
+  --radius-full: 0;
+  --radius-player: 10px;
+  --radius-player-full: 999px;
 
-  /* Type, fixed (not fluid). Titles are set by weight and size in the interface face, never condensed. The
-     condensed face is the edge print (--font-edge) and nothing else. Times, durations, sizes, ratings and
-     counts use tabular figures (.num, or global.css). */
+  /* Type, fixed (not fluid) except the page title. Mono is the body and the interface: Plex Mono is wide, so the
+     steps sit lower than a proportional face's. Times, durations, sizes, ratings and counts use tabular figures
+     (.num, or global.css). */
   --fs-caption: 12px;
-  --fs-footnote: 13px;
-  --fs-small: 15px;
-  --fs-body: 17px;
-  --fs-headline: 20px;
-  --fs-title3: 24px;
-  --fs-title2: 30px;
-  --fs-title1: 40px;
-  --fs-page-title: 34px;
+  --fs-footnote: 12px;
+  --fs-small: 13px;
+  --fs-body: 15px;
+  --fs-headline: 18px;
+  --fs-title3: 22px;
+  --fs-title2: 28px;
+  --fs-title1: 36px;
+  --fs-page-title: 34px; /* a screen's own heading (a title page, a person); the giant page head is --fs-display */
+  --fs-display: clamp(56px, 12vw, 168px);
   --measure: 62ch;
   /* The width of the Library's reading pages (History, Upcoming, Sports, Stats): one right edge for all of them. */
   --reading-width: 960px;
 
-  /* Edge print: condensed, uppercase, tracked, 600. Self-hosted Barlow Condensed (fonts.css), only for
-     strips, film-can labels and small format labels. */
-  --font-edge: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  /* Four faces, self-hosted (fonts.css). Archivo is the display face: page titles and the Home lead, uppercase.
+     Plex Sans Condensed sets headings, row titles and big numbers. Plex Mono is the body and the interface: nav,
+     buttons, labels, metadata. Plex Serif is for reading: overviews, reviews, biographies. The fallbacks keep
+     the same genre (a grotesque, a condensed sans, a monospace, a serif). */
+  --font-title: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-cond: "IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  --font: var(--font-mono);
+  --font-display: var(--font-cond);
+  --font-edge: var(--font-cond);
 
-  /* Motion: 150 to 220 ms, ease-out, state changes only. Reduced motion is handled in global.css. */
+  /* Motion: minimal. Nav slide and progress widths; 150 to 250 ms, ease-out. Reduced motion is in global.css. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-state: 0.15s;
-  --dur-move: 0.22s;
+  --dur-move: 0.25s;
 
-  --nav-height: 64px;
+  /* The top bar: a 56px row and its 3px rule. On phones it is one 52px row (logo cell and two small cells) and
+     the sections move to the bar at the bottom. */
+  --nav-height: calc(59px + env(safe-area-inset-top));
   --tabbar-height: 0px;
 }
 
@@ -91,35 +143,7 @@
 @media (max-width: 720px) {
   :root {
     --section: 32px;
-    --nav-height: 56px;
-    --tabbar-height: calc(56px + env(safe-area-inset-bottom));
+    --nav-height: calc(55px + env(safe-area-inset-top));
+    --tabbar-height: calc(55px + env(safe-area-inset-bottom));
   }
-}
-
-/* The typeface. System (the default) is the device's own font; the others are chosen in Settings >
-   Appearance and set on <html data-font> before first paint (index.html) and on change (main.tsx).
-   The rule matches any element, so Settings can preview a face inside its card. Each web font lists a
-   metric-matched stand-in (fonts.css) ahead of the system stack, so the swap barely moves anything.
-   The choice only swaps the family: sizes and weights are the same in every face. */
-:root,
-[data-font='system'] {
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
-  --font-display: var(--font);
-}
-[data-font='inter'] {
-  --font: "Inter Variable", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
-  --font-display: var(--font);
-}
-[data-font='geist'] {
-  --font: "Geist Variable", "Geist Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
-  --font-display: var(--font);
-}
-[data-font='manrope'] {
-  --font: "Manrope Variable", "Manrope Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
-  --font-display: var(--font);
-}
-/* Ioskeley Mono (SIL OFL). The fallbacks are monospaced too. */
-[data-font='ioskeley'] {
-  --font: "Ioskeley Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --font-display: var(--font);
 }

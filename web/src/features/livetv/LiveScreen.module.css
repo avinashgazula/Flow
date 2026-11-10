@@ -46,7 +46,7 @@
 .loading { padding: var(--space-xl) 0; }
 
 /* Behind the player while its code loads, or when the channel it was opened on isn't in the list. */
-.curtain { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: var(--base); }
+.curtain { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: #000; }
 
 @media (max-width: 720px) {
   .screen { padding-top: calc(var(--nav-height) + var(--space-xs)); gap: var(--space-xs); }

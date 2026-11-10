@@ -17,7 +17,7 @@ Flow for the web is the Apple apps' product in a browser: Home, title pages, Exp
 ## Capabilities and Constraints
 
 - Vite, React 19, TanStack Router/Query/Virtual, CSS Modules with tokens in `src/styles/tokens.css`; a Rust→WebAssembly Matroska remuxer and FFmpeg audio decoders loaded on demand.
-- Performance budget: first-load JS 125 KB and CSS 12 KB gzipped (`npm run budget`); fonts beyond the system stack load only when chosen in Settings → Appearance.
+- Performance budget: first-load JS 125 KB and CSS 12 KB gzipped (`npm run budget`); four self-hosted faces (latin and latin-ext, only the weights used), two of them preloaded; they are not in the JS/CSS budget but are kept lean.
 - Browsers can't reach files on hosts without CORS headers; Real-Debrid needs the user's stream proxy.
 - Deployed to media.gazula.dev from GitHub Pages.
 

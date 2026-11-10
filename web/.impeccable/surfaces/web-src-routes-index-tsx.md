@@ -13,6 +13,8 @@ Audience and job: the owner's household, mostly evenings in a low-lit living roo
 
 Constraints: native Apple navigation and controls stay (tab bar, stacks, sheets, system controls, San Francisco, Siri Remote focus); web uses web controls. Performance budgets in web/PRODUCT.md.
 
+> Superseded: this note records the Film Stock direction. The site is now Index (DESIGN.md): paper and ink with 3px rules, light and dark, Archivo / Plex type, red and blue. Home is being rebuilt in that language; rewrite this contract with it.
+
 ## Direction contract
 
 THESIS: Flow treats every title as a reel of film it knows about: each still and poster carries an edge strip, like the printed edge of 35mm stock, whose perforations fill as you watch and whose edge print says how long is left, when it ends and what format it plays in. It refuses the full-bleed backdrop carousel, the white pill button and the badge soup every streaming app ships.
@@ -31,6 +33,6 @@ Raised by the directions it beat: yellow marks only the current action (orientee
 
 ## Unresolved
 
-- Light appearance: not designed; the apps and site stay dark-only (evening living-room scene).
+- Light appearance: designed with Index (both themes, saved per browser). The apps stay dark-only.
 - Superseded: "Tonight's Programme" (two-ink timetable) was built partway on the web and then replaced by Film Stock at the owner's choice after sketches.
 - The app icon and name may change later; not part of this round.
