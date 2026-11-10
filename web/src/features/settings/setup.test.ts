@@ -73,3 +73,45 @@ describe('Welcome’s import', () => {
     expect(importAnything('nope').ok).toBe(false)
   })
 })
+
+describe('the setup in a QR code', () => {
+  const withMine = () => {
+    settingsStore.set({ startTab: 'live', showPosterTitles: false, subtitleMode: 'forced', preferredQuality: '720p' })
+    return createSetup(false, settingsStore.get())
+  }
+
+  it('leaves out every setting that is still the default, so it is a small fraction of the full link', () => {
+    const made = withMine()
+    expect(made.qrLink.length).toBeLessThan(made.link.length / 5)
+    expect(made.qrLink.length).toBeLessThan(2800)
+    // Not even the default shelves are in it.
+    const read = readSetup(made.qrLink, defaultSettings)
+    expect(read.ok && JSON.stringify(read.bundle)).not.toContain('"shelves"')
+  })
+
+  it('reads back, on a device with the default settings, as the same settings as the full link', () => {
+    const made = withMine()
+    const full = readSetup(made.link, defaultSettings)
+    const compact = readSetup(made.qrLink, defaultSettings)
+    expect(full.ok && compact.ok).toBe(true)
+    if (!full.ok || !compact.ok) return
+    // What the compact setup says, the full one says the same; what it leaves out is a default of the website's (or a setting
+    // the website keeps absent for its default, which the full file spells out).
+    const settings = full.settings as Record<string, unknown>
+    const defaults = defaultSettings as unknown as Record<string, unknown>
+    for (const [k, v] of Object.entries(compact.settings)) expect(settings[k], k).toEqual(v)
+    for (const [k, v] of Object.entries(settings)) if (!(k in compact.settings) && defaults[k] !== undefined) expect(v, k).toEqual(defaults[k])
+    expect(compact.settings).toMatchObject({ startTab: 'live', showPosterTitles: false, subtitleMode: 'forced', preferredQuality: '720p' })
+  })
+
+  it('keeps a changed list whole', () => {
+    const read = readSetup(createSetup(false, { ...defaultSettings, startTab: 'live' }).qrLink, defaultSettings)
+    expect(read.ok && read.settings.startTab).toBe('live')
+  })
+
+  it('has nothing to say for a device that is all defaults, which the importer says plainly', () => {
+    const made = createSetup(false, defaultSettings)
+    expect(made.qrLink.length).toBeLessThan(200)
+    expect(readSetup(made.qrLink, defaultSettings).ok).toBe(false)
+  })
+})

@@ -1,13 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
 import ContextMenu, { type MenuItem } from '../../components/ContextMenu'
-import { flash } from '../../components/flash'
 import type { IconName } from '../../components/Icon'
 import { q } from '../../lib/queries'
 import { library, libraryStore, mediaKey, useLibrary } from '../../lib/store/library'
-import { fetchEpisodes } from '../detail/shows'
-import { airedRefs, todayOf } from '../detail/logic'
-import { pickShuffle, watchedEpisodes } from '../../lib/watching'
 import type { CardMenuProps } from './LazyCardMenu'
 import { cardActionLabels, cardActions, shareMessage, tmdbPage, type CardAction } from './cardMenu'
 import { airedEpisodes, nextUp, showStatus } from './continue'
@@ -39,9 +34,8 @@ const shuffleGlyph = (
 
 /** `entry` is given for a Continue Watching card: where the viewer left off, or the next episode to watch. Go to Details
  *  follows the card's own link, so it opens exactly what the card does (a series at the season in hand). */
-export default function CardMenu({ item, entry }: CardMenuProps) {
+export default function CardMenu({ item, entry, play: open }: CardMenuProps) {
   const client = useQueryClient()
-  const navigate = useNavigate()
   const key = mediaKey(item.type, item.id)
   const history = useLibrary((l) => l.history)
   const marks = useLibrary((l) => l.watchedEpisodes)
@@ -54,7 +48,8 @@ export default function CardMenu({ item, entry }: CardMenuProps) {
   const watched = item.type === 'movie' ? watchedMovieKeys(history).has(key) : !!cached && showStatus(watchedShowsOf(marks, rewatches).get(item.id) ?? [], cached, Date.now()).complete
   const episode = entry?.progress?.episode ?? entry?.episode
 
-  const play = (season?: number, number?: number) => void navigate({ to: '/watch/$type/$id', params: { type: item.type, id: item.id }, search: season === undefined ? undefined : { season, episode: number } })
+  const play = (season?: number, number?: number) => open?.(item.type, item.id, season === undefined ? undefined : { season, episode: number! })
+  const flash = async (text: string) => (await import('../../components/flash')).flash(text)
 
   const run: Record<CardAction, (card: HTMLElement | null) => void | Promise<void>> = {
     details: (card) => void card?.querySelector('a')?.click(),
@@ -87,13 +82,10 @@ export default function CardMenu({ item, entry }: CardMenuProps) {
     unfavourite: () => library.toggleFavourite(item),
     // As the title page's Shuffle: a random episode not yet picked this round, preferring one not yet watched.
     shuffle: async () => {
-      const detail = await client.fetchQuery(q.detail('show', item.id))
-      const aired = airedRefs(await fetchEpisodes(detail), todayOf(Date.now()))
-      const lib = libraryStore.get()
-      const pick = pickShuffle(aired, lib.shuffled?.[key] ?? [], watchedEpisodes(lib, item.id))
+      const { shuffleEpisode } = await import('./shuffle')
+      const pick = await shuffleEpisode(client, item)
       if (!pick) return flash('Nothing to shuffle yet.')
-      ;(await import('../../lib/store/titleLibrary')).titleLibrary.rememberShuffled(item, pick.played)
-      play(pick.pick.season, pick.pick.episode)
+      play(pick.season, pick.episode)
     },
     share: async () => {
       const url = tmdbPage(item)

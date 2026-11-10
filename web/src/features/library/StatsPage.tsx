@@ -1,4 +1,5 @@
 import { useQueries } from '@tanstack/react-query'
+import '../home/installCardMenu'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { PosterItem } from '../../components/TitleCards'

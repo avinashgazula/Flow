@@ -35,7 +35,7 @@ export function DataSection() {
   const [importing, setImporting] = useState(arrived !== undefined)
   const [qr, setQr] = useState(false)
   const [copied, setCopied] = useState(false)
-  const setupLink = useMemo(() => (qr ? createSetup(secrets).link : ''), [qr, secrets])
+  const setupLink = useMemo(() => (qr ? createSetup(secrets).qrLink : ''), [qr, secrets])
   const items = (n: number) => (n === 1 ? '1 title' : `${n} titles`)
 
   function exportBackup() {

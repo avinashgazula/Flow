@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import '../features/home/installCardMenu'
 import { rank } from './stripLayout'
 import { prefetchDetail } from '../lib/queries'
 import { posterOf } from '../lib/ratings/posters'

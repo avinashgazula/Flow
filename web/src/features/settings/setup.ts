@@ -1,6 +1,6 @@
-import { exportSetup, extrasFrom, parseSetup, settingsFromSetup, setupToJSON, setupToLink, summariseSetup, type SetupBundle, type SetupSummary } from '../../lib/setup/codec'
+import { compactSetup, exportSetup, extrasFrom, parseSetup, settingsFromSetup, setupToJSON, setupToLink, summariseSetup, type SetupBundle, type SetupSummary } from '../../lib/setup/codec'
 import { setupExtrasStore } from '../../lib/setup/extras'
-import { settingsStore, type Settings } from '../../lib/store/settings'
+import { defaultSettings, settingsStore, type Settings } from '../../lib/store/settings'
 import { applyBackup, parseBackup, readSettings } from './backup'
 
 /* Export Setup and Import Setup in Settings → Data, and "I have a setup from another device" on Welcome: the apps'
@@ -10,7 +10,12 @@ import { applyBackup, parseBackup, readSettings } from './backup'
 /** The setup file to save, as text, and the link the apps paste. */
 export function createSetup(includeSecrets: boolean, settings: Settings = settingsStore.get(), now = new Date()) {
   const bundle = exportSetup(settings, { includeSecrets, extras: setupExtrasStore.get(), now })
-  return { json: setupToJSON(bundle), link: setupToLink(bundle), filename: `flow-setup-${now.toISOString().slice(0, 10)}.json` }
+  return { json: setupToJSON(bundle), link: setupToLink(bundle), qrLink: qrLinkFor(bundle, includeSecrets, now), filename: `flow-setup-${now.toISOString().slice(0, 10)}.json` }
+}
+
+/** The link for the QR code: the setup without what is already the default, which is most of a typical setup's size. */
+function qrLinkFor(bundle: SetupBundle, includeSecrets: boolean, now: Date) {
+  return setupToLink(compactSetup(bundle, exportSetup(defaultSettings, { includeSecrets, now })))
 }
 
 export type ReadSetup = { ok: true; bundle: SetupBundle; settings: Partial<Settings>; cleared: (keyof Settings)[]; skipped: string[]; summary: SetupSummary } | { ok: false; error: string }

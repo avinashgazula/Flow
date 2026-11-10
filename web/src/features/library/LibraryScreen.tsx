@@ -1,4 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
+import '../home/installCardMenu'
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
 import { PosterItem, ResumeItem } from '../../components/TitleCards'

@@ -360,6 +360,34 @@ export function exportSetup(s: Settings, { includeSecrets, extras, now = new Dat
   return bundle
 }
 
+/** Everything in `from` that differs from the same place in `defaults`: equal values, and objects left empty by that, are
+ *  dropped. A list (the shelves, the servers) is kept whole or not at all. */
+function differing(from: unknown, defaults: unknown): unknown {
+  if (isObject(from) && isObject(defaults)) {
+    const out: Json = {}
+    for (const [k, v] of Object.entries(from)) {
+      const rest = k in defaults ? differing(v, defaults[k]) : v
+      if (rest !== undefined) out[k] = rest
+    }
+    return Object.keys(out).length ? out : undefined
+  }
+  return JSON.stringify(from) === JSON.stringify(defaults) ? undefined : from
+}
+
+/** A smaller setup for a QR code: the same file with every setting that is the website's default left out. The apps fill a
+ *  missing field from their defaults (FlowKit's SettingsCodec), so it reads back as the same setup there; the website's own
+ *  import leaves a missing field as it is on the device. `defaults` is the setup the default settings make, with the same
+ *  secrets choice. */
+export function compactSetup(bundle: SetupBundle, defaults: SetupBundle): SetupBundle {
+  const out: SetupBundle = { ...bundle, settings: (differing(bundle.settings, defaults.settings) ?? {}) as Json }
+  if (bundle.credentials) {
+    const credentials = differing(bundle.credentials, defaults.credentials ?? {})
+    if (credentials) out.credentials = credentials as Json
+    else delete out.credentials
+  }
+  return out
+}
+
 /** The file as text. */
 export const setupToJSON = (bundle: SetupBundle) => JSON.stringify(bundle, null, 2)
 

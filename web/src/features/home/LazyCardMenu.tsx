@@ -1,4 +1,5 @@
-import { useEffect, useSyncExternalStore, type ComponentType } from 'react'
+import { useRouter } from '@tanstack/react-router'
+import { useSyncExternalStore, type ComponentType } from 'react'
 import type { MediaItem } from '../../lib/tmdb/types'
 import type { EpisodeRef, Progress } from '../../lib/store/library'
 
@@ -6,8 +7,12 @@ import type { EpisodeRef, Progress } from '../../lib/store/library'
    loads it puts the menu here, so each card gains its More button a moment later with no request of its own. A page
    that never loads the shelves (Explore, Search, a person) asks for the menu itself once it is idle. */
 
+/** Opens the player; given by the card's side, so the menu's own chunk imports no router. */
+export type Play = (type: MediaItem['type'], id: number, at?: { season: number; episode: number }) => void
+
 export interface CardMenuProps {
   item: MediaItem
+  play?: Play
   entry?: { progress?: Progress; episode?: EpisodeRef }
 }
 
@@ -19,18 +24,13 @@ export function provideCardMenu(component: ComponentType<CardMenuProps>) {
   listeners.forEach((on) => on())
 }
 
-let loading = false
-function loadWhenIdle() {
-  if (menu || loading) return
-  loading = true
-  const load = () => void import('./CardMenu').then((m) => provideCardMenu(m.default))
-  setTimeout(load, 300)
-}
-
 const subscribe = (on: () => void) => (listeners.add(on), () => void listeners.delete(on))
 
 export function LazyCardMenu(props: CardMenuProps) {
+  // useRouter, not useNavigate: the first page's code (this file) importing useNavigate makes the bundler pull the router out of
+  // the entry chunk, which costs about 3 KB on every first load.
+  const { navigate } = useRouter()
   const Menu = useSyncExternalStore(subscribe, () => menu, () => undefined)
-  useEffect(loadWhenIdle, [])
-  return Menu ? <Menu {...props} /> : null
+  const play: Play = (type, id, at) => void navigate({ to: '/watch/$type/$id', params: { type, id }, search: at })
+  return Menu ? <Menu {...props} play={play} /> : null
 }

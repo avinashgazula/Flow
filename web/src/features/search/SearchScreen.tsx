@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import '../home/installCardMenu'
 import { posterOf } from '../../lib/ratings/posters'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'

@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { flash } from '../components/flash'
 import { airedEpisodes, nextUp } from '../features/home/continue'
@@ -15,11 +15,14 @@ import { useSkipDetails } from '../lib/store/settings'
    leaves no entry of its own in the history. With nothing to continue it opens Library → Continue Watching and says so. */
 
 export const Route = createFileRoute('/continue')({
+  // Nothing to load first: the page chooses where to go from the library as it opens.
+  loader: () => null,
   component: ContinueRoute,
 })
 
 function ContinueRoute() {
-  const navigate = useNavigate()
+  // useRouter, not useNavigate: see LazyCardMenu.
+  const { navigate } = useRouter()
   const client = useQueryClient()
   const skipDetails = useSkipDetails()
 

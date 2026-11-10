@@ -1,4 +1,5 @@
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
+import '../home/installCardMenu'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { PosterItem } from '../../components/TitleCards'
 import type { MediaItem } from '../../lib/tmdb/types'
