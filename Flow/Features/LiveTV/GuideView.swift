@@ -125,7 +125,7 @@ struct GuideView: View {
                                 .padding(.horizontal, 10).padding(.bottom, 5)
                         }
                     }
-                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(live ? Theme.Palette.stock : Theme.Palette.hairline, lineWidth: live ? 2 : 1))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(live ? Theme.Palette.stock.opacity(0.7) : Theme.Palette.hairline, lineWidth: live ? 1.5 : 1))
                 }
                 .buttonStyle(CardButtonStyle())
                 .contextMenu {

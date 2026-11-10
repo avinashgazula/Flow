@@ -128,7 +128,7 @@ struct XRayPanel: View {
 
     private var tabBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+            HStack(spacing: Platform.isPhone ? 4 : 6) {
                 ForEach(tabs) { option in
                     Button {
                         choseTab = true
@@ -137,7 +137,8 @@ struct XRayPanel: View {
                         Text(option.rawValue)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(tab == option ? Color.black : .white)
-                            .padding(.horizontal, 12).padding(.vertical, 7)
+                            .lineLimit(1)
+                            .padding(.horizontal, Platform.isPhone ? 9 : 12).padding(.vertical, 7)
                             .background(tab == option ? Color.white : Color.white.opacity(0.12), in: Capsule())
                     }
                     .buttonStyle(.plain)

@@ -232,11 +232,22 @@ struct PlayerOptionsPanel: View {
                 Divider().overlay(Theme.Palette.hairline)
             }
             // Sized to its rows, so a short list doesn't leave an empty slab of glass; a long one scrolls.
+            let visible = max(44, min(listHeight, maxHeight - (page == .root ? 12 : 60)))
+            let overflows = listHeight > visible + 1
             ScrollView {
-                list.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { listHeight = $0 }
+                list
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { listHeight = $0 }
+                    .padding(.bottom, overflows ? 20 : 0)
             }
             .scrollBounceBehavior(.basedOnSize)
-            .frame(height: max(44, min(listHeight, maxHeight - (page == .root ? 12 : 60))))
+            .frame(height: visible)
+            // A fade at the foot says there is more below instead of a row cut in half.
+            .mask {
+                VStack(spacing: 0) {
+                    Color.black
+                    if overflows { LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: 22) }
+                }
+            }
         }
         .padding(.vertical, 6)
         .id(page)

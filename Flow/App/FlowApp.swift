@@ -118,6 +118,8 @@ struct FlowApp: App {
             .frame(minWidth: 640, minHeight: 560)
             .preferredColorScheme(.dark)
         }
+        // Title and toolbar share one bar; the default stacks them into a tall strip around a lone back button.
+        .windowToolbarStyle(.unifiedCompact)
         #endif
     }
 }
