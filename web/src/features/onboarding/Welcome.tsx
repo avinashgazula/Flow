@@ -1,5 +1,6 @@
-import { lazy, Suspense, useState, type FormEvent } from 'react'
+import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react'
 import { Logo } from '../../components/Nav'
+import { peekLink, takeLink } from '../../lib/hashLink'
 import { libraryStore } from '../../lib/store/library'
 import { settingsStore, useSettings } from '../../lib/store/settings'
 import s from './Welcome.module.css'
@@ -13,7 +14,17 @@ export function Welcome() {
   const [key, setKey] = useState(saved)
   const [state, setState] = useState<'idle' | 'checking' | 'error'>('idle')
   const [message, setMessage] = useState('')
-  const [other, setOther] = useState<'setup' | 'join'>()
+  // A setup or sync link opened by address goes straight to its review, or to the join with the link filled in.
+  const [arrived] = useState(() => {
+    const link = peekLink()
+    return link ? { other: link.kind === 'setup' ? ('setup' as const) : ('join' as const), link: link.link } : undefined
+  })
+  // Taken once it is on screen: in development the first render runs twice, and the second must still find it.
+  useEffect(() => {
+    takeLink('setup')
+    takeLink('sync')
+  }, [])
+  const [other, setOther] = useState<'setup' | 'join' | undefined>(arrived?.other)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -49,10 +60,10 @@ export function Welcome() {
           <Suspense fallback={<p className={s.hint}>Loading…</p>}>
             {other === 'setup' ? (
               <div className={s.other}>
-                <SetupImport backups onImported={() => setOther(undefined)} onCancel={() => setOther(undefined)} />
+                <SetupImport backups link={arrived?.other === 'setup' ? arrived.link : undefined} onImported={() => setOther(undefined)} onCancel={() => setOther(undefined)} />
               </div>
             ) : (
-              <WelcomeJoin onBack={() => setOther(undefined)} />
+              <WelcomeJoin onBack={() => setOther(undefined)} link={arrived?.other === 'join' ? arrived.link : undefined} />
             )}
           </Suspense>
         ) : (

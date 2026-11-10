@@ -1,6 +1,7 @@
 import { del } from 'idb-keyval'
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
+import { peekLink, takeLink } from '../../lib/hashLink'
 import { queryClient } from '../../lib/queryClient'
 import { library, libraryStore, useLibrary } from '../../lib/store/library'
 import { lastSources } from '../player/session'
@@ -10,7 +11,8 @@ import { turnOff } from '../../lib/sync/engine'
 import { ConfirmButton, Group, Note, Row, Switch } from './controls'
 import { SetupImport } from './SetupImport'
 import { createSetup } from './setup'
-import { SyncGroup } from './SyncGroup'
+import { fitsQR, tooLargeForQR } from './setupQr'
+import { QRCode, SyncGroup } from './SyncGroup'
 import s from './SettingsScreen.module.css'
 
 export function DataSection() {
@@ -22,8 +24,18 @@ export function DataSection() {
   // What the browser remembers lives outside the stores; it is counted again after each change.
   const [remembered, setRemembered] = useState(() => lastSources.count())
   const [secrets, setSecrets] = useState(false)
-  const [importing, setImporting] = useState(false)
+  // A setup opened by address (#setup=) lands here with its review already open.
+  const [arrived] = useState(() => (peekLink()?.kind === 'setup' ? peekLink()!.link : undefined))
+  const review = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    takeLink('setup')
+    // The section is already scrolled to; the review is further down it.
+    if (arrived) review.current?.scrollIntoView({ block: 'center' })
+  }, [arrived])
+  const [importing, setImporting] = useState(arrived !== undefined)
+  const [qr, setQr] = useState(false)
   const [copied, setCopied] = useState(false)
+  const setupLink = useMemo(() => (qr ? createSetup(secrets).link : ''), [qr, secrets])
   const items = (n: number) => (n === 1 ? '1 title' : `${n} titles`)
 
   function exportBackup() {
@@ -109,14 +121,25 @@ export function DataSection() {
             <Icon name={copied ? 'check' : 'copy'} size={16} /> {copied ? 'Copied' : 'Copy Link'}
           </button>
         </Row>
+        <Row label="QR Code" detail="To scan in the apps or on another device">
+          <button type="button" className="btn btn-secondary btn-compact" aria-expanded={qr} onClick={() => setQr((v) => !v)}>
+            <Icon name="grid" size={16} /> {qr ? 'Hide QR Code' : 'Show QR Code'}
+          </button>
+        </Row>
+        {qr && (
+          <div className={s.pad}>
+            {fitsQR(setupLink) ? <QRCode text={setupLink} label="QR code of the setup link" large /> : <Note tone="error">{tooLargeForQR}</Note>}
+          </div>
+        )}
         <Row label="Import Setup" detail="From the apps or another browser">
           <button type="button" className="btn btn-secondary btn-compact" aria-expanded={importing} onClick={() => setImporting((v) => !v)}>
             <Icon name="upload" size={16} /> Import
           </button>
         </Row>
         {importing && (
-          <div className={s.pad}>
+          <div className={s.pad} ref={review}>
             <SetupImport
+              link={arrived}
               onImported={(text) => (setImporting(false), setNote({ tone: 'ok', text }))}
               onCancel={() => setImporting(false)}
             />

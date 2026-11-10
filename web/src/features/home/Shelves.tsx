@@ -195,9 +195,7 @@ function TitleShelf({ shelf }: { shelf: ShelfConfig }) {
         <RowHead id={id} title={title} see={see} />
         <ul className={s.row} aria-busy={pending || undefined}>
           {pending ? Array.from({ length: 7 }, (_, i) => <PosterGhost key={i} />) : shown.map((m) => (
-            <PosterItem key={mediaKey(m.type, m.id)} item={m} sizes="(max-width: 720px) 112px, 180px">
-              <LazyCardMenu item={m} />
-            </PosterItem>
+            <PosterItem key={mediaKey(m.type, m.id)} item={m} sizes="(max-width: 720px) 112px, 180px" />
           ))}
         </ul>
         </>
@@ -456,9 +454,7 @@ function ServerRow({ id, title, titles, pending, libraryServerId, shelfId, near,
               const item = asMediaItem(t, details[i]?.data, artwork)
               return (
                 item && (
-                  <PosterItem key={mediaKey(item.type, item.id)} item={item} sizes="(max-width: 720px) 112px, 180px">
-                    <LazyCardMenu item={item} />
-                  </PosterItem>
+                  <PosterItem key={mediaKey(item.type, item.id)} item={item} sizes="(max-width: 720px) 112px, 180px" />
                 )
               )
             })}
@@ -497,9 +493,7 @@ function ListShelf({ title, source, shelfId }: { title: string; shelfId?: string
           : details
               .flatMap((d) => (d.data ? [d.data] : []))
               .map((item) => (
-                <PosterItem key={mediaKey(item.type, item.id)} item={item} sizes="(max-width: 720px) 112px, 180px">
-                  <LazyCardMenu item={item} />
-                </PosterItem>
+                <PosterItem key={mediaKey(item.type, item.id)} item={item} sizes="(max-width: 720px) 112px, 180px" />
               ))}
       </ul>
     </section>

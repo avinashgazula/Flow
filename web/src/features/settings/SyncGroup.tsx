@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Icon } from '../../components/Icon'
+import { takeLink } from '../../lib/hashLink'
 import { useSettings } from '../../lib/store/settings'
 import { loadConfig } from '../../lib/sync/config'
 import { groupKey } from '../../lib/sync/crypto'
@@ -17,16 +18,16 @@ const workerAddress = 'https://flow-stream-proxy.example.workers.dev'
 
 // MARK: A link from another device
 
-/** A pairing link opened in this browser (`/settings#sync=…`). Read once and taken out of the address
- *  straight away, so the key doesn't stay in the address bar or the history. */
+/** A pairing link opened in this browser (`#sync=…` on any page). The page read it at start and took it out of the
+ *  address, so the key doesn't stay in the address bar or the history (lib/hashLink.ts); Join This Sync? picks it up here. */
 type Offer = { pairing: Pairing } | { error: string }
 let opened: Offer | null | undefined
 
 function takeOffer(): Offer | null {
   if (opened !== undefined) return opened
-  if (typeof location === 'undefined' || !location.hash.startsWith('#sync=')) return (opened = null)
-  const parsed = parsePairing(location.hash)
-  history.replaceState(history.state, '', `${location.pathname}${location.search}`)
+  const link = takeLink('sync')
+  if (!link) return (opened = null)
+  const parsed = parsePairing(link)
   return (opened = parsed.ok ? { pairing: parsed.pairing } : { error: parsed.error })
 }
 
@@ -55,7 +56,7 @@ const hostOf = (server: string) => {
 
 /** The pairing link as a QR code, drawn as one SVG path. The generator is a separate chunk, fetched only
  *  when a code is shown. */
-function QRCode({ text }: { text: string }) {
+export function QRCode({ text, label = 'QR code of the pairing link', large }: { text: string; label?: string; large?: boolean }) {
   const [shape, setShape] = useState<{ size: number; path: string }>()
   useEffect(() => {
     let live = true
@@ -85,9 +86,9 @@ function QRCode({ text }: { text: string }) {
   }, [text])
   const quiet = 3
   return (
-    <div className={s.qr}>
+    <div className={`${s.qr} ${large ? s.qrLarge : ''}`}>
       {shape ? (
-        <svg viewBox={`${-quiet} ${-quiet} ${shape.size + quiet * 2} ${shape.size + quiet * 2}`} role="img" aria-label="QR code of the pairing link" shapeRendering="crispEdges">
+        <svg viewBox={`${-quiet} ${-quiet} ${shape.size + quiet * 2} ${shape.size + quiet * 2}`} role="img" aria-label={label} shapeRendering="crispEdges">
           <path d={shape.path} />
         </svg>
       ) : null}

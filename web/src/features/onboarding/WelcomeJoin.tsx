@@ -9,9 +9,9 @@ import s from './Welcome.module.css'
    or key from another device brings the TMDB key, sign-ins, add-ons and servers, which is the way in. It loads only when
    asked for, so Welcome's own code stays small. */
 
-export function WelcomeJoin({ onBack }: { onBack: () => void }) {
+export function WelcomeJoin({ onBack, link = '' }: { onBack: () => void; link?: string }) {
   const proxy = useSettings((x) => x.streamProxy)
-  const [paste, setPaste] = useState('')
+  const [paste, setPaste] = useState(link)
   const [typed, setTyped] = useState({ server: '', token: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
@@ -45,7 +45,7 @@ export function WelcomeJoin({ onBack }: { onBack: () => void }) {
       <label className={s.label} htmlFor="join-link">
         Pairing Link or Sync Key
       </label>
-      <input id="join-link" className="field" value={paste} onChange={(e) => (setPaste(e.target.value), setError(undefined))} placeholder="Paste a pairing link or sync key" type="text" autoComplete="off" autoCapitalize="off" spellCheck={false} autoFocus />
+      <input id="join-link" className="field" value={paste} onChange={(e) => (setPaste(e.target.value), setError(undefined))} placeholder="Paste a pairing link or sync key" type="text" autoComplete="off" autoCapitalize="off" spellCheck={false} autoFocus={!link} />
       {needsServer && paste.trim() !== '' && (
         <div className={s.server}>
           <ServerFields server={typed.server} token={typed.token} onChange={setTyped} />

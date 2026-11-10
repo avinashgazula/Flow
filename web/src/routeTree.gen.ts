@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ContinueRouteImport } from './routes/continue'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as LiveRouteImport } from './routes/live'
@@ -23,6 +24,11 @@ import { Route as WatchTypeIdRouteImport } from './routes/watch/$type.$id'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContinueRoute = ContinueRouteImport.update({
+  id: '/continue',
+  path: '/continue',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExploreRoute = ExploreRouteImport.update({
@@ -73,6 +79,7 @@ const WatchTypeIdRoute = WatchTypeIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/continue': typeof ContinueRoute
   '/explore': typeof ExploreRoute
   '/library': typeof LibraryRoute
   '/live': typeof LiveRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/continue': typeof ContinueRoute
   '/explore': typeof ExploreRoute
   '/library': typeof LibraryRoute
   '/live': typeof LiveRoute
@@ -98,6 +106,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/continue': typeof ContinueRoute
   '/explore': typeof ExploreRoute
   '/library': typeof LibraryRoute
   '/live': typeof LiveRoute
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/continue'
     | '/explore'
     | '/library'
     | '/live'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/continue'
     | '/explore'
     | '/library'
     | '/live'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/continue'
     | '/explore'
     | '/library'
     | '/live'
@@ -149,6 +161,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ContinueRoute: typeof ContinueRoute
   ExploreRoute: typeof ExploreRoute
   LibraryRoute: typeof LibraryRoute
   LiveRoute: typeof LiveRoute
@@ -167,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/continue': {
+      id: '/continue'
+      path: '/continue'
+      fullPath: '/continue'
+      preLoaderRoute: typeof ContinueRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/explore': {
@@ -237,6 +257,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ContinueRoute: ContinueRoute,
   ExploreRoute: ExploreRoute,
   LibraryRoute: LibraryRoute,
   LiveRoute: LiveRoute,

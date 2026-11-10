@@ -349,6 +349,8 @@ img.logo { padding: 4px; }
 .linkRow .field { flex: 1; min-width: 0; height: 40px; font-size: var(--fs-footnote); text-overflow: ellipsis; }
 .pairingBody { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-m) var(--space-l); }
 .qr { flex: none; width: 184px; height: 184px; padding: 6px; border-radius: var(--radius-control); background: var(--paper); }
+/* A whole setup is a denser code than a pairing link: it gets the room a scanner needs. */
+.qrLarge { width: min(100%, 320px); height: auto; aspect-ratio: 1; box-sizing: border-box; }
 .qr svg { display: block; width: 100%; height: 100%; fill: var(--base); }
 .keyBlock { display: flex; flex-direction: column; gap: var(--space-xs); flex: 1 1 200px; min-width: 0; }
 .keyBlock .codeValue { font-size: var(--fs-title3); letter-spacing: 0.1em; overflow-wrap: anywhere; line-height: 1.3; }

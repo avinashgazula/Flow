@@ -9,11 +9,13 @@ import s from './SetupImport.module.css'
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
-export function SetupImport({ backups = false, onImported, onCancel }: { backups?: boolean; onImported: (message: string) => void; onCancel?: () => void }) {
+/** `link` is a setup that arrived by address (#setup=): it is read at once, so the review is the first thing shown. */
+export function SetupImport({ backups = false, link, onImported, onCancel }: { backups?: boolean; link?: string; onImported: (message: string) => void; onCancel?: () => void }) {
   const file = useRef<HTMLInputElement>(null)
   const [paste, setPaste] = useState<string>()
-  const [error, setError] = useState<string>()
-  const [read, setRead] = useState<Extract<ReadSetup, { ok: true }>>()
+  const [first] = useState(() => (link ? readSetup(link) : undefined))
+  const [error, setError] = useState<string | undefined>(first && !first.ok ? first.error : undefined)
+  const [read, setRead] = useState<Extract<ReadSetup, { ok: true }> | undefined>(first?.ok ? first : undefined)
 
   function take(input: string) {
     setError(undefined)

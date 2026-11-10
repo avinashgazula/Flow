@@ -8,14 +8,17 @@ import { cacheBuster, persister, queryClient } from './lib/queryClient'
 import { checkConvertAudio } from './lib/audio/support'
 import { listenForInstall } from './lib/pwa/install'
 import { registerServiceWorker } from './lib/pwa/update'
-import { settingsStore } from './lib/store/settings'
+import { hasCatalog, settingsStore } from './lib/store/settings'
 import { libraryStore } from './lib/store/library'
+import { arriveFromHashLink } from './lib/hashLink'
 import { arriveFromTrakt } from './lib/trakt/arrive'
 import { bootTrackers } from './lib/tracking/boot'
 import './styles/global.css'
 
 // Trakt sends the browser back to an address that isn't a screen: point it at Settings before the router reads it.
 arriveFromTrakt()
+// A setup or a sync pairing in the address (#setup=, #sync=) is read and taken out of it before the router sees it.
+arriveFromHashLink(hasCatalog(settingsStore.get()) && settingsStore.get().onboarded)
 
 export const router = createRouter({
   routeTree,

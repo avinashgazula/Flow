@@ -1,8 +1,11 @@
 import { Link } from '@tanstack/react-router'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { Artwork } from '../../components/Artwork'
+import { MenuPanel, useMenuTriggers, type MenuItem } from '../../components/ContextMenu'
+import { flash } from '../../components/flash'
 import { Icon } from '../../components/Icon'
+import type { Anchor } from '../../components/menuPlace'
 import type { PlaybackRequest, Source } from '../../lib/sources'
 import { searchSources, type SearchUpdate } from '../../lib/sources/index'
 import { lastSourceFor, rememberSource } from '../../lib/sources/lastSource'
@@ -10,6 +13,7 @@ import { useSettings } from '../../lib/store/settings'
 import { categoryOf } from '../../lib/sources/order'
 import { categoryNames, normaliseSourceOrdering, type SourceAppearance } from '../../lib/sources/sourceSettings'
 import { optionId, SourceRow } from './SourceRow'
+import { sourceActionLabels, sourceActions } from './sourceMenu'
 import s from './SourcePicker.module.css'
 
 type Filter = { kind: 'all' } | { kind: 'resolution'; value: NonNullable<Source['resolution']> } | { kind: 'provider'; value: string }
@@ -104,6 +108,33 @@ export function SourcePicker({ request, seed, onPick, onClose }: { request: Play
     setActiveId(next.id)
     listRef.current?.dispatchEvent(new CustomEvent('flow:reveal', { detail: entries.findIndex((e) => e.kind === 'row' && e.source.id === next.id) }))
   }
+
+  // The apps' long-press menu: Play and Copy File Name. A right-click, a long press or the menu key opens it on the row.
+  const [menu, setMenu] = useState<{ source: Source; anchor: Anchor }>()
+  const closeMenu = useCallback(() => setMenu(undefined), [])
+  useMenuTriggers(
+    () => listRef.current,
+    (anchor, target) => {
+      const id = target.closest('[role="option"]')?.id
+      const source = (id ? list.find((x) => optionId(x) === id) : undefined) ?? active
+      if (source) setMenu({ source, anchor })
+    },
+    () => (active && document.getElementById(optionId(active))?.getBoundingClientRect()) || listRef.current!.getBoundingClientRect(),
+  )
+  const menuItems = (source: Source): MenuItem[] =>
+    sourceActions(source).map((id) => ({
+      id,
+      label: sourceActionLabels[id],
+      icon: id === 'play' ? 'play' : 'copy',
+      onSelect: () => {
+        if (id === 'play') return pick(source)
+        const name = source.filename!.trim()
+        void navigator.clipboard?.writeText(name).then(
+          () => flash('File name copied.'),
+          () => flash('Couldn’t copy the file name.'),
+        )
+      },
+    }))
 
   function onKeyDown(event: KeyboardEvent) {
     const target = event.target as HTMLElement
@@ -226,6 +257,7 @@ export function SourcePicker({ request, seed, onPick, onClose }: { request: Play
           )}
         </div>
       </div>
+      {menu && <MenuPanel label={`Options for ${menu.source.title}`} items={menuItems(menu.source)} anchor={menu.anchor} onClose={closeMenu} />}
     </div>
   )
 }

@@ -76,9 +76,9 @@ describe('the web app manifest', () => {
       expect(existsSync(new URL(`src/routes/${route}.tsx`, web)), `${route} is a route`).toBe(true)
       for (const icon of shortcut.icons ?? []) expect(existsSync(new URL(`public/${icon.src}`, web)), icon.src).toBe(true)
     }
+    // Continue Watching is the /continue route, which opens the latest title (or Library's list when there is none).
     const continueWatching = new URL(manifest.shortcuts[0]!.url, 'https://flow.example/Flow/manifest.webmanifest')
-    expect(continueWatching.searchParams.get('list')).toBe('continue')
-    expect(libraryLists as readonly string[]).toContain('continue')
+    expect(continueWatching.pathname).toBe('/Flow/continue')
     // Upcoming is a page of Library, reached by ?list=, so the shortcut has to name one that exists and opens it.
     const upcoming = new URL(manifest.shortcuts[1]!.url, 'https://flow.example/Flow/manifest.webmanifest')
     expect(upcoming.pathname).toBe('/Flow/library')

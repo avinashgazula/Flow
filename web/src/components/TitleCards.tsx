@@ -12,6 +12,7 @@ import { useNearScreen } from '../lib/useNearScreen'
 import { posterMarks, useOnServer, watchedMovieKeys, watchedShowsOf } from '../features/home/marks'
 import { episodeLine, pickPrint, resumePrint, secondsLeft, spokenPick, spokenResume, watchedFraction, type PickDetail } from '../features/home/logic'
 import { continueMeta, posterCaption } from '../features/home/posterText'
+import { LazyCardMenu } from '../features/home/LazyCardMenu'
 import { continueLink } from '../features/home/skipDetails'
 import { FrameCard } from './Frame'
 
@@ -39,8 +40,9 @@ export function useSeenDetail(item: Pick<MediaItem, 'type' | 'id'>) {
 
 /** A title: poster, and print only (runtime and rating, or seasons and rating, or NEW EP when an episode just
  *  aired), then the title and an optional line of facts under it. A film that has been watched prints WATCHED
- *  first and fills its perforations; a series prints how many of its aired episodes are watched, as the apps do. */
-export function PosterItem({ item, meta, sizes = posterSizes, children }: { item: MediaItem; meta?: string; sizes?: string; children?: ReactNode }) {
+ *  first and fills its perforations; a series prints how many of its aired episodes are watched, as the apps do.
+ *  Every poster has the card menu (Play, Watchlist, Share and the rest) on its More button, right-click and long press. */
+export function PosterItem({ item, meta, sizes = posterSizes, menu = true, children }: { item: MediaItem; meta?: string; sizes?: string; menu?: boolean; children?: ReactNode }) {
   const now = useMinuteTick()
   const [itemRef, detail] = useSeenDetail(item)
   const history = useLibrary((l) => l.history)
@@ -69,6 +71,7 @@ export function PosterItem({ item, meta, sizes = posterSizes, children }: { item
       fallback={item.title}
       onIntent={() => prefetchDetail(item)}
     >
+      {menu && <LazyCardMenu item={item} />}
       {children}
     </FrameCard>
   )

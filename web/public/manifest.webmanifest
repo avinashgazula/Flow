@@ -22,7 +22,7 @@
       "name": "Continue Watching",
       "short_name": "Continue",
       "description": "Pick up where you left off",
-      "url": "library?list=continue",
+      "url": "continue",
       "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {

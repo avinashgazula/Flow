@@ -4,6 +4,7 @@ import { prefetchDetail } from '../lib/queries'
 import { posterOf } from '../lib/ratings/posters'
 import type { MediaItem } from '../lib/tmdb/types'
 import { pickPrint, spokenPick } from '../features/home/logic'
+import { LazyCardMenu } from '../features/home/LazyCardMenu'
 import { FrameCard } from './Frame'
 import s from './PosterRow.module.css'
 
@@ -38,7 +39,9 @@ function Posters({ items, now, current }: { items: MediaItem[]; now: number; cur
       label={spokenPick(m)}
       link={{ to: '/title/$type/$id', params: { type: m.type, id: m.id } }}
       onIntent={() => prefetchDetail(m)}
-    />
+    >
+      <LazyCardMenu item={m} />
+    </FrameCard>
     ),
   )
 }
