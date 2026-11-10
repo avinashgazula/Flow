@@ -36,7 +36,7 @@ li:hover > .trigger, li:focus-within > .trigger, .trigger:focus-visible, .trigge
   padding: 6px;
   border-radius: var(--radius-panel);
   background: var(--base-2);
-  box-shadow: 0 0 0 1px var(--rule);
+  box-shadow: 0 0 0 1px var(--hair);
   animation: rise var(--dur-state) var(--ease-out);
 }
 @keyframes rise { from { opacity: 0; transform: translateY(4px); } }

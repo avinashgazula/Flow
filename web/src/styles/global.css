@@ -6,21 +6,20 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  color-scheme: dark;
   /* The parts of the browser nobody draws still carry the palette: scrollbars, form controls' accent
      (checkboxes, sliders), the text caret and the selection. */
-  scrollbar-color: var(--base-4) transparent;
+  scrollbar-color: var(--fg) transparent;
   scrollbar-width: thin;
-  accent-color: var(--stock);
-  caret-color: var(--stock);
-  background: var(--base);
+  accent-color: var(--blue);
+  caret-color: var(--blue);
+  background: var(--bg);
 }
 
 body {
   margin: 0;
   min-height: 100dvh;
-  background: var(--base);
-  color: var(--paper);
+  background: var(--bg);
+  color: var(--fg);
   font: 400 var(--fs-body) / 1.5 var(--font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -38,22 +37,33 @@ main:focus { outline: none; }
   top: var(--space-s);
   left: var(--space-s);
   z-index: 1000;
-  padding: 10px 16px;
-  border-radius: var(--radius-control);
-  background: var(--paper);
-  color: var(--base);
-  font-weight: 600;
+  padding: 12px 18px;
+  border: 3px solid var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+  font: 600 var(--fs-small) / 1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   transform: translateY(-200%);
 }
 .skip-link:focus-visible { transform: none; outline-offset: 2px; }
 
 img { display: block; max-width: 100%; }
 a { color: inherit; text-decoration: none; }
-/* Links in running text: underlined, with room between the line and the letters. */
-p a, .prose a { text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
-@media (hover: hover) { p a:hover, .prose a:hover { text-decoration-color: var(--paper); } }
-button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
-input, select, textarea { font: inherit; color: inherit; }
+/* Links in running text are blue and underlined; the hover turns them to ink. */
+p a, .prose a, .link { color: var(--blue); text-decoration: underline; text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+@media (hover: hover) { p a:hover, .prose a:hover, .link:hover { color: var(--fg); } }
+/* A quiet link is ink with a dotted red underline: the way an emphasised phrase or a footer link is marked. */
+.quiet-link {
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration: underline dotted var(--red);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+@media (hover: hover) { .quiet-link:hover { color: var(--blue); } }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; border-radius: 0; }
+input, select, textarea { font: inherit; color: inherit; border-radius: 0; }
 h1, h2, h3, h4, p { margin: 0; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
 
@@ -61,20 +71,20 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
    ticking clock doesn't shimmer. */
 .num, time, input[type='number'], td, th { font-variant-numeric: tabular-nums; }
 
-/* Keyboard focus is the one yellow ring, 2 px, offset so it reads on yellow fills too. The ring follows the
-   element's own corners (modern browsers), so nothing here sets a radius. */
+/* Keyboard focus is one blue ring, 3px, offset 2px: it reads on paper, on ink and beside a blue fill. */
 :focus { outline: none; }
 :focus-visible {
-  outline: 2px solid var(--stock);
-  outline-offset: 3px;
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
 }
 
-::selection { background: var(--selection); color: var(--paper); }
-::placeholder { color: var(--ink-2); opacity: 1; }
+::selection { background: var(--blue); color: var(--onblue); }
+::placeholder { color: var(--faint); opacity: 1; }
+mark { background: var(--blue); color: var(--onblue); padding: 0 3px; }
 
-/* Where the scrollbar can be styled the long way (older WebKit), match it. */
+/* Where the scrollbar can be styled the long way (older WebKit), match it: square, ink. */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--base-4); border-radius: var(--radius-full); border: 2px solid var(--base); }
+::-webkit-scrollbar-thumb { background: var(--fg); border: 2px solid var(--bg); }
 ::-webkit-scrollbar-track { background: transparent; }
 
 .sr-only {
@@ -89,94 +99,157 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   padding: calc(var(--nav-height) + var(--space-l)) var(--page-inset) var(--space-xxl);
 }
 
-/* Large page titles: 34 on phones, 40 on desktop, 700, set by weight and size alone. */
+/* The page head: a giant Archivo title, uppercase, with a 3px rule under it that runs edge to edge (the title
+   pulls out to the viewport's edges and pads back in, so its left edge is still the page's). Put a short mono
+   note or a count beside it with .page-note, in a flex row if the screen wants one. */
 .page-title {
-  font: 700 var(--fs-page-title) / 1.1 var(--font-display);
-  letter-spacing: -0.02em;
-  text-wrap: balance;
-  margin-bottom: var(--space-l);
+  margin: calc(-1 * var(--space-l)) calc(-1 * var(--page-inset)) var(--space-l);
+  padding: var(--space-xl) var(--page-inset) var(--space-m);
+  border-bottom: var(--rule);
+  font: 700 var(--fs-display) / 0.84 var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+/* For a long word or a name, where the full size would run off a phone. */
+.page-title.long { font-size: clamp(40px, 10.5vw, 168px); }
+.page-note { font: 400 var(--fs-small) / 1.5 var(--font); text-transform: uppercase; letter-spacing: 0.08em; max-width: 38ch; }
+
+/* A section's label: red mono capitals, tracked wide. */
+.section-label {
+  font: 600 var(--fs-small) / 1.3 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--red);
 }
 
-/* Buttons. Three kinds: primary (film-stock yellow: the one next action on a screen), secondary (base-3)
-   and quiet (text only). Radius 10, pressed scales to 0.98, focus is the yellow ring, disabled goes flat ink-3.
-   .btn-glass is the old name for secondary, kept so screens not yet redesigned keep working.
-   .btn-circle is a square icon button (still named for what it was). Icons are drawn with currentColor. */
+/* Reading text is serif. */
+.reading { font-family: var(--font-serif); font-size: 17px; line-height: 1.6; max-width: var(--measure); text-wrap: pretty; }
+
+/* Buttons. Square, 3px ink border, mono capitals. Three kinds: primary (solid ink: the one next action on a
+   screen), secondary (the default, bordered) and quiet (no border, for icons and small actions). Hover fills
+   blue; destructive (.btn-danger) hovers red; focus is the blue ring; disabled goes faint. .btn-glass is the old
+   name for secondary, kept so screens not yet restyled keep working. .btn-circle is a square icon button (still
+   named for what it was). Icons are drawn with currentColor. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 20px;
-  border-radius: var(--radius-control);
-  background: var(--base-3);
-  color: var(--paper);
-  font: 600 var(--fs-small) / 1 var(--font);
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 3px solid var(--fg);
+  background: var(--bg);
+  color: var(--fg);
+  font: 600 13px / 1.1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   white-space: nowrap;
-  transition: transform var(--dur-state) var(--ease-out), background-color var(--dur-state) ease, color var(--dur-state) ease;
+  text-decoration: none;
+  transition: background-color var(--dur-state) ease, border-color var(--dur-state) ease, color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
-@media (hover: hover) { .btn:hover { background: var(--base-4); } }
-.btn:active { transform: scale(0.98); }
+@media (hover: hover) { .btn:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
+.btn:active { background: var(--blue); border-color: var(--blue); color: var(--onblue); }
 .btn svg { width: 18px; height: 18px; flex: none; }
-.btn-primary { background: var(--stock); color: var(--on-stock); }
-@media (hover: hover) { .btn-primary:hover { background: var(--stock-hover); } }
-.btn-primary:active { background: var(--stock-press); }
-/* A yellow ring around a yellow fill reads as a double ring: on yellow the ring is Paper, same 2 px and offset. */
-.btn-primary:focus-visible { outline-color: var(--paper); }
-.btn-secondary, .btn-glass { background: var(--base-3); color: var(--paper); }
-.btn-quiet { background: transparent; color: var(--ink-2); padding: 0 12px; }
-@media (hover: hover) { .btn-quiet:hover { background: var(--base-2); color: var(--paper); } }
-.btn-large { height: 48px; padding: 0 24px; font-size: var(--fs-body); }
-.btn-compact { height: 36px; padding: 0 14px; font-size: var(--fs-small); }
-.btn-circle { width: 44px; padding: 0; }
-.btn-circle.btn-compact { width: 36px; }
+.btn-primary, .btn[aria-pressed='true'] { background: var(--fg); color: var(--bg); }
+.btn-secondary, .btn-glass { background: var(--bg); color: var(--fg); }
+.btn-quiet { border-color: transparent; background: transparent; padding: 0 14px; }
+@media (hover: hover) {
+  .btn-danger:hover, .btn-primary.btn-danger:hover { background: var(--red); border-color: var(--red); color: var(--onred); }
+}
+.btn-large { min-height: 56px; padding: 0 26px; font-size: var(--fs-body); }
+.btn-compact { min-height: 40px; padding: 0 14px; }
+.btn-circle { width: 52px; height: 52px; min-height: 0; padding: 0; }
+.btn-circle.btn-compact { width: 44px; height: 44px; }
 /* A finger needs 44px: compact buttons are only compact for a mouse. */
 @media (pointer: coarse) {
-  .btn-compact { height: 44px; }
-  .btn-circle.btn-compact { width: 44px; }
+  .btn-compact { min-height: 44px; }
 }
-.btn[disabled], .btn[aria-disabled='true'] { background: var(--base-3); color: var(--ink-3); pointer-events: none; }
-.btn-quiet[disabled], .btn-quiet[aria-disabled='true'] { background: transparent; }
+.btn[disabled], .btn[aria-disabled='true'] { background: var(--bg); border-color: var(--faint); color: var(--faint); pointer-events: none; }
+.btn-primary[disabled], .btn-primary[aria-disabled='true'] { background: var(--faint); color: var(--bg); }
+.btn-quiet[disabled], .btn-quiet[aria-disabled='true'] { background: transparent; border-color: transparent; }
 
 .field {
   width: 100%;
-  height: 44px;
-  padding: 0 16px;
-  border-radius: var(--radius-control);
-  border: 0;
-  background: var(--base-3);
-  color: var(--paper);
-  transition: background-color var(--dur-state) ease;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 3px solid var(--fg);
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 var(--fs-body) / 1.2 var(--font);
 }
-@media (hover: hover) { .field:hover { background-color: var(--base-4); } }
-.field:focus-visible { background-color: var(--base-3); outline-offset: 2px; }
+select.field { padding-right: 10px; }
+select, textarea, input:not([type='checkbox'], [type='radio'], [type='range'], [type='file']) { background: var(--bg); color: var(--fg); }
+.field:focus-visible { outline-offset: 2px; }
 
-/* A filter or toggle in a row of choices. Current is a lighter base and paper text, never yellow. */
+/* A filter or toggle in a row of choices: a bordered mono cell. Current is inverted, never blue. */
 .chip {
   position: relative;
   display: inline-flex;
   align-items: center;
-  height: 36px;
+  min-height: 40px;
   padding: 0 14px;
-  border-radius: var(--radius-control);
-  background: var(--base-3);
-  color: var(--ink-2);
+  border: 3px solid var(--fg);
+  background: var(--bg);
+  color: var(--fg);
   font: 600 var(--fs-small) / 1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   white-space: nowrap;
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-@media (hover: hover) { .chip:hover { color: var(--paper); background: var(--base-4); } }
-.chip[aria-pressed='true'], .chip[aria-current='page'] { background: var(--base-4); color: var(--paper); }
-/* A finger needs 44px: the chip stays 36px to look at and its hit area reaches 4px past it above and below, as the
-   segmented control's does. The rows that scroll keep that much room around their chips. */
+@media (hover: hover) { .chip:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
+.chip[aria-pressed='true'], .chip[aria-current='page'], .chip[aria-checked='true'] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+/* A finger needs 44px: the chip stays 40px to look at and its hit area reaches 2px past it above and below. */
 @media (pointer: coarse) {
-  .chip::before { content: ''; position: absolute; inset: -4px 0; }
+  .chip::before { content: ''; position: absolute; inset: -2px 0; }
 }
 
-.muted { color: var(--ink-2); }
-.faint { color: var(--ink-3); }
+/* A list item is a full-width row; it inverts to blue on hover and focus. Rows sit in a list whose top is a
+   3px rule and whose items are divided by 1px ink lines (.rows). */
+.rows { border-top: var(--rule); }
+.rows > li { border-bottom: 1px solid var(--hair); }
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  width: 100%;
+  margin: 0;
+  padding: 14px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .row:hover { background: var(--blue); color: var(--onblue); }
+  .row:hover .muted, .row:hover .faint, .row:hover .section-label { color: var(--onblue); }
+}
+.row:focus-visible { background: var(--blue); color: var(--onblue); outline-color: var(--onblue); outline-offset: -6px; }
+.row:focus-visible .muted, .row:focus-visible .faint, .row:focus-visible .section-label { color: var(--onblue); }
+
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+
+/* Loading: the ink ring with a red quarter, and a bordered bar whose fill is red. The ring is the one round
+   thing on the page, as in the reference; reduced motion slows it instead of stopping it, so it still reads as busy. */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border: 6px solid var(--fg);
+  border-top-color: var(--red);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+.pbar { display: block; width: 100%; max-width: 560px; height: 14px; border: 3px solid var(--fg); }
+.pbar > i { display: block; height: 100%; background: var(--red); transition: width 0.2s; }
 
 /* The poster or backdrop a title grows out of, for the View Transitions zoom. */
 ::view-transition-group(*) { animation-duration: var(--dur-move); animation-timing-function: var(--ease-out); }
@@ -184,6 +257,6 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-  .btn:active { transform: none; }
+  .spinner { animation-duration: 3s !important; animation-iteration-count: infinite !important; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }

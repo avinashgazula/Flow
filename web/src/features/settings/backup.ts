@@ -13,7 +13,6 @@ import { isTabOrder } from '../../lib/tabs'
 import { isShelfList } from '../../lib/shelves'
 import { isSubtitleStyle, normaliseSubtitleStyle } from '../../lib/store/subtitleStyle'
 import { noExtras, setupExtrasStore } from '../../lib/setup/extras'
-import { typefaces } from './options'
 
 /* Export and import of everything Flow keeps in this browser, as one JSON file. */
 
@@ -122,7 +121,8 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   rememberLastSource: (v) => typeof v === 'boolean',
   // Fields a backup lacks take their defaults, so a file from before this setting (or from the apps) still imports.
   sources: isSourceOrdering,
-  font: (v) => typefaces.some((f) => f.value === v),
+  // Retired setting (the typeface picker): still accepted, so a backup from before it went imports clean.
+  font: (v) => ['system', 'inter', 'geist', 'manrope', 'ioskeley'].includes(v as string),
   tabOrder: isTabOrder,
   // Empty clears the proxy; anything else has to be an address Flow can call.
   streamProxy: (v) => typeof v === 'string' && proxyProblem(v) === undefined,

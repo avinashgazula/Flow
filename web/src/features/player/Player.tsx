@@ -23,7 +23,7 @@ export function Player({ type, id, season, episode, source }: { type: MediaType;
   }, [])
 
   return (
-    <div ref={root} className={s.root}>
+    <div ref={root} className={s.root} data-theme="dark">
       <PlayerScreen key={`${type}:${id}:${season ?? ''}:${episode ?? ''}`} type={type} id={id} season={season} episode={episode} sourceId={source} root={root} binge={binge} />
     </div>
   )

@@ -28,16 +28,19 @@ export const libraries: Licence[] = [
   { package: 'hls.js', name: 'hls.js', version: '1.7.3', licence: 'Apache-2.0', url: 'https://github.com/video-dev/hls.js', use: 'Playing HLS streams' },
   { package: 'idb-keyval', name: 'idb-keyval', version: '6.3.0', licence: 'Apache-2.0', url: 'https://github.com/jakearchibald/idb-keyval', use: 'Storing the cache and the guide' },
   { package: 'qrcode-generator', name: 'qrcode-generator', version: '2.0.4', licence: 'MIT', url: 'https://github.com/kazuhikoarase/qrcode-generator', use: 'The pairing code for Sync' },
+  { package: '@fontsource/archivo', name: 'Archivo (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'The page titles' },
+  { package: '@fontsource/ibm-plex-mono', name: 'IBM Plex Mono (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Interface text and labels' },
+  { package: '@fontsource/ibm-plex-sans-condensed', name: 'IBM Plex Sans Condensed (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Headings and titles in lists' },
+  { package: '@fontsource/ibm-plex-serif', name: 'IBM Plex Serif (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Reading text' },
   { package: 'jassub', name: 'JASSUB', version: '2.5.18', licence: 'LGPL-2.1-or-later AND (FTL OR GPL-2.0-or-later) AND MIT AND MIT-Modern-Variant AND ISC AND NTP AND Zlib AND BSL-1.0', url: 'https://github.com/ThaUnknown/jassub', use: 'Drawing ASS subtitles: libass and its libraries, as WebAssembly' },
 ]
 
-/** The typefaces Flow can be set in, each with the licence file served beside it (public/fonts). */
+/** The typefaces Flow is set in, each with the licence file served beside it (public/fonts). */
 export const typefaces: { name: string; file: string }[] = [
-  { name: 'Barlow Condensed', file: 'OFL-Barlow-Condensed.txt' },
-  { name: 'Geist', file: 'OFL-Geist.txt' },
-  { name: 'Inter', file: 'OFL-Inter.txt' },
-  { name: 'Ioskeley Mono', file: 'OFL-Ioskeley-Mono.txt' },
-  { name: 'Manrope', file: 'OFL-Manrope.txt' },
+  { name: 'Archivo', file: 'OFL-Archivo.txt' },
+  { name: 'IBM Plex Mono', file: 'OFL-Plex-Mono.txt' },
+  { name: 'IBM Plex Sans Condensed', file: 'OFL-Plex-Sans-Condensed.txt' },
+  { name: 'IBM Plex Serif', file: 'OFL-Plex-Serif.txt' },
 ]
 
 /** The commit this build came from, so the links below show the exact build script and notice that made it; a local

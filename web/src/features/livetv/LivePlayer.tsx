@@ -286,7 +286,7 @@ export function LivePlayer({ channel, lineup, epg, onTune, onClose }: { channel:
   const show = phase.kind !== 'failed' && (controls || phase.kind !== 'playing' || paused)
 
   return (
-    <div ref={root} className={s.root} tabIndex={-1} data-fullscreen={fullscreen ? '' : undefined} onPointerMove={controller.poke} role="region" aria-label={`Live: ${channel.name}`}>
+    <div ref={root} className={s.root} data-theme="dark" tabIndex={-1} data-fullscreen={fullscreen ? '' : undefined} onPointerMove={controller.poke} role="region" aria-label={`Live: ${channel.name}`}>
       <video ref={video} className={s.video} playsInline autoPlay aria-label={channel.name} onDoubleClick={controller.toggleFullscreen} />
       <div className={s.tap} onPointerDown={onDown} onPointerUp={onUp} onPointerCancel={() => (press.current = undefined)} />
 

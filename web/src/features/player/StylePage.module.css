@@ -17,7 +17,7 @@
   left: 16px;
   right: 16px;
   height: 1px;
-  background: var(--rule);
+  background: var(--hair);
 }
 .label { font: 400 var(--fs-body) / 1.2 var(--font); color: var(--paper); }
 .control { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }

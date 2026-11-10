@@ -4,6 +4,30 @@ import babel from '@rolldown/plugin-babel'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { pwa } from './scripts/pwa.ts'
 import { fileURLToPath } from 'node:url'
+import type { Plugin } from 'vite'
+
+/** Starts the two faces the first paint is set in (Archivo for the page titles, Plex Mono for everything else)
+ *  with the page, not after the stylesheet has been read. Their built names carry a hash, so the links are written
+ *  once the bundle is known. Build only: the dev server has no hashed files. */
+function fontPreload(): Plugin {
+  const first = ['archivo-latin-700-normal', 'ibm-plex-mono-latin-400-normal']
+  let base = '/'
+  return {
+    name: 'flow-font-preload',
+    apply: 'build',
+    configResolved: (config) => void (base = config.base),
+    transformIndexHtml: {
+      order: 'post',
+      handler(_html, ctx) {
+        const files = Object.keys(ctx.bundle ?? {})
+        return first.flatMap((name) => {
+          const file = files.find((f) => f.startsWith(`assets/${name}`) && f.endsWith('.woff2'))
+          return file ? [{ tag: 'link', attrs: { rel: 'preload', as: 'font', type: 'font/woff2', crossorigin: '', href: `${base}${file}` }, injectTo: 'head' as const }] : []
+        })
+      },
+    },
+  }
+}
 
 // FLOW_BASE is the path the site is served from: "/" locally, "/Flow/" on GitHub Pages.
 export default defineConfig({
@@ -16,6 +40,7 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
     // The service worker and the address-bar search descriptor, written after the site is built.
     pwa(),
+    fontPreload(),
   ],
   resolve: {
     // JASSUB (ASS subtitles, loaded only when needed) imports two CommonJS packages it doesn't need here; standing in

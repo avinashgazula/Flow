@@ -19,7 +19,7 @@
 .monogram { font: 700 var(--fs-footnote) / 1 var(--font); letter-spacing: 0.04em; color: var(--ink-2); }
 
 .games { list-style: none; margin: 0; padding: 0; }
-.game { border-bottom: 1px solid var(--rule); }
+.game { border-bottom: 1px solid var(--hair); }
 .gameRow { display: flex; align-items: center; gap: var(--space-s); }
 .gameMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: var(--space-s) 0; text-align: left; color: var(--paper); -webkit-tap-highlight-color: transparent; }
 .gameMain:disabled { cursor: default; opacity: 1; }
@@ -42,7 +42,7 @@
 
 /* The channels for a game, under it. */
 .channels { list-style: none; margin: 0 0 var(--space-s); padding: 0; border-radius: var(--radius-panel); background: var(--base-2); }
-.channels > li + li { border-top: 1px solid var(--rule); }
+.channels > li + li { border-top: 1px solid var(--hair); }
 .channel { display: flex; align-items: center; gap: var(--space-s); padding: var(--space-s) var(--space-m); color: var(--paper); }
 .channel:hover .channelName { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ink-3); }
 .channelText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -62,7 +62,7 @@
 .findInput:focus-visible { outline: none; }
 .findState { min-height: 20px; margin: var(--space-xs) 0; font-size: var(--fs-footnote); color: var(--ink-2); }
 .found { list-style: none; margin: 0; padding: 0; }
-.foundRow { display: flex; align-items: center; gap: var(--space-s); padding: var(--space-xs) 0; border-bottom: 1px solid var(--rule); }
+.foundRow { display: flex; align-items: center; gap: var(--space-s); padding: var(--space-xs) 0; border-bottom: 1px solid var(--hair); }
 .foundText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .foundName { font: 600 var(--fs-small) / 1.25 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .foundMeta { font-size: var(--fs-footnote); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

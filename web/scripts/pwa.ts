@@ -10,9 +10,9 @@ import { openSearchDescriptor, siteAddress } from '../src/sw/openSearch.ts'
 import { assetsIn, precacheList, type BuiltFile } from '../src/sw/rules.ts'
 
 /** Files with no hash in their name that the app needs offline: the page itself (an empty path is the site's
- *  root), the page shown when even that is missing, the manifest, the icon and the edge-print font that
- *  Home's strips are set in. Other typefaces are saved the first time they are chosen. */
-const shellFiles = ['', 'offline.html', 'manifest.webmanifest', 'icon-192.png', 'fonts/barlow-condensed-latin-600-normal.woff2']
+ *  root), the page shown when even that is missing, the manifest and the icon. The first-paint fonts are hashed and
+ *  found through the page's preload links; the other faces are saved the first time a page sets text in them. */
+const shellFiles = ['', 'offline.html', 'manifest.webmanifest', 'icon-192.png']
 
 export function pwa(): Plugin {
   let root = ''

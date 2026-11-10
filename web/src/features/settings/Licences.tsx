@@ -37,7 +37,7 @@ export function Licences() {
           </Row>
         ))}
       </Group>
-      <Group title="Typefaces" footer="All under the SIL Open Font License 1.1. System, the default, is your device’s own font and ships nothing.">
+      <Group title="Typefaces" footer="All under the SIL Open Font License 1.1, self-hosted: Flow asks no font service for anything.">
         {typefaces.map((face) => (
           <Row key={face.name} label={face.name} detail="SIL OFL 1.1">
             {link(`${fonts}${face.file}`, 'Licence')}

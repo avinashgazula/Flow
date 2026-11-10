@@ -1,40 +1,37 @@
+/* A broken screen, in Index: a giant Archivo title with the rule under it, the way to go on, and the details
+   in a ruled box. Left-aligned with the page. */
 .screen {
   min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: calc(var(--nav-height) + var(--space-l)) var(--gutter) var(--space-xxxl);
+  padding: calc(var(--nav-height) + var(--space-l)) var(--page-inset) var(--space-xxxl);
 }
 .card {
-  width: min(560px, 100%);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--space-s);
-  text-align: center;
+  align-items: flex-start;
+  gap: var(--space-m);
+  max-width: 720px;
 }
-.icon {
-  width: 56px;
-  height: 56px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius-panel);
-  background: var(--base-2);
-  color: var(--warn);
+.icon { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border: var(--rule); color: var(--red); }
+.title {
+  margin: 0 calc(-1 * var(--page-inset));
+  padding: var(--space-xl) var(--page-inset) var(--space-m);
+  align-self: stretch;
+  border-bottom: var(--rule);
+  font: 700 clamp(40px, 8vw, 112px) / 0.86 var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
 }
-.title { font: 700 var(--fs-title3) / 1.2 var(--font-display); letter-spacing: -0.015em; }
-.lede { color: var(--ink-2); line-height: 1.5; font-size: var(--fs-small); text-wrap: pretty; }
-.actions { display: flex; gap: var(--space-s); margin-top: var(--space-xs); }
-.details { width: 100%; margin-top: var(--space-s); text-align: left; }
-.details summary { cursor: pointer; color: var(--ink-3); font-size: var(--fs-footnote); text-align: center; }
-.details summary:hover { color: var(--ink-2); }
+.lede { font: 400 17px / 1.6 var(--font-serif); text-wrap: pretty; max-width: 52ch; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-s); }
+.details { width: 100%; margin-top: var(--space-s); }
+.details summary { cursor: pointer; color: var(--fg); font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 0.08em; text-decoration: underline dotted var(--red); text-decoration-thickness: 2px; text-underline-offset: 4px; }
 .details pre {
   margin: var(--space-s) 0;
   padding: var(--space-m);
   max-height: 280px;
   overflow: auto;
-  border-radius: var(--radius-panel);
-  background: var(--base-2);
-  font: 12px / 1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  border: var(--rule);
+  font: 12px / 1.5 var(--font-mono);
   white-space: pre-wrap;
   word-break: break-word;
   user-select: text;

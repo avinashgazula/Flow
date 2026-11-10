@@ -78,5 +78,5 @@ export function precacheList(files: readonly BuiltFile[], extra: readonly string
 
 /** The files a page names in its own tags (`assets/index-abc.js`): the ones it can't open without, whatever their size. */
 export function assetsIn(html: string): string[] {
-  return [...new Set([...html.matchAll(/(?:src|href)="[^"]*?(assets\/[^"]+\.(?:js|css))"/g)].map((m) => m[1]!))]
+  return [...new Set([...html.matchAll(/(?:src|href)="[^"]*?(assets\/[^"]+\.(?:js|css|woff2))"/g)].map((m) => m[1]!))]
 }
