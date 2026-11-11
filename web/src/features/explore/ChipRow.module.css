@@ -1,44 +1,32 @@
 /* One row of chips that scrolls sideways on every width: twenty-odd of them wrapped made Explore the busiest
-   screen in the app. The row bleeds to the page edge so the chip at the edge is cut off, and a fade on each
-   side with more to scroll says it does (a scrollbar alone is easy to miss, and a phone hides it). */
+   screen in the app. The row is a ruled band, edge to edge, and its chips share borders like cells of a table; the
+   one cut off at the edge says there is more, and on a desktop a button at each end scrolls it. */
 .wrap {
   position: relative;
-  margin-bottom: var(--space-l);
-  margin-inline: calc(-1 * var(--gutter));
+  margin-inline: calc(-1 * var(--page-inset));
+  border-bottom: var(--rule);
 }
 .row {
-  --fade-before: 0px;
-  --fade-after: 0px;
-  /* Room left fully clear at each end, for a scroll button to sit on plain ground. */
-  --clear-before: 0px;
-  --clear-after: 0px;
   position: relative;
   display: flex;
   flex-wrap: nowrap;
-  gap: var(--space-xs);
   /* Room for the focus ring, which the scroll box would otherwise clip. */
-  padding: 4px var(--gutter) var(--space-xs);
-  scroll-padding-inline: var(--gutter);
+  padding: var(--space-s) var(--page-inset);
+  scroll-padding-inline: var(--page-inset);
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(to right, transparent var(--clear-before), #000 calc(var(--clear-before) + var(--fade-before)), #000 calc(100% - var(--clear-after) - var(--fade-after)), transparent calc(100% - var(--clear-after)));
-  mask-image: linear-gradient(to right, transparent var(--clear-before), #000 calc(var(--clear-before) + var(--fade-before)), #000 calc(100% - var(--clear-after) - var(--fade-after)), transparent calc(100% - var(--clear-after)));
 }
 .row::-webkit-scrollbar { display: none; }
 .row > * { flex: none; }
-.row[data-before] { --fade-before: calc(var(--gutter) + 72px); }
-.row[data-after] { --fade-after: calc(var(--gutter) + 72px); }
+.row > * + * { margin-left: -3px; }
+/* The pressed chip's border draws over its neighbours' shared edge. */
+.row > [aria-pressed='true'], .row > :focus-visible { position: relative; z-index: 1; }
 
 /* Scroll buttons, for a mouse only. */
 .arrow { display: none; }
 @media (hover: hover) and (pointer: fine) and (min-width: 721px) {
-  /* Round with a hairline, so it reads as a control over the row and not as one more chip. */
-  .wrap .arrow { display: inline-flex; position: absolute; top: 4px; border-radius: 50%; border: 1px solid var(--hair); background: var(--base-2); color: var(--paper); }
-  /* Inside the page's content edge, so they line up with everything above. The row has faded out before
-     each button and stays clear beneath it and past the edge, so no chip label sits under a button. */
-  .back { left: var(--gutter); }
-  .forward { right: var(--gutter); }
-  .row[data-before] { --clear-before: calc(var(--gutter) + 44px); --fade-before: 72px; }
-  .row[data-after] { --clear-after: calc(var(--gutter) + 44px); --fade-after: 72px; }
+  .wrap .arrow { display: inline-flex; position: absolute; top: 50%; translate: 0 -50%; z-index: 2; }
+  .back { left: 0; }
+  .forward { right: 0; }
 }

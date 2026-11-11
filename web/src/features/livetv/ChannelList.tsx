@@ -9,8 +9,8 @@ import s from './ChannelList.module.css'
 
 const rowHeight = 88
 
-/** The channel list: logo, number and name, what is on with the time left and a red line for how far through
- *  it is, then what is next. One row is one channel; the star beside it is a favourite. The list is
+/** The channel list as ruled rows: a red condensed number, the logo and name, what is on with the time left and a red
+ *  line for how far through it is, then what is next. One row is one channel; the star beside it is a favourite. The list is
  *  virtualised, since a provider can have thousands. */
 export function ChannelList({ channels, epg, favourites, now, onPlay, onToggleFavourite }: { channels: Channel[]; epg: EPG; favourites: ReadonlySet<string>; now: number; onPlay: (channel: Channel) => void; onToggleFavourite: (channel: Channel) => void }) {
   const scroller = useRef<HTMLDivElement>(null)
@@ -26,11 +26,13 @@ export function ChannelList({ channels, epg, favourites, now, onPlay, onToggleFa
           return (
             <div key={channel.id} role="listitem" className={s.row} data-first={item.index === 0 ? '' : undefined} style={{ height: item.size, transform: `translateY(${item.start}px)` }}>
               <button type="button" className={s.main} onClick={() => onPlay(channel)}>
+                <span className={`num ${s.number}`} aria-hidden="true">
+                  {channel.number !== undefined ? String(channel.number).padStart(2, '0') : ''}
+                </span>
                 <ChannelLogo channel={channel} />
                 <span className="sr-only">{`Watch ${channel.name}${on ? `, now ${on.title}` : ''}`}</span>
                 <span className={s.text} aria-hidden="true">
                   <span className={s.name}>
-                    {channel.number !== undefined && <span className={`num ${s.number}`}>{channel.number}</span>}
                     <span className={s.nameText}>{channel.name}</span>
                   </span>
                   {on ? (
