@@ -1,4 +1,4 @@
-/* Flow Sync on the web: when to look at the record, when to write it, and what to say when it fails. The
+/* Marquee Sync on the web: when to look at the record, when to write it, and what to say when it fails. The
    rules for merging are in payload.ts and the cryptography in crypto.ts; this file is the clock and the
    network. It loads on its own (a dynamic import from main.tsx, and from Settings), so the first page
    never carries it. */
@@ -36,8 +36,8 @@ const words = {
   erased: 'Nothing is stored for this sync key any more. If you erased it on another device, turn sync off here, then on again.',
   nothingYet: 'Nothing is stored for that sync key yet. On your other device, check that sync is on, then try again.',
   unreadable: 'Couldn’t read the synced data. Check that the sync key here matches your other devices.',
-  newer: 'Your other devices use a newer version of Flow Sync. Update Flow here to keep syncing.',
-  busy: 'Another device kept changing your settings while Flow was syncing. Try Sync Now again.',
+  newer: 'Your other devices use a newer version of Marquee Sync. Update Marquee here to keep syncing.',
+  busy: 'Another device kept changing your settings while Marquee was syncing. Try Sync Now again.',
 }
 
 // MARK: Status
@@ -95,7 +95,7 @@ function problemFor(res: Response, during: 'join' | 'sync'): Problem {
     case 501:
       return new Problem(words.noKV)
     default:
-      return new Problem(res.status >= 500 ? `Your sync server had a problem (${res.status}). Try again in a moment.` : `Your sync server answered something Flow didn’t expect (${res.status}). Check its address.`)
+      return new Problem(res.status >= 500 ? `Your sync server had a problem (${res.status}). Try again in a moment.` : `Your sync server answered something Marquee didn’t expect (${res.status}). Check its address.`)
   }
 }
 

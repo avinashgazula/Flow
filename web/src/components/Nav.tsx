@@ -4,9 +4,10 @@ import { useSettings } from '../lib/store/settings'
 import { setTheme, useTheme } from '../lib/theme'
 import { orderTabs } from '../lib/tabs'
 import { Icon } from './Icon'
+import { Logo } from './Logo'
 import s from './Nav.module.css'
 
-/** The top bar, in Index's grammar: a blue logo cell with the Flow wordmark, then the sections as 3px-bordered
+/** The top bar, in Index's grammar: a blue logo cell with the Marquee wordmark, then the sections as 3px-bordered
  *  uppercase cells (the current one inverted, the hovered one blue), Settings, and the Light/Dark toggle at the
  *  end. It slides away while the page scrolls down and comes back as soon as it scrolls up. On phones the top
  *  bar keeps only the logo, Settings and the toggle, and the sections move to a bar of bordered cells at the
@@ -51,8 +52,8 @@ export function Nav() {
     <>
       {/* Keyboard focus anywhere in the bar brings it back, so a hidden bar never holds the focus. */}
       <header ref={header} className={s.top} data-away={away ? '' : undefined} onFocus={() => setAway(false)}>
-        <Link to="/" className={s.brand} aria-label="Flow home">
-          Flow
+        <Link to="/" className={s.brand} aria-label="Marquee home">
+          <Logo />
         </Link>
         <nav className={s.links} aria-label="Main">
           {tabs.map((t) => (
@@ -91,16 +92,5 @@ export function Nav() {
         ))}
       </nav>
     </>
-  )
-}
-
-/** The mark, for where the brand needs a face (the welcome screen): a blue block with a play triangle in the
- *  page's own colour, so it follows light and dark. */
-export function Logo({ size = 26 }: { size?: number }) {
-  return (
-    <svg width={size * 0.75} height={size} viewBox="0 0 12 16" aria-hidden="true">
-      <rect width="12" height="16" fill="var(--blue)" />
-      <path d="M4.4 4.9v6.2a.5.5 0 0 0 .76.43l4.9-3.1a.5.5 0 0 0 0-.86l-4.9-3.1a.5.5 0 0 0-.76.43z" fill="var(--onblue)" />
-    </svg>
   )
 }

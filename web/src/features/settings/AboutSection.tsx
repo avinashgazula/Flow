@@ -18,25 +18,25 @@ export function AboutSection() {
 
   return (
     <>
-      <Group footer="This product uses the TMDB API but is not endorsed or certified by TMDB. Flow hosts no content: it plays what your own sources provide.">
-        <Row label="Flow for the Web" detail="The same Flow, in your browser" />
+      <Group footer="This product uses the TMDB API but is not endorsed or certified by TMDB. Marquee hosts no content: it plays what your own sources provide.">
+        <Row label="Marquee" detail="Works with the Marquee apps for iPhone, iPad, Mac and Apple TV" />
         {/* Only where there is something to do: a browser that can install it, or Safari on iPhone and iPad,
             which can't be asked and has to be told. Nothing otherwise, and nothing once it is installed. */}
         {install === 'prompt' && (
-          <Row label="Install Flow" detail="Opens in a window of its own, like an app.">
+          <Row label="Install Marquee" detail="Opens in a window of its own, like an app.">
             <button type="button" className="btn btn-secondary btn-compact" onClick={() => void promptInstall()}>
               Install
             </button>
           </Row>
         )}
-        {install === 'ios' && <Row label="Install Flow" detail="In Safari, tap Share, then Add to Home Screen." />}
+        {install === 'ios' && <Row label="Install Marquee" detail="In Safari, tap Share, then Add to Home Screen." />}
         {used && <Row label="Stored in This Browser" detail="Cache, library and settings">{used}</Row>}
         <Row label="Metadata">
           <a href="https://www.themoviedb.org" target="_blank" rel="noreferrer">
             TMDB
           </a>
         </Row>
-        <Row label="Open Source Licences" detail="What Flow is built from">
+        <Row label="Open Source Licences" detail="What Marquee is built from">
           <button type="button" className="btn btn-secondary btn-compact" aria-expanded={licences} onClick={() => setLicences((v) => !v)}>
             {licences ? 'Hide' : 'Show'}
           </button>

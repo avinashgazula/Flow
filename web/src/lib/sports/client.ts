@@ -24,7 +24,7 @@ async function get(path: string, query: Record<string, string>, signal?: AbortSi
     response = await fetch(url, { headers: { Accept: 'application/json' }, signal })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error
-    throw new SportsError('Flow couldn’t reach TheSportsDB. Check your connection, then try again.')
+    throw new SportsError('Marquee couldn’t reach TheSportsDB. Check your connection, then try again.')
   }
   if (response.status === 401 || response.status === 403) throw new SportsError('TheSportsDB didn’t accept that key. Check it in Settings → Live TV.', response.status)
   if (!response.ok) throw new SportsError(`TheSportsDB answered ${response.status}. Try again in a moment.`, response.status)

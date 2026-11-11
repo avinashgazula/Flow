@@ -205,7 +205,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     library.saveProgress(it, position.current, length.current, ep && { ...ep, name: cur?.name, still: cur?.still })
   }
 
-  /** Hands an MKV to the external player when Settings say so and an app can take the link; false plays it in Flow, as the
+  /** Hands an MKV to the external player when Settings say so and an app can take the link; false plays it in Marquee, as the
    *  apps do when the hand-off isn't possible. The page then closes: playback continues in the other app. */
   const handOff = (next: Source, position?: number): boolean => {
     const { matroskaPlayback, externalPlayer } = settingsStore.get()
@@ -563,7 +563,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   useEffect(() => {
     if (!title) return
     const before = document.title
-    document.title = `${epRef ? `${title} · S${epRef.season} E${epRef.episode}` : title} – Flow`
+    document.title = `${epRef ? `${title} · S${epRef.season} E${epRef.episode}` : title} – Marquee`
     return () => void (document.title = before)
   }, [title, epRef?.season, epRef?.episode])
 
@@ -574,7 +574,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
       item.backdrop && { src: imageURL(item.backdrop, 780)!, sizes: '780x439', type: 'image/jpeg' },
       item.poster && { src: imageURL(item.poster, 342)!, sizes: '342x513', type: 'image/jpeg' },
     ].filter(Boolean) as MediaImage[]
-    session.metadata = new MediaMetadata({ title: current?.name ?? item.title, artist: epRef ? `${item.title} · S${epRef.season} E${epRef.episode}` : (item.year ? String(item.year) : ''), album: 'Flow', artwork: art })
+    session.metadata = new MediaMetadata({ title: current?.name ?? item.title, artist: epRef ? `${item.title} · S${epRef.season} E${epRef.episode}` : (item.year ? String(item.year) : ''), album: 'Marquee', artwork: art })
     const el = video.current!
     const position = () => {
       const d = controller.duration()

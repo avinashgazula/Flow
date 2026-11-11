@@ -65,6 +65,6 @@ export function parsePairing(input: string): { ok: true; pairing: Pairing } | { 
   if (!key) return { ok: false, error: incompleteKey }
   const rawServer = params.get('s')
   const server = rawServer ? normaliseServer(rawServer) : null
-  if (rawServer && !server) return { ok: false, error: 'That link has a server address Flow can’t read. Copy the link again from your other device.' }
+  if (rawServer && !server) return { ok: false, error: 'That link has a server address Marquee can’t read. Copy the link again from your other device.' }
   return { ok: true, pairing: { key, ...(server ? { server } : {}), ...(params.get('t') ? { token: params.get('t')! } : {}) } }
 }

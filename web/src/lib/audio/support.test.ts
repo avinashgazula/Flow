@@ -46,7 +46,7 @@ describe('checkConvertAudio', () => {
     return isConfigSupported
   }
 
-  it('asks the encoder for the settings Flow uses, and keeps its answer', async () => {
+  it('asks the encoder for the settings Marquee uses, and keeps its answer', async () => {
     const ask = encoder(async () => ({ supported: false }))
     const support = await load()
     expect(support.canConvertAudio()).toBe(true)

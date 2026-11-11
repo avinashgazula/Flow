@@ -8,7 +8,7 @@ import s from './SettingsScreen.module.css'
 
 /* Settings → Requests: the Seerr, Overseerr or Jellyseerr instance the title page's Request button asks, after the
    apps' Connect Seerr. The address and key are checked together before they are kept: the status call answers without
-   a key, so a second call proves the key. They travel through Flow Sync as the Requests section, so the apps connect to the same instance.
+   a key, so a second call proves the key. They travel through Marquee Sync as the Requests section, so the apps connect to the same instance.
 
    The page talks to the instance directly. Seerr sends no CORS headers of its own, so an instance that isn't behind a
    reverse proxy adding them can't be reached from a web page; the words below say so. */

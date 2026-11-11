@@ -9,7 +9,7 @@ export function startPath(saved: string | undefined): TabPath {
 }
 
 /** Where to send someone arriving at `/`, or nothing to leave them on Home. Only the plain address counts: a link
- *  with a query or a hash (a sign-in coming back, a Flow Sync link, `?demo`) is for Home to read, so it stays. */
+ *  with a query or a hash (a sign-in coming back, a Marquee Sync link, `?demo`) is for Home to read, so it stays. */
 export function openingRedirect(saved: string | undefined, arrival: { first: boolean; search: string; hash: string }): TabPath | undefined {
   if (!arrival.first || arrival.search || arrival.hash) return undefined
   const to = startPath(saved)

@@ -1,4 +1,4 @@
-/* Subtitle delay: the viewer shifts the cues Flow draws, from 10 seconds early to 10 seconds late in tenths
+/* Subtitle delay: the viewer shifts the cues Marquee draws, from 10 seconds early to 10 seconds late in tenths
    (the apps nudge a quarter second at a time; a mouse and a slider make a tenth easy). Positive shows
    subtitles later, as in the apps. Kept per title for as long as the page is open. */
 

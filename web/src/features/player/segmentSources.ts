@@ -12,7 +12,7 @@
    - PublicMetaDB answers GET publicmetadb.com/api/external/skips with a Bearer key, sends no CORS headers and
      doesn't answer the preflight a key header needs, and the stream proxy forwards no Authorization. So from a
      web page it can't be read today; it is asked once per visit and given up on quietly, and the key is kept so
-     Flow Sync carries it to the apps. */
+     Marquee Sync carries it to the apps. */
 
 import type { PlaybackRequest, Source } from '../../lib/sources'
 import { withTimeout } from '../../lib/sources/http'

@@ -274,7 +274,7 @@ class Session implements RemuxSession {
     })
 
     this.worker.onmessage = (event: MessageEvent<FromWorker>) => this.receive(event.data)
-    this.worker.onerror = () => this.fail('Flow couldn’t start its video reader. Reload the page and try again.')
+    this.worker.onerror = () => this.fail('Marquee couldn’t start its video reader. Reload the page and try again.')
     const onAbort = () => (this.failure ? this.failure(new DOMException('Stopped', 'AbortError')) : this.destroy())
     options.signal?.addEventListener('abort', onAbort, { once: true })
     this.cleanups.push(() => options.signal?.removeEventListener('abort', onAbort))

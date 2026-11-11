@@ -12,7 +12,7 @@ import { Section, Toolbar } from '../explore/PageHead'
 import { bars, firstWeekday, habitLines, leadSentence, shownLabels } from './statsView'
 import s from './StatsPage.module.css'
 
-/* Stats, as the apps' "Your Year in Flow": what you have watched, from History. The sums are in lib/stats.ts (a port of
+/* Stats, as the apps' "Your Year in Marquee": what you have watched, from History. The sums are in lib/stats.ts (a port of
    FlowKit's WatchStats); statsView.ts words them. Plays made before this version recorded no length, so a title's typical
    runtime is asked of TMDB for them (the most recent 300 titles; anything beyond uses the usual lengths). */
 

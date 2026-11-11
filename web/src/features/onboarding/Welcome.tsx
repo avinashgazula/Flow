@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react'
 import { peekLink, takeLink } from '../../lib/hashLink'
 import { libraryStore } from '../../lib/store/library'
 import { settingsStore, useSettings } from '../../lib/store/settings'
+import { Logo } from '../../components/Logo'
 import s from './Welcome.module.css'
 
 /* Reading a setup file and joining a sync pull in the codec and the sync engine, so they load when asked for. */
@@ -52,12 +53,14 @@ export function Welcome() {
   return (
     <div className={s.welcome}>
       <div className={s.bar}>
-        <span className={s.logo}>Flow</span>
+        <span className={s.logo}>
+          <Logo />
+        </span>
       </div>
       <header className={s.hero}>
-        <h1 className={s.title}>Flow</h1>
+        <h1 className={s.title}>Marquee</h1>
         <p className={s.sub}>
-          Your Jellyfin, Emby and Plex servers, stream add-ons and live TV, in one place. Flow hosts no content: it <span className={s.mark}>plays what you already have.</span>
+          Your Jellyfin, Emby and Plex servers, stream add-ons and live TV, in one place. Marquee hosts no content: it <span className={s.mark}>plays what you already have.</span>
         </p>
       </header>
       <div className={s.rule} />
@@ -92,7 +95,7 @@ export function Welcome() {
               />
               {state === 'error' && <p className={s.error}>{message}</p>}
               <p className={s.hint}>
-                Flow uses TMDB for posters, cast and details. A key is free:{' '}
+                Marquee uses TMDB for posters, cast and details. A key is free:{' '}
                 <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">
                   get one at themoviedb.org
                 </a>
@@ -115,7 +118,7 @@ export function Welcome() {
               </li>
               <li>
                 <button className={`row ${s.alt}`} onClick={() => setOther('join')}>
-                  Join Flow Sync <span aria-hidden="true">→</span>
+                  Join Marquee Sync <span aria-hidden="true">→</span>
                 </button>
               </li>
             </ul>

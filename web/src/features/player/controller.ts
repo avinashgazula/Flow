@@ -72,7 +72,7 @@ export interface PlayerState {
   rate: number
   audio: Track[]
   audioId?: string
-  /** The file plays in the browser's own player because its host blocks web pages: Flow can't see
+  /** The file plays in the browser's own player because its host blocks web pages: Marquee can't see
    *  or pick its audio. */
   blocked: boolean
   /** With `blocked`: why the stream proxy couldn't open the file, when one was tried. */
@@ -106,7 +106,7 @@ export interface PlayerState {
   sleep: SleepChoice | null
   /** Playing at double speed while a finger or a key is held. */
   fast: boolean
-  /** Seconds the subtitles Flow draws are shifted by (positive is later), kept per title for this visit. */
+  /** Seconds the subtitles Marquee draws are shifted by (positive is later), kept per title for this visit. */
   subtitleDelay: number
   /** Volume Boost can be offered: this stream goes through Web Audio without being silenced (see volumeBoost.ts). */
   boostable: boolean
@@ -639,7 +639,7 @@ export class PlayerController {
 
   // MARK: Subtitle delay
 
-  /** Shifts the subtitles Flow draws; positive shows them later. Remembered for the title until the page closes. */
+  /** Shifts the subtitles Marquee draws; positive shows them later. Remembered for the title until the page closes. */
   setSubtitleDelay(seconds: number) {
     const delay = clampDelay(seconds)
     rememberDelay(this.context.key, delay)
@@ -907,7 +907,7 @@ export class PlayerController {
     const episode = title?.season !== undefined && title.episode !== undefined ? { season: title.season, episode: title.episode } : undefined
     const got = await downloadSubtitle(result, credentialsOf(settingsStore.get()), { plan: planFor, learn, episode, signal })
     const cues = parseSubtitles(got.text, got.format as SubtitleFormat)
-    if (cues.length === 0) throw new SubtitleError('That subtitle file has no lines Flow can read. Choose another.')
+    if (cues.length === 0) throw new SubtitleError('That subtitle file has no lines Marquee can read. Choose another.')
     const id = `dl:${++this.onlineCount}`
     const label = result.hearingImpaired ? `${result.languageName} (SDH)` : result.languageName
     const track = video.addTextTrack('subtitles', label, result.language)

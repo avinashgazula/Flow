@@ -318,7 +318,7 @@ function ShelfJSON() {
       read(await navigator.clipboard.readText())
     } catch {
       setManual('')
-      setNote({ tone: 'error', text: 'Your browser wouldn’t let Flow read the clipboard. Paste the shelves into the box below.' })
+      setNote({ tone: 'error', text: 'Your browser wouldn’t let Marquee read the clipboard. Paste the shelves into the box below.' })
     }
   }
 
@@ -351,7 +351,7 @@ function ShelfJSON() {
         <div className={s.form}>
           <p className={s.hint}>
             Replace your shelves with the {found.shelves.length} from the clipboard?
-            {found.skipped > 0 && ` ${found.skipped} that Flow couldn’t read ${found.skipped === 1 ? 'was' : 'were'} left out.`}
+            {found.skipped > 0 && ` ${found.skipped} that Marquee couldn’t read ${found.skipped === 1 ? 'was' : 'were'} left out.`}
           </p>
           <div className={s.actions}>
             <button type="button" className="btn btn-secondary btn-compact" onClick={() => setFound(undefined)}>

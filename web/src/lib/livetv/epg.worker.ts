@@ -1,5 +1,5 @@
 /* Reads an XMLTV guide off the main thread. A provider's guide can run to hundreds of megabytes once
-   unpacked; here it is fetched, unpacked and picked through as it arrives, and only the programmes Flow
+   unpacked; here it is fetched, unpacked and picked through as it arrives, and only the programmes Marquee
    keeps are sent back. The page decides which addresses to try (it knows the stream proxy setting); this
    only carries them out. */
 

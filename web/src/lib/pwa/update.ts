@@ -26,7 +26,7 @@ export function registerServiceWorker() {
     navigator.serviceWorker
       .register(`${base}sw.js`, { scope: base })
       .then(watch)
-      // A browser that refuses a worker (a private window, blocked site data) just runs Flow without one.
+      // A browser that refuses a worker (a private window, blocked site data) just runs Marquee without one.
       .catch(() => {})
   if (document.readyState === 'complete') register()
   else window.addEventListener('load', register, { once: true })
@@ -60,7 +60,7 @@ export function applyUpdate() {
   waiting.postMessage({ type: 'skip-waiting' })
 }
 
-/** "Not now": the note goes away, and the new version opens the next time Flow starts. */
+/** "Not now": the note goes away, and the new version opens the next time Marquee starts. */
 export function dismissUpdate() {
   dismissed = true
   emit()

@@ -1,4 +1,4 @@
-/* Flow Sync's cryptography, as docs/SYNC.md defines it: a 16-byte key written in Crockford base32, three
+/* Marquee Sync's cryptography, as docs/SYNC.md defines it: a 16-byte key written in Crockford base32, three
    values derived from it with HKDF-SHA256, and AES-256-GCM for the blob. The Worker never sees the key
    or the plaintext. The apps do the same with CryptoKit; the test vector in the document is in
    crypto.test.ts. */
@@ -11,7 +11,7 @@ const salt = new TextEncoder().encode('flow-sync-v1')
 /** Why a typed key was refused, in the words the apps use too. */
 export const incompleteKey = 'That sync key isn’t complete. Check it against the one on your other device.'
 
-/** Fresh random key bytes: the only secret in Flow Sync. */
+/** Fresh random key bytes: the only secret in Marquee Sync. */
 export const makeKeyBytes = (): Uint8Array<ArrayBuffer> => crypto.getRandomValues(new Uint8Array(16))
 
 /** The 26-character written form (no dashes). */

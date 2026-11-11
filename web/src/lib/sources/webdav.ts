@@ -128,7 +128,7 @@ function statusError(host: string, status: number, path: string): SourceError {
 /** One folder's contents, one level deep (the folder itself left out). */
 export async function propfind(config: WebDAVConfig, target: string, signal?: AbortSignal): Promise<WebDAVEntry[]> {
   const host = hostOf(target)
-  if (isMixedContent(target)) throw new SourceError('This page is served over HTTPS, so your browser blocks an http:// share. Use the share’s https:// address, or run Flow locally to reach it.')
+  if (isMixedContent(target)) throw new SourceError('This page is served over HTTPS, so your browser blocks an http:// share. Use the share’s https:// address, or run Marquee locally to reach it.')
   const timer = withTimeout(signal, 20_000)
   try {
     const response = await fetch(target, {

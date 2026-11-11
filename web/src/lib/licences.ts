@@ -35,7 +35,7 @@ export const libraries: Licence[] = [
   { package: 'jassub', name: 'JASSUB', version: '2.5.18', licence: 'LGPL-2.1-or-later AND (FTL OR GPL-2.0-or-later) AND MIT AND MIT-Modern-Variant AND ISC AND NTP AND Zlib AND BSL-1.0', url: 'https://github.com/ThaUnknown/jassub', use: 'Drawing ASS subtitles: libass and its libraries, as WebAssembly' },
 ]
 
-/** The typefaces Flow is set in, each with the licence file served beside it (public/fonts). */
+/** The typefaces Marquee is set in, each with the licence file served beside it (public/fonts). */
 export const typefaces: { name: string; file: string }[] = [
   { name: 'Archivo', file: 'OFL-Archivo.txt' },
   { name: 'IBM Plex Mono', file: 'OFL-Plex-Mono.txt' },

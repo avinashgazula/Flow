@@ -5,7 +5,7 @@ import type { TVDBEpisode } from './client'
 /* Episode numbering from another source than TMDB, as FlowKit's EpisodeProvider. TVDB (and Trakt, which numbers the
    same way) match what most stream sources and media servers use: multi-part premieres, specials and anime split the
    seasons as the releases do, where TMDB follows its own editors. Picking a source changes which episode is S2 E5
-   everywhere in Flow, so progress, Next Up and the player all follow it.
+   everywhere in Marquee, so progress, Next Up and the player all follow it.
 
    The episodes keep TMDB's pictures where the numbering lines up, since stills always come from TMDB, and fall back to
    TMDB's whole list when the other source has nothing (no key, no id for the series, an error). */
@@ -15,7 +15,7 @@ const artwork = 'https://artworks.thetvdb.com'
 /** TVDB's picture addresses are whole, but one that isn't (a bare path) is read as an artwork path. */
 const pictureURL = (image: string | null | undefined) => (image ? (/^https?:\/\//i.test(image) ? image : `${artwork}${image.startsWith('/') ? '' : '/'}${image}`) : undefined)
 
-/** TVDB's episodes as Flow's. One without a season or an episode number can't be placed and is left out. */
+/** TVDB's episodes as Marquee's. One without a season or an episode number can't be placed and is left out. */
 export function fromTVDB(list: readonly TVDBEpisode[]): Episode[] {
   return list.flatMap((e) => {
     if (typeof e.seasonNumber !== 'number' || typeof e.number !== 'number') return []
@@ -40,7 +40,7 @@ export interface TraktSeason {
   episodes?: { season?: number; number?: number; title?: string | null; overview?: string | null; first_aired?: string | null; runtime?: number | null; ids?: { trakt?: number } }[]
 }
 
-/** Trakt's episodes as Flow's. `first_aired` is a moment in UTC; the day is what a card shows, in the viewer's own day
+/** Trakt's episodes as Marquee's. `first_aired` is a moment in UTC; the day is what a card shows, in the viewer's own day
  *  unless Air Dates in My Time Zone is off. */
 export function fromTrakt(seasons: readonly TraktSeason[], localTimeZone = true): Episode[] {
   return seasons.flatMap((s) =>

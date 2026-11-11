@@ -4,7 +4,7 @@ import { errorMessage, isKeyError } from './Controls'
 
 describe('errorMessage', () => {
   it('replaces the browser’s "Failed to fetch" with what happened', () => {
-    expect(errorMessage(new TypeError('Failed to fetch'))).toBe('Flow couldn’t reach TMDB. Check your connection, then try again.')
+    expect(errorMessage(new TypeError('Failed to fetch'))).toBe('Marquee couldn’t reach TMDB. Check your connection, then try again.')
   })
 
   it('sends a refused key to Settings instead of "try again"', () => {

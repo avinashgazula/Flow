@@ -16,12 +16,12 @@ export function Notices() {
     <div className={s.stack}>
       {!online && (
         <p className={s.note} role="status">
-          You’re offline. Flow needs a connection to reach your sources.
+          You’re offline. Marquee needs a connection to reach your sources.
         </p>
       )}
       {updateReady && (
         <div className={s.note} role="status">
-          <span className={s.text}>Flow was updated.</span>
+          <span className={s.text}>Marquee was updated.</span>
           <button type="button" className="btn btn-secondary btn-compact" onClick={applyUpdate}>
             Reload
           </button>

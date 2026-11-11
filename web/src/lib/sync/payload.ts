@@ -1,4 +1,4 @@
-/* What Flow Sync carries and how two copies are merged (docs/SYNC.md, Payload). Pure functions over the
+/* What Marquee Sync carries and how two copies are merged (docs/SYNC.md, Payload). Pure functions over the
    web's settings, so the rules are tested without a browser or a server.
 
    The record holds sections. The web understands eight of them: keys (the TMDB, MDBList, TVDB, RatingPosterDB, IntroDB,

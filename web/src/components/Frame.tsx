@@ -6,7 +6,7 @@ import { markZoomSource } from './zoom'
 import { toFacts, type PrintPart } from './printLayout'
 import s from './Frame.module.css'
 
-/* Frame: Flow's one repeating object. A still or a poster sits in a 3px ink rule, square, and what decides whether to
+/* Frame: Marquee's one repeating object. A still or a poster sits in a 3px ink rule, square, and what decides whether to
    watch it is printed under it in mono capitals ("S3 E7 · 18M LEFT · ENDS 21:30 · 2160P · DV"), then its title in
    Plex Sans Condensed. Progress is a thin red bar along the foot of the picture.
 

@@ -11,8 +11,8 @@ import { ConfirmButton, Group, Note, Row } from './controls'
 import s from './SettingsScreen.module.css'
 import { ListsGroup, MDBListGroup, SimklAppGroup, SimklGroup, SyncPreferencesGroup, TrackingWithGroup, syncDetail } from './TrackerGroups'
 
-/* Settings → Account: which service tracks (TrackerGroups.tsx), the Trakt app Flow signs in with and the sign-in
-   itself, then Simkl and MDBList. The sign-in is a setting that Flow Sync carries, so signing in on any device signs
+/* Settings → Account: which service tracks (TrackerGroups.tsx), the Trakt app Marquee signs in with and the sign-in
+   itself, then Simkl and MDBList. The sign-in is a setting that Marquee Sync carries, so signing in on any device signs
    in here too. The sign-in code, the library sync and the scrobbler are in lib/trakt (and lib/tracking for the
    others) and load only when they are used. */
 
@@ -23,7 +23,7 @@ function AppGroup() {
   const [state, setState] = useState<{ kind: 'idle' | 'checking' } | { kind: 'ok' | 'error'; text: string }>({ kind: 'idle' })
   const [copied, setCopied] = useState(false)
   const redirect = redirectURI()
-  // A Client ID that arrives from another device (Flow Sync) shows here at once.
+  // A Client ID that arrives from another device (Marquee Sync) shows here at once.
   useEffect(() => {
     setId(saved)
   }, [saved])
@@ -56,7 +56,7 @@ function AppGroup() {
           <a href="https://trakt.tv/oauth/applications" target="_blank" rel="noreferrer">
             trakt.tv/oauth/applications
           </a>{' '}
-          and add the Redirect URI above to it, alongside the one it already lists (the Apple apps use flow://trakt-callback). Trakt no longer issues a client secret, and Flow doesn’t need one.
+          and add the Redirect URI above to it, alongside the one it already lists (the Apple apps use flow://trakt-callback). Trakt no longer issues a client secret, and Marquee doesn’t need one.
         </>
       }
     >
@@ -151,7 +151,7 @@ function SignInGroup() {
     return (
       <>
         <Group title="Trakt">
-          <Row label="Not Signed In" detail={finishing ? 'Finishing with Trakt…' : clientID ? 'Opens Trakt to approve Flow' : 'Add a Trakt Client ID above first'}>
+          <Row label="Not Signed In" detail={finishing ? 'Finishing with Trakt…' : clientID ? 'Opens Trakt to approve Marquee' : 'Add a Trakt Client ID above first'}>
             <button type="button" className="btn btn-primary btn-compact" onClick={() => void signIn()} disabled={!clientID || busy === 'sign-in' || finishing}>
               {busy === 'sign-in' ? 'Opening Trakt…' : 'Sign In to Trakt'}
             </button>

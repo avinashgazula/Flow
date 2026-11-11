@@ -26,9 +26,7 @@
   border-right: var(--rule);
   background: var(--blue);
   color: var(--onblue);
-  font: 700 24px / 1 var(--font-cond);
-  letter-spacing: 0;
-  text-transform: none;
+  font-size: 24px;
 }
 @media (hover: hover) { .brand:hover { background: var(--fg); color: var(--bg); } }
 

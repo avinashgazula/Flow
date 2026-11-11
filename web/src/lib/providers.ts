@@ -17,7 +17,7 @@ export interface WatchProvider extends Provider {
   rank: number
 }
 
-/** TMDB spells some services out ("Disney Plus"); Flow writes them the way they brand themselves. */
+/** TMDB spells some services out ("Disney Plus"); Marquee writes them the way they brand themselves. */
 const brandNames: Record<string, string> = {
   'Disney Plus': 'Disney+',
   'Paramount Plus': 'Paramount+',

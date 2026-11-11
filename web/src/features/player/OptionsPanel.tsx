@@ -152,7 +152,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
           </>
         ) : (
           <>
-            A stream proxy, added in <Link to="/settings" hash="playback">Settings → Playback</Link>, lets Flow offer every audio track.
+            A stream proxy, added in <Link to="/settings" hash="playback">Settings → Playback</Link>, lets Marquee offer every audio track.
           </>
         ),
       }
@@ -265,7 +265,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
       groups = [
         {
           rows: apps.map((id) => ({ id: `app-${id}`, icon: 'external' as const, title: externalPlayerTitle(id), action: () => (close(), controller.openExternally(id)) })),
-          footer: 'Another player gets the stream’s link (Infuse also the resume point). Flow tracks progress only in its own player, and playback pauses here.',
+          footer: 'Another player gets the stream’s link (Infuse also the resume point). Marquee tracks progress only in its own player, and playback pauses here.',
         },
       ]
       break

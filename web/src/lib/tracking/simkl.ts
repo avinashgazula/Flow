@@ -149,7 +149,7 @@ export function createSimklClient(auth: SimklAuth, fetcher: typeof fetch) {
     async startPin(): Promise<{ code: string; url: string; expiresIn: number; interval: number }> {
       const body = await request('GET', '/oauth/pin', { anonymous: true })
       const code = obj(body) && typeof body.user_code === 'string' ? body.user_code : ''
-      if (!code) throw new TrackerError('Simkl answered something Flow didn’t expect. Try again in a moment.', 'server')
+      if (!code) throw new TrackerError('Simkl answered something Marquee didn’t expect. Try again in a moment.', 'server')
       const b = body as Json
       return {
         code,

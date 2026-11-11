@@ -2,7 +2,7 @@
    pause when it pauses or the page is hidden, stop when it ends or the player closes, each with how far in
    (a percentage). Trakt does the rest: a stop at 80 % or more is a watch, anything less is a resume point.
 
-   Flow follows Trakt's line: a stop past 80 % also marks the title watched in this browser's library, so the two
+   Marquee follows Trakt's line: a stop past 80 % also marks the title watched in this browser's library, so the two
    agree without waiting for the next sync. The library's own mark at 92 % still happens as the film plays. A
    play claimed here is left out of the queue of changes (claims.ts), or Trakt would count it twice; if the stop
    can't be sent, the claim is dropped first so the library's mark travels as an ordinary change instead. */

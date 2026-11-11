@@ -16,7 +16,7 @@ export function Licences() {
   const fonts = `${base}fonts/`
   return (
     <>
-      <Group title="FFmpeg" footer="Flow plays Dolby Digital, DTS and Dolby TrueHD by decoding them with FFmpeg’s libavcodec and libavutil, built to a WebAssembly file of their own (flow-audio.wasm). No GPL or non-free part is enabled. The file loads separately from the page, so a version built from changed source can take its place: the notice beside it says how.">
+      <Group title="FFmpeg" footer="Marquee plays Dolby Digital, DTS and Dolby TrueHD by decoding them with FFmpeg’s libavcodec and libavutil, built to a WebAssembly file of their own (flow-audio.wasm). No GPL or non-free part is enabled. The file loads separately from the page, so a version built from changed source can take its place: the notice beside it says how.">
         <Row label="FFmpeg" detail={`Version ${ffmpeg.version} · LGPL-2.1-or-later`}>
           {link(ffmpeg.home, 'ffmpeg.org')}
         </Row>
@@ -30,14 +30,14 @@ export function Licences() {
           {link(`${base}licences/COPYING.LGPLv2.1.txt`, 'Read')}
         </Row>
       </Group>
-      <Group title="Libraries" footer="Everything the pages bundle, as installed. JASSUB carries libass, FreeType, HarfBuzz, FriBidi and more as WebAssembly; its own licence file lists them. Flow itself is MIT licensed.">
+      <Group title="Libraries" footer="Everything the pages bundle, as installed. JASSUB carries libass, FreeType, HarfBuzz, FriBidi and more as WebAssembly; its own licence file lists them. Marquee itself is MIT licensed.">
         {libraries.map((lib) => (
           <Row key={lib.package} label={lib.name} detail={`${lib.version} · ${lib.licence} · ${lib.use}`}>
             {link(lib.url, 'Source')}
           </Row>
         ))}
       </Group>
-      <Group title="Typefaces" footer="All under the SIL Open Font License 1.1, self-hosted: Flow asks no font service for anything.">
+      <Group title="Typefaces" footer="All under the SIL Open Font License 1.1, self-hosted: Marquee asks no font service for anything.">
         {typefaces.map((face) => (
           <Row key={face.name} label={face.name} detail="SIL OFL 1.1">
             {link(`${fonts}${face.file}`, 'Licence')}

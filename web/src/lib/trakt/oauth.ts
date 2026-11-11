@@ -55,7 +55,7 @@ export function authorizeURL(clientID: string, redirect: string, pkce: Pick<Pkce
 export function authorizationCode(search: string, expectedState: string): { ok: true; code: string } | { ok: false; error: string; cancelled?: boolean } {
   const p = new URLSearchParams(search)
   const error = p.get('error')
-  if (error === 'access_denied') return { ok: false, error: 'You didn’t allow Flow in Trakt, so nothing changed. Sign in again whenever you like.', cancelled: true }
+  if (error === 'access_denied') return { ok: false, error: 'You didn’t allow Marquee in Trakt, so nothing changed. Sign in again whenever you like.', cancelled: true }
   if (error) return { ok: false, error: p.get('error_description') || `Trakt sign-in failed (${error}). Try again.` }
   if (p.get('state') !== expectedState) return { ok: false, error: 'Trakt sign-in didn’t match the request that started it. Try again.' }
   const code = p.get('code')
@@ -74,7 +74,7 @@ interface TokenResponse {
 
 const toSecond = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z')
 
-/** A token as Flow keeps it. Expiry is created_at plus the lifetime, both from Trakt, so a slow clock here doesn't matter. */
+/** A token as Marquee keeps it. Expiry is created_at plus the lifetime, both from Trakt, so a slow clock here doesn't matter. */
 export function tokenFromResponse(body: unknown, redirect: string, now = new Date()): TraktToken | undefined {
   const r = (typeof body === 'object' && body !== null ? body : {}) as TokenResponse
   if (typeof r.access_token !== 'string' || !r.access_token) return undefined
@@ -125,7 +125,7 @@ export async function exchangeCode(fetcher: typeof fetch, args: { clientID: stri
     throw new TraktAuthError(`Trakt didn’t accept the sign-in. Check the Client ID, and that the app’s Redirect URI in Trakt is exactly ${args.redirect}`, 'rejected', res.status)
   }
   const token = tokenFromResponse(await res.json().catch(() => null), args.redirect, now)
-  if (!token) throw new TraktAuthError('Trakt answered something Flow didn’t expect. Try signing in again.', 'server', res.status)
+  if (!token) throw new TraktAuthError('Trakt answered something Marquee didn’t expect. Try signing in again.', 'server', res.status)
   return token
 }
 
@@ -134,10 +134,10 @@ export async function refreshToken(fetcher: typeof fetch, args: { clientID: stri
   if (!args.token.refreshToken) throw new TraktAuthError('Trakt ended this sign-in. Sign in again.', 'rejected')
   const redirect = refreshRedirect(args.token, args.own)
   const res = await post(fetcher, '/oauth/token', { refresh_token: args.token.refreshToken, client_id: args.clientID, redirect_uri: redirect, grant_type: 'refresh_token' })
-  if (res.status >= 500 || res.status === 429) throw new TraktAuthError(`Trakt had a problem (${res.status}). Flow will try again in a moment.`, 'server', res.status)
+  if (res.status >= 500 || res.status === 429) throw new TraktAuthError(`Trakt had a problem (${res.status}). Marquee will try again in a moment.`, 'server', res.status)
   if (!res.ok) throw new TraktAuthError('Trakt ended this sign-in. Sign in again.', 'rejected', res.status)
   const fresh = tokenFromResponse(await res.json().catch(() => null), redirect, now)
-  if (!fresh) throw new TraktAuthError('Trakt answered something Flow didn’t expect. Try again in a moment.', 'server', res.status)
+  if (!fresh) throw new TraktAuthError('Trakt answered something Marquee didn’t expect. Try again in a moment.', 'server', res.status)
   return fresh
 }
 

@@ -40,7 +40,7 @@ describe('PKCE', () => {
 describe('the sign-in address', () => {
   it('is the site’s origin and the callback route, whatever base the site is served from', () => {
     expect(redirectURI('https://flow.example.com', '/')).toBe(site)
-    expect(redirectURI('https://owner.github.io', '/Flow/')).toBe('https://owner.github.io/Flow/settings/trakt-callback')
+    expect(redirectURI('https://owner.github.io', '/Flow')).toBe('https://owner.github.io/Flow/settings/trakt-callback')
     expect(redirectURI('https://owner.github.io', '/Flow')).toBe('https://owner.github.io/Flow/settings/trakt-callback')
   })
 

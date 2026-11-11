@@ -112,7 +112,7 @@ describe('rankSources', () => {
   })
 })
 
-// Real names from Trellis, whose MediaStreams are empty: the name is all Flow has to go on.
+// Real names from Trellis, whose MediaStreams are empty: the name is all Marquee has to go on.
 const trellis = {
   atmosTrueHD: '✨ 4K 🎫  BLURAY REMUX 🔆 DV • HDR10 • IMAX  🔊 Atmos • TrueHD •',
   dtsHdDDP: '✨ 4K 🎫  BLURAY REMUX 🔆 DV • HDR10 • IMAX  🔊 DTS-HD MA • DD+',
@@ -244,7 +244,7 @@ describe('sources whose audio this browser can convert', () => {
     expect(mkv(trellis.atmosTrueHD, chromeLike).note).toBeUndefined()
   })
 
-  it('needs a file Flow can read: not one on a host that blocks web pages, unless a proxy is set', () => {
+  it('needs a file Marquee can read: not one on a host that blocks web pages, unless a proxy is set', () => {
     const debrid = 'https://42-4.download.real-debrid.com/d/ABC/Oppenheimer.mkv'
     expect(mkv(trellis.dtsHd, converting, debrid).unsupported).toBe('DTS-HD MA audio can’t play in a browser')
     settingsStore.set({ streamProxy: proxy })

@@ -87,13 +87,13 @@ export async function requestJSON<T>(url: string, options: RequestOptions = {}):
   try {
     return JSON.parse(text) as T
   } catch {
-    throw new SourceError(`${hostOf(url)} didn’t answer with the data Flow expected. Check the address.`)
+    throw new SourceError(`${hostOf(url)} didn’t answer with the data Marquee expected. Check the address.`)
   }
 }
 
 export async function request(url: string, options: RequestOptions = {}): Promise<Response> {
   if (isMixedContent(url)) {
-    throw new SourceError(`This page is served over HTTPS, so your browser blocks http:// addresses. Use the server’s https:// address, or run Flow locally to reach it.`)
+    throw new SourceError(`This page is served over HTTPS, so your browser blocks http:// addresses. Use the server’s https:// address, or run Marquee locally to reach it.`)
   }
   const { signal, done, timedOut } = withTimeout(options.signal, options.timeoutMs)
   const headers: Record<string, string> = { Accept: 'application/json', ...options.headers }
@@ -135,7 +135,7 @@ export function uuid(): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
 }
 
-/** One id per browser, sent to Jellyfin and Plex so they list Flow as one device. */
+/** One id per browser, sent to Jellyfin and Plex so they list Marquee as one device. */
 export function deviceId(): string {
   const key = 'flow.deviceId'
   try {
@@ -152,7 +152,7 @@ let memoryId: string | undefined
 
 /** "Chrome on macOS", for the device list on the server. */
 export function deviceName(): string {
-  if (typeof navigator === 'undefined') return 'Flow'
+  if (typeof navigator === 'undefined') return 'Marquee'
   const ua = navigator.userAgent
   const browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Browser'
   const os = /iPhone|iPad/.test(ua) ? 'iOS' : /Mac OS X/.test(ua) ? 'macOS' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : ''

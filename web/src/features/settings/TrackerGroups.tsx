@@ -142,7 +142,7 @@ export function SyncPreferencesGroup() {
   return (
     <Group
       title="Sync"
-      footer="How often Flow syncs your history by itself when you open it or come back to it. Sync Now always syncs, and changes you make are sent within moments. Scrobbling tells your tracker what is playing as you watch, so Resume follows you to your other devices. With it off, a title is still marked watched when you finish it, but its resume point isn’t sent."
+      footer="How often Marquee syncs your history by itself when you open it or come back to it. Sync Now always syncs, and changes you make are sent within moments. Scrobbling tells your tracker what is playing as you watch, so Resume follows you to your other devices. With it off, a title is still marked watched when you finish it, but its resume point isn’t sent."
     >
       <Row label="Sync Interval" htmlFor="sync-interval">
         <Select
@@ -167,7 +167,7 @@ export function SimklAppGroup() {
   const saved = useSettings((x) => x.simklClientID)
   const [id, setId] = useState(saved)
   const [state, setState] = useState<{ kind: 'idle' | 'checking' } | { kind: 'ok' | 'error'; text: string }>({ kind: 'idle' })
-  // A Client ID that arrives from another device (Flow Sync) shows here at once.
+  // A Client ID that arrives from another device (Marquee Sync) shows here at once.
   useEffect(() => {
     setId(saved)
   }, [saved])
@@ -195,7 +195,7 @@ export function SimklAppGroup() {
           <a href="https://simkl.com/settings/developer/" target="_blank" rel="noreferrer">
             simkl.com/settings/developer
           </a>{' '}
-          and paste its Client ID. Flow signs in with a code, so it needs no secret, and any Redirect URI you give Simkl will do. The apps use the same Client ID through Sync.
+          and paste its Client ID. Marquee signs in with a code, so it needs no secret, and any Redirect URI you give Simkl will do. The apps use the same Client ID through Sync.
         </>
       }
     >
@@ -297,7 +297,7 @@ export function SimklGroup() {
               <a href={pin.url} target="_blank" rel="noreferrer">
                 {pin.url.replace(/^https:\/\//, '')}
               </a>
-              , signed in to Simkl. Flow is waiting for you to approve it.
+              , signed in to Simkl. Marquee is waiting for you to approve it.
             </span>
           </div>
         </div>

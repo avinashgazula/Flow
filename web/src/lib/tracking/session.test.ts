@@ -46,7 +46,7 @@ beforeEach(async () => {
   m.settingsStore.set({ simklClientID: 'cid' })
 })
 
-/** Flow Sync is on in this browser, so a sign-in or sign-out is pushed. */
+/** Marquee Sync is on in this browser, so a sign-in or sign-out is pushed. */
 const syncOn = () => localStorage.setItem('flow.sync.v1', JSON.stringify({ key: 'K', server: 'https://sync.example.com', token: '', metas: {} }))
 
 afterEach(() => {

@@ -1,4 +1,4 @@
-/* The build's part of "install Flow as an app": after the site is written, work out which files the service
+/* The build's part of "install Marquee as an app": after the site is written, work out which files the service
    worker keeps, build src/sw/sw.ts with that list in it, and write the OpenSearch descriptor beside it.
    Hand-written on purpose: the worker is a hundred lines, and a library for it would be bigger than the
    code it replaces. Build only; `vite dev` has no worker and nothing to register. */
@@ -27,7 +27,7 @@ export function pwa(): Plugin {
       base = config.base
     },
     transformIndexHtml() {
-      return [{ tag: 'link', attrs: { rel: 'search', type: 'application/opensearchdescription+xml', title: 'Flow', href: `${base}opensearch.xml` }, injectTo: 'head' }]
+      return [{ tag: 'link', attrs: { rel: 'search', type: 'application/opensearchdescription+xml', title: 'Marquee', href: `${base}opensearch.xml` }, injectTo: 'head' }]
     },
     async closeBundle() {
       // The first pass (a nested build for the worker, below) has no plugins, so this runs once.
