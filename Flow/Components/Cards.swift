@@ -595,18 +595,6 @@ struct ProgrammeProgressLine: View {
     }
 }
 
-/// Whether the row around this content is lit (blue under the pointer, while pressed, or focused), so its words invert.
-private struct RowLitKey: EnvironmentKey {
-    static let defaultValue = false
-}
-
-private extension EnvironmentValues {
-    var rowLit: Bool {
-        get { self[RowLitKey.self] }
-        set { self[RowLitKey.self] = newValue }
-    }
-}
-
 /// A listing's own surface, an Index row: a 1px ink rule under it, and the whole row fills blue with on-blue words under
 /// the pointer, while pressed and (Apple TV) when focused. The selected row sits on a tint.
 struct ProgrammeRowButtonStyle: ButtonStyle {

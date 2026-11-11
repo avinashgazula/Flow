@@ -235,7 +235,8 @@ extension SectionHead where Trailing == EmptyView {
 private struct RowLitKey: EnvironmentKey { static let defaultValue = false }
 
 extension EnvironmentValues {
-    /// A `BrowseRowStyle` row is blue (hovered, focused or pressed): its marks switch to on-blue ink.
+    /// The row around this content is lit (blue under the pointer, while pressed, or focused), so its marks switch to
+    /// on-blue ink. `BrowseRowStyle` and `ProgrammeRowButtonStyle` both set it.
     var rowLit: Bool {
         get { self[RowLitKey.self] }
         set { self[RowLitKey.self] = newValue }
