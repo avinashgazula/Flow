@@ -30,7 +30,7 @@ export function Licences() {
           {link(`${base}licences/COPYING.LGPLv2.1.txt`, 'Read')}
         </Row>
       </Group>
-      <Group title="Libraries" footer="Everything the pages bundle, as installed. JASSUB carries libass, FreeType, HarfBuzz, FriBidi and more as WebAssembly; its own licence file lists them. Marquee itself is MIT licensed.">
+      <Group title="Libraries" footer="Everything the pages bundle, as installed. JASSUB carries libass, FreeType, HarfBuzz, FriBidi and more as WebAssembly; its own licence file lists them. Marquee itself is MIT licensed. The marks beside the ratings come from Simple Icons (CC0); they are trademarks of their owners, shown only to identify where each score comes from.">
         {libraries.map((lib) => (
           <Row key={lib.package} label={lib.name} detail={`${lib.version} · ${lib.licence} · ${lib.use}`}>
             {link(lib.url, 'Source')}

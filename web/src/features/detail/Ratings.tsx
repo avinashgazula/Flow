@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
+import { RatingMark } from '../../components/RatingMark'
 import { scope } from '../../lib/queries'
 import { ratingLink, ratingTitle, scoreText, shownSources, spokenScore, type Ratings as Scores, type RatingSource } from '../../lib/ratings/sources'
 import { useSettings } from '../../lib/store/settings'
 import type { MediaDetail } from '../../lib/tmdb/types'
 import s from './DetailScreen.module.css'
 
-/** The scores Settings → Metadata chooses, in its order: each an aligned number with the site's name under it, as the
- *  apps print them, and no logos or boxes. TMDB's own score is there at once; the rest (MDBList, with the viewer's key)
+/** The scores Settings → Metadata chooses, in its order: each the site's mark over an aligned number over the site's name. TMDB's own score is there at once; the rest (MDBList, with the viewer's key)
  *  join it when they arrive. A score is a link to that site's page for the title unless Settings turns that off. */
 export function Ratings({ detail: d, ready }: { detail: MediaDetail; ready: boolean }) {
   const chosen = useSettings((x) => x.ratingsShown)
@@ -34,6 +34,7 @@ export function Ratings({ detail: d, ready }: { detail: MediaDetail; ready: bool
           const spoken = spokenScore(source, text) + votesFor(source, ratings)
           const inside = (
             <>
+              <RatingMark source={source} className={s.mark} />
               <b className={s.score} aria-hidden="true">{text}</b>
               <span className={s.source} aria-hidden="true">{ratingTitle(source)}</span>
               <span className="sr-only">{href ? `${spoken}. Opens ${ratingTitle(source)}.` : spoken}</span>
