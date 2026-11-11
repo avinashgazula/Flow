@@ -4,7 +4,7 @@ import { Icon, type IconName } from './Icon'
 import { drifted, nextItem, placeMenu, pointAnchor, pressMs, type Anchor } from './menuPlace'
 import s from './ContextMenu.module.css'
 
-/* A flat Film Base 2 menu for an item in a list, reached three ways: a More button (shown on hover or focus for a mouse,
+/* A flat ruled menu for an item in a list, reached three ways: a More button (shown on hover or focus for a mouse,
    always on a touch screen), a right-click, and a long press. The button is a real tab stop, so the keyboard has
    it too. The menu is a `menu` with arrow keys, Home and End, Escape to close and give focus back, and it closes
    on any outside press, scroll or resize. It opens beside the card it belongs to, which is the nearest <li>.

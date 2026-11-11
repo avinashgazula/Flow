@@ -9,6 +9,7 @@ import type { SportsEvent, SportsTeam } from '../../lib/sports/types'
 import { userLocale } from '../../lib/time'
 import { monogram } from '../livetv/logic'
 import { StateView } from '../explore/Controls'
+import { Toolbar } from '../explore/PageHead'
 import { actionLabel, gameActions, metaText, scoreHidden, scoreText, type GameAction } from './sportsView'
 import s from './SportsPage.module.css'
 
@@ -58,15 +59,15 @@ export default function SportsPage() {
   }
 
   return (
-    <div className={s.page}>
-      <div className={s.tools}>
+    <div>
+      <Toolbar>
         <button type="button" className="btn btn-secondary btn-compact" aria-expanded={finding} aria-controls="find-team" onClick={() => setFinding((x) => !x)}>
           <Icon name={finding ? 'close' : 'plus'} size={16} strokeWidth={2.4} /> {finding ? 'Done' : 'Follow a Team'}
         </button>
         <p className={`${s.note} muted`} role="status">
           {note}
         </p>
-      </div>
+      </Toolbar>
       {finding && <FindTeam />}
 
       {teams.length === 0 && !finding && (

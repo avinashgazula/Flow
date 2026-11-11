@@ -1,5 +1,6 @@
-/* The trailer: a flat dark sheet over the page, the video in a frame, no blur. With more than one video, the
-   others are chips under it (the current one a lighter base, never yellow) that scroll sideways. */
+/* The trailer: a flat ink sheet over the page (it is dark in both themes: the root carries data-theme="dark"), the video
+   in a 3px paper frame, no blur. With more than one video, the others are bordered cells under it that scroll
+   sideways, the current one inverted. */
 .backdrop {
   position: fixed;
   inset: 0;
@@ -9,6 +10,7 @@
   place-items: center;
   padding: var(--space-l);
   background: var(--overlay);
+  color: var(--fg);
   animation: in var(--dur-move) ease;
 }
 /* As wide as 16:9 allows while the chips still fit under it on a short window. */
@@ -16,26 +18,27 @@
 .frame {
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: var(--radius-art);
   overflow: hidden;
-  background: var(--edge);
-  animation: grow var(--dur-move) var(--ease-out);
+  border: var(--rule);
+  background: #000;
 }
 .frame iframe { width: 100%; height: 100%; border: 0; }
-.picker { display: flex; min-width: 0; gap: var(--space-xs); overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.picker { display: flex; min-width: 0; overflow-x: auto; padding: 0 3px 0 0; scrollbar-width: thin; }
 .choice {
   flex: none;
-  height: 36px;
-  padding: 0 14px;
-  border-radius: var(--radius-control);
-  background: var(--base-3);
-  font: 600 var(--fs-small) / 1 var(--font);
-  color: var(--ink-2);
+  min-height: 44px;
+  margin-right: -3px;
+  padding: 0 16px;
+  border: 3px solid var(--fg);
+  background: var(--bg);
+  color: var(--fg);
+  font: 600 var(--fs-small) / 1.1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   white-space: nowrap;
-  transition: background var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-.choice:hover { background: var(--base-4); color: var(--paper); }
-.choice[aria-checked='true'] { background: var(--base-4); color: var(--paper); }
+@media (hover: hover) { .choice:hover { position: relative; z-index: 1; background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
+.choice[aria-checked='true'] { background: var(--fg); color: var(--bg); }
 .close { position: absolute; top: calc(var(--space-m) + env(safe-area-inset-top)); right: var(--space-m); }
 @keyframes in { from { opacity: 0; } }
-@keyframes grow { from { transform: scale(0.97); opacity: 0; } }

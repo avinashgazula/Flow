@@ -1,31 +1,29 @@
 :global(.page).screen { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 
-.titleRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-m); margin-bottom: var(--space-l); }
-.titleRow :global(.page-title) { margin-bottom: 0; }
+.types { min-width: 240px; }
+/* Filters sits in the toolbar beside the type picker, as tall as it (a 40px cell and its two 3px rules). Inverted
+   while filters are on; the summary below says which. */
+.filtersButton { height: 46px; padding: 0 var(--space-m) 0 14px; flex: none; }
+.filtersButton[data-active] { background: var(--fg); color: var(--bg); }
+@media (hover: hover) { .filtersButton[data-active]:hover { background: var(--blue); } }
+/* The sort sits at the toolbar's far end. */
+.sorts { margin-left: auto; }
 .sortMenu { display: none; }
 
-.controls {
+/* The filters in force, in a ruled row of their own, with Reset at its end. */
+.summary {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-m);
-  margin-bottom: var(--space-m);
+  gap: var(--space-xs);
+  min-width: 0;
+  margin: 0 calc(-1 * var(--page-inset));
+  padding: var(--space-xxs) var(--page-inset);
+  border-bottom: var(--rule);
 }
-.types { min-width: 240px; }
+.summaryText { flex: 1; min-width: 0; color: var(--muted); font-size: var(--fs-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.summary :global(.btn) { flex: none; margin-right: -14px; }
 
-/* The type picker and the Filters button read as one group. Filters is a button like the sort menu: flat base-3,
-   and a lighter base while filters are on (never yellow; the summary below says which). */
-.modes { display: flex; align-items: center; gap: var(--space-s); min-width: 0; }
-.filtersButton { height: 40px; padding: 0 var(--space-m) 0 14px; flex: none; }
-.filtersButton[data-active], .filtersButton[data-active]:hover { background: var(--base-4); }
-
-/* One line for the filters in force, quiet, with Clear at its end. */
-.summary { display: flex; align-items: center; gap: var(--space-xs); margin: calc(-1 * var(--space-s)) 0 var(--space-m); min-width: 0; }
-.summaryText { flex: 1; min-width: 0; color: var(--ink-2); font-size: var(--fs-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* Clear's label lines up with the page's right edge, not its padding. */
-.summary :global(.btn) { flex: none; margin-right: -12px; }
-
-.results { min-height: 60vh; }
+.results { min-height: 60vh; padding-top: var(--space-l); }
 
 .more {
   display: flex;
@@ -35,11 +33,13 @@
   padding: var(--space-l) 0;
 }
 
-/* Phones: the type picker takes the width, and the sort becomes a menu beside the title. */
+/* Phones: the type picker takes the width, and the sort becomes a menu beside Filters. */
 @media (max-width: 720px) {
-  .sortMenu { display: inline-flex; }
+  .sortMenu { display: inline-flex; margin-left: auto; }
+  .sortMenu select { min-height: 46px; }
   .sorts { display: none; }
-  .controls { justify-content: flex-start; }
-  .modes { flex: 1; }
-  .types { flex: 1; min-width: 0; }
+  .types { flex: 1 1 100%; min-width: 0; }
+  .filtersButton { flex: 1; }
+  .sortMenu { flex: 1; margin-left: 0; }
+  .sortMenu select { width: 100%; }
 }

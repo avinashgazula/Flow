@@ -2,20 +2,19 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import { useLayoutEffect, useRef } from 'react'
-import { Plate, type PrintPart } from '../../components/Frame'
+import { Plate } from '../../components/Frame'
 import { markZoomSource } from '../../components/zoom'
 import { prefetchDetail, q } from '../../lib/queries'
 import type { HistoryEntry } from '../../lib/store/library'
-import { formatRuntime, userLocale, useMinuteTick } from '../../lib/time'
+import { formatRuntime, userLocale } from '../../lib/time'
 import type { Episode } from '../../lib/tmdb/types'
 import { useMeasuredBox } from '../explore/useMeasuredBox'
-import { pickPrint } from '../home/logic'
 import { episodeLabel, type HistoryRow as Row } from './logic'
 import s from './LibraryScreen.module.css'
 
-const headerHeight = 56
-/** A 144 px frame is 81 px tall, its strip 26, and the row has 8 px above and below. */
-const entryHeight = 124
+const headerHeight = 48
+/** A 96 px still is 54 px tall, and the row has 9 px above and below and a line under it. */
+const entryHeight = 73
 
 /** All of History, under day headings, holding only the rows near the viewport: hundreds of entries
  *  scroll as lightly as ten. */
@@ -44,7 +43,13 @@ export function HistoryList({ rows }: { rows: Row[] }) {
         const row = rows[v.index]!
         return (
           <div key={v.key} className={s.historySlot} style={{ transform: `translateY(${v.start - top}px)`, height: v.size }}>
-            {row.kind === 'header' ? <h2 className={s.dayHeading}>{row.label}</h2> : <HistoryItem entry={row.entry} />}
+            {row.kind === 'header' ? (
+              <h2 className={s.dayHeading} data-first={v.index === 0 || undefined}>
+                {row.label}
+              </h2>
+            ) : (
+              <HistoryItem entry={row.entry} />
+            )}
           </div>
         )
       })}
@@ -52,41 +57,36 @@ export function HistoryList({ rows }: { rows: Row[] }) {
   )
 }
 
-/** One watched title or episode: a frame with its strip (a film's runtime and rating, an episode's code and
- *  length), what it was, and when. */
+/** One watched title or episode as a ruled row: when (mono), a small still, what it was (condensed) and its line
+ *  (an episode's code and length, or a film's year). */
 export function HistoryItem({ entry }: { entry: HistoryEntry }) {
   const { item, episode } = entry
-  const now = useMinuteTick()
   const film = item.type === 'movie'
-  const detail = useQuery({ ...q.detail(item.type, item.id), enabled: film }).data
   const season = useSeason(item.id, episode)
   const found = episode && season?.find((e) => e.number === episode.episode)
   const recorded = (episode as { name?: string } | undefined)?.name
-  const print: PrintPart[] = episode
-    ? [`S${episode.season} E${episode.episode}`, found?.runtime ? formatRuntime(found.runtime * 60) : ''].filter(Boolean)
-    : pickPrint(item, detail && detail.runtime ? detail : undefined, now)
-  const meta = episode ? episodeLabel(episode, recorded ?? found?.name) : [item.year, film ? 'Film' : 'Series'].filter(Boolean).join(' · ')
+  const meta = episode ? [episodeLabel(episode, recorded ?? found?.name), found?.runtime ? formatRuntime(found.runtime * 60) : ''].filter(Boolean).join(' · ') : [item.year, film ? 'Film' : 'Series'].filter(Boolean).join(' · ')
   return (
     <Link
       to="/title/$type/$id"
       params={{ type: item.type, id: item.id }}
       search={episode ? { season: episode.season } : undefined}
-      className={s.historyItem}
+      className={`row ${s.historyItem}`}
       onPointerEnter={() => prefetchDetail(item)}
       onFocus={() => prefetchDetail(item)}
       onClick={markZoomSource}
       viewTransition
     >
-      <span className={s.historyPlate}>
-        <Plate shape="still" artPath={item.backdrop} sizes="144px" print={print} fallback={item.title} hideStrip />
-      </span>
-      <span className={s.historyText}>
-        <span className={s.historyTitle}>{item.title}</span>
-        <span className={s.historyMeta}>{meta}</span>
-      </span>
       <time className={`${s.historyTime} num`} dateTime={new Date(entry.watchedAt).toISOString()}>
         {when(entry.watchedAt)}
       </time>
+      <span className={s.historyPlate}>
+        <Plate shape="still" artPath={item.backdrop} sizes="96px" fallback={item.title} />
+      </span>
+      <span className={s.historyText}>
+        <span className={s.historyTitle}>{item.title}</span>
+        <span className={`muted ${s.historyMeta}`}>{meta}</span>
+      </span>
     </Link>
   )
 }

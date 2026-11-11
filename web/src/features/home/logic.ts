@@ -42,7 +42,7 @@ export function formatPrint(last?: Format): string[] {
   return parts.filter((p): p is string => !!p)
 }
 
-/** The time left as print: the one fact in yellow, spelled the same ("1h44 left", "18m left") on every strip at
+/** The time left as print: the one fact in red, spelled the same ("1h44 left", "18m left") on every line at
  *  every width. */
 export const leftPart = (seconds: number): PrintPart => ({ key: formatLeftShort(seconds), rank: rank.left })
 
@@ -59,8 +59,8 @@ export function formatSpoken(last?: Format): string | undefined {
   return words.length ? words.join(' ') : undefined
 }
 
-/** The edge print of something started: "S3 E7 · 18M LEFT · ENDS 21:30 · 2160P · DV". The time left is
- *  the one fact in yellow. */
+/** The printed line of something started: "S3 E7 · 18M LEFT · ENDS 21:30 · 2160P · DV". The time left is
+ *  the one fact in red. */
 export function resumePrint(p: Progress, now: number, last?: Format, locale?: string, extra: PrintPart[] = []): PrintPart[] {
   const left = secondsLeft(p)
   const episode = episodeShort(p.episode)
@@ -87,7 +87,7 @@ const hasNewEpisode = (detail: PickDetail, now: number) => {
 /** The edge print of a title not started, as plain facts. A film: runtime, then (when `ends`) when it
  *  would end if started now, then the rating. A series: NEW EP when one just aired, else how many
  *  seasons, then the rating. Until the detail arrives it says only what the list knew. NEW EP is print like
- *  the rest (yellow is for what you act on), set first. */
+ *  the rest (red marks the time left only), set first. */
 export function pickPrint(item: Pick<MediaItem, 'type' | 'rating'>, detail: PickDetail | undefined, now: number, opts: { ends?: boolean; locale?: string } = {}): PrintPart[] {
   const score: PrintPart = { text: item.rating ? item.rating.toFixed(1) : '', rank: rank.rating }
   if (item.type === 'movie') {

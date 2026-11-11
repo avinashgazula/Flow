@@ -1,66 +1,36 @@
-/* Frame + edge strip. The plate is the frame with its strip attached, one object: the frame is round on
-   top (6), the strip round underneath (6). A plate fills the width its parent gives it. */
+/* Frame: a picture in a 3px ink rule, square, with its facts and title printed under it as mono and condensed text.
+   A plate fills the width its parent gives it. */
 
-.plate { display: block; transition: transform var(--dur-state) var(--ease-out); }
-.frame { width: 100%; border-radius: var(--radius-art); background: var(--base-2); }
+.plate { display: block; }
+.shot { position: relative; display: block; border: 3px solid var(--fg); background: var(--tint-1); transition: border-color var(--dur-state) ease; }
+.frame { width: 100%; background: var(--tint-1); }
 .plate[data-shape='still'] .frame { aspect-ratio: 16 / 9; }
 .plate[data-shape='poster'] .frame { aspect-ratio: 2 / 3; }
-.plate[data-strip] .frame { border-radius: var(--radius-art) var(--radius-art) 0 0; }
 
-/* The edge strip: the printed edge of the stock. Perforations double as the progress meter; the print
-   carries the facts. */
-.strip {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  height: 26px;
-  padding: 0 10px;
-  background: var(--edge);
-  border-radius: 0 0 var(--radius-art) var(--radius-art);
-  overflow: hidden;
-}
-.plate[data-shape='poster'] .strip { height: 22px; padding: 0 8px; gap: var(--space-xs); }
+/* How far along: a thin red bar on a paper track, along the foot of the picture. */
+.bar { position: absolute; inset: auto 0 0 0; height: 7px; background: var(--bg); border-top: 2px solid var(--fg); }
+.bar > i { display: block; height: 100%; background: var(--red); }
 
-/* Perforations are a repeating rounded 7x9 hole on an 11px pitch: --perfs of them, set by the strip from its
-   width (stripLayout.ts), unwatched in base-4, watched in yellow. The tile is a mask, so the colours come
-   from tokens. A title not started keeps them all unfilled: it is still a reel. */
-.perfs {
-  position: relative;
-  flex: none;
-  width: calc(var(--perfs) * 11px - 4px);
-  height: 9px;
-  background: var(--base-4);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E") 0 0 / 11px 9px repeat-x;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='9'%3E%3Crect width='7' height='9' rx='2'/%3E%3C/svg%3E") 0 0 / 11px 9px repeat-x;
-  overflow: hidden;
-}
-.watched {
-  position: absolute;
-  inset: 0 auto 0 0;
-  /* Whole perforations, at least one once started. Browsers without round() fill smoothly instead. */
-  width: calc(var(--p) * 100%);
-  background: var(--stock);
-}
-@supports (width: round(up, 10px, 11px)) {
-  .watched { width: round(up, calc(var(--p) * var(--perfs) * 11px), 11px); }
-}
-
+/* The printed line: mono capitals under the picture. It wraps and its second row is clipped, so a narrow card shows
+   its first facts whole. Facts are divided by a middle dot. */
 .print {
-  min-width: 0;
-  font: 600 12px / 1 var(--font-edge);
-  letter-spacing: 0.14em;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1ch;
+  height: 1.4em;
+  margin-top: var(--space-xs);
+  overflow: hidden;
+  font: 400 11px / 1.4 var(--font);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
-  color: var(--print);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color var(--dur-state) ease;
+  color: var(--fg);
 }
-.print em { font-style: normal; color: var(--stock); }
-.plate[data-shape='poster'] .print { font-size: 11px; letter-spacing: 0.1em; }
+.print > span { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.print > span + span::before { content: '·'; margin-right: 1ch; }
+.key { color: var(--red); font-weight: 600; }
 
-/* An item: the plate, a title and one line of facts. */
+/* An item: the plate, a line, a title and one line of facts. */
 .item { position: relative; display: block; min-width: 0; }
 .card {
   position: relative;
@@ -68,17 +38,18 @@
   width: 100%;
   min-width: 0;
   text-align: left;
-  color: var(--paper);
+  color: var(--fg);
   -webkit-tap-highlight-color: transparent;
   /* A long press opens the card's menu; the browser's own link menu and text selection would fight it. */
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
 }
+.words { display: block; min-width: 0; }
 .title {
   display: block;
-  margin-top: var(--space-xs);
-  font: 600 var(--fs-small) / 1.3 var(--font);
+  margin-top: 2px;
+  font: 600 16px / 1.25 var(--font-cond);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -86,27 +57,40 @@
 .meta {
   display: block;
   margin-top: 2px;
-  font: 400 var(--fs-footnote) / 1.35 var(--font);
-  color: var(--ink-2);
+  font: 400 12px / 1.4 var(--font);
+  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 /* With the title hidden (Show Titles Under Posters off) the year is the first line under the frame. */
-.plate + .meta { margin-top: var(--space-xs); }
-@media (hover: hover) {
-  .card:hover .plate { transform: translateY(-2px); }
-  .card:hover .print { color: var(--paper); }
-}
-.card:active .plate { transform: scale(0.98); }
-.card:disabled { cursor: default; }
-.card:disabled:active .plate { transform: none; }
-/* The ring goes round the frame and strip together. */
-.card:focus-visible { outline: none; }
-.card:focus-visible .plate { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }
-.card[data-dimmed] .plate { opacity: 0.55; }
-.card[data-dimmed] .title, .card[data-dimmed] .meta { color: var(--ink-3); }
+.words > .meta:first-child { margin-top: var(--space-xs); }
 
-@media (prefers-reduced-motion: reduce) {
-  .card:hover .plate { transform: none; }
+/* Hover and focus: a blue rule round the frame, and the title in blue. */
+@media (hover: hover) {
+  .card:hover .shot { border-color: var(--blue); }
+  .card:hover .title { color: var(--blue); }
 }
+.card:focus-visible { outline: none; }
+.card:focus-visible .shot { outline: 3px solid var(--blue); outline-offset: 2px; }
+.card:focus-visible .title { color: var(--blue); }
+.card:active .shot { border-color: var(--blue); }
+.card:disabled { cursor: default; }
+.card[data-dimmed] .shot { opacity: 0.55; }
+.card[data-dimmed] .title, .card[data-dimmed] .meta { color: var(--faint); }
+
+/* A cell: one ruled box round the picture and its words, the words in a padded block that inverts to blue. Cells sit
+   in a grid with no gaps and overlap their borders (HomeScreen.module.css). */
+.card[data-cell] { border: 3px solid var(--fg); background: var(--bg); }
+.card[data-cell] .shot { border-width: 0 0 3px; }
+.card[data-cell] .words { padding: var(--space-s); }
+.card[data-cell] .print { margin-top: 0; }
+@media (hover: hover) {
+  .card[data-cell]:hover .shot { border-color: var(--fg); }
+  .card[data-cell]:hover .words { background: var(--blue); color: var(--onblue); }
+  .card[data-cell]:hover .print, .card[data-cell]:hover .title, .card[data-cell]:hover .meta, .card[data-cell]:hover .key { color: var(--onblue); }
+}
+.card[data-cell]:focus-visible { outline: 3px solid var(--blue); outline-offset: -3px; z-index: 1; }
+.card[data-cell]:focus-visible .shot { outline: none; }
+.card[data-cell]:focus-visible .words { background: var(--blue); color: var(--onblue); }
+.card[data-cell]:focus-visible .print, .card[data-cell]:focus-visible .title, .card[data-cell]:focus-visible .meta, .card[data-cell]:focus-visible .key { color: var(--onblue); }

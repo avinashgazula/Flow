@@ -5,6 +5,9 @@ import FlowKit
 struct CalendarView: View {
     @Environment(AppModel.self) private var model
     @State private var entries: [CalendarEntry]?
+    #if !os(tvOS)
+    @State private var icsURL: URL?
+    #endif
 
     /// Air dates are calendar days, not instants: keep them in UTC so a 9pm local evening doesn't shift the day.
     static let utc: Calendar = {
@@ -65,6 +68,18 @@ struct CalendarView: View {
             withAnimation(Theme.Motion.fade) { entries = loaded }
         }
         .refreshable { entries = await model.calendar() }
+        #if !os(tvOS)
+        // One file with every upcoming event, as the website's Add All to Calendar. Aired entries are left out.
+        .onChange(of: entries) { icsURL = CalendarExport.icsFile(for: upcomingDays.flatMap(\.entries)) }
+        .toolbar {
+            if let icsURL {
+                ToolbarItem(placement: .primaryAction) {
+                    ShareLink(item: icsURL) { Label("Add All to Calendar", systemImage: "calendar.badge.plus") }
+                        .tint(Theme.Palette.text)
+                }
+            }
+        }
+        #endif
     }
 
     // MARK: Sections

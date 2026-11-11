@@ -9,8 +9,7 @@ import { LazyCardMenu } from '../features/home/LazyCardMenu'
 import { FrameCard } from './Frame'
 import s from './PosterRow.module.css'
 
-/** Posters of other titles, each with a print-only strip (what it is, and its rating): the facts a
- *  list knows. */
+/** Posters of other titles, each with a printed line (what it is, and its rating): the facts a list knows. */
 function Posters({ items, now, current }: { items: MediaItem[]; now: number; current?: { type: string; id: number } }) {
   return items.map((m) =>
     // The title the viewer is on (a collection's own film) is a poster that says so, and goes nowhere.
@@ -55,11 +54,11 @@ export function PosterRow({ title, items, now, current, action }: { title: strin
     <section className={s.section} aria-label={title}>
       {action ? (
         <div className={s.head}>
-          <h2 className={s.title}>{title}</h2>
+          <h2 className={`section-label ${s.title}`}>{title}</h2>
           {action}
         </div>
       ) : (
-        <h2 className={s.title}>{title}</h2>
+        <h2 className={`section-label ${s.title}`}>{title}</h2>
       )}
       <ul className={s.row}>
         <Posters items={items.slice(0, 12)} now={now} current={current} />

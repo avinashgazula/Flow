@@ -81,6 +81,17 @@ struct RootView: View {
     private var shellContent: some View {
         #if os(macOS)
         MacShell()
+        #elseif os(iOS)
+        TabShell()
+            // "/" for Search with a hardware keyboard, as on the website and the Mac's Go menu. UIKit leaves an
+            // unmodified key alone while a text field is being typed in.
+            .background {
+                Button("Search") { model.focusSearch() }
+                    .keyboardShortcut("/", modifiers: [])
+                    .opacity(0)
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+            }
         #else
         TabShell()
         #endif

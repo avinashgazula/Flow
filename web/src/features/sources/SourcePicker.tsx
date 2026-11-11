@@ -29,8 +29,8 @@ const resolutionChips: { value: NonNullable<Source['resolution']>; label: string
 const empty: SearchUpdate = { sources: [], providers: [], torrents: 0, finished: false }
 
 /** Lists what every add-on and server offers for the request, best first, and calls `onPick`.
- *  A flat base-2 sheet, as the native source picker: each source is a film-can label row, the best
- *  match carries the yellow Play and is one tap (or Enter) away, arrows move through the rest, Esc
+ *  A square, 3px-ruled dialog: each source is a ruled row, the best
+ *  match carries the solid Play and is one tap (or Enter) away, arrows move through the rest, Esc
  *  closes. `seed` is a finished search the title page already ran, so opening doesn't ask every
  *  add-on again. */
 export function SourcePicker({ request, seed, onPick, onClose }: { request: PlaybackRequest; seed?: SearchUpdate; onPick: (source: Source) => void; onClose: () => void }) {
@@ -310,8 +310,8 @@ function Rows({ entries, appearance, best, active, lastPlayedId, onPick, onHover
       const e = entries[i]!
       return e.kind === 'heading' ? `heading-${e.id}` : e.source.id
     },
-    // The table sits this far into the scroller, below its top padding.
-    scrollMargin: 4,
+    // The table starts at the top of the scroller.
+    scrollMargin: 0,
   })
 
   // Keyboard moves bring the active row into view.

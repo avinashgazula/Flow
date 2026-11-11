@@ -1,56 +1,94 @@
-.section { margin-top: var(--section); }
-.bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s) var(--space-m); margin-bottom: var(--space-s); }
-.title { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; }
-.picker { margin-bottom: var(--space-m); }
-.season { margin-right: -12px; }
+/* Episodes as numbered rows: red condensed numeral, the still, then the title, a mono line and a serif synopsis. A 3px
+   rule opens the list and 1px lines divide the rows; a row inverts to blue on hover and focus, like every row. */
+.section { margin-top: var(--space-xxl); padding-top: var(--space-s); border-top: var(--rule); }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s) var(--space-m); margin-bottom: var(--space-m); }
+.picker { margin-bottom: var(--space-l); }
+.season { margin-right: -14px; }
 
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(252px, 1fr)); gap: var(--space-l) var(--space-m); }
-.ghost { aspect-ratio: 16 / 9; border-radius: var(--radius-art); background: var(--base-2); }
+.list { border-top: var(--rule); }
+.item { position: relative; border-bottom: 1px solid var(--fg); }
+.item[data-dimmed] { color: var(--faint); }
+.ghost { height: 96px; border-bottom: 1px solid var(--fg); background: var(--tint-1); }
+
+/* The row's own button takes the whole line; the mark and More buttons sit over its right end, so the row leaves
+   them room. */
+.item > .open { display: grid; grid-template-columns: 64px 176px minmax(0, 1fr); align-items: start; column-gap: var(--space-m); padding: 16px 120px 16px 12px; }
+.item > .open:disabled { cursor: default; color: inherit; }
+@media (hover: hover) { .item > .open:disabled:hover { background: transparent; color: inherit; } }
+.num { font: 700 40px / 1 var(--font-cond); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--red); }
+.thumb { display: block; border: 2px solid currentColor; }
+.still { aspect-ratio: 16 / 9; }
+/* Episode Spoilers off: an aired episode not yet watched keeps its still blurred. */
+.thumb[data-veiled] img { filter: blur(14px); transform: scale(1.15); }
+.text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.name { font: 700 22px / 1.1 var(--font-cond); text-transform: uppercase; text-wrap: balance; }
+.fact { font: 400 var(--fs-caption) / 1.4 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.fresh { font-weight: 600; color: var(--red); }
 .overview {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  max-width: var(--measure);
   margin-top: 4px;
-  font: 400 var(--fs-footnote) / 1.4 var(--font);
-  color: var(--ink-3);
+  font: 400 15px / 1.5 var(--font-serif);
   white-space: normal;
 }
-.empty { color: var(--ink-2); font-size: var(--fs-small); }
+.progress { display: block; height: 8px; max-width: 320px; margin-top: 8px; border: 2px solid currentColor; }
+.progress > i { display: block; height: 100%; background: var(--red); }
+.empty { color: var(--muted); font-size: var(--fs-small); }
 
-/* The mark on an episode's still: flat on the overlay, an empty ring in ink-2 until the episode is watched, then
-   the check in the yellow that means watched. It is 36px to look at and 44px to hit. */
+/* On the blue hover the red numeral, New and the bar would lose their contrast: they take the text colour. */
+@media (hover: hover) {
+  .open:not(:disabled):hover .num, .open:not(:disabled):hover .fresh, .open:not(:disabled):hover .fact { color: var(--onblue); }
+  .open:not(:disabled):hover .progress > i { background: var(--onblue); }
+}
+.open:not(:disabled):focus-visible .num, .open:not(:disabled):focus-visible .fresh, .open:not(:disabled):focus-visible .fact { color: var(--onblue); }
+.open:not(:disabled):focus-visible .progress > i { background: var(--onblue); }
+
+/* The mark: a 44px bordered square, an empty box until the episode is watched, then inverted with the check. */
 .mark {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 16px;
+  right: 12px;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-control);
-  background: var(--overlay);
-  color: var(--ink-2);
-  transition: color var(--dur-state) ease, background var(--dur-state) ease;
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--fg);
+  background: var(--bg);
+  color: var(--fg);
   -webkit-tap-highlight-color: transparent;
 }
-.mark::after { content: ''; position: absolute; inset: -4px; }
-.ring { display: block; width: 16px; height: 16px; border: 2px solid currentColor; border-radius: var(--radius-full); }
-.mark:hover { color: var(--paper); }
-.mark[data-on] { color: var(--stock); }
-.mark:active { transform: scale(0.96); }
+.box { display: block; width: 14px; height: 14px; border: 2px solid currentColor; }
+@media (hover: hover) { .mark:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
+.mark[data-on] { background: var(--fg); color: var(--bg); }
+@media (hover: hover) { .mark[data-on]:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
+.mark:focus-visible { z-index: 2; }
 
-/* The More button sits beside the mark, which is always there. */
-.more.more { right: 48px; }
-@media (max-width: 720px) { .more.more { right: 46px; } }
-
-/* Episode Spoilers off: an aired episode not yet watched keeps its still blurred. The marker sits beside the
-   card (FrameCard takes no flag for it), and the image is the only thing of the card that is picture. */
-.veil { display: none; }
-.grid > li:has(> .veil) img { filter: blur(14px); transform: scale(1.15); }
+/* The More button (ContextMenu's) beside the mark: the same bordered square, always shown. */
+.more.more {
+  top: 16px;
+  right: 64px;
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--fg);
+  background: var(--bg);
+  color: var(--fg);
+  opacity: 1;
+}
+.more.more::after { inset: 0; }
+@media (hover: hover) { .more.more:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
 
 @media (max-width: 720px) {
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-l) var(--space-s); }
-  .overview { display: none; }
+  .item > .open { grid-template-columns: 40px 104px minmax(0, 1fr); column-gap: var(--space-s); padding: 14px 12px; }
+  .num { font-size: 28px; }
+  .name { font-size: 18px; padding-right: 0; }
+  /* The synopsis runs the row's full width under the still, and the buttons sit under it, so nothing is covered. */
+  .overview { grid-column: 1 / -1; }
+  .more.more { top: auto; bottom: 8px; right: 60px; }
+  .mark { top: auto; bottom: 8px; right: 12px; }
+  .item { padding-bottom: 60px; }
+  .item[data-dimmed] { padding-bottom: 0; }
 }
-@media (prefers-reduced-motion: reduce) { .mark:active { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mark { transition: none; } }

@@ -1,77 +1,62 @@
-/* The film-can label: a base-2 panel with a hairline, rows of edge print. The key is the label's small
-   grey print; the value is the same face larger and in paper. */
-.can {
-  margin-top: var(--space-m);
-  padding: var(--space-xs) var(--space-m);
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-label);
-  background: var(--base-2);
-}
+/* "How this plays": a ruled mono key/value block under the still. A 3px rule above, 1px lines between the rows;
+   the key is a small muted capital, the value the same face larger, in ink. */
+.can { margin-top: var(--space-m); border-top: var(--rule); }
 .rows { margin: 0; }
 .row {
   display: grid;
-  grid-template-columns: 112px minmax(0, 1fr);
+  grid-template-columns: 128px minmax(0, 1fr);
   column-gap: var(--space-m);
   align-items: baseline;
-  padding: 7px 0;
-  min-height: 34px;
+  padding: 10px 0;
+  min-height: 44px;
+  border-bottom: 1px solid var(--fg);
 }
 .row dt {
-  font: 600 var(--fs-caption) / 1.6 var(--font-edge);
-  letter-spacing: 0.14em;
+  font: 600 var(--fs-caption) / 1.6 var(--font);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--muted);
 }
 .row dd {
   margin: 0;
   min-width: 0;
-  font: 600 var(--fs-small) / 1.5 var(--font-edge);
-  letter-spacing: 0.08em;
+  font: 600 var(--fs-small) / 1.5 var(--font);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
-  color: var(--paper);
 }
 /* A long version wraps between its parts (the one space after each dot is the only place a line can break), with
    the dot staying at the end of a line, never opening the next, and no part, a size included, split in two. */
 .part { white-space: nowrap; }
-.direct { color: var(--stock); }
+.direct { color: var(--fg); }
 .warn { color: var(--warn); }
-.quiet { color: var(--ink-3); }
+.quiet { color: var(--muted); }
 
-/* The row that opens the picker is a whole-line control: the arrow says so. */
+/* The row that opens the picker is a whole-line control: a quiet link with an arrow. */
 .open {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   max-width: 100%;
-  margin: -7px 0;
-  padding: 7px 0;
+  margin: -10px 0;
+  padding: 10px 0;
+  min-height: 44px;
   text-align: left;
   font: inherit;
   letter-spacing: inherit;
   text-transform: inherit;
-  color: var(--paper);
-  text-decoration: underline;
-  text-decoration-color: var(--ink-3);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.3em;
-  transition: text-decoration-color var(--dur-state) ease;
+  color: var(--fg);
+  text-decoration: underline dotted var(--red);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
-.open:hover { text-decoration-color: var(--paper); }
-.open svg { flex: none; color: var(--ink-3); }
+@media (hover: hover) { .open:hover { color: var(--blue); } }
+.open svg { flex: none; }
 
-.bar {
-  display: block;
-  height: 10px;
-  margin: 8px 0;
-  border-radius: var(--radius-full);
-  background: var(--base-3);
-  animation: pulse 1.4s ease-in-out infinite;
-}
+.bar { display: block; height: 10px; margin: 8px 0; background: var(--tint-2); animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .bar { animation: none; } }
 
 @media (max-width: 720px) {
-  .can { padding-inline: var(--space-s); }
-  .row { grid-template-columns: 96px minmax(0, 1fr); column-gap: var(--space-s); padding: 5px 0; min-height: 30px; }
-  .open { margin: -5px 0; padding: 5px 0; }
+  .row { grid-template-columns: 104px minmax(0, 1fr); column-gap: var(--space-s); }
 }

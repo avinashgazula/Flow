@@ -214,16 +214,16 @@ const PosterGhost = () => (
 function RowHead({ id, title, see, shelf, children }: { id: string; title: string; see?: ExploreLink; shelf?: string; children?: ReactNode }) {
   return (
     <div className={s.rowHead}>
-      <h2 id={id} className={s.rowTitle}>
+      <h2 id={id} className={`section-label ${s.rowTitle}`}>
         {title}
       </h2>
       {see && (
-        <Link to="/explore" search={see} className={s.seeAll}>
+        <Link to="/explore" search={see} className={`quiet-link ${s.seeAll}`}>
           See all
         </Link>
       )}
       {!see && shelf && (
-        <Link to="/library" search={{ shelf }} className={s.seeAll} aria-label={`See all of ${title}`}>
+        <Link to="/library" search={{ shelf }} className={`quiet-link ${s.seeAll}`} aria-label={`See all of ${title}`}>
           See all
         </Link>
       )}

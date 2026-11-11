@@ -1,7 +1,8 @@
-.section { margin-top: var(--section); }
-.title { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; margin-bottom: var(--space-s); }
+/* A ruled section: a 3px rule, its red label, then the posters. */
+.section { margin-top: var(--section); border-top: var(--rule); }
+.title { padding: var(--space-m) 0 var(--space-m); }
 
-.head { display: flex; align-items: baseline; gap: var(--space-s); margin-bottom: var(--space-s); }
+.head { display: flex; align-items: baseline; gap: var(--space-s); }
 .head > .title { margin-bottom: 0; }
 .head > :last-child { margin-left: auto; }
 .row { display: flex; gap: var(--space-s); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 6px; margin: -6px; }

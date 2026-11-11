@@ -379,6 +379,13 @@ extension AppModel {
         showToast(parts.isEmpty ? "Tracking data deleted" : "Tracking data deleted: " + parts.joined(separator: ", "))
     }
 
+    /// Folds a tracking export or website backup into the on-device library. Nothing here is removed.
+    func restoreTrackingData(_ parsed: LibraryBackup.Parsed) async {
+        await local.restore(parsed.library)
+        await refreshLibrary(force: true)
+        showToast("Imported \(parsed.counts.summary)")
+    }
+
     /// Image, metadata and remux header caches. Tracking data and downloads are untouched.
     func clearAllCaches() async {
         let before = JSONFileStore.caches("FlowResponses").sizeInBytes + JSONFileStore.caches("FlowMatroskaHeaders").sizeInBytes + Int64(URLCache.shared.currentDiskUsage)

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useRouter } from '@tanstack/react-router'
 import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Artwork } from '../../components/Artwork'
-import { Plate } from '../../components/Frame'
+import type { PrintPart } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
 import { PosterRow } from '../../components/PosterRow'
 import { genreNames } from '../../lib/genres'
@@ -42,9 +42,9 @@ const SourcePicker = lazy(() => import('../sources/SourcePicker').then((m) => ({
 /** The still's width at each layout, for `srcset`: two columns from 1000px, one below. */
 const stillSizes = '(min-width: 1360px) 600px, (min-width: 1000px) 44vw, calc(100vw - 32px)'
 
-/** A title's page: the framed still with its edge strip and the film-can label under it, and beside it
- *  the facts, ratings, the one yellow Play and what the viewer can do with the title. Below: episodes,
- *  where to watch, more like it. */
+/** A title's page: the giant title and its facts line, then the framed still with the "how this plays" block under
+ *  it, and beside it the ratings, the one solid Play and what the viewer can do with the title. Below: cast,
+ *  episodes, where to watch, reviews, more like it. */
 export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: MediaType; id: number; initialSeason?: number; autoPlay?: boolean }) {
   const { data: d, isPlaceholderData, isError, error, refetch, isRefetching } = useQuery(q.detail(type, id))
   const navigate = useNavigate()
@@ -147,6 +147,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   const ready = loaded && (type === 'movie' || episodes.ready)
   // A title watched through says so on its strip, with every hole filled, as its poster does on Home.
   const marked = isWatched && showWatchedMark && !progress
+  const fraction = progress ? watchedFraction(progress) : marked ? 1 : undefined
   const related = relatedRows(d)
   const airs = airsLine(d.nextEpisode, now, userLocale)
 
@@ -177,28 +178,26 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
 
   return (
     <article className="page">
+     <header className={s.head}>
+      <TitleName title={d.title} />
+      <Meta detail={d} genres={genreNames(d.genres, type)} />
+     </header>
      <div className={s.wrap} data-text={textSize === 'standard' ? undefined : textSize}>
       <div className={s.top}>
         <div className={s.still}>
-          <div style={{ viewTransitionName: 'title-art' }}>
-            <Plate
-              shape="still"
-              artPath={d.backdrop}
-              sizes={stillSizes}
-              priority
-              progress={progress ? watchedFraction(progress) : marked ? 1 : undefined}
-              print={titlePrint(d, progress, now, userLocale, marked)}
-              stripSize="title"
-              fallback={d.title}
-            />
+          <div className={s.frame} style={{ viewTransitionName: 'title-art' }}>
+            <Artwork path={d.backdrop} kind="backdrop" alt="" sizes={stillSizes} priority fallback={d.title} className={s.art} />
           </div>
+          {fraction !== undefined && (
+            <div className={s.progress} role="img" aria-label={`${Math.round(fraction * 100)} percent watched`}>
+              <i style={{ width: `${fraction * 100}%` }} />
+            </div>
+          )}
+          <p className={s.print}>{printText(titlePrint(d, progress, now, userLocale, marked))}</p>
           <FilmCan search={search} best={best} lastPlayed={lastPlayed} onOpen={() => setPicker(true)} />
         </div>
 
         <div className={s.info}>
-          <TitleName title={d.title} logo={d.logo} />
-          <Meta detail={d} genres={genreNames(d.genres, type)} />
-
           {!phone && <Ratings detail={d} ready={loaded} />}
 
           <div className={s.actions}>
@@ -213,7 +212,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
             <RequestButton detail={d} onServer={!search.finished || search.sources.some((x) => x.origin === 'jellyfin' || x.origin === 'emby' || x.origin === 'plex')} onNote={setNote} />
           </div>
 
-          <div className={s.textActions} role="group" aria-label="Your list">
+          <div className={s.listActions} role="group" aria-label="Your list">
             <TextAction label="Watchlist" on={inWatchlist} onClick={() => library.toggleWatchlist(card)} />
             <TextAction label="Watched" on={isWatched} onClick={toggleWatched} disabled={!ready} />
             <TextAction label="Favourite" on={isFavourite} onClick={() => library.toggleFavourite(card)} />
@@ -237,7 +236,9 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
                 <Icon name="calendar" size={15} />
                 <span aria-label={airs.spoken}>{airs.text}</span>
               </span>
-              <TextAction label="Add to Calendar" onClick={addToCalendar} />
+              <button type="button" className="quiet-link" onClick={addToCalendar}>
+                Add to Calendar
+              </button>
             </p>
           )}
 
@@ -255,14 +256,14 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
           </p>
 
           {d.tagline && <p className={s.tagline}>{d.tagline}</p>}
-          {d.overview && <p className={s.overview}>{d.overview}</p>}
+          {d.overview && <p className={`reading ${s.overview}`}>{d.overview}</p>}
           {d.crew.length > 0 && (
             <dl className={s.crew}>
               {d.crew.slice(0, 4).map((c) => (
                 <div key={`${c.id}${c.role}`}>
                   <dt>{c.role}</dt>
                   <dd>
-                    <Link to="/person/$id" params={{ id: c.id }}>
+                    <Link to="/person/$id" params={{ id: c.id }} className="quiet-link">
                       {c.name}
                     </Link>
                   </dd>
@@ -270,10 +271,10 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
               ))}
             </dl>
           )}
-
-          {d.cast.length > 0 && <Cast cast={d.cast} />}
         </div>
       </div>
+
+      {d.cast.length > 0 && <Cast cast={d.cast} />}
 
       {type === 'show' && d.seasons.length > 0 && !isPlaceholderData && <Episodes detail={d} initial={initialSeason ?? progress?.episode?.season} onPlay={(e) => play(e)} />}
 
@@ -318,12 +319,13 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
   )
 }
 
-/** A quiet text action: plain ink-2, paper when on, with a check so "on" isn't told by colour alone. */
+/** One of the list actions: a bordered cell that inverts when on (and shows a check, so "on" isn't told by colour
+ *  alone). The cells of the row share their borders. */
 function TextAction({ label, on, onClick, disabled, plain }: { label: string; on?: boolean; onClick: () => void; disabled?: boolean; plain?: boolean }) {
   return (
     <button
       type="button"
-      className={s.textAction}
+      className={`btn ${s.listAction}`}
       onClick={disabled ? undefined : onClick}
       // A label that changes with the state (End Rewatch) says it already; a constant one is a toggle.
       aria-pressed={plain ? undefined : on}
@@ -337,29 +339,31 @@ function TextAction({ label, on, onClick, disabled, plain }: { label: string; on
   )
 }
 
-/** The cast at one size: a portrait when TMDB has one, else name and role set on a hairline. */
+/** The cast as a ruled grid of cells: a portrait when TMDB has one, else the name and role alone. */
 const castShown = 6
 function Cast({ cast }: { cast: MediaDetail['cast'] }) {
   const [all, setAll] = useState(false)
   const list = cast.slice(0, all ? 30 : castShown)
   return (
-    <section className={s.cast} aria-labelledby="cast-title">
-      <h2 id="cast-title" className={s.sectionTitle}>
+    <section className={s.section} aria-labelledby="cast-title">
+      <h2 id="cast-title" className="section-label">
         Cast
       </h2>
       <ul className={s.castGrid}>
         {list.map((c) => (
           <li key={`${c.id}${c.role}`}>
-            <Link to="/person/$id" params={{ id: c.id }} className={s.person} data-photo={c.profile ? '' : undefined}>
-              {c.profile && <Artwork path={c.profile} kind="profile" alt="" sizes="104px" className={s.face} />}
-              <span className={s.personName}>{c.name}</span>
-              {c.role && <span className={s.personRole}>{c.role}</span>}
+            <Link to="/person/$id" params={{ id: c.id }} className={`row ${s.person}`}>
+              {c.profile && <Artwork path={c.profile} kind="profile" alt="" sizes="64px" className={s.face} />}
+              <span className={s.personText}>
+                <span className={s.personName}>{c.name}</span>
+                {c.role && <span className={`muted ${s.personRole}`}>{c.role}</span>}
+              </span>
             </Link>
           </li>
         ))}
       </ul>
       {cast.length > castShown && (
-        <button type="button" className={s.more} onClick={() => setAll(!all)} aria-expanded={all}>
+        <button type="button" className={`quiet-link ${s.more}`} onClick={() => setAll(!all)} aria-expanded={all}>
           {all ? 'Show fewer' : `Show all ${Math.min(cast.length, 30)}`}
         </button>
       )}
@@ -371,14 +375,24 @@ function Cast({ cast }: { cast: MediaDetail['cast'] }) {
 function Ghost() {
   return (
     <div className="page" aria-busy>
+      <div className={s.head}>
+        <div className={s.ghostName} />
+      </div>
       <div className={`${s.wrap} ${s.top}`}>
         <div className={s.still}>
           <div className={s.ghostFrame} />
-          <div className={s.ghostStrip} />
         </div>
       </div>
     </div>
   )
+}
+
+/** What a still's print said on the old strip, as one plain mono line: "2024 · 2H 47 · ENDS 22:56". */
+function printText(parts: PrintPart[]): string {
+  return parts
+    .map((p) => (typeof p === 'string' ? p : 'key' in p ? p.key : p.text))
+    .filter(Boolean)
+    .join(' · ')
 }
 
 /** Opens the system's share sheet, or copies the link; true when it copied, so the button can say so. */
@@ -391,8 +405,8 @@ async function share(d: MediaDetail): Promise<boolean> {
   return navigator.clipboard?.writeText(url).then(() => true, () => false) ?? false
 }
 
-/** Year, runtime, rating and genres, wrapping only between the parts (the dot leads the part it separates), so a
- *  genre is never split across two lines. */
+/** Year, runtime, rating and genres as one mono line under the title, wrapping only between the parts (the dot leads
+ *  the part it separates), so a genre is never split across two lines. */
 function Meta({ detail: d, genres }: { detail: MediaDetail; genres: string[] }) {
   const parts = metaParts(d, genres)
   const all = [...parts.facts.map((text) => ({ text, lead: true })), ...parts.genres.map((text, i) => ({ text: i < parts.genres.length - 1 ? `${text},` : text, lead: i === 0 }))]

@@ -8,6 +8,7 @@ import { computeStats, durationText, histogramTitle, statsLead, statsPeriods, ty
 import { useLibrary } from '../../lib/store/library'
 import { userLocale } from '../../lib/time'
 import { Segmented, StateView } from '../explore/Controls'
+import { Section, Toolbar } from '../explore/PageHead'
 import { bars, firstWeekday, habitLines, leadSentence, shownLabels } from './statsView'
 import s from './StatsPage.module.css'
 
@@ -50,8 +51,10 @@ export default function StatsPage() {
   const items = new Map(history.map((e) => [e.key, e.item]))
 
   return (
-    <div className={s.page}>
-      <Segmented options={statsPeriods} value={period} onChange={setPeriod} label="Period" className={s.period} />
+    <div>
+      <Toolbar>
+        <Segmented options={statsPeriods} value={period} onChange={setPeriod} label="Period" />
+      </Toolbar>
       {stats.isEmpty ? (
         <StateView icon="history" title="Nothing Watched" message={`There’s no history for ${statsPeriods.find((p) => p.id === period)!.label.toLowerCase()}. Try another period.`} />
       ) : (
@@ -71,8 +74,11 @@ export default function StatsPage() {
 function Lead({ stats, settled }: { stats: WatchStats; settled: boolean }) {
   return (
     <p className={s.lead} aria-busy={!settled || undefined}>
-      {statsLead[stats.period]} <strong className="num">{durationText(stats.totalMinutes)}</strong>
-      <span className="num">: {leadSentence(stats)}.</span>
+      <span className={s.leadIntro}>{statsLead[stats.period]}</span> <strong className="num">{durationText(stats.totalMinutes)}</strong>
+      <span className={`${s.leadRest} num`}>
+        <span className="sr-only">: </span>
+        {leadSentence(stats)}.
+      </span>
     </p>
   )
 }
@@ -83,10 +89,7 @@ function Histogram({ stats }: { stats: WatchStats }) {
   const labels = shownLabels(stats.histogram.length)
   const label = (start: number) => axisLabel(start, granularity, userLocale)
   return (
-    <section className={s.section} aria-labelledby="stats-hours">
-      <h2 id="stats-hours" className={s.heading}>
-        {histogramTitle[granularity]}
-      </h2>
+    <Section id="stats-hours" title={histogramTitle[granularity]}>
       <figure className={s.chart}>
         <div className={s.bars} data-crowded={stats.histogram.length > 12 || undefined} role="list" aria-label={histogramTitle[granularity]}>
           {stats.histogram.map((b, i) => (
@@ -102,16 +105,13 @@ function Histogram({ stats }: { stats: WatchStats }) {
           ))}
         </div>
       </figure>
-    </section>
+    </Section>
   )
 }
 
 function Genres({ stats }: { stats: WatchStats }) {
   return (
-    <section className={s.section} aria-labelledby="stats-genres">
-      <h2 id="stats-genres" className={s.heading}>
-        Top Genres
-      </h2>
+    <Section id="stats-genres" title="Top Genres">
       <ol className={s.genres}>
         {stats.topGenres.map((g, i) => {
           const percent = Math.round(g.share * 100)
@@ -126,7 +126,7 @@ function Genres({ stats }: { stats: WatchStats }) {
           )
         })}
       </ol>
-    </section>
+    </Section>
   )
 }
 
@@ -137,26 +137,20 @@ function MostWatched({ stats, items }: { stats: WatchStats; items: Map<string, i
   })
   if (!shows.length) return null
   return (
-    <section className={s.section} aria-labelledby="stats-shows">
-      <h2 id="stats-shows" className={s.heading}>
-        Most Watched
-      </h2>
+    <Section id="stats-shows" title="Most Watched">
       <ul className={s.posters}>
         {shows.map(({ item, episodes }) => (
           <PosterItem key={item.id} item={item} meta={episodes === 1 ? '1 episode' : `${episodes.toLocaleString()} episodes`} sizes="(max-width: 720px) 112px, 180px" />
         ))}
       </ul>
-    </section>
+    </Section>
   )
 }
 
 function Habits({ stats }: { stats: WatchStats }) {
   const lines = habitLines(stats, userLocale)
   return (
-    <section className={s.section} aria-labelledby="stats-habits">
-      <h2 id="stats-habits" className={s.heading}>
-        Habits
-      </h2>
+    <Section id="stats-habits" title="Habits">
       <dl className={s.habits}>
         {lines.map((line) => (
           <div key={line.label} className={s.habit}>
@@ -168,7 +162,7 @@ function Habits({ stats }: { stats: WatchStats }) {
           </div>
         ))}
       </dl>
-    </section>
+    </Section>
   )
 }
 

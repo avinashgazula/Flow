@@ -1,6 +1,5 @@
-/* The filter sheet: a flat base-2 panel over a dark scrim, no blur. A side panel on a desktop, a bottom sheet on
-   a phone. Yellow appears once, as the ring on a chosen streaming service (and on Show Results, the next
-   action); a chosen chip is a lighter base, as everywhere else. */
+/* The filter sheet: a square ruled panel over a flat scrim, no blur. A side panel on a desktop, a bottom sheet on a
+   phone. Sections open with a red mono label; chosen chips and services are inverted ink, as everywhere else. */
 .overlay {
   position: fixed;
   inset: 0;
@@ -15,35 +14,41 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(440px, 100%);
+  width: min(460px, 100%);
   height: 100%;
-  background: var(--base-2);
-  box-shadow: -1px 0 0 var(--hair);
+  background: var(--bg);
+  border-left: var(--rule);
   animation: slide var(--dur-move) var(--ease-out);
 }
 .panel:focus-visible { outline: none; }
 
-.header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-m); padding: var(--space-l) var(--space-l) var(--space-s); }
-.title { font: 700 var(--fs-title3) / 1.2 var(--font-display); letter-spacing: -0.015em; }
+/* The title and a square close cell, divided by rules, as the reference's dialog top. */
+.header { display: flex; align-items: stretch; justify-content: space-between; border-bottom: var(--rule); }
+.title { display: flex; align-items: center; padding: 0 var(--space-l); font: 700 28px / 1.1 var(--font-cond); text-transform: uppercase; }
+.header :global(.btn) { width: 56px; height: auto; min-height: 56px; border-width: 0 0 0 3px; border-color: var(--fg); }
+@media (hover: hover) { .header :global(.btn:hover) { border-color: var(--blue); } }
 
-.body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-xs) var(--space-l) var(--space-l); }
+.body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 
-.section { min-width: 0; margin: 0; padding: var(--space-m) 0 var(--space-l); border: 0; border-bottom: 1px solid var(--hair); }
-.section:last-child { border-bottom: 0; padding-bottom: var(--space-s); }
-.legend { float: left; width: 100%; padding: 0; margin-bottom: var(--space-s); font: 600 var(--fs-small) / 1.2 var(--font); color: var(--paper); }
+.section { min-width: 0; margin: 0; padding: var(--space-m) var(--space-l) var(--space-l); border: 0; border-bottom: var(--rule); }
+.section:last-child { border-bottom: 0; }
+.legend { float: left; width: 100%; padding: 0; margin-bottom: var(--space-s); font: 600 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); }
 .legend + * { clear: both; }
-.region { margin-left: var(--space-xs); color: var(--ink-3); font-weight: 400; font-size: var(--fs-footnote); letter-spacing: 0.04em; }
+.region { margin-left: var(--space-xs); color: var(--muted); font-weight: 400; font-size: var(--fs-footnote); letter-spacing: 0.06em; }
 
-.chips { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+/* Chips share borders, wrapped or not: each pulls 3px over its neighbour, and the box pads the same back. */
+.chips { display: flex; flex-wrap: wrap; padding: 3px 0 0 3px; }
+.chips > * { margin: -3px 0 0 -3px; }
+.chips > [aria-pressed='true'] { z-index: 1; }
 
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-s); margin-top: var(--space-m); }
 .field { display: grid; gap: 6px; min-width: 0; }
-.fieldLabel { color: var(--ink-3); font-size: var(--fs-footnote); }
+.fieldLabel { color: var(--muted); font: 600 var(--fs-footnote) / 1.2 var(--font); text-transform: uppercase; letter-spacing: 0.08em; }
 /* The shared Select, stretched to the field. */
 .select { display: flex; }
 .select select { width: 100%; }
 
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: var(--space-s) var(--space-xs); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: var(--space-xs); }
 
 .tile {
   display: grid;
@@ -51,33 +56,19 @@
   align-content: start;
   gap: 6px;
   min-width: 0;
-  padding: 4px 0 2px;
-  border-radius: var(--radius-control);
-  color: var(--ink-3);
+  padding: 6px 4px 6px;
+  border: 3px solid transparent;
+  color: var(--muted);
   -webkit-tap-highlight-color: transparent;
-  transition: color var(--dur-state) ease;
 }
-.tile:hover { color: var(--ink-2); }
-.tile[aria-pressed='true'] { color: var(--paper); }
-/* Keyboard focus sits outside the chosen ring, so both show at once. */
+@media (hover: hover) { .tile:hover { border-color: var(--blue); color: var(--fg); } }
+/* Chosen is inverted ink, with a check beside the name as well. */
+.tile[aria-pressed='true'] { border-color: var(--fg); background: var(--fg); color: var(--bg); }
 .tile:focus-visible { outline-offset: 2px; }
 
-.logo {
-  display: block;
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-control);
-  background: var(--base-3);
-  overflow: hidden;
-  /* The ring: a gap of base, then paper, only when chosen. Paper, not yellow, so a choice never looks like
-     keyboard focus (which is the yellow ring) and two chosen services don't read as two focused ones. */
-  box-shadow: 0 0 0 0 transparent;
-  transition: box-shadow var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
-}
+.logo { display: block; width: 56px; height: 56px; background: var(--tint-2); overflow: hidden; }
 .logo img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.tile:active .logo { transform: scale(0.96); }
-.tile[aria-pressed='true'] .logo { box-shadow: 0 0 0 2px var(--base-2), 0 0 0 4px var(--paper); }
-.initial { display: grid; place-items: center; width: 100%; height: 100%; font: 700 var(--fs-headline) / 1 var(--font-display); color: var(--ink-2); }
+.initial { display: grid; place-items: center; width: 100%; height: 100%; font: 700 var(--fs-headline) / 1 var(--font-cond); color: var(--muted); }
 
 .name {
   max-width: 100%;
@@ -91,19 +82,19 @@
   overflow-wrap: anywhere;
 }
 
-.check { display: inline-block; vertical-align: -1px; margin-right: 3px; color: var(--paper); }
+.check { display: inline-block; vertical-align: -1px; margin-right: 3px; }
 
-.skeleton { justify-self: center; width: 56px; height: 56px; margin: 4px 0 24px; border-radius: var(--radius-control); background: var(--base-3); animation: pulse 1.4s ease-in-out infinite; }
+.skeleton { justify-self: center; width: 56px; height: 56px; margin: 6px 0 24px; background: var(--tint-2); animation: pulse 1.4s ease-in-out infinite; }
 .more { margin-top: var(--space-s); }
-.note { color: var(--ink-2); font-size: var(--fs-small); line-height: 1.5; }
-.link { color: var(--paper); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.note { color: var(--muted); font-size: var(--fs-small); line-height: 1.5; }
+.link { color: var(--blue); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 
 .footer {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: var(--space-s);
   padding: var(--space-m) var(--space-l) calc(var(--space-m) + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--hair);
+  border-top: var(--rule);
 }
 
 @keyframes fade { from { opacity: 0; } }
@@ -118,14 +109,14 @@
     width: 100%;
     height: auto;
     max-height: min(88vh, 88dvh);
-    border-radius: var(--radius-panel) var(--radius-panel) 0 0;
-    box-shadow: 0 -1px 0 var(--hair);
+    border-left: 0;
+    border-top: var(--rule);
     animation-name: rise;
   }
-  .header { padding: var(--space-m) var(--space-m) var(--space-xs); }
-  .body { padding: 0 var(--space-m) var(--space-m); }
+  .title { padding: 0 var(--space-m); font-size: 24px; }
+  .section { padding: var(--space-m); }
   .footer { padding: var(--space-s) var(--space-m) calc(var(--space-s) + env(safe-area-inset-bottom)); }
-  .grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

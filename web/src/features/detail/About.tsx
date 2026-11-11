@@ -16,7 +16,7 @@ export function About({ detail: d }: { detail: MediaDetail }) {
   const kind = d.type === 'movie' ? 'movie' : 'tv'
   return (
     <section className={s.section} aria-labelledby="about-title">
-      <h2 id="about-title" className={s.sectionTitle}>
+      <h2 id="about-title" className="section-label">
         About
       </h2>
       <dl className={s.facts}>
@@ -30,13 +30,13 @@ export function About({ detail: d }: { detail: MediaDetail }) {
           <div>
             <dt>Links</dt>
             <dd className={s.links}>
-              <a href={`https://www.imdb.com/title/${d.imdb}/`} target="_blank" rel="noreferrer">
+              <a className="quiet-link" href={`https://www.imdb.com/title/${d.imdb}/`} target="_blank" rel="noreferrer">
                 IMDb
               </a>
-              <a href={`https://www.themoviedb.org/${kind}/${d.id}`} target="_blank" rel="noreferrer">
+              <a className="quiet-link" href={`https://www.themoviedb.org/${kind}/${d.id}`} target="_blank" rel="noreferrer">
                 TMDB
               </a>
-              <a href={`https://trakt.tv/search/tmdb/${d.id}?id_type=${d.type === 'movie' ? 'movie' : 'show'}`} target="_blank" rel="noreferrer">
+              <a className="quiet-link" href={`https://trakt.tv/search/tmdb/${d.id}?id_type=${d.type === 'movie' ? 'movie' : 'show'}`} target="_blank" rel="noreferrer">
                 Trakt
               </a>
             </dd>

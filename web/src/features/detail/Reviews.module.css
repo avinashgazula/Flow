@@ -1,37 +1,27 @@
-/* Reviews are entries on a hairline, not cards: author, a few lines, and a way to read the rest. Two columns from
-   760px. The one blur on the page is a spoiler waiting to be read, which is a state and not decoration. */
-.reviews { margin-top: var(--section); }
-.head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-s); margin-bottom: var(--space-s); }
-.title { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; }
-.from { font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); }
+/* Reviews are ruled entries, not cards: who and how many stars on the left in mono, the words in serif on the right, a
+   3px rule above the list and 1px lines between. The one blur on the page is a spoiler waiting to be read, which is a
+   state and not decoration. */
+.reviews { margin-top: var(--space-xxl); padding-top: var(--space-s); border-top: var(--rule); }
+.head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-m); margin-bottom: var(--space-m); }
+.title { font: 600 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); }
+.from { font: 400 var(--fs-caption) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 
-.list { display: grid; gap: 0 var(--space-xl); }
-@media (min-width: 760px) { .list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.list > li { min-width: 0; border-top: 1px solid var(--hair); }
+.list { border-top: 1px solid var(--fg); }
+.list > li { min-width: 0; border-bottom: 1px solid var(--fg); }
 
-.item { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); padding: var(--space-m) 0 var(--space-l); }
-.by { display: flex; align-items: center; gap: var(--space-s); width: 100%; min-width: 0; }
-.initial {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-control);
-  background: var(--base-3);
-  font: 700 var(--fs-small) / 1 var(--font);
-  color: var(--paper);
-}
-.who { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.author { font: 600 var(--fs-small) / 1.3 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.meta { font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); }
-.marks { display: flex; flex: none; flex-direction: column; align-items: flex-end; gap: 2px; }
-.score { display: inline-flex; align-items: center; gap: 4px; font: 600 var(--fs-footnote) / 1.3 var(--font); font-variant-numeric: tabular-nums; color: var(--paper); }
-.score svg { color: var(--ink-2); }
-.flag { font: 500 var(--fs-caption) / 1.3 var(--font); color: var(--ink-3); }
+.item { display: grid; gap: var(--space-s) var(--space-xl); padding: var(--space-l) 0; }
+@media (min-width: 860px) { .item { grid-template-columns: 220px minmax(0, 1fr); } }
+.by { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.author { font: 700 20px / 1.15 var(--font-cond); text-transform: uppercase; overflow-wrap: anywhere; }
+.meta { font: 400 var(--fs-caption) / 1.4 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.marks { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-s); }
+.score { font: 700 28px / 1 var(--font-cond); font-variant-numeric: tabular-nums; color: var(--red); }
+.flag { font: 600 var(--fs-caption) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--warn); }
 
+.main { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); min-width: 0; }
 .body { position: relative; width: fit-content; max-width: 100%; }
-.text { margin: 0; max-width: var(--measure); font-size: var(--fs-small); line-height: 1.55; color: var(--ink-2); white-space: pre-line; text-wrap: pretty; overflow-wrap: anywhere; }
+.text { margin: 0; max-width: var(--measure); font: 400 16px / 1.6 var(--font-serif); white-space: pre-line; text-wrap: pretty; overflow-wrap: anywhere; }
 .text[data-folded] { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 .text[data-hidden] { filter: blur(7px); user-select: none; pointer-events: none; }
 .reveal {
@@ -40,30 +30,31 @@
   display: grid;
   place-items: center;
   font: 600 var(--fs-small) / 1 var(--font);
-  color: var(--paper);
-  text-decoration: underline;
-  text-decoration-color: var(--ink-3);
-  text-underline-offset: 0.25em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: underline dotted var(--red);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
-.reveal:hover { text-decoration-color: var(--paper); }
+@media (hover: hover) { .reveal:hover { color: var(--blue); } }
 
 /* Words inside a spoiler tag. */
 .hidden { display: inline; padding: 0; font: inherit; color: inherit; text-align: inherit; white-space: inherit; cursor: pointer; }
 .hidden > span { filter: blur(6px); transition: filter var(--dur-state) ease; user-select: none; }
 .hidden:hover > span { filter: blur(4px); }
-.revealed { color: var(--paper); }
+.revealed { color: var(--fg); }
 
 /* Read More and Show Spoilers, side by side under the text. */
-.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-m); margin-top: -6px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-m); }
 .fold, .more {
-  height: 36px;
-  padding-right: 8px;
-  font: 500 var(--fs-small) / 1 var(--font);
-  color: var(--ink-2);
-  text-decoration: underline;
-  text-decoration-color: var(--ink-3);
-  text-underline-offset: 0.25em;
+  min-height: 44px;
+  font: 600 var(--fs-small) / 1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg);
+  text-decoration: underline dotted var(--red);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
-.more { margin-top: var(--space-xs); }
-@media (pointer: coarse) { .fold, .more { height: 44px; } }
-.fold:hover, .more:hover { color: var(--paper); text-decoration-color: var(--paper); }
+.more { margin-top: var(--space-s); }
+@media (hover: hover) { .fold:hover, .more:hover { color: var(--blue); } }

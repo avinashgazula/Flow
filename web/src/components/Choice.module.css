@@ -1,38 +1,50 @@
-/* Seasons, filters and sort orders: a segmented control for a few choices, a select for many. */
-.segmented { display: inline-flex; max-width: 100%; padding: 3px; gap: 2px; overflow-x: auto; scrollbar-width: none; border-radius: var(--radius-control); background: var(--base-3); }
+/* Seasons, filters and sort orders: a bordered segmented row for a few choices (cells share their borders, the current
+   one is inverted ink, hover fills blue), a square select for many. */
+.segmented { display: inline-flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; padding: 0 3px 0 0; }
 .segmented::-webkit-scrollbar { display: none; }
 .segment {
   position: relative;
   flex: none;
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 8px;
-  font: 600 var(--fs-small) / 1 var(--font);
-  color: var(--ink-2);
+  min-height: 44px;
+  margin-right: -3px;
+  padding: 0 16px;
+  border: 3px solid var(--fg);
+  background: var(--bg);
+  color: var(--fg);
+  font: 600 var(--fs-small) / 1.1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   white-space: nowrap;
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
 }
-.segment:hover { color: var(--paper); }
-.segment[aria-checked='true'] { background: var(--base-4); color: var(--paper); }
-.segment[aria-checked='true']::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: 3px; height: 2px; border-radius: var(--radius-hair); background: var(--stock); }
-.segment:focus-visible { outline-offset: -2px; }
-/* The track is 6px more than its segments: 38 + 6 is the 44px a finger needs. */
-@media (pointer: coarse) {
-  .segment { height: 38px; }
-  .segment::before { content: ''; position: absolute; inset: -3px 0; }
-}
+@media (hover: hover) { .segment:hover { z-index: 1; background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
+.segment[aria-checked='true'] { background: var(--fg); color: var(--bg); }
+.segment:focus-visible { z-index: 2; outline-offset: -6px; outline-color: var(--onblue); }
+.segment[aria-checked='false']:focus-visible { outline-color: var(--blue); }
 
-.select { display: inline-flex; }
+.select { position: relative; display: inline-flex; }
 .select :global(.field) {
   width: auto;
-  height: 40px;
-  padding: 0 40px 0 14px;
+  min-height: 44px;
+  padding: 0 44px 0 14px;
   appearance: none;
   font: 600 var(--fs-small) / 1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%23bfb5a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
 }
-.select option { background: var(--base-2); color: var(--paper); }
+/* The chevron is drawn with borders so it takes the text colour in either theme. */
+.select::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  width: 8px;
+  height: 8px;
+  border-right: 3px solid var(--fg);
+  border-bottom: 3px solid var(--fg);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+.select option { background: var(--bg); color: var(--fg); }

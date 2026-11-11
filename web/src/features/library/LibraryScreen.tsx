@@ -10,7 +10,9 @@ import { enabledServers, refreshServerIndex } from '../home/marks'
 import { library, useLibrary, type Progress } from '../../lib/store/library'
 import type { MediaType } from '../../lib/tmdb/types'
 import { Segmented, Select, StateView } from '../explore/Controls'
+import { PageHead, Section, Toolbar } from '../explore/PageHead'
 import { PosterGrid } from '../explore/PosterGrid'
+import { BackLink } from './BackLink'
 import { HistoryItem, HistoryList } from './HistoryList'
 import { groupHistory, historyRows, isLibraryPage, listSorts, listTitles, sortEntries, titles, watchlistSorts, type LibraryList, type LibraryPage, type ListSort } from './logic'
 import { ReorderGrid } from './ReorderGrid'
@@ -54,10 +56,9 @@ function Overview() {
 
   return (
     <>
-      <div className={s.head}>
-        <h1 className="page-title">Library</h1>
+      <PageHead title="Library" note={`${history.length.toLocaleString()} watched`}>
         <RefreshLibrary />
-      </div>
+      </PageHead>
       <Pages watched={history.length} />
       {empty ? (
         <StateView
@@ -73,31 +74,31 @@ function Overview() {
       ) : (
         <>
           {inProgress.length > 0 && (
-            <Section list="continue" count={inProgress.length}>
+            <LibrarySection list="continue" count={inProgress.length}>
               <ul className={s.stills}>
                 {inProgress.map((p) => (
                   <ContinueItem key={p.key} progress={p} />
                 ))}
               </ul>
-            </Section>
+            </LibrarySection>
           )}
           {watchlist.length > 0 && (
-            <Section list="watchlist" count={watchlist.length}>
+            <LibrarySection list="watchlist" count={watchlist.length}>
               <ul className={s.posters}>
                 {watchlist.slice(0, 14).map((e) => (
                   <PosterItem key={e.key} item={e.item} sizes="(max-width: 720px) 112px, 180px" />
                 ))}
               </ul>
-            </Section>
+            </LibrarySection>
           )}
           {favourites.length > 0 && (
-            <Section list="favourites" count={favourites.length}>
+            <LibrarySection list="favourites" count={favourites.length}>
               <ul className={s.posters}>
                 {favourites.slice(0, 14).map((e) => (
                   <PosterItem key={e.key} item={e.item} sizes="(max-width: 720px) 112px, 180px" />
                 ))}
               </ul>
-            </Section>
+            </LibrarySection>
           )}
           {history.length > 0 && <RecentHistory />}
         </>
@@ -166,19 +167,18 @@ function Pages({ watched }: { watched: number }) {
   ]
   return (
     <nav aria-label="Library pages">
-      <ul className={s.pages}>
-        {rows.map((r) => (
+      <ol className={s.pages}>
+        {rows.map((r, i) => (
           <li key={r.list}>
-            <Link to="/library" search={{ list: r.list }} className={s.pageLink}>
-              <span className={s.pageText}>
-                <span className={s.pageName}>{listTitles[r.list]}</span>
-                <span className={s.pageSub}>{r.subtitle}</span>
-              </span>
+            <Link to="/library" search={{ list: r.list }} className={`row ${s.pageLink}`}>
+              <span className={`num ${s.pageNumber}`}>{String(i + 1).padStart(2, '0')}</span>
+              <span className={s.pageName}>{listTitles[r.list]}</span>
+              <span className={`muted ${s.pageSub}`}>{r.subtitle}</span>
               <Icon name="chevronRight" size={16} strokeWidth={2.4} />
             </Link>
           </li>
         ))}
-      </ul>
+      </ol>
     </nav>
   )
 }
@@ -187,10 +187,7 @@ function Pages({ watched }: { watched: number }) {
 function ReadingPage({ page }: { page: LibraryPage }) {
   return (
     <>
-      <Link to="/library" className={s.back}>
-        <Icon name="chevronLeft" size={16} strokeWidth={2.6} /> Library
-      </Link>
-      <h1 className="page-title">{listTitles[page]}</h1>
+      <PageHead title={listTitles[page]} back={<BackLink />} />
       <Suspense fallback={<p className="muted" role="status">Loading…</p>}>
         {page === 'upcoming' ? <UpcomingPage /> : page === 'sports' ? <SportsPage /> : <StatsPage />}
       </Suspense>
@@ -198,21 +195,12 @@ function ReadingPage({ page }: { page: LibraryPage }) {
   )
 }
 
-/** A plain heading with its count and a link to the whole list, then the list's first items. */
-function Section({ list, count, children }: { list: 'continue' | 'watchlist' | 'favourites'; count: number; children: ReactNode }) {
+/** A ruled section with its count and a link to the whole list, then the list's first items. */
+function LibrarySection({ list, count, children }: { list: 'continue' | 'watchlist' | 'favourites'; count: number; children: ReactNode }) {
   return (
-    <section className={s.section} aria-labelledby={`lib-${list}`}>
-      <header className={s.sectionHead}>
-        <h2 id={`lib-${list}`} className={s.sectionTitle}>
-          {listTitles[list]}
-        </h2>
-        <span className={`${s.count} num`}>{count.toLocaleString()}</span>
-        <Link to="/library" search={{ list }} className={s.seeAll}>
-          See all
-        </Link>
-      </header>
+    <Section id={`lib-${list}`} title={listTitles[list]} count={count.toLocaleString()} end={<Link to="/library" search={{ list }}>See all</Link>}>
       {children}
-    </section>
+    </Section>
   )
 }
 
@@ -221,20 +209,13 @@ function RecentHistory() {
   const history = useLibrary((l) => l.history)
   const groups = groupHistory(history.slice(0, 6), Date.now())
   return (
-    <section className={`${s.section} ${s.history}`} aria-labelledby="lib-history">
-      <header className={s.sectionHead}>
-        <h2 id="lib-history" className={s.sectionTitle}>
-          {listTitles.history}
-        </h2>
-        <span className={`${s.count} num`}>{history.length.toLocaleString()}</span>
-        <Link to="/library" search={{ list: 'history' }} className={s.seeAll}>
-          See all
-        </Link>
-      </header>
-      <div className={s.historyColumn}>
-        {groups.map((g) => (
+    <Section id="lib-history" title={listTitles.history} count={history.length.toLocaleString()} end={<Link to="/library" search={{ list: 'history' }}>See all</Link>} className={s.history}>
+      <div className={s.bleed}>
+        {groups.map((g, i) => (
           <div key={g.label}>
-            <h3 className={s.dayHeading}>{g.label}</h3>
+            <h3 className={s.dayHeading} data-first={i === 0 || undefined}>
+              {g.label}
+            </h3>
             {g.entries.map((e) => (
               <div key={`${e.key}${e.watchedAt}`} className={s.recentRow}>
                 <HistoryItem entry={e} />
@@ -243,7 +224,7 @@ function RecentHistory() {
           </div>
         ))}
       </div>
-    </section>
+    </Section>
   )
 }
 
@@ -264,14 +245,11 @@ function FullList({ list, type, sort }: { list: Exclude<LibraryList, LibraryPage
   const navigate = useNavigate({ from: '/library' })
   const setFilter = (f: Filter) => void navigate({ search: (prev) => ({ ...prev, type: f === 'all' ? undefined : f }), replace: true, resetScroll: false })
   const setSort = (v: ListSort) => void navigate({ search: (prev) => ({ ...prev, sort: v === 'added' ? undefined : v }), replace: true, resetScroll: false })
-  const filter = <Segmented options={filters} value={type ?? 'all'} onChange={setFilter} label="Show" />
+  const filter = <Segmented className={s.filter} options={filters} value={type ?? 'all'} onChange={setFilter} label="Show" />
 
   return (
     <>
-      <Link to="/library" className={s.back}>
-        <Icon name="chevronLeft" size={16} strokeWidth={2.6} /> Library
-      </Link>
-      <h1 className="page-title">{listTitles[list]}</h1>
+      <PageHead title={listTitles[list]} back={<BackLink />} />
       {list === 'continue' ? (
         <ContinueList />
       ) : list === 'history' ? (
@@ -311,10 +289,10 @@ function Saved({ list, type, sort, filter, sortMenu }: { list: 'watchlist' | 'fa
     )
   return (
     <>
-      <div className={s.toolbar}>
+      <Toolbar>
         {filter}
         <span className={s.toolbarEnd}>
-          <span className="faint num">{titles(shown.length)}</span>
+          <span className="muted num">{titles(shown.length)}</span>
           {custom && !type && shown.length > 1 && (
             <button type="button" className="btn btn-secondary btn-compact" aria-pressed={arranging} onClick={() => setArranging(!arranging)}>
               {arranging ? 'Done' : 'Arrange'}
@@ -322,8 +300,8 @@ function Saved({ list, type, sort, filter, sortMenu }: { list: 'watchlist' | 'fa
           )}
           {sortMenu}
         </span>
-      </div>
-      {custom && type && <p className={`${s.hint} faint`}>Choose All to rearrange your watchlist.</p>}
+      </Toolbar>
+      {custom && type && <p className={`${s.hint} muted`}>Choose All to rearrange your watchlist.</p>}
       {!shown.length ? <FilteredEmpty type={type} /> : custom && !type ? <ReorderGrid entries={shown} arranging={arranging} /> : <PosterGrid items={shown.map((e) => e.item)} label={listTitles[list]} />}
     </>
   )
@@ -335,8 +313,8 @@ function History({ type, filter }: { type?: MediaType; filter: ReactNode }) {
   const shown = type ? history.filter((e) => e.item.type === type) : history
   const rows = historyRows(groupHistory(shown, Date.now()))
   return (
-    <div className={s.historyColumn}>
-      <div className={s.toolbar}>
+    <div>
+      <Toolbar>
         {filter}
         <span className={s.toolbarEnd}>
           <button
@@ -348,7 +326,7 @@ function History({ type, filter }: { type?: MediaType; filter: ReactNode }) {
             <Icon name="trash" size={15} /> Clear History
           </button>
         </span>
-      </div>
+      </Toolbar>
       {rows.length ? <HistoryList rows={rows} /> : <FilteredEmpty type={type} />}
     </div>
   )

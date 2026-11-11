@@ -26,7 +26,7 @@ export default function TrailerSheet({ videos, title, onClose }: { videos: Video
   }, [onClose])
 
   return (
-    <div className={s.backdrop} onClick={onClose} role="dialog" aria-modal="true" aria-label={`${title} trailer`}>
+    <div className={s.backdrop} data-theme="dark" onClick={onClose} role="dialog" aria-modal="true" aria-label={`${title} trailer`}>
       <div className={s.stage} onClick={(e) => e.stopPropagation()}>
         <div className={s.frame}>
           <iframe

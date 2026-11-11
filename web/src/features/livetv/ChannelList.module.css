@@ -1,11 +1,10 @@
-/* The channel list: one base-2 panel that scrolls inside the screen, rows divided by a hairline. */
+/* The channel list: ruled rows that scroll inside the screen and run edge to edge, a red condensed number at the
+   left of each, hover and focus in blue. */
 .scroller {
   height: 100%;
-  max-width: 960px;
+  margin-inline: calc(-1 * var(--page-inset));
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-radius: var(--radius-panel);
-  background: var(--base-2);
 }
 
 .row {
@@ -13,9 +12,8 @@
   inset: 0 0 auto;
   display: flex;
   align-items: stretch;
-  border-top: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
 }
-.row[data-first] { border-top-color: transparent; }
 
 .main {
   flex: 1;
@@ -23,44 +21,50 @@
   display: flex;
   align-items: center;
   gap: var(--space-m);
-  padding: 0 var(--space-xs) 0 var(--space-m);
+  padding: 0 var(--space-xs) 0 var(--page-inset);
   text-align: left;
-  transition: background-color var(--dur-state) ease;
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
 }
-@media (hover: hover) { .main:hover { background: var(--base-3); } }
-.main:focus-visible { outline-offset: -3px; }
+@media (hover: hover) { .main:hover { background: var(--blue); color: var(--onblue); } }
+.main:focus-visible { background: var(--blue); color: var(--onblue); outline-color: var(--onblue); outline-offset: -6px; }
+@media (hover: hover) { .main:hover .number, .main:hover .left, .main:hover .next, .main:hover .group { color: var(--onblue); } }
+.main:focus-visible .number, .main:focus-visible .left, .main:focus-visible .next, .main:focus-visible .group { color: var(--onblue); }
+
+.number { flex: 0 0 34px; font: 700 22px / 1 var(--font-cond); color: var(--red); }
 
 .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 
 .name { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.number { flex: none; font-size: var(--fs-caption); color: var(--ink-3); }
-.nameText { font: 600 var(--fs-small) / 1.3 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nameText { font: 700 20px / 1.15 var(--font-cond); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .now { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-s); min-width: 0; font-size: var(--fs-footnote); }
-.nowTitle { color: var(--paper); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.left { flex: none; font-size: var(--fs-caption); color: var(--ink-2); }
+.nowTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.left { flex: none; font-size: var(--fs-caption); color: var(--muted); }
 
-/* How far through the programme: a hairline of red, because it is live. */
-.bar { display: block; height: 2px; border-radius: var(--radius-hair); background: var(--base-4); overflow: hidden; }
+/* How far through the programme: a bordered bar with a red fill, because it is live. */
+.bar { display: block; height: 8px; border: 2px solid currentColor; }
 .bar > span { display: block; height: 100%; background: var(--red); }
+.main:hover .bar > span, .main:focus-visible .bar > span { background: var(--onblue); }
 
-.next, .group { font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.next, .group { font-size: var(--fs-caption); line-height: 1.3; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .star {
   flex: none;
   display: grid;
   place-items: center;
-  width: 52px;
-  color: var(--ink-2);
+  width: 56px;
+  border-left: var(--rule);
+  color: var(--fg);
   transition: color var(--dur-state) ease, background-color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
 }
-@media (hover: hover) { .star:hover { color: var(--paper); background: var(--base-3); } }
-.star[aria-pressed='true'] { color: var(--paper); }
-.star:focus-visible { outline-offset: -3px; }
+@media (hover: hover) { .star:hover { color: var(--onblue); background: var(--blue); } }
+.star[aria-pressed='true'] { background: var(--fg); color: var(--bg); }
+.star:focus-visible { outline-offset: -6px; }
 
 @media (max-width: 720px) {
-  .main { gap: var(--space-s); padding-left: var(--space-s); }
+  .main { gap: var(--space-s); }
+  .number { flex-basis: 26px; font-size: 18px; }
   .star { width: 48px; }
 }

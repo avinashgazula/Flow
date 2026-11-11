@@ -54,8 +54,8 @@ function watchLabel(el: HTMLElement) {
 const selectionKey = (x: Selection) => `${x.channel.id}@${x.programme.start}`
 
 /** The timeline guide: channels down the left, a sticky ruler of half hours along the top, a red line for
- *  now, and each programme as a block as long as it runs. The one on now is a lighter base with a red hairline
- *  for how far through it is; yellow is left for the focus ring.
+ *  now, and each programme as a ruled cell as long as it runs. The one on now is inverted, with a red line for how
+ *  far through it is; the one chosen has a blue ring.
  *  Rows are virtualised and the whole guide scrolls sideways through time; the channel column and the ruler
  *  stay put. Choosing a programme opens its details below, and Watch Now there (or the channel on the left)
  *  starts it. */
@@ -119,7 +119,7 @@ export function Guide({ channels, epg, now, onPlay }: { channels: Channel[]; epg
                     const from = Math.max(p.start, start)
                     const to = Math.min(p.end, start + guideHours * 3_600_000)
                     const x = ((from - start) / 60_000) * pointsPerMinute
-                    const width = Math.max(2, ((to - from) / 60_000) * pointsPerMinute - 4)
+                    const width = Math.max(2, ((to - from) / 60_000) * pointsPerMinute)
                     const live = isAiring(p, now)
                     const words = live ? afterNowLine(nowX - x, width) : width > 44 ? { offset: 10, room: width - 20 } : undefined
                     const chosen = selected !== undefined && selectionKey(selected) === `${channel.id}@${p.start}`
