@@ -36,6 +36,21 @@ enum CalendarExport {
         return Event(title: title, start: date, end: date.addingTimeInterval(3600), isAllDay: false, notes: notes, url: url)
     }
 
+    /// Every upcoming entry as one `.ics` file in the temp directory, ready for a ShareLink. The UIDs come from each
+    /// entry's id, so sharing it again updates the events in Calendar instead of repeating them. Nil when nothing has a date.
+    static func icsFile(for entries: [CalendarEntry]) -> URL? {
+        let events = entries.map { entry -> ICalendarEvent in
+            let e = event(item: entry.item, episode: entry.episode, date: entry.date)
+            let day = ICalendar.bareDay(entry.date)
+            return ICalendarEvent(uid: ICalendar.uid(for: entry.id), title: e.title, day: day, start: day == nil ? e.start : nil,
+                                  end: day == nil ? e.end : nil, notes: e.notes, url: e.url)
+        }
+        guard !events.isEmpty else { return nil }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Flow Upcoming.ics")
+        do { try Data(ICalendar.build(events).utf8).write(to: url, options: .atomic) } catch { return nil }
+        return url
+    }
+
     private enum Outcome { case added, denied, failed }
 
     @MainActor
