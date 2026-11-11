@@ -1,5 +1,5 @@
-/* The seek tooltip: a small rounded picture of where you would land above the progress bar, the time under it and the
-   chapter's name when there is one. A dark card so the words read over any frame. No blur. */
+/* The seek tooltip: a small square picture of where you would land above the progress bar, the time under it and the
+   chapter's name when there is one. An ink card with a 3px paper rule so the words read over any frame. No blur. */
 
 .preview {
   --p-width: 200px;
@@ -17,21 +17,20 @@
   opacity: 1;
   translate: 0 0;
 }
-/* Only the time: a pill of its own. */
+/* Only the time: a small box of its own. */
 .preview[data-mode='time'] { width: max-content; min-width: 64px; }
 
 .card {
   overflow: hidden;
   padding: 4px;
-  border-radius: 12px;
-  background: rgb(18 18 18 / 0.92);
+  border: 3px solid var(--fg);
+  background: var(--overlay);
 }
-.preview[data-mode='time'] .card { padding: 0; border-radius: 999px; }
+.preview[data-mode='time'] .card { padding: 0; }
 
 .frame {
   position: relative;
   overflow: hidden;
-  border-radius: 8px;
   aspect-ratio: var(--preview-aspect, 1.7778);
   background: #000;
 }
@@ -58,7 +57,7 @@
 }
 .preview[data-mode='time'] .caption { padding: 6px 14px; }
 .time {
-  font: 600 14px / 1.2 var(--font);
+  font: 600 14px / 1.2 var(--font-mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }

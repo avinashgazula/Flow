@@ -1,23 +1,25 @@
-/* Settings, as grouped lists: base-2 groups on the ground, a rule between rows, a sentence-case footer under
-   each group. Controls are the standard ones; yellow appears only on a switch that is on, and on focus. */
+/* Settings, in the Index system: a ruled column of sections beside ruled groups. A group is a block with a 3px rule
+   above and below and 1px ink lines between its rows, no fills. Labels are red mono capitals, row labels are mono,
+   footers are muted mono sentences. Switches are square (ink off, blue on); the focus ring is blue. */
 .layout {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  gap: var(--space-l) var(--space-xl);
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--space-l) var(--space-xxl);
   align-items: start;
-  max-width: 1040px;
+  max-width: 1240px;
 }
 
-/* Search sits over the sections' column; the anchors run beside both it and the sections. */
-.search { position: relative; grid-column: 2; grid-row: 1; }
-.searchInput.searchInput { height: 46px; padding: 0 48px 0 44px; font-size: var(--fs-body); }
+/* Search is the reference's big bordered input, across the top of both columns. */
+.search { position: relative; grid-column: 1 / -1; grid-row: 1; }
+.searchInput.searchInput { height: 64px; padding: 0 64px 0 56px; font: 600 clamp(22px, 3vw, 32px) / 1.1 var(--font-cond); }
+.searchInput::placeholder { color: var(--faint); }
 .searchInput::-webkit-search-cancel-button, .searchInput::-webkit-search-decoration { appearance: none; }
-.searchIcon { position: absolute; left: 14px; top: 14px; color: var(--ink-2); pointer-events: none; }
-.searchClear { position: absolute; right: 6px; top: 5px; }
+.searchIcon { position: absolute; left: 18px; top: 22px; color: var(--fg); pointer-events: none; }
+.searchClear { position: absolute; right: 8px; top: 10px; }
 .content, .results { grid-column: 2; grid-row: 2; }
 .results { display: flex; flex-direction: column; gap: var(--space-l); min-width: 0; }
 .content[hidden] { display: none; }
-/* A result is a row of the list it came from: label over detail. The current one lifts to base-3, never yellow. */
+/* A result is a row of the list it came from: label over detail. The current one inverts to blue. */
 .hit {
   display: flex;
   flex-direction: column;
@@ -26,40 +28,49 @@
   gap: 2px;
   width: 100%;
   min-height: 56px;
-  padding: 10px var(--space-m);
+  padding: 10px var(--space-s);
   border: 0;
   background: transparent;
-  color: var(--paper);
+  color: var(--fg);
   text-align: left;
   cursor: pointer;
 }
-.hit[aria-selected='true'] { background: var(--base-3); }
+.hit[aria-selected='true'] { background: var(--blue); color: var(--onblue); }
+.hit[aria-selected='true'] .rowDetail { color: var(--onblue); }
 .hit .rowDetail { overflow-wrap: anywhere; }
-/* The row a result led to: a quiet paper outline inside its edge, which fades after a moment. */
-[data-found] { box-shadow: inset 0 0 0 2px var(--ink-2); animation: found 2.4s var(--ease-out) forwards; }
-@keyframes found { 0%, 70% { box-shadow: inset 0 0 0 2px var(--ink-2); } 100% { box-shadow: inset 0 0 0 2px transparent; } }
+/* The row a result led to: a blue outline inside its edge, which fades after a moment. */
+[data-found] { box-shadow: inset 0 0 0 3px var(--blue); animation: found 2.4s var(--ease-out) forwards; }
+@keyframes found { 0%, 70% { box-shadow: inset 0 0 0 3px var(--blue); } 100% { box-shadow: inset 0 0 0 3px transparent; } }
 @media (prefers-reduced-motion: reduce) { [data-found] { animation: none; } }
 
+/* The sections: a ruled column. Current is inverted ink, hover is blue. On a phone it becomes a wrapping grid of cells. */
 .toc {
   grid-column: 1;
-  grid-row: 1 / span 2;
+  grid-row: 2;
   position: sticky;
   top: calc(var(--nav-height) + var(--space-l));
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  border-top: var(--rule);
 }
 .toc a {
-  padding: 9px 14px;
-  border-radius: var(--radius-control);
-  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 var(--space-s);
+  border-bottom: 1px solid var(--hair);
+  color: var(--fg);
   font: 600 var(--fs-small) / 1.2 var(--font);
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
 }
-@media (hover: hover) { .toc a:hover { color: var(--paper); background: var(--base-2); } }
-.toc a[aria-current='true'] { color: var(--paper); background: var(--base-3); }
+.toc a:last-child { border-bottom: var(--rule); }
+@media (hover: hover) { .toc a:hover { background: var(--blue); color: var(--onblue); } }
+.toc a[aria-current='true'] { background: var(--fg); color: var(--bg); }
+.toc a:focus-visible { background: var(--blue); color: var(--onblue); outline-offset: -3px; outline-color: var(--onblue); }
 
-.content { display: flex; flex-direction: column; gap: var(--section); min-width: 0; }
+.content { display: flex; flex-direction: column; gap: var(--space-xxl); min-width: 0; }
 
 .section {
   scroll-margin-top: calc(var(--nav-height) + var(--space-l));
@@ -69,17 +80,17 @@
   /* No content-visibility here: these sections are far taller than any estimate, and Safari stalls or jumps
      the page while it swaps an estimate for the real height. The page is short enough to lay out at once. */
 }
-.sectionTitle { font: 700 var(--fs-title3) / 1.2 var(--font-display); letter-spacing: -0.015em; }
+.sectionTitle { font: 600 14px / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); }
 
 .groupWrap { display: flex; flex-direction: column; gap: var(--space-xs); }
-.groupTitle { padding: 0 var(--space-xxs); font: 600 var(--fs-footnote) / 1.2 var(--font); color: var(--ink-2); }
-.group { border-radius: var(--radius-panel); background: var(--base-2); overflow: hidden; }
+.groupTitle { font: 600 var(--fs-footnote) / 1.2 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg); }
+.group { border-top: var(--rule); border-bottom: var(--rule); }
 .group > * + * { border-top: 1px solid var(--hair); }
-.footer { padding: 0 var(--space-xxs); font-size: var(--fs-footnote); line-height: 1.45; color: var(--ink-3); text-wrap: pretty; max-width: var(--measure); }
-.footer a { color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
-@media (hover: hover) { .footer a:hover { color: var(--paper); text-decoration-color: var(--paper); } }
+.footer { font: 400 var(--fs-footnote) / 1.5 var(--font); color: var(--muted); text-wrap: pretty; max-width: var(--measure); }
+.footer a { color: var(--fg); font-weight: 600; text-decoration: underline dotted var(--red); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+@media (hover: hover) { .footer a:hover { color: var(--blue); } }
 /* A literal address or host name stays in the interface face, a step heavier: the sync key is the one monospace. */
-.footer code, .hint code { font: inherit; font-weight: 500; color: var(--ink-2); overflow-wrap: anywhere; }
+.footer code, .hint code { font: inherit; font-weight: 600; color: var(--fg); overflow-wrap: anywhere; }
 
 /* A control too wide to sit beside its words drops under them, whole, rather than squeezing the label to a sliver:
    the text asks for a little room (9rem) and the control for its own width, and whatever doesn't fit wraps. */
@@ -90,13 +101,13 @@
   justify-content: space-between;
   gap: var(--space-xs) var(--space-m);
   min-height: 56px;
-  padding: 10px var(--space-m);
+  padding: 10px var(--space-s);
 }
 .rowText { display: flex; flex-direction: column; flex: 1 1 9rem; gap: 2px; min-width: 0; }
-.rowLabel { font: 500 var(--fs-body) / 1.3 var(--font); }
-.rowDetail { font-size: var(--fs-footnote); color: var(--ink-2); }
-.rowControl { display: inline-flex; align-items: center; gap: var(--space-xs); flex: none; max-width: 100%; margin-left: auto; color: var(--ink-2); }
-.rowControl a:not(:global(.btn)) { color: var(--paper); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+.rowLabel { font: 600 14px / 1.3 var(--font); }
+.rowDetail { font: 400 var(--fs-footnote) / 1.45 var(--font); color: var(--muted); }
+.rowControl { display: inline-flex; align-items: center; gap: var(--space-xs); flex: none; max-width: 100%; margin-left: auto; color: var(--muted); }
+.rowControl a:not(:global(.btn)) { color: var(--blue); text-decoration: underline; text-underline-offset: 0.2em; }
 /* A lone text field has no width of its own to speak of: it sits beside its label at a set width (20rem), so a
    column of keys reads as label, field, label, field. On a phone it takes the whole line under its label, so what
    is typed in it has room. */
@@ -118,42 +129,40 @@
   .rowControl:has(> .select + button) > .select { flex: 1; width: auto; max-width: none; }
 }
 
-/* The switch: a base-4 track with a paper knob; on, the track is film-stock yellow and the knob dark.
-   The hit area is larger than the drawing. */
+/* The switch: a square ink track with a paper knob; on, the track is blue. The hit area is larger than the
+   drawing (44px tall). */
 .switch {
   position: relative;
   flex: none;
-  width: 48px;
+  width: 52px;
   height: 28px;
-  border-radius: var(--radius-full);
-  background: var(--base-4);
-  transition: background-color var(--dur-state) ease;
+  border: 3px solid var(--fg);
+  background: var(--fg);
+  transition: background-color var(--dur-state) ease, border-color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
 }
-.switch::after { content: ''; position: absolute; inset: -8px -4px; }
-.switch[aria-checked='true'] { background: var(--stock); }
-.switch[aria-checked='true']:focus-visible { outline-color: var(--paper); }
+.switch::after { content: ''; position: absolute; inset: -9px -4px; }
+.switch[aria-checked='true'] { background: var(--blue); border-color: var(--blue); }
 .switch[disabled] { opacity: 0.4; pointer-events: none; }
 .knob {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--paper);
-  transition: transform var(--dur-state) var(--ease-out), background-color var(--dur-state) ease;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--bg);
+  transition: transform var(--dur-state) var(--ease-out);
 }
-.switch[aria-checked='true'] .knob { transform: translateX(20px); background: var(--on-stock); }
+.switch[aria-checked='true'] .knob { transform: translateX(24px); background: var(--onblue); }
 
 .select {
   width: auto;
   max-width: 100%;
   min-width: 150px;
-  height: 38px;
-  padding: 0 12px;
-  color: var(--paper);
-  color-scheme: dark;
+  min-height: 40px;
+  height: 40px;
+  padding: 0 10px;
+  font: 600 var(--fs-small) / 1.2 var(--font);
   cursor: pointer;
 }
 .select:disabled { opacity: 0.4; cursor: default; }
@@ -161,7 +170,7 @@
 /* A slider with its value beside it, in a row's control. The value has a fixed width so the track doesn't
    change length as the number does. */
 .slide { display: inline-flex; align-items: center; gap: var(--space-s); width: min(260px, 52vw); }
-.slideValue { flex: none; width: 52px; text-align: right; font: 500 var(--fs-small) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.slideValue { flex: none; width: 52px; text-align: right; font: 600 var(--fs-small) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--muted); }
 /* On a phone a slider is wide for its row, so it takes the line under its label, whole and left-aligned. */
 @media (max-width: 720px) {
   .rowControl:has(> .slide) { flex: 1 1 100%; margin-left: 0; }
@@ -171,24 +180,25 @@
   .slide { width: 100%; }
 }
 
-/* Destructive actions read red; the armed state is a solid red button beside Cancel. */
-.danger { color: var(--red); }
-.dangerSolid { background: var(--red); color: var(--on-stock); }
-@media (hover: hover) { .dangerSolid:hover { background: var(--red); filter: brightness(1.08); } }
+/* Destructive actions read red and fill red on hover; the armed state is a solid red button beside Cancel. */
+.danger { color: var(--red); border-color: var(--red); }
+@media (hover: hover) { .danger.danger:hover { background: var(--red); border-color: var(--red); color: var(--onred); } }
+.dangerSolid.dangerSolid { background: var(--red); border-color: var(--red); color: var(--onred); }
+@media (hover: hover) { .dangerSolid.dangerSolid:hover { background: var(--fg); border-color: var(--fg); color: var(--bg); } }
 .confirm { display: inline-flex; gap: var(--space-xs); }
 
-.note { font-size: var(--fs-footnote); line-height: 1.4; color: var(--ink-2); text-wrap: pretty; }
-.note[data-tone='ok'] { color: var(--paper); }
+.note { font: 400 var(--fs-footnote) / 1.45 var(--font); color: var(--muted); text-wrap: pretty; }
+.note[data-tone='ok'] { color: var(--fg); }
 .note[data-tone='error'] { color: var(--red); }
 .note[data-tone='warning'] { color: var(--warn); }
-.note a { text-decoration: underline; text-underline-offset: 0.2em; }
+.note a { color: var(--blue); text-decoration: underline; text-underline-offset: 0.2em; }
 /* A word inside a row's detail that acts, like "Change": reads as part of the sentence. */
-.inlineLink { padding: 0; border: 0; background: none; font: inherit; color: var(--paper); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; cursor: pointer; }
-@media (hover: hover) { .inlineLink:hover { text-decoration-color: var(--paper); } }
+.inlineLink { padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--fg); text-decoration: underline dotted var(--red); text-decoration-thickness: 2px; text-underline-offset: 4px; cursor: pointer; }
+@media (hover: hover) { .inlineLink:hover { color: var(--blue); } }
 /* The padding grows the tap area to 32px tall without moving the word. */
 .inlineLink { padding: 8px 6px; margin: -8px -6px; }
 /* A host name on a line of its own, so a phone breaks the sentence before it rather than at its hyphens. */
-.host { display: inline-block; overflow-wrap: anywhere; font-weight: 500; color: var(--ink-2); }
+.host { display: inline-block; overflow-wrap: anywhere; font-weight: 600; color: var(--fg); }
 
 /* An add-on or server: icon, name and detail, then its controls. */
 .item {
@@ -196,64 +206,62 @@
   grid-template-columns: 40px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--space-s) var(--space-m);
-  padding: var(--space-s) var(--space-m);
+  padding: var(--space-s);
 }
 .logo {
   display: grid;
   place-items: center;
   width: 40px;
   height: 40px;
-  border-radius: var(--radius-art);
+  border: 2px solid var(--fg);
   object-fit: contain;
-  background: var(--base-3);
-  color: var(--ink-2);
+  background: var(--bg);
+  color: var(--fg);
 }
 img.logo { padding: 4px; }
 .itemText { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.itemTitle { font: 600 var(--fs-body) / 1.25 var(--font); overflow-wrap: anywhere; }
-.itemVersion { margin-left: 8px; font: 500 var(--fs-caption) / 1 var(--font); color: var(--ink-3); }
-.itemDetail { font-size: var(--fs-footnote); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.itemTitle { font: 700 17px / 1.2 var(--font-cond); overflow-wrap: anywhere; }
+.itemVersion { margin-left: 8px; font: 400 var(--fs-caption) / 1 var(--font); color: var(--muted); }
+.itemDetail { font-size: var(--fs-footnote); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .itemActions { display: inline-flex; align-items: center; gap: var(--space-xs); }
 .itemRemove { display: inline-flex; }
 
-.inline { display: flex; gap: var(--space-s); padding: var(--space-s) var(--space-m); }
-.inline .field { flex: 1; min-width: 0; height: 40px; background: var(--base-3); }
-.pad { padding: var(--space-s) var(--space-m); }
+.inline { display: flex; gap: var(--space-s); padding: var(--space-s); }
+.inline .field { flex: 1; min-width: 0; height: 44px; }
+.pad { padding: var(--space-s); }
 /* A group's own Save button, in a row of its own under the fields. */
-.saveRow { display: flex; justify-content: flex-end; padding: var(--space-s) var(--space-m); }
-/* One rule for Save: a yellow compact button at the trailing end, beside its field or under its fields, and the
+.saveRow { display: flex; justify-content: flex-end; padding: var(--space-s); }
+/* One rule for Save: a primary compact button at the trailing end, beside its field or under its fields, and the
    width of the group on a phone (see .inline button). */
 @media (max-width: 560px) { .saveRow button { flex: 1; } }
 .inline + .pad { margin-top: -4px; padding-top: 0; }
 /* An address shown as data (the Redirect URI): the interface face at caption size, wrapping anywhere so a long one never pushes its row wide, and selected whole on a click. */
 .whole { white-space: nowrap; }
-.address { font: var(--fs-caption) / 1.45 var(--font); color: var(--ink-2); overflow-wrap: anywhere; user-select: all; }
+.address { font: var(--fs-caption) / 1.45 var(--font); color: var(--muted); overflow-wrap: anywhere; user-select: all; }
 
-.form { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-m); }
-.fieldLabel { margin-top: var(--space-xs); font: 600 var(--fs-caption) / 1.2 var(--font); color: var(--ink-2); }
+.form { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-s); }
+.fieldLabel { margin-top: var(--space-xs); font: 600 var(--fs-caption) / 1.2 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg); }
 .fieldLabel:first-child { margin-top: 0; }
-.form .field { height: 42px; }
+.form .field { height: 44px; }
 .pending { min-height: 12rem; }
-.hint { font-size: var(--fs-footnote); color: var(--ink-2); line-height: 1.45; text-wrap: pretty; }
+.hint { font-size: var(--fs-footnote); color: var(--muted); line-height: 1.5; text-wrap: pretty; }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-s); margin-top: var(--space-xs); }
 .pad .segmented { margin-top: var(--space-xs); }
-.group > .pad:first-child { padding-top: var(--space-m); }
+.group > .pad:first-child { padding-top: var(--space-s); }
 
 .code {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
-  padding: var(--space-m);
-  border-radius: var(--radius-control);
-  background: var(--base-3);
+  padding: var(--space-s);
   font-size: var(--fs-footnote);
-  color: var(--ink-2);
+  color: var(--muted);
 }
-.codeValue { font: 700 var(--fs-title2) / 1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.18em; color: var(--paper); }
+.codeValue { font: 700 var(--fs-title2) / 1 var(--font-mono); letter-spacing: 0.18em; color: var(--fg); }
 
 /* A tab in the Tab Order list: its icon beside its name, in the colour of the text. */
 .tabName { display: inline-flex; align-items: center; gap: var(--space-s); }
-.tabName svg { flex: none; color: var(--ink-2); }
+.tabName svg { flex: none; color: var(--fg); }
 
 
 .choice {
@@ -267,30 +275,24 @@ img.logo { padding: 4px; }
 @media (max-width: 860px) {
   .layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-m); }
   .search, .toc, .content, .results { grid-column: 1; grid-row: auto; }
-  /* On a phone the anchors are a scrolling strip, pinned under the status bar on a solid ground. */
+  .content { gap: var(--space-xl); }
+  /* On a phone the sections are a ruled, wrapping grid of cells (cells share borders), not a sideways strip. */
   .toc {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    flex-direction: row;
-    gap: var(--space-xs);
-    overflow-x: auto;
-    margin: 0 calc(var(--gutter) * -1);
-    padding: var(--space-xs) var(--gutter);
-    background: var(--base);
-    scrollbar-width: none;
-    /* A sideways swipe on the strip stays in the strip; an upward one still scrolls the page. */
-    overscroll-behavior-x: contain;
-    touch-action: pan-x pan-y;
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border: var(--rule);
+    border-right-width: 0;
+    border-bottom-width: 0;
   }
-  .toc::-webkit-scrollbar { display: none; }
-  .toc a { position: relative; flex: none; padding: 8px 14px; }
-  /* 34px to look at, 44px to hit. */
-  @media (pointer: coarse) { .toc a::after { content: ''; position: absolute; inset: -5px 0; } }
+  .toc a { border-right: 3px solid var(--fg); border-bottom: 3px solid var(--fg); }
+  /* Thirteen sections: the last cell takes the whole last row rather than leave a hole beside it. */
+  .toc a:last-child { grid-column: 1 / -1; border-bottom: 3px solid var(--fg); }
   .section { scroll-margin-top: 64px; }
 }
 
 @media (max-width: 560px) {
+  .toc { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .item { grid-template-columns: 40px minmax(0, 1fr); }
   .itemActions, .itemRemove { grid-column: 2; }
   .itemRemove { margin-top: -4px; }
@@ -300,16 +302,16 @@ img.logo { padding: 4px; }
   .inline button { flex: 1; }
 }
 
-/* Flow Sync: the pairing link, its QR code and the key. The code sits on a paper tile, because a scanner
-   needs dark modules on a light ground. */
-.pairing { display: flex; flex-direction: column; gap: var(--space-s); padding: var(--space-m); background: var(--base); }
+/* Flow Sync: the pairing link, its QR code and the key. The code keeps a white tile with black modules in both
+   themes (the one hard-coded pair here), because a scanner needs dark modules on a light ground. */
+.pairing { display: flex; flex-direction: column; gap: var(--space-s); padding: var(--space-s); }
 .linkRow { display: flex; gap: var(--space-s); }
-.linkRow .field { flex: 1; min-width: 0; height: 40px; font-size: var(--fs-footnote); text-overflow: ellipsis; }
+.linkRow .field { flex: 1; min-width: 0; height: 44px; font-size: var(--fs-footnote); text-overflow: ellipsis; }
 .pairingBody { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-m) var(--space-l); }
-.qr { flex: none; width: 184px; height: 184px; padding: 6px; border-radius: var(--radius-control); background: var(--paper); }
+.qr { flex: none; width: 184px; height: 184px; padding: 6px; border: 3px solid var(--fg); background: #ffffff; }
 /* A whole setup is a denser code than a pairing link: it gets the room a scanner needs. */
 .qrLarge { width: min(100%, 320px); height: auto; aspect-ratio: 1; box-sizing: border-box; }
-.qr svg { display: block; width: 100%; height: 100%; fill: var(--base); }
+.qr svg { display: block; width: 100%; height: 100%; fill: #0a0a0a; }
 .keyBlock { display: flex; flex-direction: column; gap: var(--space-xs); flex: 1 1 200px; min-width: 0; }
 .keyBlock .codeValue { font-size: var(--fs-title3); letter-spacing: 0.1em; overflow-wrap: anywhere; line-height: 1.3; }
 
@@ -324,10 +326,10 @@ img.logo { padding: 4px; }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-m); }
 .pair .select { width: 100%; max-width: 100%; }
-.form .select { width: 100%; max-width: 100%; height: 42px; }
+.form .select { width: 100%; max-width: 100%; height: 44px; }
 .shelfPreview { display: flex; gap: var(--space-xs); min-height: 90px; overflow-x: auto; scrollbar-width: none; }
-.shelfPreview img { flex: none; width: 60px; height: 90px; border-radius: var(--radius-art); background: var(--base-3); object-fit: cover; }
-.json { height: auto; min-height: 160px; padding: var(--space-s) var(--space-m); font: 400 var(--fs-footnote) / 1.5 var(--font); white-space: pre; resize: vertical; overflow: auto; }
+.shelfPreview img { flex: none; width: 60px; height: 90px; border: 2px solid var(--fg); background: var(--tint-2); object-fit: cover; }
+.json { height: auto; min-height: 160px; padding: var(--space-s); font: 400 var(--fs-footnote) / 1.5 var(--font); white-space: pre; resize: vertical; overflow: auto; }
 @media (max-width: 560px) { .pair { grid-template-columns: minmax(0, 1fr); } }
-/* Source Appearance preview: the picker's own row on the group's surface, not interactive. */
+/* Source Appearance preview: the picker's own row in the group, not interactive. */
 .preview { padding: 0 var(--space-xs) var(--space-xs); pointer-events: none; }

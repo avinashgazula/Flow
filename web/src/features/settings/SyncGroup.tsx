@@ -335,7 +335,7 @@ export function SyncGroup() {
             )
           }
         >
-          {/* One yellow action at a time: while the paste form is open, Join is the next step. */}
+          {/* One primary action at a time: while the paste form is open, Join is the next step. */}
           <button type="button" className={`btn ${joining ? 'btn-secondary' : 'btn-primary'} btn-compact`} onClick={() => void start()} disabled={busy !== undefined}>
             {busy === 'on' ? 'Turning On…' : 'Turn On Sync'}
           </button>

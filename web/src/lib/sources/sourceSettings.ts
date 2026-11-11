@@ -50,8 +50,8 @@ export const titleDisplays: { value: SourceTitleDisplay; label: string }[] = [
   { value: 'addonName', label: 'Add-on Text' },
 ]
 
-/** The apps' badge packs are Colored, Monochrome, Minimal and None. Flow Film Stock prints formats as
- *  edge print in one ink, so Colored and Monochrome are the same thing here: `all`. */
+/** The apps' badge packs are Colored, Monochrome, Minimal and None. Flow prints formats as
+ *  mono text in one ink, so Colored and Monochrome are the same thing here: `all`. */
 export type BadgeSet = 'all' | 'minimal' | 'none'
 export const badgeSets: { value: BadgeSet; label: string }[] = [
   { value: 'all', label: 'All Formats' },

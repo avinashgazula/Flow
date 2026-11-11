@@ -1,7 +1,8 @@
 /* The live player: black, the whole window, the picture edge to edge. The same control language as the film player
    (Player.module.css and Controls.module.css): white line icons on the picture over a black gradient, one row of controls
-   along the bottom with what is on above it. Panels sit on the base at 94% with a hairline, no blur. There is no progress
-   bar to drag, because there is nothing to seek in: the line above the row is how far through the programme it is.
+   along the bottom with what is on above it. The root is always dark; panels are ink at 94% with a 3px paper rule,
+   square, no blur. There is no progress bar to drag, because there is nothing to seek in: the red line above the row
+   is how far through the programme it is.
    The same custom properties as the film player (--margin, --panel, --over-video) are set here. */
 .root {
   --inset-top: env(safe-area-inset-top, 0px);
@@ -9,7 +10,7 @@
   --inset-bottom: env(safe-area-inset-bottom, 0px);
   --inset-left: env(safe-area-inset-left, 0px);
   --margin: 28px;
-  --panel: color-mix(in srgb, var(--base-2) 94%, transparent);
+  --panel: var(--overlay);
   --over-video: rgb(0 0 0 / 0.45);
   position: fixed;
   inset: 0;
@@ -51,11 +52,11 @@
 
 .centre { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; }
 .centre > * { pointer-events: auto; }
-.bigPlay { width: 72px; height: 72px; display: grid; place-items: center; border-radius: var(--radius-full); background: var(--over-video); color: var(--paper); transition: transform var(--dur-state) var(--ease-out); }
-.bigPlay:active { transform: scale(0.94); }
+.bigPlay { width: 72px; height: 72px; display: grid; place-items: center; border: 3px solid var(--fg); background: var(--over-video); color: var(--paper); transition: background-color var(--dur-state) ease, color var(--dur-state) ease; }
+.bigPlay:active { background: var(--blue); border-color: var(--blue); color: var(--onblue); }
 .bigPlay svg { width: 30px; height: 30px; }
-/* Buffering: a ring in paper that turns, because the stream is moving and not yet showing. */
-.buffering { width: 40px; height: 40px; border-radius: var(--radius-full); border: 3px solid color-mix(in srgb, var(--paper) 25%, transparent); border-top-color: var(--paper); animation: turn 0.9s linear infinite; }
+/* Buffering: a ring in paper that turns (the one round thing), because the stream is moving and not yet showing. */
+.buffering { width: 40px; height: 40px; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--paper) 25%, transparent); border-top-color: var(--paper); animation: turn 0.9s linear infinite; }
 @keyframes turn { to { transform: rotate(360deg); } }
 
 /* The chrome: Guide at the top left, what is on and the control row along the bottom, a black gradient behind each. */
@@ -87,26 +88,26 @@
   gap: 2px;
   height: 44px;
   padding: 0 14px 0 8px;
-  border-radius: var(--radius-full);
   color: var(--paper);
   font: 600 var(--fs-small) / 1 var(--font);
-  transition: background-color var(--dur-state) ease;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-@media (hover: hover) { .back:hover { background: rgb(255 255 255 / 0.16); } }
+@media (hover: hover) { .back:hover { background: var(--blue); color: var(--onblue); } }
 .iconButton {
   display: grid;
   place-items: center;
   flex: none;
   width: 44px;
   height: 44px;
-  border-radius: 50%;
   color: var(--paper);
-  transition: background-color var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
 }
-@media (hover: hover) { .iconButton:hover { background: rgb(255 255 255 / 0.16); } }
-.iconButton:active { transform: scale(0.94); background: rgb(255 255 255 / 0.24); }
-.iconButton[aria-pressed='true'] { background: rgb(255 255 255 / 0.2); }
+@media (hover: hover) { .iconButton:hover { background: var(--blue); color: var(--onblue); } }
+.iconButton:active { background: var(--blue); color: var(--onblue); }
+.iconButton[aria-pressed='true'] { background: var(--fg); color: var(--bg); }
 
 .bottom { display: flex; flex-direction: column; gap: var(--space-xs); }
 /* What is on: the channel, the programme, how far through it is, and what is next. Plain text on the gradient. */
@@ -114,10 +115,10 @@
 .cardHead { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; }
 .number { font: 600 var(--fs-footnote) / 1 var(--font); color: var(--ink-2); }
 .channelName { font: 600 var(--fs-footnote) / 1.2 var(--font); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.programme { font: 600 var(--fs-headline) / 1.25 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.programme { font: 700 var(--fs-title3) / 1.15 var(--font-cond); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .times { display: flex; align-items: center; gap: var(--space-s); font-size: var(--fs-footnote); color: var(--paper); }
-.progress { flex: 1; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--paper) 25%, transparent); overflow: hidden; }
-.progress > span { display: block; height: 100%; background: var(--paper); }
+.progress { flex: 1; height: 4px; background: color-mix(in srgb, var(--paper) 25%, transparent); overflow: hidden; }
+.progress > span { display: block; height: 100%; background: var(--red); }
 .next { font-size: var(--fs-footnote); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .noGuide { font-size: var(--fs-footnote); color: var(--ink-2); }
 
@@ -125,8 +126,8 @@
 .left { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .right { display: flex; align-items: center; gap: 2px; flex: none; }
 /* Live, as a red dot and the word: there is no time to show. */
-.livePill { display: inline-flex; align-items: center; gap: 8px; margin-left: 12px; font: 600 var(--fs-footnote) / 1 var(--font); letter-spacing: 0.02em; }
-.liveDot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+.livePill { display: inline-flex; align-items: center; gap: 8px; margin-left: 12px; font: 600 var(--fs-footnote) / 1 var(--font); text-transform: uppercase; letter-spacing: 0.12em; }
+.liveDot { width: 8px; height: 8px; background: var(--red); }
 
 /* The channel list: right side on a wide window, the bottom of a phone's. */
 .panel {
@@ -141,13 +142,13 @@
   padding-top: var(--inset-top);
   padding-right: var(--inset-right);
   background: var(--panel);
-  box-shadow: -1px 0 0 var(--hair);
+  border-left: 3px solid var(--fg);
   animation: slide var(--dur-move) var(--ease-out);
 }
 @keyframes rise { from { opacity: 0; transform: translateY(16px); } }
 @keyframes slide { from { opacity: 0; transform: translateX(16px); } }
 .panelHead { display: flex; align-items: center; justify-content: space-between; padding: var(--space-s) var(--space-s) var(--space-xs) var(--space-m); }
-.panelTitle { font: 600 var(--fs-headline) / 1.25 var(--font); }
+.panelTitle { font: 700 var(--fs-headline) / 1.2 var(--font-cond); text-transform: uppercase; letter-spacing: 0.02em; }
 .panelList { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: var(--inset-bottom); }
 .panelItem { position: absolute; inset: 0 0 auto; }
 .panelRow {
@@ -160,11 +161,12 @@
   text-align: left;
   transition: background-color var(--dur-state) ease;
 }
-@media (hover: hover) { .panelRow:hover { background: var(--base-3); } }
-.panelRow[aria-current='true'] { background: var(--base-4); }
+@media (hover: hover) { .panelRow:hover { background: var(--blue); color: var(--onblue); } .panelRow:hover :is(.panelNumber, .panelNow) { color: var(--onblue); } }
+.panelRow[aria-current='true'] { background: var(--fg); color: var(--bg); }
+.panelRow[aria-current='true'] :is(.panelNumber, .panelNow) { color: var(--bg); }
 .panelRow:focus-visible { outline-offset: -3px; }
 .panelText { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.panelName { display: flex; align-items: baseline; gap: 8px; font: 600 var(--fs-small) / 1.25 var(--font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panelName { display: flex; align-items: baseline; gap: 8px; font: 700 var(--fs-body) / 1.2 var(--font-cond); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panelNumber { font-size: var(--fs-caption); color: var(--ink-2); }
 .panelNow { font-size: var(--fs-footnote); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -183,14 +185,14 @@
   text-align: center;
 }
 .failedIcon { color: var(--red); }
-.failedTitle { font: 700 var(--fs-title3) / 1.2 var(--font-display); letter-spacing: -0.015em; text-wrap: balance; }
+.failedTitle { font: 700 var(--fs-title2) / 1.1 var(--font-cond); text-transform: uppercase; text-wrap: balance; }
 .failedMessage { max-width: 56ch; font-size: var(--fs-small); line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
 .failedActions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xs); margin-top: var(--space-xs); }
 .failedDetail { font-size: var(--fs-caption); color: var(--ink-3); }
 
 @media (max-width: 720px) {
-  .programme { font-size: var(--fs-body); }
-  .panel { top: auto; left: 0; width: 100%; height: min(70dvh, 520px); padding-right: 0; border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: 0 -1px 0 var(--hair); animation-name: rise; }
+  .programme { font-size: var(--fs-headline); }
+  .panel { top: auto; left: 0; width: 100%; height: min(70dvh, 520px); padding-right: 0; border-left: 0; border-top: 3px solid var(--fg); animation-name: rise; }
 }
 @media (max-height: 500px) {
   .programme { font-size: var(--fs-small); }

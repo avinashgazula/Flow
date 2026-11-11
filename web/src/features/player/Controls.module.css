@@ -1,9 +1,9 @@
 /* The player's chrome: a conventional streaming player, as Apple TV+ on the web, Netflix and YouTube draw one. White line
    icons straight on the picture over a black gradient at the top and bottom, one continuous progress bar over a single
-   row of controls, a flash of play or pause in the middle. The player is the one place Film Stock's motifs (edge strips,
-   perforations, edge print) do not apply: the picture is what people came for, and its controls should look like every
-   other player's. Panels and notices stay on base-2 at 94%. No blur. --margin, --panel and --over-video are set on the
-   player's root. */
+   row of controls, a flash of play or pause in the middle. The picture is what people came for, so the layout is every
+   other player's; only the dress is Index: Plex Mono for times and labels, Plex Sans Condensed for the title, square
+   corners, a red played bar, a blue focus ring, and panels as ink with 3px paper rules. The round things that remain
+   are the loading ring and nothing else. No blur. --margin, --panel and --over-video are set on the player's root. */
 
 .controls {
   /* Room the control row and progress bar take, so panels, Up Next and subtitles sit just above it. */
@@ -52,15 +52,14 @@
   display: grid;
   place-items: center;
   flex: none;
-  border-radius: 50%;
   color: var(--paper);
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-/* Paper on the picture; a faint disc appears only when the pointer is on it. */
-@media (hover: hover) { .clusterButton:hover { background: rgb(255 255 255 / 0.16); } }
-.clusterButton:active { transform: scale(0.94); background: rgb(255 255 255 / 0.24); }
-/* The panel this button opened is the current selection: a steady disc, not a colour. */
-.clusterButton[aria-pressed='true'] { background: rgb(255 255 255 / 0.2); }
+/* Paper on the picture; the pointer fills the button blue, as everywhere else on the site. */
+@media (hover: hover) { .clusterButton:hover { background: var(--blue); color: var(--onblue); } }
+.clusterButton:active { background: var(--blue); color: var(--onblue); }
+/* The panel this button opened is the current selection: inverted, never blue. */
+.clusterButton[aria-pressed='true'] { background: var(--fg); color: var(--bg); }
 
 /* Volume: the speaker, and a slider that opens beside it for a pointer or the keyboard. */
 .volume { display: flex; align-items: center; }
@@ -79,12 +78,10 @@
 @media (hover: hover) { .volume:hover .slider { width: 84px; margin: 0 10px 0 2px; opacity: 1; } }
 .slider::-webkit-slider-runnable-track {
   height: 4px;
-  border-radius: 2px;
   background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), color-mix(in srgb, var(--paper) 30%, transparent) 0);
 }
 .slider::-moz-range-track {
   height: 4px;
-  border-radius: 2px;
   background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), color-mix(in srgb, var(--paper) 30%, transparent) 0);
 }
 .slider::-webkit-slider-thumb {
@@ -92,21 +89,20 @@
   width: 12px;
   height: 12px;
   margin-top: -4px;
-  border-radius: 50%;
   background: var(--paper);
 }
 .slider::-moz-range-thumb {
   width: 12px;
   height: 12px;
   border: 0;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--paper);
 }
 .slider:focus-visible { outline: none; }
-.slider:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--stock); outline-offset: 2px; }
-.slider:focus-visible::-moz-range-thumb { outline: 2px solid var(--stock); outline-offset: 2px; }
+.slider:focus-visible::-webkit-slider-thumb { outline: 3px solid var(--blue); outline-offset: 2px; }
+.slider:focus-visible::-moz-range-thumb { outline: 3px solid var(--blue); outline-offset: 2px; }
 
-/* The transport in the middle is for a finger: translucent discs with clean glyphs, as on a phone's player. With a mouse
+/* The transport in the middle is for a finger: translucent ink squares with clean glyphs, as on a phone's player. With a mouse
    the same buttons are in the control row and the middle is the picture, with a flash of play or pause when it toggles. */
 .transport {
   align-self: center;
@@ -118,12 +114,12 @@
 .round {
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  background: rgb(0 0 0 / 0.5);
+  border: 3px solid var(--fg);
+  background: rgb(10 10 10 / 0.6);
   color: var(--paper);
-  transition: transform var(--dur-state) var(--ease-out), background-color var(--dur-state) ease;
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-.round:active { transform: scale(0.94); background: rgb(0 0 0 / 0.58); }
+.round:active { background: var(--blue); border-color: var(--blue); color: var(--onblue); }
 .skip { width: 60px; height: 60px; }
 .play { width: 76px; height: 76px; }
 .play svg { width: 34px; height: 34px; }
@@ -142,7 +138,8 @@
 .right { display: flex; align-items: center; gap: 2px; flex: none; }
 .titles { min-width: 0; margin-left: 12px; }
 .title {
-  font: 600 var(--fs-small) / 1.3 var(--font);
+  font: 700 var(--fs-headline) / 1.2 var(--font-cond);
+  letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -162,7 +159,7 @@
 .time {
   flex: none;
   min-width: 3.4em;
-  font: 500 var(--fs-footnote) / 1 var(--font);
+  font: 600 var(--fs-footnote) / 1 var(--font-mono);
   font-variant-numeric: tabular-nums;
   color: var(--paper);
   white-space: nowrap;
@@ -192,7 +189,6 @@
   top: 50%;
   height: 4px;
   margin-top: -2px;
-  border-radius: 2px;
   background: color-mix(in srgb, var(--paper) 25%, transparent);
   overflow: hidden;
   transition: height 0.15s var(--ease-out), margin-top 0.15s var(--ease-out);
@@ -207,9 +203,8 @@
   will-change: transform;
 }
 .buffered { background: color-mix(in srgb, var(--paper) 30%, transparent); }
-/* Paper, not the brand yellow: yellow means the next action and the focus ring everywhere else in Flow, and a white bar
-   is what reads best on the black gradient, over bright and dark frames alike. */
-.played { background: var(--paper); }
+/* Red marks progress, as everywhere on the site (5:1 on ink, and it still reads over a bright frame on the gradient). */
+.played { background: var(--red); }
 /* The thumb is only there when you are using the bar: under the pointer, while dragging, or on focus. */
 .thumb {
   position: absolute;
@@ -218,7 +213,6 @@
   width: 14px;
   height: 14px;
   margin: -7px 0 0 -7px;
-  border-radius: 50%;
   background: var(--paper);
   opacity: 0;
   transition: opacity var(--dur-state) ease;
@@ -226,7 +220,7 @@
 }
 .track[data-dragging] .thumb, .track:focus-visible .thumb { opacity: 1; }
 @media (hover: hover) { .track:hover .thumb { opacity: 1; } }
-.track:focus-visible .thumb { box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--stock); }
+.track:focus-visible .thumb { outline: 3px solid var(--blue); outline-offset: 2px; }
 @media (pointer: coarse) {
   /* A finger hides the bar, so it keeps the thumb on show and the track is a little taller to hit. */
   .thumb { opacity: 1; }
@@ -236,7 +230,7 @@
 /* Options and Audio and Subtitles: one card above the buttons that open it. */
 .panel, .shelf, .upNext, .info, .noSound {
   background: var(--panel);
-  border: 1px solid var(--hair);
+  border: 3px solid var(--fg);
 }
 .panel {
   position: absolute;
@@ -276,19 +270,23 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 16px 12px;
-  font: 600 var(--fs-body) / 1.2 var(--font);
-  border-bottom: 1px solid var(--hair);
+  padding: 12px 16px;
+  font: 700 var(--fs-headline) / 1.2 var(--font-cond);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  border-bottom: 3px solid var(--fg);
   text-align: left;
 }
 .panelScroll { overflow-y: auto; padding: 4px 0; overscroll-behavior: contain; scrollbar-width: thin; }
 /* The root page's rows come in three groups: what is heard and read, how it plays, and what to do about it. Space, not rules. */
 .panelScroll > [role='group'] + [role='group'] { margin-top: 8px; }
-/* Plain headings: a sentence-case label, not a kicker. */
+/* A group's name: a red mono label. */
 .groupTitle {
   padding: 12px 16px 4px;
   font: 600 var(--fs-footnote) / 1.2 var(--font);
-  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--red);
 }
 .row {
   position: relative;
@@ -302,8 +300,14 @@
   color: var(--paper);
   transition: background-color var(--dur-state) ease;
 }
-@media (hover: hover) { .row:hover { background: var(--base-3); } }
-.row:active { background: var(--base-4); }
+@media (hover: hover) {
+  .row:hover { background: var(--blue); color: var(--onblue); }
+  .row:hover :is(.rowIcon, .rowDetail, .rowValue, .check, .chevron) { color: var(--onblue); }
+}
+.row:active { background: var(--blue); color: var(--onblue); }
+.row:active :is(.rowIcon, .rowDetail, .rowValue, .check, .chevron) { color: var(--onblue); }
+.row:focus-visible { background: var(--blue); color: var(--onblue); outline: 3px solid var(--onblue); outline-offset: -6px; }
+.row:focus-visible :is(.rowIcon, .rowDetail, .rowValue, .check, .chevron) { color: var(--onblue); }
 .row:disabled { opacity: 0.5; cursor: default; }
 .row[data-plain]:disabled { opacity: 1; }
 /* The rule between rows, inset to the text. */
@@ -331,7 +335,7 @@
   overflow-wrap: anywhere;
 }
 .rowValue { color: var(--ink-2); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
-/* The selected row's check: the one yellow in a list. */
+/* The selected row's check: blue, the one coloured mark in a list. */
 .check { color: var(--stock); flex: none; }
 .chevron { color: var(--ink-3); display: grid; }
 .groupFooter {
@@ -345,7 +349,7 @@
   display: block;
   margin-top: 8px;
   padding: 8px 10px;
-  border-radius: var(--radius-label);
+  border: 1px solid var(--hair);
   background: var(--base);
   color: var(--ink-2);
   overflow-wrap: anywhere;
@@ -363,7 +367,7 @@
   animation: panel var(--dur-state) var(--ease-out);
 }
 .shelfHeader { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 20px; }
-.shelfHeader h2 { font: 600 var(--fs-body) / 1.2 var(--font); }
+.shelfHeader h2 { font: 700 var(--fs-headline) / 1.2 var(--font-cond); text-transform: uppercase; letter-spacing: 0.02em; }
 .shelfRow {
   display: flex;
   gap: 16px;
@@ -376,14 +380,14 @@
 }
 .shelfRow::-webkit-scrollbar { display: none; }
 .shelfRow > li { flex: none; width: 200px; scroll-snap-align: start; }
-.shelfGhost { height: 150px; border-radius: 8px; background: var(--base-3); }
+.shelfGhost { height: 150px; background: var(--base-3); }
 .episodeCard { width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left; color: var(--paper); }
 .episodeCard:disabled { opacity: 0.5; cursor: default; }
-/* Every still in the player is a plain rounded picture; the current episode gets the focus ring round it. */
-.still { aspect-ratio: 16 / 9; border-radius: 8px; }
-.episodeCard[aria-current] .episodeStill { outline: 2px solid var(--stock); outline-offset: 3px; }
+/* Every still in the player is a plain square picture; the current episode gets a blue frame round it. */
+.still { aspect-ratio: 16 / 9; }
+.episodeCard[aria-current] .episodeStill { outline: 3px solid var(--blue); outline-offset: 3px; }
 .episodeCard:focus-visible { outline: none; }
-.episodeCard:focus-visible .episodeStill { outline: 2px solid var(--stock); outline-offset: 3px; }
+.episodeCard:focus-visible .episodeStill { outline: 3px solid var(--blue); outline-offset: 3px; }
 .episodeStill { display: block; transition: opacity var(--dur-state) ease; }
 @media (hover: hover) { .episodeCard:not(:disabled):hover .episodeStill { opacity: 0.88; } }
 .episodeName { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -410,7 +414,7 @@
 @keyframes upNext { from { opacity: 0; } }
 .upNextStill { --w: 148px; display: block; width: var(--w); flex: none; text-align: left; }
 .upNextStill:focus-visible { outline: none; }
-.upNextStill:focus-visible .upNextPlate { outline: 2px solid var(--stock); outline-offset: 3px; }
+.upNextStill:focus-visible .upNextPlate { outline: 3px solid var(--blue); outline-offset: 3px; }
 .upNextPlate { display: block; }
 .upNextPlay {
   position: absolute;
@@ -421,17 +425,17 @@
   margin: -18px 0 0 -18px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
   background: var(--over-video);
+  border: 3px solid var(--fg);
   color: var(--paper);
 }
-.upNextFrame { position: relative; display: block; border-radius: 8px; overflow: hidden; }
-/* The countdown: a 3px line along the thumbnail's foot, emptying from the right. */
-.upNextLine { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgb(0 0 0 / 0.5); }
-.upNextLine > span { display: block; height: 100%; width: calc(var(--left, 1) * 100%); background: var(--paper); transition: width 1s linear; }
+.upNextFrame { position: relative; display: block; overflow: hidden; }
+/* The countdown: a red line along the thumbnail's foot, emptying from the right. */
+.upNextLine { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgb(0 0 0 / 0.5); }
+.upNextLine > span { display: block; height: 100%; width: calc(var(--left, 1) * 100%); background: var(--red); transition: width 1s linear; }
 .upNextText { width: 188px; display: flex; flex-direction: column; gap: 3px; padding-top: 2px; }
 .upNextName {
-  font: 600 var(--fs-small) / 1.25 var(--font);
+  font: 700 var(--fs-headline) / 1.15 var(--font-cond);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -442,15 +446,16 @@
 .upNextCancel {
   height: 36px;
   padding: 0 10px;
-  border-radius: var(--radius-label);
   font: 600 var(--fs-caption) / 1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--ink-2);
 }
-@media (hover: hover) { .upNextCancel:hover { color: var(--paper); text-decoration: underline; text-underline-offset: 3px; } }
+@media (hover: hover) { .upNextCancel:hover { background: var(--blue); color: var(--onblue); } }
 
 /* Skip Intro, Skip Recap, Skip Credits: bottom right above the control row, where Up Next also comes (never both).
-   A solid white button with dark text, as Netflix draws it, so it is the clearest thing on the screen. It rides up with
-   the controls and fades after its segment. */
+   A solid paper button with ink text (the global primary button in this dark scope), so it is the clearest thing on the
+   screen. It rides up with the controls and fades after its segment. */
 .skipLayer {
   --bottom-band: 96px;
   position: absolute;
@@ -471,11 +476,9 @@
 }
 .skipLayer .skipButton[data-leaving] { opacity: 0; pointer-events: none; }
 .skipButton svg { width: 16px; height: 16px; }
-.skipLayer .skipButton, .upNextActions .skipButton { background: var(--paper); color: #141414; }
-@media (hover: hover) { .skipLayer .skipButton:hover, .upNextActions .skipButton:hover { background: #fff; } }
-.skipLayer .skipButton:active, .upNextActions .skipButton:active { background: #d9d4cb; }
-/* A button that waits quietly (the credits of a film told to stay for its last scene) is the translucent one. */
-.skipLayer .skipButton[data-quiet], .skipLayer .skipButton[data-quiet]:hover { background: rgb(40 40 40 / 0.9); color: var(--paper); }
+/* A button that waits quietly (the credits of a film told to stay for its last scene) is the ink one with a paper rule. */
+.skipLayer .skipButton[data-quiet] { background: var(--bg); color: var(--fg); }
+@media (hover: hover) { .skipLayer .skipButton[data-quiet]:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
 /* "Skipped intro" with Undo, after Skip Automatically: flat, on the panel colour, quiet. */
 .skipNote {
   display: flex;
@@ -483,23 +486,22 @@
   gap: 6px;
   height: 44px;
   padding: 0 6px 0 16px;
-  border-radius: var(--radius-control);
   background: var(--panel);
-  border: 1px solid var(--hair);
+  border: 3px solid var(--fg);
   font: 600 var(--fs-small) / 1 var(--font);
   animation: skipIn var(--dur-move) var(--ease-out);
 }
 .skipUndo {
   height: 32px;
   padding: 0 10px;
-  border-radius: var(--radius-label);
   color: var(--paper);
   font: 600 var(--fs-small) / 1 var(--font);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: underline dotted var(--red);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
   transition: background-color var(--dur-state) ease;
 }
-@media (hover: hover) { .skipUndo:hover { background: var(--base-3); } }
+@media (hover: hover) { .skipUndo:hover { background: var(--blue); color: var(--onblue); } }
 
 /* Are You Still Watching?: over the paused picture, one question and two answers. */
 .ask {
@@ -518,12 +520,11 @@
   flex-direction: column;
   gap: 8px;
   padding: 28px 24px 24px;
-  border-radius: var(--radius-panel);
   background: var(--panel);
-  border: 1px solid var(--hair);
+  border: 3px solid var(--fg);
   text-align: center;
 }
-.askTitle { font: 700 var(--fs-title3) / 1.15 var(--font); letter-spacing: -0.015em; text-wrap: balance; }
+.askTitle { font: 700 var(--fs-title2) / 1.05 var(--font-cond); text-transform: uppercase; text-wrap: balance; }
 .askNext { font: 400 var(--fs-footnote) / 1.4 var(--font); color: var(--ink-2); text-wrap: balance; }
 .askActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
 
@@ -539,7 +540,6 @@
   flex-direction: column;
   gap: 8px;
   padding: 14px 16px;
-  border-radius: var(--radius-panel);
   animation: notice var(--dur-move) var(--ease-out);
 }
 @keyframes notice { from { opacity: 0; translate: 0 -8px; } }
@@ -547,7 +547,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font: 600 var(--fs-body) / 1.25 var(--font);
+  font: 700 var(--fs-headline) / 1.2 var(--font-cond);
+  text-transform: uppercase;
 }
 .noSoundTitle svg { flex: none; color: var(--warn); }
 .noSoundText { font: 400 var(--fs-footnote) / 1.45 var(--font); color: var(--ink-2); text-wrap: pretty; }
@@ -556,7 +557,7 @@
 .noSoundActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .noSoundActions :global(.btn) { padding: 0 14px; }
 .noSoundHint { font: 400 var(--fs-caption) / 1.45 var(--font); color: var(--ink-3); }
-.noSoundHint a { color: var(--ink-2); text-decoration: underline; text-underline-offset: 2px; }
+.noSoundHint a { color: var(--paper); text-decoration: underline dotted var(--red); text-decoration-thickness: 2px; text-underline-offset: 4px; }
 
 /* Playback Info: the other side of the title row from the notices, so neither sits on the other
    (on a phone there is only room for one, and the notice wins). Out of the controls' way, and kept
@@ -568,11 +569,10 @@
   right: calc(var(--inset-right) + var(--margin));
   width: min(320px, calc(100% - var(--inset-left) - var(--inset-right) - 2 * var(--margin)));
   padding: 10px 14px 8px;
-  border-radius: var(--radius-panel);
   animation: notice var(--dur-move) var(--ease-out);
 }
 .infoHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.infoTitle { font: 600 var(--fs-body) / 1.25 var(--font); }
+.infoTitle { font: 700 var(--fs-headline) / 1.2 var(--font-cond); text-transform: uppercase; }
 .infoClose {
   width: 28px;
   height: 28px;
@@ -580,11 +580,10 @@
   display: grid;
   place-items: center;
   flex: none;
-  border-radius: var(--radius-label);
   color: var(--ink-2);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-@media (hover: hover) { .infoClose:hover { background: var(--base-3); color: var(--paper); } }
+@media (hover: hover) { .infoClose:hover { background: var(--blue); color: var(--onblue); } }
 .infoRows { display: grid; }
 .infoRow {
   display: grid;
@@ -673,7 +672,7 @@
 }
 
 /* Because You Watched, beside a film's credits: a few films like it, bottom right where Up Next stands (it takes
-   the Skip button's corner too, until it is closed). Plain rounded thumbnails, flat, on the panel colour. */
+   the Skip button's corner too, until it is closed). Plain square thumbnails, flat, on ink. */
 .suggest {
   --bottom-band: 96px;
   --w: 148px;
@@ -687,9 +686,8 @@
   gap: 10px;
   padding: 12px 14px 14px;
   /* Solid, not the 94% panel colour: the subtitle line runs behind this corner and would show through the card. */
-  background: var(--base-2);
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-panel);
+  background: var(--bg);
+  border: 3px solid var(--fg);
   transition: transform var(--dur-move) var(--ease-out);
   animation: upNext var(--dur-move) var(--ease-out);
 }
@@ -697,12 +695,13 @@
 .suggestHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
 .suggestHead h2 {
   min-width: 0;
-  font: 600 var(--fs-small) / 1.25 var(--font);
+  font: 700 var(--fs-headline) / 1.2 var(--font-cond);
+  text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.suggestHead h2 span, .suggestEndHead span { color: var(--ink-2); font-weight: 500; }
+.suggestHead h2 span, .suggestEndHead span { color: var(--ink-2); font-weight: 600; }
 .suggestClose {
   flex: none;
   width: 32px;
@@ -710,17 +709,16 @@
   margin: -6px -6px -6px 0;
   display: grid;
   place-items: center;
-  border-radius: var(--radius-label);
   color: var(--ink-2);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-@media (hover: hover) { .suggestClose:hover { background: var(--base-3); color: var(--paper); } }
+@media (hover: hover) { .suggestClose:hover { background: var(--blue); color: var(--onblue); } }
 .suggestRow { display: flex; gap: 10px; }
 .suggestRow > li { width: var(--w); flex: none; }
-/* One suggested film: a rounded still, its title and its facts. */
+/* One suggested film: a square still, its title and its facts. */
 .suggestion { width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; color: var(--paper); }
 .suggestion:focus-visible { outline: none; }
-.suggestion:focus-visible .suggestionStill { outline: 2px solid var(--stock); outline-offset: 3px; }
+.suggestion:focus-visible .suggestionStill { outline: 3px solid var(--blue); outline-offset: 3px; }
 .suggestionStill { display: block; transition: opacity var(--dur-state) ease; }
 @media (hover: hover) { .suggestion:hover .suggestionStill { opacity: 0.88; } }
 .suggestionTitle { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -733,7 +731,7 @@
   .suggestRow > li:nth-child(n + 3) { display: none; }
 }
 /* Where the film ends: the film just finished as one quiet line, then Because You Watched, its row of stills and Done,
-   in the middle of the screen on near-black over the last frame. Matte: no backdrop, no blur. */
+   in the middle of the screen on ink over the last frame. Matte: no backdrop, no blur. */
 .suggestEnd {
   position: absolute;
   z-index: 6;
@@ -743,7 +741,7 @@
   justify-content: center;
   padding: calc(var(--inset-top) + 16px) 0 calc(var(--inset-bottom) + 16px) calc(var(--inset-left) + var(--margin));
   /* Solid: the controls under it are still there, and none of them should show. */
-  background: #0a0a0a;
+  background: var(--bg);
   overflow-y: auto;
   animation: panel var(--dur-state) var(--ease-out);
 }
@@ -757,11 +755,11 @@
   font: 600 var(--fs-small) / 1.3 var(--font);
   color: var(--ink-2);
 }
-.suggestEndDone span:first-child { color: var(--paper); }
+.suggestEndDone span:first-child { color: var(--paper); font-family: var(--font-cond); font-size: var(--fs-headline); font-weight: 700; text-transform: uppercase; }
 .suggestEndDone span + span { font-weight: 400; font-variant-numeric: tabular-nums; }
 .suggestEndHead {
-  font: 700 var(--fs-title3) / 1.15 var(--font-display);
-  letter-spacing: -0.015em;
+  font: 700 var(--fs-title2) / 1.05 var(--font-cond);
+  text-transform: uppercase;
   text-wrap: balance;
 }
 .suggestEndRow {
@@ -782,6 +780,6 @@
 @media (max-height: 500px) {
   .suggest { padding: 8px 12px 10px; gap: 6px; }
   .suggestEndBlock { gap: var(--space-s); }
-  .suggestEndHead { font-size: var(--fs-headline); }
+  .suggestEndHead { font-size: var(--fs-title3); }
   .suggestEndRow > li { width: 150px; }
 }

@@ -1,7 +1,7 @@
-/* X-Ray: a flat Film Base 2 card beside the picture (a wide window) or a sheet over its lower part (a phone held
-   upright). Solid, not the 94% panel colour, because the subtitle line is kept clear of it and nothing should show
-   through. Photos are frames, names are in the interface face, characters in Ink 2; the only yellow is the focus ring
-   (and the check on the scene that is playing). */
+/* X-Ray: a flat ink panel with a 3px paper rule beside the picture (a wide window) or a sheet over its lower part (a
+   phone held upright). Solid, not the 94% panel colour, because the subtitle line is kept clear of it and nothing
+   should show through. Photos are square frames, names are in Plex Mono, headings in Plex Sans Condensed, characters
+   muted; blue is the focus ring, the pointer, and the check on the scene that is playing. */
 
 .panel {
   /* What the controls under it take, as in Controls.module.css: the card stands on that band. */
@@ -18,9 +18,8 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--base-2);
-  border: 1px solid var(--hair);
-  border-radius: var(--radius-panel);
+  background: var(--bg);
+  border: 3px solid var(--fg);
   overflow: hidden;
   animation: appear var(--dur-state) var(--ease-out);
 }
@@ -60,18 +59,17 @@
   min-height: 52px;
   padding: 4px 6px 4px 16px;
 }
-.title { font: 600 var(--fs-body) / 1.2 var(--font); }
+.title { font: 700 var(--fs-headline) / 1.2 var(--font-cond); text-transform: uppercase; letter-spacing: 0.02em; }
 .iconButton {
   flex: none;
   width: 40px;
   height: 40px;
   display: grid;
   place-items: center;
-  border-radius: var(--radius-control);
   color: var(--ink-2);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-.iconButton:hover { background: var(--base-3); color: var(--paper); }
+.iconButton:hover { background: var(--blue); color: var(--onblue); }
 /* Back, in the person's page: the arrow and where it goes. */
 .back {
   display: inline-flex;
@@ -80,35 +78,37 @@
   height: 40px;
   margin-left: -8px;
   padding: 0 12px 0 8px;
-  border-radius: var(--radius-control);
   font: 600 var(--fs-small) / 1 var(--font);
-  transition: background-color var(--dur-state) ease;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-.back:hover { background: var(--base-3); }
+.back:hover { background: var(--blue); color: var(--onblue); }
 
 .tabs {
   flex: none;
   display: flex;
   gap: 6px;
   padding: 0 16px 12px;
-  border-bottom: 1px solid var(--hair);
+  border-bottom: 3px solid var(--fg);
   overflow-x: auto;
   scrollbar-width: none;
 }
 .tabs::-webkit-scrollbar { display: none; }
-/* A chip: the current one is a step lighter and brighter, never yellow. */
+/* A chip, as everywhere: a bordered mono cell; the current one is inverted, the pointer fills blue. */
 .tab {
   flex: none;
   height: 36px;
   padding: 0 14px;
-  border-radius: var(--radius-control);
-  background: var(--base-3);
-  color: var(--ink-2);
+  border: 3px solid var(--fg);
+  color: var(--paper);
   font: 600 var(--fs-small) / 1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
-.tab:hover { background: var(--base-4); color: var(--paper); }
-.tab[aria-selected='true'] { background: var(--base-4); color: var(--paper); }
+.tab:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); }
+.tab[aria-selected='true'] { background: var(--fg); color: var(--bg); }
 
 .body {
   flex: 1;
@@ -131,11 +131,13 @@
 }
 .note[role='status'] { min-height: 1.45em; }
 .note[data-after] { padding-top: 12px; }
-/* A plain heading, in sentence case: what follows is the crew. */
+/* A red mono label: what follows is the crew. */
 .heading {
   padding: 16px 16px 4px;
   font: 600 var(--fs-footnote) / 1.2 var(--font);
-  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--red);
 }
 
 .row {
@@ -151,17 +153,16 @@
   scroll-snap-align: start;
   transition: background-color var(--dur-state) ease;
 }
-.row:hover { background: var(--base-3); }
-.row:active { background: var(--base-4); }
+.row:hover, .row:active { background: var(--blue); color: var(--onblue); }
+.row:hover .role, .row:active .role { color: var(--onblue); }
 .face {
   width: 44px;
   aspect-ratio: 3 / 4;
-  border-radius: var(--radius-art);
-  border: 1px solid var(--hair);
+  border: 2px solid var(--fg);
   background: var(--base-3);
 }
 .who { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.name { font: 600 var(--fs-small) / 1.25 var(--font); overflow-wrap: anywhere; }
+.name { font: 700 var(--fs-body) / 1.2 var(--font-cond); overflow-wrap: anywhere; }
 .role {
   font: 400 var(--fs-footnote) / 1.3 var(--font);
   color: var(--ink-2);
@@ -184,8 +185,8 @@
   text-align: left;
   transition: background-color var(--dur-state) ease;
 }
-.scene:hover { background: var(--base-3); }
-.scene:active { background: var(--base-4); }
+.scene:hover, .scene:active { background: var(--blue); color: var(--onblue); }
+.scene:hover :is(.sceneTime, .check), .scene:active :is(.sceneTime, .check) { color: var(--onblue); }
 .sceneTime { flex: none; width: 56px; font: 400 var(--fs-footnote) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .sceneName { flex: 1; min-width: 0; font: 400 var(--fs-small) / 1.3 var(--font); overflow-wrap: anywhere; }
 .scene[aria-current='true'] .sceneName { font-weight: 600; }
@@ -197,12 +198,11 @@
 .portrait {
   width: 96px;
   aspect-ratio: 2 / 3;
-  border-radius: var(--radius-art);
-  border: 1px solid var(--hair);
+  border: 3px solid var(--fg);
   background: var(--base-3);
 }
 .personWho { min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-bottom: 2px; }
-.personName { font: 700 var(--fs-headline) / 1.2 var(--font); letter-spacing: -0.005em; text-wrap: balance; overflow-wrap: anywhere; }
+.personName { font: 700 var(--fs-title3) / 1.1 var(--font-cond); text-transform: uppercase; text-wrap: balance; overflow-wrap: anywhere; }
 .personRole { font: 400 var(--fs-small) / 1.3 var(--font); color: var(--ink-2); overflow-wrap: anywhere; }
 .personFacts { font: 400 var(--fs-footnote) / 1.4 var(--font); color: var(--ink-2); }
 .bio { font: 400 var(--fs-small) / 1.5 var(--font); color: var(--ink-2); text-wrap: pretty; }
@@ -218,14 +218,14 @@
   height: 32px;
   margin-top: -8px;
   padding-right: 8px;
-  font: 500 var(--fs-small) / 1 var(--font);
-  color: var(--ink-2);
-  text-decoration: underline;
-  text-decoration-color: var(--ink-3);
-  text-underline-offset: 0.25em;
+  font: 600 var(--fs-small) / 1 var(--font);
+  color: var(--paper);
+  text-decoration: underline dotted var(--red);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
-.more:hover { color: var(--paper); text-decoration-color: var(--paper); }
-.alsoHead { font: 600 var(--fs-footnote) / 1.2 var(--font); color: var(--ink-2); margin-bottom: 8px; }
+.more:hover { color: var(--blue); }
+.alsoHead { font: 600 var(--fs-footnote) / 1.2 var(--font); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); margin-bottom: 8px; }
 .also {
   display: flex;
   gap: 10px;
@@ -237,12 +237,11 @@
   scroll-padding: 0 16px;
 }
 .also > li { flex: none; width: 76px; scroll-snap-align: start; }
-.also a { display: block; border-radius: var(--radius-art); }
+.also a { display: block; }
 .poster {
   width: 100%;
   aspect-ratio: 2 / 3;
-  border-radius: var(--radius-art);
-  border: 1px solid var(--hair);
+  border: 2px solid var(--fg);
   transition: opacity var(--dur-state) ease;
 }
 .also a:hover .poster { opacity: 0.85; }
@@ -250,7 +249,7 @@
 .error { color: var(--ink-2); font: 400 var(--fs-footnote) / 1.45 var(--font); }
 /* The page's shape while it loads, so nothing moves when it arrives. */
 .ghosts { display: grid; gap: 8px; }
-.ghost { height: 14px; background: var(--base-3); border-radius: var(--radius-label); }
+.ghost { height: 14px; background: var(--base-3); }
 .ghost:nth-child(1) { width: 92%; }
 .ghost:nth-child(2) { width: 78%; }
 .ghost:nth-child(3) { width: 60%; }
