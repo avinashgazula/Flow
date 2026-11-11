@@ -316,33 +316,68 @@ private struct HistoryRow: View {
     }
 }
 
+/// A collection, as the website sets it: the giant name with its film count and years under a 2px rule, the framed
+/// still, then every film in release order under a ruled label.
 struct CollectionView: View {
     let collectionID: Int
     let name: String
     @Environment(AppModel.self) private var model
     @State private var collection: MediaCollection?
     @State private var failed = false
+    @State private var width: CGFloat = Platform.isPhone ? 0 : 1200
+
+    /// "3 films", "2001 – 2003".
+    private var factParts: [String] {
+        guard let collection else { return [] }
+        var parts = [collection.parts.count == 1 ? "1 film" : "\(collection.parts.count) films"]
+        let years = collection.parts.compactMap(\.year)
+        if let first = years.min(), let last = years.max() { parts.append(first == last ? String(first) : "\(first) – \(last)") }
+        return parts
+    }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                BrowseHead(name, note: "Collection")
+            VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                PageHead(title: collection?.name ?? name, facts: factParts, width: width)
+                    .padding(.top, Theme.Space.l)
                 if let collection {
-                    RemoteImage(url: TMDBImage.url(collection.backdropPath, size: .backdropLarge))
-                        .frame(height: 220 * Theme.scale).clipped()
-                        .ruleFrame()
-                        .padding(.horizontal, Theme.Space.gutter)
-                    PosterGrid(items: collection.parts)
+                    if collection.backdropPath != nil {
+                        Color.clear
+                            .aspectRatio(16.0 / 9.0, contentMode: .fit)
+                            .overlay(RemoteImage(url: TMDBImage.url(collection.backdropPath, size: .backdropLarge), fallbackTitle: collection.name))
+                            .clipped()
+                            .ruleFrame()
+                            .frame(maxWidth: 560 * Theme.scale, alignment: .leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, Theme.Space.gutter)
+                            .accessibilityHidden(true)
+                    }
+                    RuledSection(title: "Films", paddedContent: false) {
+                        PosterGrid(items: collection.parts.sorted { ($0.releaseDate ?? .distantFuture) < ($1.releaseDate ?? .distantFuture) },
+                                   context: "collection-\(collectionID)")
+                    }
                 } else if failed {
-                    Text("Couldn't load this collection.").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
-                        .frame(maxWidth: .infinity).padding(.top, 60)
+                    Text("Couldn't load this collection.")
+                        .font(Theme.Typeface.body)
+                        .foregroundStyle(Theme.Palette.muted)
+                        .padding(.horizontal, Theme.Space.gutter)
+                        .padding(.top, Theme.Space.xl)
                 } else {
-                    ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
+                    ProgressView().frame(maxWidth: .infinity).padding(.top, Theme.Space.xxl)
                 }
             }
-            .padding(.bottom, Theme.Space.l)
+            .padding(.bottom, Theme.Space.xxl)
         }
-        .browsePage(name)
+        .scrollIndicators(.hidden)
+        .background(AmbientBackground(url: nil))
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { new in
+            if abs(new - width) > 0.5 { width = new }
+        }
+        #if !os(tvOS)
+        // The head already shows the name, so the bar stays empty rather than repeat it a few points above.
+        .navigationTitle("")
+        .inlineNavigationTitle()
+        #endif
         .task {
             failed = false
             collection = try? await model.catalog?.collection(collectionID)
