@@ -1,5 +1,5 @@
 /* The library and Trakt, kept in step while this browser is signed in. It loads on its own (lib/trakt/boot.ts
-   fetches it once there is a sign-in, whether made here or brought by Flow Sync), so a visitor who never
+   fetches it once there is a sign-in, whether made here or brought by Marquee Sync), so a visitor who never
    signs in to Trakt never downloads it.
 
    Going up: it watches the library store and turns what changes (a title added to or removed from the watchlist,

@@ -1,4 +1,4 @@
-/* The OpenSearch descriptor that lets a browser's address bar search Flow (type "Flow", press Tab or Space,
+/* The OpenSearch descriptor that lets a browser's address bar search Marquee (type "Marquee", press Tab or Space,
    then the words). Written at build time, because the spec wants absolute addresses and only the build
    knows where the site is served from. */
 
@@ -10,8 +10,8 @@ export function openSearchDescriptor(site: string | undefined): string {
   const at = (path: string) => escapeXML(site ? new URL(path, site).href : path)
   return `<?xml version="1.0" encoding="UTF-8"?>
 <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
-  <ShortName>Flow</ShortName>
-  <Description>Search movies, shows and people in Flow.</Description>
+  <ShortName>Marquee</ShortName>
+  <Description>Search movies, shows and people in Marquee.</Description>
   <InputEncoding>UTF-8</InputEncoding>
   <Image width="192" height="192" type="image/png">${at('icon-192.png')}</Image>
   <Url type="text/html" method="get" template="${at('search')}?q={searchTerms}"/>

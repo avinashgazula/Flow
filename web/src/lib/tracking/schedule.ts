@@ -1,6 +1,6 @@
 import type { Settings } from '../store/settings'
 
-/* When the library syncs by itself (Settings → Account → Sync Interval), as the apps' SyncInterval: reopening Flow
+/* When the library syncs by itself (Settings → Account → Sync Interval), as the apps' SyncInterval: reopening Marquee
    syncs only if the last sync is older than this. A web page is never really closed, so the same rule decides when a
    tab that comes back, or has been open a while, looks at the service again. Sync Now ignores it, and so does choosing a
    service. Changes made here are sent a couple of seconds after, whatever the interval. */

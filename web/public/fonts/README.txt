@@ -1,4 +1,4 @@
-Flow's typefaces ("Index", DESIGN.md). All are under the SIL Open Font License 1.1; each licence sits here.
+Marquee's typefaces ("Index", DESIGN.md). All are under the SIL Open Font License 1.1; each licence sits here.
 The font files themselves are not in this folder: they come from the @fontsource packages in package.json,
 and Vite copies the woff2 files that src/styles/fonts.css names (latin and latin-ext, only the weights used)
 into the build with hashed names.

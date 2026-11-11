@@ -9,7 +9,7 @@ import { clampDelay, delayLabel, delayRange } from './subtitleDelay'
 import c from './Controls.module.css'
 import s from './ExtraPages.module.css'
 
-/** The options panel's Subtitle Delay page: nudge the subtitles Flow draws earlier or later, in tenths of a second,
+/** The options panel's Subtitle Delay page: nudge the subtitles Marquee draws earlier or later, in tenths of a second,
  *  with a slider for the big moves and a Reset. The subtitle on screen moves as it's changed. */
 export function DelayPage({ controller }: { controller: PlayerController }) {
   const delay = usePlayer(controller, (st) => st.subtitleDelay)

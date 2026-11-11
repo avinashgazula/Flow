@@ -131,8 +131,8 @@ describe('requests', () => {
     }
     expect(await say(412)).toBe('client-id: Simkl didn’t accept this app’s Client ID. Check it in Settings → Account.')
     expect(await say(401)).toBe('signed-out: Simkl ended this sign-in. Sign in again.')
-    expect(await say(429)).toBe('rate: Simkl is busy. Flow will try again in a moment.')
-    expect(await say(503)).toBe('server: Simkl had a problem (503). Flow will try again in a moment.')
+    expect(await say(429)).toBe('rate: Simkl is busy. Marquee will try again in a moment.')
+    expect(await say(503)).toBe('server: Simkl had a problem (503). Marquee will try again in a moment.')
     expect(await say(400)).toBe('rejected: Simkl didn’t accept that update (400).')
     expect(await say('offline')).toBe('network: Couldn’t reach Simkl. Check your connection.')
     expect(await say(200, null)).toBe('signed-out: Simkl ended this sign-in. Sign in again.')

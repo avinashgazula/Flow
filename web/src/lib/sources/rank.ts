@@ -103,7 +103,7 @@ function undecodableNames(audio: string[], caps: Capabilities): string {
   return named.slice(0, 2).map(audioLabel).join(' and ')
 }
 
-/** Whether conversion is what makes the file's audio play: the browser can convert, and Flow can
+/** Whether conversion is what makes the file's audio play: the browser can convert, and Marquee can
  *  read the file, which conversion needs. Only the remuxer converts, so the container has to be
  *  Matroska, or unknown (an opaque debrid link, which is Matroska whenever it carries TrueHD or DTS). */
 export function convertsAudio(input: { url?: string; container?: string; engine: PlaybackEngine; audio: string[]; transcoded?: boolean }, caps: Capabilities): boolean {
@@ -219,7 +219,7 @@ export interface RankPreferences {
   audioLanguage?: string
   /** Off puts SDR first even on a screen that shows HDR (the apps' HDR When Available). On unless said otherwise. */
   preferHDR?: boolean
-  /** Off drops the small penalty for a source whose audio Flow has to convert (the apps' Prefer Sources With Playable Audio). On unless said otherwise. */
+  /** Off drops the small penalty for a source whose audio Marquee has to convert (the apps' Prefer Sources With Playable Audio). On unless said otherwise. */
   preferPlayableAudio?: boolean
 }
 

@@ -8,7 +8,7 @@ describe('the sleep timer’s choices', () => {
   })
 
   it('say what will happen, as the apps do', () => {
-    expect(sleepSetNotice(30)).toBe('Flow will pause in 30 minutes.')
+    expect(sleepSetNotice(30)).toBe('Marquee will pause in 30 minutes.')
     expect(sleepSetNotice('end')).toBe('The player will close when this ends.')
   })
 })

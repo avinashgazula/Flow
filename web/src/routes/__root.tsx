@@ -14,7 +14,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   notFoundComponent: () => (
     <div className="page">
       <h1 className="page-title">Not Found</h1>
-      <p className="muted">That page isn't part of Flow.</p>
+      <p className="muted">That page isn't part of Marquee.</p>
     </div>
   ),
 })

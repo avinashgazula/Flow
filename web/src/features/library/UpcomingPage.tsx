@@ -117,7 +117,7 @@ export default function UpcomingPage() {
   return (
     <div>
       <Toolbar>
-        <button type="button" className="btn btn-secondary btn-compact" disabled={upcoming.length === 0} onClick={() => save(upcoming, 'Flow Upcoming')}>
+        <button type="button" className="btn btn-secondary btn-compact" disabled={upcoming.length === 0} onClick={() => save(upcoming, 'Marquee Upcoming')}>
           <Icon name="calendar" size={16} /> Add All to Calendar
         </button>
         <p className={`${s.saved} muted`} role="status">

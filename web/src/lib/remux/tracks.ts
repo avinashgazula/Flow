@@ -128,7 +128,7 @@ export function plan(info: HeaderInfo, isSupported: (mime: string) => boolean, c
     if (!video) {
       const first = videos[0]!
       const name = codecName(first.codecId)
-      throw new UnplayableError('video', first.supported ? `This browser can’t play ${name} video. Try a different browser, or another source.` : `Flow can’t read ${name} video yet. Try another source.`)
+      throw new UnplayableError('video', first.supported ? `This browser can’t play ${name} video. Try a different browser, or another source.` : `Marquee can’t read ${name} video yet. Try another source.`)
     }
   }
 

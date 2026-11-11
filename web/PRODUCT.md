@@ -12,7 +12,7 @@ The same owner and household as the apps (see `../PRODUCT.md`), on a laptop or d
 
 ## Product Purpose
 
-Flow for the web is the Apple apps' product in a browser: Home, title pages, Explore, Search, Library, settings and the player, with the same sources, history and ranking. Product truth, positioning and principles are the root `PRODUCT.md`'s.
+Marquee for the web is the Apple apps' product in a browser: Home, title pages, Explore, Search, Library, settings and the player, with the same sources, history and ranking. Product truth, positioning and principles are the root `PRODUCT.md`'s.
 
 ## Capabilities and Constraints
 

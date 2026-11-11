@@ -15,7 +15,7 @@ export function CatalogueSection() {
   const [state, setState] = useState<{ kind: 'idle' | 'checking' } | { kind: 'ok' | 'error'; text: string }>({ kind: 'idle' })
   const check = useRef<AbortController | undefined>(undefined)
   useEffect(() => () => check.current?.abort(), [])
-  // A key that arrives from another device (Flow Sync) shows here at once.
+  // A key that arrives from another device (Marquee Sync) shows here at once.
   useEffect(() => {
     setKey(saved)
   }, [saved])
@@ -43,7 +43,7 @@ export function CatalogueSection() {
         title="TMDB"
         footer={
           <>
-            Flow uses TMDB for posters, cast and details. A key is free:{' '}
+            Marquee uses TMDB for posters, cast and details. A key is free:{' '}
             <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">
               get one at themoviedb.org
             </a>

@@ -2,7 +2,7 @@ import { emptyEPG, type EPG, type Programme } from './types'
 
 /* XMLTV, read as it arrives. A full guide can be hundreds of megabytes once unpacked, so nothing here
    builds a DOM or holds the document: `XMLTVReader` takes text in pieces, picks each <channel> and
-   <programme> out as it completes, and keeps only the programmes inside the window Flow shows, for the channels it has. The
+   <programme> out as it completes, and keeps only the programmes inside the window Marquee shows, for the channels it has. The
    rest of the file is read and forgotten. */
 
 /** "20240501193000 +0100" to milliseconds since the epoch. Seconds may be left off, the offset may

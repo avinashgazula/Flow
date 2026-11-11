@@ -86,7 +86,7 @@ export function launchURL(id: ExternalPlayerId, stream: string, options: { posit
 }
 
 /** With MKV Files set to External Player, the link that hands an MKV the page would remux to the chosen app, with the resume
- *  point where it takes one. Undefined means play it in Flow: another kind of file, no app chosen, none that runs on this
+ *  point where it takes one. Undefined means play it in Marquee: another kind of file, no app chosen, none that runs on this
  *  device, or an address an app couldn't fetch on its own (the apps fall back to their own player in the same cases). */
 export function matroskaHandOff(
   source: Pick<Source, 'url' | 'headers' | 'engine' | 'filename'>,

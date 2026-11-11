@@ -157,7 +157,7 @@ describe('Jellyfin', () => {
     expect(mkv.url).toContain('/Videos/f5c7/stream?MediaSourceId=ms-mkv-h264&static=true')
     expect(mkv.unsupported).toBeUndefined()
     // Every request carries the sign-in header.
-    expect((calls[0]!.init!.headers as Record<string, string>)['X-Emby-Authorization']).toMatch(/^MediaBrowser Client="Flow", .*Token="secret-token"$/)
+    expect((calls[0]!.init!.headers as Record<string, string>)['X-Emby-Authorization']).toMatch(/^MediaBrowser Client="Marquee", .*Token="secret-token"$/)
   })
 
   it('finds the episode by season and number', async () => {

@@ -52,7 +52,7 @@ export function servesStreams(manifest: AddonManifest | undefined, type: string,
   return false
 }
 
-/** Just the parts of a manifest Flow keeps: catalogues and configuration schemas can be large. */
+/** Just the parts of a manifest Marquee keeps: catalogues and configuration schemas can be large. */
 export function slimManifest(raw: any): AddonManifest {
   if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string') throw new SourceError('That isn’t a Stremio add-on manifest. Copy the manifest link from the add-on’s configure page.')
   const resources: AddonManifest['resources'] = (Array.isArray(raw.resources) ? raw.resources : [])

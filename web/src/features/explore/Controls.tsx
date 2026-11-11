@@ -60,7 +60,7 @@ export function isKeyError(error: unknown): boolean {
 export function errorMessage(error: unknown): string {
   const raw = error instanceof Error ? error.message.trim() : ''
   if (isKeyError(error)) return /add a tmdb key/i.test(raw) ? raw : 'TMDB didn’t accept this key. Check it in Settings.'
-  if (!raw || error instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(raw)) return 'Flow couldn’t reach TMDB. Check your connection, then try again.'
+  if (!raw || error instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(raw)) return 'Marquee couldn’t reach TMDB. Check your connection, then try again.'
   return /[.!?]$/.test(raw) ? `${raw} Try again in a moment.` : `${raw}. Try again in a moment.`
 }
 

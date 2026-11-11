@@ -9,7 +9,7 @@ export function subtitleLanguageName(code: string): string {
 }
 
 /** The service's language field as a code: SubDL says "EN" in one field and "english" in the other,
- *  OpenSubtitles "pt-BR", Wyzie "en". A name is turned into its code where Flow knows it. */
+ *  OpenSubtitles "pt-BR", Wyzie "en". A name is turned into its code where Marquee knows it. */
 export function languageCodeOf(...fields: (string | undefined | null)[]): string {
   for (const f of fields) {
     const v = f?.trim()

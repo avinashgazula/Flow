@@ -122,7 +122,7 @@ async function call(config: SeerrConfig, method: 'GET' | 'POST', path: string, b
   if (!root.ok) throw new SeerrError(root.error, 'address')
   const host = new URL(root.url).host
   if (host === demoHost) return demoCall(method, path, body)
-  if (isMixedContent(root.url)) throw new SeerrError(`This page is on HTTPS and ${host} is http://, so the browser blocks the request. Use an https:// address for it, or open Flow from an http:// address on your own network.`, 'address')
+  if (isMixedContent(root.url)) throw new SeerrError(`This page is on HTTPS and ${host} is http://, so the browser blocks the request. Use an https:// address for it, or open Marquee from an http:// address on your own network.`, 'address')
   let response: Response
   try {
     response = await fetchImpl(`${root.url}/api/v1/${path}`, {
@@ -135,7 +135,7 @@ async function call(config: SeerrConfig, method: 'GET' | 'POST', path: string, b
   } catch (error) {
     if ((error as Error)?.name === 'AbortError') throw error
     // A refused CORS check and an instance that is down look the same to a page.
-    throw new SeerrError(`Flow couldn’t reach ${host}. Check the address, and that it lets web pages talk to it: Seerr sends no CORS headers itself, so put it behind a reverse proxy that adds them for this site.`, 'network')
+    throw new SeerrError(`Marquee couldn’t reach ${host}. Check the address, and that it lets web pages talk to it: Seerr sends no CORS headers itself, so put it behind a reverse proxy that adds them for this site.`, 'network')
   }
   if (response.status === 401 || response.status === 403) throw new SeerrError('Seerr rejected that API key. Copy it again from Seerr under Settings, General.', 'key')
   if (response.status === 404) throw new SeerrError(`${host} answered, but it isn’t a Seerr instance. Check the address.`, 'missing')

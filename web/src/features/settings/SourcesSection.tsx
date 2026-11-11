@@ -319,7 +319,7 @@ export function SourcesSection() {
                 </button>
               </Row>
             ))}
-            {o.sortRules.length === 0 && <Row label="No Rules" detail="Sources keep Flow’s own order within each provider." />}
+            {o.sortRules.length === 0 && <Row label="No Rules" detail="Sources keep Marquee’s own order within each provider." />}
             {unusedKeys.length > 0 && (
               <Row label="Add a Rule" htmlFor="add-rule">
                 <Select

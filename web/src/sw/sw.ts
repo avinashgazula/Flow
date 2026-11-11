@@ -1,4 +1,4 @@
-/* Flow's service worker. It keeps the app's own code so Flow opens with no network, and it stays out of the
+/* Marquee's service worker. It keeps the app's own code so Marquee opens with no network, and it stays out of the
    way of everything else (see rules.ts for exactly what). It is built by scripts/pwa.ts after the site is,
    with the list of files to keep filled in, and it is only registered in production builds. */
 import { cacheName, handlingFor, isStorable, staleCaches } from './rules'
@@ -11,7 +11,7 @@ const scope = sw.registration.scope
 const precached = new Set(precache)
 const offlinePage = new URL('offline.html', scope).href
 /** How long a page load waits for the network before the saved shell opens instead. A slow connection gets
- *  Flow at once, and the app fills in from what it saved. */
+ *  Marquee at once, and the app fills in from what it saved. */
 const patience = 4000
 
 sw.addEventListener('install', (event) => {
@@ -49,7 +49,7 @@ sw.addEventListener('message', (event) => {
 sw.addEventListener('fetch', (event) => {
   const request = event.request
   const how = handlingFor({ url: request.url, method: request.method, mode: request.mode, destination: request.destination, ranged: request.headers.has('range') }, scope, precached)
-  // Not Flow's own: no respondWith, so the browser handles it exactly as if there were no worker.
+  // Not Marquee's own: no respondWith, so the browser handles it exactly as if there were no worker.
   if (how === 'network') return
   event.respondWith(how === 'navigate' ? openPage(request) : fromCache(event))
 })
@@ -65,7 +65,7 @@ async function openPage(request: Request): Promise<Response> {
   }
 }
 
-/** Flow's own files: hashed code and fonts never change under their name, so the saved copy answers and the
+/** Marquee's own files: hashed code and fonts never change under their name, so the saved copy answers and the
  *  network is asked only for what isn't saved yet (a route chunk or typeface not opened before). */
 async function fromCache(event: FetchEvent): Promise<Response> {
   const cache = await caches.open(cacheName(version))

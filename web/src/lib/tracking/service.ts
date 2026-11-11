@@ -8,7 +8,7 @@ export type { TrackerKind }
 
 /** Whether a service can track now: signed in, or its key is there. PublicMetaDB never can from a web page: it answers
  *  with no CORS headers (checked against the live service, November 2026), so a browser throws its answers away. Its
- *  key still travels through Flow Sync to the apps, which can track with it. */
+ *  key still travels through Marquee Sync to the apps, which can track with it. */
 export function isAvailable(kind: TrackerKind, s: Pick<Settings, 'traktAccount' | 'simklAccount' | 'mdblistKey'>): boolean {
   switch (kind) {
     case 'trakt':

@@ -6,7 +6,7 @@ type State = { kind: 'idle' | 'checking' } | { kind: 'ok' | 'error'; text: strin
 
 /** One service's API key as a group: a password field, a Save that asks the service whether it accepts the key before
  *  keeping it (so a typo is caught here, not as a missing score later), and Remove Key when the field is emptied.
- *  A key that arrives from another device (Flow Sync) shows at once. */
+ *  A key that arrives from another device (Marquee Sync) shows at once. */
 export function KeyField({
   title,
   label,

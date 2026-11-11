@@ -100,8 +100,8 @@ function Setup({ error }: { error: boolean }) {
       <h2 id="setup" className={s.setupTitle}>
         Set Up Your Sources
       </h2>
-      <p className={s.setupText}>Flow plays from your own servers, stream add-ons and live TV. Add one in Settings, and Home fills in: what you’re watching, how long is left and what’s new.</p>
-      {error && <p className={s.setupText}>Flow couldn’t reach TMDB just now. Check your connection, or the key in Settings.</p>}
+      <p className={s.setupText}>Marquee plays from your own servers, stream add-ons and live TV. Add one in Settings, and Home fills in: what you’re watching, how long is left and what’s new.</p>
+      {error && <p className={s.setupText}>Marquee couldn’t reach TMDB just now. Check your connection, or the key in Settings.</p>}
       <div className={s.setupActions}>
         <Link to="/settings" className="btn btn-primary btn-large">
           Add a Source

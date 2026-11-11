@@ -6,7 +6,7 @@ import { ConfirmButton, Group, Note, Switch } from './controls'
 import s from './SettingsScreen.module.css'
 
 /* WebDAV shares in Settings → Media Servers, as the apps' WebDAV page: add one, edit it, turn it off or remove it.
-   Flow scans each share's Movies and TV Shows folders and offers the files named like the title as sources. */
+   Marquee scans each share's Movies and TV Shows folders and offers the files named like the title as sources. */
 
 /** The WebDAV client loads when a share is tested or edited, not with the page. */
 const davClient = () => import('../../lib/sources/webdav')
@@ -29,7 +29,7 @@ export function WebDAVGroups() {
     <>
       <Group
         title="WebDAV Shares"
-        footer="Flow scans the Movies and TV Shows folders for files named like “Movie (2020).mkv” or “Show/Season 1/Show S01E02.mkv” and offers them as sources. A web page can only read a share that allows it (CORS), and a password-protected share plays Matroska (MKV) files only."
+        footer="Marquee scans the Movies and TV Shows folders for files named like “Movie (2020).mkv” or “Show/Season 1/Show S01E02.mkv” and offers them as sources. A web page can only read a share that allows it (CORS), and a password-protected share plays Matroska (MKV) files only."
       >
         {list.map((x) => (
           <ShareRow key={x.id} share={x} onEdit={() => setEditing(x.id)} />
@@ -150,7 +150,7 @@ function ShareForm({ share, onDone }: { share?: WebDAVConfig; onDone: () => void
   return (
     <Group
       title={share ? `Edit ${share.name}` : 'Add a WebDAV Share'}
-      footer={`Allow ${typeof location === 'undefined' ? 'this site' : location.origin} (CORS) on the server for Flow to list the share. Passwords stay in this browser and are sent only to the share.`}
+      footer={`Allow ${typeof location === 'undefined' ? 'this site' : location.origin} (CORS) on the server for Marquee to list the share. Passwords stay in this browser and are sent only to the share.`}
     >
       <form className={s.form} onSubmit={save}>
         <label className={s.fieldLabel} htmlFor={`${id}-name`}>
@@ -162,7 +162,7 @@ function ShareForm({ share, onDone }: { share?: WebDAVConfig; onDone: () => void
         </label>
         <input id={`${id}-address`} className="field" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="https://nas.example.com/dav" inputMode="url" autoComplete="off" spellCheck={false} />
         {problem && <Note tone="error">{problem}</Note>}
-        {mixed && <Note tone="warning">This page is served over HTTPS, so your browser will block an http:// share. Use the share’s https:// address, or run Flow locally to reach it on your network.</Note>}
+        {mixed && <Note tone="warning">This page is served over HTTPS, so your browser will block an http:// share. Use the share’s https:// address, or run Marquee locally to reach it on your network.</Note>}
         <label className={s.fieldLabel} htmlFor={`${id}-user`}>
           Username
         </label>

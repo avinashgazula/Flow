@@ -86,11 +86,11 @@ export async function fetchPlanned(url: string, plan: { attempts: Attempt[]; pro
   const triedProxy = plan.attempts.some((a) => a.viaProxy)
   if (lastNetwork && !triedProxy) {
     throw new LiveTVError(
-      `Flow couldn’t read ${host}. Most IPTV providers don’t let web pages read their playlists and guides (no CORS headers), or the address is wrong. Add a stream proxy in Settings → Playback, then try again.`,
+      `Marquee couldn’t read ${host}. Most IPTV providers don’t let web pages read their playlists and guides (no CORS headers), or the address is wrong. Add a stream proxy in Settings → Playback, then try again.`,
     )
   }
   throw new LiveTVError(
-    `Flow couldn’t reach ${host}, directly or through your stream proxy. Check the address, and that the proxy is running and lists this page in its allowed origins. ${proxyWorkerHint}`,
+    `Marquee couldn’t reach ${host}, directly or through your stream proxy. Check the address, and that the proxy is running and lists this page in its allowed origins. ${proxyWorkerHint}`,
   )
 }
 
@@ -99,6 +99,6 @@ export async function fetchJSON<T>(url: string, plan: { attempts: Attempt[]; pro
   try {
     return { data: (await fetched.response.json()) as T, fetched }
   } catch {
-    throw new LiveTVError(`${hostOf(url)} didn’t answer with the data Flow expected. Check that this is an Xtream Codes address, and the username and password.`)
+    throw new LiveTVError(`${hostOf(url)} didn’t answer with the data Marquee expected. Check that this is an Xtream Codes address, and the username and password.`)
   }
 }

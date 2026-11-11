@@ -1,0 +1,24 @@
+/* The wordmark: Plex Sans Condensed capitals over seven red bulbs set evenly along the bottom, each with a rim in the
+   cell's text colour so the red reads on the light blue and on the dark theme's pale blue. */
+.logo {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.22em;
+  font: 700 1em / 1 var(--font-cond);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.word { display: block; }
+.bulbs { display: flex; justify-content: space-between; padding-inline: 0.1em; }
+.bulbs i {
+  display: block;
+  width: 0.2em;
+  height: 0.2em;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 0 0.07em currentColor;
+}
+
+/* The compact M for a bar too narrow for the name. */
+.mark { display: block; height: 28px; width: auto; }
+.dot { fill: var(--red); stroke: currentColor; }

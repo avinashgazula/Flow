@@ -1,7 +1,7 @@
 {
-  "name": "Flow",
-  "short_name": "Flow",
-  "description": "An Apple-quality front end for your own media servers, add-ons and IPTV.",
+  "name": "Marquee",
+  "short_name": "Marquee",
+  "description": "Your own media servers, stream add-ons and live TV in one place. It shares your setup with the Marquee apps.",
   "lang": "en",
   "categories": ["entertainment", "video"],
   "start_url": ".",

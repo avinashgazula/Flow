@@ -74,7 +74,7 @@ describe('proxyProblem', () => {
 })
 
 describe('learned blocked origins', () => {
-  it('keys on the origin of the address Flow was given', () => {
+  it('keys on the origin of the address Marquee was given', () => {
     rememberBlocked('https://aio.example.com/playback/abc/file.mkv?x=1')
     expect(isKnownBlocked('https://aio.example.com/other/path.mkv')).toBe(true)
     expect(isKnownBlocked('https://aio.example.com:8443/other')).toBe(false)

@@ -32,7 +32,7 @@ export const sendsNoCORS = (url: string): boolean => {
   }
 }
 
-/** The plan for this address with the viewer's settings and what Flow has learned about the host. */
+/** The plan for this address with the viewer's settings and what Marquee has learned about the host. */
 export const planFor = (url: string): Plan => planAttempts(url, { proxy: streamProxy(), blocked: isKnownBlocked(url) || sendsNoCORS(url), mixed: isMixedContent(url) })
 
 /** After a download: a host that had to be reached through the proxy is remembered, so next time the proxy goes first. */

@@ -5,7 +5,7 @@ import { normaliseServer, parsePairing, serverFromProxy } from '../../lib/sync/p
 import { ServerFields } from '../settings/SyncGroup'
 import s from './Welcome.module.css'
 
-/* "Join Flow Sync" on Welcome: the same join as Settings → Data → Sync, for a browser with nothing set up yet. A link
+/* "Join Marquee Sync" on Welcome: the same join as Settings → Data → Sync, for a browser with nothing set up yet. A link
    or key from another device brings the TMDB key, sign-ins, add-ons and servers, which is the way in. It loads only when
    asked for, so Welcome's own code stays small. */
 
@@ -58,7 +58,7 @@ export function WelcomeJoin({ onBack, link = '' }: { onBack: () => void; link?: 
       )}
       <p className={s.hint}>Open Settings → Data → Sync on a device that already syncs, and copy its pairing link.</p>
       <button className="btn btn-primary" type="submit" disabled={!paste.trim() || busy}>
-        {busy ? 'Joining…' : 'Join Flow Sync'}
+        {busy ? 'Joining…' : 'Join Marquee Sync'}
       </button>
       <button type="button" className="btn btn-quiet" onClick={onBack} disabled={busy}>
         Back

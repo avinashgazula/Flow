@@ -88,7 +88,7 @@ function useShelfItems(source: ListSource) {
 function Titles({ source, type, onType }: { source: ListSource; type?: MediaType; onType: (t: MediaType | undefined) => void }) {
   const { items, ready, pending, failed, hasMore, more, server } = useShelfItems(source)
   if (!ready) return <StateView icon="library" title="This Shelf Can’t Load" message={source.kind === 'traktList' ? 'Add your Trakt Client ID in Settings → Account, then open this again.' : source.kind === 'mdblist' ? 'Add your MDBList key in Settings → Account, then open this again.' : 'Turn the server back on in Settings → Media Servers, then open this again.'} />
-  if (failed) return <StateView icon="library" title="Couldn’t Load This List" message="Flow couldn’t reach the service behind it. Check your connection, then try again." />
+  if (failed) return <StateView icon="library" title="Couldn’t Load This List" message="Marquee couldn’t reach the service behind it. Check your connection, then try again." />
   if (!pending && !hasMore && items.length === 0) return <StateView icon="library" title="Nothing in This List" message="It has no films or series yet." />
   const shown = type ? items.filter((m) => m.type === type) : items
   return (

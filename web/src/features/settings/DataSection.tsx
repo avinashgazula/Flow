@@ -61,7 +61,7 @@ export function DataSection() {
   }
 
   function copySetupLink() {
-    if (!navigator.clipboard) return setNote({ tone: 'error', text: 'This browser won’t let Flow copy. Use Export Setup instead.' })
+    if (!navigator.clipboard) return setNote({ tone: 'error', text: 'This browser won’t let Marquee copy. Use Export Setup instead.' })
     void navigator.clipboard.writeText(createSetup(secrets).link).then(
       () => {
         setCopied(true)
@@ -79,7 +79,7 @@ export function DataSection() {
       applyBackup(parsed)
       setNote({ tone: 'ok', text: parsed.skipped.length ? `Imported ${chosen.name}. Skipped what couldn’t be read: ${parsed.skipped.join(', ')}.` : `Imported ${chosen.name}.` })
     } catch {
-      setNote({ tone: 'error', text: 'Couldn’t read that file. Choose a backup exported from Flow.' })
+      setNote({ tone: 'error', text: 'Couldn’t read that file. Choose a backup exported from Marquee.' })
     } finally {
       if (file.current) file.current.value = ''
     }
@@ -100,7 +100,7 @@ export function DataSection() {
     turnOff()
     resetEverything()
     await clearCache()
-    setNote({ tone: 'ok', text: 'Flow is back to a fresh start.' })
+    setNote({ tone: 'ok', text: 'Marquee is back to a fresh start.' })
   }
 
   return (
@@ -152,7 +152,7 @@ export function DataSection() {
             <Icon name="download" size={16} /> Export
           </button>
         </Row>
-        <Row label="Import Backup" detail="From a Flow backup">
+        <Row label="Import Backup" detail="From a Marquee backup">
           <button type="button" className="btn btn-secondary btn-compact" onClick={() => file.current?.click()}>
             <Icon name="upload" size={16} /> Import
           </button>

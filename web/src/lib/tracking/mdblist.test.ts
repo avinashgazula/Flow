@@ -118,8 +118,8 @@ describe('requests', () => {
     }
     expect(await say(401)).toBe('client-id: MDBList didn’t accept this key. Check it in Settings → Account.')
     expect(await say(403)).toBe('client-id: MDBList didn’t accept this key. Check it in Settings → Account.')
-    expect(await say(429)).toBe('rate: MDBList is busy. Flow will try again in a moment.')
-    expect(await say(502)).toBe('server: MDBList had a problem (502). Flow will try again in a moment.')
+    expect(await say(429)).toBe('rate: MDBList is busy. Marquee will try again in a moment.')
+    expect(await say(502)).toBe('server: MDBList had a problem (502). Marquee will try again in a moment.')
     expect(await say(400)).toBe('rejected: MDBList didn’t accept that update (400).')
     expect(await say('offline')).toBe('network: Couldn’t reach MDBList. Check your connection.')
     expect(await say(200, ' ')).toBe('client-id: Add an MDBList API key in Settings → Metadata first.')

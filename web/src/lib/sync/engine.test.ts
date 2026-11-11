@@ -172,7 +172,7 @@ describe('pulling', () => {
     const stored = JSON.parse(kv.data.get(keys.id)!)
     kv.data.set(keys.id, JSON.stringify({ ...stored, rev: 2, blob: await m.encrypt(keys, '{"v":2,"sections":{}}') }))
     await m.syncNow()
-    expect(m.syncStatus.get()).toMatchObject({ phase: 'error', error: expect.stringContaining('newer version of Flow Sync') })
+    expect(m.syncStatus.get()).toMatchObject({ phase: 'error', error: expect.stringContaining('newer version of Marquee Sync') })
     kv.data.set(keys.id, JSON.stringify({ ...stored, rev: 3, blob: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' }))
     await m.syncNow()
     expect(m.syncStatus.get()).toMatchObject({ phase: 'error', error: expect.stringContaining('Couldn’t read the synced data') })

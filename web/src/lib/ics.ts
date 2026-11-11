@@ -65,7 +65,7 @@ export function fold(line: string): string {
 /** One calendar with these events, as the text of a `.ics` file. Events without a usable date are left out.
  *  `now` stamps when the file was made. */
 export function buildICS(events: readonly IcsEvent[], now: number): string {
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Flow//Upcoming//EN', 'CALSCALE:GREGORIAN']
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Marquee//Upcoming//EN', 'CALSCALE:GREGORIAN']
   for (const e of events) {
     const body: string[] = []
     if (e.day) {
@@ -94,7 +94,7 @@ export function icsFileName(title: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 80)
-  return `${base || 'Flow'}.ics`
+  return `${base || 'Marquee'}.ics`
 }
 
 /** Hands the text to the browser as a download. */

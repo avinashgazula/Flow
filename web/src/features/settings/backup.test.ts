@@ -87,7 +87,7 @@ describe('settings backup', () => {
     const liveTV = {
       providers: [
         { id: 'a', name: 'Playlist', kind: 'm3u', url: 'https://iptv.example/list.m3u', epgURL: 'https://iptv.example/guide.xml.gz', enabled: true, useForVOD: true },
-        { id: 'b', name: 'Panel', kind: 'xtream', url: 'http://panel.example:8080', username: 'me', password: 'secret', enabled: false, useForVOD: false, userAgent: 'Flow/1.0' },
+        { id: 'b', name: 'Panel', kind: 'xtream', url: 'http://panel.example:8080', username: 'me', password: 'secret', enabled: false, useForVOD: false, userAgent: 'Marquee/1.0' },
       ],
       epgRefreshHours: 6,
       favouriteChannelIDs: ['a:bbc1:0'],
@@ -100,7 +100,7 @@ describe('settings backup', () => {
     expect(defaultSettings.liveTV.providers).toEqual([])
   })
 
-  it('skips Live TV settings with a provider Flow can’t use', () => {
+  it('skips Live TV settings with a provider Marquee can’t use', () => {
     const base = { epgRefreshHours: 12, favouriteChannelIDs: [], recentChannelIDs: [], hideEmptyGroups: true }
     const provider = { id: 'a', name: 'P', kind: 'm3u', url: 'https://iptv.example/list.m3u', enabled: true, useForVOD: true }
     for (const bad of [
@@ -118,7 +118,7 @@ describe('settings backup', () => {
     }
   })
 
-  it('skips a stream proxy that isn’t an address Flow can call', () => {
+  it('skips a stream proxy that isn’t an address Marquee can call', () => {
     for (const bad of [7, null, 'proxy.example.com', 'javascript:alert(1)', 'http://proxy.example.com/?url={url}']) {
       const r = parseBackup(JSON.stringify({ format: backupFormat, version: 1, settings: { autoplayNext: true, streamProxy: bad } }))
       expect(r.ok && r.skipped).toEqual(['streamProxy'])

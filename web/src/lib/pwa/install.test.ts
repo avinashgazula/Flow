@@ -7,7 +7,7 @@ const chromeDesktop = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML
 const firefox = 'Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0'
 const env = (over: Partial<InstallEnvironment>): InstallEnvironment => ({ standalone: false, canPrompt: false, userAgent: chromeDesktop, maxTouchPoints: 0, ...over })
 
-describe('what Settings offers for installing Flow', () => {
+describe('what Settings offers for installing Marquee', () => {
   it('offers the browser’s own dialog when the browser says it can', () => {
     expect(installMode(env({ canPrompt: true }))).toBe('prompt')
   })
@@ -21,7 +21,7 @@ describe('what Settings offers for installing Flow', () => {
     expect(installMode(env({ userAgent: ipadAsMac, maxTouchPoints: 0 }))).toBe('none')
   })
 
-  it('says nothing where it can’t help: a browser with no install, or Flow already installed', () => {
+  it('says nothing where it can’t help: a browser with no install, or Marquee already installed', () => {
     expect(installMode(env({ userAgent: firefox }))).toBe('none')
     expect(installMode(env({ standalone: true, canPrompt: true }))).toBe('none')
     expect(installMode(env({ standalone: true, userAgent: safariIPhone, maxTouchPoints: 5 }))).toBe('none')

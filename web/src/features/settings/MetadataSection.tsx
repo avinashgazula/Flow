@@ -38,12 +38,12 @@ function EpisodeData() {
         </Row>
         {source === 'tvdb' && !tvdbKey && (
           <div className={s.pad}>
-            <Note tone="warning">Add a TVDB API key below. Until then Flow numbers episodes the way TMDB does.</Note>
+            <Note tone="warning">Add a TVDB API key below. Until then Marquee numbers episodes the way TMDB does.</Note>
           </div>
         )}
         {source === 'trakt' && !traktID && (
           <div className={s.pad}>
-            <Note tone="warning">Add a Trakt Client ID in Account. Until then Flow numbers episodes the way TMDB does.</Note>
+            <Note tone="warning">Add a Trakt Client ID in Account. Until then Marquee numbers episodes the way TMDB does.</Note>
           </div>
         )}
         {demo && (
@@ -65,7 +65,7 @@ function EpisodeData() {
         accepted="TVDB accepted the key."
         footer={
           <>
-            Needed for the TVDB episode source. Without it Flow falls back to TMDB’s numbering. Get a project key at{' '}
+            Needed for the TVDB episode source. Without it Marquee falls back to TMDB’s numbering. Get a project key at{' '}
             <a href="https://thetvdb.com/dashboard/account/apikey" target="_blank" rel="noreferrer">
               thetvdb.com
             </a>
@@ -236,7 +236,7 @@ function Availability() {
     <>
       <Group
         title="Availability"
-        footer="Switch this off and Flow uses TMDB release dates to drop titles you can’t play yet, such as a film with only a cinema release, from Home shelves, Explore and the trending rows. Rows that exist to show what’s coming are left alone: your watchlist, Continue Watching, Upcoming, Now Playing, and any Discover shelf pointed at future dates. Search still finds everything, so you can add a title before it’s out."
+        footer="Switch this off and Marquee uses TMDB release dates to drop titles you can’t play yet, such as a film with only a cinema release, from Home shelves, Explore and the trending rows. Rows that exist to show what’s coming are left alone: your watchlist, Continue Watching, Upcoming, Now Playing, and any Discover shelf pointed at future dates. Search still finds everything, so you can add a title before it’s out."
       >
         <Row label="Show Unreleased Titles">
           <Switch label="Show unreleased titles" checked={unreleased} onChange={(on) => settingsStore.set({ showUnreleasedTitles: on })} />

@@ -33,7 +33,7 @@ export interface ServerConfig {
   machineId?: string
 }
 
-/** A WebDAV share, as the apps' WebDAVConfig: its address, an optional login and the two folders Flow scans. */
+/** A WebDAV share, as the apps' WebDAVConfig: its address, an optional login and the two folders Marquee scans. */
 export interface WebDAVConfig {
   id: string
   name: string
@@ -47,7 +47,7 @@ export interface WebDAVConfig {
   enabled: boolean
 }
 
-/** The typeface choice of the old design. Flow is set in Index's four faces now and nothing reads this; the
+/** The typeface choice of the old design. Marquee is set in Index's four faces now and nothing reads this; the
  *  ids stay valid so a backup or a synced setting from before still loads. */
 export type FontChoice = 'system' | 'inter' | 'geist' | 'manrope' | 'ioskeley'
 
@@ -60,10 +60,10 @@ export type SubtitleMode = 'off' | 'foreign' | 'always' | 'forced'
  *  As FlowKit's SkipBehaviour. */
 export type SkipBehaviour = 'off' | 'button' | 'automatic'
 
-/** The apps that take a stream's link (ExternalPlayer in the apps' settings): "none" is Flow's own player. */
+/** The apps that take a stream's link (ExternalPlayer in the apps' settings): "none" is Marquee's own player. */
 export type ExternalPlayerId = 'none' | 'infuse' | 'vlc' | 'outplayer' | 'senPlayer' | 'vidHub' | 'cineUltra' | 'moonPlayer' | 'iina' | 'mpv'
 
-/** A Trakt sign-in in the shape Flow Sync and the apps keep it (docs/SYNC.md, accounts). `redirectURI` is the
+/** A Trakt sign-in in the shape Marquee Sync and the apps keep it (docs/SYNC.md, accounts). `redirectURI` is the
  *  one the token was issued against; a refresh quotes it back. */
 export interface TraktToken {
   accessToken: string
@@ -89,9 +89,9 @@ export interface Settings {
   traktClientID: string
   /** The Client ID of the owner's Simkl app. Simkl signs in with a code, so there is no secret and no redirect. */
   simklClientID: string
-  /** Who the website is signed in to Trakt as. Travels through Flow Sync, so any device's sign-in arrives here. */
+  /** Who the website is signed in to Trakt as. Travels through Marquee Sync, so any device's sign-in arrives here. */
   traktAccount: TraktToken | null
-  /** The same for Simkl: its token has no refresh token or expiry, and travels through Flow Sync like Trakt's. */
+  /** The same for Simkl: its token has no refresh token or expiry, and travels through Marquee Sync like Trakt's. */
   simklAccount: TraktToken | null
   /** The one service that tracks (Settings → Account → Tracking With). Absent means never chosen: the first sign-in
    *  (Trakt, then Simkl) tracks, as when the apps adopt a sign-in that arrives through Sync. */
@@ -100,7 +100,7 @@ export interface Settings {
    *  `favouritesDestination`. Absent: the watchlist follows Tracking With, and favourites stay on this device. */
   watchlistDestination?: ListDestination
   favouritesDestination?: ListDestination
-  /** How often history syncs by itself, in seconds (the apps' `syncInterval`): 0 is whenever Flow opens or is
+  /** How often history syncs by itself, in seconds (the apps' `syncInterval`): 0 is whenever Marquee opens or is
    *  returned to, then 900, 3600, 10800, 43200 or 86400. Absent is three hours. Sync Now always syncs. */
   syncInterval?: number
   /** Tell the tracking service what is playing while it plays (the apps' `scrobble`). Absent is on. */
@@ -133,7 +133,7 @@ export interface Settings {
   /** How subtitles look. The keys are the apps' (`subtitles.fontScale` and the rest in FlowKit). */
   subtitleStyle: SubtitleStyle
   autoplayNext: boolean
-  /** After this many episodes play one after another with nobody touching anything, Flow asks
+  /** After this many episodes play one after another with nobody touching anything, Marquee asks
    *  before starting the next. Zero never asks. As the apps' `stillWatchingAfterEpisodes`. */
   stillWatchingAfterEpisodes: number
   /** Absent means off, except for the post-credits alert and Because You Watched, where it means on (these six are
@@ -144,12 +144,12 @@ export interface Settings {
   skipRecap: SkipBehaviour
   skipCredits: SkipBehaviour
   /** IntroDB and PublicMetaDB API keys: where skip times come from for titles your servers don't
-   *  mark. Named as in Flow Sync (`introDBAPIKey`, `publicMetaDBAPIKey`). Empty means not asked. */
+   *  mark. Named as in Marquee Sync (`introDBAPIKey`, `publicMetaDBAPIKey`). Empty means not asked. */
   introDBKey: string
   publicMetaDBKey: string
   // Ratings, requests and episode numbering (Settings → Metadata and Requests). Like the fields above they are left out of
   // the defaults, which keeps the first visit's code small; absent means the apps' default, noted on each.
-  /** MDBList, TVDB and RatingPosterDB API keys, named as in Flow Sync (`mdblistAPIKey`, `tvdbAPIKey`, `rpdbAPIKey`). */
+  /** MDBList, TVDB and RatingPosterDB API keys, named as in Marquee Sync (`mdblistAPIKey`, `tvdbAPIKey`, `rpdbAPIKey`). */
   mdblistKey?: string
   tvdbKey?: string
   rpdbKey?: string
@@ -161,9 +161,9 @@ export interface Settings {
   tapRatingOpensReviews?: boolean
   /** Rated posters from RatingPosterDB (needs its key). Absent is off. */
   posterEnhancement?: 'off' | 'rpdb'
-  /** The Seerr, Overseerr or Jellyseerr instance Request asks. Part of Flow Sync (the requests section). */
+  /** The Seerr, Overseerr or Jellyseerr instance Request asks. Part of Marquee Sync (the requests section). */
   seerr?: { url: string; key: string }
-  /** The subtitle services' keys and logins (Settings → Playback), named as in Flow Sync (`openSubtitlesAPIKey`,
+  /** The subtitle services' keys and logins (Settings → Playback), named as in Marquee Sync (`openSubtitlesAPIKey`,
    *  `openSubtitlesUsername`, `openSubtitlesPassword`, `subdlAPIKey`, `subSourceAPIKey`). Absent until set, which keeps
    *  them out of the code that loads first; the website sends no login to OpenSubtitles (see lib/subtitles/providers.ts). */
   openSubtitlesKey?: string
@@ -193,7 +193,7 @@ export interface Settings {
   /** X-Ray (who's in the scene, the cast and crew, the scenes) opens beside the picture whenever playback is paused; the
    *  apps' `playback.xrayWhenPaused`. Absent means on. */
   xrayWhenPaused?: boolean
-  /** Play Dolby Vision files as their HDR10 picture (MKV files Flow plays itself). */
+  /** Play Dolby Vision files as their HDR10 picture (MKV files Marquee plays itself). */
   neverUseDolbyVision?: boolean
   /** Rank HDR releases first when the screen shows HDR (the apps' `preferHDR`, on unless set); off ranks SDR first. */
   preferHDR?: boolean
@@ -218,7 +218,7 @@ export interface Settings {
   tryNextSourceOnFailure?: boolean
   /** The progress bar on the loading screen (`showLoadingProgress`). Absent is on. */
   showLoadingProgress?: boolean
-  /** MKV files play in Flow, or are handed to the external player above (`matroskaPlayback`). Absent is in Flow. */
+  /** MKV files play in Marquee, or are handed to the external player above (`matroskaPlayback`). Absent is in Marquee. */
   matroskaPlayback?: 'remux' | 'external'
   /** Decode DTS and Dolby TrueHD while playing (`decodeLosslessAudio`). Absent is on. */
   decodeLosslessAudio?: boolean

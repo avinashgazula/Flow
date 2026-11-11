@@ -57,7 +57,7 @@ const snap = (v: number, { min, max, step }: { min: number; max: number; step: n
 /** The apps' older "shadow" background is no box at all (the edge style draws the shadow now). */
 const legacyBackground = (v: unknown) => (v === 'shadow' ? 'none' : v)
 
-/** Whether a saved or imported value is a style Flow can use. Missing fields are fine (they take
+/** Whether a saved or imported value is a style Marquee can use. Missing fields are fine (they take
  *  their defaults); a field that's present has to be one of its choices or inside its range. */
 export function isSubtitleStyle(v: unknown): boolean {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) return false

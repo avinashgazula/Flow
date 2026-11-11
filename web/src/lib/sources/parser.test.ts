@@ -104,7 +104,7 @@ describe('isUnsafeFileName', () => {
 })
 
 // What Trellis (a Jellyfin-compatible server in front of AIOStreams) calls its sources: the only
-// thing Flow has, as its MediaStreams are empty.
+// thing Marquee has, as its MediaStreams are empty.
 const trellis = [
   '✨ 4K 🎫  BLURAY REMUX 🔆 DV • HDR10 • IMAX  🔊 Atmos • TrueHD •',
   '✨ 4K 🎫  BLURAY REMUX 🔆 DV • HDR10 • IMAX  🔊 DTS-HD MA • DD+',

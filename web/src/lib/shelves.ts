@@ -201,11 +201,11 @@ export function parseShelves(text: string): ParsedShelves {
   try {
     data = JSON.parse(text)
   } catch {
-    return { ok: false, error: 'The clipboard doesn’t hold shelves. Copy them from Settings → Shelves in Flow, then try again.' }
+    return { ok: false, error: 'The clipboard doesn’t hold shelves. Copy them from Settings → Shelves in Marquee, then try again.' }
   }
   // A whole setup export keeps the list under settings.shelves.
   if (isObject(data) && isObject(data.settings) && Array.isArray(data.settings.shelves)) data = data.settings.shelves
-  if (!Array.isArray(data)) return { ok: false, error: 'The clipboard doesn’t hold shelves. Copy them from Settings → Shelves in Flow, then try again.' }
+  if (!Array.isArray(data)) return { ok: false, error: 'The clipboard doesn’t hold shelves. Copy them from Settings → Shelves in Marquee, then try again.' }
   const shelves: ShelfConfig[] = []
   const seen = new Set<string>()
   let skipped = 0
@@ -225,6 +225,6 @@ export function parseShelves(text: string): ParsedShelves {
     shelves.push({ id, title, source, enabled: raw.enabled !== false, style: (styles as readonly unknown[]).includes(raw.style) ? (raw.style as ShelfStyle) : 'poster' })
   }
   skipped += Math.max(0, data.length - maxShelves)
-  if (shelves.length === 0) return { ok: false, error: data.length === 0 ? 'That list is empty, so nothing was replaced.' : 'None of those shelves could be read. Copy them from Settings → Shelves in Flow, then try again.' }
+  if (shelves.length === 0) return { ok: false, error: data.length === 0 ? 'That list is empty, so nothing was replaced.' : 'None of those shelves could be read. Copy them from Settings → Shelves in Marquee, then try again.' }
   return { ok: true, shelves, skipped }
 }

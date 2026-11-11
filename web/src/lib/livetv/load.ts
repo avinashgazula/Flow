@@ -11,7 +11,7 @@ import { parseXMLTV, readXMLTV } from './xmltv'
 import { XtreamClient } from './xtream'
 
 /* Loads channels and the guide from every enabled provider, as the apps' LiveTVStore does: playlists
-   first so the list can show, then the guide for the hours Flow displays. What was downloaded is kept in
+   first so the list can show, then the guide for the hours Marquee displays. What was downloaded is kept in
    IndexedDB until the refresh time passes. */
 
 export interface LiveState {

@@ -1,4 +1,4 @@
-/* Trakt API v2 from the page: the calls Flow makes (profile, watchlist, history, watched episodes, playback
+/* Trakt API v2 from the page: the calls Marquee makes (profile, watchlist, history, watched episodes, playback
    progress, scrobbles, ratings), as FlowKit's TraktClient makes them. Titles are named by their TMDB id, which is
    all Trakt needs to find one. Responses are turned into small shapes here so nothing else reads Trakt's JSON.
 
@@ -32,12 +32,12 @@ export class TraktError extends Error {
 export const words = {
   clientID: 'Trakt didn’t accept this app’s client ID. Check it in Settings → Account.',
   signedOut: 'Trakt ended this sign-in. Sign in again.',
-  rate: 'Trakt is busy. Flow will try again in a moment.',
+  rate: 'Trakt is busy. Marquee will try again in a moment.',
   network: 'Couldn’t reach Trakt. Check your connection.',
   missingID: 'Add a Trakt Client ID in Settings → Account to sign in.',
 }
 
-const serverWords = (status: number) => `Trakt had a problem (${status}). Flow will try again in a moment.`
+const serverWords = (status: number) => `Trakt had a problem (${status}). Marquee will try again in a moment.`
 
 // MARK: Shapes
 
@@ -258,7 +258,7 @@ export function createClient(auth: TraktAuth, fetcher: typeof fetch) {
     async profile(): Promise<{ username: string; name?: string }> {
       const { body } = await request('GET', '/users/settings')
       const user = obj(body) && obj(body.user) ? body.user : {}
-      if (typeof user.username !== 'string') throw new TraktError('Trakt answered something Flow didn’t expect. Try again in a moment.', 'server')
+      if (typeof user.username !== 'string') throw new TraktError('Trakt answered something Marquee didn’t expect. Try again in a moment.', 'server')
       return { username: user.username, ...(typeof user.name === 'string' && user.name ? { name: user.name } : {}) }
     },
 

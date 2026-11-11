@@ -1,6 +1,6 @@
 /* The only part of the tracker code the first page carries: a few lines that notice which service has a job (tracking,
    or holding the watchlist or favourites; destinations.ts) and load its engine. The sign-in may be in storage already,
-   or arrive later (made in Settings, or brought by Flow Sync), and the choices may change, so this looks now and again
+   or arrive later (made in Settings, or brought by Marquee Sync), and the choices may change, so this looks now and again
    at every settings change until each engine has started once. Each engine then follows the settings itself. */
 
 import { settingsStore } from '../store/settings'
