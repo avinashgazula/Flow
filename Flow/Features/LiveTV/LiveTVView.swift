@@ -75,13 +75,23 @@ struct LiveTVView: View {
     @State private var search = ""
     @State private var playing: Channel?
     @State private var showGuide = !Platform.isPhone
+    #if !os(tvOS)
+    @FocusState private var searchFocused: Bool
+    #endif
     /// The Live TV tab itself, rather than a channel group pushed from it.
     var isTabRoot = true
+    /// The group a pushed page was opened for; it names the page.
+    private let openedGroup: String?
 
     init(isTabRoot: Bool = true, group: String? = nil) {
         self.isTabRoot = isTabRoot
+        self.openedGroup = group
         _group = State(initialValue: group)
     }
+
+    private static let favouritesGroup = "★ Favourites"
+
+    private var title: String { isTabRoot ? "Live TV" : (openedGroup ?? "Live TV") }
 
     private var favourites: [Channel] {
         let ids = Set(model.settings.liveTV.favouriteChannelIDs)
@@ -91,7 +101,9 @@ struct LiveTVView: View {
     private var visible: [Channel] {
         var list = store.channels
         // With the last favourite gone its chip is too, so the list falls back to everything rather than staying blank.
-        if let group, !(group == "★ Favourites" && favourites.isEmpty) { list = group == "★ Favourites" ? favourites : list.filter { $0.group == group } }
+        if let group, !(group == Self.favouritesGroup && favourites.isEmpty) {
+            list = group == Self.favouritesGroup ? favourites : list.filter { $0.group == group }
+        }
         if !search.isEmpty { list = list.filter { $0.name.localizedCaseInsensitiveContains(search) } }
         return list
     }
@@ -99,40 +111,24 @@ struct LiveTVView: View {
     var body: some View {
         Group {
             if model.settings.liveTV.providers.isEmpty {
-                ContentUnavailableView {
-                    Label("No IPTV Providers", systemImage: "tv.and.mediabox")
-                } description: {
-                    Text("Add an M3U playlist or Xtream Codes login to watch live channels.")
-                } actions: {
-                    NavigationLink("Add Provider", value: Route.settings(.liveTV)).buttonStyle(PrimaryButtonStyle())
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    BrowseHead(title)
+                    BrowseEmpty(title: "No IPTV Providers", message: "Add an M3U playlist or Xtream Codes login to watch live channels.") {
+                        NavigationLink("Add Provider", value: Route.settings(.liveTV)).buttonStyle(PrimaryButtonStyle())
+                    }
+                    Spacer(minLength: 0)
                 }
             } else if store.loading && store.channels.isEmpty {
-                ProgressView("Loading channels…")
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    BrowseHead(title)
+                    ProgressView("Loading channels…").frame(maxWidth: .infinity).padding(.top, 60)
+                    Spacer(minLength: 0)
+                }
             } else {
                 content
             }
         }
-        #if os(tvOS)
-        .toolbar(isTabRoot ? .hidden : .automatic, for: .navigationBar)
-        #else
-        .navigationTitle("Live TV")
-        // On TV a search field is a full on-screen keyboard parked above the content.
-        .searchable(text: $search, prompt: "Channels")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { withAnimation(Theme.Motion.fade) { showGuide.toggle() } } label: {
-                    Image(systemName: showGuide ? "list.bullet" : "calendar.day.timeline.left")
-                }
-                .accessibilityLabel(showGuide ? "Show List" : "Show Guide")
-                .tint(Theme.Palette.text)
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button { refresh() } label: { Image(systemName: "arrow.clockwise") }
-                    .accessibilityLabel("Refresh")
-                    .tint(Theme.Palette.text)
-            }
-        }
-        #endif
+        .browsePage(title, root: isTabRoot)
         .task(id: model.settings.liveTV.providers) {
             await store.load(providers: model.settings.liveTV.providers, refreshHours: model.settings.liveTV.epgRefreshHours, http: model.http)
         }
@@ -150,67 +146,111 @@ struct LiveTVView: View {
         #endif
     }
 
+    // MARK: Content
+
+    @ViewBuilder
     private var content: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Group {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Space.xs) {
-                        #if os(tvOS)
-                        ActionChip(title: showGuide ? "List" : "Guide", systemImage: showGuide ? "list.bullet" : "calendar.day.timeline.left") {
-                            withAnimation(Theme.Motion.fade) { showGuide.toggle() }
-                        }
-                        ActionChip(title: nil, systemImage: "arrow.clockwise") { refresh() }
-                            .accessibilityLabel("Refresh")
-                        #endif
-                        chip("All", selected: group == nil) { group = nil }
-                        if !favourites.isEmpty { chip("★ Favourites", selected: group == "★ Favourites") { group = "★ Favourites" } }
-                        ForEach(store.groups, id: \.self) { g in chip(g, selected: group == g) { group = g } }
-                    }
-                    .padding(.horizontal, Theme.Space.gutter)
-                }
-                .scrollClipDisabled()
-            }
-            if let error = store.error {
-                Label(error, systemImage: "exclamationmark.triangle").font(Theme.Typeface.caption).foregroundStyle(.orange)
-                    .padding(.horizontal, Theme.Space.gutter)
-            }
-            if showGuide {
-                GuideView(channels: visible, epg: store.epg) { play($0) }
-                    .transition(.opacity)
-            } else {
-                ScrollView {
-                    GroupedTable {
-                        ForEach(Array(visible.enumerated()), id: \.element.id) { index, channel in
-                            Button { play(channel) } label: {
-                                ChannelRow(channel: channel, epg: store.epg, isFavourite: model.settings.liveTV.favouriteChannelIDs.contains(channel.id),
-                                           showsDivider: index > 0)
-                            }
-                            .buttonStyle(TableRowButtonStyle())
-                            .contextMenu {
-                                Button {
-                                    toggleFavourite(channel)
-                                } label: {
-                                    let fav = model.settings.liveTV.favouriteChannelIDs.contains(channel.id)
-                                    Label(fav ? "Remove Favourite" : "Favourite", systemImage: fav ? "star.slash" : "star")
+        if showGuide {
+            GuideView(channels: visible, epg: store.epg, onPlay: { play($0) }) { header }
+                .transition(.opacity)
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    header
+                    if visible.isEmpty {
+                        BrowseEmpty(title: "No Channels", message: search.isEmpty ? "Nothing is in this group." : "No channel is called that. Try a shorter name.")
+                    } else {
+                        LazyVStack(spacing: 0) {
+                            ForEach(visible) { channel in
+                                Button { play(channel) } label: {
+                                    ChannelRow(channel: channel, epg: store.epg,
+                                               isFavourite: model.settings.liveTV.favouriteChannelIDs.contains(channel.id))
+                                }
+                                .buttonStyle(BrowseRowStyle())
+                                .contextMenu {
+                                    Button {
+                                        toggleFavourite(channel)
+                                    } label: {
+                                        let fav = model.settings.liveTV.favouriteChannelIDs.contains(channel.id)
+                                        Label(fav ? "Remove Favourite" : "Favourite", systemImage: fav ? "star.slash" : "star")
+                                    }
                                 }
                             }
                         }
+                        .padding(.horizontal, Theme.Space.gutter)
                     }
-                    .padding(.horizontal, Theme.Space.gutter)
-                    .padding(.bottom, Theme.Space.xl)
                 }
-                .transition(.opacity)
+                .padding(.bottom, Theme.Space.xl)
             }
+            .scrollIndicators(.hidden)
+            .transition(.opacity)
         }
-        .padding(.top, Theme.Space.xs)
-        .animation(Theme.Motion.fade, value: showGuide)
     }
 
-    private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
+    /// The page head, the List and Guide tabs, the channel search and the group chips: everything above the channels.
+    private var header: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            BrowseHead(title, note: "\(visible.count.formatted()) \(visible.count == 1 ? "channel" : "channels")")
+            BrowseToolbar {
+                VStack(alignment: .leading, spacing: Theme.Space.s) {
+                    HStack(spacing: Theme.Space.s) {
+                        SegmentedTabs(options: [(value: false, title: "List"), (value: true, title: "Guide")], selection: guideBinding)
+                        Spacer(minLength: 0)
+                        Button("Refresh") { refresh() }
+                            .buttonStyle(FilterChipStyle())
+                    }
+                    // On TV a search field is a full on-screen keyboard parked above the content.
+                    #if !os(tvOS)
+                    searchField
+                    #endif
+                }
+            }
+            ChipRow {
+                chip("All", selected: group == nil) { group = nil }
+                if !favourites.isEmpty { chip("Favourites", selected: group == Self.favouritesGroup) { group = Self.favouritesGroup } }
+                ForEach(store.groups, id: \.self) { g in chip(g, selected: group == g) { group = g } }
+            }
+            if let error = store.error {
+                Text(error)
+                    .font(Theme.Typeface.caption)
+                    .foregroundStyle(Theme.Palette.warn)
+                    .padding(.horizontal, Theme.Space.gutter)
+            }
         }
-        .buttonStyle(FilterTabStyle(selected: selected))
+    }
+
+    private var guideBinding: Binding<Bool> {
+        Binding(get: { showGuide }, set: { value in withAnimation(Theme.Motion.state) { showGuide = value } })
+    }
+
+    #if !os(tvOS)
+    /// A bordered mono field, blue while it has the cursor.
+    private var searchField: some View {
+        HStack(spacing: Theme.Space.xs) {
+            TextField("Find a Channel", text: $search, prompt: Text("Find a channel").foregroundStyle(Theme.Palette.muted))
+                .font(Theme.Typeface.body)
+                .textFieldStyle(.plain)
+                .focused($searchFocused)
+                .autocorrectionDisabled()
+                #if os(iOS)
+                .textInputAutocapitalization(.never)
+                #endif
+            if !search.isEmpty {
+                Button { search = "" } label: { Image(systemName: "xmark") }
+                    .buttonStyle(QuietButtonStyle(square: true))
+                    .accessibilityLabel("Clear Search")
+            }
+        }
+        .padding(.horizontal, Theme.Space.m)
+        .frame(minHeight: 44)
+        .background(Theme.Palette.bg)
+        .ruleFrame(searchFocused ? Theme.Palette.blue : Theme.Palette.rule)
+    }
+    #endif
+
+    private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .buttonStyle(FilterChipStyle(current: selected))
     }
 
     private func refresh() {
@@ -237,33 +277,33 @@ struct LiveTVView: View {
     }
 }
 
-/// A channel as a row of a `GroupedTable`: its logo, number and name, what's on with the time left and a
-/// hairline of progress, then what's next.
+/// A channel as a ruled row: its number in red, its logo, its name, then what's on with the time left and a thin
+/// red bar of progress, then what's next. It sits in a `BrowseRowStyle` button, which lights it blue.
 struct ChannelRow: View {
     let channel: Channel
     let epg: EPG
     let isFavourite: Bool
-    /// A hairline above this row, when it follows another in the table.
-    var showsDivider = false
-    @Environment(\.isFocused) private var focused
 
-    private var logoWidth: CGFloat { Platform.isTV ? 120 : 56 }
-    private var primary: Color { focused ? .black : .white }
-    private var secondary: Color { focused ? .black.opacity(0.62) : Theme.Palette.textSecondary }
-    private var tertiary: Color { focused ? .black.opacity(0.45) : Theme.Palette.textTertiary }
+    private var logoSize: CGFloat { (Platform.isTV ? 120 : 56) / 1.6 }
 
     var body: some View {
         let (now, next) = epg.nowAndNext(for: channel.epgID)
         return HStack(alignment: .center, spacing: Theme.Space.m) {
-            logo
+            if let number = channel.number {
+                Text("\(number)")
+                    .font(Theme.Typeface.figure)
+                    .rowInk(Theme.Palette.red)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .frame(width: 48 * Theme.scale, alignment: .leading)
+                    .accessibilityHidden(true)
+            }
+            ChannelBadge(channel: channel, size: logoSize)
             VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    if let number = channel.number {
-                        Text("\(number)").font(.system(.caption).monospacedDigit()).foregroundStyle(tertiary)
-                    }
-                    Text(channel.name).font(Theme.Typeface.headline).foregroundStyle(primary).lineLimit(1)
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
+                    Text(channel.name).font(Theme.Typeface.heading).textCase(.uppercase).lineLimit(1)
                     if isFavourite {
-                        Image(systemName: "star.fill").font(.caption2).foregroundStyle(focused ? .black : Theme.Palette.gold)
+                        Image(systemName: "star.fill").font(.caption2).rowInk(Theme.Palette.red)
                             .accessibilityLabel("Favourite")
                     }
                 }
@@ -272,55 +312,30 @@ struct ChannelRow: View {
                     TimelineView(.periodic(from: .now, by: 30)) { context in
                         VStack(alignment: .leading, spacing: 5) {
                             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-                                Text(now.title).font(Theme.Typeface.body).foregroundStyle(primary.opacity(0.9)).lineLimit(1)
+                                Text(now.title).font(Theme.Typeface.body).lineLimit(1)
                                 Spacer(minLength: Theme.Space.s)
                                 Text(TimeFormat.remaining(max(0, now.end.timeIntervalSince(context.date))))
-                                    .font(.system(.caption).monospacedDigit()).foregroundStyle(tertiary)
+                                    .font(Theme.Typeface.caption).rowInk(Theme.Palette.muted)
                             }
-                            ProgressCapsule(value: now.progress(at: context.date), height: 2, tint: Theme.Palette.red)
-                                .opacity(focused ? 0.5 : 1)
+                            RedBar(value: now.progress(at: context.date), height: 3 * Theme.scale)
                         }
                     }
                     if let next {
                         Text("Next \(next.start.formatted(date: .omitted, time: .shortened)) · \(next.title)")
-                            .font(Theme.Typeface.caption).foregroundStyle(tertiary).lineLimit(1)
+                            .font(Theme.Typeface.caption).rowInk(Theme.Palette.muted).lineLimit(1)
                     }
                 } else {
-                    Text(channel.group).font(Theme.Typeface.caption).foregroundStyle(tertiary)
+                    Text(channel.group).font(Theme.Typeface.caption).rowInk(Theme.Palette.muted).lineLimit(1)
                 }
             }
         }
-        .padding(.horizontal, Theme.Space.m)
-        .padding(.vertical, 12 * Theme.scale)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .tvRowSurface(focused: focused)
-        .tableDivider(showsDivider, inset: Theme.Space.m * 2 + logoWidth)
-    }
-
-    private var logo: some View {
-        let shape = RoundedRectangle(cornerRadius: 8 * Theme.scale, style: .continuous)
-        let height = logoWidth * 0.62
-        return Group {
-            if channel.logoURL != nil {
-                RemoteImage(url: channel.logoURL, contentMode: .fit, maxPixel: 300)
-                    .padding(5)
-                    .frame(width: logoWidth, height: height)
-                    .background(Theme.Palette.surfaceStrong)
-            } else {
-                Monogram(name: channel.name, fontSize: 15 * Theme.scale, condensed: true)
-                    .frame(width: logoWidth, height: height)
-            }
-        }
-        .clipShape(shape)
-        .overlay(shape.strokeBorder(Theme.Palette.hairline))
-        .accessibilityHidden(true)
     }
 }
 
 struct ChannelGroupView: View {
     let group: String
     var body: some View {
-        LiveTVView(isTabRoot: false, group: group).navigationTitle(group)
+        LiveTVView(isTabRoot: false, group: group)
     }
 }
 

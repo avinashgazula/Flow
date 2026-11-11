@@ -15,52 +15,35 @@ struct SportsView: View {
 
     private var client: SportsClient { SportsClient(apiKey: model.settings.sports.apiKey, http: model.http) }
 
+    private var teamsNote: String {
+        let count = model.settings.sports.followedTeams.count
+        return count == 0 ? "Fixtures and results" : count == 1 ? "1 team" : "\(count) teams"
+    }
+
     var body: some View {
-        List {
-            if model.settings.sports.followedTeams.isEmpty {
-                ContentUnavailableView {
-                    Label("No Teams", systemImage: "sportscourt")
-                } description: {
-                    Text("Follow teams to see their upcoming fixtures and results here.")
-                } actions: {
-                    Button("Find Teams") { showSearch = true }.buttonStyle(PrimaryButtonStyle())
-                }
-            }
-            ForEach(model.settings.sports.followedTeams) { team in
-                Section {
-                    let next = upcoming[team.id] ?? []
-                    let last = results[team.id] ?? []
-                    if next.isEmpty && last.isEmpty {
-                        Text("No fixtures available").foregroundStyle(.secondary)
-                    }
-                    ForEach(next.prefix(5)) { event in row(event) }
-                    if !last.isEmpty {
-                        Text("Recent Results").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                        ForEach(last.prefix(3)) { event in row(event) }
-                    }
-                } header: {
-                    HStack(spacing: 10) {
-                        RemoteImage(url: team.badgeURL, contentMode: .fit).frame(width: 28, height: 28)
-                        Text(team.name).font(.headline).textCase(nil)
-                        if let league = team.league { Text(league).font(.caption).foregroundStyle(.secondary).textCase(nil) }
-                        Spacer()
-                        Button(role: .destructive) {
-                            model.settings.sports.followedTeams.removeAll { $0.id == team.id }
-                        } label: { Image(systemName: "minus.circle") }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("Unfollow \(team.name)")
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
+                BrowseHead("Sports", note: teamsNote)
+                BrowseToolbar {
+                    HStack {
+                        Spacer(minLength: 0)
+                        Button("Follow a Team") { showSearch = true }
+                            .buttonStyle(FilterChipStyle())
                     }
                 }
+                if model.settings.sports.followedTeams.isEmpty {
+                    BrowseEmpty(title: "No Teams", message: "Follow teams to see their upcoming fixtures and results here.") {
+                        Button("Find Teams") { showSearch = true }.buttonStyle(PrimaryButtonStyle())
+                    }
+                }
+                ForEach(model.settings.sports.followedTeams) { team in
+                    teamSection(team)
+                }
             }
+            .padding(.bottom, Theme.Space.xl)
         }
-        .navigationTitle("Sports")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { showSearch = true } label: { Image(systemName: "plus") }
-                    .accessibilityLabel("Follow a Team")
-                    .tint(Theme.Palette.text)
-            }
-        }
+        .scrollIndicators(.hidden)
+        .browsePage("Sports")
         .sheet(isPresented: $showSearch) { TeamSearchView().environment(model) }
         .flowModal(item: $channelsFor) { event in
             GameChannelsView(event: event)
@@ -69,6 +52,56 @@ struct SportsView: View {
         }
         .liveChannelCover($playing, epg: live.epg, autoRotate: model.settings.playback.autoRotate)
         .task(id: model.settings.sports.followedTeams.map(\.id)) { await load() }
+    }
+
+    /// A team: its badge and name on a red label under a rule, then fixtures, then recent results.
+    private func teamSection(_ team: SportsTeam) -> some View {
+        let next = upcoming[team.id] ?? []
+        let last = results[team.id] ?? []
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                RuleLine()
+                HStack(alignment: .center, spacing: Theme.Space.s) {
+                    RemoteImage(url: team.badgeURL, contentMode: .fit)
+                        .frame(width: 28 * Theme.scale, height: 28 * Theme.scale)
+                        .accessibilityHidden(true)
+                    SectionLabel(team.name)
+                    if let league = team.league {
+                        Text(league).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted).lineLimit(1)
+                    }
+                    Spacer(minLength: Theme.Space.s)
+                    Button("Unfollow") {
+                        model.settings.sports.followedTeams.removeAll { $0.id == team.id }
+                    }
+                    .buttonStyle(QuietButtonStyle())
+                    .accessibilityLabel("Unfollow \(team.name)")
+                }
+            }
+            .padding(.horizontal, Theme.Space.gutter)
+            VStack(spacing: 0) {
+                if next.isEmpty && last.isEmpty {
+                    Text("No fixtures available")
+                        .font(Theme.Typeface.caption)
+                        .foregroundStyle(Theme.Palette.muted)
+                        .ruledRowFrame()
+                }
+                ForEach(next.prefix(5)) { event in row(event) }
+                if !last.isEmpty {
+                    Text("Recent Results")
+                        .font(Theme.Typeface.micro)
+                        .textCase(.uppercase)
+                        .tracking(0.12 * 11 * Theme.scale)
+                        .foregroundStyle(Theme.Palette.muted)
+                        .padding(.top, Theme.Space.s)
+                        .padding(.bottom, Theme.Space.xxs)
+                        .padding(.horizontal, Theme.Space.xs)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .ruledRow()
+                    ForEach(last.prefix(3)) { event in row(event) }
+                }
+            }
+            .padding(.horizontal, Theme.Space.gutter)
+        }
     }
 
     private func load() async {
@@ -88,7 +121,6 @@ struct SportsView: View {
     private func row(_ event: SportsEvent) -> some View {
         let hidden = !model.settings.sports.showScoreSpoilers && !revealed.contains(event.id)
         return EventRow(event: event, scoreHidden: hidden) { revealed.insert(event.id) }
-            .contentShape(Rectangle())
             .onTapGesture {
                 // A finished game has nothing to watch: the tap uncovers its score.
                 if hidden && event.isFinished { revealed.insert(event.id) } else { open(event, list: model.settings.sports.chooseChannelOnTap) }
@@ -97,6 +129,7 @@ struct SportsView: View {
             #if os(tvOS)
             .focusable()
             #endif
+            .accessibilityAddTraits(.isButton)
     }
 
     private func open(_ event: SportsEvent, list: Bool) {
@@ -147,16 +180,20 @@ struct GameChannelsView: View {
                     }
                 } else {
                     ScrollView {
-                        GroupedTable {
-                            ForEach(Array(matches.enumerated()), id: \.element.id) { index, match in
-                                Button { playing = match.channel } label: {
-                                    ChannelRow(channel: match.channel, epg: live.epg, isFavourite: model.settings.liveTV.favouriteChannelIDs.contains(match.channel.id),
-                                               showsDivider: index > 0)
+                        VStack(alignment: .leading, spacing: Theme.Space.s) {
+                            SectionHead("Channels", note: event.title)
+                            VStack(spacing: 0) {
+                                ForEach(matches, id: \.id) { match in
+                                    Button { playing = match.channel } label: {
+                                        ChannelRow(channel: match.channel, epg: live.epg,
+                                                   isFavourite: model.settings.liveTV.favouriteChannelIDs.contains(match.channel.id))
+                                    }
+                                    .buttonStyle(BrowseRowStyle())
                                 }
-                                .buttonStyle(TableRowButtonStyle())
                             }
+                            .padding(.horizontal, Theme.Space.gutter)
                         }
-                        .padding(.horizontal, Theme.Space.gutter)
+                        .padding(.top, Theme.Space.m)
                         .padding(.bottom, Theme.Space.xl)
                     }
                 }
@@ -193,26 +230,65 @@ extension View {
     }
 }
 
+/// A fixture as a ruled row: its day and time, the teams and league, and the score in red. It lights blue while
+/// hovered or focused (the caller makes it focusable on Apple TV).
 struct EventRow: View {
     let event: SportsEvent
     /// Blurs the score until `reveal` is called, so a result isn't spoiled by scrolling past it.
     var scoreHidden = false
     var reveal: () -> Void = {}
+    @Environment(\.isFocused) private var focused
+    @State private var hovering = false
+
+    private var lit: Bool { focused || hovering }
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(event.title).font(.subheadline.weight(.medium))
-                HStack(spacing: 6) {
-                    if let date = event.date { Text(date.formatted(date: .abbreviated, time: .shortened)) }
-                    if let league = event.league { Text("· \(league)") }
+        HStack(spacing: Theme.Space.m) {
+            when
+                .frame(width: 88 * Theme.scale, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(event.title)
+                    .font(Theme.Typeface.heading)
+                    .textCase(.uppercase)
+                    .lineLimit(2)
+                if let league = event.league {
+                    Text(league).font(Theme.Typeface.caption).foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted).lineLimit(1)
                 }
-                .font(.caption).foregroundStyle(.secondary)
             }
-            Spacer()
+            Spacer(minLength: Theme.Space.xs)
             score
         }
+        .environment(\.rowLit, lit)
+        .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
+        .padding(.vertical, Theme.Space.s)
+        .padding(.horizontal, Theme.Space.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(lit ? Theme.Palette.blue : Color.clear)
+        .contentShape(Rectangle())
+        .ruledRow()
+        .animation(Theme.Motion.hover, value: lit)
+        #if !os(tvOS)
+        .onHover { hovering = $0 }
+        #endif
     }
+
+    /// The day over the time, in mono.
+    @ViewBuilder
+    private var when: some View {
+        if let date = event.date {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                    .textCase(.uppercase)
+                Text(date.formatted(date: .omitted, time: .shortened))
+            }
+            .font(Theme.Typeface.caption)
+            .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted)
+        } else {
+            Color.clear.frame(width: 0, height: 0)
+        }
+    }
+
+    private var scoreFont: Font { Theme.Typeface.custom(Theme.Face.condensed, 28, .title2).monospacedDigit() }
 
     @ViewBuilder
     private var score: some View {
@@ -220,15 +296,15 @@ struct EventRow: View {
             if scoreHidden {
                 // The blur is of a stand-in, so even its width gives nothing away.
                 Button(action: reveal) {
-                    Text("0 – 0").font(.headline.monospacedDigit())
+                    Text("0 – 0").font(scoreFont)
                         .blur(radius: 7 * Theme.scale)
-                        .overlay { Image(systemName: "eye.slash").font(.caption).foregroundStyle(.secondary) }
+                        .overlay { Image(systemName: "eye.slash").font(.caption).foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted) }
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.plain)
                 .accessibilityLabel("Score hidden")
                 .accessibilityHint("Shows the score")
             } else {
-                Text("\(h) – \(a)").font(.headline.monospacedDigit())
+                Text("\(h) – \(a)").font(scoreFont).foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.red)
             }
         }
     }
@@ -243,21 +319,32 @@ struct TeamSearchView: View {
 
     var body: some View {
         NavigationStack {
-            List(teams) { team in
-                Button {
-                    if !model.settings.sports.followedTeams.contains(where: { $0.id == team.id }) {
-                        model.settings.sports.followedTeams.append(team)
-                    }
-                    dismiss()
-                } label: {
-                    HStack(spacing: 12) {
-                        RemoteImage(url: team.badgeURL, contentMode: .fit).frame(width: 36, height: 36)
-                        VStack(alignment: .leading) {
-                            Text(team.name).font(.headline)
-                            Text([team.sport, team.league, team.country].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(teams) { team in
+                        Button {
+                            if !model.settings.sports.followedTeams.contains(where: { $0.id == team.id }) {
+                                model.settings.sports.followedTeams.append(team)
+                            }
+                            dismiss()
+                        } label: {
+                            HStack(spacing: Theme.Space.m) {
+                                RemoteImage(url: team.badgeURL, contentMode: .fit).frame(width: 36 * Theme.scale, height: 36 * Theme.scale)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(team.name).font(Theme.Typeface.heading).textCase(.uppercase).lineLimit(1)
+                                    Text([team.sport, team.league, team.country].compactMap { $0 }.joined(separator: " · "))
+                                        .font(Theme.Typeface.caption)
+                                        .rowInk(Theme.Palette.muted)
+                                        .lineLimit(1)
+                                }
+                                Spacer(minLength: 0)
+                            }
                         }
+                        .buttonStyle(BrowseRowStyle())
                     }
                 }
+                .padding(.horizontal, Theme.Space.gutter)
+                .padding(.vertical, Theme.Space.m)
             }
             .overlay { if searching { ProgressView() } }
             .searchable(text: $query, prompt: "Team name")
