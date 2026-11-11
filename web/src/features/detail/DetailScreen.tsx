@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useRouter } from '@tanstack/react-router'
-import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Artwork } from '../../components/Artwork'
 import type { PrintPart } from '../../components/Frame'
 import { Icon } from '../../components/Icon'
@@ -25,7 +25,7 @@ import { CollectionRow } from './CollectionRow'
 import { Ratings } from './Ratings'
 import { RequestButton } from './RequestButton'
 import { Episodes } from './Episodes'
-import { FilmCan } from './FilmCan'
+import { HowItPlays } from './HowItPlays'
 import { airedRefs, airsLine, cardOf, metaParts, nextEpisodeEntry, relatedRows, playLabel, playsFirst, titlePrint, todayOf } from './logic'
 import { fetchEpisodes, useShowEpisodes } from './shows'
 import { StarRating, useRating } from './StarRating'
@@ -194,7 +194,7 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
             </div>
           )}
           <p className={s.print}>{printText(titlePrint(d, progress, now, userLocale, marked))}</p>
-          <FilmCan search={search} best={best} lastPlayed={lastPlayed} onOpen={() => setPicker(true)} />
+          <HowItPlays search={search} best={best} lastPlayed={lastPlayed} onOpen={() => setPicker(true)} />
         </div>
 
         <div className={s.info}>
@@ -405,22 +405,21 @@ async function share(d: MediaDetail): Promise<boolean> {
   return navigator.clipboard?.writeText(url).then(() => true, () => false) ?? false
 }
 
-/** Year, runtime, rating and genres as one mono line under the title, wrapping only between the parts (the dot leads
- *  the part it separates), so a genre is never split across two lines. */
+/** Year, runtime, rating and genres as one mono line under the title, each part set off from the next by a thin rule
+ *  (it wraps only between parts, so a genre is never split across two lines). */
 function Meta({ detail: d, genres }: { detail: MediaDetail; genres: string[] }) {
   const parts = metaParts(d, genres)
-  const all = [...parts.facts.map((text) => ({ text, lead: true })), ...parts.genres.map((text, i) => ({ text: i < parts.genres.length - 1 ? `${text},` : text, lead: i === 0 }))]
+  const all = [...parts.facts, ...parts.genres]
   return (
     <p className={s.meta}>
-      {all.map((part, i) => (
-        <Fragment key={part.text}>
-          {i > 0 && ' '}
-          <span className={s.metaPart}>
-            {i > 0 && part.lead ? '·\u00a0' : ''}
-            {part.text}
+      <span className={s.metaRow}>
+        {all.map((text, i) => (
+          <span key={text} className={s.metaPart}>
+            {i > 0 && <span className="sr-only">, </span>}
+            {text}
           </span>
-        </Fragment>
-      ))}
+        ))}
+      </span>
     </p>
   )
 }

@@ -19,7 +19,7 @@
 .name {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   overflow: hidden;
   padding-bottom: 0.04em;
   font: 700 clamp(44px, 13.5vw, 72px) / 0.9 var(--font-title);
@@ -49,7 +49,14 @@
   .actions > :first-child { min-width: 168px; }
 }
 @media (min-width: 1100px) {
-  .lead { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-rows: 1fr auto auto; grid-template-areas: 'stack plate' 'actions plate' 'pager plate'; column-gap: var(--space-xxl); }
+  .lead { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-rows: auto auto 1fr; grid-template-areas: 'stack plate' 'actions plate' 'pager plate'; column-gap: var(--space-xxl); }
+  /* Beside the backdrop the words need not reserve the tallest slide's height (nothing below moves: the picture is
+     taller), so the buttons follow the title closely and the spare room is left under the pager. */
+  .stack { display: block; position: relative; align-self: start; }
+  .text { position: absolute; inset: 0 0 auto 0; }
+  .text[data-current] { position: relative; }
+  .pager { align-self: start; }
+  .name { -webkit-line-clamp: 3; }
   .plate { margin-top: 0; }
   .name { font-size: clamp(56px, 4.9vw, 84px); }
 }

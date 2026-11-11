@@ -328,7 +328,7 @@
       "refersTo": "row-hover",
       "description": "A full-width row with a red numeral and a condensed title; it inverts to blue on hover.",
       "html": "<div class=\"ds-row\"><b>01</b><span>Science Fiction</span><i>1,204</i></div>",
-      "css": ".ds-row{display:flex;align-items:baseline;gap:16px;width:320px;padding:14px 12px;border-top:3px solid #0a0a0a;border-bottom:1px solid #0a0a0a;color:#0a0a0a;font:400 13px \"IBM Plex Mono\",monospace}.ds-row b{font:700 22px/1 \"IBM Plex Sans Condensed\",sans-serif;color:#d4140b}.ds-row span{flex:1;font:700 20px/1.1 \"IBM Plex Sans Condensed\",sans-serif;text-transform:uppercase}.ds-row i{font-style:normal}.ds-row:hover{background:#1a3dff;color:#fff}.ds-row:hover b{color:#fff}"
+      "css": ".ds-row{display:flex;align-items:baseline;gap:16px;width:320px;padding:14px 12px;border-top:3px solid #0a0a0a;border-bottom:1px solid #0a0a0a;color:#0a0a0a;font:400 13px \"IBM Plex Mono\",monospace}.ds-row b{font:700 22px/1 \"IBM Plex Sans Condensed\",sans-serif;color:#c9120a}.ds-row span{flex:1;font:700 20px/1.1 \"IBM Plex Sans Condensed\",sans-serif;text-transform:uppercase}.ds-row i{font-style:normal}.ds-row:hover{background:#1a3dff;color:#fff}.ds-row:hover b{color:#fff}"
     },
     {
       "name": "Page Head",

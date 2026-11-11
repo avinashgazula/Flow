@@ -64,7 +64,7 @@
 
 /* A day's entries: ruled rows with a hairline between. From 900px the day's heading is a rail beside them, so a day with
    one entry takes one row's height rather than two. */
-.rows { margin: 0 calc(-1 * var(--page-inset)); border-top: 1px solid var(--hair); }
+.rows { margin: 0 calc(-1 * var(--page-inset)); border-top: 1px solid var(--fg); }
 .day .rows { border-top: 0; }
 @media (min-width: 900px) {
   .day { display: grid; grid-template-columns: 14rem minmax(0, 1fr); column-gap: var(--space-l); align-items: start; }
@@ -72,7 +72,7 @@
   .day .rows { margin-left: 0; }
   .rowLink { padding-left: 0; }
 }
-.row { display: flex; align-items: center; gap: var(--space-s); border-bottom: 1px solid var(--hair); }
+.row { display: flex; align-items: center; gap: var(--space-s); border-bottom: 1px solid var(--fg); }
 .row:last-child { border-bottom: 0; }
 .rowLink { display: flex; align-items: center; flex: 1; gap: var(--space-m); min-width: 0; padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--page-inset); color: var(--fg); -webkit-tap-highlight-color: transparent; }
 @media (hover: hover) { .rowLink:hover { background: var(--blue); color: var(--onblue); } .rowLink:hover .rowMeta { color: var(--onblue); } }

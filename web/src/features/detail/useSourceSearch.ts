@@ -3,7 +3,7 @@ import { searchSources, type PlaybackRequest, type SearchUpdate } from '../../li
 import { normaliseSourceOrdering } from '../../lib/sources/sourceSettings'
 import { settingsStore, useSettings } from '../../lib/store/settings'
 
-/* The title page asks every source for the title as soon as the page has its details, so the film-can
+/* The title page asks every source for the title as soon as the page has its details, so the "How This Plays"
    label can say what Play would start. The answer is kept for a few minutes: going back to a title, or
    opening the picker from the label, doesn't ask every add-on again. With Prefetch on Detail View off (Settings →
    Metadata) nothing is asked until Play or the picker needs it, as the apps do to save bandwidth. */

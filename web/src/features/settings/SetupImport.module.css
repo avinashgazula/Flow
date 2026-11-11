@@ -6,7 +6,7 @@
 .heading { font: 600 var(--fs-small) / 1.2 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg); }
 .summary { margin: 0; display: flex; flex-direction: column; }
 .line { display: flex; justify-content: space-between; gap: var(--space-m); padding: var(--space-xs) 0; font-size: var(--fs-small); }
-.line + .line { border-top: 1px solid var(--hair); }
+.line + .line { border-top: 1px solid var(--fg); }
 .line dt { color: var(--muted); }
 .line dd { margin: 0; color: var(--fg); font-variant-numeric: tabular-nums; text-align: right; }
 .hint { font-size: var(--fs-footnote); color: var(--muted); line-height: 1.5; text-wrap: pretty; }

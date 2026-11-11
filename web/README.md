@@ -38,7 +38,7 @@ npm test             # unit tests (Vitest)
 | `src/lib/startTab.ts` | Opening Tab: the page the front address redirects to, once per visit, and never for a link with a query or a hash. |
 | `src/components/ContextMenu.tsx` | The More button, right-click and long-press menu on a card (Home's cards, and the episodes on a title page). `menuPlace.ts` is its placement and keyboard logic. |
 | `src/features/<area>/` | Each screen's components and CSS. |
-| `src/components/` | Shared pieces: `Artwork`, `Frame` (frame + edge strip: the signature), `Cards`, `Shelf`, `Nav`, `Icon`. |
+| `src/components/` | Shared pieces: `Artwork`, `Frame` (a ruled picture with its facts printed beneath), `Cards`, `Shelf`, `Nav`, `Icon`. |
 | `src/lib/tmdb/` | TMDB client (normalises responses into `types.ts`), images, sample data. |
 | `src/lib/store/` | Settings and library (watchlist, progress, history) in localStorage. |
 | `src/lib/trakt/` | Trakt: PKCE sign-in, the API client, the library sync and the player's scrobbler (see Trakt below). |
@@ -208,7 +208,7 @@ Settings → Media Servers and what the servers add to Home, Search and the play
   Artwork** puts the server's own pictures over them. A title the server never matched to TMDB isn't listed, since its
   page couldn't open. The apps have no "continue watching" shelf from a server either: the server's own Continue
   Watching follows from the playback reports below.
-- **SERVER on a poster.** A title on any enabled server ends its edge print with SERVER, after the rating (the apps'
+- **SERVER on a poster.** A title on any enabled server ends its printed line with SERVER, after the rating (the apps'
   `EdgePrint.poster(onServer:)`), printed after the rating but ranked above it and the runtime, so a strip with little room keeps "8.2 · SERVER" and a
   phone's 112 px poster (which keeps its holes, as every strip does) keeps SERVER alone. It is on the Search top
   result too, and **Show Badge on Posters** (on) switches it. What is on a server comes from an index of every
@@ -253,7 +253,7 @@ matching, sources, errors), `libraryFirst.test.ts`, and the index and SERVER pri
 The player has what the apps have for watching a series (`features/player/segments.ts`, `segmentSources.ts`,
 `stillWatching.ts`, each with the apps' own test cases):
 
-- **Skip Intro, Skip Recap, Skip Credits** as a yellow button bottom right above the scrubber while the segment plays
+- **Skip Intro, Skip Recap, Skip Credits** as a button bottom right above the scrubber while the segment plays
   (Enter or **S** presses it). Settings → Playback sets each to Show Button, Skip Automatically (skips once as the
   segment begins and says "Skipped intro" with Undo) or Off. The scrubber marks each segment with a thin tick under the holes.
 - **Where segments come from**, first answer wins: the server the file plays from (Jellyfin media segments, Plex

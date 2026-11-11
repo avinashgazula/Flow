@@ -58,7 +58,7 @@
   align-items: center;
   min-height: 48px;
   padding: 0 var(--space-s);
-  border-bottom: 1px solid var(--hair);
+  border-bottom: 1px solid var(--fg);
   color: var(--fg);
   font: 600 var(--fs-small) / 1.2 var(--font);
   text-transform: uppercase;
@@ -85,7 +85,7 @@
 .groupWrap { display: flex; flex-direction: column; gap: var(--space-xs); }
 .groupTitle { font: 600 var(--fs-footnote) / 1.2 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg); }
 .group { border-top: var(--rule); border-bottom: var(--rule); }
-.group > * + * { border-top: 1px solid var(--hair); }
+.group > * + * { border-top: 1px solid var(--fg); }
 .footer { font: 400 var(--fs-footnote) / 1.5 var(--font); color: var(--muted); text-wrap: pretty; max-width: var(--measure); }
 .footer a { color: var(--fg); font-weight: 600; text-decoration: underline dotted var(--red); text-decoration-thickness: 2px; text-underline-offset: 4px; }
 @media (hover: hover) { .footer a:hover { color: var(--blue); } }

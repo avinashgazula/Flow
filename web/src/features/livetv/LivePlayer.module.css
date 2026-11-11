@@ -18,7 +18,7 @@
   height: 100dvh;
   overflow: hidden;
   background: #000;
-  color: var(--paper);
+  color: var(--fg);
   isolation: isolate;
   touch-action: manipulation;
   -webkit-user-select: none;
@@ -44,19 +44,19 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-m);
-  background: var(--base);
+  background: var(--bg);
   pointer-events: none;
 }
-.connectingText { font: 400 var(--fs-body) / 1.4 var(--font); color: var(--ink-2); }
-.connectingText strong { color: var(--paper); font-weight: 600; }
+.connectingText { font: 400 var(--fs-body) / 1.4 var(--font); color: var(--muted); }
+.connectingText strong { color: var(--fg); font-weight: 600; }
 
 .centre { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; }
 .centre > * { pointer-events: auto; }
-.bigPlay { width: 72px; height: 72px; display: grid; place-items: center; border: 3px solid var(--fg); background: var(--over-video); color: var(--paper); transition: background-color var(--dur-state) ease, color var(--dur-state) ease; }
+.bigPlay { width: 72px; height: 72px; display: grid; place-items: center; border: 3px solid var(--fg); background: var(--over-video); color: var(--fg); transition: background-color var(--dur-state) ease, color var(--dur-state) ease; }
 .bigPlay:active { background: var(--blue); border-color: var(--blue); color: var(--onblue); }
 .bigPlay svg { width: 30px; height: 30px; }
 /* Buffering: a ring in paper that turns (the one round thing), because the stream is moving and not yet showing. */
-.buffering { width: 40px; height: 40px; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--paper) 25%, transparent); border-top-color: var(--paper); animation: turn 0.9s linear infinite; }
+.buffering { width: 40px; height: 40px; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--fg) 25%, transparent); border-top-color: var(--fg); animation: turn 0.9s linear infinite; }
 @keyframes turn { to { transform: rotate(360deg); } }
 
 /* The chrome: Guide at the top left, what is on and the control row along the bottom, a black gradient behind each. */
@@ -88,7 +88,7 @@
   gap: 2px;
   height: 44px;
   padding: 0 14px 0 8px;
-  color: var(--paper);
+  color: var(--fg);
   font: 600 var(--fs-small) / 1 var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -101,7 +101,7 @@
   flex: none;
   width: 44px;
   height: 44px;
-  color: var(--paper);
+  color: var(--fg);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
 }
@@ -113,14 +113,14 @@
 /* What is on: the channel, the programme, how far through it is, and what is next. Plain text on the gradient. */
 .info { display: flex; flex-direction: column; gap: 4px; width: min(560px, 100%); }
 .cardHead { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; }
-.number { font: 600 var(--fs-footnote) / 1 var(--font); color: var(--ink-2); }
-.channelName { font: 600 var(--fs-footnote) / 1.2 var(--font); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.number { font: 600 var(--fs-footnote) / 1 var(--font); color: var(--muted); }
+.channelName { font: 600 var(--fs-footnote) / 1.2 var(--font); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .programme { font: 700 var(--fs-title3) / 1.15 var(--font-cond); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.times { display: flex; align-items: center; gap: var(--space-s); font-size: var(--fs-footnote); color: var(--paper); }
-.progress { flex: 1; height: 4px; background: color-mix(in srgb, var(--paper) 25%, transparent); overflow: hidden; }
+.times { display: flex; align-items: center; gap: var(--space-s); font-size: var(--fs-footnote); color: var(--fg); }
+.progress { flex: 1; height: 4px; background: color-mix(in srgb, var(--fg) 25%, transparent); overflow: hidden; }
 .progress > span { display: block; height: 100%; background: var(--red); }
-.next { font-size: var(--fs-footnote); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.noGuide { font-size: var(--fs-footnote); color: var(--ink-2); }
+.next { font-size: var(--fs-footnote); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.noGuide { font-size: var(--fs-footnote); color: var(--muted); }
 
 .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
 .left { display: flex; align-items: center; gap: 2px; min-width: 0; }
@@ -167,8 +167,8 @@
 .panelRow:focus-visible { outline-offset: -3px; }
 .panelText { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .panelName { display: flex; align-items: baseline; gap: 8px; font: 700 var(--fs-body) / 1.2 var(--font-cond); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.panelNumber { font-size: var(--fs-caption); color: var(--ink-2); }
-.panelNow { font-size: var(--fs-footnote); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panelNumber { font-size: var(--fs-caption); color: var(--muted); }
+.panelNow { font-size: var(--fs-footnote); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* A stream that wouldn't play: what happened and what to do, over the flat base. */
 .failed {
@@ -186,9 +186,9 @@
 }
 .failedIcon { color: var(--red); }
 .failedTitle { font: 700 var(--fs-title2) / 1.1 var(--font-cond); text-transform: uppercase; text-wrap: balance; }
-.failedMessage { max-width: 56ch; font-size: var(--fs-small); line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
+.failedMessage { max-width: 56ch; font-size: var(--fs-small); line-height: 1.5; color: var(--muted); text-wrap: pretty; }
 .failedActions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xs); margin-top: var(--space-xs); }
-.failedDetail { font-size: var(--fs-caption); color: var(--ink-3); }
+.failedDetail { font-size: var(--fs-caption); color: var(--faint); }
 
 @media (max-width: 720px) {
   .programme { font-size: var(--fs-headline); }

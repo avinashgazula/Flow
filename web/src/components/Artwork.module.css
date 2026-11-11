@@ -1,7 +1,7 @@
 .box {
   position: relative;
   overflow: hidden;
-  background: var(--base-2);
+  background: var(--tint-1);
   contain: paint;
 }
 .img {
@@ -19,5 +19,5 @@
   padding: 12px;
   text-align: center;
   font: 600 var(--fs-small) / 1.2 var(--font);
-  color: var(--ink-2);
+  color: var(--muted);
 }

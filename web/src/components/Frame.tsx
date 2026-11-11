@@ -3,7 +3,7 @@ import { useMemo, type ReactNode, type Ref } from 'react'
 import type { ImageKind } from '../lib/tmdb/images'
 import { Artwork } from './Artwork'
 import { markZoomSource } from './zoom'
-import { toFacts, type PrintPart } from './stripLayout'
+import { toFacts, type PrintPart } from './printLayout'
 import s from './Frame.module.css'
 
 /* Frame: Flow's one repeating object. A still or a poster sits in a 3px ink rule, square, and what decides whether to
@@ -17,7 +17,7 @@ import s from './Frame.module.css'
 
    A line always carries something real. No line without facts. */
 
-export { rank, type PrintPart } from './stripLayout'
+export { rank, type PrintPart } from './printLayout'
 
 /** The line of facts. It wraps when the room is short and clips its second row, so what is lost is the last fact and
  *  never half of one. The time left is marked in red. */
@@ -48,7 +48,7 @@ export interface PlateProps {
   /** 0 to 1: the red bar along the picture's foot. Leave out for a title not started; 0 draws the empty bar. */
   progress?: number
   print?: PrintPart[]
-  /** Kept so a caller written for the old edge strip still compiles; the printed line has one size. */
+  /** Kept so an older caller still compiles; the printed line has one size. */
   stripSize?: 'lead' | 'title' | 'still' | 'poster'
   /** Shown in the frame when there's no artwork. */
   fallback?: string

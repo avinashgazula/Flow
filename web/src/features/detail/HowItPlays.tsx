@@ -3,12 +3,12 @@ import { Link } from '@tanstack/react-router'
 import { Icon } from '../../components/Icon'
 import type { SearchUpdate, Source } from '../../lib/sources'
 import { playFacts, sourcesSummary, versionParts } from './logic'
-import s from './FilmCan.module.css'
+import s from './HowItPlays.module.css'
 
-/** The film-can label under the still: will it play well? Three rows, from what the sources said:
+/** How this plays, under the still: will it play well? Three rows, from what the sources said:
  *  the version Play starts (the best one, or the one played last time, and the label says which), how this browser plays it (and what is compromised), and who
  *  offered sources. The last row opens the picker. */
-export function FilmCan({ search, best, lastPlayed, onOpen }: { search: SearchUpdate; best?: Source; lastPlayed?: boolean; onOpen: () => void }) {
+export function HowItPlays({ search, best, lastPlayed, onOpen }: { search: SearchUpdate; best?: Source; lastPlayed?: boolean; onOpen: () => void }) {
   const { sources, providers, finished } = search
   const noProviders = finished && providers.length === 0
   const failed = providers.filter((p) => p.state === 'failed').length
@@ -28,8 +28,8 @@ export function FilmCan({ search, best, lastPlayed, onOpen }: { search: SearchUp
             <dd>{waiting ? <Bar width="62%" /> : nothingPlays ? <span className={s.warn}>None plays in this browser</span> : version.length ? version.map((p, i) => (
                 <Fragment key={p}>
                   {i > 0 && ' '}
-                  {/* The dot travels with the item after it, so a wrapped line starts with one, never ends on one. */}
-                  <span className={s.part}>{i > 0 && '· '}{p}</span>
+                  {/* The dot travels with the item before it, so a wrapped line ends with one, never starts with one. */}
+                  <span className={s.part}>{p}{i < version.length - 1 && '\u00a0·'}</span>
                 </Fragment>
               )) : 'Unnamed release'}</dd>
           </div>

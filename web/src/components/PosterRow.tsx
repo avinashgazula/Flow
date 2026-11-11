@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import '../features/home/installCardMenu'
-import { rank } from './stripLayout'
+import { rank } from './printLayout'
 import { prefetchDetail } from '../lib/queries'
 import { posterOf } from '../lib/ratings/posters'
 import type { MediaItem } from '../lib/tmdb/types'

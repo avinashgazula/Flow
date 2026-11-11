@@ -52,7 +52,7 @@
   display: grid;
   place-items: center;
   flex: none;
-  color: var(--paper);
+  color: var(--fg);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
 /* Paper on the picture; the pointer fills the button blue, as everywhere else on the site. */
@@ -78,25 +78,25 @@
 @media (hover: hover) { .volume:hover .slider { width: 84px; margin: 0 10px 0 2px; opacity: 1; } }
 .slider::-webkit-slider-runnable-track {
   height: 4px;
-  background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), color-mix(in srgb, var(--paper) 30%, transparent) 0);
+  background: linear-gradient(90deg, var(--fg) calc(var(--level) * 100%), color-mix(in srgb, var(--fg) 30%, transparent) 0);
 }
 .slider::-moz-range-track {
   height: 4px;
-  background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), color-mix(in srgb, var(--paper) 30%, transparent) 0);
+  background: linear-gradient(90deg, var(--fg) calc(var(--level) * 100%), color-mix(in srgb, var(--fg) 30%, transparent) 0);
 }
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 12px;
   height: 12px;
   margin-top: -4px;
-  background: var(--paper);
+  background: var(--fg);
 }
 .slider::-moz-range-thumb {
   width: 12px;
   height: 12px;
   border: 0;
   border-radius: 0;
-  background: var(--paper);
+  background: var(--fg);
 }
 .slider:focus-visible { outline: none; }
 .slider:focus-visible::-webkit-slider-thumb { outline: 3px solid var(--blue); outline-offset: 2px; }
@@ -116,7 +116,7 @@
   place-items: center;
   border: 3px solid var(--fg);
   background: rgb(10 10 10 / 0.6);
-  color: var(--paper);
+  color: var(--fg);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
 .round:active { background: var(--blue); border-color: var(--blue); color: var(--onblue); }
@@ -146,7 +146,7 @@
 }
 .line {
   font: 400 var(--fs-caption) / 1.3 var(--font);
-  color: var(--ink-2);
+  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -161,13 +161,13 @@
   min-width: 3.4em;
   font: 600 var(--fs-footnote) / 1 var(--font-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--paper);
+  color: var(--fg);
   white-space: nowrap;
 }
-.timeEnd { min-width: 4.2em; padding: 12px 0 12px 6px; margin: -12px 0; text-align: right; cursor: pointer; border-radius: var(--radius-label); }
+.timeEnd { min-width: 4.2em; padding: 12px 0 12px 6px; margin: -12px 0; text-align: right; cursor: pointer; }
 @media (hover: hover) { .timeEnd:hover { text-decoration: underline; text-underline-offset: 3px; } }
 /* When it would end, quietly, where there is the room for it. */
-.ends { display: none; flex: none; font: 400 var(--fs-footnote) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
+.ends { display: none; flex: none; font: 400 var(--fs-footnote) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
 @media (min-width: 1100px) {
   .ends { display: block; }
 }
@@ -189,7 +189,7 @@
   top: 50%;
   height: 4px;
   margin-top: -2px;
-  background: color-mix(in srgb, var(--paper) 25%, transparent);
+  background: color-mix(in srgb, var(--fg) 25%, transparent);
   overflow: hidden;
   transition: height 0.15s var(--ease-out), margin-top 0.15s var(--ease-out);
 }
@@ -202,7 +202,7 @@
   transform-origin: left;
   will-change: transform;
 }
-.buffered { background: color-mix(in srgb, var(--paper) 30%, transparent); }
+.buffered { background: color-mix(in srgb, var(--fg) 30%, transparent); }
 /* Red marks progress, as everywhere on the site (5:1 on ink, and it still reads over a bright frame on the gradient). */
 .played { background: var(--red); }
 /* The thumb is only there when you are using the bar: under the pointer, while dragging, or on focus. */
@@ -213,7 +213,7 @@
   width: 14px;
   height: 14px;
   margin: -7px 0 0 -7px;
-  background: var(--paper);
+  background: var(--fg);
   opacity: 0;
   transition: opacity var(--dur-state) ease;
   pointer-events: none;
@@ -240,7 +240,7 @@
   max-height: calc(100% - var(--inset-top) - var(--inset-bottom) - var(--bottom-band) - 72px);
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-panel);
+  
   overflow: hidden;
   animation: panel var(--dur-state) var(--ease-out);
 }
@@ -297,7 +297,7 @@
   min-height: 48px;
   padding: 12px 16px;
   text-align: left;
-  color: var(--paper);
+  color: var(--fg);
   transition: background-color var(--dur-state) ease;
 }
 @media (hover: hover) {
@@ -318,40 +318,40 @@
   left: 16px;
   right: 16px;
   height: 1px;
-  background: var(--hair);
+  background: var(--fg);
 }
 .row:has(.rowIcon) + .row::before { left: 50px; }
-.rowIcon { width: 22px; display: grid; place-items: center; flex: none; color: var(--ink-2); }
+.rowIcon { width: 22px; display: grid; place-items: center; flex: none; color: var(--muted); }
 .rowText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .rowTitle { font: 400 var(--fs-body) / 1.3 var(--font); overflow-wrap: anywhere; }
 .rowTitle[data-checked] { font-weight: 600; }
 .rowDetail {
   font: 400 var(--fs-caption) / 1.3 var(--font);
-  color: var(--ink-2);
+  color: var(--muted);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   overflow-wrap: anywhere;
 }
-.rowValue { color: var(--ink-2); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+.rowValue { color: var(--muted); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
 /* The selected row's check: blue, the one coloured mark in a list. */
-.check { color: var(--stock); flex: none; }
-.chevron { color: var(--ink-3); display: grid; }
+.check { color: var(--blue); flex: none; }
+.chevron { color: var(--faint); display: grid; }
 .groupFooter {
   padding: 8px 16px 12px;
   font: 400 var(--fs-caption) / 1.4 var(--font);
-  color: var(--ink-2);
+  color: var(--muted);
 }
-.groupFooter a { color: var(--paper); text-decoration: underline; text-underline-offset: 2px; }
+.groupFooter a { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
 /* A reason from the network or the proxy is data: set apart on a darker band, selectable to copy. */
 .groupReason, .noSoundReason {
   display: block;
   margin-top: 8px;
   padding: 8px 10px;
-  border: 1px solid var(--hair);
-  background: var(--base);
-  color: var(--ink-2);
+  border: 1px solid var(--fg);
+  background: var(--bg);
+  color: var(--muted);
   overflow-wrap: anywhere;
   user-select: text;
 }
@@ -363,7 +363,7 @@
   right: calc(var(--inset-right) + var(--margin));
   bottom: calc(var(--inset-bottom) + var(--bottom-band));
   padding: 12px 0 16px;
-  border-radius: var(--radius-panel);
+  
   animation: panel var(--dur-state) var(--ease-out);
 }
 .shelfHeader { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 20px; }
@@ -380,8 +380,8 @@
 }
 .shelfRow::-webkit-scrollbar { display: none; }
 .shelfRow > li { flex: none; width: 200px; scroll-snap-align: start; }
-.shelfGhost { height: 150px; background: var(--base-3); }
-.episodeCard { width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left; color: var(--paper); }
+.shelfGhost { height: 150px; background: var(--tint-2); }
+.episodeCard { width: 100%; display: flex; flex-direction: column; gap: 8px; text-align: left; color: var(--fg); }
 .episodeCard:disabled { opacity: 0.5; cursor: default; }
 /* Every still in the player is a plain square picture; the current episode gets a blue frame round it. */
 .still { aspect-ratio: 16 / 9; }
@@ -391,7 +391,7 @@
 .episodeStill { display: block; transition: opacity var(--dur-state) ease; }
 @media (hover: hover) { .episodeCard:not(:disabled):hover .episodeStill { opacity: 0.88; } }
 .episodeName { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.episodeMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.episodeMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Up Next: bottom right, above the control row while the controls show. A plain thumbnail with a thin line along its
    foot that runs down with the countdown, the name, and "Starts in 9s" in words. */
@@ -406,7 +406,7 @@
   align-items: flex-start;
   gap: 14px;
   padding: 10px 16px 10px 10px;
-  border-radius: var(--radius-panel);
+  
   transition: transform var(--dur-move) var(--ease-out);
   animation: upNext var(--dur-move) var(--ease-out);
 }
@@ -427,7 +427,7 @@
   place-items: center;
   background: var(--over-video);
   border: 3px solid var(--fg);
-  color: var(--paper);
+  color: var(--fg);
 }
 .upNextFrame { position: relative; display: block; overflow: hidden; }
 /* The countdown: a red line along the thumbnail's foot, emptying from the right. */
@@ -441,7 +441,7 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.upNextMeta { font: 400 var(--fs-caption) / 1.25 var(--font); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.upNextMeta { font: 400 var(--fs-caption) / 1.25 var(--font); font-variant-numeric: tabular-nums; color: var(--muted); }
 .upNextActions { display: flex; align-items: center; gap: 4px; margin: 6px 0 0 -2px; }
 .upNextCancel {
   height: 36px;
@@ -449,7 +449,7 @@
   font: 600 var(--fs-caption) / 1 var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--ink-2);
+  color: var(--muted);
 }
 @media (hover: hover) { .upNextCancel:hover { background: var(--blue); color: var(--onblue); } }
 
@@ -494,7 +494,7 @@
 .skipUndo {
   height: 32px;
   padding: 0 10px;
-  color: var(--paper);
+  color: var(--fg);
   font: 600 var(--fs-small) / 1 var(--font);
   text-decoration: underline dotted var(--red);
   text-decoration-thickness: 2px;
@@ -525,7 +525,7 @@
   text-align: center;
 }
 .askTitle { font: 700 var(--fs-title2) / 1.05 var(--font-cond); text-transform: uppercase; text-wrap: balance; }
-.askNext { font: 400 var(--fs-footnote) / 1.4 var(--font); color: var(--ink-2); text-wrap: balance; }
+.askNext { font: 400 var(--fs-footnote) / 1.4 var(--font); color: var(--muted); text-wrap: balance; }
 .askActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
 
 /* Notices (No Sound, Couldn't Convert the Audio, Playback Is Struggling): under the title row, so
@@ -551,13 +551,13 @@
   text-transform: uppercase;
 }
 .noSoundTitle svg { flex: none; color: var(--warn); }
-.noSoundText { font: 400 var(--fs-footnote) / 1.45 var(--font); color: var(--ink-2); text-wrap: pretty; }
+.noSoundText { font: 400 var(--fs-footnote) / 1.45 var(--font); color: var(--muted); text-wrap: pretty; }
 .noSoundReason { margin-top: 0; font: 400 var(--fs-caption) / 1.45 var(--font); }
-.noSoundReason strong { display: block; font-weight: 600; color: var(--paper); }
+.noSoundReason strong { display: block; font-weight: 600; color: var(--fg); }
 .noSoundActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .noSoundActions :global(.btn) { padding: 0 14px; }
-.noSoundHint { font: 400 var(--fs-caption) / 1.45 var(--font); color: var(--ink-3); }
-.noSoundHint a { color: var(--paper); text-decoration: underline dotted var(--red); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.noSoundHint { font: 400 var(--fs-caption) / 1.45 var(--font); color: var(--faint); }
+.noSoundHint a { color: var(--fg); text-decoration: underline dotted var(--red); text-decoration-thickness: 2px; text-underline-offset: 4px; }
 
 /* Playback Info: the other side of the title row from the notices, so neither sits on the other
    (on a phone there is only room for one, and the notice wins). Out of the controls' way, and kept
@@ -580,7 +580,7 @@
   display: grid;
   place-items: center;
   flex: none;
-  color: var(--ink-2);
+  color: var(--muted);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
 @media (hover: hover) { .infoClose:hover { background: var(--blue); color: var(--onblue); } }
@@ -591,19 +591,19 @@
   align-items: baseline;
   gap: 16px;
   padding: 5px 0;
-  border-top: 1px solid var(--hair);
+  border-top: 1px solid var(--fg);
   font: 400 var(--fs-caption) / 1.35 var(--font);
 }
 .infoRow:first-child { border-top: 0; }
 .infoRow dt {
   font: 400 var(--fs-caption) / 1.25 var(--font);
-  color: var(--ink-2);
+  color: var(--muted);
   white-space: nowrap;
 }
 .infoRow dd {
   text-align: right;
   font-variant-numeric: tabular-nums;
-  color: var(--paper);
+  color: var(--fg);
   overflow-wrap: anywhere;
   user-select: text;
 }
@@ -701,7 +701,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.suggestHead h2 span, .suggestEndHead span { color: var(--ink-2); font-weight: 600; }
+.suggestHead h2 span, .suggestEndHead span { color: var(--muted); font-weight: 600; }
 .suggestClose {
   flex: none;
   width: 32px;
@@ -709,20 +709,20 @@
   margin: -6px -6px -6px 0;
   display: grid;
   place-items: center;
-  color: var(--ink-2);
+  color: var(--muted);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
 @media (hover: hover) { .suggestClose:hover { background: var(--blue); color: var(--onblue); } }
 .suggestRow { display: flex; gap: 10px; }
 .suggestRow > li { width: var(--w); flex: none; }
 /* One suggested film: a square still, its title and its facts. */
-.suggestion { width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; color: var(--paper); }
+.suggestion { width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; color: var(--fg); }
 .suggestion:focus-visible { outline: none; }
 .suggestion:focus-visible .suggestionStill { outline: 3px solid var(--blue); outline-offset: 3px; }
 .suggestionStill { display: block; transition: opacity var(--dur-state) ease; }
 @media (hover: hover) { .suggestion:hover .suggestionStill { opacity: 0.88; } }
 .suggestionTitle { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.suggestionMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suggestionMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* A phone held upright has room for two frames in a card as wide as its screen, not three: the rest wait out of sight
    rather than run past the card's edge, and the two share the width. */
 @media (max-width: 420px) {
@@ -753,9 +753,9 @@
   gap: 4px 12px;
   padding-right: var(--margin);
   font: 600 var(--fs-small) / 1.3 var(--font);
-  color: var(--ink-2);
+  color: var(--muted);
 }
-.suggestEndDone span:first-child { color: var(--paper); font-family: var(--font-cond); font-size: var(--fs-headline); font-weight: 700; text-transform: uppercase; }
+.suggestEndDone span:first-child { color: var(--fg); font-family: var(--font-cond); font-size: var(--fs-headline); font-weight: 700; text-transform: uppercase; }
 .suggestEndDone span + span { font-weight: 400; font-variant-numeric: tabular-nums; }
 .suggestEndHead {
   font: 700 var(--fs-title2) / 1.05 var(--font-cond);

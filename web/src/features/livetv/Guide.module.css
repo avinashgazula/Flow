@@ -33,7 +33,7 @@
   display: flex;
   align-items: center;
   padding-left: 8px;
-  border-left: 1px solid var(--hair);
+  border-left: 1px solid var(--fg);
   font: 600 var(--fs-caption) / 1 var(--font);
   letter-spacing: 0.06em;
   color: var(--muted);
@@ -45,7 +45,7 @@
 /* Red for live, above the programmes but under the channel column and the ruler. */
 .nowLine { position: absolute; top: 0; bottom: 0; z-index: 2; width: 3px; margin-left: -1.5px; background: var(--red); pointer-events: none; }
 
-.row { position: absolute; inset: 0 auto auto 0; border-bottom: 1px solid var(--hair); }
+.row { position: absolute; inset: 0 auto auto 0; border-bottom: 1px solid var(--fg); }
 
 .channel {
   position: sticky;
@@ -84,7 +84,7 @@
   text-align: left;
   background: var(--bg);
   color: var(--fg);
-  border-right: 1px solid var(--hair);
+  border-right: 1px solid var(--fg);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
   -webkit-tap-highlight-color: transparent;
 }

@@ -210,7 +210,7 @@ select, textarea, input:not([type='checkbox'], [type='radio'], [type='range'], [
 /* A list item is a full-width row; it inverts to blue on hover and focus. Rows sit in a list whose top is a
    3px rule and whose items are divided by 1px ink lines (.rows). */
 .rows { border-top: var(--rule); }
-.rows > li { border-bottom: 1px solid var(--hair); }
+.rows > li { border-bottom: 1px solid var(--fg); }
 .row {
   display: flex;
   align-items: baseline;

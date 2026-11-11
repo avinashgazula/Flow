@@ -41,7 +41,7 @@
           "src/components/Swatches.module.css"
         ],
         "createdAt": "2026-10-24T18:15:02.311Z",
-        "reason": "A thin dark ring so a white or yellow subtitle swatch keeps its edge on the panel."
+        "reason": "Subtitle colour swatches are the colours they name (white, yellow, cyan, green), drawn with an ink edge."
       },
       {
         "rule": "design-system-color",

@@ -4,19 +4,17 @@
    and the Light/Dark cell in the top bar changes it. The player (and anything else that sits on video) is dark in
    both themes: give its root data-theme="dark" and every token below follows.
 
-   Older screens still use the names of the previous system (--base, --paper, --ink-2, --stock ...). They are
-   remapped here so those screens keep working while each is restyled; new code uses the semantic names first
-   (--bg --fg --red --blue --onblue --muted). */
+   The names are semantic: --bg --fg --red --blue --onblue --muted --faint, with --tint-1..3 for the quiet fills. */
 :root,
 [data-theme='light'] {
   --bg: #ffffff;
   --fg: #0a0a0a;
-  --red: #d4140b; /* markers, numbers, labels, progress; 5:1 on --bg */
+  --red: #c9120a; /* markers, numbers, labels, progress; 5:1 on --bg */
   --blue: #1a3dff; /* action: links, hover fills, selection, focus; 7:1 on --bg */
   --onblue: #ffffff;
   --onred: #ffffff;
   --muted: #555555; /* secondary text, 7.5:1 */
-  --faint: #6b6b6b; /* captions and placeholders, 5.3:1; never for body copy */
+  --faint: #636363; /* captions and placeholders, 5.3:1; never for body copy */
   --warn: #a64b00; /* degraded states: "may stutter" */
   /* Quiet fills for what has no border yet: tracks, skeletons, a hovered menu item. */
   --tint-1: #f3f3f0;
@@ -48,25 +46,8 @@
   /* Derived from the colours above, so they are declared wherever the colours are (a dark scope inside a light
      page, the player, needs them recomputed, not inherited). */
   /* The rules. A 3px ink line divides everything: the top bar, page heads, toolbars, grids of cells (cells share
-     borders) and the top of a list. A list's rows are separated by 1px ink lines (--hair). */
+     borders) and the top of a list. A list's rows are separated by 1px ink lines. */
   --rule: 3px solid var(--fg);
-  --hair: var(--fg);
-
-  /* The previous system's names, remapped (see above). */
-  --base: var(--bg);
-  --base-2: var(--tint-1);
-  --base-3: var(--tint-2);
-  --base-4: var(--tint-3);
-  --edge: var(--tint-2);
-  --paper: var(--fg);
-  --ink-2: var(--muted);
-  --ink-3: var(--faint);
-  --print: var(--fg);
-  --stock: var(--blue);
-  --stock-hover: var(--fg);
-  --stock-press: var(--fg);
-  --on-stock: var(--onblue);
-  --selection: var(--blue);
 }
 
 :root {
@@ -85,15 +66,7 @@
   --page-inset: max(var(--gutter), calc(50vw - 900px));
   --section: 40px;
 
-  /* Shape: square. The tokens stay so every older rule still resolves; they are all 0. Only the video player
-     rounds anything, and it uses --radius-player. */
-  --radius-art: 0;
-  --radius-label: 0;
-  --radius-panel: 0;
-  --radius-control: 0;
-  --radius-perf: 0;
-  --radius-hair: 0;
-  --radius-full: 0;
+  /* Shape: square, so there are no radius tokens. Only the video player rounds anything. */
   --radius-player: 10px;
   --radius-player-full: 999px;
 
@@ -124,7 +97,6 @@
   --font-serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
   --font: var(--font-mono);
   --font-display: var(--font-cond);
-  --font-edge: var(--font-cond);
 
   /* Motion: minimal. Nav slide and progress widths; 150 to 250 ms, ease-out. Reduced motion is in global.css. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);

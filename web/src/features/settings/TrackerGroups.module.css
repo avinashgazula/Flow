@@ -1,7 +1,7 @@
 /* Tracking With: one row for each service, a mark on the right for the one that tracks. The mark is a square that
    fills with ink and a check, so the choice never rests on colour alone. A service that can't be chosen yet has no
    mark and says why under its name. */
-.options > * + * { border-top: 1px solid var(--hair); }
+.options > * + * { border-top: 1px solid var(--fg); }
 .option {
   display: flex;
   align-items: center;

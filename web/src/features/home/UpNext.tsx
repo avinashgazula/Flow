@@ -1,5 +1,5 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
-import { rank, type PrintPart } from '../../components/stripLayout'
+import { rank, type PrintPart } from '../../components/printLayout'
 import { FrameCard } from '../../components/Frame'
 import { prefetchDetail, q } from '../../lib/queries'
 import { lastSourceStore } from '../../lib/sources/lastSource'

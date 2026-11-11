@@ -88,8 +88,9 @@ function Ghost() {
   return (
     <div className={s.ghost} aria-hidden>
       <div className={s.ghostArt} />
-      <div className={s.ghostStrip} />
+      <div className={s.ghostPrint} />
       <div className={s.ghostLine} />
+      <div className={s.ghostMeta} />
     </div>
   )
 }

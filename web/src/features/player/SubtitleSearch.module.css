@@ -9,7 +9,7 @@
   gap: 10px;
   padding: 14px 16px 12px;
 }
-.statusText { font: 400 var(--fs-small) / 1.35 var(--font); color: var(--paper); text-wrap: pretty; }
+.statusText { font: 400 var(--fs-small) / 1.35 var(--font); color: var(--fg); text-wrap: pretty; }
 .strip { display: flex; gap: 6px; height: 8px; }
 .hole {
   width: 8px;
@@ -18,7 +18,7 @@
   background: transparent;
   transition: background-color var(--dur-state) ease;
 }
-.hole[data-lit] { background: var(--paper); }
+.hole[data-lit] { background: var(--fg); }
 /* A service still being waited for breathes, so the strip never looks finished before it is. */
 .status[role='status']:not(:has(+ [role='group'])) .hole:not([data-lit]) { animation: wait 1.2s ease-in-out infinite; }
 @keyframes wait { 50% { opacity: 0.45; } }
@@ -30,10 +30,10 @@
 .empty {
   padding: 16px;
   font: 400 var(--fs-small) / 1.45 var(--font);
-  color: var(--ink-2);
+  color: var(--muted);
   text-wrap: pretty;
 }
-.empty a { color: var(--paper); text-decoration: underline; text-underline-offset: 2px; }
+.empty a { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
 
 /* A download that failed, in words that say what to do. */
 .problem {
@@ -58,10 +58,10 @@
 /* SDH is a format fact, so it is set quietly inside the line: no box. */
 .sdh {
   margin-right: 6px;
-  color: var(--ink-2);
+  color: var(--muted);
   font: 600 var(--fs-caption) / 1 var(--font);
 }
-.sdh::after { content: ' ·'; color: var(--ink-3); }
+.sdh::after { content: ' ·'; color: var(--faint); }
 
 /* What each service said: name and answer, two quiet columns. */
 .notes {
@@ -71,10 +71,10 @@
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 4px 14px;
-  border-top: 1px solid var(--hair);
+  border-top: 1px solid var(--fg);
   font: 400 var(--fs-caption) / 1.4 var(--font);
 }
 .notes li { display: contents; }
-.noteName { color: var(--ink-2); font-weight: 600; }
-.noteText { color: var(--ink-2); overflow-wrap: anywhere; text-wrap: pretty; }
+.noteName { color: var(--muted); font-weight: 600; }
+.noteText { color: var(--muted); overflow-wrap: anywhere; text-wrap: pretty; }
 .notes li[data-trouble] .noteText { color: var(--warn); }

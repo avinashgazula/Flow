@@ -27,32 +27,34 @@ export function Ratings({ detail: d, ready }: { detail: MediaDetail; ready: bool
   if (shown.length === 0) return null
 
   return (
-    <ul className={s.ratings} aria-label="Ratings">
-      {shown.map(({ source, text }) => {
-        const href = links ? ratingLink(source, { type: d.type, title: d.title, tmdb: d.id, imdb: d.imdb }) : undefined
-        const spoken = spokenScore(source, text) + votesFor(source, ratings)
-        const inside = (
-          <>
-            <b className={s.score} aria-hidden="true">{text}</b>
-            <span className={s.source} aria-hidden="true">{ratingTitle(source)}</span>
-            <span className="sr-only">{href ? `${spoken}. Opens ${ratingTitle(source)}.` : spoken}</span>
-          </>
-        )
-        return (
-          <li key={source}>
-            {href ? (
-              <a href={href} target="_blank" rel="noreferrer">
-                {inside}
-              </a>
-            ) : (
-              <div className={s.plain}>
-                {inside}
-              </div>
-            )}
-          </li>
-        )
-      })}
-    </ul>
+    <div className={s.ratingsBox}>
+      <ul className={s.ratings} aria-label="Ratings">
+        {shown.map(({ source, text }) => {
+          const href = links ? ratingLink(source, { type: d.type, title: d.title, tmdb: d.id, imdb: d.imdb }) : undefined
+          const spoken = spokenScore(source, text) + votesFor(source, ratings)
+          const inside = (
+            <>
+              <b className={s.score} aria-hidden="true">{text}</b>
+              <span className={s.source} aria-hidden="true">{ratingTitle(source)}</span>
+              <span className="sr-only">{href ? `${spoken}. Opens ${ratingTitle(source)}.` : spoken}</span>
+            </>
+          )
+          return (
+            <li key={source}>
+              {href ? (
+                <a href={href} target="_blank" rel="noreferrer">
+                  {inside}
+                </a>
+              ) : (
+                <div className={s.plain}>
+                  {inside}
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 

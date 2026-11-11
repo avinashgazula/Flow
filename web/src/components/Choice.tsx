@@ -5,7 +5,7 @@ export interface ChoiceOption<T extends string | number> {
   label: string
 }
 
-/** A segmented control: a base-3 track, the current choice a lighter base with a yellow underline. Arrow
+/** A segmented control: bordered cells that share their borders, the current choice inverted. Arrow
  *  keys move along it. For a few choices (up to four or five); use `ChoiceSelect` for more. */
 export function Segmented<T extends string | number>({ options, value, onChange, label }: { options: readonly ChoiceOption<T>[]; value: T; onChange: (value: T) => void; label: string }) {
   return (

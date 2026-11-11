@@ -1,5 +1,5 @@
-/* The slider's drawing is thin; its box is tall enough for a finger. Paper fill, base-4 track; yellow only as
-   the focus ring. */
+/* The slider's drawing is thin; its box is tall enough for a finger. An ink fill on a tint track and a square ink
+   thumb; blue only as the focus ring. */
 .slider {
   -webkit-appearance: none;
   appearance: none;
@@ -12,31 +12,28 @@
   -webkit-tap-highlight-color: transparent;
 }
 .slider::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: var(--radius-perf);
-  background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), var(--base-4) 0);
+  height: 6px;
+  background: linear-gradient(90deg, var(--fg) calc(var(--level) * 100%), var(--tint-3) 0);
 }
 .slider::-moz-range-track {
-  height: 4px;
-  border-radius: var(--radius-perf);
-  background: linear-gradient(90deg, var(--paper) calc(var(--level) * 100%), var(--base-4) 0);
+  height: 6px;
+  background: linear-gradient(90deg, var(--fg) calc(var(--level) * 100%), var(--tint-3) 0);
 }
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 18px;
   height: 18px;
-  margin-top: -7px;
-  border-radius: 50%;
-  background: var(--paper);
+  margin-top: -6px;
+  background: var(--fg);
 }
 .slider::-moz-range-thumb {
   width: 18px;
   height: 18px;
   border: 0;
-  border-radius: 50%;
-  background: var(--paper);
+  border-radius: 0;
+  background: var(--fg);
 }
 .slider:focus-visible { outline: none; }
-.slider:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--stock); outline-offset: 2px; }
-.slider:focus-visible::-moz-range-thumb { outline: 2px solid var(--stock); outline-offset: 2px; }
+.slider:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--blue); outline-offset: 2px; }
+.slider:focus-visible::-moz-range-thumb { outline: 2px solid var(--blue); outline-offset: 2px; }
 .slider:disabled { opacity: 0.4; cursor: default; }

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { Progress } from '../../lib/store/library'
 import type { MediaItem } from '../../lib/tmdb/types'
 import { episodeLine, episodeShort, firstWithStill, formatPrint, formatSpoken, inProgress, pickMeta, pickPrint, resumePrint, secondsLeft, spokenPick, spokenResume, watchedFraction } from './logic'
-import { toFacts } from '../../components/stripLayout'
-import type { PrintPart } from '../../components/stripLayout'
+import { toFacts } from '../../components/printLayout'
+import type { PrintPart } from '../../components/printLayout'
 
 /** Print as the screen reads it: white facts as text, the time left as { key }. */
 const plain = (parts: PrintPart[]) => toFacts(parts).map((f) => (f.key ? { key: f.text } : f.text))
@@ -35,7 +35,7 @@ describe('Up Next', () => {
 })
 
 describe('edge print for something started', () => {
-  it('reads episode, time left in yellow, end time, then format', () => {
+  it('reads episode, time left as the key fact, end time, then format', () => {
     const p = entry('a', 1, { item: item({ type: 'show' }), episode: { season: 3, episode: 7 }, position: 1740, duration: 2820 })
     expect(plain(resumePrint(p, now, { resolution: '2160p', hdr: ['DV'], quality: 'REMUX' }, 'en-GB'))).toEqual(['S3 E7', { key: '18m left' }, 'ends 21:48', '2160p', 'DV', 'REMUX'])
   })
@@ -74,7 +74,7 @@ describe('edge print for something not started', () => {
     expect(plain(pickPrint(item(), { runtime: 167, seasons: [] }, now, { ends: true, locale: 'en-GB' }))).toEqual(['2 h 47', 'ends 00:17', '8.2'])
   })
 
-  it('prints NEW EP in the same ink as the rest: yellow is for what you act on', () => {
+  it('prints NEW EP in the same ink as the rest', () => {
     const facts = toFacts(pickPrint(item({ type: 'show' }), { seasons, lastEpisode: ep('2026-10-15') }, now))
     expect(facts[0]).toMatchObject({ text: 'new ep', rank: 0 })
     expect(facts.some((f) => f.key)).toBe(false)

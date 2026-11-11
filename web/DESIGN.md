@@ -4,11 +4,11 @@ description: Index. Paper and ink ruled with 3px lines, a giant grotesque for ti
 colors:
   bg: "#ffffff"
   fg: "#0a0a0a"
-  red: "#d4140b"
+  red: "#c9120a"
   blue: "#1a3dff"
   onblue: "#ffffff"
   muted: "#555555"
-  faint: "#6b6b6b"
+  faint: "#636363"
   tint-1: "#f3f3f0"
   tint-2: "#e7e7e3"
   tint-3: "#d4d4ce"
@@ -159,16 +159,16 @@ Two themes, defined as tokens on `:root` (light) and `:root[data-theme="dark"]` 
 - **Ink / Paper** (`--fg` / `--bg`): `#0a0a0a` on `#ffffff`, and in dark `#f2f2ee` on `#0a0a0a`. Text, rules, borders, the solid button, the current nav cell. 19:1.
 
 ### Secondary
-- **Index Red** (`--red`): `#d4140b` light, `#ff5a4e` dark. Section labels, row numerals, the second line of a title pair, progress fills, markers, "live", the dotted underline of a quiet link, destructive hover. 5:1 on paper, 6:1 on ink. Never for body text.
+- **Index Red** (`--red`): `#c9120a` light, `#ff5a4e` dark. Section labels, row numerals, the second line of a title pair, progress fills, markers, "live", the dotted underline of a quiet link, destructive hover. 5.9:1 on paper (4.7:1 on the darkest tint), 6.4:1 on ink. Never for body text.
 - **Action Blue** (`--blue`, text on it `--onblue`): `#1a3dff` with white, in dark `#8fa2ff` with ink. Links, hover fills, selection, the focus ring, the Flow logo cell, switch tracks. 7:1 on paper, 8:1 on ink.
 
 ### Neutral
 - **Muted** (`--muted`): `#555555` / `#b0b0ac`. Secondary text, metadata. 7:1 or better.
-- **Faint** (`--faint`): `#6b6b6b` / `#8f8f8b`. Captions, placeholders, disabled. 5:1; never body copy.
-- **Tints** (`--tint-1..3`): quiet fills for what has no border yet (skeletons, tracks, a hovered menu item). They bridge screens not yet restyled; new work uses rules and the blue inversion instead.
+- **Faint** (`--faint`): `#636363` / `#8f8f8b`. Captions, placeholders, disabled. 6:1 on paper, 4.9:1 on the darkest tint; never body copy.
+- **Tints** (`--tint-1..3`): quiet fills for what is not there yet or is only a track: skeletons (always inside a 3px frame), slider and progress tracks, a hovered menu item. Nothing that holds content is tint-filled; that is a rule and the blue inversion.
 - **Warn** (`--warn`): degraded states ("may stutter"). Rare.
 
-The previous system's token names (`--base`, `--paper`, `--ink-2`, `--stock`) still resolve, remapped onto these, so older screens keep working while they are restyled. New code uses `--bg --fg --red --blue --onblue --muted --faint`.
+The tokens are semantic: `--bg --fg --red --blue --onblue --muted --faint --rule`, with `--tint-1..3` for tracks and skeletons. The previous system's names are gone.
 
 ### Named Rules
 **The Two Accents Rule.** Red is for marking, blue is for doing. A screen has no third colour besides artwork. If something is both, it is blue.
@@ -215,7 +215,7 @@ None. There are no shadows, blurs, glass, gradients or translucency on content. 
 
 ## Shapes
 
-Every radius token (`--radius-art`, `-label`, `-panel`, `-control`, `-perf`, `-hair`, `-full`) is `0`. The tokens remain so older rules resolve; new code writes no radius. The one round thing on the page is the loading ring. The player has `--radius-player` (10px) and `--radius-player-full`.
+There are no radius tokens: new code writes no radius. The one round thing on the page is the loading ring. The player has `--radius-player` (10px) and `--radius-player-full`. Sliders have a square ink thumb and colour swatches are square chips with an ink edge.
 
 ## Components
 
@@ -244,10 +244,13 @@ A `.row` is full width; on hover and focus it inverts to blue. A list (`.rows`) 
 Loading is the ring (`.spinner`: ink with a red quarter) or a bordered bar with a red fill (`.pbar`). Empty and error states (`StateView`, `ErrorScreen`) are a condensed headline, one serif sentence on what to do next, and an action, left-aligned with the page. App notes (offline, updated) are ruled boxes bottom left, above the tab bar on phones.
 
 ### Artwork
-Posters and stills are square, inside a ruled cell or row, with their metadata as mono text underneath. Progress is a thin red bar with a 2px ink border, or a plain red line. The previous system's edge strips and perforations are being removed screen by screen.
+Posters and stills are square, inside a ruled cell or row, with their metadata as mono text underneath. Progress is a thin red bar with a 2px ink border, or a plain red line. Loading ghosts are the same box: a 3px frame with a tint fill, then flat bars for the printed line, title and year.
 
 ### Player Chrome and Scrubber (the exception)
 The video player is a conventional streaming player: its layout and controls are unchanged and it sits on true black. It is always dark: its root carries `data-theme="dark"` so every token resolves to the dark set whatever the page's theme. It takes the system's faces (Plex Mono and Sans Condensed), square panels and buttons, red for the played part of the scrubber and blue for focus. It uses `--radius-player` for any rounding. It has no 3px page rules on the picture itself. The panels beside or over it (options, X-Ray, episodes) are ink panels with 3px paper rules.
+
+### Facts Lines and Rating Cells
+A line of facts under a title (`2024 | 2 H 47 MIN | PG-13 | SCIENCE FICTION`) is mono uppercase with a 1px rule between parts, never a leading dot: it wraps only between parts and the rule a wrapped line would start with is clipped. Ratings are a ruled row of cells (a big red condensed numeral over the source's name in mono); each cell is as wide as its label, the row wraps when they do not fit, and a long name wraps inside its cell instead of running into the next. Where a dotted list must wrap (the version line of "How This Plays"), the dot trails its part.
 
 ### Settings Rows
 Ruled sections, rows with Mono labels, square switches (ink off, blue on), square selects; footers in Mono, muted, sentence case.
@@ -276,4 +279,4 @@ Ruled sections, rows with Mono labels, square switches (ink off, blue on), squar
 
 ## Notes
 
-Flow for the web is a front end for the viewer's own sources and hosts no content. The apps (SwiftUI) keep their own design. The reference for this language is an index site the owner chose; only its grammar is used. Screens are restyled in turn on top of this foundation: older rules still use the remapped token names (`--base`, `--paper`, `--ink-2`, `--stock`, `--hair`) and the quiet tints, and are replaced as each screen is done.
+Flow for the web is a front end for the viewer's own sources and hosts no content. The apps (SwiftUI) keep their own design. The reference for this language is an index site the owner chose; only its grammar is used. Every screen has been restyled on this foundation.

@@ -1,4 +1,4 @@
-import { rank, type PrintPart } from '../../components/stripLayout'
+import { rank, type PrintPart } from '../../components/printLayout'
 import type { IcsEvent } from '../../lib/ics'
 import type { Library } from '../../lib/store/library'
 import type { Episode, MediaDetail, MediaItem } from '../../lib/tmdb/types'
@@ -178,7 +178,7 @@ export const code = (e: { season: number; number: number }) => `S${e.season} E${
 
 /** The edge print under an entry's still, as the apps' EdgePrint.calendar: the episode (or "Film"), what is special
  *  about it, and the day when the row isn't already under a day's heading. A new episode you can watch now carries its
- *  label as the key fact (yellow); one you have seen says Watched in plain print. */
+ *  label as the key fact; one you have seen says Watched in plain print. */
 export function stripPrint(entry: CalendarEntry, opts: { now: number; watched: boolean; day?: string }): PrintPart[] {
   const text = label(entry, opts.now)
   const parts: PrintPart[] = [{ text: entry.episode ? code(entry.episode) : 'Film', rank: rank.episode }]

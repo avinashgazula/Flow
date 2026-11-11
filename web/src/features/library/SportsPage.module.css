@@ -16,7 +16,7 @@
 .monogram { font: 700 var(--fs-footnote) / 1 var(--font); letter-spacing: 0.04em; color: var(--muted); }
 
 .games { border-top: var(--rule); margin-inline: calc(-1 * var(--page-inset)); }
-.game { border-bottom: 1px solid var(--hair); }
+.game { border-bottom: 1px solid var(--fg); }
 .game:last-child { border-bottom: 0; }
 .gameRow { display: flex; align-items: center; gap: var(--space-s); padding-right: var(--page-inset); }
 .gameMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: var(--space-s) var(--space-xs) var(--space-s) var(--page-inset); text-align: left; color: var(--fg); align-self: stretch; justify-content: center; -webkit-tap-highlight-color: transparent; }
@@ -41,7 +41,7 @@
 
 /* The channels for a game, under it: a ruled panel. */
 .channels { margin: 0 var(--page-inset) var(--space-s); border: var(--rule); }
-.channels > li + li { border-top: 1px solid var(--hair); }
+.channels > li + li { border-top: 1px solid var(--fg); }
 .channel { display: flex; align-items: center; gap: var(--space-s); padding: var(--space-s) var(--space-m); color: var(--fg); }
 @media (hover: hover) { .channel:hover { background: var(--blue); color: var(--onblue); } .channel:hover .channelMeta { color: var(--onblue); } }
 .channel:focus-visible { outline-offset: -6px; }
@@ -61,7 +61,7 @@
 .findInput:focus-visible { outline: none; }
 .findState { min-height: 20px; margin: var(--space-xs) 0; font-size: var(--fs-footnote); color: var(--muted); }
 .found { border-top: var(--rule); max-width: 760px; }
-.foundRow { display: flex; align-items: center; gap: var(--space-s); padding: var(--space-xs) 0; border-bottom: 1px solid var(--hair); }
+.foundRow { display: flex; align-items: center; gap: var(--space-s); padding: var(--space-xs) 0; border-bottom: 1px solid var(--fg); }
 .foundText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .foundName { font: 700 18px / 1.2 var(--font-cond); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .foundMeta { font-size: var(--fs-footnote); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

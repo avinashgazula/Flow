@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { rank, type PrintPart } from '../../components/stripLayout'
+import { rank, type PrintPart } from '../../components/printLayout'
 import { queryClient } from '../../lib/queryClient'
 import { useSettings, type ServerConfig } from '../../lib/store/settings'
 import type { ServerTitle } from '../../lib/sources/types'
@@ -8,9 +8,8 @@ import { parseCode } from '../../lib/watching'
 import type { MediaItem, MediaType } from '../../lib/tmdb/types'
 import { showStatus, watchedByShow, type AiringDetail } from './continue'
 
-/* What a poster says about what has been watched: "WATCHED" printed on its strip (nothing drawn over the
-   artwork), with the perforations filled to match, and "3/10" for a series part way through. As the apps'
-   posters (`EdgePrint.poster(watched:, episodesWatched:, episodesAired:, onServer:)`). A title that is on one of the
+/* What a poster says about what has been watched: "WATCHED" printed under it (nothing drawn over the
+   artwork), and "3/10" for a series part way through. As the apps' posters (`EdgePrint.poster(watched:, episodesWatched:, episodesAired:, onServer:)`). A title that is on one of the
    viewer's media servers says SERVER after its rating: print about where to find it, never a badge on the artwork. */
 
 const movieSets = new WeakMap<readonly HistoryEntry[], Set<string>>()
@@ -53,7 +52,7 @@ export function watchedShowsOf(marks: Record<string, number>, rewatches?: Librar
 export interface PosterMarks {
   /** Print for the strip, set first so the narrowest strip keeps it. */
   parts: PrintPart[]
-  /** How much of the reel is watched, 0 to 1: the strip's perforations. Absent when nothing is. */
+  /** How much is watched, 0 to 1: the length of the red bar. Absent when nothing is. */
   progress?: number
   /** Print that goes after the rest of the strip's facts, after the rating: SERVER. It outranks the rating and the
    *  runtime, so a phone's narrow poster keeps SERVER alone and a middling one "8.2 · SERVER". It prints after the rating. */

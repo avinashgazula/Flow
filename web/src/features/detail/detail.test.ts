@@ -3,8 +3,8 @@ import type { ProviderState, Source } from '../../lib/sources'
 import { buildICS } from '../../lib/ics'
 import { icsEvent } from '../library/calendar'
 import { aboutRows, airedRefs, airsLine, nextEpisodeEntry, relatedRows, bestSource, cardOf, playsFirst, episodePrint, isNew, metaLine, playFacts, playLabel, realSeasons, runtimeText, sourcesSummary, starsOf, statusLabel, titlePrint, todayOf, versionParts } from './logic'
-import { toFacts } from '../../components/stripLayout'
-import type { PrintPart } from '../../components/stripLayout'
+import { toFacts } from '../../components/printLayout'
+import type { PrintPart } from '../../components/printLayout'
 
 /** Print as the screen reads it: white facts as text, the time left as { key }. */
 const plain = (parts: PrintPart[]) => toFacts(parts).map((f) => (f.key ? { key: f.text } : f.text))
@@ -13,7 +13,7 @@ const now = new Date(2026, 9, 22, 21, 30).getTime()
 const source = (over: Partial<Source> = {}): Source => ({ id: 'a', origin: 'addon', provider: 'AIOStreams', title: 'x', url: 'https://x', engine: 'native', ...over })
 const film = { type: 'movie' as const, year: 2024, runtime: 167, seasons: [] }
 
-describe('film-can label', () => {
+describe('how this plays', () => {
   it('prints the best version as the release says it', () => {
     const s = source({ resolution: '2160p', hdr: ['DV', 'HDR10'], audio: ['TrueHD'], audioChannels: '7.1', sizeBytes: 18.2 * 1024 ** 3 })
     expect(versionParts(s)).toEqual(['2160p', 'Dolby Vision', 'TrueHD 7.1', '18.20 GB'])
@@ -60,7 +60,7 @@ describe('film-can label', () => {
   })
 })
 
-describe('strip and buttons', () => {
+describe('printed line and buttons', () => {
   it('prints a film not started with when it would end', () => {
     expect(plain(titlePrint(film, undefined, now, 'en-GB'))).toEqual(['2024', '2 h 47', 'ends 00:17'])
   })
@@ -81,7 +81,7 @@ describe('strip and buttons', () => {
     expect(plain(titlePrint(show, { position: 600, duration: 2700, episode: { season: 3, episode: 7 } }, now, 'en-GB'))).toEqual(['S3 E7', { key: '35m left' }, 'ends 22:05'])
   })
 
-  it('ranks the year lowest, so a narrow strip drops it first and keeps the time left and the end time', () => {
+  it('ranks the year lowest, so a narrow line drops it first and keeps the time left and the end time', () => {
     const facts = toFacts(titlePrint(film, { position: 3720, duration: 10020 }, now, 'en-GB'))
     const order = [...facts].sort((a, b) => a.rank - b.rank).map((f) => f.text)
     expect(order[0]).toBe('1h45 left')
@@ -89,7 +89,7 @@ describe('strip and buttons', () => {
     expect(order.at(-1)).toBe('2024')
   })
 
-  it('labels the yellow button', () => {
+  it('labels the Play button', () => {
     expect(playLabel(film, { position: 3720, duration: 10020 }, undefined, now, 'en-GB').text).toBe('Resume · 1 h 45 min left')
     expect(playLabel({ type: 'show', runtime: 47 }, { position: 600, duration: 2700, episode: { season: 3, episode: 7 } }, undefined, now, 'en-GB').text).toBe('Resume S3 E7 · 35 min left')
     expect(playLabel(film, undefined, undefined, now, 'en-GB').text).toBe('Play · ends 00:17')

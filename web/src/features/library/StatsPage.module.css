@@ -26,8 +26,8 @@
 .bars[data-crowded] .axis { overflow: visible; }
 
 /* Top genres: ruled rows, the name and its share, over a bordered bar with a red fill. */
-.genres { border-top: 1px solid var(--hair); }
-.genre { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-xs); align-items: baseline; padding: var(--space-s) 0 var(--space-m); border-bottom: 1px solid var(--hair); }
+.genres { border-top: 1px solid var(--fg); }
+.genre { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-xs); align-items: baseline; padding: var(--space-s) 0 var(--space-m); border-bottom: 1px solid var(--fg); }
 .genreName { font: 700 20px / 1.2 var(--font-cond); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .genrePercent { font: 700 20px / 1.2 var(--font-cond); color: var(--red); }
 .track { grid-column: 1 / -1; height: 14px; border: 3px solid var(--fg); }
@@ -48,7 +48,7 @@
 /* Habits: a label and its answer, a rule between, in a ruled panel. */
 .habits { margin: 0; padding: 0 var(--space-m); border: var(--rule); max-width: 640px; }
 .habit { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-m); padding: var(--space-s) 0; }
-.habit + .habit { border-top: 1px solid var(--hair); }
+.habit + .habit { border-top: 1px solid var(--fg); }
 .habit dt { font: 600 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .habit dd { margin: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font: 700 24px / 1.1 var(--font-cond); text-align: right; }
 .habitDetail { font: 400 var(--fs-footnote) / 1.3 var(--font); color: var(--muted); }

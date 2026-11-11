@@ -17,11 +17,11 @@
   left: 16px;
   right: 16px;
   height: 1px;
-  background: var(--hair);
+  background: var(--fg);
 }
-.label { font: 400 var(--fs-body) / 1.2 var(--font); color: var(--paper); }
+.label { font: 400 var(--fs-body) / 1.2 var(--font); color: var(--fg); }
 .control { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
-.value { flex: none; width: 54px; text-align: right; font: 500 var(--fs-footnote) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.value { flex: none; width: 54px; text-align: right; font: 500 var(--fs-footnote) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--muted); }
 
 .select {
   width: 100%;
@@ -31,14 +31,14 @@
   border-radius: 0;
   appearance: none;
   font: 600 var(--fs-small) / 1 var(--font);
-  color: var(--paper);
+  color: var(--fg);
   color-scheme: dark;
   cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%23f2f2ee' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
 }
-.select option { background: var(--base-2); color: var(--paper); }
+.select option { background: var(--tint-1); color: var(--fg); }
 
 @media (max-height: 500px) {
   .field { min-height: 42px; padding-block: 2px; }

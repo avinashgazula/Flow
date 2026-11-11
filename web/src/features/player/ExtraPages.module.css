@@ -20,13 +20,13 @@
   place-items: center;
   border: 3px solid var(--fg);
   background: var(--bg);
-  color: var(--paper);
+  color: var(--fg);
   transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
 }
 @media (hover: hover) { .step:hover:not(:disabled) { background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
 .step:active:not(:disabled) { background: var(--blue); border-color: var(--blue); color: var(--onblue); }
-.step:disabled { color: var(--ink-3); cursor: default; }
-.syncNote { color: var(--paper); padding-block: 10px 4px; }
+.step:disabled { color: var(--faint); cursor: default; }
+.syncNote { color: var(--fg); padding-block: 10px 4px; }
 .slide { padding: 8px 16px 12px; }
 .slide input { width: 100%; }
 @media (max-height: 500px) {

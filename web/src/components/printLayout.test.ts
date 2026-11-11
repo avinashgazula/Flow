@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rank, toFacts } from './stripLayout'
+import { rank, toFacts } from './printLayout'
 
 describe('the facts printed under artwork', () => {
   it('reads callers’ parts: strings are the lowest priority, { key } is the time left, { text, rank } as given', () => {

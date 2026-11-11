@@ -59,7 +59,7 @@
   .row > :nth-child(n + 6) { display: block; }
   .row > :nth-child(n + 8) { display: none; }
 }
-.ghost span { display: block; aspect-ratio: 2 / 3; background: var(--tint-1); }
+.ghost span { display: block; aspect-ratio: 2 / 3; border: 3px solid var(--fg); background: var(--tint-1); }
 
 /* Nothing to show yet: teach the next step. A ruled box, no icon. */
 .setup { max-width: 600px; padding: var(--space-l); border: var(--rule); }
@@ -76,7 +76,7 @@
   .stillRow { margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); scroll-padding-inline: var(--gutter); }
 }
 @media (min-width: 721px) { .stillRow > * { flex-basis: 280px; } }
-.stillGhost { aspect-ratio: 16 / 9; background: var(--tint-1); }
+.stillGhost { aspect-ratio: 16 / 9; border: 3px solid var(--fg); background: var(--tint-1); }
 .arrows { display: none; }
 @media (hover: hover) and (min-width: 721px) {
   .arrows { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; opacity: 0; transition: opacity var(--dur-state) ease; }

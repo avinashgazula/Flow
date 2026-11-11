@@ -7,7 +7,7 @@
 /* The index of pages that read your library, as the reference's numbered category list: red condensed numerals,
    condensed uppercase names, what each holds in mono at the right. Two columns where there is room. */
 .pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); column-gap: var(--space-xxl); margin-bottom: var(--section); }
-.pages > li { border-bottom: 1px solid var(--hair); }
+.pages > li { border-bottom: 1px solid var(--fg); }
 .pageLink { align-items: center; min-height: 64px; height: 100%; }
 .pageNumber { flex: 0 0 30px; font: 700 22px / 1 var(--font-cond); color: var(--red); }
 .pageName { flex: 1; min-width: 0; font: 700 22px / 1.1 var(--font-cond); text-transform: uppercase; }
@@ -79,7 +79,7 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
   gap: var(--space-m);
   height: 100%;
   padding: 9px var(--page-inset);
-  border-bottom: 1px solid var(--hair);
+  border-bottom: 1px solid var(--fg);
   -webkit-tap-highlight-color: transparent;
 }
 .historyTime { flex: 0 0 112px; font-size: var(--fs-small); letter-spacing: 0.04em; }

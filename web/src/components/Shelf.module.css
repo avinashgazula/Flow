@@ -21,8 +21,8 @@
   font: 600 var(--fs-headline) / 1.25 var(--font-display);
   letter-spacing: -0.005em;
 }
-a.title svg { color: var(--ink-3); transition: color var(--dur-state) ease; }
-a.title:hover svg { color: var(--paper); }
+a.title svg { color: var(--faint); transition: color var(--dur-state) ease; }
+a.title:hover svg { color: var(--fg); }
 
 .arrows { display: none; gap: var(--space-xs); }
 @media (hover: hover) and (min-width: 721px) {
@@ -45,7 +45,7 @@ a.title:hover svg { color: var(--paper); }
 .row > * { flex: 0 0 var(--poster-width, 150px); scroll-snap-align: start; }
 .stillShelf .row > * { flex-basis: var(--still-width, 280px); }
 
-.ghost { flex: none; border-radius: var(--radius-art); background: var(--base-2); }
+.ghost { flex: none; border: 3px solid var(--fg); background: var(--tint-1); }
 .ghostPoster { width: var(--poster-width, 150px); aspect-ratio: 2 / 3; }
 .ghostStill { width: var(--still-width, 280px); aspect-ratio: 16 / 9; }
 

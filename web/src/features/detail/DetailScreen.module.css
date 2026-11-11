@@ -23,14 +23,17 @@
 .name[data-size='longer'] { font-size: clamp(36px, 6.8vw, 100px); }
 .name[data-size='longest'] { font-size: clamp(30px, 4.8vw, 72px); line-height: 0.9; }
 .meta {
+  overflow: hidden;
   padding: 14px 0 16px;
   border-top: 1px solid var(--fg);
   font: 600 var(--fs-small) / 1.5 var(--font);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  text-wrap: pretty;
 }
-.metaPart { white-space: nowrap; }
+/* A rule between the parts. Each part carries the rule to its left; the row is pulled left by one part's rule and
+   padding so the one a wrapped line would start with falls outside the clip. */
+.metaRow { display: flex; flex-wrap: wrap; column-gap: 12px; margin-left: -13px; }
+.metaPart { padding-left: 12px; border-left: 1px solid var(--fg); white-space: nowrap; }
 
 .top > * { min-width: 0; }
 @media (min-width: 1000px) {
@@ -69,32 +72,25 @@
 .status { margin-top: var(--space-xxs); font-size: var(--fs-footnote); line-height: 1.4; color: var(--muted); }
 .status:empty { margin: 0; }
 
-/* Ratings: a ruled row of cells, each a big red condensed numeral with the source's name under it in mono. Cells
-   share their borders; tapping one opens the site. */
-.ratings {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
-  margin-bottom: var(--space-l);
-  border-top: var(--rule);
-  border-bottom: 1px solid var(--fg);
-}
-.ratings > li { min-width: 0; border-left: 1px solid var(--fg); }
-.ratings > li:first-child { border-left: 0; }
-.ratings a, .plain { display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 12px 12px 12px 0; }
-.ratings > li:not(:first-child) a, .ratings > li:not(:first-child) .plain { padding-left: 12px; }
+/* Ratings: a ruled row of cells, each a big red condensed numeral with the source's name under it in mono. Each cell is
+   as wide as its label needs and the row wraps when they don't fit, so a long name (Popcornmeter) never runs into the
+   next cell. Each cell carries the rule to its left; the row is pulled left by one cell's rule and padding, so the
+   rule a wrapped row would start with falls outside the box's clip and the numbers stay on the page's edge. Tapping a
+   cell opens the site. */
+.ratingsBox { overflow: hidden; margin-bottom: var(--space-l); border-top: var(--rule); border-bottom: 1px solid var(--fg); }
+.ratings { display: flex; flex-wrap: wrap; margin: -1px 0 0 -15px; }
+.ratings > li { flex: 1 1 auto; min-width: 0; border-top: 1px solid var(--fg); border-left: 1px solid var(--fg); }
+.ratings a, .plain { display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 12px 12px 12px 14px; }
 .score { font: 700 34px / 1 var(--font-cond); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--red); }
-.source { font: 600 var(--fs-caption) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.source { max-width: 14ch; font: 600 var(--fs-caption) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 @media (hover: hover) {
   .ratings a:hover { background: var(--blue); }
   .ratings a:hover .score, .ratings a:hover .source { color: var(--onblue); }
 }
 .ratings a:focus-visible { outline-offset: -3px; }
 @media (max-width: 720px) {
-  /* Under the actions on a phone: the cells wrap onto rows, each keeping its rules. */
-  .ratings { margin: var(--space-l) 0 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .ratings > li:nth-child(3n + 1) { border-left: 0; }
-  .ratings > li:nth-child(3n + 1) :is(a, .plain) { padding-left: 0; }
-  .ratings > li:nth-child(n + 4) { border-top: 1px solid var(--fg); }
+  /* Under the actions on a phone. */
+  .ratingsBox { margin: var(--space-l) 0 0; }
 }
 
 /* A series asks which seasons to request in the actions row, under the button, instead of in a dialog. */

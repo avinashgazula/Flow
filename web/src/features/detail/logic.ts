@@ -10,7 +10,7 @@ import { endsPart, leftPart, secondsLeft } from '../home/logic'
 import { episodeId, localDay, startOfDay } from '../home/upcoming'
 import type { CalendarEntry } from '../library/calendar'
 
-/* What the title page says, as plain functions: the strip under the still, and the film-can label's rows. */
+/* What the title page says, as plain functions: the strip under the still, and the How This Plays rows. */
 
 const hdrNames: Record<string, string> = { DV: 'Dolby Vision', 'HDR10+': 'HDR10+', HDR10: 'HDR10', HDR: 'HDR', HLG: 'HLG' }
 
@@ -60,11 +60,11 @@ export function sourcesSummary(count: number, providers: ProviderState[]): strin
 }
 
 /** The strip under the still, as edge print. A film: "2024 · 2 H 47 · 1H44 LEFT · ENDS 22:56", the
- *  time left the one yellow fact; not started, just "2024 · 2 H 47 · ENDS 22:56". A series started prints
+ *  time left the one fact in red; not started, just "2024 · 2 H 47 · ENDS 22:56". A series started prints
  *  the episode: "S3 E7 · 35M LEFT · ENDS 22:56"; not started, "2008 · 5 SEASONS · 47 MIN · ENDS 22:56".
  *  A title already watched (and not being watched again) prints WATCHED first and leaves out an end time that
  *  nothing is waiting for, as a poster does: "WATCHED · 2024 · 2 H 47".
- *  Every fact has a rank (stripLayout), so a strip with less room drops the year first and keeps the end time. */
+ *  Every fact has a rank (printLayout), so a line with less room drops the year first and keeps the end time. */
 export function titlePrint(
   d: Pick<MediaDetail, 'type' | 'year' | 'runtime' | 'seasons'>,
   progress: { position: number; duration: number; episode?: { season: number; episode: number } } | undefined,
@@ -111,7 +111,7 @@ export function metaLine(d: Pick<MediaDetail, 'type' | 'year' | 'runtime' | 'cer
   return [...facts, names.join(', ')].filter(Boolean).join(' · ')
 }
 
-/** The label of the yellow button: "Resume · 1 h 44 min left", "Play · ends 22:56", "Play S1 E1 · ends 21:30". */
+/** The label of the Play button: "Resume · 1 h 44 min left", "Play · ends 22:56", "Play S1 E1 · ends 21:30". */
 export function playLabel(d: Pick<MediaDetail, 'type' | 'runtime'>, progress: { position: number; duration: number; episode?: { season: number; episode: number } } | undefined, firstEpisode: { season: number; episode: number } | undefined, now: number, locale?: string): { text: string; spoken: string } {
   if (progress && progress.duration > 0) {
     const left = formatLeft(secondsLeft(progress)).replace(' left', '')
@@ -124,8 +124,8 @@ export function playLabel(d: Pick<MediaDetail, 'type' | 'runtime'>, progress: { 
   return { text, spoken: text }
 }
 
-/** The facts under an episode's still: "Fri 12 Jan" is the air date; the strip carries runtime and NEW (print
- *  like the rest: yellow is for what you act on). */
+/** The facts under an episode's still: "Fri 12 Jan" is the air date; the line carries runtime and NEW, printed
+ *  like the rest. */
 export function episodePrint(e: Pick<Episode, 'runtime' | 'airDate'>, opts: { aired: boolean; watched: boolean; now: number }): PrintPart[] {
   const parts: PrintPart[] = []
   if (!opts.aired) return ['Not yet aired']

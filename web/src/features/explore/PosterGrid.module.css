@@ -14,9 +14,11 @@
   will-change: transform;
 }
 
-/* Placeholders: flat base-2 blocks the size of a poster, its strip and a title line. */
+/* Placeholders: a framed poster-shaped block, then the printed line, the title and the year as flat bars, in the
+   same sizes the real caption has. */
 .ghost { display: flex; flex-direction: column; }
-.ghostArt, .ghostStrip, .ghostLine { background: var(--base-2); }
-.ghostArt { aspect-ratio: 2 / 3; border-radius: var(--radius-art) var(--radius-art) 0 0; }
-.ghostStrip { height: 22px; background: var(--edge); border-radius: 0 0 var(--radius-art) var(--radius-art); }
-.ghostLine { width: 70%; height: 12px; margin-top: var(--space-s); border-radius: var(--radius-full); }
+.ghostArt { aspect-ratio: 2 / 3; border: 3px solid var(--fg); background: var(--tint-1); }
+.ghostPrint, .ghostLine, .ghostMeta { background: var(--tint-2); }
+.ghostPrint { width: 55%; height: 10px; margin-top: var(--space-xs); }
+.ghostLine { width: 80%; height: 14px; margin-top: var(--space-s); }
+.ghostMeta { width: 30%; height: 10px; margin-top: var(--space-xs); }

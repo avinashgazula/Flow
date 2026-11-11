@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toFacts } from '../../components/stripLayout'
+import { toFacts } from '../../components/printLayout'
 import type { HistoryEntry } from '../../lib/store/library'
 import type { WatchProvider } from '../../lib/providers'
 import { genreTiles, serviceTiles } from './folders'
@@ -16,14 +16,14 @@ const text = (m: ReturnType<typeof posterMarks>) => toFacts(m.parts).map((f) => 
 describe('watched marks on a poster', () => {
   const watched = { movies: watchedMovieKeys([film(7)]), shows: watchedShowsOf({ 'show:1:s1e1': 1, 'show:1:s1e2': 1, 'show:2:s1e1': 1, 'show:2:s1e2': 1, 'show:2:s1e3': 1, 'show:2:s1e4': 1, 'show:2:s2e1': 1, 'show:2:s2e2': 1, 'show:2:s2e3': 1, 'show:2:s2e4': 1 }) }
 
-  it('prints WATCHED for a film in the history, and fills its perforations', () => {
+  it('prints WATCHED for a film in the history, and marks it fully watched', () => {
     const m = posterMarks({ type: 'movie', id: 7 }, watched, undefined, now, on)
     expect(text(m)).toEqual(['watched'])
     expect(m.progress).toBe(1)
     expect(posterMarks({ type: 'movie', id: 8 }, watched, undefined, now, on)).toEqual({ parts: [] })
   })
 
-  it('prints a series’ episodes watched, out of those aired, and fills that much of the reel', () => {
+  it('prints a series’ episodes watched, out of those aired, and marks that much of it watched', () => {
     const m = posterMarks({ type: 'show', id: 1 }, watched, detail, now, on)
     expect(text(m)).toEqual(['2/8'])
     expect(m.progress).toBe(0.25)
