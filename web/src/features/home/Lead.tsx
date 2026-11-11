@@ -1,16 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
+import { useEffect, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
 import { Icon } from '../../components/Icon'
-import { Plate } from '../../components/Frame'
+import { Plate, PrintLine } from '../../components/Frame'
 import { prefetchDetail, q } from '../../lib/queries'
 import { lastSourceStore } from '../../lib/sources/lastSource'
 import { useStore } from '../../lib/store/createStore'
 import { mediaKey, useLibrary, type Progress } from '../../lib/store/library'
 import { useSettings } from '../../lib/store/settings'
 import { userLocale, useMinuteTick } from '../../lib/time'
-import { imageURL, srcSet } from '../../lib/tmdb/images'
-import type { MediaDetail, MediaItem } from '../../lib/tmdb/types'
+import { useTheme } from '../../lib/theme'
+import type { MediaItem } from '../../lib/tmdb/types'
 import { rank, type PrintPart } from '../../components/stripLayout'
 import { episodesLeftText, showStatus } from './continue'
 import { pickMeta, pickPrint, resumePrint, watchedFraction } from './logic'
@@ -26,7 +26,7 @@ export interface LeadItem {
 
 /** How wide the lead still renders, for `srcset`. index.html preloads the same still with the same string,
  *  so the browser reuses the download; keep the two in step with the layout in Lead.module.css. */
-export const leadSizes = '(min-width: 1500px) 738px, (min-width: 1100px) 52vw, (min-width: 721px) 420px, calc(100vw - 32px)'
+export const leadSizes = '(min-width: 1500px) 700px, (min-width: 1100px) 50vw, 92vw'
 /** The Fullscreen style draws the still across the whole window. */
 export const fullSizes = '100vw'
 
@@ -46,16 +46,16 @@ function useReducedMotion() {
   )
 }
 
-/** The one dominant item on Home: a large 16:9 still with its edge strip (perforations for what's watched,
- *  print for the episode, time left in yellow, when it would end, and the format), then the title (as its logo
- *  where TMDB has one), one line of facts, the yellow Resume or Play and a quiet Details.
+/** The one dominant item on Home: its title in giant Archivo capitals, one line of facts, a solid Resume or Play and a
+ *  bordered Details, and its backdrop in a 3px rule with the time left, when it would end and the format printed under
+ *  it and a red bar along its foot for how far you are.
  *
- *  With several titles it turns through them (up to ten: what's in progress first, then the top picks), with a
- *  row of perforations under it for the page you are on. It turns by itself only when nothing is in progress,
- *  never while the pointer or keyboard focus is in it, and never under reduced motion.
+ *  With several titles it turns through them (up to ten: what's in progress first, then the top picks), with a numbered
+ *  pager (`01 / 10`) for the one you are on. It turns by itself only when nothing is in progress, never while the
+ *  pointer or keyboard focus is in it, and never under reduced motion.
  *
- *  `fullscreen` is the apps' Fullscreen top pick: the same one object, drawn edge to edge, with its title, facts and
- *  buttons on the picture's lower part and the strip as the band along its foot. */
+ *  `fullscreen` is the apps' Fullscreen top pick: the backdrop edge to edge between two rules, with the title, facts and
+ *  buttons on a solid ink band across its foot. */
 export function Lead({ slides, auto, fullscreen }: { slides: LeadItem[]; auto: boolean; fullscreen?: boolean }) {
   const [index, setIndex] = useState(0)
   const [hold, setHold] = useState(false)
@@ -66,7 +66,7 @@ export function Lead({ slides, auto, fullscreen }: { slides: LeadItem[]; auto: b
   const { item, progress } = slides[at]!
   const key = mediaKey(item.type, item.id)
   const last = useStore(lastSourceStore, (st) => st.byTitle[key])
-  // The detail brings the runtime of a title not started, and the logo.
+  // The detail brings the runtime of a title not started.
   const detail = useQuery(q.detail(item.type, item.id))
 
   const running = advancesByItself({ setting: auto, resuming: !!slides[0]?.progress, slides: slides.length, reducedMotion: reduced })
@@ -84,13 +84,14 @@ export function Lead({ slides, auto, fullscreen }: { slides: LeadItem[]; auto: b
   const showLeft = useSettings((x) => x.showEpisodesRemaining)
   const left = progress && item.type === 'show' && detail.data ? showStatus(watchedShowsOf(marks, rewatches).get(item.id) ?? [], detail.data, now).left : 0
   const leftPrint: PrintPart[] = showLeft && left > 0 ? [{ text: episodesLeftText(left), rank: rank.episodesLeft }] : []
-  // A pick the viewer has already seen says so on its strip, as a poster does.
+  // A pick the viewer has already seen says so in its line, as a poster does.
   const history = useLibrary((x) => x.history)
   const showWatched = useSettings((x) => x.showWatchedBadges)
   const seen = progress ? undefined : posterMarks(item, { movies: watchedMovieKeys(history), shows: watchedShowsOf(marks, rewatches) }, detail.data, now, { watched: showWatched, episodes: false })
   const print = progress ? resumePrint(progress, now, last, userLocale, leftPrint) : [...(seen?.parts ?? []), ...pickPrint(item, detail.data?.runtime ? detail.data : undefined, now, { ends: true, locale: userLocale })]
   const season = progress?.episode ? { season: progress.episode.season } : undefined
   const many = slides.length > 1
+  const theme = useTheme()
 
   const go = (to: number) => {
     setIndex((to + slides.length) % slides.length)
@@ -110,16 +111,17 @@ export function Lead({ slides, auto, fullscreen }: { slides: LeadItem[]; auto: b
       onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setHold(false)}
     >
       <Link key={key} to="/title/$type/$id" params={{ type: item.type, id: item.id }} search={season} className={s.plate} onPointerEnter={() => prefetchDetail(item)} viewTransition tabIndex={-1} aria-hidden="true">
-        <Plate shape="still" artPath={item.backdrop} sizes={fullscreen ? fullSizes : leadSizes} priority={at === 0} progress={progress ? watchedFraction(progress) : seen?.progress} print={print} stripSize="lead" fallback={item.title} />
+        <Plate shape="still" artPath={item.backdrop} sizes={fullscreen ? fullSizes : leadSizes} priority={at === 0} progress={progress ? watchedFraction(progress) : seen?.progress} print={fullscreen ? undefined : print} fallback={item.title} />
       </Link>
-      <div className={s.info}>
+      <div className={s.info} data-theme={fullscreen ? (theme === 'dark' ? 'light' : 'dark') : undefined}>
         {/* Every slide's words sit in one cell of a grid, so the block is as tall as the tallest and nothing
             below it moves when the lead turns. Only the one on show is read or reached. */}
         <div className={s.stack} aria-live={running && !hold && !stopped ? 'off' : 'polite'}>
           {slides.map((sl, i) => (
-            <LeadText key={mediaKey(sl.item.type, sl.item.id)} lead={sl} current={i === at} logo={i === at ? detail.data?.logo : undefined} />
+            <LeadText key={mediaKey(sl.item.type, sl.item.id)} lead={sl} current={i === at} />
           ))}
         </div>
+        {fullscreen && <PrintLine print={print} hidden />}
         <div className={s.actions}>
           {progress ? (
             <Link to="/watch/$type/$id" params={{ type: item.type, id: item.id }} search={progress.episode ? { season: progress.episode.season, episode: progress.episode.episode } : {}} className="btn btn-primary btn-large" onPointerEnter={() => prefetchDetail(item)}>
@@ -134,79 +136,49 @@ export function Lead({ slides, auto, fullscreen }: { slides: LeadItem[]; auto: b
             Details
           </Link>
         </div>
-        {many && <Reel titles={slides.map((x) => x.item.title)} at={at} onGo={go} running={running} stopped={stopped} onToggle={() => setStopped((v) => !v)} />}
+        {many && <Pager count={slides.length} at={at} onGo={go} running={running} stopped={stopped} onToggle={() => setStopped((v) => !v)} />}
       </div>
     </section>
   )
 }
 
-/** One slide's title and facts. The title is its logo when TMDB has one that has loaded, else plain text. */
-function LeadText({ lead, current, logo }: { lead: LeadItem; current: boolean; logo?: MediaDetail['logo'] }) {
+/** One slide's title and facts. */
+function LeadText({ lead, current }: { lead: LeadItem; current: boolean }) {
   const { item, progress } = lead
-  const [state, setState] = useState<'wait' | 'ready' | 'broken'>('wait')
   const meta = progress?.episode ? `Season ${progress.episode.season}, Episode ${progress.episode.episode}${progress.episode.name ? ` · ${progress.episode.name}` : ''}` : pickMeta(item)
-  const art = logo && state !== 'broken' ? logo : undefined
   const Heading = current ? 'h2' : 'p'
   return (
     <div className={s.text} data-current={current ? '' : undefined} aria-hidden={current ? undefined : true} inert={!current}>
-      <Heading className={s.name} data-logo={art && state === 'ready' ? '' : undefined}>
-        <span className={s.nameText}>{item.title}</span>
-        {art && (
-          <img
-            className={s.logo}
-            src={imageURL(art, 300)}
-            srcSet={srcSet(art, 'logo')}
-            sizes="300px"
-            alt=""
-            decoding="async"
-            onLoad={() => setState('ready')}
-            onError={() => setState('broken')}
-          />
-        )}
-      </Heading>
+      <Heading className={s.name}>{item.title}</Heading>
       <p className={s.meta}>{meta}</p>
     </div>
   )
 }
 
-/** The page you are on, as a strip of perforations in edge print: one hole per title, the current one in paper.
- *  Arrow keys move along it, and Home and End go to either end. */
-function Reel({ titles, at, onGo, running, stopped, onToggle }: { titles: string[]; at: number; onGo: (i: number) => void; running: boolean; stopped: boolean; onToggle: () => void }) {
-  const holes = useRef<(HTMLButtonElement | null)[]>([])
-  const move = (e: KeyboardEvent, to: number) => {
-    e.preventDefault()
-    const next = (to + titles.length) % titles.length
-    onGo(next)
-    holes.current[next]?.focus()
-  }
+/** Which title of the turn you are on, as red condensed figures (`01 / 10`) between two square buttons. The arrow keys
+ *  go along it from anywhere in the pager, and Home and End to either end. */
+function Pager({ count, at, onGo, running, stopped, onToggle }: { count: number; at: number; onGo: (i: number) => void; running: boolean; stopped: boolean; onToggle: () => void }) {
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') move(e, at + 1)
-    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') move(e, at - 1)
-    else if (e.key === 'Home') move(e, 0)
-    else if (e.key === 'End') move(e, titles.length - 1)
+    const to = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? at + 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? at - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? count - 1 : undefined
+    if (to === undefined) return
+    e.preventDefault()
+    onGo(to)
   }
+  const two = (n: number) => String(n).padStart(2, '0')
   return (
-    <div className={s.reel}>
-      <div className={s.holes} role="group" aria-label="Choose a title" onKeyDown={onKey}>
-        {titles.map((title, i) => (
-          <button
-            key={i}
-            ref={(el) => void (holes.current[i] = el)}
-            type="button"
-            className={s.hole}
-            aria-label={`${title}, ${i + 1} of ${titles.length}`}
-            aria-current={i === at ? 'true' : undefined}
-            tabIndex={i === at ? 0 : -1}
-            onClick={() => onGo(i)}
-          />
-        ))}
-      </div>
-      <span className={`${s.count} num`} aria-hidden="true">
-        {String(at + 1).padStart(2, '0')} / {String(titles.length).padStart(2, '0')}
+    <div className={s.pager} role="group" aria-label="Choose a title" onKeyDown={onKey}>
+      <button type="button" className={s.step} onClick={() => onGo(at - 1)} aria-label="Previous title">
+        <Icon name="chevronLeft" size={18} strokeWidth={2.6} />
+      </button>
+      <span className={`${s.count} num`} role="status" aria-label={`${at + 1} of ${count}`}>
+        {two(at + 1)} <span aria-hidden="true">/ {two(count)}</span>
       </span>
+      <button type="button" className={s.step} onClick={() => onGo(at + 1)} aria-label="Next title">
+        <Icon name="chevronRight" size={18} strokeWidth={2.6} />
+      </button>
       {running && (
-        <button type="button" className={s.pause} onClick={onToggle} aria-label={stopped ? 'Turn automatic rotation back on' : 'Stop automatic rotation'}>
-          <Icon name={stopped ? 'play' : 'pause'} size={14} />
+        <button type="button" className={s.step} onClick={onToggle} aria-label={stopped ? 'Turn automatic rotation back on' : 'Stop automatic rotation'}>
+          <Icon name={stopped ? 'play' : 'pause'} size={16} />
         </button>
       )}
     </div>
@@ -220,8 +192,7 @@ export function LeadGhost({ fullscreen }: { fullscreen?: boolean }) {
   return (
     <div className={s.lead} data-style={fullscreen ? 'fullscreen' : undefined} aria-hidden="true">
       <div className={s.plate}>
-        <span className={s.ghostFrame}>{still && <img className={s.ghostImg} src={still.d.split(' ')[0]} srcSet={still.d} sizes={leadSizes} alt="" fetchPriority="high" />}</span>
-        <span className={s.ghostStrip} />
+        <span className={s.ghostFrame}>{still && <img className={s.ghostImg} src={still.d.split(' ')[0]} srcSet={still.d} sizes={fullscreen ? fullSizes : leadSizes} alt="" fetchPriority="high" />}</span>
       </div>
     </div>
   )

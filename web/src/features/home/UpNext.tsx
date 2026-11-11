@@ -16,13 +16,14 @@ import { continueMeta } from './posterText'
 import { continueLink } from './skipDetails'
 import s from './HomeScreen.module.css'
 
-/** How wide an Up Next still renders, for `srcset`: two across beside the lead on a desktop, a scrolling row below. */
-const stillSizes = '(min-width: 1100px) 22vw, (min-width: 721px) 30vw, 240px'
+/** How wide a Continue Watching still renders, for `srcset`: four across on a desktop (six on a wide one), three on a
+ *  tablet, a scrolling row on a phone. */
+const stillSizes = '(min-width: 1500px) 230px, (min-width: 1100px) 24vw, (min-width: 721px) 32vw, 280px'
 
 /** Continue Watching: what's in progress, and the next episode of each series being followed, most recently watched
- *  first (the apps' Continue Watching shelf, which sits beside the lead here). With only the apps' Up Next shelf on,
+ *  first (the apps' Continue Watching shelf, which sits under the lead here). With only the apps' Up Next shelf on,
  *  it is called that and holds only the next episodes, as there. The title the lead is showing is left out. Each is
- *  a still: perforations for how far, print for the episode, the time left in yellow, when it would end, and for a
+ *  a cell: a still with a red bar for how far, then the episode, the time left in red, when it would end, and for a
  *  series how many episodes are left. */
 export function UpNext({ leadKey, title, nextOnly }: { leadKey?: string; title: string; nextOnly?: boolean }) {
   const progress = useLibrary((l) => l.progress)
@@ -48,11 +49,11 @@ export function UpNext({ leadKey, title, nextOnly }: { leadKey?: string; title: 
 
   return (
     <section className={s.side} aria-labelledby="continue-watching">
-      <h2 id="continue-watching" className={s.sectionTitle}>
+      <h2 id="continue-watching" className={`section-label ${s.sectionTitle}`}>
         {title}
       </h2>
       {entries.length ? (
-        <ul className={s.stills}>
+        <ul className={s.cells}>
           {entries.slice(0, 6).map((e) => (
             <ContinueCard key={e.key} entry={e} said={!nextOnly} />
           ))}
@@ -64,7 +65,7 @@ export function UpNext({ leadKey, title, nextOnly }: { leadKey?: string; title: 
   )
 }
 
-/** `said`: the next episode says "up next" on its strip, to tell it from one in progress. Under a heading that already
+/** `said`: the next episode says "up next" in its line, to tell it from one in progress. Under a heading that already
  *  says it, it would repeat it. */
 function ContinueCard({ entry, said }: { entry: ContinueEntry; said: boolean }) {
   const { item, progress, episode } = entry
@@ -111,6 +112,7 @@ function ContinueCard({ entry, said }: { entry: ContinueEntry; said: boolean }) 
       link={continueLink(entry, skipDetails)}
       itemRef={itemRef}
       shape="still"
+      cell
       artPath={still ?? item.backdrop}
       artKind={still ? 'still' : 'backdrop'}
       sizes={stillSizes}

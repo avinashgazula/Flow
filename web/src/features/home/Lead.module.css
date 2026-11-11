@@ -1,81 +1,94 @@
-/* The lead. Phone: the plate at full content width, then the title, facts and buttons. From 721px the
-   plate (420px) sits beside them, until 1100px, where the lead is a column beside Up Next. */
-.lead { display: flex; flex-direction: column; min-width: 0; }
-.plate { display: block; min-width: 0; }
-.info { display: flex; flex-direction: column; min-width: 0; }
+/* The lead. Phone and tablet: the title, its facts and the buttons, then the framed backdrop with its printed line,
+   then the pager. From 1100px the words are a column beside the backdrop, buttons and pager at the foot of it, so
+   both end on one line. */
+.lead { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'stack' 'actions' 'plate' 'pager'; min-width: 0; }
+.plate { grid-area: plate; display: block; min-width: 0; margin-top: var(--space-l); }
+/* The words are the lead's grid items; only Fullscreen gathers them into one band. */
+.info { display: contents; }
+.stack { grid-area: stack; }
+.actions { grid-area: actions; }
+.pager { grid-area: pager; }
 
-/* Every slide's title and facts share one grid cell, so the block is as tall as the tallest and nothing below
-   the lead moves when it turns. Only the one on show is visible (and, for a screen reader, present). */
-.stack { display: grid; margin-top: var(--space-m); min-width: 0; }
+/* Every slide's title and facts share one grid cell, so the block is as tall as the tallest and nothing below the
+   lead moves when it turns. Only the one on show is visible (and, for a screen reader, present). */
+.stack { display: grid; min-width: 0; }
 .text { grid-area: 1 / 1; min-width: 0; opacity: 0; visibility: hidden; transition: opacity var(--dur-move) var(--ease-out), visibility 0s linear var(--dur-move); }
 .text[data-current] { opacity: 1; visibility: visible; transition-delay: 0s; }
 
-/* The title's line is 44px whether it is text or a logo, so a title with a logo and one without line up. */
-.name { position: relative; display: flex; align-items: center; min-height: 44px; font: 700 var(--fs-title2) / 1.1 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
-.logo { position: absolute; left: 0; top: 50%; height: 44px; width: auto; max-width: min(100%, 300px); object-fit: contain; object-position: left center; transform: translateY(-50%); opacity: 0; }
-/* Once the logo has loaded it is the title; the words stay for a screen reader. */
-.name[data-logo] .logo { opacity: 1; }
-.name[data-logo] .nameText { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.meta { margin-top: var(--space-xxs); font-size: var(--fs-small); line-height: 1.4; color: var(--ink-2); }
+/* The title is the giant face: Archivo capitals, three lines at most. */
+.name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  padding-bottom: 0.04em;
+  font: 700 clamp(44px, 13.5vw, 72px) / 0.9 var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+.meta { margin-top: var(--space-s); font: italic 400 18px / 1.45 var(--font-serif); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-s); margin-top: var(--space-m); }
-.actions > :first-child { flex: 0 0 auto; min-width: 168px; }
+.actions > * { flex: 1 1 0; min-width: 0; }
 
-/* The page you are on: a small edge band with a perforation per title (the current one in paper) and the count
-   in edge print. Each hole is a 24 by 32 button. */
-.reel { display: flex; align-items: center; width: fit-content; max-width: 100%; height: 32px; margin-top: var(--space-xs); padding: 0 var(--space-xs) 0 var(--space-xxs); border-radius: var(--radius-art); background: var(--edge); }
-.holes { display: flex; }
-.hole { position: relative; flex: none; width: 24px; height: 32px; border-radius: var(--radius-perf); }
-.hole::before { content: ''; position: absolute; left: 8.5px; top: 11.5px; width: 7px; height: 9px; border-radius: var(--radius-perf); background: var(--base-4); transition: background-color var(--dur-state) ease; }
-.hole:hover::before { background: var(--ink-3); }
-.hole[aria-current='true']::before { background: var(--paper); }
-.count { margin-left: var(--space-xs); font: 600 12px / 1 var(--font-edge); letter-spacing: 0.14em; color: var(--print); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pause { display: grid; place-items: center; flex: none; width: 24px; height: 32px; margin-left: var(--space-xxs); border-radius: var(--radius-perf); color: var(--ink-2); transition: color var(--dur-state) ease; }
-.pause:hover { color: var(--paper); }
+/* Which title you are on: bordered cells that share their borders, the count in red condensed figures. */
+.pager { display: flex; align-items: stretch; width: fit-content; max-width: 100%; margin-top: var(--space-m); }
+.pager > * { margin-left: -3px; }
+.pager > :first-child { margin-left: 0; }
+.step, .count { display: flex; align-items: center; justify-content: center; gap: 0.35em; height: 44px; border: 3px solid var(--fg); background: var(--bg); color: var(--fg); }
+.step { width: 44px; transition: background-color var(--dur-state) ease, border-color var(--dur-state) ease, color var(--dur-state) ease; }
+@media (hover: hover) { .step:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); position: relative; } }
+.step:focus-visible { position: relative; z-index: 1; }
+.count { padding: 0 var(--space-m); font: 700 24px / 1 var(--font-cond); letter-spacing: 0.02em; color: var(--red); white-space: nowrap; }
 
 @media (min-width: 721px) {
-  .name { font-size: 34px; }
-}
-@media (min-width: 721px) and (max-width: 1099px) {
-  .lead { flex-direction: row; align-items: flex-start; gap: var(--space-l); }
-  .plate { flex: none; width: 420px; }
-  .stack { margin-top: 0; }
+  .name { font-size: clamp(64px, 9vw, 96px); }
+  .meta { font-size: 20px; }
+  .actions > * { flex: 0 0 auto; }
+  .actions > :first-child { min-width: 168px; }
 }
 @media (min-width: 1100px) {
-  /* Beside Up Next the lead is short: title and facts on the left, the buttons on the right of the same row,
-     and the reel under both. */
-  .info { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-l); align-items: center; }
-  .stack { margin-top: var(--space-s); grid-column: 1; }
-  .actions { grid-column: 2; grid-row: 1; margin-top: var(--space-s); flex-wrap: nowrap; }
-  .reel { grid-column: 1 / -1; }
-}
-@media (max-width: 720px) {
-  .actions > *, .actions > :first-child { flex: 1 1 0; min-width: 0; }
+  .lead { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-rows: 1fr auto auto; grid-template-areas: 'stack plate' 'actions plate' 'pager plate'; column-gap: var(--space-xxl); }
+  .plate { margin-top: 0; }
+  .name { font-size: clamp(56px, 4.9vw, 84px); }
 }
 
-/* Placeholder: the same box, a flat frame with its strip. */
-.ghostFrame { display: block; aspect-ratio: 16 / 9; border-radius: var(--radius-art) var(--radius-art) 0 0; background: var(--base-2); overflow: hidden; }
+/* Placeholder: the same box, a flat frame. */
+.ghostFrame { display: block; aspect-ratio: 16 / 9; border: 3px solid var(--fg); background: var(--tint-1); overflow: hidden; }
 .ghostImg { display: block; width: 100%; height: 100%; object-fit: cover; }
-.ghostStrip { display: block; height: 26px; border-radius: 0 0 var(--radius-art) var(--radius-art); background: var(--edge); }
 
-/* Fullscreen: the plate runs edge to edge (no radius, as nothing is left to round), and the words sit on its lower
-   part over a flat scrim of the film base, which is the colour the strip under it already is. The picture's height
-   is 4:5 on a phone and 21:9 from 721px, never more than 72% of the window. */
-.lead[data-style='fullscreen'] { position: relative; flex-direction: column; align-items: stretch; gap: 0; }
-.lead[data-style='fullscreen'] .plate { width: 100%; }
-.lead[data-style='fullscreen'] .plate > span > :first-child, .lead[data-style='fullscreen'] .ghostFrame { aspect-ratio: 4 / 5; max-height: 72vh; border-radius: 0; }
-.lead[data-style='fullscreen'] .plate > span > :last-child, .lead[data-style='fullscreen'] .ghostStrip { border-radius: 0; }
-.lead[data-style='fullscreen']::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 26px 0;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(to top, rgb(21 18 15 / 0.96) 0%, rgb(21 18 15 / 0.78) 30%, rgb(21 18 15 / 0) 68%);
+/* Fullscreen: the backdrop runs edge to edge between two 3px rules, and the words sit on a solid band across its foot
+   (the opposite theme's colours, so it is ink on a light page and paper on a dark one). On a phone the band sits under
+   the picture instead of over it. */
+.lead[data-style='fullscreen'] { position: relative; display: block; border-block: var(--rule); }
+.lead[data-style='fullscreen'] .plate { margin-top: 0; width: 100%; }
+.lead[data-style='fullscreen'] .plate > span > span { border-width: 0; }
+.lead[data-style='fullscreen'] .plate > span > span > div, .lead[data-style='fullscreen'] .ghostFrame { aspect-ratio: 4 / 5; max-height: 60vh; }
+.lead[data-style='fullscreen'] .ghostFrame { border-width: 0; }
+.lead[data-style='fullscreen'] .info {
+  display: block;
+  background: var(--bg);
+  color: var(--fg);
+  padding: var(--space-l) var(--page-inset);
 }
-.lead[data-style='fullscreen'] .info { position: absolute; z-index: 2; inset: auto 0 calc(26px + var(--space-m)); width: 100%; max-width: calc(1360px + 2 * var(--page-inset)); margin-inline: auto; padding-inline: var(--page-inset); }
-.lead[data-style='fullscreen'] .stack { margin-top: 0; }
-.lead[data-style='fullscreen'] .meta { color: var(--paper); }
-.lead[data-style='fullscreen'] .ghostFrame { background: var(--base-2); }
+.lead[data-style='fullscreen'] .name { font-size: clamp(44px, 12vw, 64px); }
+.lead[data-style='fullscreen'] .actions { margin-top: var(--space-m); }
+.lead[data-style='fullscreen'] .meta { color: var(--fg); }
+.lead[data-style='fullscreen'] .info > :global(span) { margin-top: var(--space-s); }
 @media (min-width: 721px) {
-  .lead[data-style='fullscreen'] .plate > span > :first-child, .lead[data-style='fullscreen'] .ghostFrame { aspect-ratio: 21 / 9; }
+  .lead[data-style='fullscreen'] .plate > span > span > div, .lead[data-style='fullscreen'] .ghostFrame { aspect-ratio: 21 / 9; max-height: 72vh; }
+  .lead[data-style='fullscreen'] .info {
+    position: absolute;
+    inset: auto 0 0 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--space-xl);
+    align-items: end;
+  }
+  .lead[data-style='fullscreen'] .stack { grid-column: 1; grid-row: 1; }
+  .lead[data-style='fullscreen'] .info > :global(span) { grid-column: 1; grid-row: 2; }
+  .lead[data-style='fullscreen'] .actions { grid-column: 2; grid-row: 1 / 3; margin-top: 0; flex-direction: column; align-items: stretch; }
+  .lead[data-style='fullscreen'] .pager { grid-column: 2; grid-row: 3; margin-top: var(--space-s); }
+  .lead[data-style='fullscreen'] .name { font-size: clamp(56px, 6vw, 96px); -webkit-line-clamp: 2; }
 }

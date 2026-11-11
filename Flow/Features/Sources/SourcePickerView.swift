@@ -13,6 +13,8 @@ struct SourcePickerView: View {
     @State private var finished = false
     @State private var reloadToken = 0
     @State private var autoPlayed = false
+    /// Which chip is on. Only what the rows show changes: auto-play and the fallbacks still use the whole ranked list.
+    @State private var quickFilter: SourceQuickFilter = .all
 
     private var ranked: [StreamSource] {
         SourceRanker.rank(raw, settings: model.settings.sources, resolutionCap: model.resolutionCap, decodesAV1: Platform.decodesAV1,
@@ -36,11 +38,15 @@ struct SourcePickerView: View {
         let list = ranked
         let bestID = preferred(in: list)?.id
         let lastPlayedID = model.lastSource(for: request, in: list)?.id
-        let groups = grouped(list)
+        // A chip whose sources are gone (a new search found different ones) falls back to All instead of an empty list.
+        let filtered = quickFilter.apply(to: list)
+        let shown = filtered.isEmpty ? list : filtered
+        let groups = grouped(shown)
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    header(count: list.count)
+                    header(count: list.count, hidden: SourceQuickFilter.hiddenCount(found: raw, shown: list))
+                    if finished || !list.isEmpty { filterChips(for: list) }
                     if list.isEmpty && !finished {
                         GroupedTable {
                             ForEach(0..<3, id: \.self) { index in SourceRowPlaceholder(showsDivider: index > 0) }
@@ -72,7 +78,7 @@ struct SourcePickerView: View {
                 }
                 .padding(.horizontal, Theme.Space.gutter)
                 .padding(.bottom, Theme.Space.xxl)
-                .animation(Theme.Motion.gentle, value: list.map(\.id))
+                .animation(Theme.Motion.gentle, value: shown.map(\.id))
             }
             .safeAreaInset(edge: .top, spacing: 0) { controls }
             .background(AmbientBackground(url: request.item.smallBackdropURL ?? request.item.tmdbPosterURL, intensity: 0.7))
@@ -145,7 +151,34 @@ struct SourcePickerView: View {
         #endif
     }
 
-    private func header(count: Int) -> some View {
+    /// Resolution and provider chips, as the website's picker, when the list has more than one of either.
+    @ViewBuilder
+    private func filterChips(for list: [StreamSource]) -> some View {
+        if SourceQuickFilter.hasChoices(in: list) {
+            let resolutions = SourceQuickFilter.resolutions(in: list)
+            let providers = SourceQuickFilter.providers(in: list)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Space.xs) {
+                    chip("All", filter: .all)
+                    if resolutions.count > 1 { ForEach(resolutions) { chip($0.label, filter: .resolution($0)) } }
+                    if providers.count > 1 { ForEach(providers) { chip($0.name, filter: .provider($0.id)) } }
+                }
+                .padding(.vertical, Platform.isTV ? 24 : 0)
+            }
+            .scrollClipDisabled()
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Filter Sources")
+        }
+    }
+
+    private func chip(_ title: String, filter: SourceQuickFilter) -> some View {
+        let selected = quickFilter == filter
+        return Button { withAnimation(Theme.Motion.snappy) { quickFilter = filter } } label: { Text(title).lineLimit(1) }
+            .buttonStyle(FilterTabStyle(selected: selected))
+            .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private func header(count: Int, hidden: Int) -> some View {
         HStack(alignment: .center, spacing: Theme.Space.m) {
             RemoteImage(url: request.item.posterURL, maxPixel: 300, fallbackTitle: request.item.title, fallbackURL: request.item.tmdbPosterURL)
                 .frame(width: ProgrammeMetrics.poster.width, height: ProgrammeMetrics.poster.height)
@@ -157,7 +190,7 @@ struct SourcePickerView: View {
                 if let ep = request.episode {
                     Text("\(ep.code) · \(ep.title)").font(Theme.Typeface.body).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
                 }
-                status(count: count)
+                status(count: count, hidden: hidden)
             }
             Spacer(minLength: 0)
         }
@@ -165,7 +198,7 @@ struct SourcePickerView: View {
 
     /// "Searching AIOStreams…" while providers answer, then the count.
     @ViewBuilder
-    private func status(count: Int) -> some View {
+    private func status(count: Int, hidden: Int) -> some View {
         let searching = pending.values.sorted()
         if !finished, !searching.isEmpty {
             HStack(spacing: 6) {
@@ -175,7 +208,7 @@ struct SourcePickerView: View {
             .font(Theme.Typeface.caption)
             .foregroundStyle(Theme.Palette.textTertiary)
         } else {
-            Text(finished ? "\(count) source\(count == 1 ? "" : "s")" : "Finding sources…")
+            Text(finished ? "\(count) source\(count == 1 ? "" : "s")" + (hidden > 0 ? ", \(hidden) hidden by your settings" : "") : "Finding sources…")
                 .font(Theme.Typeface.caption)
                 .foregroundStyle(Theme.Palette.textTertiary)
                 .contentTransition(.numericText())
@@ -242,6 +275,7 @@ struct SourcePickerView: View {
         raw = prefetched ?? []
         failures = [:]
         finished = false
+        quickFilter = .all
         let live = prefetched == nil
         var fresh: [StreamSource]
         if let library {

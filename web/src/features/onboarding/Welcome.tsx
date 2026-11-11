@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react'
-import { Logo } from '../../components/Nav'
 import { peekLink, takeLink } from '../../lib/hashLink'
 import { libraryStore } from '../../lib/store/library'
 import { settingsStore, useSettings } from '../../lib/store/settings'
@@ -52,10 +51,17 @@ export function Welcome() {
 
   return (
     <div className={s.welcome}>
-      <div className={s.panel}>
-        <Logo size={48} />
-        <h1 className={s.title}>Welcome to Flow</h1>
-        <p className={s.lede}>Your Jellyfin, Emby and Plex servers, stream add-ons and live TV, in one beautiful place. Flow hosts no content: it plays what you already have.</p>
+      <div className={s.bar}>
+        <span className={s.logo}>Flow</span>
+      </div>
+      <header className={s.hero}>
+        <h1 className={s.title}>Flow</h1>
+        <p className={s.sub}>
+          Your Jellyfin, Emby and Plex servers, stream add-ons and live TV, in one place. Flow hosts no content: it <span className={s.mark}>plays what you already have.</span>
+        </p>
+      </header>
+      <div className={s.rule} />
+      <div className={s.setup}>
         {other ? (
           <Suspense fallback={<p className={s.hint}>Loading…</p>}>
             {other === 'setup' ? (
@@ -92,21 +98,27 @@ export function Welcome() {
                 </a>
                 . It stays in this browser.
               </p>
-              <button className="btn btn-primary" type="submit" disabled={!key.trim() || state === 'checking'}>
-                {state === 'checking' ? 'Checking…' : 'Continue'}
-              </button>
+              <div className={s.buttons}>
+                <button className="btn btn-primary btn-large" type="submit" disabled={!key.trim() || state === 'checking'}>
+                  {state === 'checking' ? 'Checking…' : 'Continue'}
+                </button>
+                <button className="btn btn-secondary btn-large" type="button" onClick={sample}>
+                  Explore with Sample Data
+                </button>
+              </div>
             </form>
-            <div className={s.alternatives}>
-              <button className={`btn btn-secondary ${s.sample}`} onClick={sample}>
-                Explore with Sample Data
-              </button>
-              <button className={`btn btn-quiet ${s.sample}`} onClick={() => setOther('setup')}>
-                I Have a Setup From Another Device
-              </button>
-              <button className={`btn btn-quiet ${s.sample}`} onClick={() => setOther('join')}>
-                Join Flow Sync
-              </button>
-            </div>
+            <ul className={`rows ${s.alternatives}`}>
+              <li>
+                <button className={`row ${s.alt}`} onClick={() => setOther('setup')}>
+                  I Have a Setup From Another Device <span aria-hidden="true">→</span>
+                </button>
+              </li>
+              <li>
+                <button className={`row ${s.alt}`} onClick={() => setOther('join')}>
+                  Join Flow Sync <span aria-hidden="true">→</span>
+                </button>
+              </li>
+            </ul>
           </>
         )}
       </div>

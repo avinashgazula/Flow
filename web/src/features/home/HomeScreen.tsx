@@ -16,10 +16,10 @@ import s from './HomeScreen.module.css'
 /** The shelves are under the fold: their code arrives beside the page's first data, not ahead of the first paint. */
 const Shelves = lazy(() => import('./Shelves'))
 
-/** Home, by the hour: the greeting title and date, the lead (what's in progress with its yellow Resume, or the
- *  day's top picks, turning through up to ten), Up Next beside it (framed stills, perforations for progress, edge
- *  print for the facts), and then the viewer's shelves in the order Settings → Shelves keeps, each a row of posters
- *  or stills with a print-only strip. Everything is a Frame (components/Frame). */
+/** Home, by the hour: the greeting and date, the lead (what's in progress with its solid Resume, or the day's top
+ *  picks, turning through up to ten), Continue Watching under it as a ruled grid of cells, and then the viewer's
+ *  shelves in the order Settings → Shelves keeps, each a ruled section of posters or stills. Everything is a Frame
+ *  (components/Frame). */
 export function HomeScreen() {
   const now = useMinuteTick()
   const progress = useLibrary((l) => l.progress)
@@ -82,10 +82,8 @@ export function HomeScreen() {
       {!none && fullscreen && lead && <div className={s.bleed}>{lead}</div>}
       {!none && (
         <div className={s.wrap}>
-          <div className={s.top} data-lead={slides.length || pending ? undefined : 'none'} data-hero={fullscreen && lead ? 'fullscreen' : undefined}>
-            {!fullscreen && lead}
-            {side}
-          </div>
+          {!fullscreen && lead}
+          {side}
           <Suspense fallback={null}>
             <Shelves />
           </Suspense>

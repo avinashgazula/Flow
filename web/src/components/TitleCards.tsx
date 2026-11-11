@@ -16,8 +16,8 @@ import { LazyCardMenu } from '../features/home/LazyCardMenu'
 import { continueLink } from '../features/home/skipDetails'
 import { FrameCard } from './Frame'
 
-/* The two kinds of item every browsing screen lists: a title not started (a poster with print only) and
-   a title started (a still whose perforations are how far you are). Home, Explore, Search and Library use
+/* The two kinds of item every browsing screen lists: a title not started (a poster with a printed line only) and
+   a title started (a still with a red bar for how far you are). Home, Explore, Search and Library use
    these, so one title looks the same wherever it turns up. */
 
 export const posterSizes = '(max-width: 720px) 112px, 200px'
@@ -38,9 +38,9 @@ export function useSeenDetail(item: Pick<MediaItem, 'type' | 'id'>) {
   return [ref, detail] as const
 }
 
-/** A title: poster, and print only (runtime and rating, or seasons and rating, or NEW EP when an episode just
+/** A title: poster, and a printed line only (runtime and rating, or seasons and rating, or NEW EP when an episode just
  *  aired), then the title and an optional line of facts under it. A film that has been watched prints WATCHED
- *  first and fills its perforations; a series prints how many of its aired episodes are watched, as the apps do.
+ *  first and fills its bar; a series prints how many of its aired episodes are watched, as the apps do.
  *  Every poster has the card menu (Play, Watchlist, Share and the rest) on its More button, right-click and long press. */
 export function PosterItem({ item, meta, sizes = posterSizes, menu = true, children }: { item: MediaItem; meta?: string; sizes?: string; menu?: boolean; children?: ReactNode }) {
   const now = useMinuteTick()
@@ -77,8 +77,8 @@ export function PosterItem({ item, meta, sizes = posterSizes, menu = true, child
   )
 }
 
-/** Something started, as a still: perforations for how far, print for the episode, the minutes left in
- *  yellow, when it would end, and the format it last played in. */
+/** Something started, as a still: a red bar for how far, a line for the episode, the minutes left in
+ *  red, when it would end, and the format it last played in. */
 export function ResumeItem({ p, sizes, children }: { p: Progress; sizes: string; children?: ReactNode }) {
   const now = useMinuteTick()
   const last = useStore(lastSourceStore, (st) => st.byTitle[p.key])

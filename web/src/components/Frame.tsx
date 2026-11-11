@@ -1,121 +1,36 @@
 import { Link, type LinkProps } from '@tanstack/react-router'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from 'react'
+import { useMemo, type ReactNode, type Ref } from 'react'
 import type { ImageKind } from '../lib/tmdb/images'
 import { Artwork } from './Artwork'
 import { markZoomSource } from './zoom'
-import { composeStrip, toFacts, type Fact, type PrintPart, type StripKind } from './stripLayout'
+import { toFacts, type PrintPart } from './stripLayout'
 import s from './Frame.module.css'
 
-/* Frame and edge strip: Flow's one repeating object, after the printed edge of 35mm film. A still or a
-   poster (the frame) has a strip attached under it. The strip's perforations are the progress meter: they
-   fill in film-stock yellow as you watch. Its edge print says the facts that decide what to watch:
-   "S3 E7 · 18M LEFT · ENDS 21:30 · 2160P · DV".
+/* Frame: Flow's one repeating object. A still or a poster sits in a 3px ink rule, square, and what decides whether to
+   watch it is printed under it in mono capitals ("S3 E7 · 18M LEFT · ENDS 21:30 · 2160P · DV"), then its title in
+   Plex Sans Condensed. Progress is a thin red bar along the foot of the picture.
 
-   - EdgeStrip: the strip alone, to sit under any frame (the title page's still, the player's scrubber).
-   - Plate: a frame with its strip, one object (radius 6 on top, 6 below).
-   - FrameCard: a whole item for a list or grid: the plate, then a title and one meta line, as one link.
+   - Plate: the framed picture, with its progress bar and (unless hidden) its printed line.
+   - PrintLine: the printed line alone.
+   - FrameCard: a whole item for a list or grid: the plate, the line, a title and one meta line, as one link. In a
+     `cell` (Continue Watching) the card is a ruled cell whose words invert to blue; elsewhere the frame's rule does.
 
-   A strip always carries something real: progress, facts, or both. No strip without facts. */
+   A line always carries something real. No line without facts. */
 
 export { rank, type PrintPart } from './stripLayout'
 
-/** How a strip counts perforations and composes its print: see stripLayout. A lead and a title's still fill
- *  their width; stills and posters keep the same count in every strip of a row. */
-export type StripSize = StripKind
-
-/** The strip's own room inside its padding, and the layout that fits it. Measured on the strip, so a card in
- *  a grid of any width gets the print that fits it. After drawing, the printed line is checked once and one
- *  more fact dropped if the estimate was kind (a face that hadn't loaded yet, a locale's longer time). */
-function useStripLayout(facts: Fact[], kind: StripKind, active: boolean) {
-  const strip = useRef<HTMLSpanElement>(null)
-  const text = useRef<HTMLSpanElement>(null)
-  const [width, setWidth] = useState(0)
-  const [bump, setBump] = useState({ key: '', n: 0 })
-  const [fontsAt, setFontsAt] = useState(0)
-  const signature = facts.map((f) => `${f.text}|${f.rank}`).join('/')
-
-  useLayoutEffect(() => {
-    const el = strip.current
-    if (!el) return
-    const read = () => {
-      const css = getComputedStyle(el)
-      setWidth(Math.floor(el.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight)))
-    }
-    read()
-    if (typeof ResizeObserver === 'undefined') return
-    const watch = new ResizeObserver(read)
-    watch.observe(el)
-    return () => watch.disconnect()
-  }, [active])
-
-  // The face arrives after the first paint on a cold load, and its widths differ from the fallback's.
-  useEffect(() => {
-    const fonts = typeof document === 'undefined' ? undefined : document.fonts
-    if (!fonts) return
-    const again = () => setFontsAt((n) => n + 1)
-    fonts.addEventListener?.('loadingdone', again)
-    return () => fonts.removeEventListener?.('loadingdone', again)
-  }, [])
-
-  const layout = useMemo(() => (width > 0 ? composeStrip({ width, facts, kind }) : undefined), [width, signature, kind]) // eslint-disable-line react-hooks/exhaustive-deps
-  // Facts dropped beyond the estimate belong to this width, this print and this face only.
-  const key = `${width}|${signature}|${kind}|${fontsAt}`
-  const extra = bump.key === key ? bump.n : 0
-  const shown = layout && extra > 0 ? { ...layout, facts: dropLeast(layout.facts, extra) } : layout
-  useLayoutEffect(() => {
-    const el = text.current
-    if (el && shown && shown.facts.length > 1 && cutOff(el)) setBump({ key, n: extra + 1 })
-  })
-  return { strip, text, layout: shown }
-}
-
-/** Whether the print is wider than its box, by any amount: the browser draws its ellipsis for a fraction of a pixel,
- *  which scrollWidth (a whole number, equal to the box's own width when nothing is wider) can't see. */
-function cutOff(el: HTMLElement): boolean {
-  const range = document.createRange()
-  range.selectNodeContents(el)
-  return range.getBoundingClientRect().width > el.getBoundingClientRect().width + 0.01
-}
-
-/** Without its `n` least important facts (never the last one standing). */
-function dropLeast(facts: Fact[], n: number): Fact[] {
-  let list = facts
-  for (let i = 0; i < n && list.length > 1; i++) {
-    let drop = 0
-    list.forEach((f, j) => {
-      if (f.rank >= list[drop]!.rank) drop = j
-    })
-    list = list.filter((_, j) => j !== drop)
-  }
-  return list
-}
-
-export function EdgeStrip({ progress, print = [], size = 'still', hidden }: { progress?: number; print?: PrintPart[]; size?: StripSize; hidden?: boolean }) {
+/** The line of facts. It wraps when the room is short and clips its second row, so what is lost is the last fact and
+ *  never half of one. The time left is marked in red. */
+export function PrintLine({ print = [], hidden }: { print?: PrintPart[]; hidden?: boolean }) {
   const facts = useMemo(() => toFacts(print), [print])
-  const { strip, text, layout } = useStripLayout(facts, size, progress !== undefined || facts.length > 0)
-  if (progress === undefined && facts.length === 0) return null
-  // Until the strip has been measured it is drawn with all its print and no perforations.
-  const perfs = layout?.perfs ?? 0
-  const shown = layout?.facts ?? facts
+  if (facts.length === 0) return null
   return (
-    <span ref={strip} className={s.strip} data-size={size} aria-hidden={hidden || undefined} style={{ '--perfs': perfs } as React.CSSProperties}>
-      {perfs > 0 && (
-        <span className={s.perfs}>
-          {/* --p is how much is watched, 0 to 1; CSS rounds it up to whole perforations. A title not started
-              keeps its perforations, all unfilled: it is still a reel. */}
-          {progress !== undefined && progress > 0 && <span className={s.watched} style={{ '--p': Math.max(0, Math.min(1, progress)) } as React.CSSProperties} />}
+    <span className={s.print} aria-hidden={hidden || undefined}>
+      {facts.map((f, i) => (
+        <span key={i} className={f.key ? s.key : undefined}>
+          {f.text}
         </span>
-      )}
-      {shown.length > 0 && (
-        <span ref={text} className={s.print}>
-          {shown.map((f, i) => (
-            <span key={i}>
-              {i > 0 && ' · '}
-              {f.key ? <em>{f.text}</em> : f.text}
-            </span>
-          ))}
-        </span>
-      )}
+      ))}
     </span>
   )
 }
@@ -130,23 +45,30 @@ export interface PlateProps {
   sizes: string
   /** The first screen's largest image: fetched at once, never lazily. */
   priority?: boolean
-  /** 0 to 1: perforations fill as you watch. Leave out for a title not started: print only. */
+  /** 0 to 1: the red bar along the picture's foot. Leave out for a title not started; 0 draws the empty bar. */
   progress?: number
   print?: PrintPart[]
-  stripSize?: StripSize
+  /** Kept so a caller written for the old edge strip still compiles; the printed line has one size. */
+  stripSize?: 'lead' | 'title' | 'still' | 'poster'
   /** Shown in the frame when there's no artwork. */
   fallback?: string
-  /** The strip is read by the link's own label: hide it from a screen reader's second pass. */
+  /** The printed line is read by the link's own label: leave it out of a screen reader's second pass. */
   hideStrip?: boolean
   className?: string
 }
 
-export function Plate({ shape, artPath, artKind, sizes, priority, progress, print, stripSize, fallback, hideStrip, className }: PlateProps) {
-  const strip = progress !== undefined || (print && print.length > 0)
+export function Plate({ shape, artPath, artKind, sizes, priority, progress, print, fallback, hideStrip, className }: PlateProps) {
   return (
-    <span className={`${s.plate} ${className ?? ''}`} data-shape={shape} data-strip={strip ? '' : undefined}>
-      <Artwork zoom path={artPath} kind={artKind ?? (shape === 'still' ? 'backdrop' : 'poster')} alt="" sizes={sizes} priority={priority} className={s.frame} fallback={fallback} />
-      <EdgeStrip progress={progress} print={print} size={stripSize ?? (shape === 'poster' ? 'poster' : 'still')} hidden={hideStrip} />
+    <span className={`${s.plate} ${className ?? ''}`} data-shape={shape}>
+      <span className={s.shot}>
+        <Artwork zoom path={artPath} kind={artKind ?? (shape === 'still' ? 'backdrop' : 'poster')} alt="" sizes={sizes} priority={priority} className={s.frame} fallback={fallback} />
+        {progress !== undefined && (
+          <span className={s.bar} aria-hidden="true">
+            <i style={{ width: `${Math.round(Math.max(0, Math.min(1, progress)) * 100)}%` }} />
+          </span>
+        )}
+      </span>
+      {!hideStrip && print && print.length > 0 && <PrintLine print={print} hidden />}
     </span>
   )
 }
@@ -158,7 +80,7 @@ export interface FrameCardProps extends Omit<PlateProps, 'hideStrip' | 'classNam
   onSelect?: () => void
   /** Left out when Show Titles Under Posters is off: the label still names the item. */
   title?: string
-  /** One line of plain facts under the title, ink-2. */
+  /** One line of plain facts under the title, muted. */
   meta?: string
   /** What a screen reader says: "Breaking Bad, season 3 episode 7, 18 minutes left, ends 9:30 PM". */
   label: string
@@ -170,28 +92,34 @@ export interface FrameCardProps extends Omit<PlateProps, 'hideStrip' | 'classNam
   dimmed?: boolean
   /** Not actionable yet (an episode that hasn't aired): a button that does nothing. Dims it too. */
   disabled?: boolean
+  /** A ruled cell (Continue Watching): picture and words share one 3px border, and the words invert to blue. */
+  cell?: boolean
   /** More lines under the meta (inline spans), like an episode's synopsis. */
   extra?: ReactNode
   /** Sits in the item beside the link, for a control that can't live inside it (Remove). */
   children?: ReactNode
 }
 
-/** An item in a list or grid: a plate, its title, one meta line; the whole of it one link (or button).
- *  Renders an <li>. Hover lifts the plate 2 px and brightens the print; focus rings the plate in yellow. */
-export function FrameCard({ link, onSelect, title, meta, label, onIntent, itemRef, dimmed, disabled, extra, children, ...plate }: FrameCardProps) {
+/** An item in a list or grid: a plate, its printed line, its title and one meta line; the whole of it one link (or
+ *  button). Renders an <li>. Hover and focus put a blue rule round the frame (the words turn blue in a cell). */
+export function FrameCard({ link, onSelect, title, meta, label, onIntent, itemRef, dimmed, disabled, cell, extra, children, print, ...plate }: FrameCardProps) {
   const inside = (
     <>
       <Plate {...plate} hideStrip />
       {/* The spoken label is the name: it starts with the title, and says the print and meta in full words. */}
       <span className="sr-only">{label}</span>
-      {title && <span className={s.title} aria-hidden="true">{title}</span>}
-      {meta && <span className={s.meta} aria-hidden="true">{meta}</span>}
-      {extra}
+      <span className={s.words} aria-hidden="true">
+        <PrintLine print={print} />
+        {title && <span className={s.title}>{title}</span>}
+        {meta && <span className={s.meta}>{meta}</span>}
+        {extra}
+      </span>
     </>
   )
   const shared = {
     className: s.card,
     'data-dimmed': dimmed || disabled ? '' : undefined,
+    'data-cell': cell ? '' : undefined,
     onPointerEnter: (e: { pointerType: string }) => e.pointerType === 'mouse' && onIntent?.(),
     onFocus: onIntent,
   }
