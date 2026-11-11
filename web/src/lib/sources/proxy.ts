@@ -1,10 +1,10 @@
 /* The stream proxy: a service the viewer runs (the Cloudflare Worker in web/proxy, or MediaFlow Proxy)
-   that fetches a file for Flow and adds the CORS headers its host leaves out. Flow reads files with
+   that fetches a file for Marquee and adds the CORS headers its host leaves out. Marquee reads files with
    range requests from a Web Worker, so a host that sends no CORS headers (most debrid download
    servers) can't be read directly. Sending the request through the proxy makes it readable, which is
-   also what lets Flow convert audio a browser can't decode.
+   also what lets Marquee convert audio a browser can't decode.
 
-   Flow only uses the proxy where it has to: for hosts known to need it, and for origins it has
+   Marquee only uses the proxy where it has to: for hosts known to need it, and for origins it has
    learned are blocked. Everything else is read directly, so the proxy's bandwidth isn't spent on
    files that never needed one. */
 
@@ -85,7 +85,7 @@ function save() {
   }
 }
 
-/** Notes that the origin of this address (the one Flow was given, such as an add-on's play link,
+/** Notes that the origin of this address (the one Marquee was given, such as an add-on's play link,
  *  not wherever it redirects) sent no CORS headers, so the next file from it goes through the
  *  proxy at once. */
 export function rememberBlocked(url: string) {
@@ -130,7 +130,7 @@ export function needsProxy(url: string, template: string = streamProxy()): boole
   return template.trim() !== '' && (isKnownBlocked(url) || isDebridHost(url))
 }
 
-/** True when Flow can expect to read this file's bytes: through the proxy, or because nothing says
+/** True when Marquee can expect to read this file's bytes: through the proxy, or because nothing says
  *  its host blocks web pages. Audio conversion needs the bytes. */
 export function isReadable(url: string, template: string = streamProxy()): boolean {
   return template.trim() !== '' || !(isKnownBlocked(url) || isDebridHost(url))

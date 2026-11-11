@@ -11,7 +11,7 @@
   padding: var(--space-l);
   background: var(--overlay);
   color: var(--fg);
-  animation: in var(--dur-move) ease;
+  animation: in var(--dur-enter) var(--ease-out);
 }
 /* As wide as 16:9 allows while the chips still fit under it on a short window. */
 .stage { display: flex; flex-direction: column; gap: var(--space-s); width: min(1200px, 100%, calc((100dvh - 168px) * 16 / 9)); }
@@ -23,22 +23,27 @@
   background: #000;
 }
 .frame iframe { width: 100%; height: 100%; border: 0; }
-.picker { display: flex; min-width: 0; overflow-x: auto; padding: 0 3px 0 0; scrollbar-width: thin; }
+.picker { display: flex; min-width: 0; overflow-x: auto; padding: 0 var(--border-w) 0 0; scrollbar-width: thin; }
 .choice {
   flex: none;
   min-height: 44px;
-  margin-right: -3px;
+  margin-right: var(--border-w-neg);
   padding: 0 16px;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   background: var(--bg);
   color: var(--fg);
   font: 600 var(--fs-small) / 1.1 var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   white-space: nowrap;
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 @media (hover: hover) { .choice:hover { position: relative; z-index: 1; background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
 .choice[aria-checked='true'] { background: var(--fg); color: var(--bg); }
 .close { position: absolute; top: calc(var(--space-m) + env(safe-area-inset-top)); right: var(--space-m); }
 @keyframes in { from { opacity: 0; } }
+
+.backdrop { transition: opacity var(--dur-exit) var(--ease-out); }
+.backdrop[data-leaving] { opacity: 0; pointer-events: none; }
+.stage { animation: stage var(--dur-enter) var(--ease-out); }
+@keyframes stage { from { scale: 0.97; } }

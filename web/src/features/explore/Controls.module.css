@@ -1,4 +1,4 @@
-/* Standard controls, flat and ruled: a segmented control (a mode: cells sharing 3px borders, the current one
+/* Standard controls, flat and ruled: a segmented control (a mode: cells sharing 2px borders, the current one
    inverted), a select (a sort: a square bordered box), and the empty or error state. */
 .segmented {
   display: inline-grid;
@@ -15,7 +15,7 @@
   letter-spacing: 0.06em;
   color: var(--fg);
   white-space: nowrap;
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
   -webkit-tap-highlight-color: transparent;
 }
 .segment + .segment { border-left: var(--rule); }

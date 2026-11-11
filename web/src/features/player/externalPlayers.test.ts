@@ -86,7 +86,7 @@ describe('MKV Files set to External Player', () => {
     expect(matroskaHandOff(mkv, 'external', 'vlc', 'ios')).toBe('vlc-x-callback://x-callback-url/stream?url=https%3A%2F%2Fcdn.example.com%2FFilm.mkv')
   })
 
-  it('plays in Flow unless every part of that is true', () => {
+  it('plays in Marquee unless every part of that is true', () => {
     expect(matroskaHandOff(mkv, undefined, 'infuse', 'ios')).toBeUndefined()
     expect(matroskaHandOff(mkv, 'remux', 'infuse', 'ios')).toBeUndefined()
     expect(matroskaHandOff(mkv, 'external', 'none', 'ios')).toBeUndefined()
@@ -94,7 +94,7 @@ describe('MKV Files set to External Player', () => {
     // No Apple device, or an app that is not on this one.
     expect(matroskaHandOff(mkv, 'external', 'infuse', undefined)).toBeUndefined()
     expect(matroskaHandOff(mkv, 'external', 'iina', 'ios')).toBeUndefined()
-    // Not a file Flow would remux, or one an app can't fetch by its address alone.
+    // Not a file Marquee would remux, or one an app can't fetch by its address alone.
     expect(matroskaHandOff({ ...mkv, engine: 'native' }, 'external', 'infuse', 'ios')).toBeUndefined()
     expect(matroskaHandOff({ ...mkv, headers: { Authorization: 'x' } }, 'external', 'infuse', 'ios')).toBeUndefined()
   })

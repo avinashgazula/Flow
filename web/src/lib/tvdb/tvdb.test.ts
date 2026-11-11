@@ -7,7 +7,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 const tmdb = (season: number, number: number, extra: Partial<Episode> = {}): Episode => ({ id: season * 1000 + number, season, number, name: `TMDB ${season}x${number}`, overview: '', ...extra })
 
-describe('TVDB’s episodes as Flow’s', () => {
+describe('TVDB’s episodes as Marquee’s', () => {
   const list: TVDBEpisode[] = [
     { id: 11, seasonNumber: 1, number: 1, name: ' Pilot ', overview: ' First. ', aired: '2008-01-20', runtime: 58, image: 'https://artworks.thetvdb.com/banners/episodes/81189/1.jpg', absoluteNumber: 1 },
     { id: 12, seasonNumber: 1, number: 2, name: null, overview: null, aired: null, runtime: 0, image: null },
@@ -29,7 +29,7 @@ describe('TVDB’s episodes as Flow’s', () => {
   })
 })
 
-describe('Trakt’s episodes as Flow’s', () => {
+describe('Trakt’s episodes as Marquee’s', () => {
   it('reads the season and episode, and the day of the air time', () => {
     expect(
       fromTrakt([

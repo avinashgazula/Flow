@@ -2,7 +2,7 @@ import { isKnownBlocked, rememberBlocked, streamProxy } from '../sources/proxy'
 import type { Fetched } from './net'
 import { planFetch } from './plan'
 
-/* The settings-aware half of reaching a provider: the viewer's stream proxy and what Flow has learned
+/* The settings-aware half of reaching a provider: the viewer's stream proxy and what Marquee has learned
    about which hosts send no CORS headers. */
 
 export const pageProtocol = () => (typeof location === 'undefined' ? 'https:' : location.protocol)

@@ -46,14 +46,14 @@
 }
 
 /* Remove sits on the still's corner: a control, not text, shown on hover or focus and always on touch. */
-.remove.remove { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; opacity: 0; transition: opacity var(--dur-state) ease, background-color var(--dur-state) ease; }
+.remove.remove { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; opacity: 0; transition: opacity var(--dur-hover) ease, background-color var(--dur-hover) ease; }
 li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 1; }
 @media (hover: none) { .remove.remove { opacity: 1; width: 44px; height: 44px; } }
 
 .continueGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-l) var(--space-m); padding-top: var(--space-l); }
 
 /* History: dated ruled rows. The date column is mono, the title condensed, and a day's heading is a red label under a
-   3px rule. The rows run edge to edge, so their blue hover does. */
+   2px rule. The rows run edge to edge, so their blue hover does. */
 .history { content-visibility: auto; contain-intrinsic-size: auto 500px; }
 .bleed { margin-inline: calc(-1 * var(--page-inset)); }
 .recentRow { height: 73px; }
@@ -118,7 +118,7 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
 .reorder[data-arranging] .move { display: flex; justify-content: center; margin-top: var(--space-xxs); }
 /* With a pointer, the arrows come to the poster's corner on hover or focus; dragging needs no mode. */
 @media (hover: hover) {
-  .reorder:not([data-arranging]) .move { display: flex; position: absolute; top: 8px; right: 8px; opacity: 0; transition: opacity var(--dur-state) ease; }
+  .reorder:not([data-arranging]) .move { display: flex; position: absolute; top: 8px; right: 8px; opacity: 0; transition: opacity var(--dur-hover) ease; }
   .reorder:not([data-arranging]) li:hover > .move, .reorder:not([data-arranging]) li:focus-within > .move { opacity: 1; }
 }
 .reorder > li { position: relative; }

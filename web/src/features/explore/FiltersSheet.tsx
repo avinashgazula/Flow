@@ -5,6 +5,7 @@ import type { MediaType } from '../../lib/tmdb/types'
 import { Select } from './Controls'
 import { filterLanguages } from './filterQuery'
 import { isFiltered, lastFilterYear, noFilters, ratingSteps, releaseWindows, type ExploreFilters, type ReleaseWindow } from './filters'
+import { useLeave } from '../../lib/leave'
 import s from './FiltersSheet.module.css'
 
 /** How many services show before "Show More"; TMDB lists a hundred or so per region. */
@@ -19,7 +20,8 @@ const years = (): { id: string; label: string }[] => {
 /** The filter sheet: a side panel on a desktop, a bottom sheet on a phone. Every change applies at once, so
  *  the grid behind it follows along (on a desktop you can watch it), and Show Results simply closes it.
  *  Escape closes, Tab stays inside, and focus goes back to the Filters button. */
-export default function FiltersSheet({ type, filters, onChange, onClose }: { type: MediaType; filters: ExploreFilters; onChange: (next: ExploreFilters) => void; onClose: () => void }) {
+export default function FiltersSheet({ type, filters, onChange, onClose: closeNow }: { type: MediaType; filters: ExploreFilters; onChange: (next: ExploreFilters) => void; onClose: () => void }) {
+  const [onClose, leaving] = useLeave(closeNow)
   const panel = useRef<HTMLElement>(null)
   const titleId = useId()
   const yearOptions = useMemo(years, [])
@@ -67,7 +69,7 @@ export default function FiltersSheet({ type, filters, onChange, onClose }: { typ
   if (filters.language && !filterLanguages.some((l) => l.id === filters.language)) languages.push({ id: filters.language, label: filters.language.toUpperCase() })
 
   return (
-    <div className={s.overlay} onKeyDown={onKeyDown}>
+    <div className={s.overlay} data-leaving={leaving ? '' : undefined} onKeyDown={onKeyDown}>
       <div className={s.scrim} onClick={onClose} aria-hidden />
       <section className={s.panel} ref={panel} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
         <header className={s.header}>

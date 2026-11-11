@@ -14,7 +14,7 @@ import { isShelfList } from '../../lib/shelves'
 import { isSubtitleStyle, normaliseSubtitleStyle } from '../../lib/store/subtitleStyle'
 import { noExtras, setupExtrasStore } from '../../lib/setup/extras'
 
-/* Export and import of everything Flow keeps in this browser, as one JSON file. */
+/* Export and import of everything Marquee keeps in this browser, as one JSON file. */
 
 export const backupFormat = 'flow-web-backup'
 
@@ -91,7 +91,7 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   showUnreleasedTitles: (v) => typeof v === 'boolean',
   airDatesInLocalTimeZone: (v) => typeof v === 'boolean',
   prefetchOnDetail: (v) => typeof v === 'boolean',
-  // Empty restores the public address; anything else has to be one Flow can ask.
+  // Empty restores the public address; anything else has to be one Marquee can ask.
   introDBBaseURL: (v) => typeof v === 'string' && baseURLProblem(v) === undefined,
   publicMetaDBBaseURL: (v) => typeof v === 'string' && baseURLProblem(v) === undefined,
   postCreditsAlert: (v) => typeof v === 'boolean',
@@ -125,7 +125,7 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   // Retired setting (the typeface picker): still accepted, so a backup from before it went imports clean.
   font: (v) => ['system', 'inter', 'geist', 'manrope', 'ioskeley'].includes(v as string),
   tabOrder: isTabOrder,
-  // Empty clears the proxy; anything else has to be an address Flow can call.
+  // Empty clears the proxy; anything else has to be an address Marquee can call.
   streamProxy: (v) => typeof v === 'string' && proxyProblem(v) === undefined,
   showAboutSection: (v) => typeof v === 'boolean',
   showWhereToWatch: (v) => typeof v === 'boolean',
@@ -194,10 +194,10 @@ export function parseBackup(text: string): { ok: true; settings: Partial<Setting
   try {
     data = JSON.parse(text)
   } catch {
-    return { ok: false, error: 'That file isn’t valid JSON. Choose a backup exported from Flow.' }
+    return { ok: false, error: 'That file isn’t valid JSON. Choose a backup exported from Marquee.' }
   }
-  if (!isObject(data) || data.format !== backupFormat) return { ok: false, error: 'That doesn’t look like a Flow backup. Choose a file exported from Flow’s Settings.' }
-  if (typeof data.version === 'number' && data.version > 1) return { ok: false, error: 'That backup is from a newer version of Flow. Update Flow, then try again.' }
+  if (!isObject(data) || data.format !== backupFormat) return { ok: false, error: 'That doesn’t look like a Marquee backup. Choose a file exported from Marquee’s Settings.' }
+  if (typeof data.version === 'number' && data.version > 1) return { ok: false, error: 'That backup is from a newer version of Marquee. Update Marquee, then try again.' }
 
   const skipped: string[] = []
   const library: Record<string, unknown> = {}
@@ -210,7 +210,7 @@ export function parseBackup(text: string): { ok: true; settings: Partial<Setting
       else skipped.push(key)
     }
   }
-  if (Object.keys(settings).length === 0 && Object.keys(library).length === 0) return { ok: false, error: 'That backup is empty. Choose a file exported from Flow’s Settings.' }
+  if (Object.keys(settings).length === 0 && Object.keys(library).length === 0) return { ok: false, error: 'That backup is empty. Choose a file exported from Marquee’s Settings.' }
   return { ok: true, settings, library: library as Partial<Library>, skipped }
 }
 

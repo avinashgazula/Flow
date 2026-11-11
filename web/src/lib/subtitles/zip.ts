@@ -24,7 +24,7 @@ export const maxUnpacked = 8 * 1024 * 1024
 export const isZip = (b: Uint8Array): boolean => b.length > 3 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04
 export const isGzip = (b: Uint8Array): boolean => b.length > 2 && b[0] === 0x1f && b[1] === 0x8b
 
-const unreadable = () => new SubtitleError('That subtitle download is a zip file Flow can’t open. Choose another.')
+const unreadable = () => new SubtitleError('That subtitle download is a zip file Marquee can’t open. Choose another.')
 
 /** The entries of a zip archive, folders left out. */
 export function zipEntries(bytes: Uint8Array): ZipEntry[] {

@@ -47,7 +47,7 @@ function useReducedMotion() {
 }
 
 /** The one dominant item on Home: its title in giant Archivo capitals, one line of facts, a solid Resume or Play and a
- *  bordered Details, and its backdrop in a 3px rule with the time left, when it would end and the format printed under
+ *  bordered Details, and its backdrop in a 2px rule with the time left, when it would end and the format printed under
  *  it and a red bar along its foot for how far you are.
  *
  *  With several titles it turns through them (up to ten: what's in progress first, then the top picks), with a numbered

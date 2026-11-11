@@ -25,13 +25,13 @@ const qualities: { value: Settings['preferredQuality']; label: string }[] = [
  *  (vite.config.ts reads it from CI); otherwise the footer just names the folder. */
 const proxyGuide = import.meta.env.VITE_PROXY_GUIDE as string | undefined
 
-/** The address of a proxy Flow fetches blocked files through. Saved on Save, so a half-typed
+/** The address of a proxy Marquee fetches blocked files through. Saved on Save, so a half-typed
  *  address never reaches playback. */
 function StreamProxy() {
   const saved = useSettings((x) => x.streamProxy)
   const [value, setValue] = useState(saved)
   const [problem, setProblem] = useState<string>()
-  // An address that arrives from another device (Flow Sync) shows here at once.
+  // An address that arrives from another device (Marquee Sync) shows here at once.
   useEffect(() => {
     setValue(saved)
   }, [saved])
@@ -48,13 +48,13 @@ function StreamProxy() {
       title="Stream Proxy"
       footer={
         <>
-          Most debrid servers don’t let web pages read their files, so a stream proxy you run fetches them for Flow. Put <code>{'{url}'}</code> where the file’s address goes.{' '}
+          Most debrid servers don’t let web pages read their files, so a stream proxy you run fetches them for Marquee. Put <code>{'{url}'}</code> where the file’s address goes.{' '}
           {proxyGuide ? (
             <a href={proxyGuide} target="_blank" rel="noreferrer">
               How to set one up
             </a>
           ) : (
-            <>See web/proxy in Flow’s source to set one up</>
+            <>See web/proxy in Marquee’s source to set one up</>
           )}
           .
         </>
@@ -88,7 +88,7 @@ function StreamProxy() {
       )}
       {!problem && saved && value.trim() === saved && (
         <div className={s.pad}>
-          <Note tone="ok">Flow uses this proxy for files from hosts that block web pages.</Note>
+          <Note tone="ok">Marquee uses this proxy for files from hosts that block web pages.</Note>
         </div>
       )}
     </Group>
@@ -277,7 +277,7 @@ export function PlaybackSection() {
         )}
       </Group>
       <Group
-        footer={`The picker puts this resolution first when a title has it, then the next best. Anything this browser can’t play is marked and never chosen for you.${hasConnection ? ' Resolution on Cellular applies instead when the browser reports Data Saver or a slow connection: Flow then starts a source no taller than that, and the picker still lists the rest.' : ''}`}
+        footer={`The picker puts this resolution first when a title has it, then the next best. Anything this browser can’t play is marked and never chosen for you.${hasConnection ? ' Resolution on Cellular applies instead when the browser reports Data Saver or a slow connection: Marquee then starts a source no taller than that, and the picker still lists the rest.' : ''}`}
       >
         <Row label="Preferred Quality" htmlFor="quality">
           <Select id="quality" label="Preferred quality" value={quality} onChange={(v) => settingsStore.set({ preferredQuality: v })} options={qualities} />
@@ -296,7 +296,7 @@ export function PlaybackSection() {
       </Group>
       <Group
         title="Dolby Vision"
-        footer="Never Use Dolby Vision plays its HDR10 picture instead (profile 5, which has none, still plays as Dolby Vision). Applies to MKV files Flow plays itself, from the next time one starts."
+        footer="Never Use Dolby Vision plays its HDR10 picture instead (profile 5, which has none, still plays as Dolby Vision). Applies to MKV files Marquee plays itself, from the next time one starts."
       >
         <Row label="Never Use Dolby Vision">
           <Switch label="Never use Dolby Vision" checked={neverDolbyVision} onChange={(on) => settingsStore.set({ neverUseDolbyVision: on })} />
@@ -307,7 +307,7 @@ export function PlaybackSection() {
           <Switch label="Show progress bar" checked={showProgress} onChange={(on) => settingsStore.set({ showLoadingProgress: on })} />
         </Row>
       </Group>
-      <Group footer="Flow starts each title on the first of these it has, and never on commentary. A track you choose in the player is remembered for that film, and for that show unless Remember Tracks for Each Show is off.">
+      <Group footer="Marquee starts each title on the first of these it has, and never on commentary. A track you choose in the player is remembered for that film, and for that show unless Remember Tracks for Each Show is off.">
         <Row label="Audio Language" htmlFor="audio-1">
           <Select id="audio-1" label="Audio language" value={audioFirst} onChange={(v) => setAudio(v, v ? audioSecond : '')} options={audioOptions(audioFirst, 'Stream Default')} />
         </Row>
@@ -348,7 +348,7 @@ export function PlaybackSection() {
         </Row>
       </Group>
       <SubtitleServicesGroup />
-      <Group footer="The next episode starts after a countdown you can cancel, from where the credits begin or in the last 30 seconds. After the number of episodes you pick with nobody touching anything, Flow asks before the next.">
+      <Group footer="The next episode starts after a countdown you can cancel, from where the credits begin or in the last 30 seconds. After the number of episodes you pick with nobody touching anything, Marquee asks before the next.">
         <Row label="Autoplay Next Episode">
           <Switch label="Autoplay next episode" checked={autoplay} onChange={(on) => settingsStore.set({ autoplayNext: on })} />
         </Row>
@@ -384,7 +384,7 @@ export function PlaybackSection() {
       </Group>
       <Group
         title="Formats"
-        footer={`Flow plays MKV files itself by repackaging them on the fly, without re-encoding. DTS and Dolby TrueHD, which browsers can’t play, are decoded and re-encoded as stereo while you watch where the browser can; with that off those tracks are marked unavailable. When a source won’t start, Flow moves to the next one${platform ? ', or hands an MKV to your external player when MKV Files says so' : ''}.`}
+        footer={`Marquee plays MKV files itself by repackaging them on the fly, without re-encoding. DTS and Dolby TrueHD, which browsers can’t play, are decoded and re-encoded as stereo while you watch where the browser can; with that off those tracks are marked unavailable. When a source won’t start, Marquee moves to the next one${platform ? ', or hands an MKV to your external player when MKV Files says so' : ''}.`}
       >
         <Row label="Try the Next Source Automatically">
           <Switch label="Try the next source automatically" checked={tryNext} onChange={(on) => settingsStore.set({ tryNextSourceOnFailure: on })} />
@@ -400,7 +400,7 @@ export function PlaybackSection() {
               value={matroska}
               onChange={(v) => settingsStore.set({ matroskaPlayback: v })}
               options={[
-                { value: 'remux', label: 'Play in Flow' },
+                { value: 'remux', label: 'Play in Marquee' },
                 { value: 'external', label: 'External Player' },
               ]}
             />
@@ -418,7 +418,7 @@ export function PlaybackSection() {
           <Select id="skip-credits" label="Skip credits" value={skipCredits} onChange={(v) => settingsStore.set({ skipCredits: v })} options={skipChoices} />
         </Row>
       </Group>
-      <Group footer="When a film has a scene during or after its credits, Flow says so as they begin and won’t skip them by itself. Because You Watched suggests what to watch next as the credits roll, and when the film ends.">
+      <Group footer="When a film has a scene during or after its credits, Marquee says so as they begin and won’t skip them by itself. Because You Watched suggests what to watch next as the credits roll, and when the film ends.">
         <Row label="Post-Credits Scene Alert">
           <Switch label="Post-credits scene alert" checked={postCredits} onChange={(on) => settingsStore.set({ postCreditsAlert: on })} />
         </Row>
@@ -435,7 +435,7 @@ export function PlaybackSection() {
         </Row>
       </Group>
       {platform && (
-        <Group title="External Player" footer="Options → Open in lists these apps, with this one first. Another app gets the stream’s link (Infuse also the resume point), only for files it can fetch by their address alone. Flow tracks progress only in its own player.">
+        <Group title="External Player" footer="Options → Open in lists these apps, with this one first. Another app gets the stream’s link (Infuse also the resume point), only for files it can fetch by their address alone. Marquee tracks progress only in its own player.">
           <Row label="Player" htmlFor="external-player">
             <Select
               id="external-player"

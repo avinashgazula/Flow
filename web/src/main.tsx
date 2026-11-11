@@ -33,6 +33,9 @@ export const router = createRouter({
   scrollRestoration: true,
   defaultErrorComponent: ErrorScreen,
   defaultStructuralSharing: true,
+  // A page change cross-fades through the View Transitions API where there is one (global.css has the timing); a title's
+  // poster still zooms into its page. Browsers without it just swap.
+  defaultViewTransition: true,
 })
 
 declare module '@tanstack/react-router' {
@@ -54,7 +57,7 @@ window.addEventListener('vite:preloadError', (event) => {
 })
 window.addEventListener('load', () => setTimeout(() => sessionStorage.removeItem('flow.reloadedForDeploy'), 10_000))
 
-// Flow works offline once it has loaded (src/sw/sw.ts), and can be installed as an app. The browser's
+// Marquee works offline once it has loaded (src/sw/sw.ts), and can be installed as an app. The browser's
 // install event comes once and early, so it is caught here and kept for Settings.
 registerServiceWorker()
 listenForInstall()
@@ -68,7 +71,7 @@ void checkConvertAudio()
 const whenIdle = window.requestIdleCallback ? (run: () => void) => window.requestIdleCallback(run, { timeout: 2000 }) : (run: () => void) => setTimeout(run, 300)
 whenIdle(() => void import('./lib/sources/smooth').then((m) => m.checkSmoothVideo()))
 
-// A browser with Flow Sync on pulls at load. The sync code is its own chunk, fetched only when the
+// A browser with Marquee Sync on pulls at load. The sync code is its own chunk, fetched only when the
 // setup is there (lib/sync/config.ts names the same key), so a browser without sync never downloads it.
 try {
   if (localStorage.getItem('flow.sync.v1')) void import('./lib/sync/engine').then(({ startSync }) => startSync())

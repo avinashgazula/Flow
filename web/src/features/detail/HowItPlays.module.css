@@ -1,4 +1,4 @@
-/* "How this plays": a ruled mono key/value block under the still. A 3px rule above, 1px lines between the rows;
+/* "How this plays": a ruled mono key/value block under the still. A 2px rule above, 1px lines between the rows;
    the key is a small muted capital, the value the same face larger, in ink. */
 .can { margin-top: var(--space-m); border-top: var(--rule); }
 .rows { margin: 0; }
@@ -53,7 +53,7 @@
 @media (hover: hover) { .open:hover { color: var(--blue); } }
 .open svg { flex: none; }
 
-.bar { display: block; height: 10px; margin: 8px 0; background: var(--tint-2); animation: pulse 1.4s ease-in-out infinite; }
+.bar { display: block; height: 10px; margin: 8px 0; background: var(--tint-2); animation: pulse 1.6s var(--ease-move) infinite; }
 @keyframes pulse { 50% { opacity: 0.5; } }
 @media (prefers-reduced-motion: reduce) { .bar { animation: none; } }
 

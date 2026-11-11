@@ -1,6 +1,6 @@
-/* The top bar: bordered cells on a 3px rule, as the reference's. Fixed, so pages keep their own top padding
+/* The top bar: bordered cells on a 2px rule, as the reference's. Fixed, so pages keep their own top padding
    (--nav-height); it slides up out of the way while scrolling down. Cells are 56px high, uppercase mono, with a
-   3px ink border on the left; current is inverted, hover is blue. */
+   2px ink border on the left; current is inverted, hover is blue. */
 .top {
   position: fixed;
   inset: 0 0 auto;
@@ -13,9 +13,12 @@
   font: 600 14px / 1 var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  transition: transform var(--dur-move) ease;
+  /* Returns on the decelerating curve; leaves quicker, on the accelerating one. It is its own view-transition layer so a
+     page change cross-fades the page and never the bar. */
+  view-transition-name: nav;
+  transition: transform var(--dur-enter) var(--ease-out);
 }
-.top[data-away] { transform: translateY(-100%); }
+.top[data-away] { transform: translateY(-100%); transition: transform var(--dur-exit) var(--ease-out); }
 
 /* The logo cell: the wordmark in Plex Sans Condensed on a blue block. */
 .brand {
@@ -26,9 +29,7 @@
   border-right: var(--rule);
   background: var(--blue);
   color: var(--onblue);
-  font: 700 24px / 1 var(--font-cond);
-  letter-spacing: 0;
-  text-transform: none;
+  font-size: 24px;
 }
 @media (hover: hover) { .brand:hover { background: var(--fg); color: var(--bg); } }
 

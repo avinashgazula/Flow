@@ -65,7 +65,7 @@ async function call(provider: ProviderId, io: Io, url: string, init?: RequestIni
     try {
       return await response.json()
     } catch {
-      throw new SubtitleError(`${name} didn’t answer with the data Flow expected. Try again in a moment.`)
+      throw new SubtitleError(`${name} didn’t answer with the data Marquee expected. Try again in a moment.`)
     }
   }
   const body = await response.json().catch(() => undefined)

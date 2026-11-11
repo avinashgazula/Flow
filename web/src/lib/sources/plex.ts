@@ -12,7 +12,7 @@ import type { PlaybackReport, PlaybackRequest, ServerLibrary, ServerTitle, Sourc
 
 export function plexHeaders(token?: string): Record<string, string> {
   const h: Record<string, string> = {
-    'X-Plex-Product': 'Flow',
+    'X-Plex-Product': 'Marquee',
     'X-Plex-Version': '1.0',
     'X-Plex-Client-Identifier': deviceId(),
     'X-Plex-Platform': 'Web',
@@ -28,7 +28,7 @@ export function plexHeaders(token?: string): Record<string, string> {
 export interface PlexPin {
   id: number
   code: string
-  /** Where the viewer approves Flow, in a new window. */
+  /** Where the viewer approves Marquee, in a new window. */
   authURL: string
   expiresAt: number
 }
@@ -36,7 +36,7 @@ export interface PlexPin {
 /** A strong PIN: approved on app.plex.tv in another window, no code to type. */
 export async function createPin(signal?: AbortSignal): Promise<PlexPin> {
   const r = await requestJSON<{ id: number; code: string; expiresIn?: number }>('https://plex.tv/api/v2/pins?strong=true', { method: 'POST', headers: plexHeaders(), signal, timeoutMs: 15_000 })
-  const params = new URLSearchParams({ clientID: deviceId(), code: r.code, 'context[device][product]': 'Flow' })
+  const params = new URLSearchParams({ clientID: deviceId(), code: r.code, 'context[device][product]': 'Marquee' })
   return { id: r.id, code: r.code, authURL: `https://app.plex.tv/auth#?${params}`, expiresAt: Date.now() + (r.expiresIn ?? 1800) * 1000 }
 }
 
@@ -370,7 +370,7 @@ export function mapMetadata(config: ServerConfig, full: Metadata, caps: Capabili
         session: uuid(),
         'X-Plex-Client-Identifier': deviceId(),
         'X-Plex-Platform': 'Chrome',
-        'X-Plex-Product': 'Flow',
+        'X-Plex-Product': 'Marquee',
         'X-Plex-Token': config.token,
       })
       url = `${config.url}/video/:/transcode/universal/start.m3u8?${params}`

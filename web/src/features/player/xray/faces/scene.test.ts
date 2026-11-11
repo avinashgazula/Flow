@@ -25,7 +25,7 @@ describe('what In Scene says', () => {
   it('says why it fell back when the picture can’t be read', () => {
     const v = view({ status: 'unavailable', reason: 'unreadable' }, { fromDialogue: 1 })
     expect(v.basis).toBe('dialogue')
-    expect(v.note).toBe('This stream doesn’t let Flow read its picture. Matched from dialogue.')
+    expect(v.note).toBe('This stream doesn’t let Marquee read its picture. Matched from dialogue.')
   })
 
   it('says nobody was recognised when there is nothing else to go on', () => {

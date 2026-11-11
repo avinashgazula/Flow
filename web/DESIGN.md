@@ -1,6 +1,6 @@
 ---
-name: Flow
-description: Index. Paper and ink ruled with 3px lines, a giant grotesque for titles, monospaced type for everything you press, one red for markers and one blue for action.
+name: Marquee
+description: Index. Paper and ink ruled with 2px lines, a giant grotesque for titles, monospaced type for everything you press, one red for markers and one blue for action.
 colors:
   bg: "#ffffff"
   fg: "#0a0a0a"
@@ -131,21 +131,21 @@ components:
     textColor: "{colors.onblue}"
 ---
 
-# Design System: Flow
+# Design System: Marquee
 
 ## Overview
 
 **Creative North Star: "The Index"**
 
-Flow for the web is an index of what the viewer owns: titles, episodes, channels, people. The design is that of a printed index set by a Swiss typographer and then made brutal: a sheet of paper, ruled in ink, with one huge word at the top of each page and everything below it in rows, cells and plain lines. The language comes from reference material the owner chose (an index site with giant uppercase titles, bordered nav cells and ruled lists); nothing of its content, name or wording is used. The Apple apps keep their own design; this system is the website's.
+Marquee for the web is an index of what the viewer owns: titles, episodes, channels, people. The design is that of a printed index set by a Swiss typographer and then made brutal: a sheet of paper, ruled in ink, with one huge word at the top of each page and everything below it in rows, cells and plain lines. The language comes from reference material the owner chose (an index site with giant uppercase titles, bordered nav cells and ruled lists); nothing of its content, name or wording is used. The Apple apps keep their own design; this system is the website's.
 
-The page is white paper and black ink, or the reverse: both themes are first-class. The system's theme is followed until the viewer chooses, in the top bar, and the choice is kept in that browser. Structure is made by **3px ink rules** and shared cell borders, not by space and not by fills. Artwork is the only colour on most screens, and it sits inside rules: posters and stills are square, framed, never rounded, never shadowed.
+The page is white paper and black ink, or the reverse: both themes are first-class. The system's theme is followed until the viewer chooses, in the top bar, and the choice is kept in that browser. Structure is made by **2px ink rules** and shared cell borders, not by space and not by fills. Artwork is the only colour on most screens, and it sits inside rules: posters and stills are square, framed, never rounded, never shadowed.
 
 It is explicitly not: a glass or blur UI, a gradient or shadow UI, a rounded-card dashboard, a streaming service's dark carousel wall, a badge-and-pill interface, or a decorative film motif. Nothing is soft. The video player is the one exception (see Player Chrome).
 
 **Key Characteristics:**
 - Paper `#ffffff` and ink `#0a0a0a` (dark: ink `#0a0a0a` and paper `#f2f2ee`); everything else is one of three accents or a quiet tint.
-- 3px ink rules divide the page: under the nav, under page heads, around toolbars and grids of cells (cells share borders), at the top of a list; 1px ink lines divide the rows inside.
+- 2px ink rules divide the page: under the nav, under page heads, around toolbars and grids of cells (cells share borders), at the top of a list; 1px ink lines divide the rows inside.
 - Four open-source faces: Archivo for the giant title, Plex Sans Condensed for headings, Plex Mono for the interface, Plex Serif for reading.
 - Red marks, blue acts. Nothing else is coloured.
 - Square: every radius is 0 outside the player.
@@ -160,12 +160,12 @@ Two themes, defined as tokens on `:root` (light) and `:root[data-theme="dark"]` 
 
 ### Secondary
 - **Index Red** (`--red`): `#c9120a` light, `#ff5a4e` dark. Section labels, row numerals, the second line of a title pair, progress fills, markers, "live", the dotted underline of a quiet link, destructive hover. 5.9:1 on paper (4.7:1 on the darkest tint), 6.4:1 on ink. Never for body text.
-- **Action Blue** (`--blue`, text on it `--onblue`): `#1a3dff` with white, in dark `#8fa2ff` with ink. Links, hover fills, selection, the focus ring, the Flow logo cell, switch tracks. 7:1 on paper, 8:1 on ink.
+- **Action Blue** (`--blue`, text on it `--onblue`): `#1a3dff` with white, in dark `#8fa2ff` with ink. Links, hover fills, selection, the focus ring, the Marquee logo cell, switch tracks. 7:1 on paper, 8:1 on ink.
 
 ### Neutral
 - **Muted** (`--muted`): `#555555` / `#b0b0ac`. Secondary text, metadata. 7:1 or better.
 - **Faint** (`--faint`): `#636363` / `#8f8f8b`. Captions, placeholders, disabled. 6:1 on paper, 4.9:1 on the darkest tint; never body copy.
-- **Tints** (`--tint-1..3`): quiet fills for what is not there yet or is only a track: skeletons (always inside a 3px frame), slider and progress tracks, a hovered menu item. Nothing that holds content is tint-filled; that is a rule and the blue inversion.
+- **Tints** (`--tint-1..3`): quiet fills for what is not there yet or is only a track: skeletons (always inside a 2px frame), slider and progress tracks, a hovered menu item. Nothing that holds content is tint-filled; that is a rule and the blue inversion.
 - **Warn** (`--warn`): degraded states ("may stutter"). Rare.
 
 The tokens are semantic: `--bg --fg --red --blue --onblue --muted --faint --rule`, with `--tint-1..3` for tracks and skeletons. The previous system's names are gone.
@@ -185,7 +185,7 @@ The tokens are semantic: `--bg --fg --red --blue --onblue --muted --faint --rule
 All four are SIL OFL, from the `@fontsource` packages, through Vite (`styles/fonts.css`): latin and latin-ext only, `font-display: swap`, only the weights above. Archivo 700 and Plex Mono 400 are preloaded by the build; the rest load when text uses them. The licences are in `public/fonts/` and Settings → About → Open Source Licences.
 
 ### Hierarchy
-- **Display** (700, `--fs-display`, .84): the page title. A 3px rule runs under it, edge to edge.
+- **Display** (700, `--fs-display`, .84): the page title. A 2px rule runs under it, edge to edge.
 - **Title** (700, 40/34px, 1.1, Condensed): a title page's name, a person's name.
 - **Heading** (700, 22px, 1.1, Condensed): a section's name, a row's title.
 - **Label** (600, 13px, uppercase, .12em, red): the name of a section above its list, `Browse by Genre`.
@@ -201,10 +201,10 @@ All four are SIL OFL, from the `@fontsource` packages, through Vite (`styles/fon
 
 One column of content with a generous side gutter (`--gutter`: `clamp(20px, 4vw, 64px)`; `--page-inset` grows it past 1800px). Structure is rules: a page head (giant title, rule), then sections each opened by a red mono label and a rule, then rows or a grid of cells with shared borders. Rows are full-width; cells tile edge to edge; there are no gaps between ruled neighbours. Space is the 4-pt scale `--space-xxs` to `--space-xxxl`.
 
-The top bar is fixed and 56px (+3px rule). At 720px and narrower it is a single 52px row (logo, Settings, theme), and the sections move to a fixed bar of bordered cells at the bottom, 52px high with the safe-area inset. Touch targets are 44px or more in both.
+The top bar is fixed and 56px (+2px rule). At 720px and narrower it is a single 52px row (logo, Settings, theme), and the sections move to a fixed bar of bordered cells at the bottom, 52px high with the safe-area inset. Touch targets are 44px or more in both.
 
 ### Named Rules
-**The Rule Is the Divider Rule.** Separate things with a line, not extra space or a fill. A 3px rule opens a section; 1px lines separate its items.
+**The Rule Is the Divider Rule.** Separate things with a line, not extra space or a fill. A 2px rule opens a section; 1px lines separate its items.
 
 ## Elevation & Depth
 
@@ -213,6 +213,30 @@ None. There are no shadows, blurs, glass, gradients or translucency on content. 
 ### Named Rules
 **The Flat Rule.** If a `box-shadow` or `backdrop-filter` is in a diff outside the player, it is wrong. (A 1px ring made with `box-shadow: 0 0 0 1px var(--hair)` is a border in disguise and is allowed.)
 
+## Motion
+
+Motion explains state and never decorates: a thing that appears eases in, a thing that leaves is quicker, a press is felt. The rules follow the animations.dev course (the `animate` skill) and are tokens in `styles/tokens.css`.
+
+**Widths.** Rules and control borders are `--border-w` (2px) through `--rule`; a list's row dividers are `--rule-thin` (1px); fine frames (progress tracks) use `--hair-w` (1px). Cells that share an edge pull `--border-w-neg`, so the join is one rule wide at any width. Keyboard focus is 3px (`--focus-w`), thicker than any rule, so it is never mistaken for one. In dark the rule stays the full paper colour: softening it read as grey borders, not Index.
+
+**Tokens.**
+- `--ease-out` `cubic-bezier(.16, 1, .3, 1)`: every entrance and exit, and press feedback. Exits use it too, only shorter: `ease-in` starts slow, which delays the moment a viewer is watching.
+- `--ease-move` `cubic-bezier(.645, .045, .355, 1)`: something already on screen that moves or breathes (skeleton pulse, the connecting bar).
+- `ease` for hover colour, background and opacity changes. `linear` only for spinners and clocks (the Up Next countdown).
+- Durations: `--dur-hover` 100ms (colour on hover), `--dur-state` 150ms (small state), `--dur-exit` 160ms, `--dur-move` 250ms, `--dur-enter` 300ms. UI motion stays under 300ms.
+
+**Rules.**
+1. Only `transform` and `opacity` move; colour and `background-color` change on hover. No `width`, `height`, `margin`, `top`, `left` or `border-width` in a transition or keyframe. Bars scale (`scaleX` with `transform-origin: left`) instead of resizing; the scrubber rail grows with `scaleY`.
+2. Entrances use the individual `translate` and `scale` properties, never `transform`, so reduced motion can clear them in one rule. Nothing starts from `scale(0)`: sheets and menus start at 0.96 with opacity 0. Only one thing enters per container.
+3. A sheet that unmounts plays its exit first: `useLeave` (`lib/leave.ts`) sets `data-leaving`, the CSS fades or slides it back the way it came, and the close runs 160ms later. The leaving sheet takes no clicks. Under reduced motion it closes at once.
+4. Popovers grow from their trigger's corner (`transform-origin`), modals from the centre. A menu opened by keyboard or pointer is 150ms; a menu is not animated out.
+5. Hover is gated to `(hover: hover)`, 100ms, colour only; press is `scale(.97)` on `.btn:active`. Keyboard-driven actions (arrow keys in lists, shortcuts) are instant.
+6. Page changes use the View Transitions API where it exists (`defaultViewTransition` on the router): a quick opacity cross-fade of the page, with the top bar its own layer so it never fades. A title's poster still zooms into its page (`zoom.ts`). Browsers without it just swap.
+7. Never block input: no animation waits to be clicked through, and nothing has `pointer-events` while it is leaving.
+8. Keep content visible by default: a failed stylesheet or script leaves everything readable.
+
+**Reduced motion** means gentler, not none. One rule in `global.css` clears `translate` and `scale` everywhere and the view-transition zoom; opacity and colour changes stay, so state is still legible. Decorative loops (skeleton pulse, the idle connecting bar) stop; the spinner slows to 3s per turn so it still reads as busy; auto-advance and smooth scrolling are off. Transform-based transitions (the Home lead's rise, the scrubber rail, the Up Next lift) have their own reduce blocks next to them.
+
 ## Shapes
 
 There are no radius tokens: new code writes no radius. The one round thing on the page is the loading ring. The player has `--radius-player` (10px) and `--radius-player-full`. Sliders have a square ink thumb and colour swatches are square chips with an ink edge.
@@ -220,34 +244,34 @@ There are no radius tokens: new code writes no radius. The one round thing on th
 ## Components
 
 ### Buttons
-Square, 3px ink border, min-height 48px, Mono 600 13px uppercase .06em. **Primary** (`.btn-primary`): solid ink, paper text; the one next action on a screen (Resume, Play). **Secondary** (default `.btn`, `.btn-secondary`): paper with the ink border. **Quiet** (`.btn-quiet`): no border, for icons and small actions. Hover fills blue with white text (blue border). `.btn-danger` hovers red. Icon buttons (`.btn-circle`, named for what it was) are 52px square. Compact is 40px (44px on touch). Disabled goes faint.
+Square, 2px ink border, min-height 48px, Mono 600 13px uppercase .06em. **Primary** (`.btn-primary`): solid ink, paper text; the one next action on a screen (Resume, Play). **Secondary** (default `.btn`, `.btn-secondary`): paper with the ink border. **Quiet** (`.btn-quiet`): no border, for icons and small actions. Hover fills blue with white text (blue border). `.btn-danger` hovers red. Icon buttons (`.btn-circle`, named for what it was) are 52px square. Compact is 40px (44px on touch). Disabled goes faint.
 
 ### Chips and Segmented Controls
 Bordered mono uppercase cells. Current is inverted (ink fill, paper text), never blue. Hover is blue. Segmented controls share borders (cells touch).
 
 ### Fields
-Square, 3px ink border, 48px, Mono. Focus is the blue ring. Search is the exception in scale: a giant Plex Sans Condensed input in a ruled bar with a solid ink "go" block.
+Square, 2px ink border, 48px, Mono. Focus is the blue ring. Search is the exception in scale: a giant Plex Sans Condensed input in a ruled bar with a solid ink "go" block.
 
 ### Links
 In running text: blue, underlined; hover turns ink. A `.quiet-link` (footers, emphasised phrases) is ink, 600, with a 2px dotted red underline at 4px offset. Focus is always the 3px blue ring, 2px offset (`:focus-visible`).
 
 ### Navigation
-The top bar is bordered cells on a 3px bottom rule. The **logo cell** (left) is blue with the Flow wordmark in Plex Sans Condensed 700. The sections, **Sample Data** (only while sample data is on, in red), **Settings** and the **Light/Dark** toggle follow as cells with 3px left borders: uppercase Mono 600 14px, 56px high. Current is inverted; hover is blue; focus is blue with an inset ring. The toggle is a button with `aria-pressed` (true when dark); its label names the theme it switches to. Between 721 and 1100px Settings and the toggle show icons only (spoken labels stay). The bar slides away on scroll down and returns on scroll up or when it takes keyboard focus; with reduced motion it just appears and disappears. On phones the sections are the bottom bar: five equal cells, icon over a 12px label, 3px top rule, current inverted.
+The top bar is bordered cells on a 2px bottom rule. The **logo cell** (left) is blue with the Marquee wordmark in Plex Sans Condensed 700 (`components/Logo.tsx`) over a row of seven red bulbs, each rimmed in the cell text colour so they read on the dark theme pale blue too. The compact mark (favicon and app icons: `public/icon.svg`, PNGs from `scripts/icons.mjs`) is a blue square, a white condensed M and one bulb. The sections, **Sample Data** (only while sample data is on, in red), **Settings** and the **Light/Dark** toggle follow as cells with 2px left borders: uppercase Mono 600 14px, 56px high. Current is inverted; hover is blue; focus is blue with an inset ring. The toggle is a button with `aria-pressed` (true when dark); its label names the theme it switches to. Between 721 and 1100px Settings and the toggle show icons only (spoken labels stay). The bar slides away on scroll down and returns on scroll up or when it takes keyboard focus; with reduced motion it just appears and disappears. On phones the sections are the bottom bar: five equal cells, icon over a 12px label, 2px top rule, current inverted.
 
 ### Rows and Lists
-A `.row` is full width; on hover and focus it inverts to blue. A list (`.rows`) has a 3px rule above and 1px ink lines between rows. Numbered lists use red condensed numerals (`01`) in a fixed column; titles are Condensed (uppercase for categories) or Serif; metadata is mono and muted, and turns white on the blue hover.
+A `.row` is full width; on hover and focus it inverts to blue. A list (`.rows`) has a 2px rule above and 1px ink lines between rows. Numbered lists use red condensed numerals (`01`) in a fixed column; titles are Condensed (uppercase for categories) or Serif; metadata is mono and muted, and turns white on the blue hover.
 
 ### Page Head
-`.page-title`: the giant Archivo title, uppercase, with the 3px rule under it running edge to edge. A short uppercase mono note or a count (`.page-note`) can sit at its right.
+`.page-title`: the giant Archivo title, uppercase, with the 2px rule under it running edge to edge. A short uppercase mono note or a count (`.page-note`) can sit at its right.
 
 ### Loading, Empty and Error States
 Loading is the ring (`.spinner`: ink with a red quarter) or a bordered bar with a red fill (`.pbar`). Empty and error states (`StateView`, `ErrorScreen`) are a condensed headline, one serif sentence on what to do next, and an action, left-aligned with the page. App notes (offline, updated) are ruled boxes bottom left, above the tab bar on phones.
 
 ### Artwork
-Posters and stills are square, inside a ruled cell or row, with their metadata as mono text underneath. Progress is a thin red bar with a 2px ink border, or a plain red line. Loading ghosts are the same box: a 3px frame with a tint fill, then flat bars for the printed line, title and year.
+Posters and stills are square, inside a ruled cell or row, with their metadata as mono text underneath. Progress is a thin red bar with a 1px ink border, or a plain red line. Loading ghosts are the same box: a 2px frame with a tint fill, then flat bars for the printed line, title and year.
 
 ### Player Chrome and Scrubber (the exception)
-The video player is a conventional streaming player: its layout and controls are unchanged and it sits on true black. It is always dark: its root carries `data-theme="dark"` so every token resolves to the dark set whatever the page's theme. It takes the system's faces (Plex Mono and Sans Condensed), square panels and buttons, red for the played part of the scrubber and blue for focus. It uses `--radius-player` for any rounding. It has no 3px page rules on the picture itself. The panels beside or over it (options, X-Ray, episodes) are ink panels with 3px paper rules.
+The video player is a conventional streaming player: its layout and controls are unchanged and it sits on true black. It is always dark: its root carries `data-theme="dark"` so every token resolves to the dark set whatever the page's theme. It takes the system's faces (Plex Mono and Sans Condensed), square panels and buttons, red for the played part of the scrubber and blue for focus. It uses `--radius-player` for any rounding. It has no 2px page rules on the picture itself. The panels beside or over it (options, X-Ray, episodes) are ink panels with 2px paper rules.
 
 ### Facts Lines and Rating Cells
 A line of facts under a title (`2024 | 2 H 47 MIN | PG-13 | SCIENCE FICTION`) is mono uppercase with a 1px rule between parts, never a leading dot: it wraps only between parts and the rule a wrapped line would start with is clipped. Ratings are a ruled row of cells (a big red condensed numeral over the source's name in mono); each cell is as wide as its label, the row wraps when they do not fit, and a long name wraps inside its cell instead of running into the next. Where a dotted list must wrap (the version line of "How This Plays"), the dot trails its part.
@@ -258,8 +282,8 @@ Ruled sections, rows with Mono labels, square switches (ink off, blue on), squar
 ## Do's and Don'ts
 
 ### Do:
-- **Do** open every page with the giant Archivo title and its 3px rule.
-- **Do** divide with rules: 3px to open a section or a block, 1px between rows.
+- **Do** open every page with the giant Archivo title and its 2px rule.
+- **Do** divide with rules: 2px to open a section or a block, 1px between rows.
 - **Do** show hover and the current place by inversion: blue on hover, ink on paper for current.
 - **Do** keep both themes AA, and check red and blue on both grounds.
 - **Do** set sentences in Plex Serif and everything you press in Plex Mono.
@@ -274,9 +298,9 @@ Ruled sections, rows with Mono labels, square switches (ink off, blue on), squar
 - **Don't** hard-code a colour or a font: use the tokens, so both themes and the player's dark scope follow.
 - **Don't** colour the current chip or tab blue: current is inverted ink.
 - **Don't** use a second accent, an icon container or a card with a fill and a radius.
-- **Don't** copy the reference's words, name, logo or images: Flow keeps its own.
+- **Don't** copy the reference's words, name, logo or images: Marquee keeps its own.
 - **Don't** let text meet the edge of a ruled cell without padding.
 
 ## Notes
 
-Flow for the web is a front end for the viewer's own sources and hosts no content. The apps (SwiftUI) keep their own design. The reference for this language is an index site the owner chose; only its grammar is used. Every screen has been restyled on this foundation.
+Marquee for the web is a front end for the viewer's own sources and hosts no content. The apps (SwiftUI) keep their own design. The reference for this language is an index site the owner chose; only its grammar is used. Every screen has been restyled on this foundation.

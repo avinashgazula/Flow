@@ -2,7 +2,7 @@ import type { CastMember } from '../../../lib/tmdb/types'
 
 /* X-Ray: who's in the scene, worked out from what's being said. A port of FlowKit's `XRay`.
 
-   Streaming services tag every scene by hand or with face recognition. Flow has the cast list and the
+   Streaming services tag every scene by hand or with face recognition. Marquee has the cast list and the
    subtitles instead, and characters are named in dialogue far more often than you'd think: "Jesse, get
    in", "Hank's on his way", "WALT: Say my name". Matching the last few minutes of lines against the
    characters' names gives a good guess at who's around right now. */

@@ -18,7 +18,7 @@ export function sleepTitle(choice: SleepChoice): string {
 }
 
 /** What the player says when the timer is set. */
-export const sleepSetNotice = (choice: SleepChoice): string => (choice === 'end' ? 'The player will close when this ends.' : `Flow will pause in ${choice} minutes.`)
+export const sleepSetNotice = (choice: SleepChoice): string => (choice === 'end' ? 'The player will close when this ends.' : `Marquee will pause in ${choice} minutes.`)
 export const sleepDoneNotice = 'Paused by the sleep timer.'
 
 /** How much of the volume is left `msLeft` before the pause: all of it until the last half minute, then straight down to none. */

@@ -18,10 +18,10 @@
   height: 44px;
   display: grid;
   place-items: center;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   background: var(--bg);
   color: var(--fg);
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 @media (hover: hover) { .step:hover:not(:disabled) { background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
 .step:active:not(:disabled) { background: var(--blue); border-color: var(--blue); color: var(--onblue); }

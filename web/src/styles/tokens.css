@@ -1,4 +1,4 @@
-/* Flow's design tokens: Index. Paper and ink, ruled with 3px lines, one red for markers and one blue for
+/* Flow's design tokens: Index. Paper and ink, ruled with 2px lines, one red for markers and one blue for
    action. No gradient, shadow, blur or rounded corner anywhere but the video player. Light and dark are both
    first-class: `<html data-theme>` is set before first paint (index.html) from the saved choice or the system,
    and the Light/Dark cell in the top bar changes it. The player (and anything else that sits on video) is dark in
@@ -45,9 +45,18 @@
 [data-theme] {
   /* Derived from the colours above, so they are declared wherever the colours are (a dark scope inside a light
      page, the player, needs them recomputed, not inherited). */
-  /* The rules. A 3px ink line divides everything: the top bar, page heads, toolbars, grids of cells (cells share
-     borders) and the top of a list. A list's rows are separated by 1px ink lines. */
-  --rule: 3px solid var(--fg);
+  /* The rules. A 2px ink line divides everything: the top bar, page heads, toolbars, grids of cells (cells share
+     borders) and the top of a list. --border-w is the one width: control borders and structural rules use it, so a
+     cell that overlaps its neighbour pulls --border-w-neg. A list's rows are separated by 1px ink lines
+     (--rule-thin); fine marks (progress and track frames, the key cells) use --hair-w. Keyboard focus is thicker
+     than any rule (3px) so it is never mistaken for one. In dark the ink is paper at 100%: softening it made the
+     rules read as grey borders rather than the Index's black and white, so only the width came down. */
+  --border-w: 2px;
+  --border-w-neg: -2px;
+  --hair-w: 1px;
+  --rule: var(--border-w) solid var(--fg);
+  --rule-thin: var(--hair-w) solid var(--fg);
+  --focus-w: 3px;
 }
 
 :root {
@@ -98,14 +107,20 @@
   --font: var(--font-mono);
   --font-display: var(--font-cond);
 
-  /* Motion: minimal. Nav slide and progress widths; 150 to 250 ms, ease-out. Reduced motion is in global.css. */
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Motion (DESIGN.md, Motion). Entrances and exits both decelerate (--ease-out; ease-in starts slow, which delays the
+     moment a viewer is watching) and exits are shorter. Nothing is linear except spinners and clocks. Colour changes on hover are 100ms; entrances 240 to 320ms;
+     exits about 60% of their entrance. Only transform and opacity move. Reduced motion is in global.css. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-move: cubic-bezier(0.645, 0.045, 0.355, 1); /* already on screen and moving */
+  --dur-hover: 0.1s;
   --dur-state: 0.15s;
+  --dur-exit: 0.16s;
   --dur-move: 0.25s;
+  --dur-enter: 0.3s;
 
-  /* The top bar: a 56px row and its 3px rule. On phones it is one 52px row (logo cell and two small cells) and
+  /* The top bar: a 56px row and its 2px rule. On phones it is one 52px row (logo cell and two small cells) and
      the sections move to the bar at the bottom. */
-  --nav-height: calc(59px + env(safe-area-inset-top));
+  --nav-height: calc(58px + env(safe-area-inset-top));
   --tabbar-height: 0px;
 }
 
@@ -115,7 +130,7 @@
 @media (max-width: 720px) {
   :root {
     --section: 32px;
-    --nav-height: calc(55px + env(safe-area-inset-top));
-    --tabbar-height: calc(55px + env(safe-area-inset-bottom));
+    --nav-height: calc(54px + env(safe-area-inset-top));
+    --tabbar-height: calc(54px + env(safe-area-inset-bottom));
   }
 }

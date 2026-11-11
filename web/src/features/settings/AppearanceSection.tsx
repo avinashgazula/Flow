@@ -22,7 +22,7 @@ function OpeningTab() {
   const order = useSettings((x) => x.tabOrder)
   const current = orderTabs(order).find((t) => t.to === startPath(saved)) ?? orderTabs(order)[0]!
   return (
-    <Group title="Navigation" footer="Opening Tab is where Flow opens when you go to its front address. Links to a title, a search or a sign-in open where they point.">
+    <Group title="Navigation" footer="Opening Tab is where Marquee opens when you go to its front address. Links to a title, a search or a sign-in open where they point.">
       <Row label="Opening Tab" htmlFor="opening-tab">
         <Select id="opening-tab" label="Opening Tab" value={current.id} onChange={(id) => settingsStore.set({ startTab: id })} options={orderTabs(order).map((t) => ({ value: t.id, label: t.label }))} />
       </Row>

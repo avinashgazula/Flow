@@ -34,7 +34,7 @@ export function AddonsSection() {
     setState({ kind: 'installing' })
     try {
       const { url, manifest } = await fetchManifest(text)
-      if (!providesStreams(manifest)) throw new SourceError(`${manifest.name} doesn’t provide streams, so Flow can’t use it. Install an add-on that does, such as AIOStreams.`)
+      if (!providesStreams(manifest)) throw new SourceError(`${manifest.name} doesn’t provide streams, so Marquee can’t use it. Install an add-on that does, such as AIOStreams.`)
       if (settingsStore.get().addons.some((a) => a.url === url)) throw new SourceError(`${manifest.name} is already installed.`)
       settingsStore.set((st) => ({ addons: [...st.addons, { url, name: manifest.name, enabled: true, manifest }] }))
       setText('')

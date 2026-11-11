@@ -14,6 +14,7 @@ import { categoryOf } from '../../lib/sources/order'
 import { categoryNames, normaliseSourceOrdering, type SourceAppearance } from '../../lib/sources/sourceSettings'
 import { optionId, SourceRow } from './SourceRow'
 import { sourceActionLabels, sourceActions } from './sourceMenu'
+import { useLeave } from '../../lib/leave'
 import s from './SourcePicker.module.css'
 
 type Filter = { kind: 'all' } | { kind: 'resolution'; value: NonNullable<Source['resolution']> } | { kind: 'provider'; value: string }
@@ -29,11 +30,12 @@ const resolutionChips: { value: NonNullable<Source['resolution']>; label: string
 const empty: SearchUpdate = { sources: [], providers: [], torrents: 0, finished: false }
 
 /** Lists what every add-on and server offers for the request, best first, and calls `onPick`.
- *  A square, 3px-ruled dialog: each source is a ruled row, the best
+ *  A square, 2px-ruled dialog: each source is a ruled row, the best
  *  match carries the solid Play and is one tap (or Enter) away, arrows move through the rest, Esc
  *  closes. `seed` is a finished search the title page already ran, so opening doesn't ask every
  *  add-on again. */
-export function SourcePicker({ request, seed, onPick, onClose }: { request: PlaybackRequest; seed?: SearchUpdate; onPick: (source: Source) => void; onClose: () => void }) {
+export function SourcePicker({ request, seed, onPick, onClose: closeNow }: { request: PlaybackRequest; seed?: SearchUpdate; onPick: (source: Source) => void; onClose: () => void }) {
+  const [onClose, leaving] = useLeave(closeNow)
   const [search, setSearch] = useState<SearchUpdate>(seed?.finished ? seed : empty)
   const [reload, setReload] = useState(0)
   // The virtualised rows need the scroller to exist when they first render.
@@ -176,7 +178,7 @@ export function SourcePicker({ request, seed, onPick, onClose }: { request: Play
     )
 
   return (
-    <div className={s.overlay} role="dialog" aria-modal="true" aria-label={`Sources for ${request.item.title}`} onKeyDown={onKeyDown}>
+    <div className={s.overlay} data-leaving={leaving ? '' : undefined} role="dialog" aria-modal="true" aria-label={`Sources for ${request.item.title}`} onKeyDown={onKeyDown}>
       <div className={s.scrim} onClick={onClose} aria-hidden />
       <div className={s.sheet}>
         <div className={s.controls}>

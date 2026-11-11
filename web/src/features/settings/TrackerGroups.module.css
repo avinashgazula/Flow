@@ -14,7 +14,7 @@
   color: var(--fg);
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease;
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) { .option:hover:not([aria-disabled]) { background: var(--blue); color: var(--onblue); } .option:hover:not([aria-disabled]) .detail { color: var(--onblue); } }
@@ -32,11 +32,11 @@
   place-items: center;
   width: 22px;
   height: 22px;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   color: var(--bg);
-  transition: background-color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease;
 }
-.mark svg { width: 14px; height: 14px; opacity: 0; transform: scale(0.6); transition: opacity var(--dur-state) ease, transform var(--dur-state) var(--ease-out); }
+.mark svg { width: 14px; height: 14px; opacity: 0; transform: scale(0.6); transition: opacity var(--dur-hover) ease, transform var(--dur-state) var(--ease-out); }
 .option[aria-checked='true'] .mark { background: var(--fg); }
 .option:hover:not([aria-disabled]) .mark { border-color: var(--onblue); }
 .option:hover[aria-checked='true']:not([aria-disabled]) .mark { background: var(--onblue); color: var(--blue); }
@@ -48,3 +48,5 @@
 .pinCode { font: 700 var(--fs-title2) / 1 var(--font-mono); letter-spacing: 0.18em; color: var(--fg); user-select: all; }
 .pinHint { font-size: var(--fs-footnote); line-height: 1.5; color: var(--muted); text-wrap: pretty; }
 .pinHint a { color: var(--blue); text-decoration: underline; text-underline-offset: 0.2em; }
+
+@media (prefers-reduced-motion: reduce) { .mark svg { transform: none; } }

@@ -6,7 +6,7 @@ describe('M3U parsing', () => {
   it('reads channels, groups, logos, numbers, the guide address and per-channel user agents', () => {
     const m3u = `#EXTM3U x-tvg-url="https://epg.example.com/guide.xml.gz"
 #EXTINF:-1 tvg-id="bbc1.uk" tvg-name="BBC One" tvg-logo="https://logo/bbc1.png" group-title="UK",BBC One HD
-#EXTVLCOPT:http-user-agent=Flow/1.0
+#EXTVLCOPT:http-user-agent=Marquee/1.0
 https://stream.example.com/live/bbc1.m3u8
 #EXTINF:-1 tvg-id="" group-title="Movies VOD",The Matrix (1999)
 https://stream.example.com/movie/u/p/123.mkv
@@ -20,7 +20,7 @@ https://stream.example.com/live/sky.ts`
     expect(bbc.name).toBe('BBC One HD')
     expect(bbc.group).toBe('UK')
     expect(bbc.epgID).toBe('bbc1.uk')
-    expect(bbc.userAgent).toBe('Flow/1.0')
+    expect(bbc.userAgent).toBe('Marquee/1.0')
     expect(bbc.logoURL).toBe('https://logo/bbc1.png')
     expect(playlist.channels[1]!.number).toBe(7)
     expect(playlist.channels[1]!.group).toBe('News')
@@ -88,7 +88,7 @@ http://`
   })
 
   it('uses the default user agent when a channel names none', () => {
-    const { channels } = parseM3U('#EXTM3U\n#EXTINF:-1,A\nhttps://s.example/a.m3u8', 'p', { defaultUserAgent: 'Flow/2' })
-    expect(channels[0]!.userAgent).toBe('Flow/2')
+    const { channels } = parseM3U('#EXTM3U\n#EXTINF:-1,A\nhttps://s.example/a.m3u8', 'p', { defaultUserAgent: 'Marquee/2' })
+    expect(channels[0]!.userAgent).toBe('Marquee/2')
   })
 })

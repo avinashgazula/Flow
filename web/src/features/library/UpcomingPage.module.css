@@ -14,14 +14,14 @@
   gap: 2px;
   width: 56px;
   height: 72px;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   background: var(--bg);
   color: var(--faint);
   font-family: var(--font);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
-.cell[data-marked] { color: var(--fg); cursor: pointer; transition: background-color var(--dur-state) ease, color var(--dur-state) ease; }
+.cell[data-marked] { color: var(--fg); cursor: pointer; transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease; }
 @media (hover: hover) { .cell[data-marked]:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
 .cell[data-today] { background: var(--fg); color: var(--bg); }
 .cellWeekday { font: 600 var(--fs-caption) / 1 var(--font); letter-spacing: 0.08em; text-transform: uppercase; }
@@ -30,7 +30,7 @@
 .cell[data-marked] .cellDot { opacity: 1; }
 .cell[data-today] .cellDot { background: var(--bg); }
 
-/* Sections: a 3px rule and a red label, bleeding to the viewport's edges. */
+/* Sections: a 2px rule and a red label, bleeding to the viewport's edges. */
 .day, .justAired {
   margin: 0 calc(-1 * var(--page-inset));
   padding: 0 var(--page-inset);

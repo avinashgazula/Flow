@@ -1,6 +1,6 @@
 /* The live player: black, the whole window, the picture edge to edge. The same control language as the film player
    (Player.module.css and Controls.module.css): white line icons on the picture over a black gradient, one row of controls
-   along the bottom with what is on above it. The root is always dark; panels are ink at 94% with a 3px paper rule,
+   along the bottom with what is on above it. The root is always dark; panels are ink at 94% with a 2px paper rule,
    square, no blur. There is no progress bar to drag, because there is nothing to seek in: the red line above the row
    is how far through the programme it is.
    The same custom properties as the film player (--margin, --panel, --over-video) are set here. */
@@ -52,11 +52,11 @@
 
 .centre { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; }
 .centre > * { pointer-events: auto; }
-.bigPlay { width: 72px; height: 72px; display: grid; place-items: center; border: 3px solid var(--fg); background: var(--over-video); color: var(--fg); transition: background-color var(--dur-state) ease, color var(--dur-state) ease; }
+.bigPlay { width: 72px; height: 72px; display: grid; place-items: center; border: var(--rule); background: var(--over-video); color: var(--fg); transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease; }
 .bigPlay:active { background: var(--blue); border-color: var(--blue); color: var(--onblue); }
 .bigPlay svg { width: 30px; height: 30px; }
 /* Buffering: a ring in paper that turns (the one round thing), because the stream is moving and not yet showing. */
-.buffering { width: 40px; height: 40px; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--fg) 25%, transparent); border-top-color: var(--fg); animation: turn 0.9s linear infinite; }
+.buffering { width: 40px; height: 40px; border-radius: 50%; border: var(--border-w) solid color-mix(in srgb, var(--fg) 25%, transparent); border-top-color: var(--fg); animation: turn 0.9s linear infinite; }
 @keyframes turn { to { transform: rotate(360deg); } }
 
 /* The chrome: Guide at the top left, what is on and the control row along the bottom, a black gradient behind each. */
@@ -74,9 +74,9 @@
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--dur-move) ease, visibility 0s linear var(--dur-move);
+  transition: opacity var(--dur-move) var(--ease-out), visibility 0s linear var(--dur-move);
 }
-.chrome[data-visible] { opacity: 1; visibility: visible; transition: opacity var(--dur-state) ease, visibility 0s; }
+.chrome[data-visible] { opacity: 1; visibility: visible; transition: opacity var(--dur-state) var(--ease-out), visibility 0s; }
 .chrome[data-visible] :is(button, input, .info) { pointer-events: auto; }
 /* With the channel list open its panel sits over the row and the card, so they step aside and only the panel reads. */
 .chrome[data-list] :is(.bottom) { visibility: hidden; }
@@ -92,7 +92,7 @@
   font: 600 var(--fs-small) / 1 var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 @media (hover: hover) { .back:hover { background: var(--blue); color: var(--onblue); } }
 .iconButton {
@@ -102,7 +102,7 @@
   width: 44px;
   height: 44px;
   color: var(--fg);
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) { .iconButton:hover { background: var(--blue); color: var(--onblue); } }
@@ -142,11 +142,11 @@
   padding-top: var(--inset-top);
   padding-right: var(--inset-right);
   background: var(--panel);
-  border-left: 3px solid var(--fg);
+  border-left: var(--rule);
   animation: slide var(--dur-move) var(--ease-out);
 }
-@keyframes rise { from { opacity: 0; transform: translateY(16px); } }
-@keyframes slide { from { opacity: 0; transform: translateX(16px); } }
+@keyframes rise { from { opacity: 0; translate: 0 16px; } }
+@keyframes slide { from { opacity: 0; translate: 16px 0; } }
 .panelHead { display: flex; align-items: center; justify-content: space-between; padding: var(--space-s) var(--space-s) var(--space-xs) var(--space-m); }
 .panelTitle { font: 700 var(--fs-headline) / 1.2 var(--font-cond); text-transform: uppercase; letter-spacing: 0.02em; }
 .panelList { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: var(--inset-bottom); }
@@ -159,7 +159,7 @@
   height: 100%;
   padding: 0 var(--space-m);
   text-align: left;
-  transition: background-color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease;
 }
 @media (hover: hover) { .panelRow:hover { background: var(--blue); color: var(--onblue); } .panelRow:hover :is(.panelNumber, .panelNow) { color: var(--onblue); } }
 .panelRow[aria-current='true'] { background: var(--fg); color: var(--bg); }
@@ -192,7 +192,7 @@
 
 @media (max-width: 720px) {
   .programme { font-size: var(--fs-headline); }
-  .panel { top: auto; left: 0; width: 100%; height: min(70dvh, 520px); padding-right: 0; border-left: 0; border-top: 3px solid var(--fg); animation-name: rise; }
+  .panel { top: auto; left: 0; width: 100%; height: min(70dvh, 520px); padding-right: 0; border-left: 0; border-top: var(--rule); animation-name: rise; }
 }
 @media (max-height: 500px) {
   .programme { font-size: var(--fs-small); }

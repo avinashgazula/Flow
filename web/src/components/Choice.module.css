@@ -1,21 +1,21 @@
 /* Seasons, filters and sort orders: a bordered segmented row for a few choices (cells share their borders, the current
    one is inverted ink, hover fills blue), a square select for many. */
-.segmented { display: inline-flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; padding: 0 3px 0 0; }
+.segmented { display: inline-flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; padding: 0 var(--border-w) 0 0; }
 .segmented::-webkit-scrollbar { display: none; }
 .segment {
   position: relative;
   flex: none;
   min-height: 44px;
-  margin-right: -3px;
+  margin-right: var(--border-w-neg);
   padding: 0 16px;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   background: var(--bg);
   color: var(--fg);
   font: 600 var(--fs-small) / 1.1 var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   white-space: nowrap;
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) { .segment:hover { z-index: 1; background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
@@ -42,8 +42,8 @@
   right: 18px;
   width: 8px;
   height: 8px;
-  border-right: 3px solid var(--fg);
-  border-bottom: 3px solid var(--fg);
+  border-right: var(--rule);
+  border-bottom: var(--rule);
   transform: translateY(-70%) rotate(45deg);
   pointer-events: none;
 }

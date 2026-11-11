@@ -1,6 +1,6 @@
 import type { IPTVProviderConfig, LiveTVSettings } from './types'
 
-/* What a backup file may hold for Live TV. A provider that isn't usable (no address Flow can call) is
+/* What a backup file may hold for Live TV. A provider that isn't usable (no address Marquee can call) is
    refused with the rest, rather than saved and failing later. */
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)

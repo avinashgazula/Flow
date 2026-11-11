@@ -70,7 +70,7 @@ function ServerOptions() {
           <Switch checked={trackOnly} onChange={(v) => set({ trackOnlyWithTracker: v })} label="Track Only With Your Tracking Service" />
         </Row>
       </Group>
-      <Group footer="Flow lists what your servers hold to know which titles are on them. It refreshes about every half hour, and when you add or remove a server.">
+      <Group footer="Marquee lists what your servers hold to know which titles are on them. It refreshes about every half hour, and when you add or remove a server.">
         <Row label="Indexed Titles" detail={index.isPending && on.length > 0 ? 'Reading your servers…' : index.data ? undefined : 'None yet'}>
           <span className="num">{index.data ? index.data.count.toLocaleString() : ''}</span>
         </Row>
@@ -197,7 +197,7 @@ function JellyfinSignIn({ kind }: { kind: 'jellyfin' | 'emby' }) {
       </label>
       <input id={`${id}-address`} className="field" value={address} onChange={(e) => setAddress(e.target.value)} placeholder={kind === 'emby' ? 'https://emby.example.com' : 'https://jellyfin.example.com'} inputMode="url" autoComplete="url" spellCheck={false} />
       {mixed && (
-        <Note tone="warning">This page is served over HTTPS, so your browser will block an http:// server. Use the server’s https:// address, or run Flow locally to reach it on your network.</Note>
+        <Note tone="warning">This page is served over HTTPS, so your browser will block an http:// server. Use the server’s https:// address, or run Marquee locally to reach it on your network.</Note>
       )}
       <label className={s.fieldLabel} htmlFor={`${id}-user`}>
         Username
@@ -213,7 +213,7 @@ function JellyfinSignIn({ kind }: { kind: 'jellyfin' | 'emby' }) {
       {state.kind === 'code' && (
         <div className={s.code}>
           <span className={s.codeValue}>{state.code}</span>
-          <span>Enter this code under Quick Connect on a device that’s signed in to Jellyfin. Flow signs in as soon as you approve it.</span>
+          <span>Enter this code under Quick Connect on a device that’s signed in to Jellyfin. Marquee signs in as soon as you approve it.</span>
         </div>
       )}
       <div className={s.actions}>
@@ -305,10 +305,10 @@ function PlexLink() {
         </>
       ) : (
         <>
-          <p className={s.hint}>Flow opens plex.tv in a new window. Sign in there and allow Flow; it then finds the servers on your account.</p>
+          <p className={s.hint}>Marquee opens plex.tv in a new window. Sign in there and allow Marquee; it then finds the servers on your account.</p>
           {state.kind === 'waiting' && (
             <Note>
-              Waiting for you to allow Flow on plex.tv…{' '}
+              Waiting for you to allow Marquee on plex.tv…{' '}
               <a href={state.url} target="flow-plex" rel="noreferrer">
                 Open plex.tv
               </a>

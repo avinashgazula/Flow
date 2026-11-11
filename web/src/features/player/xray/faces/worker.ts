@@ -1,6 +1,6 @@
 /* Face recognition's own thread: the ONNX Runtime, the two models and everything slow. X-Ray's panel talks to it through
    client.ts and nothing else loads any of this, so the first page carries none of it. The runtime's WebAssembly file and
-   the models are Flow's own files, fetched from the site: no third-party host is asked for anything. A cast photo is
+   the models are Marquee's own files, fetched from the site: no third-party host is asked for anything. A cast photo is
    read here too (TMDB's image host allows it), so a face's pixels never need to pass through the page. */
 
 import * as ort from 'onnxruntime-web/wasm'

@@ -8,10 +8,10 @@ import { type PlayerController, usePlayer } from './controller'
 import { audioVerdict, silentAudioNames } from './silence'
 import s from './Controls.module.css'
 
-/** For a file Flow could only hand to the browser's own player: watches for the picture playing
+/** For a file Marquee could only hand to the browser's own player: watches for the picture playing
  *  with no audio decoded, and when it sees that says so and offers a source that will have sound.
  *  It reads the element on `timeupdate` into refs and re-renders once, when it decides.
- *  `conversionFailed` is the other way to end up here: Flow was converting the audio and gave up, so
+ *  `conversionFailed` is the other way to end up here: Marquee was converting the audio and gave up, so
  *  there is nothing to watch for. The notice says so at once, with the same two ways forward. */
 export function NoSoundNotice({ controller, source, conversionFailed = false, onSilent, onTryAnother, onShowing }: { controller: PlayerController; source: Source | null; conversionFailed?: boolean; onSilent: () => void; onTryAnother: () => void; onShowing?: (showing: boolean) => void }) {
   const [silent, setSilent] = useState(false)
@@ -66,8 +66,8 @@ export function NoSoundNotice({ controller, source, conversionFailed = false, on
       </h2>
       <p className={s.noSoundText}>
         {conversionFailed
-          ? `This file’s audio${names.length > 0 ? ` (${names.join(' and ')})` : ''} can’t play in a web browser, and Flow couldn’t convert it, so the picture is playing without sound.`
-          : `This file’s audio${names.length > 0 ? ` (${names.join(' and ')})` : ''} can’t play in a web browser, and its host doesn’t let Flow convert it.`}
+          ? `This file’s audio${names.length > 0 ? ` (${names.join(' and ')})` : ''} can’t play in a web browser, and Marquee couldn’t convert it, so the picture is playing without sound.`
+          : `This file’s audio${names.length > 0 ? ` (${names.join(' and ')})` : ''} can’t play in a web browser, and its host doesn’t let Marquee convert it.`}
       </p>
       {!conversionFailed && proxySet && proxyError && (
         <p className={s.noSoundReason}>
@@ -98,7 +98,7 @@ export function NoSoundNotice({ controller, source, conversionFailed = false, on
               <Link to="/settings" hash="playback">
                 Settings → Playback
               </Link>{' '}
-              and Flow can convert this audio.
+              and Marquee can convert this audio.
             </>
           ) : (
             <>
@@ -106,7 +106,7 @@ export function NoSoundNotice({ controller, source, conversionFailed = false, on
               <Link to="/settings" hash="playback">
                 Settings → Playback
               </Link>
-              , lets Flow pick an audio track this browser can play, if the file has one.
+              , lets Marquee pick an audio track this browser can play, if the file has one.
             </>
           )}
         </p>

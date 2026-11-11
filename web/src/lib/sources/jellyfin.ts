@@ -1,4 +1,4 @@
-/* Jellyfin and Emby, which share the REST API Flow uses, as FlowKit's JellyfinClient. Differences
+/* Jellyfin and Emby, which share the REST API Marquee uses, as FlowKit's JellyfinClient. Differences
    for the browser: what plays directly is decided by what *this* browser decodes, Matroska goes to
    the remuxer instead of the server's transcoder, and everything else is the server's HLS. */
 
@@ -14,7 +14,7 @@ import type { ExternalSubtitle, PlaybackReport, PlaybackRequest, ServerLibrary, 
 const ticksPerSecond = 10_000_000
 
 export function authHeader(token?: string): string {
-  let value = `MediaBrowser Client="Flow", Device="${deviceName()}", DeviceId="${deviceId()}", Version="1.0"`
+  let value = `MediaBrowser Client="Marquee", Device="${deviceName()}", DeviceId="${deviceId()}", Version="1.0"`
   if (token) value += `, Token="${token}"`
   return value
 }

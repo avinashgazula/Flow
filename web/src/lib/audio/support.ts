@@ -1,12 +1,12 @@
 /* Whether this browser can turn audio it can't decode (TrueHD, DTS, Dolby Digital) into Opus, which
    it can. Conversion needs WebCodecs' AudioEncoder, and an Opus track that Media Source Extensions
    will take. The quick answer comes from those two being present; the slow one asks the encoder
-   whether it takes the settings Flow uses. Ranking reads the quick answer for every row, so it is
+   whether it takes the settings Marquee uses. Ranking reads the quick answer for every row, so it is
    worked out once. */
 
 const opusType = 'audio/mp4; codecs="opus"'
 
-/** The settings Flow asks the encoder for: plain stereo Opus, which every browser with an Opus
+/** The settings Marquee asks the encoder for: plain stereo Opus, which every browser with an Opus
  *  encoder takes. */
 const encoderConfig = { codec: 'opus', sampleRate: 48000, numberOfChannels: 2, bitrate: 160000 }
 

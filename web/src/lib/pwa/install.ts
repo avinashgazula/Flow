@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react'
 
-/* Installing Flow as an app. Chromium browsers say when they can install it (`beforeinstallprompt`), and
-   Flow keeps that event to use when the person asks. Safari on iPhone and iPad has no such event, only
-   Share > Add to Home Screen, so there Flow says how, once, in Settings. Nothing asks unprompted. */
+/* Installing Marquee as an app. Chromium browsers say when they can install it (`beforeinstallprompt`), and
+   Marquee keeps that event to use when the person asks. Safari on iPhone and iPad has no such event, only
+   Share > Add to Home Screen, so there Marquee says how, once, in Settings. Nothing asks unprompted. */
 
 export type InstallMode =
   /** Already running as an app, or nothing to offer. */
@@ -72,7 +72,7 @@ const mode = (): InstallMode => {
 export const useInstallMode = () => useSyncExternalStore(subscribe, mode, () => 'none' as InstallMode)
 
 /** Shows the browser's install dialog. The event is single-use, so it is dropped whatever the answer; a
- *  browser that still wants Flow installed sends a new one. */
+ *  browser that still wants Marquee installed sends a new one. */
 export async function promptInstall() {
   const event = pending
   if (!event) return

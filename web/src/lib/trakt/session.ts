@@ -1,5 +1,5 @@
 /* Being signed in to Trakt: where the token lives, when it is refreshed, and the sign-in and sign-out that
-   change it. The token is a setting (`traktAccount`) so Flow Sync carries it to every device and a sign-in made
+   change it. The token is a setting (`traktAccount`) so Marquee Sync carries it to every device and a sign-in made
    anywhere arrives here with no prompt. Sync and this file meet in three places:
 
    - a sign-in, a refreshed token and a sign-out are pushed at once (not after three seconds), because the old
@@ -104,7 +104,7 @@ const storage = (): Storage | null => {
   }
 }
 
-/** Goes to Trakt to approve Flow. The page is left; the way back is `finishSignIn`. */
+/** Goes to Trakt to approve Marquee. The page is left; the way back is `finishSignIn`. */
 export async function beginSignIn(): Promise<void> {
   const id = clientID()
   if (!id) throw new TraktError(words.missingID, 'client-id')

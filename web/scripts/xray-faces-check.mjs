@@ -122,7 +122,7 @@ async function visit(browser, { clip, origin, settings = {}, context: existing, 
 }
 
 /** What In Scene shows once it has settled: the names, in order, and the line under them. */
-async function readScene(visitor, { settle = /Recognised in this frame|Matched from dialogue\.|matched the cast|No faces found|doesn’t let Flow|Data Saver|couldn’t load/i, timeout = 90000 } = {}) {
+async function readScene(visitor, { settle = /Recognised in this frame|Matched from dialogue\.|matched the cast|No faces found|doesn’t let Marquee|Data Saver|couldn’t load/i, timeout = 90000 } = {}) {
   const { page } = visitor
   const panel = page.locator('section[aria-label="X-Ray"]')
   await panel.locator('p', { hasText: settle }).first().waitFor({ timeout }).catch(async (error) => {
@@ -175,10 +175,10 @@ try {
 
   // C: a stream the page can't read.
   const c = await visit(browser, { clip: 'family', origin: 'cross', label: 'C' })
-  const rc = await readScene(c, { settle: /doesn’t let Flow read its picture/ })
+  const rc = await readScene(c, { settle: /doesn’t let Marquee read its picture/ })
   await c.page.screenshot({ path: join(out, 'c-unreadable.png') })
   console.log('C', JSON.stringify(rc))
-  check('C says the stream’s picture can’t be read, and lists no one from faces', /doesn’t let Flow read its picture/.test(rc.note) && rc.names.length === 0)
+  check('C says the stream’s picture can’t be read, and lists no one from faces', /doesn’t let Marquee read its picture/.test(rc.note) && rc.names.length === 0)
   await c.context.close()
 
   // D: Recognise Faces off.

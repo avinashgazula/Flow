@@ -1,5 +1,5 @@
 /* What the service worker caches, as pure functions so a test can state the rules. sw.ts only wires them
-   to fetch events. The principle: Flow caches its own code and nothing it reads from anywhere else. Every
+   to fetch events. The principle: Marquee caches its own code and nothing it reads from anywhere else. Every
    request to TMDB, an add-on, a media server, the stream proxy or an image host is another origin, and the
    worker doesn't touch it, so the browser answers it as it would without a worker. Media, ranges and
    anything that isn't a GET are left alone too, whatever origin they come from. */
@@ -15,7 +15,7 @@ export interface RequestInfo {
   ranged: boolean
 }
 
-/** How the worker answers a request: not at all, as a page load, or as one of Flow's own static files. */
+/** How the worker answers a request: not at all, as a page load, or as one of Marquee's own static files. */
 export type Handling = 'network' | 'navigate' | 'static'
 
 const mediaDestinations = new Set(['video', 'audio', 'track'])
@@ -36,7 +36,7 @@ export function handlingFor(req: RequestInfo, scope: string, precached: Readonly
   }
   if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname)) return 'network'
   const path = url.pathname.slice(base.pathname.length)
-  // The sample stream and any media file are never stored, even when they sit on Flow's own origin.
+  // The sample stream and any media file are never stored, even when they sit on Marquee's own origin.
   if (path.startsWith('samples/') || mediaFile.test(path)) return 'network'
   if (req.mode === 'navigate') return 'navigate'
   if (path.endsWith('.map') || path === 'sw.js') return 'network'
@@ -44,7 +44,7 @@ export function handlingFor(req: RequestInfo, scope: string, precached: Readonly
   return 'network'
 }
 
-/** A response worth keeping: a whole, successful answer from Flow's own origin. A 206 (part of a file), an
+/** A response worth keeping: a whole, successful answer from Marquee's own origin. A 206 (part of a file), an
  *  error page and an opaque cross-origin response are not. */
 export function isStorable(res: { status: number; type: string }): boolean {
   return res.status === 200 && res.type === 'basic'
@@ -53,7 +53,7 @@ export function isStorable(res: { status: number; type: string }): boolean {
 export const cachePrefix = 'flow-'
 export const cacheName = (version: string) => `${cachePrefix}${version}`
 
-/** The caches an update leaves behind: Flow's own, from any other version. Caches that aren't Flow's are
+/** The caches an update leaves behind: Marquee's own, from any other version. Caches that aren't Marquee's are
  *  none of the worker's business. */
 export function staleCaches(names: readonly string[], version: string): string[] {
   return names.filter((n) => n.startsWith(cachePrefix) && n !== cacheName(version))

@@ -21,7 +21,7 @@ const HEAD_BYTES = 512 * 1024
 const STATS_EVERY_MS = 1000
 
 let url = ''
-/** The address Flow was given. `url` may move on from it to where its redirect led (see request()). */
+/** The address Marquee was given. `url` may move on from it to where its redirect led (see request()). */
 let given = ''
 let headers: Record<string, string> = {}
 /** The address is the stream proxy's, so a failure is the proxy's to explain. */
@@ -143,7 +143,7 @@ async function report(error: unknown) {
 
 function friendly(error: unknown): string {
   if (error instanceof HttpError) return httpFailureMessage(error, viaProxy)
-  if (error instanceof WebAssembly.RuntimeError) return 'Flow couldn’t read this file. Try another source.'
+  if (error instanceof WebAssembly.RuntimeError) return 'Marquee couldn’t read this file. Try another source.'
   if (error instanceof TypeError) return networkFailureMessage(viaProxy, false)
   return error instanceof Error ? error.message : String(error)
 }
@@ -556,7 +556,7 @@ async function thumbPump() {
         else thumbNone(job.id, 'failed')
       } catch (error) {
         thumbNone(job.id, ctl.signal.aborted ? 'superseded' : 'failed')
-        if (!ctl.signal.aborted && !(error instanceof HttpError)) console.debug('Flow: a seek preview failed', error)
+        if (!ctl.signal.aborted && !(error instanceof HttpError)) console.debug('Marquee: a seek preview failed', error)
       }
       thumbActive = null
     }

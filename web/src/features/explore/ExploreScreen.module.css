@@ -1,7 +1,7 @@
 :global(.page).screen { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 
 .types { min-width: 240px; }
-/* Filters sits in the toolbar beside the type picker, as tall as it (a 40px cell and its two 3px rules). Inverted
+/* Filters sits in the toolbar beside the type picker, as tall as it (a 40px cell and its two 2px rules). Inverted
    while filters are on; the summary below says which. */
 .filtersButton { height: 46px; padding: 0 var(--space-m) 0 14px; flex: none; }
 .filtersButton[data-active] { background: var(--fg); color: var(--bg); }

@@ -351,7 +351,7 @@ describe('a list kept on a different service than tracking', () => {
 describe('the Sync Interval', () => {
   const recently = () => new Date(Date.now() - 20 * 60_000).toISOString()
 
-  it('leaves a recent sync alone when Flow opens, and syncs when the interval has passed', async () => {
+  it('leaves a recent sync alone when Marquee opens, and syncs when the interval has passed', async () => {
     m.setService('simkl', { lastSyncAt: recently(), historyThrough: '2026-10-01T00:00:00Z' })
     m.settingsStore.set({ syncInterval: 3600 })
     m.startTracking()

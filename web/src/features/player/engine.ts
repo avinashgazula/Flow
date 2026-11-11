@@ -72,10 +72,10 @@ export interface Engine {
   /** One more go after a decode error. False once that has been tried. */
   recover(): boolean
   /** What to tell the viewer if the element fails, when this engine knows more than the error code
-   *  (a file Flow could only hand to the browser's own player). */
+   *  (a file Marquee could only hand to the browser's own player). */
   failureMessage?: string
   /** Set when the file is playing through the browser's own player because its host blocks web
-   *  pages. Flow sees none of the bytes then, so it can't pick or convert audio, and a codec the
+   *  pages. Marquee sees none of the bytes then, so it can't pick or convert audio, and a codec the
    *  browser can't decode plays as silence. */
   readonly fallback?: 'blocked'
   /** With `fallback`, when a stream proxy was tried and couldn't open the file: why, in words for the
@@ -329,7 +329,7 @@ async function attachHls(video: HTMLVideoElement, source: Source, options: Attac
 
 // MARK: Matroska
 
-/** The browser's own player for a file whose host won't let Flow read it (most debrid download
+/** The browser's own player for a file whose host won't let Marquee read it (most debrid download
  *  servers send no CORS headers). Chrome and Edge open Matroska themselves when they know the codecs
  *  (H.264, HEVC with hardware support, AAC, Opus, FLAC), though without a choice of audio track. */
 function playBlockedFile(video: HTMLVideoElement, source: Source, options: AttachOptions, proxyError?: string): Engine {
@@ -340,8 +340,8 @@ function playBlockedFile(video: HTMLVideoElement, source: Source, options: Attac
     fallback: 'blocked',
     proxyError,
     failureMessage: proxyError
-      ? `This file’s host doesn’t let web pages stream from it, and your stream proxy couldn’t open it: ${/[.!?]$/.test(proxyError) ? proxyError : `${proxyError}.`} Check the proxy in Settings → Playback, pick another source, or watch it in the Flow app.`
-      : 'This file’s host doesn’t let web pages stream from it, and this browser can’t play the file directly. Add a stream proxy in Settings → Playback (or turn one on in AIOStreams), pick another source, or watch it in the Flow app.',
+      ? `This file’s host doesn’t let web pages stream from it, and your stream proxy couldn’t open it: ${/[.!?]$/.test(proxyError) ? proxyError : `${proxyError}.`} Check the proxy in Settings → Playback, pick another source, or watch it in the Marquee app.`
+      : 'This file’s host doesn’t let web pages stream from it, and this browser can’t play the file directly. Add a stream proxy in Settings → Playback (or turn one on in AIOStreams), pick another source, or watch it in the Marquee app.',
   }
 }
 
@@ -369,7 +369,7 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
       session = await open(viaProxy)
     } catch (error) {
       if (!failedWith(error, 'BlockedError') || viaProxy) throw error
-      // Remembered by the address Flow was given (the add-on's play link), not where it redirects to:
+      // Remembered by the address Marquee was given (the add-on's play link), not where it redirects to:
       // that is what the next source from the same add-on starts with.
       rememberBlocked(source.url)
       if (!streamProxy()) throw error
@@ -378,7 +378,7 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
     }
   } catch (error) {
     if (failedWith(error, 'AbortError')) throw error
-    // Not Matroska after all (the link had no telling extension, and Flow guessed): the browser's own player takes it from here.
+    // Not Matroska after all (the link had no telling extension, and Marquee guessed): the browser's own player takes it from here.
     if (failedWith(error, 'NotMatroskaError')) return attachNative(video, source, options)
     // The proxy is only a way round a blocked host. If it was tried and the file still can't be
     // read (blocked, unreachable, refused), the browser's own player gets the original address. A
@@ -388,7 +388,7 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
       // the person can read it off and tell us. The console has it too (the message holds hosts and
       // statuses only, never an address).
       const reason = (error as Error).message || 'It gave no reason.'
-      console.warn(`Flow: the stream proxy couldn’t open this file. ${reason}`)
+      console.warn(`Marquee: the stream proxy couldn’t open this file. ${reason}`)
       return playBlockedFile(video, source, options, reason)
     }
     if (failedWith(error, 'BlockedError')) return playBlockedFile(video, source, options)

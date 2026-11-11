@@ -71,7 +71,7 @@ export const models: Model[] = [
   },
 ]
 
-/** The typefaces Flow is set in, each with the licence file served beside it (public/fonts). */
+/** The typefaces Marquee is set in, each with the licence file served beside it (public/fonts). */
 export const typefaces: { name: string; file: string }[] = [
   { name: 'Archivo', file: 'OFL-Archivo.txt' },
   { name: 'IBM Plex Mono', file: 'OFL-Plex-Mono.txt' },

@@ -402,7 +402,7 @@ export function setupToLink(bundle: SetupBundle): string {
 
 export type ParsedBundle = { ok: true; bundle: SetupBundle } | { ok: false; error: string }
 
-const notASetup = 'That isn’t a Flow setup. Choose a file from Share Setup in the apps or Export Setup on the website, or paste its link.'
+const notASetup = 'That isn’t a Marquee setup. Choose a file from Share Setup in the apps or Export Setup on the website, or paste its link.'
 
 /** The file's text, a flow://setup link or bare base64 (what the apps accept), as a setup bundle. */
 export function parseSetup(input: string): ParsedBundle {
@@ -425,7 +425,7 @@ export function parseSetup(input: string): ParsedBundle {
     return { ok: false, error: notASetup }
   }
   if (!isObject(data) || data.format !== setupFormat || !isObject(data.settings)) return { ok: false, error: notASetup }
-  if (typeof data.version === 'number' && data.version > setupVersion) return { ok: false, error: 'That setup is from a newer version of Flow. Update Flow, then try again.' }
+  if (typeof data.version === 'number' && data.version > setupVersion) return { ok: false, error: 'That setup is from a newer version of Marquee. Update this site or the app that made it, then try again.' }
   const bundle: SetupBundle = { format: setupFormat, version: typeof data.version === 'number' ? data.version : setupVersion, exportedAt: isString(data.exportedAt) ? data.exportedAt : '', settings: data.settings }
   if (isObject(data.credentials)) bundle.credentials = data.credentials
   return { ok: true, bundle }

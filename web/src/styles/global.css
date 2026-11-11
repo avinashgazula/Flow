@@ -38,7 +38,7 @@ main:focus { outline: none; }
   left: var(--space-s);
   z-index: 1000;
   padding: 12px 18px;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   background: var(--fg);
   color: var(--bg);
   font: 600 var(--fs-small) / 1 var(--font);
@@ -99,7 +99,7 @@ mark { background: var(--blue); color: var(--onblue); padding: 0 3px; }
   padding: calc(var(--nav-height) + var(--space-l)) var(--page-inset) var(--space-xxl);
 }
 
-/* The page head: a giant Archivo title, uppercase, with a 3px rule under it that runs edge to edge (the title
+/* The page head: a giant Archivo title, uppercase, with a 2px rule under it that runs edge to edge (the title
    pulls out to the viewport's edges and pads back in, so its left edge is still the page's). Put a short mono
    note or a count beside it with .page-note, in a flex row if the screen wants one. */
 .page-title {
@@ -126,7 +126,7 @@ mark { background: var(--blue); color: var(--onblue); padding: 0 3px; }
 /* Reading text is serif. */
 .reading { font-family: var(--font-serif); font-size: 17px; line-height: 1.6; max-width: var(--measure); text-wrap: pretty; }
 
-/* Buttons. Square, 3px ink border, mono capitals. Three kinds: primary (solid ink: the one next action on a
+/* Buttons. Square, 2px ink border, mono capitals. Three kinds: primary (solid ink: the one next action on a
    screen), secondary (the default, bordered) and quiet (no border, for icons and small actions). Hover fills
    blue; destructive (.btn-danger) hovers red; focus is the blue ring; disabled goes faint. .btn-glass is the old
    name for secondary, kept so screens not yet restyled keep working. .btn-circle is a square icon button (still
@@ -138,7 +138,7 @@ mark { background: var(--blue); color: var(--onblue); padding: 0 3px; }
   gap: 10px;
   min-height: 48px;
   padding: 0 18px;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   background: var(--bg);
   color: var(--fg);
   font: 600 13px / 1.1 var(--font);
@@ -146,12 +146,13 @@ mark { background: var(--blue); color: var(--onblue); padding: 0 3px; }
   letter-spacing: 0.06em;
   white-space: nowrap;
   text-decoration: none;
-  transition: background-color var(--dur-state) ease, border-color var(--dur-state) ease, color var(--dur-state) ease;
+  /* Press is felt, not seen: 3% smaller while down, on the individual scale property so reduced motion can clear it. */
+  transition: background-color var(--dur-hover) ease, border-color var(--dur-hover) ease, color var(--dur-hover) ease, scale var(--dur-hover) var(--ease-out);
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
 @media (hover: hover) { .btn:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
-.btn:active { background: var(--blue); border-color: var(--blue); color: var(--onblue); }
+.btn:active { background: var(--blue); border-color: var(--blue); color: var(--onblue); scale: 0.97; }
 .btn svg { width: 18px; height: 18px; flex: none; }
 .btn-primary, .btn[aria-pressed='true'] { background: var(--fg); color: var(--bg); }
 .btn-secondary, .btn-glass { background: var(--bg); color: var(--fg); }
@@ -175,7 +176,7 @@ mark { background: var(--blue); color: var(--onblue); padding: 0 3px; }
   width: 100%;
   min-height: 48px;
   padding: 0 14px;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   background: var(--bg);
   color: var(--fg);
   font: 400 var(--fs-body) / 1.2 var(--font);
@@ -191,14 +192,14 @@ select, textarea, input:not([type='checkbox'], [type='radio'], [type='range'], [
   align-items: center;
   min-height: 40px;
   padding: 0 14px;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   background: var(--bg);
   color: var(--fg);
   font: 600 var(--fs-small) / 1 var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   white-space: nowrap;
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 @media (hover: hover) { .chip:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
 .chip[aria-pressed='true'], .chip[aria-current='page'], .chip[aria-checked='true'] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
@@ -208,7 +209,7 @@ select, textarea, input:not([type='checkbox'], [type='radio'], [type='range'], [
 }
 
 /* A list item is a full-width row; it inverts to blue on hover and focus. Rows sit in a list whose top is a
-   3px rule and whose items are divided by 1px ink lines (.rows). */
+   2px rule and whose items are divided by 1px ink lines (.rows). */
 .rows { border-top: var(--rule); }
 .rows > li { border-bottom: 1px solid var(--fg); }
 .row {
@@ -248,15 +249,20 @@ select, textarea, input:not([type='checkbox'], [type='radio'], [type='range'], [
   border-radius: 50%;
   animation: spin 0.9s linear infinite;
 }
-.pbar { display: block; width: 100%; max-width: 560px; height: 14px; border: 3px solid var(--fg); }
-.pbar > i { display: block; height: 100%; background: var(--red); transition: width 0.2s; }
+.pbar { display: block; width: 100%; max-width: 560px; height: 14px; border: var(--rule); }
+.pbar > i { display: block; height: 100%; background: var(--red); transition: width var(--dur-move) var(--ease-out); }
 
 /* The poster or backdrop a title grows out of, for the View Transitions zoom. */
-::view-transition-group(*) { animation-duration: var(--dur-move); animation-timing-function: var(--ease-out); }
-::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--dur-state); }
+::view-transition-group(*) { animation-duration: var(--dur-enter); animation-timing-function: var(--ease-out); }
+/* A page change is a quick cross-fade (opacity only, so it is cheap and never moves the page); the bar is its own layer. */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--dur-exit); animation-timing-function: var(--ease-out); }
+::view-transition-group(nav) { animation: none; }
 
+/* Reduced motion means gentler, not none: nothing travels or scales (entrances use the individual translate and scale
+   properties, which this clears), while opacity and colour changes keep telling the viewer what happened. Loops that
+   are decoration stop in their own modules; the spinner keeps turning slowly so it still reads as busy. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-  .spinner { animation-duration: 3s !important; animation-iteration-count: infinite !important; }
-  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  *, *::before, *::after { translate: none !important; scale: none !important; }
+  .spinner { animation-duration: 3s !important; }
+  ::view-transition-group(*) { animation: none !important; }
 }

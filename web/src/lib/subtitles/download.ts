@@ -91,7 +91,7 @@ async function fetchFile(url: string, headers: Record<string, string> | undefine
   if (!triedProxy) {
     throw new SubtitleError(`${host} doesn’t let web pages download its files. Add a stream proxy in Settings → Playback with ${host} in its allowed hosts, then choose the subtitle again.`, 'blocked')
   }
-  throw new SubtitleError(`Flow couldn’t download the subtitle from ${host}, directly or through your stream proxy. Check that the proxy is running, lists this page in ALLOWED_ORIGINS, and has ${host} in ALLOWED_HOSTS.`, 'blocked')
+  throw new SubtitleError(`Marquee couldn’t download the subtitle from ${host}, directly or through your stream proxy. Check that the proxy is running, lists this page in ALLOWED_ORIGINS, and has ${host} in ALLOWED_HOSTS.`, 'blocked')
 }
 
 /** A result's file, ready to become a track. */

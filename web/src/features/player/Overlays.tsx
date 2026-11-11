@@ -9,7 +9,7 @@ import { activeCueText } from './subtitleDelay'
 import { cueSegments, type Segment } from './subtitles'
 import s from './Player.module.css'
 
-/** Subtitles drawn by Flow rather than the browser: browsers style cues differently and ignore
+/** Subtitles drawn by Marquee rather than the browser: browsers style cues differently and ignore
  *  most of what WebVTT asks for, and this way every engine's subtitles look the same. Raised clear
  *  of the scrubber while the controls show, as in Apple's TV app. The viewer's style (Settings, or the
  *  options panel's Subtitle Style) is applied here, and while that panel is open a sample line stands in

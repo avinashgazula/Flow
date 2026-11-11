@@ -47,9 +47,9 @@ export interface SceneFacts {
 const dialogueNote = 'Matched from dialogue.'
 
 const why: Record<Unavailable, string> = {
-  unreadable: 'This stream doesn’t let Flow read its picture.',
-  metered: 'Data Saver is on, so Flow didn’t download the face models.',
-  failed: 'Flow couldn’t load the face models.',
+  unreadable: 'This stream doesn’t let Marquee read its picture.',
+  metered: 'Data Saver is on, so Marquee didn’t download the face models.',
+  failed: 'Marquee couldn’t load the face models.',
   'not-ready': 'The picture isn’t ready yet.',
   'no-photos': 'No cast photos to compare with.',
 }

@@ -34,7 +34,7 @@ export function SetupImport({ backups = false, link, onImported, onCancel }: { b
     try {
       take(await chosen.text())
     } catch {
-      setError('Couldn’t read that file. Choose a setup exported from Flow.')
+      setError('Couldn’t read that file. Choose a setup exported from Marquee or shared from the Marquee apps.')
     } finally {
       if (file.current) file.current.value = ''
     }

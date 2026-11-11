@@ -15,9 +15,9 @@ export type TrackerErrorKind = TraktErrorKind
 export const words = (name: string) => ({
   key: `${name} didn’t accept this key. Check it in Settings → Account.`,
   signedOut: `${name} ended this sign-in. Sign in again.`,
-  rate: `${name} is busy. Flow will try again in a moment.`,
+  rate: `${name} is busy. Marquee will try again in a moment.`,
   network: `Couldn’t reach ${name}. Check your connection.`,
-  server: (status: number) => `${name} had a problem (${status}). Flow will try again in a moment.`,
+  server: (status: number) => `${name} had a problem (${status}). Marquee will try again in a moment.`,
   rejected: (status: number) => `${name} didn’t accept that update (${status}).`,
 })
 

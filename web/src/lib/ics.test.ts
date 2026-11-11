@@ -50,7 +50,7 @@ describe('the calendar file', () => {
     const text = buildICS([episode], now)
     expect(text.endsWith('END:VCALENDAR\r\n')).toBe(true)
     expect(text.split('\r\n').filter((l) => l.includes('\n'))).toEqual([])
-    expect(text).toContain('BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Flow//Upcoming//EN')
+    expect(text).toContain('BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN')
     expect(text).toContain('UID:show-1396-s3e7@flow-web')
     expect(text).toContain('DTSTAMP:20261025T225554Z')
     expect(text).toContain('DTSTART;VALUE=DATE:20261027\r\nDTEND;VALUE=DATE:20261028')
@@ -91,6 +91,6 @@ describe('file names', () => {
   it('keeps letters and digits, drops what a file name cannot hold, and is never empty', () => {
     expect(icsFileName('Breaking Bad S3E7')).toBe('Breaking Bad S3E7.ics')
     expect(icsFileName('Shōgun: Part/Two?')).toBe('Shogun PartTwo.ics')
-    expect(icsFileName('???')).toBe('Flow.ics')
+    expect(icsFileName('???')).toBe('Marquee.ics')
   })
 })

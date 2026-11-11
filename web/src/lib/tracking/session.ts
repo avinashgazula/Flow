@@ -2,7 +2,7 @@
    asks for one, the person types it at simkl.com/pin, and the page polls until Simkl hands over a token. That needs
    no redirect and no secret, so it works from any address. The token has no refresh token and no expiry, so there is
    no rotating to coordinate as there is for Trakt; it is a setting (`simklAccount`) in the shape the apps keep it
-   (docs/SYNC.md, accounts), so Flow Sync carries it to every device and one from the apps works here.
+   (docs/SYNC.md, accounts), so Marquee Sync carries it to every device and one from the apps works here.
 
    Sync is touched only when this browser has it on, and loaded then, not before. */
 

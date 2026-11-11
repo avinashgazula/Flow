@@ -9,7 +9,7 @@ import { normaliseServer, parsePairing, serverFromProxy, type Pairing } from '..
 import { ConfirmButton, Group, Note, Row } from './controls'
 import s from './SettingsScreen.module.css'
 
-/* Flow Sync in Settings → Data. Off: turn it on (a new key) or join one (a key or link from another
+/* Marquee Sync in Settings → Data. Off: turn it on (a new key) or join one (a key or link from another
    device). On: when it last synced, what went wrong, and the way to pair another device. The engine and
    the rules are in lib/sync; this is the form. */
 
@@ -145,7 +145,7 @@ export function ServerFields({ server, token, onChange, autoFocus }: { server: s
       </label>
       <input id="sync-token" className="field" value={token} onChange={(e) => onChange({ server, token: e.target.value })} placeholder="The Worker’s TOKEN" type="password" autoComplete="off" spellCheck={false} />
       <p className={s.hint}>
-        Sync keeps its copy in the same Cloudflare Worker as your stream proxy. Setting that up takes a few minutes: see web/proxy/README.md in Flow’s source.
+        Sync keeps its copy in the same Cloudflare Worker as your stream proxy. Setting that up takes a few minutes: see web/proxy/README.md in Marquee’s source.
       </p>
     </div>
   )
@@ -251,7 +251,7 @@ export function SyncGroup() {
           <p className={s.hint}>
             {on ? 'This browser is already syncing. Joining switches it to this one. ' : ''}
             {pairing.server ? <>It syncs through your Worker at <strong>{hostOf(pairing.server)}</strong>. </> : null}
-            Flow will bring in the keys, sign-ins, add-ons, servers, stream proxy and playback settings your other devices have saved, replacing the matching ones here, and send anything only this browser has.
+            Marquee will bring in the keys, sign-ins, add-ons, servers, stream proxy and playback settings your other devices have saved, replacing the matching ones here, and send anything only this browser has.
           </p>
           {!fixed && <ServerFields server={where.server} token={where.token} onChange={setTyped} />}
           <div className={s.actions}>

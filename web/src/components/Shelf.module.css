@@ -21,12 +21,12 @@
   font: 600 var(--fs-headline) / 1.25 var(--font-display);
   letter-spacing: -0.005em;
 }
-a.title svg { color: var(--faint); transition: color var(--dur-state) ease; }
+a.title svg { color: var(--faint); transition: color var(--dur-hover) ease; }
 a.title:hover svg { color: var(--fg); }
 
 .arrows { display: none; gap: var(--space-xs); }
 @media (hover: hover) and (min-width: 721px) {
-  .arrows { display: flex; opacity: 0; transition: opacity var(--dur-state) ease; }
+  .arrows { display: flex; opacity: 0; transition: opacity var(--dur-hover) ease; }
   .shelf:hover .arrows, .shelf:focus-within .arrows { opacity: 1; }
 }
 
@@ -45,7 +45,7 @@ a.title:hover svg { color: var(--fg); }
 .row > * { flex: 0 0 var(--poster-width, 150px); scroll-snap-align: start; }
 .stillShelf .row > * { flex-basis: var(--still-width, 280px); }
 
-.ghost { flex: none; border: 3px solid var(--fg); background: var(--tint-1); }
+.ghost { flex: none; border: var(--rule); background: var(--tint-1); }
 .ghostPoster { width: var(--poster-width, 150px); aspect-ratio: 2 / 3; }
 .ghostStill { width: var(--still-width, 280px); aspect-ratio: 16 / 9; }
 

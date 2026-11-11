@@ -1,7 +1,7 @@
 import type { MediaType } from '../tmdb/types'
 import { createStore, useStore } from '../store/createStore'
 
-/* What this browser remembers about Trakt apart from the sign-in itself (which is a setting, because Flow Sync
+/* What this browser remembers about Trakt apart from the sign-in itself (which is a setting, because Marquee Sync
    carries it): who is signed in, how the last sync went, the changes still waiting to reach Trakt, and the
    lists as they stood at the last sync, which is how a removal on either side is told from a title that
    was never there. It stays on this device. */

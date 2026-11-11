@@ -53,7 +53,7 @@ export function LiveTVSection() {
         title="IPTV Providers"
         footer={
           <>
-            Most providers don’t let web pages read their playlists, so Flow fetches them through your stream proxy{' '}
+            Most providers don’t let web pages read their playlists, so Marquee fetches them through your stream proxy{' '}
             {proxy ? '(set in Playback)' : '(not set: add one in Playback)'}, which then sees the provider’s address and login.<LearnMore section="live-tv" />
           </>
         }

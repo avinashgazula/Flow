@@ -25,7 +25,7 @@ export function CollectionScreen({ id }: { id: number }) {
         <div className="page">
           <div className={s.state} role="status">
             <h1 className={s.stateTitle}>Couldn’t Load This Collection</h1>
-            <p className="reading">{error instanceof Error && error.message ? `${error.message.replace(/[.!?]$/, '')}. Try again in a moment.` : 'Flow couldn’t reach TMDB. Check your connection, then try again.'}</p>
+            <p className="reading">{error instanceof Error && error.message ? `${error.message.replace(/[.!?]$/, '')}. Try again in a moment.` : 'Marquee couldn’t reach TMDB. Check your connection, then try again.'}</p>
             <button className="btn btn-secondary" onClick={() => void refetch()} disabled={isRefetching}>
               Try Again
             </button>

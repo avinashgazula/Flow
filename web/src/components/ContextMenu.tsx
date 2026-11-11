@@ -131,7 +131,7 @@ export function MenuPanel({ label, items, anchor, onClose, keep, card }: { label
   }
 
   return createPortal(
-    <div ref={menu} role="menu" aria-label={label} className={s.menu} style={at ? { left: at.left, top: at.top } : { left: 0, top: 0, visibility: 'hidden' }} onKeyDown={onKey}>
+    <div ref={menu} role="menu" aria-label={label} className={s.menu} data-placed={at ? '' : undefined} style={at ? { left: at.left, top: at.top } : { left: 0, top: 0, visibility: 'hidden' }} onKeyDown={onKey}>
       {items.map((item) => (
         <button
           key={item.id}

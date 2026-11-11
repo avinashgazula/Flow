@@ -1,4 +1,4 @@
-/* Where this browser keeps its Flow Sync setup: the sync key, the Worker's address and token, and the times
+/* Where this browser keeps its Marquee Sync setup: the sync key, the Worker's address and token, and the times
    the merge needs. Its own localStorage key, read fresh on every use so a second tab never works from stale
    numbers, and not part of the settings backup (a backup file would carry the key to anyone it is sent to).
    main.tsx reads the same key name to decide whether the engine needs to load at all. */

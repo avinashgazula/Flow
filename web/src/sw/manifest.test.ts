@@ -27,9 +27,16 @@ function pngSize(path: string) {
 
 describe('the web app manifest', () => {
   it('names the app and opens it in its own window', () => {
-    expect(manifest.name).toBe('Flow')
-    expect(manifest.short_name).toBe('Flow')
+    expect(manifest.name).toBe('Marquee')
+    expect(manifest.short_name).toBe('Marquee')
     expect(manifest.short_name.length).toBeLessThanOrEqual(12)
+    // The page's own head says the same name before the manifest loads, and no part of it still calls the site Flow.
+    const head = read('index.html')
+    expect(head).toContain('<title>Marquee</title>')
+    expect(head).toContain('<meta name="application-name" content="Marquee" />')
+    expect(head).toContain('<meta name="apple-mobile-web-app-title" content="Marquee" />')
+    expect(head).not.toMatch(/\bFlow\b/)
+    expect(JSON.stringify(manifest.name + manifest.short_name)).not.toContain('Flow')
     expect(manifest.display).toBe('standalone')
     expect(manifest.description.length).toBeGreaterThan(0)
   })
@@ -91,7 +98,7 @@ describe('the web app manifest', () => {
 describe('the OpenSearch descriptor', () => {
   it('sends the address bar’s words to the search page, with absolute addresses', () => {
     const xml = openSearchDescriptor('https://flow.example/Flow/')
-    expect(xml).toContain('<ShortName>Flow</ShortName>')
+    expect(xml).toContain('<ShortName>Marquee</ShortName>')
     expect(xml).toContain('<Url type="text/html" method="get" template="https://flow.example/Flow/search?q={searchTerms}"/>')
     expect(xml).toContain('https://flow.example/Flow/icon-192.png')
     expect(xml).toContain('xmlns="http://a9.com/-/spec/opensearch/1.1/"')

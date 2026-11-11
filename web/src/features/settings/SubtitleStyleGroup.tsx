@@ -20,7 +20,7 @@ export function SubtitleStyleGroup() {
   return (
     <Group
       title="Subtitle Style"
-      footer="Applies to the subtitles Flow draws itself, whichever track you choose. Position raises the line from the bottom of the picture. You can also change the style from the player’s options."
+      footer="Applies to the subtitles Marquee draws itself, whichever track you choose. Position raises the line from the bottom of the picture. You can also change the style from the player’s options."
     >
       <SubtitlePreview />
       <Row label="Size" htmlFor="sub-size">

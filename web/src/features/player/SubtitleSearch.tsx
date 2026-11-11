@@ -84,7 +84,7 @@ export function SubtitleSearchPage({ controller, onDone }: { controller: PlayerC
     return (
       <p className={s.empty}>
         {plan.problem === 'title' ? (
-          'Flow hasn’t finished loading this title. Try again in a moment.'
+          'Marquee hasn’t finished loading this title. Try again in a moment.'
         ) : (
           <>
             No subtitle service is set up. Add a key for OpenSubtitles, SubDL, Wyzie or SubSource in <Link to="/settings" hash="playback">Settings → Playback → Subtitle Services</Link>, then search from here.

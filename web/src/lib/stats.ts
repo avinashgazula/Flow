@@ -1,7 +1,7 @@
 import { genreNames } from './genres'
 import type { HistoryEntry } from './store/library'
 
-/* Viewing statistics ("Your Year in Flow"), computed from watch history: a port of FlowKit's WatchStats, rule for
+/* Viewing statistics ("Your Year in Marquee"), computed from watch history: a port of FlowKit's WatchStats, rule for
    rule. Pure and deterministic: days are the viewer's own local days, and `now` and the first day of the week are
    passed in so tests can pin them.
 

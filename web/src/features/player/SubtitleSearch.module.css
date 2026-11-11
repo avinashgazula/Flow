@@ -14,13 +14,13 @@
 .hole {
   width: 8px;
   height: 8px;
-  border: 2px solid var(--fg);
+  border: var(--rule-thin);
   background: transparent;
-  transition: background-color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease;
 }
 .hole[data-lit] { background: var(--fg); }
 /* A service still being waited for breathes, so the strip never looks finished before it is. */
-.status[role='status']:not(:has(+ [role='group'])) .hole:not([data-lit]) { animation: wait 1.2s ease-in-out infinite; }
+.status[role='status']:not(:has(+ [role='group'])) .hole:not([data-lit]) { animation: wait 1.2s var(--ease-move) infinite; }
 @keyframes wait { 50% { opacity: 0.45; } }
 @media (prefers-reduced-motion: reduce) {
   .status .hole { animation: none !important; }

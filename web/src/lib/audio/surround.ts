@@ -12,7 +12,7 @@ import { checkConvertAudio } from './support'
 /** What WebCodecs is asked for. Opus in WebCodecs is mono or stereo only, so a six-channel stream is made of these. */
 const pieceConfigs = [1, 2].map((numberOfChannels) => ({ codec: 'opus', sampleRate: 48000, numberOfChannels, bitrate: 96000 }))
 
-/** Safari's MSE takes Opus in MP4 but its six-channel behaviour isn't one Flow has been able to confirm, so it stays stereo. */
+/** Safari's MSE takes Opus in MP4 but its six-channel behaviour isn't one Marquee has been able to confirm, so it stays stereo. */
 function isWebKit(): boolean {
   try {
     const ua = (globalThis as any).navigator?.userAgent ?? ''

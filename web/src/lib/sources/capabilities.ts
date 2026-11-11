@@ -16,7 +16,7 @@ export interface Capabilities {
   /** An HDR-capable display. */
   hdr: boolean
   /** This browser can turn audio it can't decode into Opus (src/lib/audio). It still needs a file
-   *  Flow can read, which is the source's business, not the browser's. */
+   *  Marquee can read, which is the source's business, not the browser's. */
   convertAudio: boolean
   video(codec: string): boolean
   audio(codec: string): boolean

@@ -37,7 +37,7 @@ export function versionParts(s: Source): string[] {
 }
 
 export interface PlayFacts {
-  /** The browser plays the file as it is (a direct file or HLS), rather than Flow remuxing it first. */
+  /** The browser plays the file as it is (a direct file or HLS), rather than Marquee remuxing it first. */
   direct: boolean
   mode: string
   /** Things to know before pressing Play. `warn` is a degraded experience. */

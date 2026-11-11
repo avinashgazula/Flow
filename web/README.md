@@ -1,7 +1,7 @@
-# Flow for the web
+# Marquee
 
-The same Flow, in a browser: Home, title pages, Explore, Search, Library, your sources and the
-player, built to feel instant.
+The web companion to the Marquee apps (iPhone, iPad, Mac and Apple TV): Home, title pages, Explore, Search, Library, your sources and the
+player, built to feel instant. Storage keys, file formats and the `flow://` link scheme keep their original `flow` names so saved settings and links from before the rename keep working.
 
 ```bash
 cd web
@@ -60,20 +60,20 @@ npm test             # unit tests (Vitest)
 
 ## Installing and offline
 
-Flow is an installable web app (`public/manifest.webmanifest`: Index colours, maskable icons, shortcuts for Continue
+Marquee is an installable web app (`public/manifest.webmanifest`: Index colours, maskable icons, shortcuts for Continue
 Watching, Upcoming and Search) and opens with no network. `scripts/pwa.ts` runs after the build: it lists the hashed code
 and styles (Vite's output, without sourcemaps, wasm or anything over 300 KB, which is hls.js), adds the page, the offline
 page, the manifest and the icon (the preloaded first-paint fonts come with the page), and builds `src/sw/sw.ts` with that list into `dist/sw.js`. The cache
 is named after a fingerprint of its contents, so a deploy that changes any file replaces the whole cache.
 
-- **What it caches** is decided by `src/sw/rules.ts` and its tests: Flow's own origin and base path only, GET only, nothing
+- **What it caches** is decided by `src/sw/rules.ts` and its tests: Marquee's own origin and base path only, GET only, nothing
   with a Range header or a media extension, never `samples/`. TMDB, add-ons, servers, the stream proxy and artwork are other
   origins, so the worker never sees them as anything but a request to let through. Chunks that weren't precached (hls.js, a
   typeface) are stored the first time they load.
 - **Page loads** go to the network first and fall back to the saved shell after 4 s or when offline, so a new deploy shows
-  at once and an old connection still opens Flow. `offline.html` is the last resort.
+  at once and an old connection still opens Marquee. `offline.html` is the last resort.
 - **Updates wait.** A new worker never takes over by itself (a film isn't swapped to new code half way through); the page
-  shows "Flow was updated" with Reload, and Reload tells the worker to take over and reloads. Registered in production
+  shows "Marquee was updated" with Reload, and Reload tells the worker to take over and reloads. Registered in production
   builds only (`lib/pwa/update.ts`).
 - **Address bar search.** The build writes `opensearch.xml` (`search?q={searchTerms}`) with absolute addresses, from
   `FLOW_SITE_URL`, `PAGES_DOMAIN` or the GitHub repository; a local build gets relative ones, which browsers ignore.
@@ -85,7 +85,7 @@ is named after a fingerprint of its contents, so a deploy that changes any file 
   apps), **Picture in Picture** (hides the button; on), **Auto Rotate to Landscape** (only where `screen.orientation.lock` exists on a touch
   device, in practice Android Chromium, and only in full screen; `player/orientation.ts`) and **Auto-sync** (off; the Subtitle Delay page
   shows its Auto-sync row only when on). All four travel in the setup file under the apps' names. Show Upcoming now defaults to off, as in the apps.
-- **Install.** Settings → About has Install Flow where the browser sends `beforeinstallprompt`, and one sentence about Share
+- **Install.** Settings → About has Install Marquee where the browser sends `beforeinstallprompt`, and one sentence about Share
   → Add to Home Screen on iPhone and iPad. Nothing asks unprompted.
 
 ## Matroska
@@ -227,7 +227,7 @@ Settings → Media Servers and what the servers add to Home, Search and the play
   `/:/timeline` and a `/:/scrobble` for a stop at 90 % or more (Plex's own watched line). **Track Only With Your Tracking
   Service** stops the reports and ignores the server's resume point. Sample streams report nothing.
 - **WebDAV.** Settings → Media Servers → WebDAV Shares: name, address, an optional login, and the Movies and TV Shows
-  folders (`/Movies` and `/TV Shows`). Flow lists them with `PROPFIND` (two levels down, at most 400 folders a level, kept
+  folders (`/Movies` and `/TV Shows`). Marquee lists them with `PROPFIND` (two levels down, at most 400 folders a level, kept
   for five minutes) and offers the files named like the title ("Movie (2020).mkv", "Show/Season 1/Show S01E02.mkv") in the
   picker, under the WebDAV category between Media Servers and Add-ons.
 
@@ -240,8 +240,8 @@ forwards a login, by design. It does carry the files themselves when a share all
 needs more of the same: a password goes as an `Authorization` header, which a media element can't send, so a
 password-protected share plays Matroska (the remuxer reads with headers; the share must expose `Content-Range`) and
 offers MP4 and WebM as "Needs request headers a browser can't send". A login in the address (`https://user:pass@…`) is
-blocked by browsers for media, so Flow never builds one. Shares are kept in settings and in the backup (passwords
-included, like the servers' tokens), not in Flow Sync.
+blocked by browsers for media, so Marquee never builds one. Shares are kept in settings and in the backup (passwords
+included, like the servers' tokens), not in Marquee Sync.
 
 Tests: `servers.test.ts` (answers in the servers' response shapes: libraries, newest titles, search, catalogue paging,
 the report calls), `report.test.ts` (the order and timing of reports), `webdav.test.ts` (Apache and Nextcloud answers,
@@ -261,7 +261,7 @@ The player has what the apps have for watching a series (`features/player/segmen
   by the remuxer from wherever the file keeps them (see Matroska below). No answer means no button, never an error.
 - **CORS.** IntroDB's CORS header allows only introdb.app, so from the website it is asked through the stream proxy
   (with `api.introdb.app` in its `ALLOWED_HOSTS`). PublicMetaDB sends no CORS headers and needs an Authorization header
-  the proxy doesn't forward, so it can't be read from a web page; its key is kept for Flow Sync and the apps. A refused
+  the proxy doesn't forward, so it can't be read from a web page; its key is kept for Marquee Sync and the apps. A refused
   service isn't asked again until the page reloads.
 - **Next Episode.** Up Next comes up as the credits begin when a segment says where (else in the last 30 seconds), with
   a Next Episode button. Credits that run to the end of an episode with another after it are skipped to that episode.
@@ -289,7 +289,7 @@ What the apps' player has beyond that, each with the apps' words and defaults (p
   time X-Ray opens. The apps' Music tab (Shazam) has no equivalent in a browser without a paid recognition API, so it isn't here.
 - **What Did They Say?** (Options, **W**, or a finger held on Back 10 Seconds) goes back ten seconds and shows subtitles for just that stretch
   even when they are off, then puts them back (`replay.ts`).
-- **Subtitle Delay** (Options, beside Subtitle Style): -10 to +10 seconds in tenths, positive later. It shifts every cue Flow draws, is remembered for
+- **Subtitle Delay** (Options, beside Subtitle Style): -10 to +10 seconds in tenths, positive later. It shifts every cue Marquee draws, is remembered for
   the title until the page closes, and has a Reset (`subtitleDelay.ts`).
 - **Never Use Dolby Vision** (Settings → Playback): the remuxer leaves out the Dolby Vision configuration, so the file plays as its HDR10 picture
   (profile 5, which has none, stays Dolby Vision). It is in the Rust crate (`codecs::hdr10_only`), rebuilt into `src/lib/remux/pkg`.
@@ -311,7 +311,7 @@ What the apps' player has beyond that, each with the apps' words and defaults (p
 Options → Audio and Subtitles → **Search Subtitles…** asks OpenSubtitles, SubDL, Wyzie and SubSource at once (`lib/subtitles/`:
 `providers.ts` builds each request and reads each answer, as FlowKit's `Subtitles.swift` does, with tests on recorded answers
 in `__fixtures__/`; `search.ts` ranks them like the apps: your languages in order, then your Subtitle Type, then downloads).
-Keys are in Settings → Playback → Subtitle Keys and travel through Flow Sync under the apps' names (`openSubtitlesAPIKey`,
+Keys are in Settings → Playback → Subtitle Keys and travel through Marquee Sync under the apps' names (`openSubtitlesAPIKey`,
 `openSubtitlesUsername`, `openSubtitlesPassword`, `subdlAPIKey`, `subSourceAPIKey`), sent only once set. A pick is downloaded,
 unzipped (`zip.ts`: gzip and zip through `DecompressionStream`, plus a zip directory reader in about eighty lines), decoded
 (UTF-8, UTF-16 or Windows-1252) and becomes a track of its own, drawn with the viewer's style and moved by the subtitle delay.
@@ -328,7 +328,7 @@ What a web page can do, checked against the live services:
 - **Wyzie** has moved to `sub.wyzie.io` and wants a free key (`key=`; claim one at store.wyzie.io/redeem). The apps ask the same
   host, and the key syncs as `wyzieAPIKey`.
 - **SubSource** sends no `Access-Control-Allow-Origin` at all and its key is a header the stream proxy doesn't pass on, so a web
-  page can't use it. It is tried, and the page says why when the browser refuses; the key is kept for Flow Sync and the apps.
+  page can't use it. It is tried, and the page says why when the browser refuses; the key is kept for Marquee Sync and the apps.
 
 **Selection** (`player/languages.ts`, with the apps' `TrackSelection` rules): Show Subtitles has Forced Only beside Foreign Audio
 Only, Always and Off; Subtitle Type (Standard or SDH) decides between two tracks of one language, in the file and in search
@@ -342,7 +342,7 @@ its cost is a 2.2 MB WebAssembly module (920 KB gzipped), a 146 KB default font 
 shown with the setting on loads (nothing of it is in the first load or the service worker's precache). Local fonts aren't queried
 (Chrome would ask for permission), so a font the browser can't supply is drawn in the default one. Two of JASSUB's CommonJS
 dependencies are stood in for (`src/lib/shims`, `vite.config.ts`) so the module-wrapper helper they need doesn't join the first load.
-It covers ASS files Flow reads itself (from a source or a search); ASS tracks inside an MKV arrive as cues without the script.
+It covers ASS files Marquee reads itself (from a source or a search); ASS tracks inside an MKV arrive as cues without the script.
 
 ## Seek previews
 
@@ -385,7 +385,7 @@ address. `?demo` brings the sample **Flow Live** provider.
 - **Playing:** `LivePlayer` reuses the film player's engine (hls.js; Safari plays HLS itself) and
   controller. A raw MPEG-TS address is tried as HLS first (as the apps do); a browser can't play raw
   MPEG-TS, so a channel only available that way says so.
-- **Not yet:** the providers aren't part of Flow Sync (a follow-up: the sync payload would carry
+- **Not yet:** the providers aren't part of Marquee Sync (a follow-up: the sync payload would carry
   `liveTV`, with logins encrypted like the server tokens), and the browser can't send a custom
   User-Agent.
 
@@ -400,7 +400,7 @@ authorization-code flow with PKCE (no client secret, as in the apps). Trakt's AP
   owner adds exactly that to the Trakt app at trakt.tv/oauth/applications, next to the apps' `flow://trakt-callback`.
   The address isn't a screen: `lib/trakt/arrive.ts` sends the browser to Settings → Account before the router reads
   it and finishes the sign-in in the background, so a failure is told in Account.
-- **Through Flow Sync.** The Client ID travels in the `keys` section (`traktClientID`, `simklClientID`) and the token in
+- **Through Marquee Sync.** The Client ID travels in the `keys` section (`traktClientID`, `simklClientID`) and the token in
   `accounts.trakt` in the apps' shape, with the `redirectURI` it was issued against; Simkl's token is `accounts.simkl` (below). A
   sign-in, a refreshed token and a sign-out are pushed at once, and a token pulled from another device signs the site
   in with no prompt. Before refreshing, Sync is pulled first, since another device may have rotated the token (and
@@ -560,17 +560,17 @@ them playing within the hour with a channel on air in the sample guide.
 ## Limits of a browser
 
 - **Mixed content:** a page served over HTTPS can't reach an `http://` server. Use HTTPS for your
-  Jellyfin/Emby/Plex server, or run Flow locally (`npm run preview`) to reach one on your network.
+  Jellyfin/Emby/Plex server, or run Marquee locally (`npm run preview`) to reach one on your network.
 - **CORS:** TMDB, Trakt, Stremio add-ons, Jellyfin, Emby and Plex all allow browser requests (a WebDAV share has to be set to; see Media servers). Some IPTV
   playlists and file hosts don't (most debrid download servers send no CORS headers), and those can't
   be read from a web page. Settings → Playback has a **Stream Proxy** field: a proxy you run fetches
-  such files for Flow and adds the headers. `proxy/` holds a Cloudflare Worker for it
-  (`proxy/README.md`), and MediaFlow Proxy works too. Flow uses it only for hosts that need it.
+  such files for Marquee and adds the headers. `proxy/` holds a Cloudflare Worker for it
+  (`proxy/README.md`), and MediaFlow Proxy works too. Marquee uses it only for hosts that need it.
 - **Codecs:** browsers can't decode DTS or TrueHD audio, and some have no Dolby Digital decoder
-  either (Chrome on Linux and Firefox). Flow plays another audio track when the file has one that
+  either (Chrome on Linux and Firefox). Marquee plays another audio track when the file has one that
   plays as it is. Otherwise it converts the sound: a Web Worker decodes it with FFmpeg's decoders
   (WebAssembly) and WebCodecs' `AudioEncoder` makes Opus of it, which the page plays. That
-  needs a browser that can encode Opus (Chrome, Edge, Firefox and Safari 26) and a file Flow can
+  needs a browser that can encode Opus (Chrome, Edge, Firefox and Safari 26) and a file Marquee can
   read: not one behind a host that blocks web pages and no stream proxy. Converted sound is 5.1
   where the browser can play it and the output device has the speakers for it (7.1 is mixed down to 5.1);
   otherwise stereo (surround is mixed down), and the audio menu says which. If the conversion fails, the picture

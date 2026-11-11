@@ -1,4 +1,4 @@
-/* X-Ray: a flat ink panel with a 3px paper rule beside the picture (a wide window) or a sheet over its lower part (a
+/* X-Ray: a flat ink panel with a 2px paper rule beside the picture (a wide window) or a sheet over its lower part (a
    phone held upright). Solid, not the 94% panel colour, because the subtitle line is kept clear of it and nothing
    should show through. Photos are square frames, names are in Plex Mono, headings in Plex Sans Condensed, characters
    muted; blue is the focus ring, the pointer, and the check on the scene that is playing. */
@@ -19,7 +19,7 @@
   flex-direction: column;
   min-height: 0;
   background: var(--bg);
-  border: 3px solid var(--fg);
+  border: var(--rule);
   overflow: hidden;
   animation: appear var(--dur-state) var(--ease-out);
 }
@@ -67,7 +67,7 @@
   display: grid;
   place-items: center;
   color: var(--muted);
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 .iconButton:hover { background: var(--blue); color: var(--onblue); }
 /* Back, in the person's page: the arrow and where it goes. */
@@ -81,7 +81,7 @@
   font: 600 var(--fs-small) / 1 var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 .back:hover { background: var(--blue); color: var(--onblue); }
 
@@ -90,7 +90,7 @@
   display: flex;
   gap: 6px;
   padding: 0 16px 12px;
-  border-bottom: 3px solid var(--fg);
+  border-bottom: var(--rule);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -100,12 +100,12 @@
   flex: none;
   height: 36px;
   padding: 0 14px;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   color: var(--fg);
   font: 600 var(--fs-small) / 1 var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 .tab:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); }
 .tab[aria-selected='true'] { background: var(--fg); color: var(--bg); }
@@ -151,14 +151,14 @@
   padding: 8px 16px;
   text-align: left;
   scroll-snap-align: start;
-  transition: background-color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease;
 }
 .row:hover, .row:active { background: var(--blue); color: var(--onblue); }
 .row:hover .role, .row:active .role { color: var(--onblue); }
 .face {
   width: 44px;
   aspect-ratio: 3 / 4;
-  border: 2px solid var(--fg);
+  border: var(--rule-thin);
   background: var(--tint-2);
 }
 .who { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -183,7 +183,7 @@
   min-height: 48px;
   padding: 8px 16px;
   text-align: left;
-  transition: background-color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease;
 }
 .scene:hover, .scene:active { background: var(--blue); color: var(--onblue); }
 .scene:hover :is(.sceneTime, .check), .scene:active :is(.sceneTime, .check) { color: var(--onblue); }
@@ -198,7 +198,7 @@
 .portrait {
   width: 96px;
   aspect-ratio: 2 / 3;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   background: var(--tint-2);
 }
 .personWho { min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-bottom: 2px; }
@@ -241,8 +241,8 @@
 .poster {
   width: 100%;
   aspect-ratio: 2 / 3;
-  border: 2px solid var(--fg);
-  transition: opacity var(--dur-state) ease;
+  border: var(--rule-thin);
+  transition: opacity var(--dur-hover) ease;
 }
 .also a:hover .poster { opacity: 0.85; }
 .foot { display: flex; align-items: center; gap: 8px; }
