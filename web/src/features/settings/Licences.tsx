@@ -1,4 +1,4 @@
-import { ffmpeg, libraries, typefaces } from '../../lib/licences'
+import { ffmpeg, libraries, models, typefaces } from '../../lib/licences'
 import { Group, Row } from './controls'
 
 /* Open Source Licences: what the website is built from, under which licence, and where the source is. FFmpeg's decoders
@@ -36,6 +36,16 @@ export function Licences() {
             {link(lib.url, 'Source')}
           </Row>
         ))}
+      </Group>
+      <Group title="Face Recognition" footer="X-Ray’s Recognise Faces runs two small neural networks, with ONNX Runtime as WebAssembly, on this device: no picture or face is sent anywhere. Both are served from Flow’s own files. The runtime’s own licence and those of the parts built into it are in the third-party notices.">
+        {models.map((m) => (
+          <Row key={m.name} label={m.name} detail={`${m.licence} · ${m.use}`}>
+            {link(m.url, 'Source')} {link(`${base}licences/${m.file}`, 'Licence')}
+          </Row>
+        ))}
+        <Row label="ONNX Runtime" detail="MIT, and the notices of what is built into it">
+          {link(`${base}licences/MIT-ONNX-Runtime.txt`, 'Licence')} {link(`${base}licences/ONNX-Runtime-ThirdPartyNotices.txt`, 'Notices')}
+        </Row>
       </Group>
       <Group title="Typefaces" footer="All under the SIL Open Font License 1.1, self-hosted: Flow asks no font service for anything.">
         {typefaces.map((face) => (

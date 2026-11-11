@@ -5,6 +5,7 @@ import { Artwork } from '../../../components/Artwork'
 import { Icon } from '../../../components/Icon'
 import { PlayerIcon } from '../playerIcons'
 import { q } from '../../../lib/queries'
+import { useSettings } from '../../../lib/store/settings'
 import type { CastMember, MediaType, Person } from '../../../lib/tmdb/types'
 import { lifeLine } from '../../person/logic'
 import { chapterAt, chapterTitle } from '../chapters'
@@ -13,6 +14,8 @@ import { keepFocus } from '../Controls'
 import { clock } from '../format'
 import { episodeCredits } from './credits'
 import { fetchedDialogue } from './dialogue'
+import { sceneView, type SceneView } from './faces/scene'
+import { useFaceScene } from './faces/useFaceScene'
 import { crewOf, inScene, type DialogueCue } from './xray'
 import s from './XRayPanel.module.css'
 
@@ -56,7 +59,12 @@ export function XRayPanel({ controller, type, id, season, episode }: XRayProps) 
     ...(chapters.length > 0 ? [{ id: 'scenes' as const, label: 'Scenes' }] : []),
   ]
 
-  const { scene, reads } = useScene(controller, `${type}:${id}:${season ?? ''}:${episode ?? ''}`, cast, subtitleId)
+  const named = useScene(controller, `${type}:${id}:${season ?? ''}:${episode ?? ''}`, cast, subtitleId)
+  // Who the faces on screen are comes first; the dialogue's guess is what is left when no face was matched.
+  const recognise = useSettings((x) => x.recogniseFaces !== false)
+  const faces = useFaceScene(controller, cast, recognise)
+  const view = sceneView({ state: faces.state, fromFaces: faces.matched.length, fromDialogue: named.scene.length, reads: named.reads, loaded: !loading })
+  const scene = view.basis === 'faces' ? faces.matched : named.scene
   useEffect(() => {
     if (scene.length > 0 && !chose.current) setTab('scene')
   }, [scene.length])
@@ -139,7 +147,7 @@ export function XRayPanel({ controller, type, id, season, episode }: XRayProps) 
             ))}
           </div>
           <div className={s.body} id="xray-body" role="tabpanel" aria-labelledby={`xray-tab-${tab}`}>
-            {tab === 'scene' && <InScene scene={scene} reads={reads} loaded={!loading} onOpen={openPerson} />}
+            {tab === 'scene' && <InScene scene={scene} view={view} onOpen={openPerson} />}
             {tab === 'cast' && <Cast cast={cast} crew={crew} loading={loading} failed={detail.isError && cast.length === 0} onOpen={openPerson} />}
             {tab === 'scenes' && <Scenes controller={controller} />}
           </div>
@@ -203,21 +211,17 @@ function useScene(controller: PlayerController, key: string, cast: CastMember[],
   return { scene, reads }
 }
 
-function InScene({ scene, reads, loaded, onOpen }: { scene: CastMember[]; reads: boolean | undefined; loaded: boolean; onOpen: (m: CastMember) => void }) {
-  if (scene.length > 0)
-    return (
-      <>
-        {scene.map((m) => (
-          <PersonRow key={m.id} member={m} onOpen={onOpen} />
-        ))}
-        <p className={s.note} data-after="">
-          Named in the last few minutes of dialogue.
-        </p>
-      </>
-    )
-  if (!loaded || reads === undefined) return <p className={s.note} role="status">Reading the dialogue…</p>
-  if (!reads) return <p className={s.note}>Turn on subtitles, or add a subtitle service in Settings, and X-Ray names who’s in each scene.</p>
-  return <p className={s.note}>No one’s been named in the last few minutes.</p>
+function InScene({ scene, view, onOpen }: { scene: CastMember[]; view: SceneView; onOpen: (m: CastMember) => void }) {
+  return (
+    <>
+      {scene.map((m) => (
+        <PersonRow key={m.id} member={m} onOpen={onOpen} />
+      ))}
+      <p className={s.note} data-after={scene.length > 0 ? '' : undefined} role={view.busy ? 'status' : undefined}>
+        {view.note}
+      </p>
+    </>
+  )
 }
 
 function Cast({ cast, crew, loading, failed, onOpen }: { cast: CastMember[]; crew: CastMember[]; loading: boolean; failed: boolean; onOpen: (m: CastMember) => void }) {

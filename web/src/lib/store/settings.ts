@@ -193,6 +193,9 @@ export interface Settings {
   /** X-Ray (who's in the scene, the cast and crew, the scenes) opens beside the picture whenever playback is paused; the
    *  apps' `playback.xrayWhenPaused`. Absent means on. */
   xrayWhenPaused?: boolean
+  /** X-Ray's In Scene names who is on screen by recognising the faces in the picture, on this device, and matching them to the
+   *  cast's photos; off, it reads the dialogue only. Absent means on. */
+  recogniseFaces?: boolean
   /** Play Dolby Vision files as their HDR10 picture (MKV files Flow plays itself). */
   neverUseDolbyVision?: boolean
   /** Rank HDR releases first when the screen shows HDR (the apps' `preferHDR`, on unless set); off ranks SDR first. */

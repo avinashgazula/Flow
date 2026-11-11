@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { ffmpeg, libraries, typefaces } from './licences'
+import { createHash } from 'node:crypto'
+import { ffmpeg, libraries, models, typefaces } from './licences'
 
 const path = (rel: string) => new URL(rel, import.meta.url)
 const read = (rel: string) => JSON.parse(readFileSync(path(rel), 'utf8')) as Record<string, unknown>
@@ -30,5 +31,15 @@ describe('open source licences', () => {
 
   it('serves the licence file of every typeface', () => {
     for (const face of typefaces) expect(existsSync(path(`../../public/fonts/${face.file}`)), face.file).toBe(true)
+  })
+
+  it('ships the face models it names, byte for byte, with their licence texts', () => {
+    for (const m of models) {
+      const bytes = readFileSync(path(`../features/player/xray/faces/models/${m.shipped}`))
+      expect({ name: m.name, sha256: createHash('sha256').update(bytes).digest('hex') }).toEqual({ name: m.name, sha256: m.sha256 })
+      expect(existsSync(path(`../../public/licences/${m.file}`)), m.file).toBe(true)
+    }
+    expect(existsSync(path('../../public/licences/MIT-ONNX-Runtime.txt'))).toBe(true)
+    expect(existsSync(path('../../public/licences/ONNX-Runtime-ThirdPartyNotices.txt'))).toBe(true)
   })
 })

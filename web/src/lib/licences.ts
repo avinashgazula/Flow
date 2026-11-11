@@ -32,7 +32,43 @@ export const libraries: Licence[] = [
   { package: '@fontsource/ibm-plex-mono', name: 'IBM Plex Mono (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Interface text and labels' },
   { package: '@fontsource/ibm-plex-sans-condensed', name: 'IBM Plex Sans Condensed (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Headings and titles in lists' },
   { package: '@fontsource/ibm-plex-serif', name: 'IBM Plex Serif (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Reading text' },
+  { package: 'onnxruntime-web', name: 'ONNX Runtime Web', version: '1.31.1', licence: 'MIT', url: 'https://github.com/microsoft/onnxruntime', use: 'Running the face models in X-Ray, as WebAssembly' },
   { package: 'jassub', name: 'JASSUB', version: '2.5.18', licence: 'LGPL-2.1-or-later AND (FTL OR GPL-2.0-or-later) AND MIT AND MIT-Modern-Variant AND ISC AND NTP AND Zlib AND BSL-1.0', url: 'https://github.com/ThaUnknown/jassub', use: 'Drawing ASS subtitles: libass and its libraries, as WebAssembly' },
+]
+
+/** The two neural networks behind X-Ray's face recognition, each served from the site's own files. `sha256` is the file as shipped;
+ *  web/scripts/prepare-face-models.py makes it from the OpenCV Zoo's original. */
+export interface Model {
+  name: string
+  licence: string
+  /** The licence text served beside the site (public/licences). */
+  file: string
+  url: string
+  use: string
+  /** The shipped file under src/features/player/xray/faces/models, and its SHA-256. */
+  shipped: string
+  sha256: string
+}
+
+export const models: Model[] = [
+  {
+    name: 'YuNet',
+    licence: 'MIT',
+    file: 'MIT-YuNet.txt',
+    url: 'https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet',
+    use: 'Finding the faces in a frame (face_detection_yunet_2026may.onnx, unchanged), by Shiqi Yu and the libfacedetection authors',
+    shipped: 'yunet.onnx',
+    sha256: 'ebafce4e3c118d6554634be5c27ab333b4c047a9a8c3faf1d7cf93101c22f0f0',
+  },
+  {
+    name: 'SFace',
+    licence: 'Apache-2.0',
+    file: 'Apache-2.0-SFace.txt',
+    url: 'https://github.com/opencv/opencv_zoo/tree/main/models/face_recognition_sface',
+    use: 'Making a print of a face to compare with the cast’s (face_recognition_sface_2021dec_int8bq.onnx with its unused weight inputs removed), by Yaoyao Zhong and the OpenCV Zoo contributors',
+    shipped: 'sface-int8.onnx',
+    sha256: '487a139eb85ccd5ff30aef7d0add7f12d2bb7abb90c5f08a7f481b452a660e00',
+  },
 ]
 
 /** The typefaces Flow is set in, each with the licence file served beside it (public/fonts). */

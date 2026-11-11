@@ -76,6 +76,7 @@ export const rowKeywords: Record<string, string> = {
   'post-credits scene alert': 'credits scene stinger marvel',
   'because you watched': 'suggestions recommendations credits',
   'show x-ray when paused': 'xray cast crew scene who',
+  'recognise faces': 'xray face recognition scene who actors on screen privacy',
   'try the next source automatically': 'failure fallback source fails',
   'mkv files': 'matroska remux external player',
   'player': 'external player infuse vlc outplayer',

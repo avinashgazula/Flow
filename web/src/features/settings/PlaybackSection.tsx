@@ -223,6 +223,7 @@ export function PlaybackSection() {
   const postCredits = useSettings((x) => x.postCreditsAlert !== false)
   const becauseYouWatched = useSettings((x) => x.becauseYouWatched !== false)
   const xrayWhenPaused = useSettings((x) => x.xrayWhenPaused !== false)
+  const recogniseFaces = useSettings((x) => x.recogniseFaces !== false)
   const externalPlayer = useSettings((x) => x.externalPlayer ?? 'none')
   // One primitive each: a selector that built an object would be a new snapshot every time.
   const askToResume = useSettings((x) => playbackPreferences(x).askToResume)
@@ -425,9 +426,12 @@ export function PlaybackSection() {
           <Switch label="Because you watched" checked={becauseYouWatched} onChange={(on) => settingsStore.set({ becauseYouWatched: on })} />
         </Row>
       </Group>
-      <Group title="X-Ray" footer="X-Ray shows the cast and crew, jumps to scenes, and names who is in the scene from the last minutes of dialogue. Open it with the X-Ray button or by pressing X.">
+      <Group title="X-Ray" footer="X-Ray shows the cast and crew, jumps to scenes, and names who is in the scene. Recognise Faces finds the faces in the picture and matches them to the cast’s photos, on this device: no picture, face or photo leaves it. It downloads about 15 MB the first time. When it can’t, or off, X-Ray names who the last minutes of dialogue mention. Open X-Ray with its button or by pressing X.">
         <Row label="Show X-Ray When Paused">
           <Switch label="Show X-Ray when paused" checked={xrayWhenPaused} onChange={(on) => settingsStore.set({ xrayWhenPaused: on })} />
+        </Row>
+        <Row label="Recognise Faces">
+          <Switch label="Recognise faces" checked={recogniseFaces} onChange={(on) => settingsStore.set({ recogniseFaces: on })} />
         </Row>
       </Group>
       {platform && (
