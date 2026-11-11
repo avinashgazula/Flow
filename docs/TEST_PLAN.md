@@ -1,4 +1,4 @@
-# Flow test and improvement playbook
+# Marquee test and improvement playbook
 
 For Claude Code (or anyone) on a Mac with Xcode. Read `CLAUDE.md` first for commands and rules.
 This is the list of what to check, screen by screen and platform by platform, plus what has never
@@ -196,11 +196,11 @@ Redesigned in October 2026 as a plain table: no Best Match card, no sparkles or 
   - MKV remux: H.264, HEVC, AV1 on supported hardware.
   - Dolby Vision 5 and 8. Profile 7 converted to 8.1.
   - DTS and TrueHD decoded to FLAC.
-  - PGS subtitles drawn by Flow. ASS styling.
+  - PGS subtitles drawn by Marquee. ASS styling.
 
 ### Player: Apple TV
 
-- The system player with Flow's subtitle layer, and info panel tabs **X-Ray** (faces in a row,
+- The system player with Marquee's subtitle layer, and info panel tabs **X-Ray** (faces in a row,
   In This Scene first) and **Details**. *The X-Ray tab has never been seen.*
 - **Transport bar menu:** Disc Subtitles, Search Subtitles, What Did They Say?, Identify Song,
   Auto-sync. Skip segments, More Like This and Up Next appear as contextual buttons (tvOS cuts
@@ -371,7 +371,7 @@ Smaller:
 - A Stats share card.
 - Calendar events that update when air dates change.
 
-Judge any idea by whether it makes Flow simpler to use, not just bigger.
+Judge any idea by whether it makes Marquee simpler to use, not just bigger.
 
 ## Session handover
 
@@ -384,7 +384,7 @@ Commits on `claude/build-flow-app` describe each fix; `git log` is the full reco
   points even when the player has turned the screen to landscape. Attach it to the right device first.
 - AXe: `axe describe-ui --udid <udid>` reads the accessibility tree and is the way to check
   VoiceOver labels. It can time out just after a simulator boots; try again a minute later.
-- Apple TV: use the tvOS 26.5 Apple TV 4K simulator, as the tour does. On the tvOS 27 simulator Flow
+- Apple TV: use the tvOS 26.5 Apple TV 4K simulator, as the tour does. On the tvOS 27 simulator Marquee
   launches in the background, and `sim.sh` picks the newest runtime, so run it as
   `SIM_UDID=<the 26.5 Apple TV's udid> scripts/sim.sh run tvos` (`xcrun simctl list devices` shows it). The Simulator app can't be scripted here, so there are no remote presses:
   reach Apple TV screens through deep links and ScreenshotTour steps.
@@ -404,7 +404,7 @@ Commits on `claude/build-flow-app` describe each fix; `git log` is the full reco
 
 **Keys**
 - Config/Secrets.xcconfig has real TMDB and TVDB keys. Its Trakt, Simkl and bundle-id lines are still
-  the example placeholders, which Flow now treats as no key. Trakt and Simkl testing waits on real keys.
+  the example placeholders, which Marquee now treats as no key. Trakt and Simkl testing waits on real keys.
 - The local bundle id is `com.yourname.flow`; the tour script reads whichever was built.
 
 **Added in these sessions** (all with FlowKit tests where there's logic)
@@ -442,7 +442,7 @@ Commits on `claude/build-flow-app` describe each fix; `git log` is the full reco
   current tab grows into a white pill with its name. The system `TabView` still holds the tabs (its
   bar is hidden on iPhone), so each tab keeps its place. Search's field sits under its title on iPhone.
   iPad keeps the system top bar; Mac and Apple TV are unchanged. Don't bring back the stock bar: the
-  owner asked for Flow to look like itself rather than the app it was modelled on.
+  owner asked for Marquee to look like itself rather than the app it was modelled on.
 - Lists of choices are grouped tables (`Flow/Components/GroupedTable.swift`): one surface, hairlines,
   table-cell highlight, white focused rows on Apple TV. The source picker, Live TV and Sports use it.
 - A title's page ends with one About table (essentials always; the rest with Settings → General → About).

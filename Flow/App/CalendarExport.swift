@@ -46,7 +46,7 @@ enum CalendarExport {
                                   end: day == nil ? e.end : nil, notes: e.notes, url: e.url)
         }
         guard !events.isEmpty else { return nil }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Flow Upcoming.ics")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Marquee Upcoming.ics")
         do { try Data(ICalendar.build(events).utf8).write(to: url, options: .atomic) } catch { return nil }
         return url
     }
@@ -57,7 +57,7 @@ enum CalendarExport {
     static func add(item: MediaItem, episode: Episode?, date: Date, model: AppModel) async {
         switch await save(event(item: item, episode: episode, date: date)) {
         case .added: model.showToast("Added to Calendar")
-        case .denied: model.showToast("Flow can't add to your calendar. Allow access in Settings.")
+        case .denied: model.showToast("Marquee can't add to your calendar. Allow access in Settings.")
         case .failed: model.showToast("Couldn't add to your calendar.")
         }
     }

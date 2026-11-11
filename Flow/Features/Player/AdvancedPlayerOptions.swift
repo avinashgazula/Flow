@@ -53,7 +53,7 @@ struct AdvancedPlayerOptions: View {
                 } header: {
                     FilmSectionHeader("Subtitles")
                 } footer: { FilmFooter {
-                    Text("Font, size, colour, edge, background and position apply to subtitles Flow draws itself. Weight, opacity and ASS styling are in Settings.")
+                    Text("Font, size, colour, edge, background and position apply to subtitles Marquee draws itself. Weight, opacity and ASS styling are in Settings.")
                 } }
                 Section {
                     volumeBoost
@@ -101,7 +101,7 @@ struct AdvancedPlayerOptions: View {
             }
             .buttonStyle(.borderless)
             .disabled(session.subtitle == nil)
-            Text("Positive shows subtitles later. Only for subtitles Flow loads itself.")
+            Text("Positive shows subtitles later. Only for subtitles Marquee loads itself.")
                 .font(Theme.Typeface.caption)
                 .foregroundStyle(Theme.Palette.textSecondary)
             if session.canAutoSync {

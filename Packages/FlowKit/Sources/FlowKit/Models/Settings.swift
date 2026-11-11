@@ -64,6 +64,8 @@ public enum AccentColorChoice: String, Codable, Hashable, Sendable, CaseIterable
 
 public struct GeneralSettings: Codable, Hashable, Sendable {
     public var accent: AccentColorChoice = .white
+    /// Light or dark paper; System follows the device (Apple TV always does).
+    public var appearance: AppearanceChoice = .system
     public var startTab: AppTab = .home
     public var showPosterTitles = true
     public var heroAutoAdvance = true
@@ -130,6 +132,12 @@ public enum HeroStyle: String, Codable, Hashable, Sendable, CaseIterable, Identi
     case fullscreen
     public var id: String { rawValue }
     public var title: String { self == .card ? "Card" : "Fullscreen" }
+}
+
+public enum AppearanceChoice: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case system, light, dark
+    public var id: String { rawValue }
+    public var title: String { rawValue.capitalized }
 }
 
 public enum AppIconChoice: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
@@ -823,7 +831,7 @@ public enum MatroskaPlayback: String, Codable, Hashable, Sendable, CaseIterable,
     /// Send MKV files to the external player chosen below.
     case external
     public var id: String { rawValue }
-    public var title: String { self == .remux ? "Play in Flow" : "External Player" }
+    public var title: String { self == .remux ? "Play in Marquee" : "External Player" }
 }
 
 public struct PlaybackSettings: Codable, Hashable, Sendable {

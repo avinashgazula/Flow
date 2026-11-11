@@ -28,7 +28,7 @@ struct FlowApp: App {
                 .environment(model)
                 .tint(model.settings.general.accent.tint)
                 .switchTint(model.settings.general.accent)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(model.settings.general.appearance.colorScheme)
                 .onOpenURL { url in model.handle(url: url) }
                 .task(id: ObjectIdentifier(model)) {
                     await model.start()
@@ -119,7 +119,7 @@ struct FlowApp: App {
             }
             .environment(model)
             .frame(minWidth: 640, minHeight: 560)
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(model.settings.general.appearance.colorScheme)
         }
         // Title and toolbar share one bar; the default stacks them into a tall strip around a lone back button.
         .windowToolbarStyle(.unifiedCompact)

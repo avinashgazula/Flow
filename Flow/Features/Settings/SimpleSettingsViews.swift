@@ -2,7 +2,7 @@ import SwiftUI
 import FlowKit
 import FlowDecoders
 
-/// Third-party software Flow ships, with its licence (FFmpeg, LGPL 2.1). A list rather than one long
+/// Third-party software Marquee ships, with its licence (the typefaces, OFL 1.1; FFmpeg, LGPL 2.1). A list rather than one long
 /// text so it scrolls with the Siri Remote too.
 struct LicencesView: View {
     private let paragraphs: [String] = FFmpegLicence.text
@@ -12,6 +12,10 @@ struct LicencesView: View {
 
     var body: some View {
         FilmList {
+            Section(film: "Typefaces") {
+                Text("Archivo (Omnibus-Type), IBM Plex Mono, IBM Plex Sans Condensed and IBM Plex Serif (IBM) are set in Marquee under the SIL Open Font License 1.1. The fonts are free to use, study, modify and share; they may not be sold on their own. Archivo: Copyright 2020 The Archivo Project Authors (github.com/Omnibus-Type/Archivo). IBM Plex: Copyright 2017 IBM Corp., with Reserved Font Name \"Plex\" (github.com/IBM/plex). The full licence is bundled with the fonts.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
             Section(film: "FFmpeg") {
                 Text(FFmpegLicence.notice)
             }
@@ -39,9 +43,14 @@ struct GeneralSettingsView: View {
             NotificationsSection()
             #endif
             Section(film: "Appearance") {
+                #if !os(tvOS)
+                FilmPicker("Theme", selection: $model.settings.general.appearance) {
+                    ForEach(AppearanceChoice.allCases) { Text($0.title).tag($0) }
+                }
+                #endif
                 FilmPicker("Accent Colour", selection: $model.settings.general.accent) {
                     ForEach(AccentColorChoice.allCases) { choice in
-                        Label(choice == .white ? "Flow" : choice.rawValue.capitalized, systemImage: "circle.fill").foregroundStyle(choice.color).tag(choice)
+                        Label(choice == .white ? "Marquee" : choice.rawValue.capitalized, systemImage: "circle.fill").foregroundStyle(choice.color).tag(choice)
                     }
                 }
                 Toggle("Show Watched Check Marks", isOn: $model.settings.general.showWatchedBadges)
@@ -176,7 +185,7 @@ struct PlaybackSettingsView: View {
             } header: {
                 FilmSectionHeader("Dolby Vision")
             } footer: { FilmFooter {
-                Text("Never Use Dolby Vision plays its HDR10 picture instead (profile 5, which has none, still plays as Dolby Vision). Profile 7, from UHD Blu-ray remuxes, can't play as Dolby Vision on Apple devices; converting keeps the HDR10 picture and the Dolby Vision metadata for each shot, as profile 8.1. Off plays it as plain HDR10. Applies to MKV files Flow plays itself.")
+                Text("Never Use Dolby Vision plays its HDR10 picture instead (profile 5, which has none, still plays as Dolby Vision). Profile 7, from UHD Blu-ray remuxes, can't play as Dolby Vision on Apple devices; converting keeps the HDR10 picture and the Dolby Vision metadata for each shot, as profile 8.1. Off plays it as plain HDR10. Applies to MKV files Marquee plays itself.")
             } }
             Section(film: "Loading Screen") {
                 Toggle("Show Progress Bar", isOn: $model.settings.playback.showLoadingProgress)
@@ -221,7 +230,7 @@ struct PlaybackSettingsView: View {
             } header: {
                 FilmSectionHeader("Films")
             } footer: { FilmFooter {
-                Text("When a film has a scene during or after its credits, Flow says so as they begin and won't skip them by itself. Because You Watched suggests what to watch next as the credits roll, and when the film ends.")
+                Text("When a film has a scene during or after its credits, Marquee says so as they begin and won't skip them by itself. Because You Watched suggests what to watch next as the credits roll, and when the film ends.")
             } }
             Section(film: "Resume & Progress") {
                 Toggle("Ask Before Resuming", isOn: $model.settings.playback.askToResume)
@@ -289,7 +298,7 @@ struct PlaybackSettingsView: View {
             } header: {
                 FilmSectionHeader("Formats")
             } footer: { FilmFooter {
-                Text("Flow plays MKV files itself by repackaging them on the fly for Apple's player, without re-encoding: HDR, Dolby Vision, Dolby Atmos, embedded and disc subtitles and chapters all come through, and DTS and TrueHD are decoded to lossless FLAC. When a file still can't play, Flow moves to the next source or offers your external player.")
+                Text("Marquee plays MKV files itself by repackaging them on the fly for Apple's player, without re-encoding: HDR, Dolby Vision, Dolby Atmos, embedded and disc subtitles and chapters all come through, and DTS and TrueHD are decoded to lossless FLAC. When a file still can't play, Marquee moves to the next source or offers your external player.")
             } }
             #if os(iOS) || os(macOS)
             Section {
@@ -302,7 +311,7 @@ struct PlaybackSettingsView: View {
             } header: {
                 FilmSectionHeader("Player")
             } footer: { FilmFooter {
-                Text("Another player gets the stream's link (Infuse also the resume point). Flow tracks progress only in its own player.")
+                Text("Another player gets the stream's link (Infuse also the resume point). Marquee tracks progress only in its own player.")
             } }
             #endif
         }
@@ -329,7 +338,7 @@ struct SubtitleSettingsView: View {
             } header: {
                 FilmSectionHeader("Auto-sync (Beta)")
             } footer: { FilmFooter {
-                Text("Aligns out-of-sync subtitles to the dialogue. Turn it on, start playback, and an Auto-sync action appears in the player's subtitle options after a minute of watching. Works with subtitles Flow loads itself, on files Flow plays itself (MKVs).")
+                Text("Aligns out-of-sync subtitles to the dialogue. Turn it on, start playback, and an Auto-sync action appears in the player's subtitle options after a minute of watching. Works with subtitles Marquee loads itself, on files Marquee plays itself (MKVs).")
             } }
             Section {
                 ForEach(Self.languageOptions, id: \.0) { code, name in
@@ -394,7 +403,7 @@ struct MetadataSettingsView: View {
             } header: {
                 FilmSectionHeader("Availability")
             } footer: { FilmFooter {
-                Text("Switch this off and Flow uses TMDB release dates to drop titles you can't play yet — a film with only a cinema release, or one that hasn't opened at all — from home shelves, the hero, Show All, Discover and the trending rows.\n\nRows that exist to show what's coming are left alone: watchlists, Continue Watching, Upcoming, Now Playing, Anticipated, calendars, and any Discover shelf you pointed at future dates. Search still finds everything, so you can add a title before it's out.")
+                Text("Switch this off and Marquee uses TMDB release dates to drop titles you can't play yet — a film with only a cinema release, or one that hasn't opened at all — from home shelves, the hero, Show All, Discover and the trending rows.\n\nRows that exist to show what's coming are left alone: watchlists, Continue Watching, Upcoming, Now Playing, Anticipated, calendars, and any Discover shelf you pointed at future dates. Search still finds everything, so you can add a title before it's out.")
             } }
             Section(film: "Source") {
                 FilmPicker("Primary Source", selection: $model.settings.metadata.primarySource) {
@@ -425,7 +434,7 @@ struct MetadataSettingsView: View {
             } header: {
                 FilmSectionHeader("TVDB API Key")
             } footer: { FilmFooter {
-                Text("Needed for the TVDB episode source. Without it Flow falls back to TMDB ordering.")
+                Text("Needed for the TVDB episode source. Without it Marquee falls back to TMDB ordering.")
             } }
             Section {
                 Toggle("Prefetch on Detail View", isOn: $model.settings.metadata.prefetchOnDetail)

@@ -196,7 +196,7 @@ struct AddServerView: View {
                     HStack { Text("Link Plex Account"); if working { Spacer(); ProgressView() } }
                 }
             } footer: { FilmFooter {
-                Text("You'll get a 4-character code to enter at plex.tv/link. Flow then finds the servers on your account.")
+                Text("You'll get a 4-character code to enter at plex.tv/link. Marquee then finds the servers on your account.")
             } }
         }
     }

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Flow</string>
+	<string>Marquee</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
+	<string>Marquee</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -61,14 +61,25 @@
 		<true/>
 	</dict>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
-	<string>Flow adds the episodes and films you choose to your calendar.</string>
+	<string>Marquee adds the episodes and films you choose to your calendar.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Flow connects to media servers, WebDAV shares and IPTV providers on your local network.</string>
+	<string>Marquee connects to media servers, WebDAV shares and IPTV providers on your local network.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>To name the song that's playing, Flow listens for a few seconds when it can't read the soundtrack itself.</string>
+	<string>To name the song that's playing, Marquee listens for a few seconds when it can't read the soundtrack itself.</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>app.flow.title</string>
+	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Fonts/Archivo-Bold.ttf</string>
+		<string>Fonts/IBMPlexMono-Regular.ttf</string>
+		<string>Fonts/IBMPlexMono-SemiBold.ttf</string>
+		<string>Fonts/IBMPlexSansCondensed-SemiBold.ttf</string>
+		<string>Fonts/IBMPlexSansCondensed-Bold.ttf</string>
+		<string>Fonts/IBMPlexSerif-Regular.ttf</string>
+		<string>Fonts/IBMPlexSerif-SemiBold.ttf</string>
+		<string>Fonts/IBMPlexSerif-Italic.ttf</string>
 	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
@@ -80,8 +91,6 @@
 	<true/>
 	<key>UILaunchScreen</key>
 	<dict/>
-	<key>UIStatusBarStyle</key>
-	<string>UIStatusBarStyleLightContent</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -95,7 +104,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>UIUserInterfaceStyle</key>
-	<string>Dark</string>
 </dict>
 </plist>

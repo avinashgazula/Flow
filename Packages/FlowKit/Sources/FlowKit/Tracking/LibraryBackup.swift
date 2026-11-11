@@ -41,9 +41,9 @@ public enum LibraryBackup {
         /// Each says what to do next.
         public var errorDescription: String? {
             switch self {
-            case .notJSON: return "That file isn't valid JSON. Choose a file exported from Flow."
-            case .notABackup: return "That isn't a Flow backup. Choose a file from Export Tracking Data, or a website backup."
-            case .newerVersion: return "That backup is from a newer version of Flow. Update Flow, then try again."
+            case .notJSON: return "That file isn't valid JSON. Choose a file exported from Marquee."
+            case .notABackup: return "That isn't a Marquee backup. Choose a file from Export Tracking Data, or a website backup."
+            case .newerVersion: return "That backup is from a newer version of Marquee. Update Marquee, then try again."
             case .empty: return "That backup has no watch history, lists or resume positions in it."
             }
         }

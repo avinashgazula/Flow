@@ -72,4 +72,14 @@ final class LastSourceTests: XCTestCase {
         let decoded = try SettingsCodec.decode(AppSettings.self, from: JSONSerialization.data(withJSONObject: object), defaults: AppSettings())
         XCTAssertTrue(decoded.sources.rememberLastSource)
     }
+
+    func testSettingsWithoutAppearanceFollowTheSystem() throws {
+        let data = try SettingsCodec.encode(AppSettings())
+        var object = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        var general = object["general"] as! [String: Any]
+        general.removeValue(forKey: "appearance")
+        object["general"] = general
+        let decoded = try SettingsCodec.decode(AppSettings.self, from: JSONSerialization.data(withJSONObject: object), defaults: AppSettings())
+        XCTAssertEqual(decoded.general.appearance, .system)
+    }
 }

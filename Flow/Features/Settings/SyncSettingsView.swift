@@ -109,7 +109,7 @@ struct SyncSettingsView: View {
                 .foregroundStyle(Theme.Palette.warn)
             }
         } header: {
-            FilmSectionHeader("Flow Sync")
+            FilmSectionHeader("Marquee Sync")
         } footer: { FilmFooter {
             Text(syncExplainer)
         } }
@@ -179,7 +179,7 @@ struct SyncPairingCard: View {
                         .foregroundStyle(Theme.Palette.text)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
-                    Text("Scan the code on your iPhone, iPad or Mac, or type this key into Flow on another device along with your server and token.")
+                    Text("Scan the code on your iPhone, iPad or Mac, or type this key into Marquee on another device along with your server and token.")
                         .font(.system(.title3))
                         .foregroundStyle(Theme.Palette.textSecondary)
                 }

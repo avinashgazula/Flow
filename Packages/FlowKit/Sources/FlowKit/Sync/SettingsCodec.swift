@@ -88,12 +88,12 @@ public enum SetupShare {
         if let text = String(data: input, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), !text.hasPrefix("{") {
             var payload = text
             if let components = URLComponents(string: text), let d = components.queryItems?.first(where: { $0.name == "d" })?.value { payload = d }
-            guard let decoded = decodeBase64URL(payload) else { throw FlowError.decoding("Not a Flow setup") }
+            guard let decoded = decodeBase64URL(payload) else { throw FlowError.decoding("Not a Marquee setup") }
             data = decoded
         }
         let defaults = SetupBundle(settings: AppSettings(), credentials: nil)
         let bundle = try SettingsCodec.decode(SetupBundle.self, from: data, defaults: defaults)
-        guard bundle.format == "flow-setup" else { throw FlowError.decoding("Not a Flow setup") }
+        guard bundle.format == "flow-setup" else { throw FlowError.decoding("Not a Marquee setup") }
         var migrated = bundle
         migrated.settings = bundle.settings.migrated()
         return migrated

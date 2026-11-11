@@ -79,7 +79,7 @@ struct SubtitleAppearanceSections: View {
         } header: {
             FilmSectionHeader("Advanced")
         } footer: { FilmFooter {
-            Text("Draw ASS/SSA subtitles the way their author styled them (colour, weight, size and placement) instead of the settings above. Mostly matters for anime, whose subtitles style each sign and speaker differently. Karaoke and animated effects aren't drawn. Applies to subtitles Flow draws itself; anything a subtitle leaves unspecified keeps your settings.")
+            Text("Draw ASS/SSA subtitles the way their author styled them (colour, weight, size and placement) instead of the settings above. Mostly matters for anime, whose subtitles style each sign and speaker differently. Karaoke and animated effects aren't drawn. Applies to subtitles Marquee draws itself; anything a subtitle leaves unspecified keeps your settings.")
         } }
         Section {
             Button("Reset to Defaults", role: .destructive) { confirmingReset = true }

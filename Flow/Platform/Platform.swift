@@ -198,8 +198,8 @@ enum BundleKeys {
 extension AccentColorChoice {
     var color: Color {
         switch self {
-        // White was the old default; film-stock yellow takes its place as Flow's own accent.
-        case .white: return Theme.Palette.stock
+        // White was the old default; Marquee's action blue takes its place.
+        case .white: return Theme.Palette.blue
         case .blue: return .blue
         case .red: return .red
         case .orange: return .orange
@@ -704,15 +704,15 @@ struct FilmList<Content: View>: View {
 }
 
 #if os(iOS)
-/// UIKit controls SwiftUI can't restyle: segmented controls sit on base-3 with paper on the selected segment,
-/// instead of the system grey.
+/// UIKit controls SwiftUI can't restyle: segmented controls are paper with ink text and the selected
+/// segment inverted, instead of the system grey.
 enum FilmAppearance {
     static func install() {
         let control = UISegmentedControl.appearance()
-        control.backgroundColor = UIColor(Theme.Palette.control)
-        control.selectedSegmentTintColor = UIColor(Theme.Palette.lineStrong)
-        control.setTitleTextAttributes([.foregroundColor: UIColor(Theme.Palette.textSecondary)], for: .normal)
-        control.setTitleTextAttributes([.foregroundColor: UIColor(Theme.Palette.text)], for: .selected)
+        control.backgroundColor = Theme.Tones.bg.ui
+        control.selectedSegmentTintColor = Theme.Tones.fg.ui
+        control.setTitleTextAttributes([.foregroundColor: Theme.Tones.fg.ui], for: .normal)
+        control.setTitleTextAttributes([.foregroundColor: Theme.Tones.bg.ui], for: .selected)
     }
 }
 #endif

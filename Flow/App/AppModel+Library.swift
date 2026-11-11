@@ -399,7 +399,7 @@ extension AppModel {
     /// The on-device library as a JSON file in the temp directory, ready for a ShareLink.
     func exportTrackingData() -> URL? {
         guard let data = try? TrackingExport(library: localLibrary).json() else { return nil }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Flow Tracking Data.json")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Marquee Tracking Data.json")
         do { try data.write(to: url, options: .atomic) } catch { return nil }
         return url
     }

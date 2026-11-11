@@ -14,11 +14,11 @@ public struct PlexClient: MediaServerClient {
 
     static func plexHeaders(clientIdentifier: String, token: String? = nil) -> [String: String] {
         var h = [
-            "X-Plex-Product": "Flow",
+            "X-Plex-Product": "Marquee",
             "X-Plex-Version": "1.0",
             "X-Plex-Client-Identifier": clientIdentifier,
             "X-Plex-Platform": "iOS",
-            "X-Plex-Device-Name": "Flow",
+            "X-Plex-Device-Name": "Marquee",
             "Accept": "application/json",
         ]
         if let token { h["X-Plex-Token"] = token }
@@ -269,7 +269,7 @@ public struct PlexClient: MediaServerClient {
                     URLQueryItem(name: "directPlay", value: "0"), URLQueryItem(name: "directStream", value: "1"), URLQueryItem(name: "directStreamAudio", value: "1"),
                     URLQueryItem(name: "fastSeek", value: "1"), URLQueryItem(name: "session", value: UUID().uuidString),
                     URLQueryItem(name: "X-Plex-Client-Identifier", value: clientIdentifier), URLQueryItem(name: "X-Plex-Platform", value: "iOS"),
-                    URLQueryItem(name: "X-Plex-Product", value: "Flow"), URLQueryItem(name: "X-Plex-Token", value: token),
+                    URLQueryItem(name: "X-Plex-Product", value: "Marquee"), URLQueryItem(name: "X-Plex-Token", value: token),
                 ]
                 url = c.url!
             }

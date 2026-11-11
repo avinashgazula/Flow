@@ -137,15 +137,15 @@ struct LiveTVView: View {
             await store.load(providers: model.settings.liveTV.providers, refreshHours: model.settings.liveTV.epgRefreshHours, http: model.http)
         }
         #if os(macOS)
-        .sheet(item: $playing) { channel in LivePlayerView(channel: channel, epg: store.epg, lineup: visible, onTune: recordRecent).frame(minWidth: 800, minHeight: 450) }
+        .sheet(item: $playing) { channel in LivePlayerView(channel: channel, epg: store.epg, lineup: visible, onTune: recordRecent).darkScope().frame(minWidth: 800, minHeight: 450) }
         #elseif os(iOS)
         // Turns to landscape like films and episodes do (Settings → Playback → Auto Rotate).
         .rotatingCover(item: $playing, startsInLandscape: model.settings.playback.autoRotate) { channel, close in
-            LivePlayerView(channel: channel, epg: store.epg, lineup: visible, onTune: recordRecent, onClose: close)
+            LivePlayerView(channel: channel, epg: store.epg, lineup: visible, onTune: recordRecent, onClose: close).darkScope()
         }
         #else
         .fullScreenCover(item: $playing) { channel in
-            LivePlayerView(channel: channel, epg: store.epg, lineup: visible, onTune: recordRecent)
+            LivePlayerView(channel: channel, epg: store.epg, lineup: visible, onTune: recordRecent).darkScope()
         }
         #endif
     }

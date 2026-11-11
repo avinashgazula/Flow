@@ -526,7 +526,7 @@ final class PlaybackSession: Identifiable {
     private func scheduleSleep() {
         sleepTask?.cancel()
         guard case .minutes(let minutes) = sleepTimer else { return }
-        show(notice: "Flow will pause in \(minutes) minutes.")
+        show(notice: "Marquee will pause in \(minutes) minutes.")
         sleepTask = Task { [weak self] in
             // The last half minute fades out rather than cutting off mid-line.
             let fade = 30.0
@@ -566,7 +566,7 @@ final class PlaybackSession: Identifiable {
         source = next
         remuxCompatible = false
         keptTracks = nil
-        show(notice: "That source didn't work, so Flow is trying \(next.providerName)\(next.traits.resolution == .unknown ? "" : " " + next.traits.resolution.label).")
+        show(notice: "That source didn't work, so Marquee is trying \(next.providerName)\(next.traits.resolution == .unknown ? "" : " " + next.traits.resolution.label).")
         load(next)
     }
 

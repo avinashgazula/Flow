@@ -145,7 +145,7 @@ public struct HTTPClient: Sendable {
     public var transport: HTTPTransport
     public var userAgent: String
 
-    public init(transport: HTTPTransport = URLSessionTransport(), userAgent: String = "Flow/1.0") {
+    public init(transport: HTTPTransport = URLSessionTransport(), userAgent: String = "Marquee/1.0") {
         self.transport = transport
         self.userAgent = userAgent
     }

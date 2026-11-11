@@ -39,13 +39,17 @@ targetTemplates:
         excludes:
           - "Resources/Info-*.plist"
           - "Resources/*.entitlements"
+          - "Resources/Fonts"
+      # A folder reference keeps the faces together in the bundle, so UIAppFonts and ATSApplicationFontsPath can name them.
+      - path: Flow/Resources/Fonts
+        type: folder
       - path: Shared
     dependencies:
       - package: FlowKit
       - package: FlowDecoders
     settings:
       base:
-        INFOPLIST_KEY_CFBundleDisplayName: Flow
+        INFOPLIST_KEY_CFBundleDisplayName: Marquee
 
 targets:
   Flow-iOS:
@@ -64,7 +68,8 @@ targets:
     info:
       path: Flow/Resources/Info-iOS.plist
       properties: &commonInfo
-        CFBundleDisplayName: Flow
+        CFBundleDisplayName: Marquee
+        CFBundleName: Marquee
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         FlowTMDBAPIKey: $(FLOW_TMDB_API_KEY)
@@ -75,9 +80,9 @@ targets:
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
           NSAllowsArbitraryLoadsForMedia: true
-        NSCalendarsWriteOnlyAccessUsageDescription: Flow adds the episodes and films you choose to your calendar.
-        NSLocalNetworkUsageDescription: Flow connects to media servers, WebDAV shares and IPTV providers on your local network.
-        NSMicrophoneUsageDescription: To name the song that's playing, Flow listens for a few seconds when it can't read the soundtrack itself.
+        NSCalendarsWriteOnlyAccessUsageDescription: Marquee adds the episodes and films you choose to your calendar.
+        NSLocalNetworkUsageDescription: Marquee connects to media servers, WebDAV shares and IPTV providers on your local network.
+        NSMicrophoneUsageDescription: To name the song that's playing, Marquee listens for a few seconds when it can't read the soundtrack itself.
         CFBundleURLTypes:
           - CFBundleURLName: flow
             CFBundleURLSchemes: [flow]
@@ -85,11 +90,10 @@ targets:
         FlowAppGroup: group.$(FLOW_BUNDLE_ID)
         UILaunchScreen: {}
         UIBackgroundModes: [audio]
+        UIAppFonts: [Fonts/Archivo-Bold.ttf, Fonts/IBMPlexMono-Regular.ttf, Fonts/IBMPlexMono-SemiBold.ttf, Fonts/IBMPlexSansCondensed-SemiBold.ttf, Fonts/IBMPlexSansCondensed-Bold.ttf, Fonts/IBMPlexSerif-Regular.ttf, Fonts/IBMPlexSerif-SemiBold.ttf, Fonts/IBMPlexSerif-Italic.ttf]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UIApplicationSupportsIndirectInputEvents: true
-        UIStatusBarStyle: UIStatusBarStyleLightContent
-        UIUserInterfaceStyle: Dark
         LSSupportsOpeningDocumentsInPlace: true
         UIFileSharingEnabled: true
         LSApplicationQueriesSchemes: [infuse, vlc-x-callback, outplayer, SenPlayer, youtube]
@@ -111,7 +115,8 @@ targets:
     info:
       path: Flow/Resources/Info-macOS.plist
       properties:
-        CFBundleDisplayName: Flow
+        CFBundleDisplayName: Marquee
+        CFBundleName: Marquee
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         FlowTMDBAPIKey: $(FLOW_TMDB_API_KEY)
@@ -122,14 +127,15 @@ targets:
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
           NSAllowsArbitraryLoadsForMedia: true
-        NSCalendarsWriteOnlyAccessUsageDescription: Flow adds the episodes and films you choose to your calendar.
-        NSLocalNetworkUsageDescription: Flow connects to media servers, WebDAV shares and IPTV providers on your local network.
+        NSCalendarsWriteOnlyAccessUsageDescription: Marquee adds the episodes and films you choose to your calendar.
+        NSLocalNetworkUsageDescription: Marquee connects to media servers, WebDAV shares and IPTV providers on your local network.
         CFBundleURLTypes:
           - CFBundleURLName: flow
             CFBundleURLSchemes: [flow]
         NSUserActivityTypes: [app.flow.title]
-        NSMicrophoneUsageDescription: To name the song that's playing, Flow listens for a few seconds when it can't read the soundtrack itself.
+        NSMicrophoneUsageDescription: To name the song that's playing, Marquee listens for a few seconds when it can't read the soundtrack itself.
         LSApplicationCategoryType: public.app-category.entertainment
+        ATSApplicationFontsPath: Fonts
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
     entitlements:
       path: Flow/Resources/Flow-macOS.entitlements
@@ -156,7 +162,8 @@ targets:
     info:
       path: Flow/Resources/Info-tvOS.plist
       properties:
-        CFBundleDisplayName: Flow
+        CFBundleDisplayName: Marquee
+        CFBundleName: Marquee
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         FlowTMDBAPIKey: $(FLOW_TMDB_API_KEY)
@@ -167,14 +174,14 @@ targets:
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
           NSAllowsArbitraryLoadsForMedia: true
-        NSLocalNetworkUsageDescription: Flow connects to media servers, WebDAV shares and IPTV providers on your local network.
+        NSLocalNetworkUsageDescription: Marquee connects to media servers, WebDAV shares and IPTV providers on your local network.
         CFBundleURLTypes:
           - CFBundleURLName: flow
             CFBundleURLSchemes: [flow]
         NSUserActivityTypes: [app.flow.title]
         FlowAppGroup: group.$(FLOW_BUNDLE_ID)
         UILaunchScreen: {}
-        UIUserInterfaceStyle: Dark
+        UIAppFonts: [Fonts/Archivo-Bold.ttf, Fonts/IBMPlexMono-Regular.ttf, Fonts/IBMPlexMono-SemiBold.ttf, Fonts/IBMPlexSansCondensed-SemiBold.ttf, Fonts/IBMPlexSansCondensed-Bold.ttf, Fonts/IBMPlexSerif-Regular.ttf, Fonts/IBMPlexSerif-SemiBold.ttf, Fonts/IBMPlexSerif-Italic.ttf]
         UIRequiredDeviceCapabilities: [arm64]
     entitlements:
       path: Flow/Resources/Flow-tvOS.entitlements
@@ -199,7 +206,8 @@ targets:
     info:
       path: Widgets/Info.plist
       properties:
-        CFBundleDisplayName: Flow
+        CFBundleDisplayName: Marquee
+        CFBundleName: Marquee
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         FlowAppGroup: group.$(FLOW_BUNDLE_ID)
@@ -229,7 +237,8 @@ targets:
     info:
       path: TopShelf/Info.plist
       properties:
-        CFBundleDisplayName: Flow
+        CFBundleDisplayName: Marquee
+        CFBundleName: Marquee
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         FlowAppGroup: group.$(FLOW_BUNDLE_ID)

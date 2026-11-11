@@ -1,9 +1,13 @@
-# Flow — guide for Claude Code
+# Marquee — guide for Claude Code
 
-Flow is a SwiftUI media app for iPhone, iPad, Mac and Apple TV. It's an Apple-quality front end
+Marquee is a SwiftUI media app for iPhone, iPad, Mac and Apple TV. It's an Apple-quality front end
 for the viewer's own sources: Jellyfin, Emby and Plex servers, WebDAV, IPTV (M3U, Xtream) and
 Stremio-style stream add-ons. Metadata comes from TMDb and TVDB, tracking from Trakt, Simkl or
 the device. It hosts no content. README.md lists every feature.
+
+The product is called **Marquee**. Only words changed: the repo, targets, schemes, module names, `flow://` links,
+bundle ids and storage keys still say Flow, so don't "fix" them. The design is the website's Index system
+(`web/DESIGN.md`), adapted to Apple platforms; `Theme.swift` holds the tokens.
 
 The job on this Mac: **build it, run it in the simulators, look at it, and make it better.** You can
 see the app here, unlike on CI. Use that: check every change on screen before calling it done.
@@ -28,7 +32,7 @@ Packages/FlowKit/     everything testable without UI: models, TMDb/Trakt/Simkl/s
                       subtitles, X-Ray matching, sync, stats. Pure Swift, also builds on Linux.
 Packages/FlowDecoders FFmpeg DTS/TrueHD decoders (built by scripts/build-ffmpeg-decoders.sh)
 Widgets/, TopShelf/   widget and Apple TV Top Shelf extensions
-web/                  Flow for the web: Vite + React + TanStack; see web/README.md (npm run dev, ?demo for sample data)
+web/                  Marquee for the web: Vite + React + TanStack; see web/README.md (npm run dev, ?demo for sample data)
 project.yml           XcodeGen spec. Flow.xcodeproj is generated from it and committed.
 scripts/sim.sh        simulator helper (below); scripts/screenshot-tour.sh is CI's screenshot tour
 ```

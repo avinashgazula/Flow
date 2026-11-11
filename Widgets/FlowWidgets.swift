@@ -189,7 +189,7 @@ private struct Empty: View {
                 .font(.system(size: 22, weight: .semibold))
             Text("Nothing in progress")
                 .font(.system(size: 13, weight: .semibold))
-            Text("Start something in Flow and it will wait for you here.")
+            Text("Start something in Marquee and it will wait for you here.")
                 .font(.system(size: 11))
                 .foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)

@@ -9,7 +9,7 @@ public struct JellyfinClient: MediaServerClient {
 
     static let ticksPerSecond: Double = 10_000_000
 
-    public init(config: MediaServerConfig, deviceID: String, deviceName: String = "Flow", http: HTTPClient = HTTPClient()) {
+    public init(config: MediaServerConfig, deviceID: String, deviceName: String = "Marquee", http: HTTPClient = HTTPClient()) {
         self.config = config
         self.deviceID = deviceID
         self.deviceName = deviceName
@@ -19,7 +19,7 @@ public struct JellyfinClient: MediaServerClient {
     // MARK: Auth
 
     static func authHeader(deviceID: String, deviceName: String, token: String?) -> String {
-        var value = #"MediaBrowser Client="Flow", Device="\#(deviceName)", DeviceId="\#(deviceID)", Version="1.0""#
+        var value = #"MediaBrowser Client="Marquee", Device="\#(deviceName)", DeviceId="\#(deviceID)", Version="1.0""#
         if let token { value += #", Token="\#(token)""# }
         return value
     }

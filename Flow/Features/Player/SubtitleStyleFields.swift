@@ -83,5 +83,5 @@ enum SubtitleStyleField: String, CaseIterable, Identifiable {
     }
 
     /// Under the controls, as the iPhone's Advanced Options does: which subtitles the look reaches.
-    static let footer = "Applies to subtitles Flow draws itself. Subtitles inside the stream follow every option except Position. Weight, opacity and ASS styling are in Settings."
+    static let footer = "Applies to subtitles Marquee draws itself. Subtitles inside the stream follow every option except Position. Weight, opacity and ASS styling are in Settings."
 }

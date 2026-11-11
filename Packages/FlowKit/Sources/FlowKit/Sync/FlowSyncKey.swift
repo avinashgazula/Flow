@@ -20,17 +20,17 @@ public enum FlowSyncError: Error, LocalizedError, Equatable, Sendable {
     public var errorDescription: String? {
         switch self {
         case .incompleteKey: return "That sync key isn't complete. Check it against the one on your other device."
-        case .invalidLink: return "That isn't a Flow sync link. Copy it again from your other device."
+        case .invalidLink: return "That isn't a Marquee sync link. Copy it again from your other device."
         case .invalidServer: return "That server address doesn't look right. Use the address of your Worker, like https://flow-stream-proxy.example.workers.dev."
         case .unreachable: return "Couldn't reach your sync server. Check its address and token."
         case .keyMismatch: return "This sync key doesn't match."
         case .tooLarge: return "Your synced settings are too large for the sync server. Remove some add-ons or servers and try again."
         case .needsKV: return "Sync needs a KV namespace bound as SYNC. See web/proxy/README.md."
-        case .tooManyConflicts: return "Another device kept changing the synced settings. Flow will try again in a moment."
-        case .unreadable: return "Couldn't read the synced settings. Update Flow on this device, or turn sync off and on again."
+        case .tooManyConflicts: return "Another device kept changing the synced settings. Marquee will try again in a moment."
+        case .unreadable: return "Couldn't read the synced settings. Update Marquee on this device, or turn sync off and on again."
         case .erased: return "This sync was erased from another device. Turn sync on again to start a new one."
         case .noSuchSync: return "No sync was found for that key. Check the key against your other device, and the server address and token."
-        case .unexpectedResponse: return "The sync server answered with something Flow didn't expect. Check that the address is your Worker."
+        case .unexpectedResponse: return "The sync server answered with something Marquee didn't expect. Check that the address is your Worker."
         case .server(let status): return "The sync server answered with status \(status). Try again in a moment."
         case .cryptoUnavailable: return "Sync encryption isn't available on this platform."
         }

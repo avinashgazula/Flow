@@ -54,7 +54,7 @@ struct OpenUpcomingIntent: AppIntent {
 }
 
 struct SearchFlowIntent: AppIntent {
-    static var title: LocalizedStringResource { "Search Flow" }
+    static var title: LocalizedStringResource { "Search Marquee" }
     static var description: IntentDescription { IntentDescription("Searches for movies, shows and people.") }
     static var openAppWhenRun: Bool { true }
 

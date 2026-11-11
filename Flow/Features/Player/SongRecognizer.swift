@@ -207,7 +207,7 @@ final class SongRecognizer {
             return RecognitionError(message: "Shazam couldn't be reached. Check the connection, and that ShazamKit is enabled for this app's identifier.")
         }
         if nsError.domain == SHErrorDomain {
-            return RecognitionError(message: "Shazam couldn't listen. Allow Flow to use the microphone in Settings.")
+            return RecognitionError(message: "Shazam couldn't listen. Allow Marquee to use the microphone in Settings.")
         }
         return RecognitionError(message: error.localizedDescription)
     }

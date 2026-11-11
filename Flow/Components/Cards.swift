@@ -119,7 +119,8 @@ struct FocusLift: ViewModifier {
         #if os(tvOS)
         content
             .scaleEffect(focused ? scale : 1)
-            .shadow(color: .black.opacity(focused ? 0.35 : 0), radius: 24, y: 8)
+            // Focus is a blue ring, always visible, on top of the lift: no shadow, nothing soft.
+            .overlay { Rectangle().strokeBorder(Theme.Palette.blue, lineWidth: focused ? Theme.Rule.focus : 0) }
             .animation(Theme.Motion.snappy, value: focused)
         #else
         content

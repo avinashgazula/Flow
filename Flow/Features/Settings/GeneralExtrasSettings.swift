@@ -166,7 +166,7 @@ struct NotificationsSection: View {
         } header: {
             FilmSectionHeader("Notifications")
         } footer: { FilmFooter {
-            Text("Get notified when a new episode of a show you're watching airs. Match Starting alerts you 10 minutes before any followed team plays. Match Results sends the final score, and arrives while Flow is running.")
+            Text("Get notified when a new episode of a show you're watching airs. Match Starting alerts you 10 minutes before any followed team plays. Match Results sends the final score, and arrives while Marquee is running.")
         } }
     }
 
@@ -182,7 +182,7 @@ struct NotificationsSection: View {
                         model.scheduleNotificationRefresh(force: true)
                     } else {
                         model.settings.general[keyPath: keyPath] = false
-                        model.showToast("Allow notifications for Flow in Settings to turn this on")
+                        model.showToast("Allow notifications for Marquee in Settings to turn this on")
                     }
                 }
             }

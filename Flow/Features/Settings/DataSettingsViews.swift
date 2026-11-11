@@ -63,7 +63,7 @@ struct DataStorageView: View {
             } header: {
                 FilmSectionHeader("iCloud")
             } footer: { FilmFooter {
-                Text("Keeps playback progress, settings, rewatch state, shuffle history and your on-device watchlist, watch history and favourites the same on all your devices. Anything you remove stays removed everywhere. Builds installed without a developer account can't use iCloud: Flow Sync (in Settings) shares your keys, add-ons, servers, Seerr connection, followed teams and playback preferences through your own Worker instead.")
+                Text("Keeps playback progress, settings, rewatch state, shuffle history and your on-device watchlist, watch history and favourites the same on all your devices. Anything you remove stays removed everywhere. Builds installed without a developer account can't use iCloud: Marquee Sync (in Settings) shares your keys, add-ons, servers, Seerr connection, followed teams and playback preferences through your own Worker instead.")
             } }
 
             Section {
@@ -109,7 +109,7 @@ struct DataStorageView: View {
                 FilmSectionHeader("On-Device Tracking")
             } footer: { FilmFooter {
                 Text((model.settings.sync.iCloudEnabled ? "Re-download reads the whole iCloud copy and merges anything missing into this device. Reset replaces the iCloud copy with this device's. " : "")
-                     + "Export saves your watch history, watchlist, favourites, resume positions and rewatches as a JSON file. Import reads that file, or the library part of a Flow website backup, and adds it to what is on this device: nothing here is removed, and where both have the same title the newer entry wins.")
+                     + "Export saves your watch history, watchlist, favourites, resume positions and rewatches as a JSON file. Import reads that file, or the library part of a Marquee website backup, and adds it to what is on this device: nothing here is removed, and where both have the same title the newer entry wins.")
             } }
 
             if Platform.supportsDownloads {
@@ -125,7 +125,7 @@ struct DataStorageView: View {
                     FilmSectionHeader("Downloads")
                 } footer: { FilmFooter {
                     #if os(iOS)
-                    Text("Files App keeps downloads in Flow's folder in the Files app, so you can copy them off this device. App Storage keeps them inside Flow and out of backups. Downloads already saved stay where they are.")
+                    Text("Files App keeps downloads in Marquee's folder in the Files app, so you can copy them off this device. App Storage keeps them inside Marquee and out of backups. Downloads already saved stay where they are.")
                     #else
                     Text("Downloads are saved for watching offline.")
                     #endif
@@ -303,7 +303,7 @@ struct ShareSetupView: View {
     private func build() {
         link = (try? SetupShare.exportLink(settings: model.settings, credentials: model.credentials, includeSecrets: includeSecrets)) ?? ""
         if let data = try? SetupShare.export(settings: model.settings, credentials: model.credentials, includeSecrets: includeSecrets) {
-            let url = FileManager.default.temporaryDirectory.appendingPathComponent("Flow Setup.json")
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("Marquee Setup.json")
             try? data.write(to: url, options: .atomic)
             fileURL = url
         }
@@ -374,7 +374,7 @@ struct ImportSetupView: View {
             error = nil
         } catch {
             bundle = nil
-            self.error = "That isn't a Flow setup."
+            self.error = "That isn't a Marquee setup."
         }
     }
 

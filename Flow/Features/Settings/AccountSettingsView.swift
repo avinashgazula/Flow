@@ -79,7 +79,7 @@ struct AccountSettingsView: View {
                 } else if Platform.isTV, model.credentials.traktToken == nil, model.traktClientID != nil {
                     // Apple TV signs in with a code. A sign-in made on another device arrives through Flow Sync, or through
                     // iCloud Keychain where the build can use it, without any code at all.
-                    Text("Already signed in to Trakt or Simkl on your iPhone, iPad, Mac or the website? Flow Sync, or iCloud Keychain, brings that sign-in to Apple TV.")
+                    Text("Already signed in to Trakt or Simkl on your iPhone, iPad, Mac or the website? Marquee Sync, or iCloud Keychain, brings that sign-in to Apple TV.")
                 }
             } }
 
@@ -119,7 +119,7 @@ struct AccountSettingsView: View {
             } header: {
                 FilmSectionHeader("Sync")
             } footer: { FilmFooter {
-                Text("How often watch history syncs when reopening the app. With Trakt, Simkl, PublicMetaDB or MDBList connected, resume positions come from that service alone — Flow keeps no progress of its own, so Resume goes exactly as far as your tracker records it.")
+                Text("How often watch history syncs when reopening the app. With Trakt, Simkl, PublicMetaDB or MDBList connected, resume positions come from that service alone — Marquee keeps no progress of its own, so Resume goes exactly as far as your tracker records it.")
             } }
 
             Section {
@@ -374,7 +374,7 @@ struct APIKeysView: View {
             } header: {
                 FilmSectionHeader("OAuth Apps")
             } footer: { FilmFooter {
-                Text("Create an app at trakt.tv/oauth/applications with the redirect URI \(TraktOAuth.redirectURI). Trakt no longer issues a client secret, and Flow doesn't need one. Or create a Simkl app at simkl.com/settings/developer.")
+                Text("Create an app at trakt.tv/oauth/applications with the redirect URI \(TraktOAuth.redirectURI). Trakt no longer issues a client secret, and Marquee doesn't need one. Or create a Simkl app at simkl.com/settings/developer.")
             } }
 
             Section {

@@ -390,7 +390,7 @@ struct MissingKeyView: View {
         ContentUnavailableView {
             Label("Add a TMDB API key", systemImage: "key.fill")
         } description: {
-            Text("Flow uses TMDB for posters, details and discovery. Add your free key in Settings → Metadata.")
+            Text("Marquee uses TMDB for posters, details and discovery. Add your free key in Settings → Metadata.")
         } actions: {
             Button("Open Settings") { model.showSettings = true }.buttonStyle(PrimaryButtonStyle())
         }

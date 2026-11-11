@@ -17,6 +17,7 @@ struct RootView: View {
             if let session = model.activePlayback {
                 // The player is a layer, not a modal, so it never races sheet dismissals.
                 PlayerView(session: session)
+                    .darkScope()
                     #if os(iOS)
                     // The picture runs edge to edge on its own; the controls keep clear of the Dynamic Island and home indicator.
                     .ignoresSafeArea(.keyboard)
@@ -243,10 +244,12 @@ struct MacShell: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Flow")
-                .font(.system(size: 22, weight: .bold))
+            Wordmark(size: 20)
                 .padding(.horizontal, 14)
-                .padding(.top, 34)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
+                .background(Theme.Palette.blue)
+                .padding(.top, 28)
                 .padding(.bottom, 14)
             ForEach(model.settings.general.orderedTabs) { tab in
                 Button { model.selectedTab = tab } label: {

@@ -170,7 +170,7 @@ public actor OpenSubtitlesProvider: SubtitleProvider {
     }
 
     func headers() async -> [String: String] {
-        var h = ["Api-Key": apiKey, "User-Agent": "Flow v1.0", "Content-Type": "application/json"]
+        var h = ["Api-Key": apiKey, "User-Agent": "Marquee v1.0", "Content-Type": "application/json"]
         if token == nil, let username, let password, !username.isEmpty {
             struct Body: Encodable { var username: String; var password: String }
             struct R: Decodable { var token: String }

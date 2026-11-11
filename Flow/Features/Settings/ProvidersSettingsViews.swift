@@ -32,7 +32,7 @@ struct WebDAVSettingsView: View {
                     editing = WebDAVConfig(name: "My NAS", baseURL: URL(string: "https://example.invalid")!)
                 } label: { Label("Add WebDAV Share", systemImage: "plus.circle.fill") }
             } footer: { FilmFooter {
-                Text("Flow scans the Movies and TV Shows folders for files named like “Movie (2020).mkv” or “Show/Season 1/Show S01E02.mkv” and offers them as sources.")
+                Text("Marquee scans the Movies and TV Shows folders for files named like “Movie (2020).mkv” or “Show/Season 1/Show S01E02.mkv” and offers them as sources.")
             } }
         }
         .sheet(item: $editing) { config in WebDAVEditor(config: config).environment(model) }

@@ -184,11 +184,11 @@ extension View {
     @ViewBuilder
     func liveChannelCover(_ channel: Binding<Channel?>, epg: EPG, autoRotate: Bool = true) -> some View {
         #if os(macOS)
-        sheet(item: channel) { LivePlayerView(channel: $0, epg: epg).frame(minWidth: 800, minHeight: 450) }
+        sheet(item: channel) { LivePlayerView(channel: $0, epg: epg).darkScope().frame(minWidth: 800, minHeight: 450) }
         #elseif os(iOS)
-        rotatingCover(item: channel, startsInLandscape: autoRotate) { LivePlayerView(channel: $0, epg: epg, onClose: $1) }
+        rotatingCover(item: channel, startsInLandscape: autoRotate) { LivePlayerView(channel: $0, epg: epg, onClose: $1).darkScope() }
         #else
-        fullScreenCover(item: channel) { LivePlayerView(channel: $0, epg: epg) }
+        fullScreenCover(item: channel) { LivePlayerView(channel: $0, epg: epg).darkScope() }
         #endif
     }
 }

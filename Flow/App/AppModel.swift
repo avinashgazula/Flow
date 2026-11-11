@@ -173,7 +173,7 @@ final class AppModel {
             cache = ResponseCache(store: .caches("FlowDemoResponses"))
             cloud = CloudSync(store: InMemoryKeyValueStore())
             syncPairingStore = InMemoryFlowSyncPairingStore()
-            http = HTTPClient(transport: DemoTransport(), userAgent: "Flow/1.0")
+            http = HTTPClient(transport: DemoTransport(), userAgent: "Marquee/1.0")
             settings = Self.demoSettings()
             selectedTab = .home
             var creds = Credentials()
@@ -198,9 +198,9 @@ final class AppModel {
             cache = ResponseCache(store: .caches("FlowResponses"))
             #if DEBUG
             http = UserDefaults.standard.bool(forKey: "FlowOffline")
-                ? HTTPClient(transport: OfflineTransport(), userAgent: "Flow/1.0") : HTTPClient(userAgent: "Flow/1.0")
+                ? HTTPClient(transport: OfflineTransport(), userAgent: "Marquee/1.0") : HTTPClient(userAgent: "Marquee/1.0")
             #else
-            http = HTTPClient(userAgent: "Flow/1.0")
+            http = HTTPClient(userAgent: "Marquee/1.0")
             #endif
             var loaded = AppSettings()
             if let data = store.loadData("settings") {

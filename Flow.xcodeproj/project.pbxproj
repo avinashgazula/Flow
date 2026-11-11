@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A0F0A0F0A0F0A0F0A0F0A011 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = A0F0A0F0A0F0A0F0A0F0A001 /* Fonts */; };
+		A0F0A0F0A0F0A0F0A0F0A012 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = A0F0A0F0A0F0A0F0A0F0A001 /* Fonts */; };
+		A0F0A0F0A0F0A0F0A0F0A013 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = A0F0A0F0A0F0A0F0A0F0A001 /* Fonts */; };
 		01BE0D13B23962BBFF6F7B7D /* AppModel+Calendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEADFF907FBFB0BA1E4CB7BE /* AppModel+Calendar.swift */; };
 		07C10B80EB6597F9845346D9 /* Shelves.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E4B0A67CC21E053989BB58A /* Shelves.swift */; };
 		090E0F3ED9D5D8C4371D79FE /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434D840AB6866F096CBB9D82 /* Platform.swift */; };
@@ -297,6 +300,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A0F0A0F0A0F0A0F0A0F0A001 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Fonts; sourceTree = "<group>"; };
 		01495BA2052DEEA5E6EB55E7 /* Flow-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Flow-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		03878E23BB21C51D27637323 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		07E5BC060EB6D6E2ABFE2898 /* ShelvesSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShelvesSettingsView.swift; sourceTree = "<group>"; };
@@ -574,6 +578,7 @@
 			isa = PBXGroup;
 			children = (
 				6C97AD56B95F80525C774907 /* Assets.xcassets */,
+				A0F0A0F0A0F0A0F0A0F0A001 /* Fonts */,
 				85D121444256864EF4E443FE /* FlowSample.mkv */,
 			);
 			path = Resources;
@@ -912,6 +917,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DEC14EA578DC92CC1530DCE3 /* Assets.xcassets in Resources */,
+				A0F0A0F0A0F0A0F0A0F0A011 /* Fonts in Resources */,
 				6A182C159C9EFF00A423D3C2 /* FlowSample.mkv in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -921,6 +927,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E689F48FE4173C59470CED51 /* Assets.xcassets in Resources */,
+				A0F0A0F0A0F0A0F0A0F0A012 /* Fonts in Resources */,
 				FF650534A4E667D1CA006160 /* FlowSample.mkv in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -930,6 +937,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				50F24433290BB5AAE493AF37 /* Assets.xcassets in Resources */,
+				A0F0A0F0A0F0A0F0A0F0A013 /* Fonts in Resources */,
 				53767ED8748B3B4213536D1C /* FlowSample.mkv in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1322,7 +1330,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = "Flow/Resources/Info-macOS.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = Flow;
+				INFOPLIST_KEY_CFBundleDisplayName = Marquee;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -1421,7 +1429,7 @@
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
 				CODE_SIGN_ENTITLEMENTS = "Flow/Resources/Flow-tvOS.entitlements";
 				INFOPLIST_FILE = "Flow/Resources/Info-tvOS.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = Flow;
+				INFOPLIST_KEY_CFBundleDisplayName = Marquee;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1440,7 +1448,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Flow/Resources/Flow-iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = "Flow/Resources/Info-iOS.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = Flow;
+				INFOPLIST_KEY_CFBundleDisplayName = Marquee;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1478,7 +1486,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Flow/Resources/Flow-iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = "Flow/Resources/Info-iOS.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = Flow;
+				INFOPLIST_KEY_CFBundleDisplayName = Marquee;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1496,7 +1504,7 @@
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
 				CODE_SIGN_ENTITLEMENTS = "Flow/Resources/Flow-tvOS.entitlements";
 				INFOPLIST_FILE = "Flow/Resources/Info-tvOS.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = Flow;
+				INFOPLIST_KEY_CFBundleDisplayName = Marquee;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1532,7 +1540,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = "Flow/Resources/Info-macOS.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = Flow;
+				INFOPLIST_KEY_CFBundleDisplayName = Marquee;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

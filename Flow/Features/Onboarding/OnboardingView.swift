@@ -30,9 +30,10 @@ struct OnboardingView: View {
                     VStack(spacing: Self.gap) {
                         Spacer(minLength: Self.bandHeight)
                         VStack(spacing: Theme.Space.s) {
-                            Text("Flow")
-                                .font(.system(size: 64 * Theme.scale, weight: .heavy))
-                                .tracking(-2)
+                            Wordmark(size: 56)
+                                .padding(.horizontal, Theme.Space.xl)
+                                .padding(.vertical, Theme.Space.l)
+                                .background(Theme.Palette.blue)
                             Text("Everything you watch, beautifully in one place.")
                                 .font(.system(size: 19 * Theme.scale, weight: .medium))
                                 .foregroundStyle(Theme.Palette.textSecondary)
@@ -79,7 +80,7 @@ struct OnboardingView: View {
             .font(Theme.Typeface.body)
             .foregroundStyle(Theme.Palette.textSecondary)
             .buttonStyle(.plain)
-        Button("Join Flow Sync") { joiningSync = true }
+        Button("Join Marquee Sync") { joiningSync = true }
             .font(Theme.Typeface.body)
             .foregroundStyle(Theme.Palette.textSecondary)
             .buttonStyle(.plain)
@@ -89,7 +90,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             Label("Connect TMDB", systemImage: "film.stack")
                 .font(Theme.Typeface.headline)
-            Text("Flow uses The Movie Database for posters, details and discovery. A free key takes a minute at themoviedb.org → Settings → API.")
+            Text("Marquee uses The Movie Database for posters, details and discovery. A free key takes a minute at themoviedb.org → Settings → API.")
                 .font(Theme.Typeface.caption)
                 .foregroundStyle(Theme.Palette.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

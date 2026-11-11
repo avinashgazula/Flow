@@ -26,7 +26,7 @@ final class LocalHLSServer: @unchecked Sendable {
         case couldNotStart(String)
         var errorDescription: String? {
             switch self {
-            case .couldNotStart(let reason): return "Flow couldn't start its playback server (\(reason))."
+            case .couldNotStart(let reason): return "Marquee couldn't start its playback server (\(reason))."
             }
         }
     }

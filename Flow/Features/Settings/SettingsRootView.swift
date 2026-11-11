@@ -87,7 +87,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
     /// Words that make a page show up in Search Settings.
     var keywords: String {
         switch self {
-        case .general: return "accent color start tab opening tab tab order app icon light dark notifications episodes matches poster titles hero top pick lead haptics specials season spoilers blur episodes left remaining"
+        case .general: return "appearance theme system light dark accent color start tab opening tab tab order app icon light dark notifications episodes matches poster titles hero top pick lead haptics specials season spoilers blur episodes left remaining"
         case .account: return "trakt simkl mdblist publicmetadb tracking sync interval watchlist favourites sign in"
         case .shelves: return "home rows discover lists reorder"
         case .mediaServers: return "jellyfin emby plex server badge artwork"
@@ -104,7 +104,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .sourceAppearance: return "badges formatting title"
         case .apiKeys: return "keys opensubtitles subdl subsource wyzie introdb sports spoilers scores channel"
         case .addons: return "stremio manifest addon"
-        case .sync: return "flow sync devices share keys api keys sideload sideloaded iphone ipad mac apple tv website cloudflare worker kv pairing link qr code key encrypted end-to-end trakt simkl add-ons servers subtitles languages without icloud"
+        case .sync: return "marquee flow sync devices share keys api keys sideload sideloaded iphone ipad mac apple tv website cloudflare worker kv pairing link qr code key encrypted end-to-end trakt simkl add-ons servers subtitles languages without icloud"
         case .syncPairing: return "qr code pairing link share copy sync key join another device"
         case .syncJoin: return "join sync pairing link paste key server token"
         }
@@ -125,7 +125,7 @@ struct SettingsRootView: View {
                     Section {
                         VStack(alignment: .leading, spacing: Theme.Space.s) {
                             Text("You're exploring sample data").font(.headline)
-                            Text("Nothing here touches your accounts. Leave the demo to set Flow up with your own sources.")
+                            Text("Nothing here touches your accounts. Leave the demo to set Marquee up with your own sources.")
                                 .font(Platform.isTV ? .callout : .footnote)
                                 .foregroundStyle(Theme.Palette.textSecondary)
                             Button("Leave Demo") { model.showSettings = false; model.setDemoMode(false) }
@@ -252,14 +252,11 @@ struct AboutView: View {
         FilmList {
             Section {
                 VStack(spacing: 8) {
-                    Image("FlowMark")
-                        .resizable()
-                        .frame(width: 96 * Theme.scale, height: 96 * Theme.scale)
-                        .clipShape(RoundedRectangle(cornerRadius: 22 * Theme.scale, style: .continuous))
-                        .hairline(RoundedRectangle(cornerRadius: 22 * Theme.scale, style: .continuous))
-                        .artworkShadow()
+                    Wordmark(size: 34)
+                        .padding(.horizontal, Theme.Space.l)
+                        .padding(.vertical, Theme.Space.m)
+                        .background(Theme.Palette.blue)
                         .padding(.bottom, 4)
-                    Text("Flow").font(.title.weight(.bold))
                     Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
                         .foregroundStyle(.secondary)
                 }
@@ -272,7 +269,7 @@ struct AboutView: View {
             }
             .font(.footnote)
             Section(film: "Content") {
-                Text("Flow does not host or provide any content. It plays media from servers, shares, providers and add-ons that you configure and are responsible for.")
+                Text("Marquee does not host or provide any content. It plays media from servers, shares, providers and add-ons that you configure and are responsible for.")
                     .font(.footnote)
             }
         }

@@ -1,6 +1,6 @@
-# Flow Sync
+# Marquee Sync
 
-Flow Sync keeps keys, sign-ins, add-ons and playback preferences the same on every device:
+Marquee Sync keeps keys, sign-ins, add-ons and playback preferences the same on every device:
 - the website;
 - iPhone, iPad, Mac and Apple TV, including sideloaded builds where iCloud isn't available.
 
