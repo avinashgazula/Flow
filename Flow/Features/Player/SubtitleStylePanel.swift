@@ -134,8 +134,8 @@ private struct StyleTileButtonStyle: ButtonStyle {
         var body: some View {
             let shape = RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
             configuration.label
-                .foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.text)
-                .background(focused ? Theme.Palette.stock : Theme.Palette.control, in: shape)
+                .foregroundStyle(focused ? Theme.Palette.onBlue : Theme.Palette.text)
+                .background(focused ? Theme.Palette.blue : Theme.Palette.control, in: shape)
                 .contentShape(shape)
                 .scaleEffect(configuration.isPressed ? 0.98 : 1)
                 .animation(Theme.Motion.snappy, value: configuration.isPressed)

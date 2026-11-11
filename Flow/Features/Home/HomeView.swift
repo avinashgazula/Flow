@@ -504,7 +504,7 @@ struct UpNextCell: View {
             Button { Task { await model.setWatched(item, episodes: entry.episode.map { [$0] }, watched: true) } } label: {
                 Label("Watched", systemImage: "checkmark.circle")
             }
-            .tint(Theme.Palette.stock)
+            .tint(Theme.Palette.blue)
             Button(role: .destructive) { requestRemoval() } label: { Label("Remove", systemImage: "xmark.circle") }
         }
     }

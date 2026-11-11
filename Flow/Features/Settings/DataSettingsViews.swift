@@ -281,7 +281,7 @@ struct ShareSetupView: View {
             if let qr = QRCode.image(for: link), link.count < 2800 {
                 Section(film: "Scan on another device") {
                     qr.interpolation(.none).resizable().scaledToFit().frame(maxWidth: 280).padding(12)
-                        .background(.white, in: RoundedRectangle(cornerRadius: 14))
+                        .background(.white, in: Rectangle())
                         .frame(maxWidth: .infinity)
                 }
             } else {

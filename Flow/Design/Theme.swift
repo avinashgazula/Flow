@@ -124,9 +124,6 @@ enum Theme {
         static let textSecondary = muted
         static let textTertiary = faint
         static let print = muted
-        static let stock = blue
-        static let stockPressed = bluePressed
-        static let onStock = onBlue
         static let spot = blue
         static let spotPressed = bluePressed
         static let onSpot = onBlue

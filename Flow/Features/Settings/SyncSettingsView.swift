@@ -127,7 +127,7 @@ struct SyncSettingsView: View {
         }
 
         Section {
-            // Not the accent: yellow marks the next action, and this one is a way out.
+            // Not the accent: the accent marks the next action, and this one is a way out.
             Button { turnOff(erase: false) } label: {
                 Text("Turn Off Sync")
                     #if !os(tvOS)
@@ -234,7 +234,7 @@ struct SyncPairingCard: View {
                 .resizable()
                 .frame(width: side, height: side)
                 .padding(side / 20)
-                .background(.white, in: RoundedRectangle(cornerRadius: side / 20, style: .continuous))
+                .background(.white, in: Rectangle())
                 .accessibilityLabel("QR code of the sync pairing link")
         }
     }

@@ -408,7 +408,7 @@ extension View {
         #endif
     }
 
-    /// iOS 27, iPad and Mac: edge print and the yellow go quiet in a window that isn't the active one.
+    /// iOS 27, iPad and Mac: the blue and red go quiet in a window that isn't the active one.
     @ViewBuilder
     func flowDimsWhenInactive() -> some View {
         #if (os(iOS) || os(macOS)) && compiler(>=6.4)
@@ -478,7 +478,7 @@ struct SettingsToolbarItem: ToolbarContent {
     }
 
     private var button: some View {
-        // Paper on the glass: yellow is for the next action, not for chrome.
+        // Ink on the toolbar: blue is for the next action, not for chrome.
         Button(action: action) { Image(systemName: "gearshape") }
             .accessibilityLabel("Settings")
             .tint(Theme.Palette.text)
@@ -677,7 +677,7 @@ private struct FilmSwitchRow: View {
 #endif
 
 /// A Picker whose chosen value is quiet secondary text. A menu picker draws its value in the tint, which would make
-/// every setting look like the next action; yellow is kept for toggles that are on.
+/// every setting look like the next action; the accent is kept for toggles that are on.
 struct FilmPicker<SelectionValue: Hashable, Content: View>: View {
     let title: LocalizedStringKey
     @Binding var selection: SelectionValue

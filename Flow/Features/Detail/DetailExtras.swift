@@ -171,22 +171,80 @@ struct TitleFactsLine: View {
     let parts: [String]
 
     var body: some View {
-        WrappingRow(spacing: Theme.Space.s, lineSpacing: Theme.Space.xxs) {
+        FactsFlow(gap: Theme.Space.s, lineSpacing: Theme.Space.xxs) {
             ForEach(Array(parts.enumerated()), id: \.offset) { index, part in
-                HStack(spacing: Theme.Space.s) {
-                    Text(part)
-                        .font(Theme.Typeface.control)
-                        .detailCaps(0.08, size: 13)
-                        .foregroundStyle(Theme.Palette.fg)
-                        .lineLimit(1)
-                    if index < parts.count - 1 {
-                        Rectangle().fill(Theme.Palette.rule).frame(width: Theme.Rule.thin, height: 14 * Theme.scale)
-                    }
+                if index > 0 {
+                    Rectangle().fill(Theme.Palette.rule).frame(width: Theme.Rule.thin, height: 14 * Theme.scale)
                 }
+                Text(part)
+                    .font(Theme.Typeface.control)
+                    .detailCaps(0.08, size: 13)
+                    .foregroundStyle(Theme.Palette.fg)
+                    .lineLimit(1)
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(parts.joined(separator: ", "))
+    }
+}
+
+/// Lays out [text, divider, text, divider, text...] in lines, keeping a divider only between two texts on the same line:
+/// one that would end or begin a line is parked out of sight, so a wrapped facts line never shows a dangling "|".
+struct FactsFlow: Layout {
+    var gap: CGFloat
+    var lineSpacing: CGFloat
+
+    /// Indices of the texts (even positions) on each line.
+    private func lines(_ subviews: Subviews, width: CGFloat) -> [[Int]] {
+        var lines: [[Int]] = [[]]
+        var x: CGFloat = 0
+        for i in stride(from: 0, to: subviews.count, by: 2) {
+            let w = subviews[i].sizeThatFits(.unspecified).width
+            let divider = i > 0 ? subviews[i - 1].sizeThatFits(.unspecified).width + gap * 2 : 0
+            if !lines[lines.count - 1].isEmpty, x + divider + w > width {
+                lines.append([])
+                x = 0
+            }
+            x += (lines[lines.count - 1].isEmpty ? 0 : divider) + w
+            lines[lines.count - 1].append(i)
+        }
+        return lines
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let lines = lines(subviews, width: proposal.width ?? .infinity)
+        let height = lines.reduce(CGFloat(0)) { $0 + ($1.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0) } + lineSpacing * CGFloat(max(0, lines.count - 1))
+        let widest = lines.map { line in
+            line.enumerated().reduce(CGFloat(0)) { sum, entry in
+                sum + subviews[entry.element].sizeThatFits(.unspecified).width
+                    + (entry.offset > 0 ? subviews[entry.element - 1].sizeThatFits(.unspecified).width + gap * 2 : 0)
+            }
+        }.max() ?? 0
+        return CGSize(width: proposal.width.map { min($0, widest) } ?? widest, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        // Every divider starts parked; the ones between two texts on a line are brought in as the line is placed.
+        for i in stride(from: 1, to: subviews.count, by: 2) {
+            subviews[i].place(at: CGPoint(x: -10_000, y: -10_000), proposal: .unspecified)
+        }
+        for line in lines(subviews, width: bounds.width) {
+            let sizes = line.map { subviews[$0].sizeThatFits(.unspecified) }
+            let lineHeight = sizes.map(\.height).max() ?? 0
+            var x = bounds.minX
+            for (n, i) in line.enumerated() {
+                if n > 0 {
+                    let divider = subviews[i - 1].sizeThatFits(.unspecified)
+                    x += gap
+                    subviews[i - 1].place(at: CGPoint(x: x, y: y + (lineHeight - divider.height) / 2), proposal: ProposedViewSize(divider))
+                    x += divider.width + gap
+                }
+                subviews[i].place(at: CGPoint(x: x, y: y + (lineHeight - sizes[n].height) / 2), proposal: ProposedViewSize(sizes[n]))
+                x += sizes[n].width
+            }
+            y += lineHeight + lineSpacing
+        }
     }
 }
 
@@ -498,8 +556,9 @@ struct ReviewSheet: View {
     }
 }
 
-/// The scores chosen in Settings → Metadata → Ratings Shown, in that order: each a big red condensed numeral with the
-/// source's name under it in mono, in a ruled row of cells. A custom icon pack (Settings) still replaces the name.
+/// The scores chosen in Settings → Metadata → Ratings Shown, in that order: each the service's mark over a big red
+/// condensed numeral over its name in mono, in ruled cells as wide as their content needs that wrap onto further lines
+/// (the website's row). A custom icon pack (Settings) still replaces the name.
 struct RatingsRow: View {
     let ratings: Ratings
     /// The title, so a score can open its site's page when Tap a Rating is on.
@@ -517,13 +576,18 @@ struct RatingsRow: View {
     /// alone on a second line, so the rest sit behind More on both.
     private var limited: Bool { Platform.isPhone || Platform.isPad }
     private var visible: [RatingSource] { limited && !showAll ? Array(shown.prefix(4)) : shown }
-    private var columns: Int { limited ? 4 : 5 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            RuledGrid(items: visible, columns: columns, framed: false) { source, column in
-                score(source, column: column)
+            RatingFlow {
+                ForEach(visible) { source in score(source) }
             }
+            // The cells carry their own left and top rules; the row is pulled left by one rule so the first of each
+            // line starts on the page's edge, and the clip hides the rest.
+            .padding(.leading, -Theme.Rule.thin)
+            .clipped()
+            .overlay(alignment: .top) { Rectangle().fill(Theme.Palette.rule).frame(height: Theme.Rule.heavy) }
+            .overlay(alignment: .bottom) { Rectangle().fill(Theme.Palette.rule).frame(height: Theme.Rule.thin) }
             if limited && !showAll && shown.count > 4 {
                 Button("More Ratings") { withAnimation(Theme.Motion.enter) { showAll = true } }
                     .buttonStyle(QuietButtonStyle())
@@ -534,14 +598,14 @@ struct RatingsRow: View {
     }
 
     @ViewBuilder
-    private func score(_ source: RatingSource, column: Int) -> some View {
+    private func score(_ source: RatingSource) -> some View {
         if let value = text(for: source) {
             if let link = reviewsURL(for: source) {
-                Button { model.openExternally(link) } label: { RatingCell(source: source, value: value, column: column, icon: iconPack?[source]) }
+                Button { model.openExternally(link) } label: { RatingCell(source: source, value: value, icon: iconPack?[source]) }
                     .buttonStyle(RuledCellStyle())
                     .accessibilityHint("Opens \(source.title)")
             } else {
-                RatingCell(source: source, value: value, column: column, icon: iconPack?[source])
+                RatingCell(source: source, value: value, icon: iconPack?[source])
             }
         }
     }
@@ -571,20 +635,70 @@ struct RatingsRow: View {
     }
 }
 
+/// Lays the cells in lines as wide as their content, starting a new line when the next doesn't fit, and shares each
+/// line's spare width out evenly (flex-grow on the website), so a long name such as Popcornmeter is never cut off.
+struct RatingFlow: Layout {
+    private func lines(_ subviews: Subviews, width: CGFloat) -> [[Int]] {
+        var lines: [[Int]] = [[]]
+        var x: CGFloat = 0
+        for i in subviews.indices {
+            let w = subviews[i].sizeThatFits(.unspecified).width
+            if !lines[lines.count - 1].isEmpty, x + w > width {
+                lines.append([])
+                x = 0
+            }
+            x += w
+            lines[lines.count - 1].append(i)
+        }
+        return lines
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? .infinity
+        let lines = lines(subviews, width: width)
+        let height = lines.reduce(CGFloat(0)) { $0 + ($1.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0) }
+        return CGSize(width: proposal.width ?? lines.map { $0.reduce(0) { $0 + subviews[$1].sizeThatFits(.unspecified).width } }.max() ?? 0, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for line in lines(subviews, width: bounds.width) {
+            let sizes = line.map { subviews[$0].sizeThatFits(.unspecified) }
+            let lineHeight = sizes.map(\.height).max() ?? 0
+            let spare = max(0, bounds.width - sizes.reduce(0) { $0 + $1.width }) / CGFloat(max(line.count, 1))
+            var x = bounds.minX
+            for (n, i) in line.enumerated() {
+                let w = min(sizes[n].width + spare, bounds.width)
+                subviews[i].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: w, height: lineHeight))
+                x += w
+            }
+            y += lineHeight
+        }
+    }
+}
+
 private struct RatingCell: View {
     let source: RatingSource
     let value: String
-    let column: Int
     let icon: URL?
     @Environment(\.cellLit) private var lit
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            // Simple Icons marks (scripts/make-rating-marks.mjs), template images so they take the text colour.
+            Image("Rating-\(source.rawValue)")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 30 * Theme.scale, maxHeight: (Platform.isPhone ? 16 : 18) * Theme.scale, alignment: .leading)
+                .frame(height: (Platform.isPhone ? 16 : 18) * Theme.scale, alignment: .leading)
+                .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
+                .padding(.bottom, 4)
+                .accessibilityHidden(true)
             Text(value)
                 .font(Theme.Typeface.detailNumeral(34))
                 .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.red)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
             if let icon {
                 RemoteImage(url: icon, contentMode: .fit, maxPixel: 96)
                     .frame(width: 24 * Theme.scale, height: 14 * Theme.scale, alignment: .leading)
@@ -593,14 +707,16 @@ private struct RatingCell: View {
                     .font(Theme.Typeface.micro)
                     .detailCaps(0.06, size: 11)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    .fixedSize(horizontal: true, vertical: false)
                     .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted)
             }
         }
-        .padding(.leading, column == 0 ? 0 : Theme.Space.s)
+        .padding(.leading, Theme.Space.s)
         .padding(.trailing, Theme.Space.xs)
         .padding(.vertical, Theme.Space.s)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .leading) { Rectangle().fill(Theme.Palette.rule).frame(width: Theme.Rule.thin) }
+        .overlay(alignment: .top) { Rectangle().fill(Theme.Palette.rule).frame(height: Theme.Rule.thin) }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(source.spokenScore(value))
     }

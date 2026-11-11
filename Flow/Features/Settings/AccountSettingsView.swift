@@ -280,7 +280,7 @@ struct DeviceSignInView: View {
                         .font(.system(size: Platform.isTV ? 72 : 44, weight: .bold, design: .monospaced))
                         .kerning(4)
                     if let qr = QRCode.image(for: code.verificationURL.absoluteString) {
-                        qr.interpolation(.none).resizable().frame(width: 180, height: 180).padding(10).background(.white, in: RoundedRectangle(cornerRadius: 12))
+                        qr.interpolation(.none).resizable().frame(width: 180, height: 180).padding(10).background(.white, in: Rectangle())
                     }
                     #if !os(tvOS)
                     HStack {

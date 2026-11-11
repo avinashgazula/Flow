@@ -303,11 +303,21 @@ struct DetailView: View {
     private var actions: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             if wide {
+                #if os(tvOS)
+                // Always one line at ten feet; the wrapping row measured wider than it was placed and dropped Trailer
+                // half under the list actions.
+                HStack(spacing: Theme.Space.s) {
+                    playButton
+                    if let trailers = detail?.trailers, !trailers.isEmpty { trailerButton(trailers, fill: false) }
+                    RequestButton(item: current, seasons: detail?.seasons ?? [])
+                }
+                #else
                 WrappingRow(spacing: Theme.Space.s, lineSpacing: Theme.Space.s) {
                     playButton
                     if let trailers = detail?.trailers, !trailers.isEmpty { trailerButton(trailers, fill: false) }
                     RequestButton(item: current, seasons: detail?.seasons ?? [])
                 }
+                #endif
             } else {
                 // Play takes the line; Trailer and Request share the next, so the list under them stays above the fold.
                 playButton
@@ -382,12 +392,21 @@ struct DetailView: View {
         return out
     }
 
-    /// A bordered segmented row: the cells share their borders, and the ones that are on are inverted with a check.
+    /// A bordered segmented row: the cells share their borders, and the ones that are on are inverted with a check. More
+    /// than four split into even lines (five become three and two) so a lone cell never hangs on a line of its own, and
+    /// the last line's cells stretch to fill it.
     private var listRow: some View {
         let actions = listActions
-        let count = Platform.isPhone ? 2 : min(actions.count, 4)
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: -Theme.Rule.heavy), count: count), spacing: -Theme.Rule.heavy) {
-            ForEach(actions, id: \.self) { listCell($0) }
+        let perLine = Platform.isPhone ? 2 : 4
+        let lines = Int((Double(actions.count) / Double(perLine)).rounded(.up))
+        let size = Int((Double(actions.count) / Double(max(lines, 1))).rounded(.up))
+        let rows = stride(from: 0, to: actions.count, by: max(size, 1)).map { Array(actions[$0..<min($0 + size, actions.count)]) }
+        return VStack(spacing: -Theme.Rule.heavy) {
+            ForEach(rows.indices, id: \.self) { r in
+                HStack(spacing: -Theme.Rule.heavy) {
+                    ForEach(rows[r], id: \.self) { listCell($0) }
+                }
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Your List")

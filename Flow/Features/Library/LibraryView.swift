@@ -8,14 +8,6 @@ struct LibraryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 BrowseHead("Library", note: "\(model.watchedKeys.count.formatted()) watched")
-                BrowseToolbar {
-                    HStack(spacing: Theme.Space.s) {
-                        Spacer(minLength: 0)
-                        Button(model.isSyncing ? "Syncing…" : "Refresh") { Task { await model.refreshLibrary(force: true) } }
-                            .buttonStyle(FilterChipStyle())
-                            .disabled(model.isSyncing)
-                    }
-                }
                 index
                 // Reads the downloads and the lists itself, so this page doesn't redraw with every download tick.
                 LibraryEmptyState()
@@ -79,6 +71,11 @@ struct LibraryView: View {
                 }
             }
             .padding(.horizontal, Theme.Space.gutter)
+            // Refresh sits under the rows it refreshes instead of in a ruled row of its own.
+            Button(model.isSyncing ? "Syncing…" : "Refresh Library") { Task { await model.refreshLibrary(force: true) } }
+                .buttonStyle(QuietButtonStyle())
+                .disabled(model.isSyncing)
+                .padding(.horizontal, Theme.Space.gutter)
         }
     }
 }

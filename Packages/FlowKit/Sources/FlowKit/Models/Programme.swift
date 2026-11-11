@@ -16,8 +16,8 @@ public enum Reel {
         return runtime
     }
 
-    /// How much of a title is watched, 0...1, as the perforations show it. A resume point's position and duration
-    /// decide it when both are known, so the perforations always agree with the time left; the stored percentage
+    /// How much of a title is watched, 0...1, as the progress bar shows it. A resume point's position and duration
+    /// decide it when both are known, so the bar always agrees with the time left; the stored percentage
     /// only stands in when they aren't (a tracker that gives a percentage and nothing else).
     public static func watchedFraction(_ progress: PlaybackProgress?) -> Double {
         guard let progress else { return 0 }
@@ -45,7 +45,7 @@ public enum Reel {
     /// "18 min left", "1 h 44 min left".
     public static func left(minutes: Int) -> String { "\(duration(minutes: minutes)) left" }
 
-    /// Edge print's short form of a length: "47m", "2h", "2h47". Edge print uppercases it.
+    /// The facts line's short form of a length: "47m", "2h", "2h47". It is set uppercase it.
     public static func compactDuration(minutes: Int) -> String {
         let minutes = max(0, minutes)
         let hours = minutes / 60, rest = minutes % 60
@@ -101,7 +101,7 @@ public enum Reel {
         return (formatter.string(from: date), label)
     }
 
-    /// An air date for edge print: "airs Tue 12", "aired 12 Oct 2011".
+    /// An air date for a facts line: "airs Tue 12", "aired 12 Oct 2011".
     public static func airPrint(for date: Date, now: Date = Date(), locale: Locale = .current) -> String {
         let column = airColumn(for: date, now: now, locale: locale)
         let words = column.label.split(separator: " ").map(String.init)
@@ -191,13 +191,13 @@ extension Reel {
     }
 }
 
-/// What a frame's edge strip says, like the printed edge of 35mm stock: the perforations fill with how far
-/// you've watched, the print gives the facts that decide what to watch. The time left (or NEW) is the key
+/// What the facts line under a frame says (the progress bar along its foot shows how far you've watched): the facts
+/// that decide what to watch. The time left (or NEW) is the key
 /// fact; the end time is worked out from the clock, so it is right whenever it is drawn.
 public struct EdgePrint: Equatable, Sendable {
     public struct Segment: Equatable, Sendable {
         public var text: String
-        /// The fact the eye should land on: drawn in the stock yellow.
+        /// The fact the eye should land on: drawn in red.
         public var isKey: Bool
 
         public init(_ text: String, isKey: Bool = false) {
@@ -206,7 +206,7 @@ public struct EdgePrint: Equatable, Sendable {
         }
     }
 
-    /// 0...1: how much of the strip's perforations are filled. Nil draws no perforations (a poster, a new item).
+    /// 0...1: how much of the progress bar is filled. Nil draws none (a poster, a new item).
     public var progress: Double?
     /// Before the key fact: "S3 E7", "2024".
     public var lead: [String]
@@ -255,18 +255,11 @@ public struct EdgePrint: Equatable, Sendable {
         let dropped = Set(leastFirst.prefix(count))
         return all.indices.filter { !dropped.contains($0) }.map { all[$0] }
     }
-
-    /// How many of `count` perforations are filled for `progress`. Any progress at all fills at least one,
-    /// so a title just started doesn't look unwatched.
-    public static func filledPerforations(progress: Double, of count: Int) -> Int {
-        guard count > 0, progress > 0.005 else { return 0 }
-        return min(count, max(1, Int((min(1, progress) * Double(count)).rounded(.down))))
-    }
 }
 
 extension EdgePrint {
     /// The print under a catalogue poster, the same on every shelf and grid: the runtime (or "Series") and the
-    /// rating, with no perforations because nothing is being watched. What the viewer has seen replaces the runtime
+    /// rating, with no progress bar because nothing is being watched. What the viewer has seen replaces the runtime
     /// as plain print, never a badge on the artwork: "WATCHED" for a finished title, "3/10 EP" for a show part way.
     public static func poster(runtimeMinutes: Int?, isSeries: Bool, rating: Double?, watched: Bool = false,
                               episodesWatched: Int? = nil, episodesAired: Int? = nil, onServer: Bool = false) -> EdgePrint {
@@ -311,7 +304,7 @@ extension EdgePrint {
 }
 
 extension Reel {
-    /// The format as edge print: "2160p", "DV", "TrueHD 7.1". Badges stay short here; the film-can label spells them out.
+    /// The format as a facts line: "2160p", "DV", "TrueHD 7.1". Badges stay short here.
     public static func edgeFormat(resolution: VideoResolution = .unknown, hdr: [String] = [], audioCodec: String? = nil, audioChannels: String? = nil) -> [String] {
         var parts: [String] = []
         if let label = resolutionLabel(resolution) { parts.append(label) }
@@ -360,6 +353,6 @@ extension LastSource {
     /// What the last playback looked like: "2160p · Dolby Vision". Empty when nothing was known.
     public var versionLine: String { Reel.versionLine(resolution: resolution, hdr: hdr) }
 
-    /// The same as edge print: ["2160p", "DV"].
+    /// The same as a facts line: ["2160p", "DV"].
     public var edgeFormat: [String] { Reel.edgeFormat(resolution: resolution, hdr: hdr) }
 }

@@ -16,6 +16,10 @@ struct LicencesView: View {
                 Text("Archivo (Omnibus-Type), IBM Plex Mono, IBM Plex Sans Condensed and IBM Plex Serif (IBM) are set in Marquee under the SIL Open Font License 1.1. The fonts are free to use, study, modify and share; they may not be sold on their own. Archivo: Copyright 2020 The Archivo Project Authors (github.com/Omnibus-Type/Archivo). IBM Plex: Copyright 2017 IBM Corp., with Reserved Font Name \"Plex\" (github.com/IBM/plex). The full licence is bundled with the fonts.")
                     .font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
             }
+            Section(film: "Rating Marks") {
+                Text("The marks beside each rating on a title page (IMDb, Rotten Tomatoes, Metacritic, TMDB, Letterboxd, Trakt) are from Simple Icons (simpleicons.org), released under CC0 1.0 Universal. The Popcornmeter bucket is drawn by Marquee. The marks are trademarks of their owners and only say where a score comes from; their owners do not endorse Marquee.")
+                    .font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
+            }
             Section(film: "FFmpeg") {
                 Text(FFmpegLicence.notice)
             }

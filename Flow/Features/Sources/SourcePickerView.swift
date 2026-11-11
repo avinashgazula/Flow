@@ -23,7 +23,7 @@ struct SourcePickerView: View {
     }
 
     /// The source auto-play would start: the one this title was last played from when it's still
-    /// offered, else the first playable one in the providers' order. Its row carries the yellow Play.
+    /// offered, else the first playable one in the providers' order. Its row carries the Play.
     private func preferred(in list: [StreamSource]) -> StreamSource? {
         model.lastSource(for: request, in: list) ?? list.first(where: \.isPlayable)
     }

@@ -23,7 +23,9 @@ enum ScreenshotTour {
             // The same page in light (Apple TV follows the system and ignores the setting); the next step puts it back.
             Step(name: "home-light") { m in m.settings.general.appearance = .light },
             Step(name: "detail-movie") { m in m.settings.general.appearance = .system; m.paths[.home] = [.detail(duneItem)] },
-            Step(name: "detail-show") { m in m.paths[.home] = [.detail(bbItem)] },
+            // The title page in light too: its ruled cells, ratings and list actions are all colour-dependent.
+            Step(name: "detail-movie-light") { m in m.settings.general.appearance = .light },
+            Step(name: "detail-show") { m in m.settings.general.appearance = .system; m.paths[.home] = [.detail(bbItem)] },
             Step(name: "sources") { m in await m.play(duneItem) },
             Step(name: "player") { m in
                 if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first {

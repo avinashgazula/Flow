@@ -93,7 +93,7 @@ struct PillTag: View {
         Text(text)
             .font(.caption2.weight(.semibold))
             .padding(.horizontal, 7).padding(.vertical, 2)
-            .background(color.opacity(0.25), in: Capsule())
+            .background(color.opacity(0.25), in: Rectangle())
             .foregroundStyle(color)
     }
 }
@@ -182,7 +182,7 @@ struct AddServerView: View {
                     Text("Go to **plex.tv/link** and enter").foregroundStyle(Theme.Palette.muted)
                     Text(plexCode.userCode).font(.system(size: 44, weight: .bold, design: .monospaced)).kerning(4)
                     if let qr = QRCode.image(for: plexCode.verificationURL.absoluteString) {
-                        qr.interpolation(.none).resizable().frame(width: 160, height: 160).padding(8).background(.white, in: RoundedRectangle(cornerRadius: 10))
+                        qr.interpolation(.none).resizable().frame(width: 160, height: 160).padding(8).background(.white, in: Rectangle())
                     }
                     ProgressView("Waiting for Plex…")
                 }

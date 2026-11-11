@@ -31,7 +31,7 @@ final class ProgrammeTests: XCTestCase {
         XCTAssertEqual(Reel.minutesLeft(progress: nearlyDone, runtimeMinutes: 50), 1)
     }
 
-    func testWatchedFractionFollowsThePositionSoPerforationsAgreeWithTimeLeft() {
+    func testWatchedFractionFollowsThePositionSoTheBarAgreesWithTimeLeft() {
         // A stale stored percentage (38) must not contradict a position that is nearly at the end.
         let stale = PlaybackProgress(key: key, percent: 38, positionSeconds: 3540, durationSeconds: 3600)
         XCTAssertEqual(Reel.watchedFraction(stale), 0.983, accuracy: 0.001)
@@ -192,16 +192,7 @@ final class ProgrammeTests: XCTestCase {
         XCTAssertEqual(print.segments().map(\.text), ["2024"])
     }
 
-    func testPerforationsFillWithProgress() {
-        XCTAssertEqual(EdgePrint.filledPerforations(progress: 0, of: 14), 0)
-        XCTAssertEqual(EdgePrint.filledPerforations(progress: 0.01, of: 14), 1)
-        XCTAssertEqual(EdgePrint.filledPerforations(progress: 0.5, of: 14), 7)
-        XCTAssertEqual(EdgePrint.filledPerforations(progress: 1, of: 14), 14)
-        XCTAssertEqual(EdgePrint.filledPerforations(progress: 2, of: 14), 14)
-        XCTAssertEqual(EdgePrint.filledPerforations(progress: 0.5, of: 0), 0)
-    }
-
-    func testPosterPrintCarriesRuntimeAndRatingWithNoPerforations() {
+    func testPosterPrintCarriesRuntimeAndRatingWithNoProgressBar() {
         let film = EdgePrint.poster(runtimeMinutes: 167, isSeries: false, rating: 8.46)
         XCTAssertNil(film.progress)
         XCTAssertEqual(film.segments().map(\.text), ["2h47", "8.5"])
