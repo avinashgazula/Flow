@@ -18,7 +18,7 @@ export const hasProviders = (p: MediaDetail['providers']) => kinds.some((k) => (
 export function WhereToWatch({ providers }: { providers: MediaDetail['providers'] }) {
   return (
     <section className={s.section} aria-labelledby="where-title">
-      <h2 id="where-title" className={s.sectionTitle}>
+      <h2 id="where-title" className="section-label">
         Where to Watch
       </h2>
       <dl className={s.providers}>
