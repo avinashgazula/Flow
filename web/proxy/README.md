@@ -99,15 +99,25 @@ was missed: check that the binding is called `SYNC` and that you deployed after 
 Sync uses the free KV allowance: Flow writes only when something changed, about three seconds after
 you stop typing. A record is capped at 256 KB. **Turn Off and Erase** in Flow deletes the record.
 
-Subtitle search needs one more host when OpenSubtitles is used: its download links are on `www.opensubtitles.com`, which
-sends no CORS headers, so Flow fetches them through this proxy. Add `www.opensubtitles.com` and `dl.opensubtitles.org` to
-`ALLOWED_HOSTS`. (SubSource's key is a request header the proxy doesn't pass on, so SubSource can't be used from the website.)
+SubSource's key is a request header the proxy doesn't pass on, so SubSource can't be used from the website.
+
+## Hosts that are always allowed
+
+Three hosts the website itself needs are built into the Worker, so you don't list them in `ALLOWED_HOSTS`:
+
+- `www.opensubtitles.com` and `dl.opensubtitles.org`: OpenSubtitles' download links, which send no CORS headers, so Flow
+  fetches subtitle files through the proxy.
+- `api.introdb.app`: IntroDB's skip times, whose CORS header names only its own page.
+
+They are exact names (no subdomains), and everything else about the proxy is unchanged: GET and HEAD only, https on the
+standard port, the same redirect checks and the same token. If Flow says your stream proxy needs updating to download
+OpenSubtitles files, the Worker is an older version: run `npx wrangler deploy` again from this folder.
 
 ## Which hosts to allow
 
 `ALLOWED_HOSTS` is a comma-separated list of host names. `*.` at the start matches any subdomain, so
 `*.real-debrid.com` covers every Real-Debrid download server, but not `real-debrid.com` itself.
-List the bare domain too if you need it. A Worker with no `ALLOWED_HOSTS` refuses everything.
+List the bare domain too if you need it. A Worker with no `ALLOWED_HOSTS` refuses everything except the built-in hosts above.
 
 Add-ons such as AIOStreams give Flow a play link that redirects to the debrid host. The proxy
 follows redirects itself and checks every host on the way, so **both hosts need to be allowed**:
@@ -130,8 +140,8 @@ redirect lands on). If a file fails, the Worker's answer says which host it refu
 
 ### Skip times
 
-Flow's skip buttons also use the proxy for IntroDB, whose answers a web page can't read directly. Add
-`api.introdb.app` to `ALLOWED_HOSTS` and give Flow its key in **Settings → Playback → Skip Services**. (PublicMetaDB
+Flow's skip buttons also use the proxy for IntroDB, whose answers a web page can't read directly. Its host is built
+in (see above); give Flow its key in **Settings → Playback → Skip Services**. (PublicMetaDB
 needs a sign-in header, which the proxy never forwards, so it isn't reachable from a web page.)
 
 ## Use it in Flow

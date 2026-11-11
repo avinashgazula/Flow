@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useEffect, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
 import { Icon } from '../../components/Icon'
+import { nameSize } from '../detail/nameSize'
 import { Plate, PrintLine } from '../../components/Frame'
 import { prefetchDetail, q } from '../../lib/queries'
 import { lastSourceStore } from '../../lib/sources/lastSource'
@@ -149,7 +150,7 @@ function LeadText({ lead, current }: { lead: LeadItem; current: boolean }) {
   const Heading = current ? 'h2' : 'p'
   return (
     <div className={s.text} data-current={current ? '' : undefined} aria-hidden={current ? undefined : true} inert={!current}>
-      <Heading className={s.name}>{item.title}</Heading>
+      <Heading className={s.name} data-size={nameSize(item.title)}>{item.title}</Heading>
       <p className={s.meta}>{meta}</p>
     </div>
   )
