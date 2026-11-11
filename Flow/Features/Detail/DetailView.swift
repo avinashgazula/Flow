@@ -116,7 +116,7 @@ struct DetailView: View {
             let parts = factParts
             if !parts.isEmpty {
                 RuleLine(thin: true)
-                FactsLine(parts: parts)
+                TitleFactsLine(parts: parts)
                     .padding(.horizontal, Theme.Space.gutter)
                     .padding(.vertical, Theme.Space.s)
             }

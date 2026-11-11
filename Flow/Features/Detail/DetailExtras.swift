@@ -167,7 +167,7 @@ struct GiantTitle: View {
 }
 
 /// The facts under a title as one mono line of capitals, a thin rule between the parts.
-struct FactsLine: View {
+struct TitleFactsLine: View {
     let parts: [String]
 
     var body: some View {
@@ -204,7 +204,7 @@ struct PageHead: View {
                 .padding(.bottom, Theme.Space.m)
             if !facts.isEmpty {
                 RuleLine(thin: true)
-                FactsLine(parts: facts)
+                TitleFactsLine(parts: facts)
                     .padding(.horizontal, Theme.Space.gutter)
                     .padding(.vertical, Theme.Space.s)
             }
