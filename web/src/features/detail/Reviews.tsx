@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Icon } from '../../components/Icon'
 import { q } from '../../lib/queries'
 import { spoilerParts } from '../../lib/reviewText'
 import type { MediaType, Review } from '../../lib/tmdb/types'
@@ -58,9 +57,6 @@ function ReviewItem({ review: r }: { review: Review }) {
   return (
     <article className={s.item} aria-label={`Review by ${r.author}`}>
       <header className={s.by}>
-        <span className={s.initial} aria-hidden="true">
-          {r.author.charAt(0).toUpperCase()}
-        </span>
         <span className={s.who}>
           <span className={s.author}>{r.author}</span>
           <span className={s.meta}>
@@ -71,37 +67,39 @@ function ReviewItem({ review: r }: { review: Review }) {
         <span className={s.marks}>
           {r.rating !== undefined && (
             <span className={s.score} aria-label={`Rated ${r.rating} out of 10`}>
-              <Icon name="star" size={12} />
-              {r.rating}/10
+              {r.rating}
+              <span aria-hidden="true">/10</span>
             </span>
           )}
           {r.spoiler && <span className={s.flag}>Spoilers</span>}
         </span>
       </header>
-      <div className={s.body}>
-        <p className={s.text} data-folded={long && !open ? '' : undefined} data-hidden={hidden ? '' : undefined} aria-hidden={hidden || undefined}>
-          {parts.map((part, i) => (part.spoiler ? <Hidden key={i} text={part.text} all={revealed} /> : <span key={i}>{part.text}</span>))}
-        </p>
-        {hidden && (
-          <button type="button" className={s.reveal} onClick={() => setRevealed(true)}>
-            Show Spoilers
-          </button>
-        )}
-      </div>
-      {((long && !hidden) || tagged) && (
-        <div className={s.actions}>
-          {long && !hidden && (
-            <button type="button" className={s.fold} onClick={() => setOpen(!open)} aria-expanded={open}>
-              {open ? 'Read Less' : 'Read More'}
-            </button>
-          )}
-          {tagged && (
-            <button type="button" className={s.fold} onClick={() => setRevealed(!revealed)} aria-pressed={revealed}>
-              {revealed ? 'Hide Spoilers' : 'Show Spoilers'}
+      <div className={s.main}>
+        <div className={s.body}>
+          <p className={s.text} data-folded={long && !open ? '' : undefined} data-hidden={hidden ? '' : undefined} aria-hidden={hidden || undefined}>
+            {parts.map((part, i) => (part.spoiler ? <Hidden key={i} text={part.text} all={revealed} /> : <span key={i}>{part.text}</span>))}
+          </p>
+          {hidden && (
+            <button type="button" className={s.reveal} onClick={() => setRevealed(true)}>
+              Show Spoilers
             </button>
           )}
         </div>
-      )}
+        {((long && !hidden) || tagged) && (
+          <div className={s.actions}>
+            {long && !hidden && (
+              <button type="button" className={s.fold} onClick={() => setOpen(!open)} aria-expanded={open}>
+                {open ? 'Read Less' : 'Read More'}
+              </button>
+            )}
+            {tagged && (
+              <button type="button" className={s.fold} onClick={() => setRevealed(!revealed)} aria-pressed={revealed}>
+                {revealed ? 'Hide Spoilers' : 'Show Spoilers'}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </article>
   )
 }

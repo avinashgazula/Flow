@@ -4,7 +4,6 @@ import { PosterRow } from '../../components/PosterRow'
 import { collectionQuery } from '../../lib/tmdb/collection'
 import type { MediaDetail } from '../../lib/tmdb/types'
 import { useNearScreen } from '../../lib/useNearScreen'
-import s from './DetailScreen.module.css'
 
 /** The franchise a film belongs to, as the apps' Collection row: its films in release order, this one marked Current,
  *  and a link to the page that lists them all. The films are asked for once the row is near the screen. A collection
@@ -23,7 +22,7 @@ export function CollectionRow({ detail, now }: { detail: Pick<MediaDetail, 'type
         now={now}
         current={detail}
         action={
-          <Link to="/collection/$id" params={{ id: collection.id }} className={s.seeAll} aria-label={`See every film in ${collection.name}`}>
+          <Link to="/collection/$id" params={{ id: collection.id }} className="quiet-link" aria-label={`See every film in ${collection.name}`}>
             See all
           </Link>
         }

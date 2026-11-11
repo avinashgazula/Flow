@@ -1,27 +1,54 @@
-/* A title's page. Phone: one column, the still and its label first. From 1000px: the still and the film-can
-   label in the left column, the facts beside them, as in the sketch. Everything below runs full width. */
-.wrap { max-width: 1360px; margin: 0 auto; }
+/* A title's page, in the Index system. The page head is the giant uppercase title with its facts line and a 3px rule
+   under it, edge to edge. Below: the framed still and the "how this plays" block in the left column from 1000px, the
+   ratings, actions and overview beside them; on a phone one column. Everything after runs full width, each section
+   opened by a 3px rule and a red mono label. */
+.wrap { width: 100%; }
+
+/* The head pulls out to the viewport's edges and pads back in, so the title's left edge is still the page's. */
+.head {
+  margin: calc(-1 * var(--space-l)) calc(-1 * var(--page-inset)) var(--space-xl);
+  padding: var(--space-xl) var(--page-inset) 0;
+  border-bottom: var(--rule);
+}
+.name {
+  padding-bottom: var(--space-m);
+  font: 700 var(--fs-display) / 0.84 var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+/* A longer title steps down so it breaks between words instead of inside one. */
+.name[data-size='long'] { font-size: clamp(44px, 9.5vw, 136px); }
+.name[data-size='longer'] { font-size: clamp(36px, 6.8vw, 100px); }
+.name[data-size='longest'] { font-size: clamp(30px, 4.8vw, 72px); line-height: 0.9; }
+.meta {
+  padding: 14px 0 16px;
+  border-top: 1px solid var(--fg);
+  font: 600 var(--fs-small) / 1.5 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-wrap: pretty;
+}
+.metaPart { white-space: nowrap; }
 
 .top > * { min-width: 0; }
 @media (min-width: 1000px) {
-  .top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: var(--space-xxl); align-items: start; }
+  .top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); column-gap: var(--space-xxl); align-items: start; }
 }
 
 .still { min-width: 0; }
 .info { display: flex; flex-direction: column; min-width: 0; margin-top: var(--space-l); }
 @media (min-width: 1000px) { .info { margin-top: 0; } }
 
-.meta { margin-top: var(--space-xs); font-size: var(--fs-small); line-height: 1.4; color: var(--ink-2); text-wrap: pretty; }
-.metaPart { white-space: nowrap; }
-.name { font: 700 calc(32px * var(--ts, 1)) / 1.08 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
-@media (min-width: 721px) { .name { font-size: calc(46px * var(--ts, 1)); line-height: 1.05; } }
-/* Logo art stands in for the words: as tall as two lines of the title would be, as wide as the column allows. The
-   box keeps that height until the image has arrived, so nothing below it moves. */
-.name[data-logo] { display: flex; align-items: flex-end; min-height: 84px; }
-@media (min-width: 721px) { .name[data-logo] { min-height: 112px; } }
-.logo { display: block; width: auto; max-width: min(100%, 420px); max-height: 84px; object-fit: contain; object-position: left bottom; opacity: 0; transition: opacity var(--dur-move) ease; }
-@media (min-width: 721px) { .logo { max-height: 112px; } }
-.logo[data-loaded] { opacity: 1; }
+/* The still: square, in a 3px frame, at 16:9; its progress is a thin red bar with an ink border, its facts mono text
+   under it. */
+.frame { border: var(--rule); }
+.art { aspect-ratio: 16 / 9; }
+.progress { height: 12px; margin-top: var(--space-xs); border: 2px solid var(--fg); }
+.progress > i { display: block; height: 100%; background: var(--red); }
+.print { margin-top: var(--space-xs); font: 400 var(--fs-caption) / 1.4 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.print:empty { display: none; }
 
 /* Text size (Settings → Title Pages): the page's own type steps are scaled together, so spacing set in them follows. */
 .wrap[data-text='small'] { --ts: 0.92; }
@@ -29,31 +56,50 @@
 .wrap[data-text='extraLarge'] { --ts: 1.35; }
 .wrap[data-text] {
   --fs-caption: calc(12px * var(--ts));
-  --fs-footnote: calc(13px * var(--ts));
-  --fs-small: calc(15px * var(--ts));
-  --fs-body: calc(17px * var(--ts));
-  --fs-headline: calc(20px * var(--ts));
-  --fs-title3: calc(24px * var(--ts));
+  --fs-footnote: calc(12px * var(--ts));
+  --fs-small: calc(13px * var(--ts));
+  --fs-body: calc(15px * var(--ts));
+  --fs-headline: calc(18px * var(--ts));
+  --fs-title3: calc(22px * var(--ts));
 }
+.wrap[data-text] .overview { font-size: calc(18px * var(--ts)); }
 
-.rating { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-s); margin-top: var(--space-xxs); }
-.ratingLabel { font-size: var(--fs-footnote); line-height: 1.3; color: var(--ink-2); }
-.status { margin-top: var(--space-xxs); font-size: var(--fs-footnote); line-height: 1.4; color: var(--ink-2); }
+.rating { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-s); margin-top: var(--space-xs); }
+.ratingLabel { font: 600 var(--fs-caption) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.status { margin-top: var(--space-xxs); font-size: var(--fs-footnote); line-height: 1.4; color: var(--muted); }
 .status:empty { margin: 0; }
 
-/* Ratings: aligned numbers with the source's name under each, tapping opens the site. */
-.ratings { display: flex; flex-wrap: wrap; gap: var(--space-m) var(--space-xl); margin-top: var(--space-m); }
-/* On a phone the scores fall into columns, so the numbers line up from row to row instead of ragged wraps. */
-@media (max-width: 720px) { .ratings { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: var(--space-m) var(--space-s); } }
-.ratings a { display: flex; flex-direction: column; gap: 2px; }
-.score { font: 600 var(--fs-title3) / 1 var(--font); font-variant-numeric: tabular-nums; }
-.source { font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); transition: color var(--dur-state) ease; }
-.ratings a:hover .source, .ratings a:focus-visible .source { color: var(--paper); text-decoration: underline; text-decoration-color: var(--hair); text-underline-offset: 3px; }
-.plain { display: flex; flex-direction: column; gap: 2px; }
+/* Ratings: a ruled row of cells, each a big red condensed numeral with the source's name under it in mono. Cells
+   share their borders; tapping one opens the site. */
+.ratings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  margin-bottom: var(--space-l);
+  border-top: var(--rule);
+  border-bottom: 1px solid var(--fg);
+}
+.ratings > li { min-width: 0; border-left: 1px solid var(--fg); }
+.ratings > li:first-child { border-left: 0; }
+.ratings a, .plain { display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 12px 12px 12px 0; }
+.ratings > li:not(:first-child) a, .ratings > li:not(:first-child) .plain { padding-left: 12px; }
+.score { font: 700 34px / 1 var(--font-cond); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--red); }
+.source { font: 600 var(--fs-caption) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+@media (hover: hover) {
+  .ratings a:hover { background: var(--blue); }
+  .ratings a:hover .score, .ratings a:hover .source { color: var(--onblue); }
+}
+.ratings a:focus-visible { outline-offset: -3px; }
+@media (max-width: 720px) {
+  /* Under the actions on a phone: the cells wrap onto rows, each keeping its rules. */
+  .ratings { margin: var(--space-l) 0 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ratings > li:nth-child(3n + 1) { border-left: 0; }
+  .ratings > li:nth-child(3n + 1) :is(a, .plain) { padding-left: 0; }
+  .ratings > li:nth-child(n + 4) { border-top: 1px solid var(--fg); }
+}
 
 /* A series asks which seasons to request in the actions row, under the button, instead of in a dialog. */
 .seasonsChoice { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); flex: 1 1 100%; scroll-margin-bottom: calc(var(--tabbar-height) + var(--space-m)); }
-.seasonsLabel { margin-right: var(--space-xs); font-size: var(--fs-small); color: var(--ink-2); }
+.seasonsLabel { margin-right: var(--space-xs); font: 600 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; }
 @media (max-width: 720px) {
   /* The question and Cancel share a line, and the two answers share the next, each half the width. */
   .seasonsLabel { order: 0; flex: 1 0 auto; white-space: nowrap; }
@@ -61,10 +107,10 @@
   .seasonsAnswer { order: 2; flex: 1 1 calc(50% - var(--space-xs)); }
 }
 
-.actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-s); margin-top: var(--space-l); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-s); }
 .actions > :first-child { flex: 0 1 auto; min-width: 0; }
 /* What Seerr says when there is nothing to ask: a status in words, in the row but not a button. */
-.requestState { display: inline-flex; align-items: center; gap: var(--space-xs); min-height: 48px; padding: 0 var(--space-xs); font: 500 var(--fs-small) / 1.2 var(--font); color: var(--ink-2); }
+.requestState { display: inline-flex; align-items: center; gap: var(--space-xs); min-height: 48px; padding: 0 var(--space-xs); font: 600 var(--fs-small) / 1.2 var(--font); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .requestState svg { flex: none; }
 @media (max-width: 720px) {
   /* Play takes the line; Trailer and Request share the next, so the list under them stays above the fold. */
@@ -74,80 +120,83 @@
   .actions > .btn { padding-inline: var(--space-m); }
 }
 
-.textActions { display: flex; flex-wrap: wrap; gap: 0 var(--space-l); margin-top: var(--space-xxs); }
-.textAction {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 44px;
-  font: 500 var(--fs-small) / 1 var(--font);
-  color: var(--ink-2);
-  transition: color var(--dur-state) ease;
-  -webkit-tap-highlight-color: transparent;
-}
-.textAction:hover { color: var(--paper); }
-.textAction[aria-pressed='true'], .textAction[data-on] { color: var(--paper); font-weight: 600; }
-.textAction[aria-disabled='true'] { color: var(--ink-3); cursor: default; }
-
-.tagline { margin-top: var(--space-m); font: 600 var(--fs-body) / 1.4 var(--font); max-width: var(--measure); text-wrap: pretty; }
-.overview { margin-top: var(--space-s); max-width: var(--measure); font-size: var(--fs-body); line-height: 1.55; color: var(--ink-2); text-wrap: pretty; }
-.tagline + .overview { margin-top: var(--space-xs); }
-.crew { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-xl); margin: var(--space-m) 0 0; }
-.crew dt { font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); }
-.crew dd { margin: 2px 0 0; font-size: var(--fs-small); line-height: 1.3; }
-.crew a:hover { text-decoration: underline; text-underline-offset: 0.2em; }
-
-.sectionTitle { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; margin-bottom: var(--space-s); }
-.section { margin-top: var(--section); }
-
-/* Cast at one size: a portrait when there is one, else the name and role on a hairline. */
-.cast { margin-top: var(--section); }
-.castGrid { display: grid; grid-template-columns: repeat(auto-fill, 104px); gap: var(--space-m) var(--space-s); }
-.person { display: flex; flex-direction: column; gap: 2px; width: 104px; min-height: 100%; }
-.person:not([data-photo]) { padding-top: var(--space-xs); border-top: 1px solid var(--hair); }
-.face { width: 104px; aspect-ratio: 2 / 3; margin-bottom: 6px; border-radius: var(--radius-art); transition: transform var(--dur-state) var(--ease-out); }
-@media (hover: hover) { .person:hover .face { transform: translateY(-2px); } }
-.personName { font: 600 var(--fs-footnote) / 1.25 var(--font); overflow-wrap: anywhere; }
-.personRole { font: 400 var(--fs-caption) / 1.3 var(--font); color: var(--ink-3); overflow-wrap: anywhere; }
-.seeAll { font-size: var(--fs-small); line-height: 1.3; color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
-.seeAll:hover { color: var(--paper); text-decoration-color: var(--paper); }
-.airs { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--space-m); margin-top: var(--space-xxs); font-size: var(--fs-small); color: var(--ink-2); }
-.airsText { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
-.more { margin-top: var(--space-s); height: 36px; padding-right: 8px; font: 500 var(--fs-small) / 1 var(--font); color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.25em; }
-.more:hover { color: var(--paper); text-decoration-color: var(--paper); }
-
-/* Where to watch: a row of small square logos for each way to watch (subscription, free, rent, buy). */
-.providers { display: grid; gap: var(--space-m); margin: 0; }
-.providers > div { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); align-items: center; gap: var(--space-m); font-size: var(--fs-small); }
-.providers dt { line-height: 1.3; color: var(--ink-2); }
-.providers dd { margin: 0; }
-.services { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
-.service {
+/* Watchlist, Watched, Favourite, Shuffle, Share: a bordered segmented row. The cells share borders (each is pulled
+   3px over its neighbour), and the one under the pointer is raised so its blue border shows whole. */
+.listActions {
   display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  overflow: hidden;
-  border-radius: var(--radius-art);
-  background: var(--base-2);
-  box-shadow: 0 0 0 1px var(--hair);
-  transition: transform var(--dur-state) var(--ease-out);
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  margin-top: var(--space-m);
+  padding: 0 3px 3px 0;
 }
+.listAction { margin: 0 -3px -3px 0; padding: 0 12px; min-width: 0; white-space: normal; text-align: center; }
+.listAction:hover, .listAction:focus-visible { position: relative; z-index: 1; }
+.listAction[data-on] { background: var(--fg); color: var(--bg); }
+@media (hover: hover) { .listAction[data-on]:hover { background: var(--blue); color: var(--onblue); } }
+.listAction[aria-disabled='true'] { cursor: default; }
+@media (max-width: 720px) { .listActions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.airs { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--space-m); margin-top: var(--space-xs); font: 400 var(--fs-small) / 1.4 var(--font); }
+.airsText { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.airs .quiet-link { min-height: 44px; }
+
+.tagline { margin-top: var(--space-l); font: 700 22px / 1.15 var(--font-cond); text-transform: uppercase; max-width: var(--measure); text-wrap: balance; }
+.overview { margin-top: var(--space-m); font-size: 18px; }
+.tagline + .overview { margin-top: var(--space-xs); }
+.crew { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin: var(--space-l) 0 0; border-top: var(--rule); }
+.crew > div { padding: 12px 16px 12px 0; border-bottom: 1px solid var(--fg); }
+.crew dt { font: 600 var(--fs-caption) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.crew dd { margin: 4px 0 0; font: 600 var(--fs-small) / 1.3 var(--font); }
+
+/* A section: a 3px rule above, a red mono label, then its ruled content. */
+.section { margin-top: var(--space-xxl); padding-top: var(--space-s); border-top: var(--rule); }
+.section > :is(h2, .section-label) { margin-bottom: var(--space-m); }
+
+/* Cast: a grid of cells sharing 1px borders inside a 3px rule; each is a row, so hover and focus invert it. */
+.castGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 232px), 1fr));
+  border-top: 1px solid var(--fg);
+  border-left: 1px solid var(--fg);
+}
+.castGrid > li { min-width: 0; border-right: 1px solid var(--fg); border-bottom: 1px solid var(--fg); }
+.person { align-items: center; height: 100%; padding: 12px; }
+.face { flex: none; width: 48px; aspect-ratio: 2 / 3; }
+.personText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.personName { font: 700 17px / 1.15 var(--font-cond); text-transform: uppercase; overflow-wrap: anywhere; }
+.personRole { font: 400 var(--fs-caption) / 1.3 var(--font); overflow-wrap: anywhere; }
+.more { margin-top: var(--space-s); min-height: 44px; font-size: var(--fs-small); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* Where to watch: a ruled grid, each way to watch a row (label cell, then a cell for every service). */
+.providers { margin: 0; border-top: 1px solid var(--fg); }
+.providers > div { display: grid; grid-template-columns: 168px minmax(0, 1fr); border-bottom: 1px solid var(--fg); }
+.providers dt { display: flex; align-items: center; padding: 0 16px 0 0; font: 600 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; }
+.providers dd { margin: 0; border-left: 1px solid var(--fg); }
+.services { display: flex; flex-wrap: wrap; }
+.services > li { border-right: 1px solid var(--fg); }
+.service { position: relative; display: grid; place-items: center; width: 64px; height: 64px; overflow: hidden; }
 .service img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.serviceName { padding: 4px; font: 600 10px / 1.1 var(--font); text-align: center; color: var(--ink-2); overflow-wrap: anywhere; }
-@media (hover: hover) { a.service:hover { transform: translateY(-2px); } }
-@media (prefers-reduced-motion: reduce) { a.service:hover { transform: none; } }
-.attribution { margin-top: var(--space-m); font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); }
-@media (max-width: 480px) { .providers > div { grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); } }
+.serviceName { padding: 4px; font: 600 10px / 1.1 var(--font); text-align: center; overflow-wrap: anywhere; }
+/* The hover is a blue frame drawn over the logo, since a logo fills its cell. */
+a.service::after { content: ''; position: absolute; inset: 0; border: 0 solid var(--blue); transition: border-width var(--dur-state) ease; }
+@media (hover: hover) { a.service:hover::after { border-width: 4px; } }
+a.service:focus-visible::after { border-width: 4px; }
+a.service:focus-visible { outline-offset: -3px; }
+.attribution { margin-top: var(--space-s); font: 400 var(--fs-caption) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+@media (max-width: 560px) {
+  .providers > div { grid-template-columns: minmax(0, 1fr); }
+  .providers dt { padding: 10px 0; }
+  .providers dd { border-left: 0; border-top: 1px solid var(--fg); }
+}
 
-.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-m) var(--space-xl); margin: 0; }
-.facts dt { font-size: var(--fs-caption); line-height: 1.3; color: var(--ink-3); }
-.facts dd { margin: 2px 0 0; font-size: var(--fs-small); line-height: 1.4; text-wrap: pretty; }
+/* About: a ruled key/value grid in mono. */
+.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); margin: 0; border-top: 1px solid var(--fg); border-left: 1px solid var(--fg); }
+.facts > div { min-width: 0; padding: 12px 16px; border-right: 1px solid var(--fg); border-bottom: 1px solid var(--fg); }
+.facts dt { font: 600 var(--fs-caption) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.facts dd { margin: 4px 0 0; font: 400 var(--fs-body) / 1.4 var(--font); text-wrap: pretty; overflow-wrap: anywhere; }
 .facts > [data-wide] { grid-column: span 2; }
-@media (max-width: 480px) { .facts > [data-wide] { grid-column: auto; } }
-.links { display: flex; gap: var(--space-m); }
-.links a { text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
-.links a:hover { text-decoration-color: var(--paper); }
+@media (max-width: 560px) { .facts > [data-wide] { grid-column: auto; } }
+.links { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-m); }
 
-.ghostFrame { aspect-ratio: 16 / 9; border-radius: var(--radius-art) var(--radius-art) 0 0; background: var(--base-2); }
-.ghostStrip { height: 26px; border-radius: 0 0 var(--radius-art) var(--radius-art); background: var(--edge); }
+/* The page's shape before anything is known, so nothing moves when it arrives. */
+.ghostName { width: min(720px, 80%); height: clamp(48px, 9vw, 128px); margin-bottom: var(--space-l); background: var(--tint-1); }
+.ghostFrame { aspect-ratio: 16 / 9; background: var(--tint-1); border: var(--rule); }

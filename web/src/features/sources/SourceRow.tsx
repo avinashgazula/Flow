@@ -7,9 +7,9 @@ import s from './SourcePicker.module.css'
 
 export const optionId = (source: Source) => `source-${source.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 
-/** One source as a film-can label row: the resolution large on the left; then the format line in edge
- *  print, the row's title, and its facts in ink-3, as Settings → Sources → Appearance says. The best match has
- *  the yellow Play (a cue: the whole row plays); one that can't play is dimmed and says why in words.
+/** One source as a ruled row: the resolution in red condensed numerals on the left; then the format line in mono
+ *  capitals, the row's title, and its facts in muted mono, as Settings → Sources → Appearance says. The best match has
+ *  the solid Play (a cue: the whole row plays); one that can't play is dimmed and says why in words.
  *  `providerAbove`: a heading already names the provider. */
 export function SourceRow({
   source,

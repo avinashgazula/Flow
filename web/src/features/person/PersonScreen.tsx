@@ -7,6 +7,7 @@ import { q } from '../../lib/queries'
 import { useMinuteTick } from '../../lib/time'
 import type { MediaType, Person } from '../../lib/tmdb/types'
 import { RetryAction, StateView, errorMessage } from '../explore/Controls'
+import { nameSize } from '../detail/nameSize'
 import { creditSorts, filmography, lifeLine, type CreditSort } from './logic'
 import s from './PersonScreen.module.css'
 
@@ -16,8 +17,8 @@ const filters = [
   { id: 'show', label: 'Shows' },
 ] as const
 
-/** A person: a portrait at one size, the name and facts, a biography that opens on request, what they're
- *  known for, and everything they've been in, as posters with print-only strips. */
+/** A person: the giant name and a mono facts line, a framed portrait beside a serif biography that opens on request,
+ *  what they're known for, and everything they've been in under a ruled label. */
 export function PersonScreen({ id }: { id: number }) {
   const { data: person, isError, error, refetch, isRefetching } = useQuery(q.person(id))
   useEffect(() => {
@@ -47,15 +48,17 @@ function Loaded({ person }: { person: Person }) {
 
   return (
     <div className="page">
+      <header className={s.head}>
+        <h1 className={s.name} data-size={nameSize(person.name)}>
+          {person.name}
+        </h1>
+        {facts.length > 0 && <p className={s.meta}>{facts.join(' · ')}</p>}
+      </header>
       <div className={s.wrap}>
-        <header className={s.header}>
-          <Artwork path={person.profile} kind="profile" alt="" sizes="168px" priority className={s.portrait} fallback={initials(person.name)} />
-          <div className={s.facts}>
-            <h1 className={s.name}>{person.name}</h1>
-            {facts.length > 0 && <p className={s.meta}>{facts.join(' · ')}</p>}
-            {person.biography && <Biography text={person.biography} />}
-          </div>
-        </header>
+        <div className={s.intro}>
+          <Artwork path={person.profile} kind="profile" alt="" sizes="200px" priority className={s.portrait} fallback={initials(person.name)} />
+          {person.biography && <Biography text={person.biography} />}
+        </div>
 
         {person.credits.length > 0 ? (
           <>
@@ -63,7 +66,7 @@ function Loaded({ person }: { person: Person }) {
             {person.credits.length > 6 && <PosterRow title="Known For" items={person.credits.slice(0, 12)} now={now} />}
             <section className={s.filmography} aria-labelledby="filmography-title">
               <header className={s.filmHeader}>
-                <h2 id="filmography-title" className={s.sectionTitle}>
+                <h2 id="filmography-title" className="section-label">
                   Filmography <span className={s.count}>{credits.length}</span>
                 </h2>
                 <div className={s.filmControls}>
@@ -77,7 +80,7 @@ function Loaded({ person }: { person: Person }) {
         ) : (
           <div className={s.state} role="status">
             <h2 className={s.stateTitle}>No Credits Yet</h2>
-            <p>TMDB doesn’t list any films or shows for this person.</p>
+            <p className="reading">TMDB doesn’t list any films or shows for this person.</p>
           </div>
         )}
       </div>
@@ -101,11 +104,11 @@ function Biography({ text }: { text: string }) {
   }, [text])
   return (
     <div className={s.bio}>
-      <p ref={ref} className={s.bioText} data-expanded={expanded ? '' : undefined} id="person-bio">
+      <p ref={ref} className={`reading ${s.bioText}`} data-expanded={expanded ? '' : undefined} id="person-bio">
         {text}
       </p>
       {(overflows || expanded) && (
-        <button className={s.more} onClick={() => setExpanded(!expanded)} aria-expanded={expanded} aria-controls="person-bio">
+        <button className={`quiet-link ${s.more}`} onClick={() => setExpanded(!expanded)} aria-expanded={expanded} aria-controls="person-bio">
           {expanded ? 'Show less' : 'Read more'}
         </button>
       )}
@@ -116,14 +119,13 @@ function Biography({ text }: { text: string }) {
 function Skeleton() {
   return (
     <div className="page" aria-busy>
+      <header className={s.head}>
+        <div className={`${s.ghost} ${s.ghostName}`} />
+      </header>
       <div className={s.wrap}>
-        <header className={s.header}>
+        <div className={s.intro}>
           <div className={`${s.portrait} ${s.ghost}`} />
-          <div className={s.facts}>
-            <div className={`${s.ghost} ${s.ghostName}`} />
-            <div className={`${s.ghost} ${s.ghostLine}`} />
-          </div>
-        </header>
+        </div>
       </div>
     </div>
   )

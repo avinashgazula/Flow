@@ -2,25 +2,25 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { ChoiceSelect, Segmented } from '../../components/Choice'
 import ContextMenu, { type MenuItem } from '../../components/ContextMenu'
-import { FrameCard } from '../../components/Frame'
+import { Artwork } from '../../components/Artwork'
 import { Icon } from '../../components/Icon'
 import { q } from '../../lib/queries'
 import { mediaKey, useLibrary } from '../../lib/store/library'
 import { titleLibrary } from '../../lib/store/titleLibrary'
 import { useSettings } from '../../lib/store/settings'
-import { spokenDuration, userLocale, useMinuteTick } from '../../lib/time'
+import { formatRuntime, spokenDuration, userLocale, useMinuteTick } from '../../lib/time'
 import type { Episode, MediaDetail } from '../../lib/tmdb/types'
 import { isAired, isWatched } from '../../lib/watching'
-import { cardOf, episodePrint, formatDay, realSeasons, todayOf } from './logic'
+import { cardOf, formatDay, isNew, realSeasons, todayOf } from './logic'
 import { episodesUpTo } from './upToHere'
 import s from './Episodes.module.css'
 
 const label = (n: number) => (n === 0 ? 'Specials' : `Season ${n}`)
 
-/** Seasons as a segmented control (a select when there are many), and the season's episodes as framed
- *  stills: the strip prints the runtime and NEW, and its perforations fill as the episode is watched. Each aired
- *  episode has a check to mark it watched or not, and the season has Watch Season. With Episode Spoilers off, an
- *  aired episode not yet watched keeps its still blurred and its synopsis hidden. */
+/** Seasons as a bordered segmented row (a select when there are many), and the season's episodes as numbered rows:
+ *  a red condensed numeral, the still, the title, a serif synopsis, a mono line (air date, runtime, NEW) and a thin red
+ *  bar for the progress. Each aired episode has a square to mark it watched or not, and the season has Watch Season.
+ *  With Episode Spoilers off, an aired episode not yet watched keeps its still blurred and its synopsis hidden. */
 export function Episodes({ detail, initial, onPlay }: { detail: MediaDetail; initial?: number; onPlay: (e: { season: number; episode: number }) => void }) {
   const specials = useSettings((x) => x.showSpecialsSeason)
   const spoilers = useSettings((x) => x.showEpisodeSpoilers)
@@ -44,7 +44,7 @@ export function Episodes({ detail, initial, onPlay }: { detail: MediaDetail; ini
   return (
     <section className={s.section} aria-labelledby="episodes-title">
       <div className={s.bar}>
-        <h2 id="episodes-title" className={s.title}>
+        <h2 id="episodes-title" className="section-label">
           Episodes
         </h2>
         {airedList.length > 0 && (
@@ -58,7 +58,7 @@ export function Episodes({ detail, initial, onPlay }: { detail: MediaDetail; ini
           <SeasonPicker seasons={seasons} value={shown} onChange={setSeason} />
         </div>
       )}
-      <ol className={s.grid}>
+      <ol className={s.list}>
         {isPending
           ? Array.from({ length: 6 }, (_, i) => <li key={i} className={s.ghost} aria-hidden />)
           : episodes?.map((e) => {
@@ -102,7 +102,6 @@ function EpisodeCard({
   onUpToHere: () => void
 }) {
   const day = formatDay(e.airDate, userLocale)
-  const print = episodePrint(e, { aired, watched, now })
   const spoken = [
     `Episode ${e.number}`,
     e.name,
@@ -118,31 +117,40 @@ function EpisodeCard({
     { id: 'toggle', label: watched ? 'Mark as Unwatched' : 'Mark as Watched', icon: watched ? 'close' : 'check', onSelect: onToggle },
     { id: 'upTo', label: 'Mark Watched Up to Here', icon: 'check', onSelect: onUpToHere },
   ]
+  const fact = [aired ? day : day ? `Airs ${day}` : 'Not yet aired', aired && e.runtime ? formatRuntime(e.runtime * 60) : undefined].filter(Boolean).join(' · ')
+  const fresh = aired && !watched && isNew(e.airDate, now)
+  const fraction = watched ? 1 : partial
   return (
-    <FrameCard
-      shape="still"
-      artKind="still"
-      artPath={e.still}
-      sizes="(max-width: 720px) 46vw, 260px"
-      progress={watched ? 1 : partial}
-      print={print}
-      fallback={`Episode ${e.number}`}
-      title={`${e.number}. ${e.name}`}
-      meta={aired ? day : day ? `Airs ${day}` : 'Not yet aired'}
-      label={spoken}
-      onSelect={onPlay}
-      disabled={!aired}
-      extra={aired && e.overview && !veiled ? <span className={s.overview} aria-hidden="true">{e.overview}</span> : undefined}
-    >
-      {/* The still is blurred by CSS when this is here (Episodes.module.css), which a FrameCard can't be told. */}
-      {veiled && <span className={s.veil} aria-hidden="true" />}
+    <li className={s.item} data-dimmed={aired ? undefined : ''}>
+      <button type="button" className={`row ${s.open}`} onClick={onPlay} disabled={!aired}>
+        <span className="sr-only">{spoken}</span>
+        <span className={s.num} aria-hidden="true">
+          {String(e.number).padStart(2, '0')}
+        </span>
+        <span className={s.thumb} data-veiled={veiled ? '' : undefined} aria-hidden="true">
+          <Artwork path={e.still} kind="still" alt="" sizes="(max-width: 720px) 112px, 176px" fallback={`Episode ${e.number}`} className={s.still} />
+        </span>
+        <span className={s.text} aria-hidden="true">
+          <span className={s.name}>{e.name}</span>
+          <span className={s.fact}>
+            {fresh && <b className={s.fresh}>New · </b>}
+            {fact}
+          </span>
+          {aired && e.overview && !veiled && <span className={s.overview}>{e.overview}</span>}
+          {fraction !== undefined && fraction > 0 && (
+            <span className={s.progress}>
+              <i style={{ width: `${Math.min(1, fraction) * 100}%` }} />
+            </span>
+          )}
+        </span>
+      </button>
       {aired && <ContextMenu label={`More options for episode ${e.number}, ${e.name}`} items={items} className={s.more} />}
       {aired && (
         <button type="button" className={s.mark} data-on={watched ? '' : undefined} onClick={onToggle} aria-label={`${watched ? 'Mark as unwatched' : 'Mark as watched'}: episode ${e.number}, ${e.name}`}>
-          {/* An empty ring until it is watched, then the check: the state is the shape, not only the colour. */}
-          {watched ? <Icon name="check" size={16} strokeWidth={2.8} /> : <span className={s.ring} aria-hidden="true" />}
+          {/* An empty square until it is watched, then the check: the state is the shape, not only the colour. */}
+          {watched ? <Icon name="check" size={16} strokeWidth={2.8} /> : <span className={s.box} aria-hidden="true" />}
         </button>
       )}
-    </FrameCard>
+    </li>
   )
 }

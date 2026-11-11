@@ -1,20 +1,20 @@
-/* Five stars, paper when chosen and ink-3 outlines when not (yellow is for the next action, not for a score). */
+/* Five stars: red when chosen (red marks), faint outlines when not. */
 .stars { display: inline-flex; margin-left: -7px; }
 .star {
   display: grid;
   place-items: center;
   width: 36px;
   height: 44px;
-  color: var(--ink-3);
+  color: var(--faint);
   -webkit-tap-highlight-color: transparent;
   transition: color var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
 }
-.star[data-on] { color: var(--paper); }
+.star[data-on] { color: var(--red); }
 @media (hover: hover) {
-  .star:hover { color: var(--paper); }
+  .star:hover { color: var(--red); }
   /* Hovering a star lights it and the ones before it, which says what a click will choose. */
-  .stars:has(.star:hover) .star { color: var(--ink-3); }
-  .stars:has(.star:hover) .star:hover, .stars:has(.star:hover) .star:has(~ .star:hover) { color: var(--paper); }
+  .stars:has(.star:hover) .star { color: var(--faint); }
+  .stars:has(.star:hover) .star:hover, .stars:has(.star:hover) .star:has(~ .star:hover) { color: var(--red); }
 }
 .star:active { transform: scale(0.92); }
 @media (prefers-reduced-motion: reduce) { .star:active { transform: none; } }

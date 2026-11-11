@@ -1,24 +1,48 @@
-/* A collection: its still and the facts beside it, then every film at one poster size. */
-.wrap { max-width: 1360px; margin: 0 auto; }
+/* A collection, in the Index system: the giant name with its film count and years under a 3px rule, the framed still
+   beside the serif overview, then every film at one poster size under a ruled label. */
+.wrap { width: 100%; }
 
-.header { display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 1fr); gap: var(--space-l) var(--space-xl); align-items: end; }
-.still { min-width: 0; }
-.facts { min-width: 0; }
-.name { font: 700 var(--fs-page-title) / 1.1 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
-@media (min-width: 721px) { .name { font-size: 46px; line-height: 1.05; } }
-.overview { margin-top: var(--space-s); max-width: var(--measure); font-size: var(--fs-body); line-height: 1.55; color: var(--ink-2); text-wrap: pretty; }
+.head {
+  margin: calc(-1 * var(--space-l)) calc(-1 * var(--page-inset)) var(--space-xl);
+  padding: var(--space-xl) var(--page-inset) 0;
+  border-bottom: var(--rule);
+}
+.name {
+  padding-bottom: var(--space-m);
+  font: 700 var(--fs-display) / 0.84 var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+.name[data-size='long'] { font-size: clamp(44px, 9.5vw, 136px); }
+.name[data-size='longer'] { font-size: clamp(36px, 6.8vw, 100px); }
+.name[data-size='longest'] { font-size: clamp(30px, 4.8vw, 72px); line-height: 0.9; }
+.meta {
+  padding: 14px 0 16px;
+  border-top: 1px solid var(--fg);
+  font: 600 var(--fs-small) / 1.5 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
 
-.films { margin-top: var(--section); }
-.sectionTitle { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; margin-bottom: var(--space-m); }
+.intro { display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 1fr); gap: var(--space-l) var(--space-xl); align-items: start; }
+.intro:not(:has(.still)) { grid-template-columns: minmax(0, 1fr); }
+.still { min-width: 0; border: var(--rule); }
+.art { aspect-ratio: 16 / 9; }
+.overview { align-self: start; }
 
-.state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); max-width: 440px; margin: var(--section) 0; color: var(--ink-2); }
-.stateTitle { font: 700 var(--fs-title2) / 1.15 var(--font-display); letter-spacing: -0.015em; color: var(--paper); }
+.films { margin-top: var(--space-xxl); padding-top: var(--space-s); border-top: var(--rule); }
+.films > h2 { margin-bottom: var(--space-l); }
+
+.state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); max-width: 560px; margin: var(--section) 0; }
+.stateTitle { font: 700 var(--fs-title1) / 1.05 var(--font-cond); text-transform: uppercase; }
 .state :global(.btn) { margin-top: var(--space-xs); }
 
-.ghost { background: var(--base-2); border-radius: var(--radius-art); }
-.ghostStill { aspect-ratio: 16 / 9; }
-.ghostName { width: min(320px, 80%); height: 44px; border-radius: 8px; }
+.ghost { background: var(--tint-1); }
+.ghostStill { aspect-ratio: 16 / 9; border: var(--rule); }
+.ghostName { width: min(720px, 80%); height: clamp(48px, 9vw, 128px); margin-bottom: var(--space-l); }
 
 @media (max-width: 720px) {
-  .header { grid-template-columns: minmax(0, 1fr); align-items: start; }
+  .intro { grid-template-columns: minmax(0, 1fr); }
 }
