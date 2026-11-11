@@ -12,6 +12,7 @@ import { userLocale, useMinuteTick } from '../../lib/time'
 import { isWatched } from '../../lib/watching'
 import { ChipRow } from '../explore/ChipRow'
 import { errorMessage, StateView } from '../explore/Controls'
+import { Toolbar } from '../explore/PageHead'
 import { filmCandidates, type UpcomingFilm } from '../home/upcoming'
 import {
   arrange,
@@ -114,15 +115,15 @@ export default function UpcomingPage() {
   }
 
   return (
-    <div className={s.page}>
-      <div className={s.tools}>
+    <div>
+      <Toolbar>
         <button type="button" className="btn btn-secondary btn-compact" disabled={upcoming.length === 0} onClick={() => save(upcoming, 'Flow Upcoming')}>
           <Icon name="calendar" size={16} /> Add All to Calendar
         </button>
         <p className={`${s.saved} muted`} role="status">
           {saved}
         </p>
-      </div>
+      </Toolbar>
 
       {loading && entries.length === 0 ? (
         <Ghosts />

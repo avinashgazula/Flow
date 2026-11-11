@@ -8,6 +8,7 @@ import type { Channel } from '../../lib/livetv/types'
 import { settingsStore, useSettings } from '../../lib/store/settings'
 import { ChipRow } from '../explore/ChipRow'
 import { Segmented, StateView } from '../explore/Controls'
+import { PageHead, Toolbar } from '../explore/PageHead'
 import { ChannelList } from './ChannelList'
 import { Guide } from './Guide'
 import { favouritesGroup, groupsMatching, groupsOf, visibleChannels } from './logic'
@@ -86,7 +87,7 @@ export function LiveScreen({ search }: { search: LiveSearch }) {
   if (providers.length === 0) {
     return (
       <div className={s.screen}>
-        <h1 className={`page-title ${s.title}`}>Live TV</h1>
+        <PageHead title="Live TV" compact />
         <StateView
           icon="live"
           title="No IPTV Providers"
@@ -111,33 +112,32 @@ export function LiveScreen({ search }: { search: LiveSearch }) {
     <div className={s.screen}>
       {/* Behind the full-screen player nothing here takes focus or a tap. */}
       <div className={s.inner} inert={!!search.play}>
-        <header className={s.head}>
-          <h1 className={`page-title ${s.title}`}>Live TV</h1>
-          <div className={s.tools}>
-            <button type="button" className={`btn btn-secondary btn-circle ${s.searchToggle}`} aria-label="Search channels" aria-expanded={searching} onClick={() => setSearching((x) => !x)}>
-              <Icon name="search" size={18} strokeWidth={2.2} />
-            </button>
-            <button type="button" className="btn btn-secondary btn-circle" aria-label="Refresh channels and guide" onClick={refresh} disabled={live.refreshing}>
-              <Icon name="refresh" size={18} strokeWidth={2.2} />
-            </button>
-          </div>
+        <PageHead title="Live TV" compact note={live.channels.length > 0 ? `${visible.length.toLocaleString()} ${visible.length === 1 ? 'channel' : 'channels'}` : undefined}>
+          <button type="button" className={`btn btn-secondary btn-circle ${s.searchToggle}`} aria-label="Search channels" aria-expanded={searching} onClick={() => setSearching((x) => !x)}>
+            <Icon name="search" size={18} strokeWidth={2.2} />
+          </button>
+          <button type="button" className="btn btn-secondary btn-circle" aria-label="Refresh channels and guide" onClick={refresh} disabled={live.refreshing}>
+            <Icon name="refresh" size={18} strokeWidth={2.2} />
+          </button>
+        </PageHead>
+        <Toolbar className={s.toolbar}>
           <Segmented className={s.views} options={views} value={view} onChange={(v) => go({ view: v })} label="View" />
           <label className={s.search} data-open={searching ? '' : undefined}>
             <span className="sr-only">Search channels</span>
             <Icon name="search" size={16} strokeWidth={2.4} />
             <input type="text" role="searchbox" enterKeyHint="search" value={text} onChange={(e) => setText(e.target.value)} placeholder="Channels" autoComplete="off" spellCheck={false} />
           </label>
-        </header>
+        </Toolbar>
         {live.channels.length > 0 && (
           <div className={s.chips}>
-          <ChipRow label="Channel groups">
-            {chips.map((chip) => (
-              <button key={chip.id ?? 'all'} type="button" className="chip" aria-pressed={group === chip.id} onClick={() => go({ group: chip.id })}>
-                {chip.id === favouritesGroup && <Icon name="star" size={14} className={s.chipStar} />}
-                {chip.label}
-              </button>
-            ))}
-          </ChipRow>
+            <ChipRow label="Channel groups">
+              {chips.map((chip) => (
+                <button key={chip.id ?? 'all'} type="button" className="chip" aria-pressed={group === chip.id} onClick={() => go({ group: chip.id })}>
+                  {chip.id === favouritesGroup && <Icon name="star" size={14} className={s.chipStar} />}
+                  {chip.label}
+                </button>
+              ))}
+            </ChipRow>
           </div>
         )}
         {/* Holds the chips' place while the channels load, so the list doesn't drop when they arrive. */}

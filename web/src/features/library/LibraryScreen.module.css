@@ -1,30 +1,32 @@
 :global(.page).screen { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 
-/* The title with Refresh Library beside it, on the title's line. */
-.head { display: flex; align-items: center; gap: var(--space-m); margin-bottom: var(--space-l); }
-.head > :global(.page-title) { margin-bottom: 0; }
 .refresh[data-working] svg { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .refresh[data-working] svg { animation: none; } }
 
-/* Sections: a plain heading, its count, and a link to the whole list. More room above than below. */
-.section { margin-top: var(--section); }
-.section:first-of-type { margin-top: 0; }
-.sectionHead { display: flex; align-items: baseline; gap: var(--space-s); margin-bottom: var(--space-s); }
-.sectionTitle { font: 600 var(--fs-headline) / 1.25 var(--font-display); letter-spacing: -0.005em; }
-.section > .sectionTitle { margin-bottom: var(--space-s); }
-.count { font-size: var(--fs-small); color: var(--ink-3); }
-.seeAll { margin-left: auto; font-size: var(--fs-small); line-height: 1.3; color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
-.seeAll:hover { color: var(--paper); text-decoration-color: var(--paper); }
+/* The index of pages that read your library, as the reference's numbered category list: red condensed numerals,
+   condensed uppercase names, what each holds in mono at the right. Two columns where there is room. */
+.pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); column-gap: var(--space-xxl); margin-bottom: var(--section); }
+.pages > li { border-bottom: 1px solid var(--hair); }
+.pageLink { align-items: center; min-height: 64px; height: 100%; }
+.pageNumber { flex: 0 0 30px; font: 700 22px / 1 var(--font-cond); color: var(--red); }
+.pageName { flex: 1; min-width: 0; font: 700 22px / 1.1 var(--font-cond); text-transform: uppercase; }
+.pageSub { flex: none; font-size: var(--fs-small); }
+.pageLink:hover .pageNumber, .pageLink:focus-visible .pageNumber { color: var(--onblue); }
+.pageLink svg { flex: none; }
+@media (max-width: 560px) { .pageSub { display: none; } }
+
+/* The first section follows the index, which has its own bottom margin. */
+.pages + section { margin-top: 0; }
 
 /* Stills (Continue Watching) and posters (Watchlist, Favourites) in one fixed size per row: a scrolling row
    on a phone, 3 or 4 stills and 5 or 7 posters across on wider screens. */
-.stills, .posters { display: flex; gap: var(--space-m); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 6px; margin: -6px; }
+.stills, .posters { display: flex; gap: var(--space-m); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 6px; margin: -6px; padding-bottom: var(--space-s); }
 .stills::-webkit-scrollbar, .posters::-webkit-scrollbar { display: none; }
 .stills > * { flex: 0 0 240px; scroll-snap-align: start; }
 .posters > * { flex: 0 0 112px; scroll-snap-align: start; }
 @media (max-width: 720px) {
-  .stills, .posters { gap: var(--space-s); margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); scroll-padding-inline: var(--gutter); }
+  .stills, .posters { gap: var(--space-s); margin-inline: calc(var(--page-inset) * -1); padding-inline: var(--page-inset); scroll-padding-inline: var(--page-inset); }
 }
 @media (min-width: 721px) {
   .stills, .posters { overflow: visible; display: grid; }
@@ -46,96 +48,66 @@
 /* Remove sits on the still's corner: a control, not text, shown on hover or focus and always on touch. */
 .remove.remove { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; opacity: 0; transition: opacity var(--dur-state) ease, background-color var(--dur-state) ease; }
 li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 1; }
-@media (hover: none) { .remove.remove { opacity: 1; } }
+@media (hover: none) { .remove.remove { opacity: 1; width: 44px; height: 44px; } }
 
-.continueGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-l) var(--space-m); }
+.continueGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-l) var(--space-m); padding-top: var(--space-l); }
 
-/* History: a frame with its strip, then what it was and when. */
+/* History: dated ruled rows. The date column is mono, the title condensed, and a day's heading is a red label under a
+   3px rule. The rows run edge to edge, so their blue hover does. */
 .history { content-visibility: auto; contain-intrinsic-size: auto 500px; }
-.recentRow { height: 124px; }
+.bleed { margin-inline: calc(-1 * var(--page-inset)); }
+.recentRow { height: 73px; }
 
 .dayHeading {
   display: flex;
-  align-items: flex-end;
-  height: 56px;
-  padding-bottom: var(--space-xs);
-  font: 600 var(--fs-footnote) / 1 var(--font);
-  color: var(--ink-2);
+  align-items: center;
+  height: 48px;
+  padding: 0 var(--page-inset);
+  border-top: var(--rule);
+  font: 600 var(--fs-small) / 1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--red);
 }
+.dayHeading[data-first] { border-top: 0; }
 
-.historyColumn { max-width: var(--reading-width); }
-.historyList { position: relative; max-width: var(--reading-width); contain: layout style; }
+.historyList { position: relative; margin-inline: calc(-1 * var(--page-inset)); contain: layout style; }
 .historySlot { position: absolute; top: 0; left: 0; width: 100%; }
 
 .historyItem {
-  display: flex;
   align-items: center;
   gap: var(--space-m);
   height: 100%;
-  padding: 8px 0;
+  padding: 9px var(--page-inset);
   border-bottom: 1px solid var(--hair);
   -webkit-tap-highlight-color: transparent;
 }
-.historyPlate { flex: none; width: 144px; }
-.historyItem:hover .historyTitle { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ink-3); }
-.historyItem:hover .historyPlate :global(*) { color: inherit; }
-.historyItem:focus-visible { outline: none; }
-.historyItem:focus-visible .historyPlate { outline: 2px solid var(--stock); outline-offset: 3px; border-radius: var(--radius-art); }
+.historyTime { flex: 0 0 112px; font-size: var(--fs-small); letter-spacing: 0.04em; }
+.historyPlate { flex: none; width: 96px; }
 .historyText { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
-.historyTitle { font: 600 var(--fs-small) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.historyMeta { font-size: var(--fs-footnote); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.historyTime { flex: none; font-size: var(--fs-caption); color: var(--ink-3); }
+.historyTitle { font: 700 20px / 1.1 var(--font-cond); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.historyMeta { font-size: var(--fs-footnote); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.historyItem:hover .historyMeta, .historyItem:focus-visible .historyMeta, .historyItem:hover .historyTime, .historyItem:focus-visible .historyTime { color: var(--onblue); }
 
-/* The index of pages that read your library: folder rows, as Home's Streaming Services and Genres. A name and what
-   it holds, and a chevron. */
-.pages { list-style: none; margin: 0 0 var(--section); padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-xs); }
-/* From 960px the four pages are four equal columns, so the index ends where the rows under it do. */
-@media (min-width: 960px) { .pages { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.pageLink { display: flex; align-items: center; gap: var(--space-s); min-height: 56px; padding: 0 var(--space-s) 0 var(--space-m); border-radius: var(--radius-control); background: var(--base-2); color: var(--paper); transition: background-color var(--dur-state) ease, transform var(--dur-state) var(--ease-out); -webkit-tap-highlight-color: transparent; }
-.pageLink:hover { background: var(--base-3); }
-.pageLink:active { transform: scale(0.98); }
-.pageLink svg { flex: none; margin-left: auto; color: var(--ink-3); transition: color var(--dur-state) ease; }
-.pageLink:hover svg { color: var(--paper); }
-.pageText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.pageName { font: 600 var(--fs-small) / 1.2 var(--font); }
-.pageSub { font-size: var(--fs-footnote); line-height: 1.3; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 560px) { .pages { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pageLink svg { display: none; } }
-
-/* One list */
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  margin: 0 0 var(--space-xs) -4px;
-  font: 600 var(--fs-small) / 1 var(--font);
-  color: var(--ink-2);
-}
-.back:hover { color: var(--paper); }
-/* The word is 16px tall; the link is 44px for a finger, drawn over the gap above the title. */
-@media (pointer: coarse) { .back { min-height: 44px; margin-bottom: 0; } }
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-s);
-  margin-bottom: var(--space-l);
-}
-.toolbarEnd { display: inline-flex; align-items: center; gap: var(--space-s); font-size: var(--fs-small); }
+/* One list. The filter is a segmented control; its tools sit at the toolbar's far end. */
+.filter { flex: none; }
+.toolbarEnd { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-s); font-size: var(--fs-small); }
 
 @media (max-width: 720px) {
   .continueGrid { grid-template-columns: 1fr; }
-  .toolbar > :first-child { flex: 1 1 100%; }
-  .toolbarEnd { flex: 1 1 100%; justify-content: space-between; }
+  .filter { flex: 1 1 100%; }
+  .toolbarEnd { flex: 1 1 100%; justify-content: space-between; margin-left: 0; }
   .toolbarEnd:has(> :only-child) { justify-content: flex-end; }
-  /* The plate and the date leave a phone's title little room: let it take a second line before it truncates (the row's height has room). */
-  .historyTitle { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .historyTime { flex-basis: 84px; font-size: var(--fs-footnote); letter-spacing: 0; }
+  .historyPlate { width: 72px; }
+  .historyTitle { font-size: 17px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .historyItem { gap: var(--space-s); }
 }
 
 /* The watchlist in your own order: posters wrap at one size, each with its two arrows on the corner (shown on hover or focus,
    always on touch), and a bar where a dragged poster would land. Dragging works on any poster, so none of them is virtualised. */
-.hint { margin-bottom: var(--space-m); font-size: var(--fs-footnote); line-height: 1.4; max-width: var(--measure); }
-.reorder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-l) var(--space-s); }
+.hint { padding: var(--space-m) 0 0; font-size: var(--fs-footnote); line-height: 1.4; max-width: var(--measure); }
+.reorder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-l) var(--space-s); padding-top: var(--space-l); }
 .reorder > * { content-visibility: auto; contain-intrinsic-size: auto 260px; }
 @media (min-width: 721px) { .reorder { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-l) var(--space-m); } }
 /* The pictures aren't draggable themselves, so a press on one has to reach the poster's link, which is. */
@@ -151,13 +123,14 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
 }
 .reorder > li { position: relative; }
 .reorder > li[data-dragging] { opacity: 0.4; }
-.reorder > li[data-drop]::before { content: ''; position: absolute; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: var(--paper); z-index: 2; pointer-events: none; }
-.reorder > li[data-drop='before']::before { left: calc(var(--space-s) / -2 - 1.5px); }
-.reorder > li[data-drop='after']::before { right: calc(var(--space-s) / -2 - 1.5px); }
+.reorder > li[data-drop]::before { content: ''; position: absolute; top: 0; bottom: 0; width: 4px; background: var(--blue); z-index: 2; pointer-events: none; }
+.reorder > li[data-drop='before']::before { left: calc(var(--space-s) / -2 - 2px); }
+.reorder > li[data-drop='after']::before { right: calc(var(--space-s) / -2 - 2px); }
 @media (min-width: 721px) {
-  .reorder > li[data-drop='before']::before { left: calc(var(--space-m) / -2 - 1.5px); }
-  .reorder > li[data-drop='after']::before { right: calc(var(--space-m) / -2 - 1.5px); }
+  .reorder > li[data-drop='before']::before { left: calc(var(--space-m) / -2 - 2px); }
+  .reorder > li[data-drop='after']::before { right: calc(var(--space-m) / -2 - 2px); }
 }
 
 /* The list shelves are Home's rows; here their See all sits at the end of the heading, as the other sections' do. */
+.listShelves { margin-top: var(--section); }
 .listShelves h2 + a { margin-left: auto; }

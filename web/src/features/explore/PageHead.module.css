@@ -1,0 +1,51 @@
+/* The page head pulls out to the viewport's edges and pads back in, so its rule runs edge to edge while the title's
+   left edge is still the page's. The title is the one Archivo on the page. */
+.head {
+  margin: calc(-1 * var(--space-l)) calc(-1 * var(--page-inset)) 0;
+  padding: 0 var(--page-inset);
+  border-bottom: var(--rule);
+}
+.row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-s) var(--space-l); }
+.title {
+  min-width: 0;
+  padding: var(--space-xl) 0 var(--space-m);
+  font: 700 var(--fs-display) / 0.84 var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.title[data-long] { font-size: clamp(40px, 10.5vw, 168px); }
+.title[data-compact] { padding-block: var(--space-m) var(--space-s); font-size: clamp(40px, 6vw, 88px); }
+.aside { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-s) var(--space-m); padding-bottom: var(--space-m); }
+.note { max-width: 38ch; font: 400 var(--fs-small) / 1.5 var(--font); text-transform: uppercase; letter-spacing: 0.08em; text-align: right; }
+.back { padding-top: var(--space-s); margin-bottom: calc(-1 * var(--space-xs)); }
+.back a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font: 600 var(--fs-body) / 1 var(--font); color: var(--blue); text-decoration: underline; text-underline-offset: 4px; }
+@media (hover: hover) { .back a:hover { color: var(--fg); } }
+.back + .row .title { padding-top: var(--space-m); }
+
+@media (max-width: 720px) {
+  .note { text-align: left; }
+  .aside { justify-content: flex-start; flex: 1 1 100%; }
+}
+
+/* A toolbar: filters and sorts, in a row of their own under the head with a rule below. It is not sticky: the nav
+   hides while the page scrolls, and a bar stuck below where it was would leave a gap. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-s) var(--space-m);
+  margin: 0 calc(-1 * var(--page-inset));
+  padding: var(--space-s) var(--page-inset);
+  border-bottom: var(--rule);
+}
+
+/* A section: its label opens it with a rule above, the way the reference opens a category. */
+.section { margin-top: var(--section); border-top: var(--rule); }
+.section:first-child { margin-top: 0; }
+.sectionHead { display: flex; align-items: baseline; gap: var(--space-s); padding: var(--space-m) 0 var(--space-s); }
+.sectionLabel { font: 600 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); }
+.sectionCount { font-size: var(--fs-small); color: var(--muted); }
+.sectionEnd { margin-left: auto; font: 600 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; }
+.sectionEnd a, .sectionEnd button { display: inline-flex; align-items: center; min-height: 44px; margin-block: -12px; color: var(--blue); text-decoration: underline; text-underline-offset: 4px; font: inherit; letter-spacing: inherit; text-transform: inherit; }
+@media (hover: hover) { .sectionEnd a:hover, .sectionEnd button:hover { color: var(--fg); } }

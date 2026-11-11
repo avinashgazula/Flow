@@ -14,6 +14,7 @@ import { library, mediaKey, useLibrary } from '../../lib/store/library'
 import { userLocale, useMinuteTick } from '../../lib/time'
 import type { SearchResult } from '../../lib/tmdb/types'
 import { RetryAction, StateView, errorMessage } from '../explore/Controls'
+import { PageHead, Section } from '../explore/PageHead'
 import { pickPrint } from '../home/logic'
 import { serverPrint, useOnServer, useServerLookup } from '../home/marks'
 import { groupResults, minimumQuery, neighbour, topResult, type Direction, type MediaResult, type PersonResult } from './logic'
@@ -93,16 +94,18 @@ export function SearchScreen({ initial }: { initial: string }) {
 
   const links = () => [...(resultsRef.current?.querySelectorAll<HTMLElement>('a[data-result], li > a') ?? [])]
 
+  // Enter, or the go block: open the best match. Typed faster than the debounce, it searches for what's there now first.
+  const submit = () => {
+    if (text !== term) {
+      openWhenReady.current = text
+      setTerm(text)
+      void navigate({ search: { q: text.trim() || undefined }, replace: true, resetScroll: false })
+    } else open(top ?? results.find((r) => r.kind === 'media') ?? results[0])
+  }
+
   const onFieldKey = (e: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      // Typed faster than the debounce: search for what's there now, then open.
-      if (text !== term) {
-        openWhenReady.current = text
-        setTerm(text)
-        void navigate({ search: { q: text.trim() || undefined }, replace: true, resetScroll: false })
-      } else open(top ?? results.find((r) => r.kind === 'media') ?? results[0])
-    } else if (e.key === 'ArrowDown') {
+    // Enter is the form's submit.
+    if (e.key === 'ArrowDown') {
       const first = links()[0]
       if (first) {
         e.preventDefault()
@@ -137,42 +140,53 @@ export function SearchScreen({ initial }: { initial: string }) {
 
   return (
     <div className={`page ${s.screen}`}>
-      <h1 className="page-title">Search</h1>
-      <div className={s.field}>
-        <Icon name="search" size={20} strokeWidth={2.2} className={s.fieldIcon} />
-        <input
-          ref={input}
-          type="search"
-          className={`field ${s.input}`}
-          placeholder="Movies, shows and people"
-          aria-label="Search"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={onFieldKey}
-          autoFocus
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          enterKeyHint="search"
-        />
-        {text ? (
-          <button
-            type="button"
-            className={`btn btn-quiet btn-circle btn-compact ${s.clear}`}
-            aria-label="Clear Search"
-            onClick={() => {
-              setText('')
-              input.current?.focus()
-            }}
-          >
-            <Icon name="close" size={14} strokeWidth={2.8} />
-          </button>
-        ) : (
-          <kbd className={s.hint} aria-hidden>
-            /
-          </kbd>
-        )}
-      </div>
+      <PageHead title="Search" note="Films, series and people by name" />
+      <form
+        className={s.bar}
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+      >
+        <div className={s.field}>
+          <input
+            ref={input}
+            type="search"
+            className={s.input}
+            aria-label="Search"
+            placeholder="Movies, shows and people"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={onFieldKey}
+            autoFocus
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="search"
+          />
+          {text ? (
+            <button
+              type="button"
+              className={`btn btn-quiet btn-circle btn-compact ${s.clear}`}
+              aria-label="Clear Search"
+              onClick={() => {
+                setText('')
+                input.current?.focus()
+              }}
+            >
+              <Icon name="close" size={16} strokeWidth={2.8} />
+            </button>
+          ) : (
+            <kbd className={s.hint} aria-hidden>
+              /
+            </kbd>
+          )}
+        </div>
+        <button type="submit" className={s.go} aria-label="Search">
+          <Icon name="search" size={28} strokeWidth={2.4} />
+        </button>
+      </form>
 
       <div
         ref={resultsRef}
@@ -232,19 +246,13 @@ export function SearchScreen({ initial }: { initial: string }) {
               </Group>
             )}
             {groups.people.length > 0 && (
-              <section className={s.group} aria-labelledby="people">
-                <header className={s.groupHead}>
-                  <h2 id="people" className={s.groupTitle}>
-                    People
-                  </h2>
-                  <span className={`${s.count} num`}>{groups.people.length}</span>
-                </header>
+              <Section id="people" title="People" count={groups.people.length}>
                 <ul className={s.people}>
                   {groups.people.map((p) => (
                     <PersonRow key={p.id} person={p} />
                   ))}
                 </ul>
-              </section>
+              </Section>
             )}
           </>
         )}
@@ -256,17 +264,10 @@ export function SearchScreen({ initial }: { initial: string }) {
 const gridSizes = '(max-width: 720px) 34vw, 180px'
 
 function Group({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
-  const id = `group-${title.replace(/\s+/g, '-').toLowerCase()}`
   return (
-    <section className={s.group} aria-labelledby={id}>
-      <header className={s.groupHead}>
-        <h2 id={id} className={s.groupTitle}>
-          {title}
-        </h2>
-        <span className={`${s.count} num`}>{count}</span>
-      </header>
+    <Section id={`group-${title.replace(/\s+/g, '-').toLowerCase()}`} title={title} count={count}>
       <ul className={s.grid}>{children}</ul>
-    </section>
+    </Section>
   )
 }
 
@@ -280,19 +281,16 @@ function TopResult({ item }: { item: MediaResult }) {
   const meta = [item.year, genreNames(item.genres, item.type)[0], item.type === 'movie' ? 'Film' : 'Series'].filter(Boolean)
   const link = { to: '/title/$type/$id', params: { type: item.type, id: item.id } } as const
   return (
-    <section className={s.group} aria-labelledby="top-result">
-      <h2 id="top-result" className={s.groupTitle}>
-        Top Result
-      </h2>
+    <Section id="top-result" title="Top Result">
       <article className={s.top}>
         <Link {...link} data-result="" className={s.topPlate} onPointerEnter={() => prefetchDetail(item)} onFocus={() => prefetchDetail(item)} onClick={markZoomSource} viewTransition aria-label={`${item.title}, top result${onServer ? ', on your server' : ''}`}>
           <Plate shape="poster" artPath={posterOf(item)} sizes="160px" print={[...pickPrint(item, known, now, { locale: userLocale }), ...(onServer ? serverPrint : [])]} fallback={item.title} hideStrip />
         </Link>
         <div className={s.topText}>
+          <p className={s.topMeta}>{meta.join(' · ')}</p>
           <Link {...link} className={s.topTitle} onPointerEnter={() => prefetchDetail(item)} tabIndex={-1}>
             {item.title}
           </Link>
-          <p className={s.topMeta}>{meta.join(' · ')}</p>
           {item.overview && <p className={s.topOverview}>{item.overview}</p>}
           <div className={s.topActions}>
             <Link {...link} search={{ play: true }} className="btn btn-primary" onPointerEnter={() => prefetchDetail(item)}>
@@ -304,7 +302,7 @@ function TopResult({ item }: { item: MediaResult }) {
           </div>
         </div>
       </article>
-    </section>
+    </Section>
   )
 }
 
@@ -327,61 +325,61 @@ function PersonRow({ person }: { person: PersonResult }) {
 function Idle({ onPick }: { onPick: (term: string) => void }) {
   const recents = useRecentSearches()
   const trending = useQuery(q.trending('all'))
+  // What is trending, as things to try: the names themselves, to tap into the field.
+  const tries = trending.data?.results.slice(0, 5).map((m) => m.title) ?? []
   return (
     <div className={s.idle}>
-      <p className={s.teach}>
-        Search finds films, series and people by name.
-        <span className={s.shortcut}>
-          {' '}
-          Press <kbd className={s.key}>/</kbd> anywhere on this page to jump to the field, and Enter to open the best match.
-        </span>
-      </p>
-
       {recents.length > 0 && (
-        <section className={s.group} aria-labelledby="recent">
-          <header className={s.groupHead}>
-            <h2 id="recent" className={s.groupTitle}>
-              Recent
-            </h2>
-            <button className={s.textButton} onClick={() => recentSearches.clear()}>
-              Clear
-            </button>
-          </header>
-          <ul className={s.recents}>
+        <div className={s.tries}>
+          <span className="section-label">Recent</span>
+          <ul className={s.suggestions}>
             {recents.map((t) => (
               <li key={t} className={s.recent}>
-                <button className={s.recentTerm} onClick={() => onPick(t)}>
-                  <Icon name="history" size={15} strokeWidth={2.2} /> {t}
+                <button type="button" className={s.suggestion} onClick={() => onPick(t)}>
+                  {t}
                 </button>
-                <button className={s.recentRemove} onClick={() => recentSearches.forget(t)} aria-label={`Remove “${t}” from Recent`}>
-                  <Icon name="close" size={12} strokeWidth={2.6} />
+                <button type="button" className={s.recentRemove} onClick={() => recentSearches.forget(t)} aria-label={`Remove “${t}” from Recent`}>
+                  <Icon name="close" size={12} strokeWidth={2.8} />
                 </button>
               </li>
             ))}
           </ul>
-        </section>
+          <button type="button" className={s.textButton} onClick={() => recentSearches.clear()}>
+            Clear
+          </button>
+        </div>
       )}
 
-      <section className={s.group} aria-labelledby="browse">
-        <h2 id="browse" className={s.groupTitle}>
-          Browse by Genre
-        </h2>
-        <ul className={s.index}>
-          {categories.map((c) => (
+      {tries.length > 0 && (
+        <div className={s.tries}>
+          <span className="section-label">Try</span>
+          <ul className={s.suggestions}>
+            {tries.map((name) => (
+              <li key={name}>
+                <button type="button" className={s.suggestion} onClick={() => onPick(name)}>
+                  {name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <Section id="browse" title="Browse by Genre">
+        <ol className={`rows ${s.index}`}>
+          {categories.map((c, i) => (
             <li key={`${c.type}${c.genre}`}>
-              <Link to="/explore" search={{ type: c.type, genre: c.genre }} className={s.indexRow}>
-                {c.title}
-                <Icon name="chevronRight" size={14} strokeWidth={2.6} />
+              <Link to="/explore" search={{ type: c.type, genre: c.genre }} className={`row ${s.indexRow}`}>
+                <span className={`num ${s.indexNumber}`}>{String(i + 1).padStart(2, '0')}</span>
+                <span className={s.indexName}>{c.title}</span>
+                <Icon name="chevronRight" size={16} strokeWidth={2.6} />
               </Link>
             </li>
           ))}
-        </ul>
-      </section>
+        </ol>
+      </Section>
 
-      <section className={s.group} aria-labelledby="trending">
-        <h2 id="trending" className={s.groupTitle}>
-          Trending
-        </h2>
+      <Section id="trending" title="Trending">
         {trending.isError ? (
           <p className="muted">Couldn’t load what’s trending. Check your connection, then search above.</p>
         ) : (
@@ -391,7 +389,7 @@ function Idle({ onPick }: { onPick: (term: string) => void }) {
               : trending.data.results.slice(0, 18).map((m) => <PosterItem key={`${m.type}${m.id}`} item={m} meta={m.year ? String(m.year) : undefined} sizes={gridSizes} />)}
           </ul>
         )}
-      </section>
+      </Section>
     </div>
   )
 }

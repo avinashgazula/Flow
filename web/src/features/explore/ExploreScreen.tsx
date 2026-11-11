@@ -9,6 +9,7 @@ import { useSettings } from '../../lib/store/settings'
 import { useServerLookup } from '../home/marks'
 import type { Genre, MediaType } from '../../lib/tmdb/types'
 import { ChipRow } from './ChipRow'
+import { PageHead, Toolbar } from './PageHead'
 import { RetryAction, Segmented, Select, StateView, errorMessage } from './Controls'
 import { summarizeFilters } from './filterQuery'
 import { filtersToSearch, isFiltered, noFilters, type ExploreFilters } from './filters'
@@ -60,6 +61,8 @@ export function ExploreScreen({ type, sort, genre, filters }: { type: MediaType;
     if (name) genres.unshift({ id: genre, name })
   }
 
+  const note = [type === 'movie' ? 'Movies' : 'TV Shows', genres.find((g) => g.id === genre)?.name, exploreSorts.find((o) => o.id === sort)?.label].filter(Boolean).join(' · ')
+
   const update = (next: { type?: MediaType; sort?: ExploreSort; genre?: number | null; filters?: ExploreFilters }) => {
     const nextType = next.type ?? type
     const nextSort = next.sort ?? sort
@@ -82,31 +85,27 @@ export function ExploreScreen({ type, sort, genre, filters }: { type: MediaType;
 
   return (
     <div className={`page ${s.screen}`}>
-      <div className={s.titleRow}>
-        <h1 className="page-title">Explore</h1>
-        <Select className={s.sortMenu} options={exploreSorts} value={sort} onChange={(v) => update({ sort: v })} label="Sort by" />
-      </div>
+      <PageHead title="Explore" note={note} />
 
-      <div className={s.controls}>
-        <div className={s.modes}>
-          <Segmented className={s.types} options={types} value={type} onChange={(v) => update({ type: v })} label="Type" />
-          <button
-            type="button"
-            className={`btn btn-secondary ${s.filtersButton}`}
-            data-active={filtered || undefined}
-            aria-haspopup="dialog"
-            aria-expanded={sheetOpen}
-            aria-label={filtered ? 'Filters, on' : 'Filters'}
-            onClick={() => setSheetOpen(true)}
-            onPointerEnter={() => void loadSheet()}
-            onFocus={() => void loadSheet()}
-          >
-            <Icon name="filters" size={18} strokeWidth={2.2} />
-            <span>Filters</span>
-          </button>
-        </div>
+      <Toolbar>
+        <Segmented className={s.types} options={types} value={type} onChange={(v) => update({ type: v })} label="Type" />
+        <button
+          type="button"
+          className={`btn btn-secondary ${s.filtersButton}`}
+          data-active={filtered || undefined}
+          aria-haspopup="dialog"
+          aria-expanded={sheetOpen}
+          aria-label={filtered ? 'Filters, on' : 'Filters'}
+          onClick={() => setSheetOpen(true)}
+          onPointerEnter={() => void loadSheet()}
+          onFocus={() => void loadSheet()}
+        >
+          <Icon name="filters" size={18} strokeWidth={2.2} />
+          <span>Filters</span>
+        </button>
         <Segmented className={s.sorts} options={exploreSorts} value={sort} onChange={(v) => update({ sort: v })} label="Sort by" />
-      </div>
+        <Select className={s.sortMenu} options={exploreSorts} value={sort} onChange={(v) => update({ sort: v })} label="Sort by" />
+      </Toolbar>
 
       <ChipRow label="Genre">
         <button type="button" className="chip" aria-pressed={!genre} onClick={() => update({ genre: null })}>

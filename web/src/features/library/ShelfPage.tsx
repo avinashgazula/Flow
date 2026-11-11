@@ -1,7 +1,5 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
-import { Icon } from '../../components/Icon'
 import { q } from '../../lib/queries'
 import type { ShelfConfig } from '../../lib/shelfDefaults'
 import { rememberLibraryOrigin } from '../../lib/sources/lastSource'
@@ -9,6 +7,8 @@ import type { ServerTitle } from '../../lib/sources/types'
 import { hasCatalog, useSettings } from '../../lib/store/settings'
 import type { MediaItem, MediaType } from '../../lib/tmdb/types'
 import { Segmented, StateView } from '../explore/Controls'
+import { PageHead, Toolbar } from '../explore/PageHead'
+import { BackLink } from './BackLink'
 import { PosterGrid } from '../explore/PosterGrid'
 import { asMediaItem } from '../home/marks'
 import { titles } from './logic'
@@ -31,23 +31,17 @@ const filters = [
 export default function ShelfPage({ shelfId, type, onType }: { shelfId: string; type?: MediaType; onType: (t: MediaType | undefined) => void }) {
   const shelf = useSettings((x) => x.shelves.find((sh) => sh.id === shelfId))
   const source = shelf?.source
-  const back = (
-    <Link to="/library" className={s.back}>
-      <Icon name="chevronLeft" size={16} strokeWidth={2.6} /> Library
-    </Link>
-  )
   if (!shelf || !source || (source.kind !== 'traktList' && source.kind !== 'mdblist' && source.kind !== 'mediaServerLibrary')) {
     return (
       <>
-        {back}
+        <PageHead title="Library" back={<BackLink />} />
         <StateView icon="library" title="This Shelf Isn’t Here Any More" message="It was removed in Settings → Shelves. Open Library to see what is left." />
       </>
     )
   }
   return (
     <>
-      {back}
-      <h1 className="page-title">{shelf.title}</h1>
+      <PageHead title={shelf.title} back={<BackLink />} long />
       <Titles source={source} type={type} onType={onType} />
     </>
   )
@@ -99,12 +93,12 @@ function Titles({ source, type, onType }: { source: ListSource; type?: MediaType
   const shown = type ? items.filter((m) => m.type === type) : items
   return (
     <>
-      <div className={s.toolbar}>
-        <Segmented options={filters} value={type ?? 'all'} onChange={(f) => onType(f === 'all' ? undefined : f)} label="Show" />
+      <Toolbar>
+        <Segmented className={s.filter} options={filters} value={type ?? 'all'} onChange={(f) => onType(f === 'all' ? undefined : f)} label="Show" />
         <span className={s.toolbarEnd}>
-          <span className="faint num">{titles(shown.length)}</span>
+          <span className="muted num">{titles(shown.length)}</span>
         </span>
-      </div>
+      </Toolbar>
       {/* A title opened from a server's library remembers which, for Play From This Library Only. */}
       <div
         onClickCapture={

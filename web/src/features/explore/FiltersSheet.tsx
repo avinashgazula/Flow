@@ -148,7 +148,7 @@ export default function FiltersSheet({ type, filters, onChange, onClose }: { typ
   )
 }
 
-/** Streaming On: the region's services as logos, each a toggle. Selected is the yellow ring. */
+/** Streaming On: the region's services as logos, each a toggle. Chosen ones are inverted. */
 function Services({ type, selected, onChange }: { type: MediaType; selected: number[]; onChange: (ids: number[]) => void }) {
   const { providers, isPending, isError, refetch, region } = useWatchProviders(type)
   const [all, setAll] = useState(false)
