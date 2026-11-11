@@ -202,7 +202,7 @@ enum Theme {
         /// Small print: mono, tracked and uppercase through `.edgePrint()`.
         static var edgePrint: Font { micro.monospacedDigit() }
         /// A title set as text when a film has no logo art.
-        static func artworkTitle(_ size: CGFloat) -> Font { .custom(Face.condensed, size, relativeTo: .title) }
+        static func artworkTitle(_ size: CGFloat) -> Font { .custom(Face.condensed, size: size, relativeTo: .title) }
     }
 }
 
