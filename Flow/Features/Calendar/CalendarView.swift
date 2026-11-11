@@ -35,16 +35,14 @@ struct CalendarView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.section) {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    BrowseHead("Upcoming", note: "New episodes and releases")
                     if let entries {
                         if entries.isEmpty {
-                            ContentUnavailableView("Nothing Coming Up", systemImage: "calendar",
-                                                   description: Text("New episodes of the shows in your library, and films on your watchlist, appear here as their dates approach."))
-                                .padding(.top, Theme.Space.xxl)
+                            BrowseEmpty(title: "Nothing Coming Up",
+                                        message: "New episodes of the shows in your library, and films on your watchlist, appear here as their dates approach.")
                         } else {
-                            DayStrip(start: today, marked: Set(upcomingDays.map(\.date))) { date in
-                                withAnimation(Theme.Motion.gentle) { proxy.scrollTo(date, anchor: .top) }
-                            }
+                            dayToolbar(proxy)
                             if !justAired.isEmpty { justAiredSection }
                             ForEach(upcomingDays) { day in
                                 daySection(day).id(day.date)
@@ -54,97 +52,74 @@ struct CalendarView: View {
                         placeholder
                     }
                 }
-                .padding(.vertical, Theme.Space.m)
                 .padding(.bottom, Theme.Space.xl)
             }
             .scrollIndicators(.hidden)
         }
-        .background(AmbientBackground(url: upcomingDays.first?.entries.first?.item.smallBackdropURL, intensity: 0.55))
-        .flowPageTitle("Upcoming", inset: Theme.Space.gutter)
-        // Large like the other tabs on every platform; iPad and Mac otherwise settle on a small centred one.
-        .largeNavigationTitle()
+        .browsePage("Upcoming")
         .task(id: model.contentVersion) {
             let loaded = await model.calendar()
-            withAnimation(Theme.Motion.fade) { entries = loaded }
+            withAnimation(Theme.Motion.state) { entries = loaded }
         }
         .refreshable { entries = await model.calendar() }
         #if !os(tvOS)
         // One file with every upcoming event, as the website's Add All to Calendar. Aired entries are left out.
         .onChange(of: entries) { icsURL = CalendarExport.icsFile(for: upcomingDays.flatMap(\.entries)) }
-        .toolbar {
-            if let icsURL {
-                ToolbarItem(placement: .primaryAction) {
-                    ShareLink(item: icsURL) { Label("Add All to Calendar", systemImage: "calendar.badge.plus") }
-                        .tint(Theme.Palette.text)
-                }
-            }
-        }
         #endif
     }
 
     // MARK: Sections
 
-    private var justAiredSection: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            header("Just Aired", detail: "The last seven days")
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 16) {
-                    ForEach(justAired) { entry in CalendarCard(entry: entry, dateLabel: relativeDay(day(of: entry)), upcoming: false) }
-                }
-                .padding(.horizontal, Theme.Space.gutter)
-                .padding(.vertical, Platform.isTV ? 36 : 4)
-                .scrollTargetLayout()
-            }
-            .scrollTargetBehavior(.viewAligned)
-            .scrollClipDisabled()
-            // A Mac draws a scrollbar under a view-aligned row whatever the indicator flag says.
-            .scrollIndicators(.hidden)
-        }
-    }
-
-    @ViewBuilder
-    private func daySection(_ day: CalendarDay) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            header(relativeDay(day.date), detail: fullDate(day.date))
-            if Platform.isPhone {
-                VStack(spacing: Theme.Space.s) {
-                    ForEach(day.entries) { entry in CalendarRow(entry: entry) }
-                }
-                .padding(.horizontal, Theme.Space.gutter)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 16) {
-                        ForEach(day.entries) { entry in CalendarCard(entry: entry, dateLabel: nil) }
+    /// The day strip, with Add All to Calendar at its end.
+    private func dayToolbar(_ proxy: ScrollViewProxy) -> some View {
+        BrowseToolbar {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                #if !os(tvOS)
+                if let icsURL {
+                    HStack {
+                        Spacer(minLength: 0)
+                        ShareLink(item: icsURL) { Text("Add All to Calendar") }
+                            .buttonStyle(FilterChipStyle())
                     }
-                    .padding(.horizontal, Theme.Space.gutter)
-                    .padding(.vertical, Platform.isTV ? 36 : 4)
                 }
-                .scrollClipDisabled()
-                .scrollIndicators(.hidden)
+                #endif
+                DayStrip(start: today, marked: Set(upcomingDays.map(\.date))) { date in
+                    withAnimation(Theme.Motion.move) { proxy.scrollTo(date, anchor: .top) }
+                }
             }
         }
     }
 
-    private func header(_ title: String, detail: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xs) {
-            Text(title).font(Theme.Typeface.sectionTitle).displayTracking()
-            Text(detail).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary)
-            Spacer(minLength: 0)
+    private var justAiredSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            SectionHead("Just Aired", note: "The last seven days")
+            VStack(spacing: 0) {
+                ForEach(justAired) { entry in CalendarRow(entry: entry, dayLabel: relativeDay(day(of: entry))) }
+            }
+            .padding(.horizontal, Theme.Space.gutter)
         }
-        .padding(.horizontal, Theme.Space.gutter)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
+    }
+
+    private func daySection(_ day: CalendarDay) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            SectionHead(relativeDay(day.date), note: fullDate(day.date))
+            VStack(spacing: 0) {
+                ForEach(day.entries) { entry in CalendarRow(entry: entry, dayLabel: nil) }
+            }
+            .padding(.horizontal, Theme.Space.gutter)
+        }
     }
 
     private var placeholder: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.Palette.surface).frame(width: 140, height: 22)
+            Rectangle().fill(Theme.Palette.tint1).frame(width: 140, height: 22)
             ForEach(0..<4, id: \.self) { _ in
-                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.Palette.surface).frame(height: Platform.isTV ? 160 : 84)
+                Rectangle().fill(Theme.Palette.tint1).frame(height: Platform.isTV ? 160 : 84)
             }
         }
         .padding(.horizontal, Theme.Space.gutter)
         .shimmering()
+        .accessibilityHidden(true)
     }
 
     // MARK: Dates
@@ -176,7 +151,8 @@ struct CalendarDay: Identifiable {
     var id: Date { date }
 }
 
-/// Two weeks at a glance; days with something on carry a dot and jump to their section.
+/// Two weeks at a glance as ruled cells that share their borders; today is inverted, days with something on carry a
+/// red dot and jump to their section.
 private struct DayStrip: View {
     let start: Date
     let marked: Set<Date>
@@ -187,86 +163,76 @@ private struct DayStrip: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Theme.Space.xs) {
+            HStack(spacing: -Theme.Rule.heavy) {
                 ForEach(days, id: \.self) { date in
                     let isToday = date == start
                     let hasEntries = marked.contains(date)
                     Button { if hasEntries { onSelect(date) } } label: {
                         VStack(spacing: 4) {
-                            Text(CalendarView.format(date, "EEE").uppercased())
-                                .font(Theme.Typeface.micro).kerning(0.6)
-                                .foregroundStyle(isToday ? Theme.Palette.onStock.opacity(0.7) : Theme.Palette.textTertiary)
+                            Text(CalendarView.format(date, "EEE"))
+                                .font(Theme.Typeface.micro)
+                                .textCase(.uppercase)
+                                .tracking(0.6)
+                                .rowInk(Theme.Palette.muted)
                             Text(CalendarView.format(date, "d"))
-                                .font(.system(.title3, weight: .semibold).monospacedDigit())
-                                .foregroundStyle(isToday ? Theme.Palette.onStock : (hasEntries ? Theme.Palette.text : Theme.Palette.textSecondary))
-                            Circle()
-                                .fill(isToday ? Theme.Palette.onStock : Theme.Palette.text)
-                                .frame(width: 4 * Theme.scale, height: 4 * Theme.scale)
+                                .font(Theme.Typeface.figure)
+                                .rowInk(hasEntries ? Theme.Palette.fg : Theme.Palette.muted)
+                            Rectangle()
+                                .frame(width: 5 * Theme.scale, height: 5 * Theme.scale)
+                                .rowInk(Theme.Palette.red)
                                 .opacity(hasEntries ? 1 : 0)
                         }
-                        .frame(width: 46 * Theme.scale, height: 72 * Theme.scale)
-                        .background {
-                            let shape = RoundedRectangle(cornerRadius: 14 * Theme.scale, style: .continuous)
-                            if isToday { shape.fill(Theme.Palette.stock) } else { shape.fill(Theme.Palette.surface).overlay(shape.strokeBorder(Theme.Palette.hairline)) }
-                        }
+                        .frame(width: 54 * Theme.scale, height: 76 * Theme.scale)
                     }
-                    .buttonStyle(CardButtonStyle())
+                    .buttonStyle(DayCellStyle(today: isToday))
                     .accessibilityLabel(CalendarView.format(date, "EEEE MMMM d") + (hasEntries ? ", has new episodes" : ""))
                 }
             }
-            .padding(.horizontal, Theme.Space.gutter)
-            .padding(.vertical, Platform.isTV ? 24 : 0)
+            .padding(.vertical, Platform.isTV ? Theme.Space.xs : 0)
         }
         .scrollClipDisabled()
-        // Fixed-size day chips: their text grows only as far as it fits. VoiceOver reads the full date.
+        // Fixed-size day cells: their text grows only as far as it fits. VoiceOver reads the full date.
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 }
 
-/// iPhone: a framed still beside the show and episode.
-private struct CalendarRow: View {
-    let entry: CalendarEntry
+/// A day cell: a 2px frame; ink-filled for today, blue while hovered or focused.
+private struct DayCellStyle: ButtonStyle {
+    let today: Bool
 
-    var body: some View {
-        NavigationLink(value: Route.detail(entry.item, zoom: "calendar-\(entry.id)")) {
-            HStack(spacing: Theme.Space.s) {
-                CalendarFrame(entry: entry).frame(width: 128).zoomSource("calendar-\(entry.id)")
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(entry.item.title).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
-                    Text(entry.meta)
-                        .font(.system(.footnote))
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Theme.Palette.textTertiary)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(CardButtonStyle())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(entry.spoken(model: model, day: nil))
-        .accessibilityAddTraits(.isButton)
-        .contextMenu {
-            #if !os(tvOS)
-            AddToCalendarButton(item: entry.item, episode: entry.episode, date: entry.date)
-            #endif
-            MediaContextMenu(item: entry.item)
-        }
+    func makeBody(configuration: Configuration) -> some View {
+        DayCellBody(configuration: configuration, today: today)
     }
-
-    @Environment(AppModel.self) private var model
 }
 
-/// iPad, Mac, TV and Just Aired: a framed still with the show and episode beneath. Aired episodes play straight away.
-private struct CalendarCard: View {
+private struct DayCellBody: View {
+    let configuration: ButtonStyleConfiguration
+    let today: Bool
+    @Environment(\.isFocused) private var focused
+    @State private var hovering = false
+
+    var body: some View {
+        let lit = focused || hovering || configuration.isPressed
+        let fill = lit ? Theme.Palette.blue : today ? Theme.Palette.fg : Theme.Palette.bg
+        configuration.label
+            // Today's ink fill reads like the blue one: on-blue marks on it.
+            .environment(\.rowLit, lit || today)
+            .background(fill)
+            .overlay(Rectangle().strokeBorder(lit ? Theme.Palette.blue : Theme.Palette.fg, lineWidth: Theme.Rule.heavy))
+            .contentShape(Rectangle())
+            .animation(Theme.Motion.hover, value: lit)
+            .modifier(FocusLift(scale: 1.04))
+            #if !os(tvOS)
+            .onHover { hovering = $0 }
+            #endif
+    }
+}
+
+/// One episode or film as a ruled row: its still, then what it is and when. Aired episodes play straight away.
+private struct CalendarRow: View {
     let entry: CalendarEntry
-    let dateLabel: String?
-    /// Just Aired cards are in the past: nothing to put in a calendar.
-    var upcoming = true
+    /// Set for entries listed outside their own day heading (Just Aired).
+    let dayLabel: String?
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -274,47 +240,49 @@ private struct CalendarCard: View {
             if entry.hasAired {
                 Button { Task { await model.play(entry.item, episode: entry.episode) } } label: { content }
             } else {
-                NavigationLink(value: Route.detail(entry.item)) { content }
+                NavigationLink(value: Route.detail(entry.item, zoom: "calendar-\(entry.id)")) { content }
             }
         }
-        .buttonStyle(CardButtonStyle(lift: 1.04))
+        .buttonStyle(BrowseRowStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.spoken(model: model, day: dayLabel))
+        .accessibilityAddTraits(.isButton)
         .contextMenu {
             Button { model.navigate(to: .detail(entry.item)) } label: { Label("Go to Details", systemImage: "info.circle") }
             #if !os(tvOS)
-            if upcoming { AddToCalendarButton(item: entry.item, episode: entry.episode, date: entry.date) }
+            if !entry.hasAired { AddToCalendarButton(item: entry.item, episode: entry.episode, date: entry.date) }
             #endif
             MediaContextMenu(item: entry.item)
         }
     }
 
+    private var stillWidth: CGFloat { Platform.isPhone ? 112 : 144 * Theme.scale }
+
     private var content: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            CalendarFrame(entry: entry, day: dateLabel).frame(width: Platform.landscapeWidth)
+        HStack(spacing: Theme.Space.m) {
+            RowThumb(url: TMDBImage.url(entry.episode?.stillPath, size: .still) ?? entry.item.smallBackdropURL ?? entry.item.tmdbPosterURL,
+                     title: entry.item.title, width: stillWidth, height: stillWidth * 9 / 16)
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.item.title).font(Theme.Typeface.headline).lineLimit(1)
+                if let label = entry.label {
+                    Text(label)
+                        .font(Theme.Typeface.micro)
+                        .textCase(.uppercase)
+                        .tracking(0.08 * 11 * Theme.scale)
+                        .rowInk(Theme.Palette.red)
+                }
+                Text(entry.item.title).font(Theme.Typeface.heading).textCase(.uppercase).lineLimit(1)
                 Text(entry.meta)
-                    .font(.system(.subheadline).monospacedDigit())
-                    .foregroundStyle(Theme.Palette.textSecondary)
-                    .lineLimit(1)
+                    .font(Theme.Typeface.caption)
+                    .rowInk(Theme.Palette.muted)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
             }
-            .frame(width: Platform.landscapeWidth, alignment: .leading)
+            Spacer(minLength: 0)
+            if let dayLabel {
+                Text(dayLabel).font(Theme.Typeface.caption).textCase(.uppercase).rowInk(Theme.Palette.muted).lineLimit(1)
+            }
+            RowChevron()
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(entry.spoken(model: model, day: dateLabel))
-    }
-}
-
-/// The still as a film frame: the episode, its label and the day are printed on the strip, nothing over the art.
-private struct CalendarFrame: View {
-    let entry: CalendarEntry
-    var day: String?
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        FilmFrame(art: .stillImage(url: TMDBImage.url(entry.episode?.stillPath, size: .still) ?? entry.item.smallBackdropURL ?? entry.item.tmdbPosterURL,
-                                   title: entry.item.title),
-                  strip: .calendar(episodeCode: entry.episode?.code, label: entry.label, day: day, hasAired: entry.hasAired,
-                                   watched: entry.isWatched(in: model)))
     }
 }
 
@@ -327,9 +295,9 @@ private extension CalendarEntry {
         return hasAired ? "New" : nil
     }
 
-    /// The line under the title: the episode's name, or a film's year and genre.
+    /// The line under the title: an episode's code and name, or a film's year and genre.
     var meta: String {
-        if let episode { return episode.title }
+        if let episode { return "\(episode.code) · \(episode.title)" }
         return item.shortMeta
     }
 

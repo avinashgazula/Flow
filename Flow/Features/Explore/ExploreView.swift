@@ -19,44 +19,32 @@ struct ExploreView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                Picker("Type", selection: $type) {
-                    Text("Movies").tag(MediaType.movie)
-                    Text("TV Shows").tag(MediaType.show)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                // Full width on a phone; capped elsewhere, where stretched across the window it reads as a bar.
-                .frame(maxWidth: Platform.isPhone ? .infinity : 360, alignment: .leading)
-                .padding(.horizontal, Platform.horizontalPadding)
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                BrowseHead("Explore", note: type == .movie ? "Films" : "Series")
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Space.xs) {
-                        #if os(tvOS)
-                        ActionChip(title: "Filters", systemImage: "line.3.horizontal.decrease", active: isFiltered) { showFilters = true }
-                        #endif
-                        genreChip(nil, title: "All")
-                        ForEach(Self.quickGenres(type), id: \.self) { id in
-                            genreChip(id, title: TMDBGenres.name(for: id, type: type))
-                        }
+                BrowseToolbar {
+                    HStack(spacing: Theme.Space.s) {
+                        SegmentedTabs(options: [(value: MediaType.movie, title: "Movies"), (value: MediaType.show, title: "TV Shows")],
+                                      selection: $type)
+                        Spacer(minLength: 0)
+                        Button(isFiltered ? "Filters · On" : "Filters") { showFilters = true }
+                            .buttonStyle(FilterChipStyle(current: isFiltered))
                     }
-                    .padding(.horizontal, Theme.Space.gutter)
                 }
-                .scrollClipDisabled()
 
-                // Styled like SectionHeader, with Reset trailing.
-                HStack(alignment: .firstTextBaseline) {
-                    Text(isFiltered ? "Filtered · \(query.sort.title)" : "Trending Now")
-                        .font(Theme.Typeface.sectionTitle)
-                        .displayTracking()
-                        .accessibilityAddTraits(.isHeader)
-                    Spacer(minLength: Theme.Space.s)
+                ChipRow {
+                    genreChip(nil, title: "All")
+                    ForEach(Self.quickGenres(type), id: \.self) { id in
+                        genreChip(id, title: TMDBGenres.name(for: id, type: type))
+                    }
+                }
+
+                SectionHead(isFiltered ? "Filtered · \(query.sort.title)" : "Trending Now") {
                     if isFiltered {
                         Button("Reset") { query = DiscoverQuery(type: type) }
-                            .font(.subheadline)
+                            .buttonStyle(QuietButtonStyle())
                     }
                 }
-                .padding(.horizontal, Theme.Space.gutter)
 
                 if model.catalog == nil {
                     MissingKeyView()
@@ -67,19 +55,9 @@ struct ExploreView: View {
                     if loading { ProgressView().frame(maxWidth: .infinity).padding() }
                 }
             }
-            .padding(.vertical)
+            .padding(.bottom, Theme.Space.l)
         }
-        .tabRootTitle("Explore")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { showFilters = true } label: {
-                    Image(systemName: isFiltered ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                }
-                .accessibilityLabel(isFiltered ? "Filters, On" : "Filters")
-                // Yellow says "on" in the chips, so the button itself stays paper.
-                .tint(Theme.Palette.text)
-            }
-        }
+        .browsePage("Explore", root: true)
         .sheet(isPresented: $showFilters) {
             DiscoverFilterView(query: $query)
                 .environment(model)
@@ -100,14 +78,12 @@ struct ExploreView: View {
 
     private func genreChip(_ id: Int?, title: String) -> some View {
         let selected = id.map { query.genres == [$0] } ?? query.genres.isEmpty
-        return Button {
-            withAnimation(Theme.Motion.snappy) {
+        return Button(title) {
+            withAnimation(Theme.Motion.state) {
                 if let id { query.genres = [id] } else { query.genres = [] }
             }
-        } label: {
-            Text(title)
         }
-        .buttonStyle(FilterTabStyle(selected: selected))
+        .buttonStyle(FilterChipStyle(current: selected))
     }
 
     private func reload() async {
@@ -146,6 +122,263 @@ struct ExploreView: View {
             self.error = error.localizedDescription
             hasMore = false
         }
+    }
+}
+
+// MARK: - Browse pieces
+//
+// What Explore, Search, Library, Upcoming, Sports, Stats, Downloads and Live TV share: the website's page head,
+// ruled toolbar, red section label and ruled rows, so every browse page is the same sheet of paper.
+
+/// A browse page's head: the giant title, its rule and a mono note.
+struct BrowseHead: View {
+    let title: String
+    var note: String?
+
+    init(_ title: String, note: String? = nil) {
+        self.title = title
+        self.note = note
+    }
+
+    var body: some View {
+        PageTitle(title, note: note)
+            .padding(.horizontal, Theme.Space.gutter)
+            .padding(.top, Theme.Space.m)
+    }
+}
+
+extension View {
+    /// A browse page draws its own head (`BrowseHead`), so the system's title goes. A tab's root page also loses
+    /// the bar (its actions sit in the page's toolbar); a pushed page keeps it for Back, with a blank title.
+    /// The Mac keeps the window title, which is not a second heading.
+    @ViewBuilder
+    func browsePage(_ title: String, root: Bool = false) -> some View {
+        #if os(tvOS)
+        toolbar(.hidden, for: .navigationBar)
+        #elseif os(iOS)
+        if root {
+            navigationTitle(title).toolbar(.hidden, for: .navigationBar)
+        } else {
+            navigationTitle(title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1).accessibilityHidden(true) } }
+        }
+        #else
+        navigationTitle(title)
+        #endif
+    }
+}
+
+/// The row of controls under a page head: a 2px rule closes it, as on the website.
+struct BrowseToolbar<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            content
+            RuleLine()
+        }
+        .padding(.horizontal, Theme.Space.gutter)
+    }
+}
+
+/// A sideways row of filter chips. It scrolls clear of the page's edge, and room above and below is left for the
+/// tvOS lift.
+struct ChipRow<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Space.xs) { content }
+                .padding(.horizontal, Theme.Space.gutter)
+                .padding(.vertical, Platform.isTV ? Theme.Space.xs : 0)
+        }
+        .scrollClipDisabled()
+    }
+}
+
+/// A section's opening: a 2px rule, then its name in red mono, an optional note and an action at the end.
+struct SectionHead<Trailing: View>: View {
+    let title: String
+    var note: String?
+    let trailing: Trailing
+
+    init(_ title: String, note: String? = nil, @ViewBuilder trailing: () -> Trailing) {
+        self.title = title
+        self.note = note
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            RuleLine()
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                SectionLabel(title)
+                if let note {
+                    Text(note).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
+                }
+                Spacer(minLength: Theme.Space.s)
+                trailing
+            }
+        }
+        .padding(.horizontal, Theme.Space.gutter)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+extension SectionHead where Trailing == EmptyView {
+    init(_ title: String, note: String? = nil) {
+        self.init(title, note: note) { EmptyView() }
+    }
+}
+
+private struct RowLitKey: EnvironmentKey { static let defaultValue = false }
+
+extension EnvironmentValues {
+    /// A `BrowseRowStyle` row is blue (hovered, focused or pressed): its marks switch to on-blue ink.
+    var rowLit: Bool {
+        get { self[RowLitKey.self] }
+        set { self[RowLitKey.self] = newValue }
+    }
+}
+
+/// A ruled list row: a 1px line under it, and the whole row turns blue while hovered, focused or pressed. Marks
+/// inside that are not ink (red numerals, muted facts) take `.rowInk(_:)` so they read on the blue.
+struct BrowseRowStyle: ButtonStyle {
+    /// False when the caller draws the line itself, under a row that holds more than this one button.
+    var ruled = true
+
+    func makeBody(configuration: Configuration) -> some View {
+        BrowseRowBody(configuration: configuration, ruled: ruled)
+    }
+}
+
+private struct BrowseRowBody: View {
+    let configuration: ButtonStyleConfiguration
+    let ruled: Bool
+    @Environment(\.isFocused) private var focused
+    @State private var hovering = false
+
+    var body: some View {
+        let lit = focused || hovering || configuration.isPressed
+        configuration.label
+            .environment(\.rowLit, lit)
+            .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
+            .padding(.vertical, Theme.Space.s)
+            .padding(.horizontal, Theme.Space.xs)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(lit ? Theme.Palette.blue : Color.clear)
+            .contentShape(Rectangle())
+            .overlay(alignment: .bottom) {
+                if ruled { Rectangle().fill(Theme.Palette.rule).frame(height: Theme.Rule.thin) }
+            }
+            .animation(Theme.Motion.hover, value: lit)
+            #if !os(tvOS)
+            .onHover { hovering = $0 }
+            #endif
+    }
+}
+
+private struct RowInk: ViewModifier {
+    let normal: Color
+    @Environment(\.rowLit) private var lit
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle(lit ? Theme.Palette.onBlue : normal)
+    }
+}
+
+extension View {
+    /// This colour on paper, on-blue ink when the row it sits in is lit.
+    func rowInk(_ normal: Color) -> some View { modifier(RowInk(normal: normal)) }
+
+    /// A static ruled row (not a button): the same padding and 1px line.
+    func ruledRowFrame() -> some View {
+        padding(.vertical, Theme.Space.s)
+            .padding(.horizontal, Theme.Space.xs)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .ruledRow()
+    }
+}
+
+/// The red condensed numeral that opens an index row: 01, 02, ...
+struct IndexNumeral: View {
+    let number: Int
+
+    var body: some View {
+        Text(String(format: "%02d", number))
+            .font(Theme.Typeface.figure)
+            .rowInk(Theme.Palette.red)
+            .frame(width: 40 * Theme.scale, alignment: .leading)
+            .accessibilityHidden(true)
+    }
+}
+
+/// A small framed picture inside a row: square, ruled, nothing round.
+struct RowThumb: View {
+    let url: URL?
+    var fallbackURL: URL?
+    var title: String?
+    var width: CGFloat
+    var height: CGFloat
+
+    var body: some View {
+        RemoteImage(url: url, maxPixel: 480, fallbackTitle: title, fallbackURL: fallbackURL)
+            .frame(width: width, height: height)
+            .clipped()
+            .overlay(Rectangle().strokeBorder(Theme.Palette.rule, lineWidth: Theme.Rule.thin))
+            .accessibilityHidden(true)
+    }
+}
+
+/// The arrow at a row's end.
+struct RowChevron: View {
+    var body: some View {
+        Image(systemName: "chevron.right")
+            .font(.system(size: 13 * Theme.scale, weight: .bold))
+            .rowInk(Theme.Palette.fg)
+            .accessibilityHidden(true)
+    }
+}
+
+/// A thin red bar for how far through something is; the track is a quiet tint.
+struct RedBar: View {
+    let value: Double
+    var height: CGFloat = 3 * Theme.scale
+
+    var body: some View {
+        Rectangle().fill(Theme.Palette.tint3)
+            .frame(height: height)
+            .overlay(alignment: .leading) {
+                GeometryReader { proxy in
+                    Rectangle().fill(Theme.Palette.red).frame(width: proxy.size.width * min(1, max(0, value)))
+                }
+            }
+            .accessibilityHidden(true)
+    }
+}
+
+/// A short line saying nothing is here, in the page's own voice, with an optional action.
+struct BrowseEmpty<Actions: View>: View {
+    let title: String
+    let message: String
+    @ViewBuilder var actions: Actions
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            Text(title).font(Theme.Typeface.heading).textCase(.uppercase)
+            Text(message).font(Theme.Typeface.reading).foregroundStyle(Theme.Palette.muted)
+            actions
+        }
+        .padding(.horizontal, Theme.Space.gutter)
+        .padding(.vertical, Theme.Space.l)
+        .frame(maxWidth: 640, alignment: .leading)
+    }
+}
+
+extension BrowseEmpty where Actions == EmptyView {
+    init(title: String, message: String) {
+        self.init(title: title, message: message) { EmptyView() }
     }
 }
 
@@ -222,7 +455,7 @@ struct DiscoverFilterView: View {
                                 if let i = query.watchProviders.firstIndex(of: provider.id) { query.watchProviders.remove(at: i) } else { query.watchProviders.append(provider.id) }
                             } label: {
                                 HStack {
-                                    RemoteImage(url: TMDBImage.url(provider.logoPath, size: .posterSmall)).frame(width: 28, height: 28).clipShape(RoundedRectangle(cornerRadius: 6))
+                                    RemoteImage(url: TMDBImage.url(provider.logoPath, size: .posterSmall)).frame(width: 28, height: 28).clipped()
                                     Text(provider.providerName).foregroundStyle(.primary)
                                     Spacer()
                                     if query.watchProviders.contains(provider.id) { Image(systemName: "checkmark").foregroundStyle(.tint) }

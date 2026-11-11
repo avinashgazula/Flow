@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 import FlowKit
 
-/// "Your Year in Flow": watching statistics computed from the tracker's history.
+/// "Your watching in Marquee": watching statistics computed from the tracker's history.
 struct StatsView: View {
     /// How much history to pull; a Trakt account can hold far more than anyone's stats need.
     private static let historyLimit = 2000
@@ -21,27 +21,25 @@ struct StatsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.section) {
-                periodPicker
+            VStack(alignment: .leading, spacing: Theme.Space.l) {
+                BrowseHead("Stats", note: "From your watch history")
+                BrowseToolbar { periodPicker }
                 if loading {
                     placeholder
                 } else if entries.isEmpty {
-                    ContentUnavailableView("No History Yet", systemImage: "chart.bar",
-                                           description: Text("Watch something, or connect Trakt or Simkl in Settings → Account, and your stats appear here."))
-                        .padding(.top, Theme.Space.xxl)
+                    BrowseEmpty(title: "No History Yet",
+                                message: "Watch something, or connect Trakt or Simkl in Settings → Account, and your stats appear here.")
                 } else if let stats, !stats.isEmpty {
                     content(stats)
                 } else {
-                    ContentUnavailableView("Nothing Watched", systemImage: "chart.bar",
-                                           description: Text("There's no history for \(period.title.lowercased()). Try another period."))
-                        .padding(.top, Theme.Space.xxl)
+                    BrowseEmpty(title: "Nothing Watched",
+                                message: "There's no history for \(period.title.lowercased()). Try another period.")
                 }
             }
-            .padding(.vertical, Theme.Space.m)
             .padding(.bottom, Theme.Space.xl)
         }
         .scrollIndicators(.hidden)
-        .flowPageTitle("Stats", inset: Theme.Space.gutter)
+        .browsePage("Stats")
         .task(id: model.contentVersion) { await load() }
         .onChange(of: period) { _, _ in
             withAnimation(Theme.Motion.gentle) { recompute() }
@@ -80,30 +78,10 @@ struct StatsView: View {
 
     // MARK: Sections
 
-    @ViewBuilder private var periodPicker: some View {
-        #if os(tvOS)
-        HStack(spacing: Theme.Space.s) {
-            ForEach(StatsPeriod.allCases) { option in
-                ActionChip(title: option.title, systemImage: Self.icon(for: option), active: period == option) { period = option }
-            }
-        }
-        .padding(.horizontal, Theme.Space.gutter)
-        .padding(.vertical, Theme.Space.xs)
-        #else
-        Picker("Period", selection: $period) {
-            ForEach(StatsPeriod.allCases) { option in Text(option.title).tag(option) }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .padding(.horizontal, Theme.Space.gutter)
-        #endif
-    }
-
-    private static func icon(for period: StatsPeriod) -> String {
-        switch period {
-        case .thisYear: return "calendar"
-        case .last30Days: return "calendar.badge.clock"
-        case .allTime: return "infinity"
+    private var periodPicker: some View {
+        HStack {
+            SegmentedTabs(options: StatsPeriod.allCases.map { (value: $0, title: $0.title) }, selection: $period)
+            Spacer(minLength: 0)
         }
     }
 
@@ -118,16 +96,16 @@ struct StatsView: View {
     }
 
     private func hero(_ stats: WatchStats) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                 Text(Self.lead(for: period))
-                    .font(Theme.Typeface.body)
-                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .font(Theme.Typeface.reading)
+                    .foregroundStyle(Theme.Palette.muted)
                 Text(WatchStats.durationText(minutes: stats.totalMinutes))
-                    .font(Theme.Typeface.display)
-                    .displayTracking()
+                    .font(Theme.Typeface.custom(Theme.Face.condensed, 64, .largeTitle))
+                    .foregroundStyle(Theme.Palette.red)
                     .lineLimit(2)
-                    .minimumScaleFactor(0.6)
+                    .minimumScaleFactor(0.5)
                     .contentTransition(.numericText())
             }
             .accessibilityElement(children: .combine)
@@ -144,32 +122,31 @@ struct StatsView: View {
         let unit = Self.chartUnit(stats.histogramGranularity)
         let crowded = stats.histogram.count > 12
         return VStack(alignment: .leading, spacing: Theme.Space.s) {
-            SectionHeader<Route>(Self.histogramTitle(stats.histogramGranularity))
+            SectionHead(Self.histogramTitle(stats.histogramGranularity))
             Chart(stats.histogram) { bucket in
                 BarMark(x: .value("Date", bucket.start, unit: unit), y: .value("Hours", Double(bucket.minutes) / 60))
-                    .foregroundStyle(bucket.isCurrent ? Color.accentColor : Color.white.opacity(0.35))
-                    .cornerRadius(4)
+                    .foregroundStyle(bucket.isCurrent ? Theme.Palette.red : Theme.Palette.fg)
             }
             .chartXAxis {
                 AxisMarks(values: .stride(by: unit, count: crowded ? 3 : 1)) { value in
                     AxisValueLabel(centered: true) {
                         if let date = value.as(Date.self) { Text(date, format: Self.axisFormat(stats.histogramGranularity, crowded: crowded)) }
                     }
-                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .foregroundStyle(Theme.Palette.muted)
                 }
             }
             .chartYAxis {
                 AxisMarks(position: .leading) { value in
-                    AxisGridLine().foregroundStyle(Theme.Palette.hairline)
+                    AxisGridLine().foregroundStyle(Theme.Palette.tint3)
                     AxisValueLabel {
                         if let hours = value.as(Double.self) { Text("\(Int(hours))h") }
                     }
-                    .foregroundStyle(Theme.Palette.textTertiary)
+                    .foregroundStyle(Theme.Palette.muted)
                 }
             }
             .frame(height: 180 * Theme.scale)
             .padding(Theme.Space.m)
-            .background(Theme.Palette.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .ruleFrame()
             .padding(.horizontal, Theme.Space.gutter)
             .statFocus()
         }
@@ -200,15 +177,13 @@ struct StatsView: View {
     }
 
     private func genres(_ stats: WatchStats) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            SectionHeader<Route>("Top Genres")
-            VStack(spacing: Theme.Space.m) {
-                ForEach(Array(stats.topGenres.enumerated()), id: \.element.id) { index, genre in
-                    GenreBar(genre: genre, opacity: 0.9 - 0.14 * Double(index))
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            SectionHead("Top Genres")
+            VStack(spacing: 0) {
+                ForEach(stats.topGenres, id: \.id) { genre in
+                    GenreBar(genre: genre)
                 }
             }
-            .padding(Theme.Space.m)
-            .background(Theme.Palette.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
             .padding(.horizontal, Theme.Space.gutter)
             .statFocus()
         }
@@ -221,7 +196,7 @@ struct StatsView: View {
         }
         if !shows.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                SectionHeader<Route>("Most Watched")
+                SectionHead("Most Watched")
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
                         ForEach(shows) { show in
@@ -229,7 +204,7 @@ struct StatsView: View {
                                 PosterFilmCard(item: show.item, context: "stats")
                                 Text(show.episodes == 1 ? "1 episode" : "\(show.episodes) episodes")
                                     .font(Theme.Typeface.caption)
-                                    .foregroundStyle(Theme.Palette.textSecondary)
+                                    .foregroundStyle(Theme.Palette.muted)
                             }
                             .frame(width: Platform.posterWidth, alignment: .leading)
                         }
@@ -246,11 +221,14 @@ struct StatsView: View {
     }
 
     private func habits(_ stats: WatchStats) -> some View {
-        tiles {
-            StatTile(value: Self.days(stats.longestStreak), label: "Longest Streak", detail: streakRange(stats))
-            StatTile(value: Self.weekdayName(stats.busiestWeekday), label: "Favourite Day", detail: "Most watch time")
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            SectionHead("Habits")
+            tiles {
+                StatTile(value: Self.days(stats.longestStreak), label: "Longest Streak", detail: streakRange(stats))
+                StatTile(value: Self.weekdayName(stats.busiestWeekday), label: "Favourite Day", detail: "Most watch time")
+            }
+            .padding(.horizontal, Theme.Space.gutter)
         }
-        .padding(.horizontal, Theme.Space.gutter)
     }
 
     private func streakRange(_ stats: WatchStats) -> String? {
@@ -275,11 +253,11 @@ struct StatsView: View {
         return symbols[weekday - 1]
     }
 
-    /// A row of tiles; stacked at accessibility text sizes, where three across would truncate.
+    /// A row of cells that share their borders; stacked at accessibility text sizes, where three across would truncate.
     private func tiles<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         let layout = typeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(spacing: Theme.Space.s))
-            : AnyLayout(HStackLayout(spacing: Theme.Space.s))
+            ? AnyLayout(VStackLayout(spacing: -Theme.Rule.heavy))
+            : AnyLayout(HStackLayout(spacing: -Theme.Rule.heavy))
         return layout { content() }
     }
 
@@ -287,14 +265,14 @@ struct StatsView: View {
 
     private var placeholder: some View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Theme.Palette.surface).frame(width: 260 * Theme.scale, height: 44 * Theme.scale)
+            Rectangle().fill(Theme.Palette.tint1).frame(width: 260 * Theme.scale, height: 44 * Theme.scale)
             HStack(spacing: Theme.Space.s) {
                 ForEach(0..<3, id: \.self) { _ in
-                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.Palette.surface).frame(height: 84 * Theme.scale)
+                    Rectangle().fill(Theme.Palette.tint1).frame(height: 84 * Theme.scale)
                 }
             }
-            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.Palette.surface).frame(height: 230 * Theme.scale)
-            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Theme.Palette.surface).frame(height: 200 * Theme.scale)
+            Rectangle().fill(Theme.Palette.tint1).frame(height: 230 * Theme.scale)
+            Rectangle().fill(Theme.Palette.tint1).frame(height: 200 * Theme.scale)
         }
         .padding(.horizontal, Theme.Space.gutter)
         .shimmering()
@@ -308,7 +286,7 @@ private struct RankedShow: Identifiable {
     var id: String { item.id }
 }
 
-/// One headline number on a glass tile.
+/// One headline number in a ruled cell: the figure big, red and condensed, its name in mono beneath.
 private struct StatTile: View {
     let value: String
     let label: String
@@ -316,68 +294,61 @@ private struct StatTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+            Text(value)
+                .font(Theme.Typeface.custom(Theme.Face.condensed, 44, .largeTitle).monospacedDigit())
+                .foregroundStyle(Theme.Palette.red)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .contentTransition(.numericText())
             Text(label)
                 .font(Theme.Typeface.caption)
-                .foregroundStyle(Theme.Palette.textSecondary)
+                .textCase(.uppercase)
+                .tracking(0.06 * 12 * Theme.scale)
+                .foregroundStyle(Theme.Palette.fg)
                 .lineLimit(1)
-            Text(value)
-                .font(Theme.Typeface.title)
-                .displayTracking()
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .contentTransition(.numericText())
             if let detail {
                 Text(detail)
                     .font(Theme.Typeface.caption)
-                    .foregroundStyle(Theme.Palette.textTertiary)
+                    .foregroundStyle(Theme.Palette.muted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Theme.Space.m)
-        .background(Theme.Palette.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .ruleFrame()
         .accessibilityElement(children: .combine)
         .statFocus()
     }
 }
 
-/// A genre's name, its share as a percentage, and a bar.
+/// A genre's name, its share as a percentage, and a thin red bar, as a ruled row.
 private struct GenreBar: View {
     let genre: WatchStats.GenreShare
-    /// Higher-ranked genres are brighter.
-    let opacity: Double
 
     private var percent: String { genre.share.formatted(.percent.precision(.fractionLength(0))) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             HStack(alignment: .firstTextBaseline) {
-                Text(genre.name).font(Theme.Typeface.headline).lineLimit(1)
+                Text(genre.name).font(Theme.Typeface.heading).textCase(.uppercase).lineLimit(1)
                 Spacer(minLength: Theme.Space.s)
-                Text(percent).font(Theme.Typeface.body).monospacedDigit().foregroundStyle(Theme.Palette.textSecondary)
+                Text(percent).font(Theme.Typeface.figure).foregroundStyle(Theme.Palette.red)
             }
-            Capsule()
-                .fill(Theme.Palette.surfaceStrong)
-                .frame(height: 8 * Theme.scale)
-                .overlay(alignment: .leading) {
-                    GeometryReader { proxy in
-                        Capsule()
-                            .fill(Color.white.opacity(opacity))
-                            .frame(width: max(8 * Theme.scale, proxy.size.width * min(1, genre.share)))
-                    }
-                }
+            RedBar(value: genre.share, height: 4 * Theme.scale)
         }
+        .ruledRowFrame()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(genre.name), \(percent)")
     }
 }
 
 private extension View {
-    /// Apple TV scrolls by moving focus, so content that isn't focusable would be skipped past; the cards take focus and lift gently.
+    /// Apple TV scrolls by moving focus, so content that isn't focusable would be skipped past; the cells take focus
+    /// and show it as the thick blue frame.
     @ViewBuilder func statFocus() -> some View {
         #if os(tvOS)
-        modifier(StatFocusLift()).focusable()
+        modifier(StatFocusFrame()).focusable()
         #else
         self
         #endif
@@ -385,14 +356,13 @@ private extension View {
 }
 
 #if os(tvOS)
-private struct StatFocusLift: ViewModifier {
+private struct StatFocusFrame: ViewModifier {
     @Environment(\.isFocused) private var focused
 
     func body(content: Content) -> some View {
         content
-            .scaleEffect(focused ? 1.03 : 1)
-            .shadow(color: .black.opacity(focused ? 0.45 : 0), radius: 20, y: 12)
-            .animation(Theme.Motion.snappy, value: focused)
+            .overlay { if focused { Rectangle().strokeBorder(Theme.Palette.blue, lineWidth: Theme.Rule.focus) } }
+            .animation(Theme.Motion.hover, value: focused)
     }
 }
 #endif

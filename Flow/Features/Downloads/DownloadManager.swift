@@ -192,55 +192,81 @@ struct DownloadsView: View {
     @State private var manager = DownloadManager.shared
 
     var body: some View {
-        FilmList {
-            if model.settings.downloads.deleteWatchedDownloads || model.settings.downloads.downloadNextEpisode {
-                Text(smartDownloadsNote).font(.footnote).foregroundStyle(.secondary).listRowBackground(Color.clear)
-            }
-            if manager.items.isEmpty {
-                ContentUnavailableView("No Downloads", systemImage: "arrow.down.circle",
-                                       description: Text("Tap the download button on a movie or episode to save it for offline viewing."))
-            }
-            ForEach(manager.items) { item in
-                Button {
-                    if item.state == .finished {
-                        model.startPlayback(manager.localSource(for: item), request: item.request)
-                    } else if item.state == .failed {
-                        manager.resume(item)
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                BrowseHead("Downloads", note: savedNote)
+                if model.settings.downloads.deleteWatchedDownloads || model.settings.downloads.downloadNextEpisode {
+                    Text(smartDownloadsNote)
+                        .font(Theme.Typeface.reading)
+                        .foregroundStyle(Theme.Palette.muted)
+                        .padding(.horizontal, Theme.Space.gutter)
+                }
+                if manager.items.isEmpty {
+                    BrowseEmpty(title: "No Downloads",
+                                message: "Tap the download button on a movie or episode to save it for offline viewing.")
+                } else {
+                    VStack(spacing: 0) {
+                        RuleLine()
+                        ForEach(manager.items) { item in row(item) }
                     }
-                } label: {
-                    HStack(spacing: 12) {
-                        RemoteImage(url: item.request.item.posterURL, fallbackURL: item.request.item.tmdbPosterURL)
-                            .frame(width: 50, height: 75)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.request.displayTitle).font(.headline).lineLimit(1)
-                            switch item.state {
-                            case .downloading, .queued:
-                                ProgressView(value: item.progress)
-                                Text("\(Int(item.progress * 100))%" + (item.bytes.map { " of " + StreamParser.formatBytes($0) } ?? ""))
-                                    .font(.caption).foregroundStyle(.secondary)
-                            case .finished:
-                                Text(item.bytes.map(StreamParser.formatBytes) ?? "Ready").font(.caption).foregroundStyle(.secondary)
-                            case .failed:
-                                Text(item.error ?? "Failed — tap to retry").font(.caption).foregroundStyle(.orange)
-                            }
-                        }
-                        Spacer()
-                        if item.state == .finished { Image(systemName: "play.circle.fill").font(.title2) }
-                    }
-                }
-                .buttonStyle(.plain)
-                #if !os(tvOS)
-                .swipeActions {
-                    Button(role: .destructive) { manager.cancel(item) } label: { Label("Delete", systemImage: "trash") }
-                }
-                #endif
-                .contextMenu {
-                    Button(role: .destructive) { manager.cancel(item) } label: { Label("Delete", systemImage: "trash") }
+                    .padding(.horizontal, Theme.Space.gutter)
                 }
             }
+            .padding(.bottom, Theme.Space.xl)
         }
-        .navigationTitle("Downloads")
+        .scrollIndicators(.hidden)
+        .browsePage("Downloads")
+    }
+
+    private var savedNote: String? {
+        let saved = manager.items.filter { $0.state == .finished }.count
+        return manager.items.isEmpty ? nil : "\(saved) saved"
+    }
+
+    private func row(_ item: DownloadItem) -> some View {
+        HStack(spacing: 0) {
+            Button {
+                if item.state == .finished {
+                    model.startPlayback(manager.localSource(for: item), request: item.request)
+                } else if item.state == .failed {
+                    manager.resume(item)
+                }
+            } label: {
+                HStack(spacing: Theme.Space.m) {
+                    RowThumb(url: item.request.item.posterURL, fallbackURL: item.request.item.tmdbPosterURL, title: item.request.displayTitle,
+                             width: 50 * Theme.scale, height: 75 * Theme.scale)
+                    VStack(alignment: .leading, spacing: Theme.Space.xxs) {
+                        Text(item.request.displayTitle).font(Theme.Typeface.heading).textCase(.uppercase).lineLimit(1)
+                        switch item.state {
+                        case .downloading, .queued:
+                            RedBar(value: item.progress)
+                            Text("\(Int(item.progress * 100))%" + (item.bytes.map { " of " + StreamParser.formatBytes($0) } ?? ""))
+                                .font(Theme.Typeface.caption).rowInk(Theme.Palette.muted)
+                        case .finished:
+                            Text(item.bytes.map(StreamParser.formatBytes) ?? "Ready")
+                                .font(Theme.Typeface.caption).rowInk(Theme.Palette.muted)
+                        case .failed:
+                            Text(item.error ?? "Failed. Tap to retry.")
+                                .font(Theme.Typeface.caption).rowInk(Theme.Palette.warn).lineLimit(2)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                    if item.state == .finished {
+                        Image(systemName: "play.fill").rowInk(Theme.Palette.fg).accessibilityHidden(true)
+                    }
+                }
+            }
+            .buttonStyle(BrowseRowStyle(ruled: false))
+            #if !os(tvOS)
+            Button { manager.cancel(item) } label: { Image(systemName: "trash") }
+                .buttonStyle(QuietButtonStyle(square: true))
+                .accessibilityLabel("Delete \(item.request.displayTitle)")
+            #endif
+        }
+        .ruledRow()
+        .contextMenu {
+            Button(role: .destructive) { manager.cancel(item) } label: { Label("Delete", systemImage: "trash") }
+        }
     }
 
     private var smartDownloadsNote: String {

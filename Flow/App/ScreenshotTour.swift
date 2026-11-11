@@ -71,6 +71,9 @@ enum ScreenshotTour {
             Step(name: "library") { m in m.selectedTab = .library },
             Step(name: "library-watchlist") { m in m.paths[.library] = [.library(.watchlist)] },
             Step(name: "calendar") { m in m.paths[.library] = [.calendar] },
+            Step(name: "library-history") { m in m.paths[.library] = [.library(.history)] },
+            Step(name: "stats") { m in m.paths[.library] = [.stats] },
+            Step(name: "sports") { m in m.paths[.library] = [.sports] },
             Step(name: "search") { m in m.paths[.library] = []; m.selectedTab = .search; m.searchText = "the" },
             // A confident match, so the top result's poster shows beside the rows.
             Step(name: "search-top") { m in m.searchText = "dune" },
