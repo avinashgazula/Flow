@@ -1,8 +1,9 @@
 import SwiftUI
 import FlowKit
 
-/// A title's page: a masthead (the title, its plain facts, ratings as numbers, the one yellow action, the best
-/// version) beside or under a framed still, then episodes as listings, cast, and the rest.
+/// A title's page, as the website sets it: the giant uppercase title with its facts line under a rule, then a framed
+/// still with the "how this plays" block under it beside the ratings, the one solid Play and what the viewer can do with
+/// the title, then episodes, cast and the rest, each section opened by a 2px rule and a red label.
 struct DetailView: View {
     let item: MediaItem
     /// The library the title was opened from, if any.
@@ -35,9 +36,12 @@ struct DetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.xl) {
-                topInset
-                masthead
+            VStack(alignment: .leading, spacing: Theme.Space.xxl) {
+                VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                    topInset
+                    head
+                    masthead
+                }
                 // Specials alone, with Specials Season off, leave nothing to list.
                 if current.type == .show, let detail, detail.seasons.contains(where: { $0.number > 0 || general.showSpecialsSeason }) {
                     SeasonsSection(show: current, seasons: detail.seasons, episodesBySeason: episodesBySeason, selectedSeason: $selectedSeason, libraryProviderID: libraryProviderID,
@@ -88,89 +92,40 @@ struct DetailView: View {
         #endif
     }
 
-    // MARK: Masthead
+    // MARK: Head
 
-    private var stillWidth: CGFloat { Platform.isTV ? 760 : min(460, width * 0.42) }
-
-    /// The still and, under it, the film-can label: one object; beside the text on wide screens, above it otherwise.
-    private var masthead: some View {
-        let visual = VStack(alignment: .leading, spacing: Theme.Space.m) {
-            still
-            versionLabel
-        }
-        return Group {
-            if wide {
-                HStack(alignment: .top, spacing: Theme.Space.xl) {
-                    visual.frame(width: stillWidth)
-                    textColumn.frame(maxWidth: .infinity, alignment: .leading)
+    /// The giant title, then the facts line between a thin rule and the 2px rule that closes the head; the rules run edge
+    /// to edge.
+    private var head: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            GiantTitle(text: current.title, width: width)
+                .padding(.horizontal, Theme.Space.gutter)
+                .padding(.bottom, Theme.Space.m)
+                #if os(iOS)
+                // With a margin each way, so the bar changing as the title collapses can't flip it straight back.
+                .onGeometryChange(for: Bool.self) { [barBottom, titleCollapsed] proxy in
+                    guard proxy.size.height > 0 else { return false }
+                    let bottom = proxy.frame(in: .global).maxY
+                    if bottom < barBottom - 4 { return true }
+                    if bottom > barBottom + 12 { return false }
+                    return titleCollapsed
+                } action: { collapsed in
+                    withAnimation(Theme.Motion.state) { titleCollapsed = collapsed }
                 }
-            } else {
-                VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    // Above the text a still never needs more than this, which keeps the title in view in a short window.
-                    visual.frame(maxWidth: Platform.isPhone ? .infinity : 560, alignment: .leading)
-                    textColumn
-                }
+                #endif
+            let parts = factParts
+            if !parts.isEmpty {
+                RuleLine(thin: true)
+                FactsLine(parts: parts)
+                    .padding(.horizontal, Theme.Space.gutter)
+                    .padding(.vertical, Theme.Space.s)
             }
-        }
-        .padding(.horizontal, Theme.Space.gutter)
-    }
-
-    /// The title's frame with its edge strip: progress if it is started, and `2024 · 2 H 47 · ENDS 22:56`.
-    private var still: some View {
-        let progress = model.progress(for: current)
-        let started = current.type == .movie && (progress?.percent ?? 0) > 1
-        let minutes = current.type == .movie ? Reel.minutesLeft(progress: progress, runtimeMinutes: current.runtimeMinutes) : nil
-        var lead: [String] = []
-        if let year = current.year { lead.append(String(year)) }
-        if current.type == .show {
-            if let seasons = detail?.numberOfSeasons { lead.append(seasons == 1 ? "1 season" : "\(seasons) seasons") }
-        } else if !started, let runtime = current.runtimeMinutes, runtime > 0 {
-            lead.append(Reel.compactDuration(minutes: runtime))
-        }
-        let strip = EdgePrint(progress: started ? Reel.watchedFraction(progress) : nil, lead: lead,
-                              key: started ? minutes.map { Reel.compactLeft(minutes: $0) } : nil, endsInMinutes: minutes)
-        return FilmFrame(art: .still(current), strip: strip)
-            .accessibilityHidden(true)
-    }
-
-    private var textColumn: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.l) {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                let factsText = facts
-                if !factsText.isEmpty {
-                    Text(factsText)
-                        .font(.system(.subheadline).monospacedDigit())
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                }
-                Text(current.title)
-                    .font(.system(.largeTitle, weight: .bold))
-                    .tracking(-0.7)
-                    .foregroundStyle(Theme.Palette.text)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
-                    #if os(iOS)
-                    // With a margin each way, so the bar changing as the title collapses can't flip it straight back.
-                    .onGeometryChange(for: Bool.self) { [barBottom, titleCollapsed] proxy in
-                        guard proxy.size.height > 0 else { return false }
-                        let bottom = proxy.frame(in: .global).maxY
-                        if bottom < barBottom - 4 { return true }
-                        if bottom > barBottom + 12 { return false }
-                        return titleCollapsed
-                    } action: { collapsed in
-                        withAnimation(Theme.Motion.fade) { titleCollapsed = collapsed }
-                    }
-                    #endif
-            }
-            if !ratings.isEmpty || current.voteAverage != nil {
-                RatingsRow(ratings: ratings.isEmpty ? Ratings(tmdb: current.voteAverage) : ratings, item: current)
-            }
-            actions
-            overviewBlock
+            RuleLine()
         }
     }
 
-    /// "2024 · 2 h 47 min · PG-13 · Science Fiction".
-    private var facts: String {
+    /// "2024", "2 h 47 min", "PG-13", "Science Fiction, Adventure": a mono line, a rule between the parts.
+    private var factParts: [String] {
         var parts: [String] = []
         if let year = current.year { parts.append(String(year)) }
         if current.type == .movie, let runtime = current.runtimeMinutes, runtime > 0 {
@@ -181,7 +136,109 @@ struct DetailView: View {
         if let certification = current.certification, !certification.isEmpty { parts.append(certification) }
         let genres = current.genres.prefix(2).map(\.name)
         if !genres.isEmpty { parts.append(genres.joined(separator: ", ")) }
-        return parts.joined(separator: " · ")
+        return parts
+    }
+
+    // MARK: Masthead
+
+    private var stillWidth: CGFloat { Platform.isTV ? 760 : min(520, width * 0.44) }
+
+    /// The framed still and, under it, how the title plays: one column; beside the text on wide screens, above it otherwise.
+    private var masthead: some View {
+        Group {
+            if wide {
+                HStack(alignment: .top, spacing: Theme.Space.xl) {
+                    visual.frame(width: stillWidth)
+                    textColumn.frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
+                    // Above the text a still never needs more than this, which keeps the title in view in a short window.
+                    visual.frame(maxWidth: Platform.isPhone ? .infinity : 560, alignment: .leading)
+                    textColumn
+                }
+            }
+        }
+        .padding(.horizontal, Theme.Space.gutter)
+    }
+
+    private var visual: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            still
+            progressBar
+            printLine
+            versionBlock.padding(.top, Theme.Space.s)
+        }
+    }
+
+    /// The title's frame: the backdrop in a 2px rule.
+    private var still: some View {
+        Color.clear
+            .aspectRatio(16.0 / 9.0, contentMode: .fit)
+            .overlay(RemoteImage(url: current.smallBackdropURL ?? current.tmdbPosterURL, maxPixel: Platform.isTV ? 1000 : 700, fallbackTitle: current.title))
+            .clipped()
+            .ruleFrame()
+            .accessibilityHidden(true)
+    }
+
+    private var startedFraction: Double? {
+        guard current.type == .movie else { return nil }
+        let progress = model.progress(for: current)
+        return (progress?.percent ?? 0) > 1 ? Reel.watchedFraction(progress) : nil
+    }
+
+    /// How far into a started film: a thin red bar with an ink border under the frame.
+    @ViewBuilder
+    private var progressBar: some View {
+        if let fraction = startedFraction {
+            Color.clear
+                .frame(height: 12 * Theme.scale)
+                .overlay(alignment: .leading) {
+                    GeometryReader { proxy in
+                        Theme.Palette.red.frame(width: proxy.size.width * min(1, max(0, fraction)))
+                    }
+                }
+                .overlay(Rectangle().strokeBorder(Theme.Palette.rule, lineWidth: Theme.Rule.thin))
+                .accessibilityElement()
+                .accessibilityLabel("\(Int((fraction * 100).rounded())) percent watched")
+        }
+    }
+
+    /// "1 h 44 left · ends 22:56" under the frame; it ticks each minute, so the end time is right whenever it is read.
+    @ViewBuilder
+    private var printLine: some View {
+        if current.type == .movie {
+            let progress = model.progress(for: current)
+            let started = startedFraction != nil
+            let minutes = Reel.minutesLeft(progress: progress, runtimeMinutes: current.runtimeMinutes)
+            let edge = EdgePrint(key: started ? minutes.map { Reel.compactLeft(minutes: $0) } : nil, endsInMinutes: minutes)
+            if !edge.segments().isEmpty {
+                TimelineView(.everyMinute) { context in
+                    Text(edge.segments(now: context.date).map(\.text).joined(separator: " · "))
+                        .font(Theme.Typeface.caption)
+                        .detailCaps()
+                        .foregroundStyle(Theme.Palette.muted)
+                        .lineLimit(2)
+                }
+            }
+        }
+    }
+
+    private var textColumn: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            // Wide: the ratings lead the column. On a phone they come after the actions, so Play stays above the fold.
+            if wide { ratingsRow }
+            actions
+            if !wide { ratingsRow }
+            overviewBlock
+        }
+    }
+
+    @ViewBuilder
+    private var ratingsRow: some View {
+        if !ratings.isEmpty || current.voteAverage != nil {
+            RatingsRow(ratings: ratings.isEmpty ? Ratings(tmdb: current.voteAverage) : ratings, item: current)
+        }
     }
 
     @ViewBuilder
@@ -189,27 +246,35 @@ struct DetailView: View {
         if let overview = current.overview, !overview.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 if let tagline = detail?.tagline, !tagline.isEmpty {
-                    Text(tagline).font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.text)
+                    Text(tagline)
+                        .font(Theme.Typeface.heading)
+                        .textCase(.uppercase)
+                        .foregroundStyle(Theme.Palette.fg)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Text(overview)
-                    .font(.system(.body))
-                    .foregroundStyle(Theme.Palette.text)
-                    .lineSpacing(4)
+                    .font(Theme.Typeface.reading)
+                    .foregroundStyle(Theme.Palette.fg)
+                    .lineSpacing(5)
                     .lineLimit(showFullOverview ? nil : 5)
-                if !showFullOverview && overview.count > 220 {
-                    Text("More").font(.system(.subheadline, weight: .semibold)).foregroundStyle(Theme.Palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if overview.count > 220 {
+                    Button(showFullOverview ? "Less" : "More") { withAnimation(Theme.Motion.enter) { showFullOverview.toggle() } }
+                        .buttonStyle(QuietButtonStyle())
+                        // The word lines up with the text above, not with the button's own padding.
+                        .padding(.leading, -(Theme.Space.m + 2))
                 }
                 if let scenes = detail?.creditsScenes, scenes.any {
                     Label(scenes.afterCredits ? (scenes.duringCredits ? "Scenes during and after the credits" : "Scene after the credits")
                                               : "Scene during the credits", systemImage: "sparkles")
                         .font(Theme.Typeface.caption)
-                        .foregroundStyle(Theme.Palette.textSecondary)
+                        .detailCaps()
+                        .foregroundStyle(Theme.Palette.muted)
                         .padding(.top, 6)
                 }
             }
-            .contentShape(Rectangle())
-            .onTapGesture { withAnimation(Theme.Motion.gentle) { showFullOverview.toggle() } }
             .frame(maxWidth: 640 * Theme.scale, alignment: .leading)
+            .padding(.top, Theme.Space.xs)
         }
     }
 
@@ -237,33 +302,49 @@ struct DetailView: View {
 
     private var actions: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack(spacing: Theme.Space.s) {
-                Button { Task { await model.play(current, library: libraryProviderID) } } label: {
-                    Label(playLabel, systemImage: "play.fill")
-                        // One line, always: "Resume · 1 h 44 min left" must not wrap on Apple TV.
-                        .lineLimit(1)
-                        .fixedSize(horizontal: wide, vertical: false)
-                        .frame(maxWidth: wide ? nil : .infinity)
-                        .frame(minWidth: wide ? 220 * Theme.scale : nil)
+            if wide {
+                WrappingRow(spacing: Theme.Space.s, lineSpacing: Theme.Space.s) {
+                    playButton
+                    if let trailers = detail?.trailers, !trailers.isEmpty { trailerButton(trailers, fill: false) }
+                    RequestButton(item: current, seasons: detail?.seasons ?? [])
                 }
-                .buttonStyle(PrimaryButtonStyle())
-                if let trailers = detail?.trailers, !trailers.isEmpty { trailerButton(trailers) }
+            } else {
+                // Play takes the line; Trailer and Request share the next, so the list under them stays above the fold.
+                playButton
+                HStack(spacing: Theme.Space.s) {
+                    if let trailers = detail?.trailers, !trailers.isEmpty { trailerButton(trailers, fill: true) }
+                    RequestButton(item: current, seasons: detail?.seasons ?? [], fill: true)
+                }
             }
-            textActions
+            listRow
+                .padding(.top, Theme.Space.xs)
             if model.isWatched(current) || model.rating(for: current) != nil {
                 HStack(spacing: Theme.Space.s) {
-                    Text("Your Rating").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary)
+                    Text("Your Rating")
+                        .font(Theme.Typeface.detailKey)
+                        .detailCaps()
+                        .foregroundStyle(Theme.Palette.muted)
                     RatingStars(item: current, size: 18)
                 }
             }
-            RequestButton(item: current, seasons: detail?.seasons ?? [])
             if let next = detail?.nextEpisode, let date = next.airDate { airsLine(next, date: date) }
         }
     }
 
+    /// The one solid control: Resume or Play, filling a phone's width.
+    private var playButton: some View {
+        Button { Task { await model.play(current, library: libraryProviderID) } } label: {
+            Label(playLabel, systemImage: "play.fill")
+                // One line, always: "Resume · 1 h 44 min left" must not wrap on Apple TV.
+                .lineLimit(1)
+                .frame(minWidth: wide ? 200 * Theme.scale : nil)
+        }
+        .buttonStyle(PrimaryButtonStyle(fill: !wide))
+    }
+
     /// Owners decide by trailers, so it sits beside Play. More than one trailer makes it a menu.
     @ViewBuilder
-    private func trailerButton(_ trailers: [Video]) -> some View {
+    private func trailerButton(_ trailers: [Video], fill: Bool) -> some View {
         if trailers.count > 1 {
             Menu {
                 ForEach(Array(trailers.enumerated()), id: \.offset) { _, video in
@@ -272,10 +353,10 @@ struct DetailView: View {
             } label: {
                 Text("Trailer")
             }
-            .buttonStyle(GlassButtonStyle())
+            .buttonStyle(GlassButtonStyle(fill: fill))
         } else if let video = trailers.first {
             Button { openTrailer(video) } label: { Text("Trailer") }
-                .buttonStyle(GlassButtonStyle())
+                .buttonStyle(GlassButtonStyle(fill: fill))
                 .accessibilityHint("Opens \(video.name) in YouTube")
         }
     }
@@ -284,83 +365,105 @@ struct DetailView: View {
         if let url = video.youtubeURL { model.openExternally(url) }
     }
 
-    /// Watchlist, Watched, Favourite, Download and Share as plain labelled text, wrapping when they must.
-    private var textActions: some View {
-        WrappingRow(spacing: Theme.Space.m, lineSpacing: 0) {
+    private enum ListAction: Hashable { case watchlist, watched, favourite, download, shuffle, rewatch, share, more }
+
+    /// Watchlist, Watched, Favourite and the rest, in the order they are laid out. An iPad's row would wrap onto a second
+    /// line, so everything after the three list actions shares a menu there.
+    private var listActions: [ListAction] {
+        var out: [ListAction] = [.watchlist, .watched, .favourite]
+        #if os(iOS)
+        if Platform.isPad { return out + [.more] }
+        #endif
+        if Platform.supportsDownloads { out.append(.download) }
+        if current.type == .show { out += [.shuffle, .rewatch] }
+        #if !os(tvOS)
+        out.append(.share)
+        #endif
+        return out
+    }
+
+    /// A bordered segmented row: the cells share their borders, and the ones that are on are inverted with a check.
+    private var listRow: some View {
+        let actions = listActions
+        let count = Platform.isPhone ? 2 : min(actions.count, 4)
+        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: -Theme.Rule.heavy), count: count), spacing: -Theme.Rule.heavy) {
+            ForEach(actions, id: \.self) { listCell($0) }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Your List")
+    }
+
+    @ViewBuilder
+    private func listCell(_ action: ListAction) -> some View {
+        switch action {
+        case .watched:
             let watched = model.isWatched(current)
-            textAction("Watched", active: watched, accessibility: watched ? "Watched" : "Mark Watched") {
+            toggleCell("Watched", on: watched, accessibility: watched ? "Watched" : "Mark Watched") {
                 Task { await model.setWatched(current, episodes: nil, watched: !watched) }
             }
+        case .watchlist:
             let listed = model.isWatchlisted(current)
-            textAction("Watchlist", active: listed, accessibility: listed ? "Remove from Watchlist" : "Add to Watchlist") {
+            toggleCell("Watchlist", on: listed, accessibility: listed ? "Remove from Watchlist" : "Add to Watchlist") {
                 Task { await model.toggleWatchlist(current) }
             }
+        case .favourite:
             let favourite = model.isFavourite(current)
-            textAction("Favourite", active: favourite, accessibility: favourite ? "Remove from Favourites" : "Add to Favourites") {
+            toggleCell("Favourite", on: favourite, accessibility: favourite ? "Remove from Favourites" : "Add to Favourites") {
                 Task { await model.toggleFavourite(current) }
             }
-            #if os(iOS)
-            let shareInMenu = Platform.isPad
+        case .download:
+            toggleCell("Download", on: false, accessibility: "Download") { Task { await download() } }
+        case .shuffle:
+            toggleCell("Shuffle", on: false, accessibility: "Shuffle Play") { Task { await model.shufflePlay(current) } }
+        case .rewatch:
+            toggleCell(rewatching ? "End Rewatch" : "Rewatch", on: rewatching, accessibility: rewatching ? "End Rewatch" : "Rewatch") { toggleRewatch() }
+        case .share:
+            #if os(tvOS)
+            EmptyView()
             #else
-            let shareInMenu = false
+            TitleShareLink(item: current) { Text("Share") }
+                .buttonStyle(ListActionStyle())
             #endif
-            if !shareInMenu {
+        case .more:
+            #if os(iOS)
+            Menu {
                 if Platform.supportsDownloads {
-                    textAction("Download", active: false, accessibility: "Download") { Task { await download() } }
+                    Button("Download") { Task { await download() } }
                 }
                 if current.type == .show {
-                    textAction("Shuffle", active: false, accessibility: "Shuffle Play") { Task { await model.shufflePlay(current) } }
+                    Button("Shuffle") { Task { await model.shufflePlay(current) } }
+                    Button(rewatching ? "End Rewatch" : "Rewatch") { toggleRewatch() }
                 }
+                TitleShareLink(item: current) { Label("Share", systemImage: "square.and.arrow.up") }
+            } label: {
+                Text("More")
             }
-            if shareInMenu {
-                #if os(iOS)
-                // On an iPad the row would wrap onto a second line, so everything after the three list actions shares a menu.
-                Menu {
-                    if Platform.supportsDownloads {
-                        Button("Download") { Task { await download() } }
-                    }
-                    if current.type == .show {
-                        Button("Shuffle") { Task { await model.shufflePlay(current) } }
-                    }
-                    if current.type == .show {
-                        Button(rewatching ? "End Rewatch" : "Rewatch") { toggleRewatch() }
-                    }
-                    TitleShareLink(item: current) { Label("Share", systemImage: "square.and.arrow.up") }
-                } label: {
-                    Text("More")
-                }
-                .buttonStyle(PlainActionButtonStyle())
-                #endif
-            } else {
-                if current.type == .show {
-                    textAction(rewatching ? "End Rewatch" : "Rewatch", active: rewatching, accessibility: rewatching ? "End Rewatch" : "Rewatch") { toggleRewatch() }
-                }
-                #if !os(tvOS)
-                TitleShareLink(item: current) { Text("Share") }
-                    .buttonStyle(PlainActionButtonStyle())
-                #endif
-            }
+            .buttonStyle(ListActionStyle())
+            #else
+            EmptyView()
+            #endif
         }
     }
 
-    /// One text action; a small check after the word says it is on.
-    private func textAction(_ title: String, active: Bool, accessibility: String, perform: @escaping () -> Void) -> some View {
+    /// One list action; a check before the word says it is on.
+    private func toggleCell(_ title: String, on: Bool, accessibility: String, perform: @escaping () -> Void) -> some View {
         Button(action: perform) {
             HStack(spacing: 4) {
+                if on { Image(systemName: "checkmark").imageScale(.small) }
                 Text(title)
-                if active { Image(systemName: "checkmark").imageScale(.small) }
             }
         }
-        .buttonStyle(PlainActionButtonStyle())
+        .buttonStyle(ListActionStyle(on: on))
         .accessibilityLabel(accessibility)
-        .sensoryFeedbackIfAvailable(active)
+        .sensoryFeedbackIfAvailable(on)
     }
 
     @ViewBuilder
     private func airsLine(_ next: Episode, date: Date) -> some View {
         let line = Label("\(next.code) airs \(AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))", systemImage: "calendar")
             .font(Theme.Typeface.caption)
-            .foregroundStyle(Theme.Palette.textSecondary)
+            .detailCaps()
+            .foregroundStyle(Theme.Palette.muted)
         #if os(tvOS)
         line
         #else
@@ -369,7 +472,7 @@ struct DetailView: View {
         } label: {
             HStack(spacing: 4) {
                 line
-                Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.Palette.textTertiary)
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.Palette.faint)
             }
         }
         .buttonStyle(.plain)
@@ -377,57 +480,40 @@ struct DetailView: View {
         #endif
     }
 
-    /// The film-can label: what will play and how, as edge print. Best version, how it plays on this device, and
+    /// How the title plays, as ruled mono rows under the frame: the best version, how it plays on this device, and
     /// the sources (which open the picker).
     @ViewBuilder
-    private var versionLabel: some View {
+    private var versionBlock: some View {
         if let best = bestVersion {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                labelRow("Best version") {
+            VStack(alignment: .leading, spacing: 0) {
+                RuleLine()
+                VersionRow("Best version") {
                     Text(best.line.isEmpty ? "Unknown format" : best.line)
-                        .foregroundStyle(Theme.Palette.print)
                 }
-                labelRow("Plays") {
+                VersionRow("Plays") {
                     if let note = best.note, note.isWarning {
                         Text(note.text).foregroundStyle(Theme.Palette.warn)
                     } else if let note = best.note {
-                        Text("Direct · " + note.text).foregroundStyle(Theme.Palette.print)
+                        Text("Direct · " + note.text)
                     } else {
-                        Text("Direct").foregroundStyle(Theme.Palette.stock)
+                        Text("Direct")
                     }
                 }
                 Button { Task { await model.play(current, library: libraryProviderID) } } label: {
-                    labelRow("Sources") {
-                        Text(([String(best.count)] + best.providers.prefix(3)).joined(separator: " · "))
-                            .foregroundStyle(Theme.Palette.print)
+                    VersionRow("Sources", bordered: false) {
+                        HStack(spacing: Theme.Space.xs) {
+                            Text(([String(best.count)] + best.providers.prefix(3)).joined(separator: " · "))
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right").font(.system(size: 11 * Theme.scale, weight: .bold))
+                        }
                     }
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(RuledCellStyle())
+                .ruledRow()
                 .accessibilityHint("Opens the source list")
             }
-            .padding(Theme.Space.m)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.Palette.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.frame, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.frame, style: .continuous).strokeBorder(Theme.Palette.line, lineWidth: 1))
             .transition(.opacity)
         }
-    }
-
-    /// One row of the label: a small tracked name, then its value in larger print.
-    private func labelRow<Value: View>(_ name: String, @ViewBuilder value: () -> Value) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-            Text(name)
-                .font(Theme.Typeface.edgePrint)
-                .edgePrint(tracking: 1.6)
-                .foregroundStyle(Theme.Palette.textTertiary)
-                .frame(width: 92 * Theme.scale, alignment: .leading)
-            value()
-                .font(Font.system(.subheadline, weight: .semibold).width(.condensed).monospacedDigit())
-                .edgePrint()
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .accessibilityElement(children: .combine)
     }
 
     private func toggleRewatch() {
@@ -454,37 +540,23 @@ struct DetailView: View {
 
     @ViewBuilder
     private func sections(_ detail: MediaDetail) -> some View {
+        if !detail.castRow.isEmpty {
+            CastSection(cast: Array(detail.castRow.prefix(30)))
+        }
         if general.showWhereToWatch, let availability = detail.availability, !availability.isEmpty {
             WhereToWatch(availability: availability)
         }
         if general.showReviews, !reviews.isEmpty {
             ReviewsSection(reviews: reviews, textSize: general.detailTextSize)
         }
-        if !detail.castRow.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                SectionHeader<Route>("Cast & Crew")
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: Theme.Space.m) {
-                        ForEach(detail.castRow.prefix(30)) { member in
-                            PersonCard(id: member.id, name: member.name, role: member.role, profilePath: member.profilePath)
-                        }
-                    }
-                    .padding(.horizontal, Theme.Space.gutter)
-                    .padding(.vertical, Platform.isTV ? 24 : 2)
-                }
-                .scrollClipDisabled()
-            }
-        }
         if let collection = detail.collection { collectionRow(collection) }
         if !detail.recommendations.isEmpty {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                SectionHeader<Route>("More Like This")
+            RuledSection(title: "More Like This", paddedContent: false) {
                 PosterRow(items: detail.recommendations, context: "recs-\(current.id)")
             }
         }
         if !detail.similar.isEmpty && detail.recommendations.count < 6 {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                SectionHeader<Route>("Similar")
+            RuledSection(title: "Similar", paddedContent: false) {
                 PosterRow(items: detail.similar, context: "similar-\(current.id)")
             }
         }
@@ -493,17 +565,16 @@ struct DetailView: View {
         if !about.isEmpty { about }
     }
 
-    /// The collection a film belongs to, as one listing.
+    /// The collection a film belongs to, as one ruled row.
     private func collectionRow(_ collection: MediaCollection) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            SectionHeader<Route>("Collection")
-            ProgrammeList {
-                ProgrammeRow(
-                    art: .stillImage(url: TMDBImage.url(collection.backdropPath, size: .backdrop), title: collection.name),
-                    title: collection.name,
-                    meta: "Every film in the collection",
-                    action: { model.navigate(to: .collection(id: collection.id, name: collection.name)) }
-                )
+        RuledSection(title: "Collection") {
+            VStack(spacing: 0) {
+                RuleLine(thin: true)
+                Button { model.navigate(to: .collection(id: collection.id, name: collection.name)) } label: {
+                    CollectionCell(collection: collection)
+                }
+                .buttonStyle(RuledCellStyle())
+                .ruledRow()
             }
         }
     }
@@ -575,193 +646,126 @@ extension DetailView {
     }
 }
 
-/// The scores chosen in Settings → Metadata → Ratings Shown, in that order: each an aligned number with the
-/// source's name under it. No logos and no colour; a custom icon pack (Settings) still replaces the name.
-struct RatingsRow: View {
-    let ratings: Ratings
-    /// The title, so a score can open its site's page when Tap a Rating is on.
-    var item: MediaItem?
-    @Environment(AppModel.self) private var model
-    @State private var showAll = false
 
-    private var metadata: MetadataSettings { model.settings.metadata }
-    /// Only while a pack URL is set, so clearing the field brings the plain names straight back.
-    private var iconPack: RatingIconPack? { metadata.ratingIconPackURL == nil ? nil : model.ratingIconPack }
+/// One row of the how-it-plays block: a small muted name, then its value in larger print, a 1px rule under it. Inside the
+/// Sources button it reads `cellLit`, since muted has no contrast on the blue.
+private struct VersionRow<Value: View>: View {
+    let name: String
+    var bordered = true
+    let value: Value
+    @Environment(\.cellLit) private var lit
 
-    /// The sources with a score for this title, in the order chosen.
-    private var shown: [RatingSource] { metadata.ratingsShown.filter { text(for: $0) != nil } }
-    /// Four is as many as a phone holds in a row, and on an iPad a fifth or sixth would wrap and leave one score
-    /// alone on a second line, so the rest sit behind More on both.
-    private var limited: Bool { Platform.isPhone || Platform.isPad }
-    private var visible: [RatingSource] { limited && !showAll ? Array(shown.prefix(4)) : shown }
+    init(_ name: String, bordered: Bool = true, @ViewBuilder value: () -> Value) {
+        self.name = name
+        self.bordered = bordered
+        self.value = value()
+    }
 
     var body: some View {
-        // Equal columns, so the numbers of a second line stand under the first line's: a table, not a wrapped row.
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 76 * Theme.scale), spacing: 12 * Theme.scale, alignment: .leading)],
-                      alignment: .leading, spacing: 14 * Theme.scale) {
-                ForEach(visible) { source in
-                    score(source)
-                }
-            }
-            if limited && !showAll && shown.count > 4 {
-                Button("More Ratings") { withAnimation(Theme.Motion.gentle) { showAll = true } }
-                    .font(.system(.subheadline, weight: .semibold))
-                    .foregroundStyle(Theme.Palette.textSecondary)
-                    .buttonStyle(.plain)
-            }
+        let row = HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+            Text(name)
+                .font(Theme.Typeface.detailKey)
+                .detailCaps(0.12)
+                .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted)
+                .frame(width: 108 * Theme.scale, alignment: .leading)
+            value
+                .font(Theme.Typeface.control)
+                .detailCaps(0.06, size: 13)
+                .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .task(id: metadata.ratingIconPackURL) { await model.loadRatingIconPack() }
-    }
-
-    @ViewBuilder
-    private func score(_ source: RatingSource) -> some View {
-        if let value = text(for: source) {
-            if let link = reviewsURL(for: source) {
-                Button { model.openExternally(link) } label: { content(source, value) }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Opens \(source.title)")
-            } else {
-                content(source, value)
-            }
-        }
-    }
-
-    /// Nil when the source has no score for this title (MyAnimeList never does: Flow has no score source for it).
-    private func text(for source: RatingSource) -> String? {
-        switch source {
-        case .imdb: return ratings.imdb.map { String(format: "%.1f", $0) }
-        case .tomatometer: return ratings.rottenTomatoes.map { "\($0)%" }
-        case .popcornmeter: return ratings.popcorn.map { "\($0)%" }
-        case .metacritic: return ratings.metacritic.map { "\($0)" }
-        case .tmdb: return ratings.tmdb.flatMap { $0 > 0 ? String(format: "%.1f", $0) : nil }
-        case .letterboxd: return ratings.letterboxd.map { String(format: "%.1f", $0) }
-        case .trakt: return ratings.trakt.map { "\($0)%" }
-        case .mal: return nil
-        }
-    }
-
-    /// Apple TV can't open web pages.
-    private func reviewsURL(for source: RatingSource) -> URL? {
-        #if os(tvOS)
-        return nil
-        #else
-        guard metadata.tapRatingOpensReviews, let item else { return nil }
-        return RatingLinks.url(for: source, item: item)
-        #endif
-    }
-
-    private func content(_ source: RatingSource, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value)
-                .font(.system(.title2, weight: .semibold).monospacedDigit())
-                .foregroundStyle(Theme.Palette.text)
-            if let icon = iconPack?[source] {
-                RemoteImage(url: icon, contentMode: .fit, maxPixel: 96)
-                    .frame(width: 24 * Theme.scale, height: 14 * Theme.scale, alignment: .leading)
-            } else {
-                Text(source.title)
-                    .font(.system(.caption))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .foregroundStyle(Theme.Palette.textTertiary)
-            }
-        }
-        .fixedSize(horizontal: false, vertical: true)
+        .padding(.vertical, Theme.Space.s)
+        .padding(.horizontal, Theme.Space.xs)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(source.spokenScore(value))
+        if bordered { row.ruledRow() } else { row }
     }
 }
 
-extension View {
-    /// A light tap when a toggle flips (iOS 17+).
-    @ViewBuilder
-    func sensoryFeedbackIfAvailable<T: Equatable>(_ trigger: T) -> some View {
-        #if os(iOS)
-        sensoryFeedback(.selection, trigger: trigger)
-        #else
-        self
-        #endif
-    }
-}
+/// Cast as a ruled grid of cells: a portrait when TMDB has one, then the name and role. Six show; Show All opens the rest.
+private struct CastSection: View {
+    let cast: [CastMember]
+    @State private var all = false
 
-/// The streaming services, rentals and stores carrying the title in the viewer's region.
-struct WhereToWatch: View {
-    let availability: Availability
-    @Environment(AppModel.self) private var model
+    private static let shown = 6
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Where to Watch").font(Theme.Typeface.sectionTitle).displayTracking()
-                Spacer()
-                Text("Data from JustWatch").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary)
-            }
-            .padding(.horizontal, Theme.Space.gutter)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Space.s) {
-                    ForEach(availability.offers) { offer in
-                        tile(offer.provider, kind: offer.kind)
+        RuledSection(title: "Cast") {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                RuledGrid(items: Array(cast.prefix(all ? cast.count : Self.shown)), columns: Platform.ruledColumns) { member, _ in
+                    NavigationLink(value: Route.person(id: member.id, name: member.name)) {
+                        CastCell(member: member)
                     }
+                    .buttonStyle(RuledCellStyle())
+                    .accessibilityLabel(member.role.isEmpty ? member.name : "\(member.name), \(member.role)")
                 }
-                .padding(.horizontal, Theme.Space.gutter)
-                .padding(.vertical, Platform.isTV ? 24 : 2)
-            }
-            .scrollClipDisabled()
-        }
-    }
-
-    private func tile(_ provider: WatchProvider, kind: Availability.Kind) -> some View {
-        Button {
-            #if !os(tvOS)
-            if let link = availability.link { model.openExternally(link) }
-            #endif
-        } label: {
-            HStack(spacing: Theme.Space.s) {
-                RemoteImage(url: TMDBImage.url(provider.logoPath, size: .posterSmall), maxPixel: 160, fallbackTitle: provider.providerName)
-                    .frame(width: 40 * Theme.scale, height: 40 * Theme.scale)
-                    .clipShape(RoundedRectangle(cornerRadius: 10 * Theme.scale, style: .continuous))
-                    .hairline(RoundedRectangle(cornerRadius: 10 * Theme.scale, style: .continuous))
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(provider.providerName).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
-                    Text(kind.label).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textSecondary)
+                if cast.count > Self.shown {
+                    Button(all ? "Show Fewer" : "Show All \(cast.count)") { withAnimation(Theme.Motion.enter) { all.toggle() } }
+                        .buttonStyle(QuietButtonStyle())
+                        .padding(.leading, -(Theme.Space.m + 2))
                 }
             }
-            .padding(.leading, Theme.Space.xs)
-            .padding(.trailing, Theme.Space.m)
-            .padding(.vertical, Theme.Space.xs)
-            .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(Theme.Palette.hairline))
         }
-        .buttonStyle(CardButtonStyle())
-        .accessibilityLabel("\(provider.providerName), \(kind.label)")
     }
 }
 
-/// A plain labelled text action: paper text on the ground, 44 pt tall. On Apple TV the focused one fills with the spot.
-struct PlainActionButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        PlainActionBody(configuration: configuration)
-    }
-}
-
-private struct PlainActionBody: View {
-    let configuration: ButtonStyleConfiguration
-    @Environment(\.isFocused) private var focused
+private struct CastCell: View {
+    let member: CastMember
+    @Environment(\.cellLit) private var lit
 
     var body: some View {
-        configuration.label
-            .font(.system(.subheadline, weight: .semibold))
-            // A word is never broken across lines ("Watche / d").
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.text)
-            .padding(.horizontal, Theme.Space.xs)
-            .frame(minHeight: 44 * Theme.scale)
-            .background(focused ? Theme.Palette.spot : Color.clear, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
-            .contentShape(Rectangle())
-            .opacity(configuration.isPressed ? 0.6 : 1)
-            .modifier(FocusLift(scale: 1.04))
+        HStack(alignment: .center, spacing: Theme.Space.s) {
+            if member.profilePath != nil {
+                RemoteImage(url: TMDBImage.url(member.profilePath, size: .profile), maxPixel: 200)
+                    .frame(width: 44 * Theme.scale, height: 66 * Theme.scale)
+                    .clipped()
+                    .overlay(Rectangle().strokeBorder(lit ? Theme.Palette.onBlue : Theme.Palette.rule, lineWidth: Theme.Rule.thin))
+                    .accessibilityHidden(true)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(member.name)
+                    .font(Theme.Typeface.custom(Theme.Face.condensed, 17, .headline))
+                    .textCase(.uppercase)
+                    .multilineTextAlignment(.leading)
+                if !member.role.isEmpty {
+                    Text(member.role)
+                        .font(Theme.Typeface.caption)
+                        .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted)
+                        .multilineTextAlignment(.leading)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(Theme.Space.s)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// The collection row: the franchise's still, its name and a line saying what is behind it.
+private struct CollectionCell: View {
+    let collection: MediaCollection
+    @Environment(\.cellLit) private var lit
+
+    var body: some View {
+        HStack(spacing: Theme.Space.m) {
+            Color.clear
+                .frame(width: 120 * Theme.scale, height: 120 * Theme.scale * 9 / 16)
+                .overlay(RemoteImage(url: TMDBImage.url(collection.backdropPath, size: .backdrop), maxPixel: 400, fallbackTitle: collection.name))
+                .clipped()
+                .overlay(Rectangle().strokeBorder(lit ? Theme.Palette.onBlue : Theme.Palette.rule, lineWidth: Theme.Rule.thin))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(collection.name)
+                    .font(Theme.Typeface.heading)
+                    .textCase(.uppercase)
+                    .multilineTextAlignment(.leading)
+                Text("Every film in the collection")
+                    .font(Theme.Typeface.caption)
+                    .detailCaps()
+                    .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right").font(.system(size: 13 * Theme.scale, weight: .bold))
+        }
+        .padding(Theme.Space.s)
     }
 }

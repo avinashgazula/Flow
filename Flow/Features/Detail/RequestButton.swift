@@ -6,6 +6,8 @@ import FlowKit
 struct RequestButton: View {
     let item: MediaItem
     let seasons: [Season]
+    /// Shares a phone's row with Trailer, each half the width.
+    var fill = false
     @Environment(AppModel.self) private var model
     @State private var status: SeerrMediaStatus?
     @State private var working = false
@@ -39,7 +41,7 @@ struct RequestButton: View {
                 Text(label(status))
             }
         }
-        .buttonStyle(GlassButtonStyle())
+        .buttonStyle(GlassButtonStyle(fill: fill))
         .disabled(!status.canRequest || working)
         .accessibilityLabel(label(status))
     }

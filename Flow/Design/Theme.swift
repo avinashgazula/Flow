@@ -327,6 +327,8 @@ private struct IndexControl<Label: View>: View {
     let kind: Kind
     var square: Bool = false
     var compact: Bool = false
+    /// Takes the whole width it is offered (a phone's Play) instead of the width of its words.
+    var fill: Bool = false
     let pressed: Bool
     @ViewBuilder var label: Label
     @Environment(\.isFocused) private var focused
@@ -363,8 +365,8 @@ private struct IndexControl<Label: View>: View {
             // A word is never broken across lines ("Detail / s" on Apple TV), and long ones shrink a little.
             .lineLimit(1)
             .minimumScaleFactor(0.75)
-            .fixedSize(horizontal: !square, vertical: false)
-            .frame(minWidth: size, minHeight: size)
+            .fixedSize(horizontal: !square && !fill, vertical: false)
+            .frame(minWidth: size, maxWidth: fill ? CGFloat.infinity : nil, minHeight: size)
             .padding(.horizontal, square ? 0 : Theme.Space.m + 2)
             .background(fill)
             .overlay(Rectangle().strokeBorder(border, lineWidth: Theme.Rule.heavy))
@@ -383,9 +385,10 @@ private struct IndexControl<Label: View>: View {
 struct PrimaryButtonStyle: ButtonStyle {
     /// A smaller button for use inside rows and panels, where the full-size one would dominate.
     var compact = false
+    var fill = false
 
     func makeBody(configuration: Configuration) -> some View {
-        IndexControl(kind: .primary, compact: compact, pressed: configuration.isPressed) { configuration.label }
+        IndexControl(kind: .primary, compact: compact, fill: fill, pressed: configuration.isPressed) { configuration.label }
     }
 }
 
@@ -395,9 +398,10 @@ struct GlassButtonStyle: ButtonStyle {
     var circle = false
     /// Matches `PrimaryButtonStyle(compact:)`, so the two sit level in a row.
     var compact = false
+    var fill = false
 
     func makeBody(configuration: Configuration) -> some View {
-        IndexControl(kind: .secondary, square: circle, compact: compact, pressed: configuration.isPressed) { configuration.label }
+        IndexControl(kind: .secondary, square: circle, compact: compact, fill: fill, pressed: configuration.isPressed) { configuration.label }
     }
 }
 

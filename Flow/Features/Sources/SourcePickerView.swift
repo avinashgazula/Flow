@@ -43,74 +43,98 @@ struct SourcePickerView: View {
         let shown = filtered.isEmpty ? list : filtered
         let groups = grouped(shown)
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.l) {
-                    header(count: list.count, hidden: SourceQuickFilter.hiddenCount(found: raw, shown: list))
-                    if finished || !list.isEmpty { filterChips(for: list) }
-                    if list.isEmpty && !finished {
-                        GroupedTable {
-                            ForEach(0..<3, id: \.self) { index in SourceRowPlaceholder(showsDivider: index > 0) }
-                        }
-                        .shimmering()
-                        .accessibilityHidden(true)
-                    } else if list.isEmpty {
-                        ContentUnavailableView {
-                            Label("No Sources", systemImage: "play.slash")
-                        } description: {
-                            Text(model.sourceProviders().isEmpty
-                                 ? "Add a media server, WebDAV share, IPTV provider or stream add-on in Settings."
-                                 : "None of your sources have this title yet.")
-                        }
-                        .padding(.top, Theme.Space.xl)
-                    }
-                    ForEach(groups, id: \.0) { category, sources in
-                        if providerHeaders {
-                            // By position: the demotions can leave one provider's sources in two separate runs.
-                            ForEach(Array(Self.byProvider(sources).enumerated()), id: \.offset) { _, group in
-                                section(title: group.first?.providerName ?? category.displayName, count: group.count,
-                                        note: groups.count > 1 ? category.displayName : nil, sources: group, lastPlayedID: lastPlayedID, bestID: bestID)
+            VStack(spacing: 0) {
+                header(count: list.count, hidden: SourceQuickFilter.hiddenCount(found: raw, shown: list))
+                if finished || !list.isEmpty { filterChips(for: list) }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if list.isEmpty && !finished {
+                            VStack(spacing: 0) {
+                                ForEach(0..<3, id: \.self) { index in SourceRowPlaceholder(showsDivider: index > 0) }
                             }
-                        } else {
-                            section(title: category.displayName, count: sources.count, note: nil, sources: sources, lastPlayedID: lastPlayedID, bestID: bestID)
+                            .shimmering()
+                            .accessibilityHidden(true)
+                        } else if list.isEmpty {
+                            emptyState
                         }
+                        ForEach(groups, id: \.0) { category, sources in
+                            if providerHeaders {
+                                // By position: the demotions can leave one provider's sources in two separate runs.
+                                ForEach(Array(Self.byProvider(sources).enumerated()), id: \.offset) { _, group in
+                                    section(title: group.first?.providerName ?? category.displayName, count: group.count,
+                                            note: groups.count > 1 ? category.displayName : nil, sources: group, lastPlayedID: lastPlayedID, bestID: bestID)
+                                }
+                            } else {
+                                section(title: category.displayName, count: sources.count, note: nil, sources: sources, lastPlayedID: lastPlayedID, bestID: bestID)
+                            }
+                        }
+                        failureNotes
                     }
-                    failureNotes
+                    .padding(.bottom, Theme.Space.xxl)
+                    .animation(Theme.Motion.move, value: shown.map(\.id))
                 }
-                .padding(.horizontal, Theme.Space.gutter)
-                .padding(.bottom, Theme.Space.xxl)
-                .animation(Theme.Motion.gentle, value: shown.map(\.id))
             }
-            .safeAreaInset(edge: .top, spacing: 0) { controls }
-            .background(AmbientBackground(url: request.item.smallBackdropURL ?? request.item.tmdbPosterURL, intensity: 0.7))
+            .background(Theme.Palette.bg)
             #if !os(macOS)
             .toolbar(.hidden, for: .navigationBar)
             #endif
             .task(id: reloadToken) { await gather() }
         }
+        #if os(iOS)
+        // A square sheet, like everything else.
+        .presentationCornerRadius(0)
+        #endif
         #if os(macOS)
         .frame(minWidth: 560, minHeight: 640)
         #endif
     }
 
-    /// A provider's sources under its name, as one grouped list in the order the provider gave them.
+    /// Nothing found: what to do next, in words.
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text("No Sources")
+                .font(Theme.Typeface.title)
+                .textCase(.uppercase)
+                .foregroundStyle(Theme.Palette.fg)
+            Text(model.sourceProviders().isEmpty
+                 ? "Add a media server, WebDAV share, IPTV provider or stream add-on in Settings."
+                 : "None of your sources have this title yet.")
+                .font(Theme.Typeface.reading)
+                .foregroundStyle(Theme.Palette.fg)
+        }
+        .padding(.horizontal, Theme.Space.gutter)
+        .padding(.vertical, Theme.Space.xl)
+    }
+
+    /// A provider's sources under its name: a 2px rule, the name as a red mono label, its count, then ruled rows in the
+    /// order the provider gave them.
     private func section(title: String, count: Int, note: String?, sources: [StreamSource], lastPlayedID: String?, bestID: String?) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(title).font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.text)
-                Text("\(count)").font(.system(.subheadline).monospacedDigit()).foregroundStyle(Theme.Palette.textTertiary)
+        VStack(alignment: .leading, spacing: 0) {
+            RuleLine()
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+                SectionLabel(title)
+                Text("\(count)")
+                    .font(Theme.Typeface.detailKey)
+                    .foregroundStyle(Theme.Palette.muted)
                 Spacer(minLength: 0)
-                if let note { Text(note).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.textTertiary) }
+                if let note {
+                    Text(note)
+                        .font(Theme.Typeface.caption)
+                        .detailCaps()
+                        .foregroundStyle(Theme.Palette.muted)
+                }
             }
-            .padding(.horizontal, Platform.isTV ? 0 : Theme.Space.xs)
+            .padding(.horizontal, Theme.Space.gutter)
+            .padding(.vertical, Theme.Space.s)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
-            GroupedTable {
+            LazyVStack(spacing: 0) {
                 ForEach(Array(sources.enumerated()), id: \.element.id) { index, source in
                     Button { choose(source) } label: {
                         SourceRow(source: source, appearance: model.settings.sources.appearance, providerShownAbove: providerHeaders,
                                   lastPlayed: source.id == lastPlayedID, isBest: source.id == bestID, forDownload: forDownload, showsDivider: index > 0)
                     }
-                    .buttonStyle(TableRowButtonStyle())
+                    .buttonStyle(RuledCellStyle())
                     .disabled(!source.isActionable)
                     .contextMenu { sourceMenu(source) }
                 }
@@ -118,81 +142,89 @@ struct SourcePickerView: View {
         }
     }
 
-    /// Glass circles over the artwork instead of a navigation bar: search again at the leading edge, close at the trailing one.
-    /// tvOS leaves out Close: the remote's Back button dismisses every sheet.
+    /// The sheet's controls: Search Again and Close, square bordered cells at the header's trailing edge. tvOS leaves out
+    /// Close: the remote's Back button dismisses every sheet.
     private var controls: some View {
-        #if os(macOS)
-        // A Mac sheet has text buttons, not floating circles.
-        HStack {
-            Button("Search Again") { reloadToken += 1 }
-                .disabled(!finished)
-            Spacer()
-            Button("Cancel") { dismiss() }
-                .keyboardShortcut(.cancelAction)
-        }
-        .padding(.horizontal, Theme.Space.gutter)
-        .padding(.vertical, Theme.Space.xs)
-        #else
-        HStack {
+        HStack(spacing: -Theme.Rule.heavy) {
             Button { reloadToken += 1 } label: { Image(systemName: "arrow.clockwise") }
                 .buttonStyle(GlassButtonStyle(circle: true))
                 .disabled(!finished)
-                .opacity(finished ? 1 : 0.4)
                 .accessibilityLabel("Search Again")
-            Spacer()
             #if !os(tvOS)
             Button { dismiss() } label: { Image(systemName: "xmark") }
                 .buttonStyle(GlassButtonStyle(circle: true))
+                .keyboardShortcut(.cancelAction)
                 .accessibilityLabel("Close")
             #endif
         }
-        .padding(.horizontal, Theme.Space.gutter)
-        .padding(.vertical, Theme.Space.xs)
-        #endif
     }
 
-    /// Resolution and provider chips, as the website's picker, when the list has more than one of either.
+    /// Resolution and provider chips, as the website's picker, when the list has more than one of either: bordered cells
+    /// that share their borders, the current one inverted, under a 2px rule.
     @ViewBuilder
     private func filterChips(for list: [StreamSource]) -> some View {
         if SourceQuickFilter.hasChoices(in: list) {
             let resolutions = SourceQuickFilter.resolutions(in: list)
             let providers = SourceQuickFilter.providers(in: list)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Space.xs) {
-                    chip("All", filter: .all)
-                    if resolutions.count > 1 { ForEach(resolutions) { chip($0.label, filter: .resolution($0)) } }
-                    if providers.count > 1 { ForEach(providers) { chip($0.name, filter: .provider($0.id)) } }
+            VStack(spacing: 0) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: -Theme.Rule.heavy) {
+                        chip("All", filter: .all)
+                        if resolutions.count > 1 { ForEach(resolutions) { chip($0.label, filter: .resolution($0)) } }
+                        if providers.count > 1 { ForEach(providers) { chip($0.name, filter: .provider($0.id)) } }
+                    }
+                    .padding(.horizontal, Theme.Space.gutter)
+                    .padding(.vertical, Theme.Space.s)
+                    .padding(.vertical, Platform.isTV ? 12 : 0)
                 }
-                .padding(.vertical, Platform.isTV ? 24 : 0)
+                .scrollClipDisabled()
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Filter Sources")
+                RuleLine()
             }
-            .scrollClipDisabled()
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Filter Sources")
         }
     }
 
     private func chip(_ title: String, filter: SourceQuickFilter) -> some View {
         let selected = quickFilter == filter
-        return Button { withAnimation(Theme.Motion.snappy) { quickFilter = filter } } label: { Text(title).lineLimit(1) }
-            .buttonStyle(FilterTabStyle(selected: selected))
+        return Button { withAnimation(Theme.Motion.state) { quickFilter = filter } } label: { Text(title).lineLimit(1) }
+            .buttonStyle(FilterChipStyle(current: selected))
             .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
+    /// The title (and episode) with its poster, what the search is doing, and the controls; a 2px rule closes it.
     private func header(count: Int, hidden: Int) -> some View {
-        HStack(alignment: .center, spacing: Theme.Space.m) {
-            RemoteImage(url: request.item.posterURL, maxPixel: 300, fallbackTitle: request.item.title, fallbackURL: request.item.tmdbPosterURL)
-                .frame(width: ProgrammeMetrics.poster.width, height: ProgrammeMetrics.poster.height)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.artwork, style: .continuous))
-                .hairline(RoundedRectangle(cornerRadius: Theme.Radius.artwork, style: .continuous))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(request.item.title).font(Theme.Typeface.title).foregroundStyle(Theme.Palette.text).displayTracking().lineLimit(2)
-                if let ep = request.episode {
-                    Text("\(ep.code) · \(ep.title)").font(Theme.Typeface.body).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: Theme.Space.m) {
+                Color.clear
+                    .frame(width: 48 * Theme.scale, height: 72 * Theme.scale)
+                    .overlay(RemoteImage(url: request.item.posterURL, maxPixel: 300, fallbackTitle: request.item.title, fallbackURL: request.item.tmdbPosterURL))
+                    .clipped()
+                    .overlay(Rectangle().strokeBorder(Theme.Palette.rule, lineWidth: Theme.Rule.thin))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(request.item.title)
+                        .font(Theme.Typeface.custom(Theme.Face.condensed, 28, .title2))
+                        .textCase(.uppercase)
+                        .foregroundStyle(Theme.Palette.fg)
+                        .lineLimit(2)
+                        .accessibilityAddTraits(.isHeader)
+                    if let ep = request.episode {
+                        Text("\(ep.code) · \(ep.title)")
+                            .font(Theme.Typeface.detailKey)
+                            .detailCaps()
+                            .foregroundStyle(Theme.Palette.red)
+                            .lineLimit(1)
+                    }
+                    status(count: count, hidden: hidden)
                 }
-                status(count: count, hidden: hidden)
+                Spacer(minLength: 0)
+                controls
             }
-            Spacer(minLength: 0)
+            .padding(.horizontal, Theme.Space.gutter)
+            .padding(.top, Theme.Space.m)
+            .padding(.bottom, Theme.Space.m)
+            RuleLine()
         }
     }
 
@@ -206,11 +238,13 @@ struct SourcePickerView: View {
                 Text("Searching \(ListFormatter.localizedString(byJoining: searching))…").lineLimit(1)
             }
             .font(Theme.Typeface.caption)
-            .foregroundStyle(Theme.Palette.textTertiary)
+            .detailCaps()
+            .foregroundStyle(Theme.Palette.muted)
         } else {
             Text(finished ? "\(count) source\(count == 1 ? "" : "s")" + (hidden > 0 ? ", \(hidden) hidden by your settings" : "") : "Finding sources…")
                 .font(Theme.Typeface.caption)
-                .foregroundStyle(Theme.Palette.textTertiary)
+                .detailCaps()
+                .foregroundStyle(Theme.Palette.muted)
                 .contentTransition(.numericText())
         }
     }
@@ -219,18 +253,22 @@ struct SourcePickerView: View {
     @ViewBuilder
     private var failureNotes: some View {
         if !failures.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(failures.sorted { $0.key < $1.key }, id: \.key) { id, error in
-                    Label {
-                        Text("\(providerName(id)): \(error)")
-                    } icon: {
-                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.Palette.warn)
+            VStack(alignment: .leading, spacing: 0) {
+                RuleLine()
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(failures.sorted { $0.key < $1.key }, id: \.key) { id, error in
+                        Label {
+                            Text("\(providerName(id)): \(error)")
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.Palette.warn)
+                        }
                     }
                 }
+                .font(Theme.Typeface.caption)
+                .foregroundStyle(Theme.Palette.muted)
+                .padding(.horizontal, Theme.Space.gutter)
+                .padding(.vertical, Theme.Space.m)
             }
-            .font(Theme.Typeface.caption)
-            .foregroundStyle(Theme.Palette.textSecondary)
-            .padding(.horizontal, Platform.isTV ? 0 : Theme.Space.xs)
         }
     }
 
@@ -336,61 +374,61 @@ struct SourcePickerView: View {
     }
 }
 
-/// One source as a film-can label row: the resolution large in the left column, then the formats in edge print,
-/// the release name, and the size, provider and languages in the third ink. The ranked-best row carries the
-/// yellow Play; every row plays on tap. Only exceptions are flagged, in words.
+/// One source as a ruled row: the resolution in red condensed numerals at the left, then the formats in mono capitals,
+/// the release name in condensed type, and the size, provider and languages in muted mono. The ranked-best row carries
+/// the solid Play; every row plays on tap. Only exceptions are flagged, in words. The row sits inside a
+/// `RuledCellStyle` button, which turns the whole row blue while it is hovered, focused or pressed.
 struct SourceRow: View {
     let source: StreamSource
     let appearance: SourceAppearance
     /// The provider's name heads the group, so the row leads with what tells its sources apart.
     var providerShownAbove = false
     var lastPlayed = false
-    /// The source Play would start: its row says so with the one yellow control.
+    /// The source Play would start: its row says so with the one solid control.
     var isBest = false
     var forDownload = false
-    /// A hairline above this row, from the text column across, when it follows another in a list.
+    /// A 1px rule above this row, edge to edge, when it follows another in a list.
     var showsDivider = false
 
-    @Environment(\.isFocused) private var focused
+    @Environment(\.cellLit) private var lit
     @Environment(\.dynamicTypeSize) private var typeSize
-    @ScaledMetric(relativeTo: .headline) private var scaledColumn: CGFloat = 60
+    @ScaledMetric(relativeTo: .headline) private var scaledColumn: CGFloat = Platform.isPhone ? 64 : 88
 
     private var summary: SourceSummary { SourceSummary(source: source, appearance: appearance, providerShownElsewhere: providerShownAbove) }
     /// The resolution column; past a point it stops growing and its label shrinks to fit.
-    private var column: CGFloat { min(scaledColumn, 84) * Theme.scale }
+    private var column: CGFloat { min(scaledColumn, Platform.isPhone ? 84 : 120) * Theme.scale }
     /// At accessibility text sizes the column would squeeze the rest, so the resolution joins the title.
     private var columnShown: Bool { !typeSize.isAccessibilitySize }
-    private var vertical: CGFloat { appearance.compact ? Theme.Space.s : 14 * Theme.scale }
+    private var vertical: CGFloat { appearance.compact ? 9 * Theme.scale : Theme.Space.m }
 
-    // On Apple TV a focused row is filled with the spot, so its text turns to ink.
-    private var primary: Color { focused ? Theme.Palette.onSpot : Theme.Palette.text }
-    private var secondary: Color { focused ? Theme.Palette.onSpot.opacity(0.85) : Theme.Palette.textSecondary }
-    private var tertiary: Color { focused ? Theme.Palette.onSpot.opacity(0.78) : Theme.Palette.textTertiary }
-    private var warning: Color { focused ? Theme.Palette.onSpot : Theme.Palette.warn }
+    // The row turns blue while lit, so its text turns on-blue: neither red nor muted has contrast on it.
+    private var primary: Color { lit ? Theme.Palette.onBlue : Theme.Palette.fg }
+    private var secondary: Color { lit ? Theme.Palette.onBlue : Theme.Palette.muted }
+    private var warning: Color { lit ? Theme.Palette.onBlue : Theme.Palette.warn }
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Space.m) {
+        HStack(alignment: .top, spacing: Platform.isPhone ? Theme.Space.s : Theme.Space.m) {
             if columnShown {
                 Text(Reel.resolutionLabel(source.traits.resolution) ?? "–")
-                    .font(.system(.title3, weight: .bold).monospacedDigit())
+                    .font(Theme.Typeface.detailNumeral(Platform.isPhone ? 24 : 32))
                     .textCase(.uppercase)
-                    .foregroundStyle(source.traits.resolution == .unknown ? tertiary : primary)
+                    .foregroundStyle(source.traits.resolution == .unknown ? secondary : (lit ? Theme.Palette.onBlue : Theme.Palette.red))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .frame(width: column, alignment: .leading)
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             }
-            VStack(alignment: .leading, spacing: 3) {
-                // The formats first, as printed on the can; raw add-on text replaces them when asked for.
+            VStack(alignment: .leading, spacing: 4) {
+                // The formats first, as mono capitals; raw add-on text replaces them when asked for.
                 if !appearance.showRawText, let formats = formatLine {
                     Text(formats)
-                        .font(Theme.Typeface.edgePrint)
-                        .edgePrint()
-                        .foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.print)
+                        .font(Theme.Typeface.detailKey)
+                        .detailCaps(0.1)
+                        .foregroundStyle(primary)
                         .lineLimit(2)
                 }
                 Text(title)
-                    .font(Theme.Typeface.headline)
+                    .font(Theme.Typeface.custom(Theme.Face.condensedSemiBold, 18, .headline))
                     .foregroundStyle(primary)
                     .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
                     .truncationMode(.middle)
@@ -398,32 +436,35 @@ struct SourceRow: View {
                     let lines = summary.rawLines
                     if !lines.isEmpty {
                         Text(lines.joined(separator: "\n"))
-                            .font(.system(.footnote))
+                            .font(Theme.Typeface.caption)
                             .foregroundStyle(secondary)
                             .lineLimit(appearance.compact ? 3 : 8)
                             .multilineTextAlignment(.leading)
                     }
                 } else if let size = summary.size, !typeSize.isAccessibilitySize {
                     Text(size)
-                        .font(.system(.subheadline).monospacedDigit())
+                        .font(Theme.Typeface.caption)
                         .foregroundStyle(secondary)
                 }
                 if let words = summary.detail, !appearance.showRawText {
                     Text(words)
-                        .font(.system(.footnote))
-                        .foregroundStyle(tertiary)
+                        .font(Theme.Typeface.caption)
+                        .foregroundStyle(secondary)
                         .lineLimit(1)
                 }
                 notes
+                // On a phone the Play control goes under the facts, where it has the row's width.
+                if isBest && Platform.isPhone { playPill.padding(.top, Theme.Space.xs) }
             }
             Spacer(minLength: Theme.Space.s)
-            if isBest { playPill }
+            if isBest && !Platform.isPhone { playPill }
         }
-        .padding(.horizontal, Theme.Space.m)
+        .padding(.horizontal, Theme.Space.gutter)
         .padding(.vertical, vertical)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .tvRowSurface(focused: focused)
-        .tableDivider(showsDivider, inset: Theme.Space.m + (columnShown ? column + Theme.Space.m : 0))
+        .overlay(alignment: .top) {
+            if showsDivider { RuleLine(thin: true) }
+        }
         .contentShape(Rectangle())
         .opacity(source.isActionable ? 1 : 0.55)
         .accessibilityElement(children: .ignore)
@@ -438,8 +479,8 @@ struct SourceRow: View {
         return ([resolution, text] + withSize).joined(separator: " · ")
     }
 
-    /// "DV · TRUEHD 7.1": what is different about this one, as edge print. Badges off (Settings → Source
-    /// Appearance) leaves it out.
+    /// "DV · TRUEHD 7.1": what is different about this one, in capitals. Badges off (Settings → Source Appearance)
+    /// leaves it out.
     private var formatLine: String? {
         guard appearance.badgePack != .none else { return nil }
         let parts = Reel.edgeFormat(hdr: source.traits.hdr, audioCodec: source.traits.audioCodec, audioChannels: source.traits.audioChannels)
@@ -458,27 +499,28 @@ struct SourceRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 if playsDirect {
                     Text("Plays direct" + (decoderNote.map { " · " + $0.text } ?? ""))
-                        .font(Theme.Typeface.edgePrint)
-                        .edgePrint()
-                        .foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.print)
+                        .font(Theme.Typeface.detailKey)
+                        .detailCaps(0.1)
+                        .foregroundStyle(primary)
                 }
-                if lastPlayed { Text("Last played").font(.system(.footnote)).foregroundStyle(secondary) }
-                if notCached { Text("Not cached").font(.system(.footnote)).foregroundStyle(warning) }
-                if needsDebrid { Text("Needs a debrid-enabled add-on").font(.system(.footnote)).foregroundStyle(warning) }
-                if let decoderNote, !playsDirect { Text(decoderNote.text).font(.system(.footnote)).foregroundStyle(warning) }
+                if lastPlayed { Text("Last played").font(Theme.Typeface.caption).foregroundStyle(secondary) }
+                if notCached { Text("Not cached").font(Theme.Typeface.caption).foregroundStyle(warning) }
+                if needsDebrid { Text("Needs a debrid-enabled add-on").font(Theme.Typeface.caption).foregroundStyle(warning) }
+                if let decoderNote, !playsDirect { Text(decoderNote.text).font(Theme.Typeface.caption).foregroundStyle(warning) }
             }
         }
     }
 
-    /// Looks like the primary button, but it is the row that is tapped: a button inside a row's button would
-    /// swallow the tap. On Apple TV the focused row is already the spot, so the pill turns to ink.
+    /// Looks like the solid button, but it is the row that is tapped: a button inside a row's button would swallow the
+    /// tap. It stays ink while the row is blue, so it never disappears into it.
     private var playPill: some View {
         Text(forDownload ? "Download" : "Play")
-            .font(.system(.subheadline, weight: .semibold))
-            .foregroundStyle(focused ? Theme.Palette.stock : Theme.Palette.onStock)
+            .font(Theme.Typeface.control)
+            .controlText()
+            .foregroundStyle(Theme.Palette.bg)
             .padding(.horizontal, Theme.Space.m)
             .frame(minHeight: 36 * Theme.scale)
-            .background(focused ? Theme.Palette.onStock : Theme.Palette.stock, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+            .background(Theme.Palette.fg)
             .fixedSize()
     }
 }
@@ -568,21 +610,19 @@ private struct SourceRowPlaceholder: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
-            Capsule().fill(Theme.Palette.surfaceStrong).frame(width: 40 * Theme.scale, height: 14 * Theme.scale)
-                .frame(width: 54 * Theme.scale, alignment: .leading)
+            Rectangle().fill(Theme.Palette.tint2).frame(width: 48 * Theme.scale, height: 24 * Theme.scale)
+                .frame(width: 64 * Theme.scale, alignment: .leading)
             VStack(alignment: .leading, spacing: 8 * Theme.scale) {
-                HStack {
-                    Capsule().fill(Theme.Palette.surfaceStrong).frame(width: 90 * Theme.scale, height: 14 * Theme.scale)
-                    Spacer()
-                    Capsule().fill(Theme.Palette.surface).frame(width: 56 * Theme.scale, height: 12 * Theme.scale)
-                }
-                Capsule().fill(Theme.Palette.surface).frame(width: 140 * Theme.scale, height: 10 * Theme.scale)
-                Capsule().fill(Theme.Palette.surface).frame(width: 70 * Theme.scale, height: 10 * Theme.scale)
+                Rectangle().fill(Theme.Palette.tint2).frame(width: 90 * Theme.scale, height: 12 * Theme.scale)
+                Rectangle().fill(Theme.Palette.tint2).frame(width: 180 * Theme.scale, height: 16 * Theme.scale)
+                Rectangle().fill(Theme.Palette.tint1).frame(width: 110 * Theme.scale, height: 10 * Theme.scale)
             }
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, Theme.Space.m)
-        .padding(.vertical, 14 * Theme.scale)
-        .tvRowSurface(focused: false)
-        .tableDivider(showsDivider, inset: Theme.Space.m * 2 + 54 * Theme.scale)
+        .padding(.horizontal, Theme.Space.gutter)
+        .padding(.vertical, Theme.Space.m)
+        .overlay(alignment: .top) {
+            if showsDivider { RuleLine(thin: true) }
+        }
     }
 }
