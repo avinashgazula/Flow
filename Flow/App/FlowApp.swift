@@ -100,6 +100,9 @@ struct FlowApp: App {
                 Divider()
                 Button("Search") { model.go(to: .search) }
                     .keyboardShortcut("f", modifiers: .command)
+                // AppKit leaves an unmodified key alone while a text field is being typed in, so "/" still types a slash there.
+                Button("Search Titles") { model.focusSearch() }
+                    .keyboardShortcut("/", modifiers: [])
                 Button("Upcoming") { model.handle(url: IntentInbox.link("upcoming")) }
                     .keyboardShortcut("u", modifiers: .command)
                 Button("Continue Watching") { Task { await model.resumeLatest() } }
@@ -142,6 +145,13 @@ extension AppModel {
         case .sync(let link): pendingSyncLink = link
         case nil: break
         }
+    }
+
+    /// The "/" shortcut, as on the website: open Search with the cursor in its field. Never while something is playing.
+    func focusSearch() {
+        guard activePlayback == nil else { return }
+        selectedTab = .search
+        searchFocusPending = true
     }
 
     /// Switches section, closing the player first so the choice is visible.
