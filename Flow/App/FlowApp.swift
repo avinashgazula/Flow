@@ -19,6 +19,7 @@ struct FlowApp: App {
         NotificationScheduler.install()
         #if os(iOS)
         FilmAppearance.install()
+        TabBarStyle.install()
         #endif
     }
 

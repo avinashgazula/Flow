@@ -1,5 +1,8 @@
 import SwiftUI
 import FlowKit
+#if os(iOS)
+import UIKit
+#endif
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
@@ -218,7 +221,8 @@ private struct ModernTabChrome: ViewModifier {
 
 #if os(macOS)
 /// macOS: a fixed sidebar beside the content. (A floating split-view sidebar lets content
-/// slide underneath it, which breaks full-bleed heroes and grids.)
+/// slide underneath it, which breaks full-bleed heroes and grids.) It is the Index: the wordmark on blue, then one
+/// ruled row per section in mono capitals, the current one inverted ink and the one under the pointer blue.
 struct MacShell: View {
     @Environment(AppModel.self) private var model
 
@@ -226,8 +230,8 @@ struct MacShell: View {
         HStack(spacing: 0) {
             sidebar
                 .frame(width: 210)
-                .background(Theme.Palette.panel)
-            Divider().overlay(Theme.Palette.line)
+                .background(Theme.Palette.bg)
+                .overlay(alignment: .trailing) { Rectangle().fill(Theme.Palette.rule).frame(width: Theme.Rule.heavy) }
             NavigationStack(path: model.path(for: model.selectedTab)) {
                 ZoomNamespaceProvider {
                     TabShell().screen(for: model.selectedTab)
@@ -243,7 +247,7 @@ struct MacShell: View {
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 0) {
             Wordmark(size: 20)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
@@ -251,28 +255,65 @@ struct MacShell: View {
                 .background(Theme.Palette.blue)
                 .padding(.top, 28)
                 .padding(.bottom, 14)
+            RuleLine()
             ForEach(model.settings.general.orderedTabs) { tab in
-                Button { model.selectedTab = tab } label: {
-                    // The current section is the one place the sidebar uses the spot colour.
-                    Label(tab.title, systemImage: tab.systemImage)
-                        .font(.system(size: 13, weight: model.selectedTab == tab ? .semibold : .medium))
-                        .foregroundStyle(model.selectedTab == tab ? Theme.Palette.spot : Theme.Palette.textSecondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(model.selectedTab == tab ? Theme.Palette.control : Color.clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 8)
+                MacSidebarRow(tab: tab, selected: model.selectedTab == tab) { model.selectedTab = tab }
             }
             Spacer()
             if let profile = model.profile {
                 Label(profile.displayName ?? profile.username, systemImage: "person.crop.circle")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                    .font(Theme.Typeface.caption)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.Palette.muted)
                     .padding(14)
             }
+        }
+    }
+}
+
+/// One section of the sidebar.
+private struct MacSidebarRow: View {
+    let tab: AppTab
+    let selected: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        let ink = hovering ? Theme.Palette.onBlue : selected ? Theme.Palette.bg : Theme.Palette.fg
+        let fill = hovering ? Theme.Palette.blue : selected ? Theme.Palette.fg : Color.clear
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: tab.systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+                    .frame(width: 18)
+                Text(tab.title)
+                    .font(Theme.Typeface.control)
+                    .controlText()
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(ink)
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+            .background(fill)
+            .contentShape(Rectangle())
+            .ruledRow()
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .animation(Theme.Motion.hover, value: hovering)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+#endif
+
+#if os(iOS)
+/// The iPhone and iPad tab bar stays the system's (Liquid Glass on iOS 26 is a control, never content) and takes the
+/// blue tint from the app; only its labels change, to Plex Mono.
+enum TabBarStyle {
+    static func install() {
+        let font = UIFont(name: Theme.Face.monoSemiBold, size: 10) ?? UIFont.systemFont(ofSize: 10, weight: .semibold)
+        for state in [UIControl.State.normal, .selected] {
+            UITabBarItem.appearance().setTitleTextAttributes([.font: font], for: state)
         }
     }
 }

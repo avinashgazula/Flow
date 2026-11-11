@@ -1,33 +1,30 @@
 import SwiftUI
 import FlowKit
 
+/// A ruled section's head: a 2px ink rule, the name as a red mono label and, when it opens something, See All at the right.
 struct SectionHeader<Destination: Hashable>: View {
     let title: String
     var destination: Destination?
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            if let destination {
-                NavigationLink(value: destination) {
-                    HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text(title)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 13 * Theme.scale, weight: .bold))
-                            .foregroundStyle(Theme.Palette.textTertiary)
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            RuleLine()
+            HStack(alignment: .center, spacing: Theme.Space.s) {
+                SectionLabel(title)
+                Spacer(minLength: 0)
+                if let destination {
+                    NavigationLink(value: destination) {
+                        HStack(spacing: 6 * Theme.scale) {
+                            Text("See All")
+                            Image(systemName: "chevron.right").font(.system(size: 11 * Theme.scale, weight: .bold))
+                        }
                     }
-                    .contentShape(Rectangle())
+                    .buttonStyle(QuietButtonStyle())
+                    .accessibilityLabel("See All \(title)")
                 }
-                .buttonStyle(.plain)
-            } else {
-                Text(title)
             }
-            Spacer(minLength: 0)
         }
-        .font(Theme.Typeface.sectionTitle)
-        .foregroundStyle(Theme.Palette.text)
-        .displayTracking()
         .padding(.horizontal, Theme.Space.gutter)
-        .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -97,10 +94,11 @@ private struct PagingArrows<ID: Hashable>: ViewModifier {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Theme.Palette.text)
+                .foregroundStyle(Theme.Palette.fg)
                 .frame(width: 36, height: 36)
-                .flowGlass(Circle(), interactive: true)
-                .contentShape(Circle())
+                .background(Theme.Palette.bg)
+                .ruleFrame()
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(symbol == "chevron.left" ? "Previous Page" : "Next Page")
@@ -225,30 +223,22 @@ private struct ServerLibraryCard: View {
     let entry: AppModel.ServerLibrary
 
     private var width: CGFloat { Platform.landscapeWidth }
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous) }
 
     var body: some View {
         NavigationLink(value: Route.shelf(entry.shelf)) {
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                ZStack(alignment: .bottomLeading) {
-                    RemoteImage(url: entry.library.imageURL, maxPixel: Platform.isTV ? 1000 : 700, fallbackTitle: entry.library.name)
-                        .frame(width: width, height: width * 9 / 16)
-                    // Without cover art the generated poster already carries the name.
-                    if entry.library.imageURL != nil {
-                        LinearGradient(colors: [.clear, .black.opacity(0.7)], startPoint: .center, endPoint: .bottom)
-                        Text(entry.library.name)
-                            .font(.system(.subheadline, weight: .bold))
-                            .lineLimit(1)
-                            .padding(Theme.Space.s)
-                    }
-                }
-                .frame(width: width, height: width * 9 / 16)
-                .clipShape(shape)
-                .hairline(shape)
-                .artworkShadow(0.5)
+                RemoteImage(url: entry.library.imageURL, maxPixel: Platform.isTV ? 1000 : 700, fallbackTitle: entry.library.name)
+                    .frame(width: width, height: width * 9 / 16)
+                    .clipped()
+                    .cardFrame()
+                Text(entry.library.name)
+                    .font(Theme.Typeface.cardTitle)
+                    .foregroundStyle(Theme.Palette.fg)
+                    .lineLimit(1)
+                    .frame(width: width, alignment: .leading)
             }
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(CardButtonStyle(lift: 1.04))
         .accessibilityLabel("\(entry.library.name), \(entry.server.name)")
     }
 }
@@ -258,12 +248,13 @@ struct ShelfPlaceholder: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            SectionHeader<Route>(title).foregroundStyle(Theme.Palette.textTertiary)
+            SectionHeader<Route>(title)
             HStack(spacing: Platform.isTV ? 44 : 14) {
                 ForEach(0..<8, id: \.self) { _ in
-                    RoundedRectangle(cornerRadius: Theme.Radius.poster, style: .continuous)
-                        .fill(Theme.Palette.surface)
+                    Rectangle()
+                        .fill(Theme.Palette.tint1)
                         .frame(width: Platform.posterWidth, height: Platform.posterWidth * 1.5)
+                        .ruleFrame(Theme.Palette.tint3)
                 }
             }
             .padding(.horizontal, Theme.Space.gutter)
@@ -328,8 +319,8 @@ struct MetadataLine: View {
             row(genres: 1)
             row(genres: 0)
         }
-        .font(.system(.subheadline).monospacedDigit())
-        .foregroundStyle(Theme.Palette.textSecondary)
+        .font(Theme.Typeface.body)
+        .foregroundStyle(Theme.Palette.muted)
         .lineLimit(1)
     }
 
@@ -374,12 +365,13 @@ struct ToastView: View {
     let message: String
     var body: some View {
         Text(message)
-            .font(.system(.subheadline, weight: .semibold))
+            .font(Theme.Typeface.control)
+            .controlText()
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
-            .foregroundStyle(Theme.Palette.text)
-            .flowGlass(Capsule(), tint: Theme.Palette.panel)
-            .overlay(Capsule().strokeBorder(Theme.Palette.lineStrong, lineWidth: 1))
+            .foregroundStyle(Theme.Palette.fg)
+            .background(Theme.Palette.bg)
+            .ruleFrame()
             .transition(.move(edge: .top).combined(with: .opacity))
     }
 }

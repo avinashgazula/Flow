@@ -102,7 +102,19 @@ private enum FolderTile {
     /// Landscape like the other cards, a little narrower so more of the row shows (about 180pt on iPhone).
     static var width: CGFloat { Platform.landscapeWidth * 0.76 }
     static var height: CGFloat { width * 9 / 16 }
-    static var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous) }
+}
+
+/// A tile is a ruled picture with its name set under it, as every card is; nothing is drawn over the artwork.
+private struct FolderTileLabel: View {
+    let name: String
+
+    var body: some View {
+        Text(name)
+            .font(Theme.Typeface.cardTitle)
+            .foregroundStyle(Theme.Palette.fg)
+            .lineLimit(1)
+            .frame(width: FolderTile.width, alignment: .leading)
+    }
 }
 
 private struct ServiceTile: View {
@@ -114,35 +126,25 @@ private struct ServiceTile: View {
 
     var body: some View {
         NavigationLink(value: Route.shelf(shelf)) {
-            ZStack {
-                if logoURL != nil {
-                    // The logo's own colour, blurred, behind the sharp logo.
-                    RemoteImage(url: logoURL, maxPixel: 64)
-                        .blur(radius: 30)
-                        .saturation(1.3)
-                        .opacity(0.55)
-                        .scaleEffect(1.6)
-                    Theme.Palette.surface.opacity(0.55)
-                    VStack(spacing: Theme.Space.xs) {
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                ZStack {
+                    if logoURL != nil {
+                        Theme.Palette.tint1
                         RemoteImage(url: logoURL, maxPixel: 200)
                             .frame(width: logoSize, height: logoSize)
-                            .clipShape(RoundedRectangle(cornerRadius: logoSize * 0.22, style: .continuous))
-                            .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
-                        Text(service.name)
-                            .font(.system(.caption, weight: .semibold))
-                            .lineLimit(1)
+                            .clipped()
+                    } else {
+                        // No logo to show: the generated poster already carries the name.
+                        GeneratedArtwork(title: service.name)
                     }
-                } else {
-                    // No logo to show: the generated poster already carries the name.
-                    GeneratedArtwork(title: service.name)
                 }
+                .frame(width: FolderTile.width, height: FolderTile.height)
+                .clipped()
+                .cardFrame()
+                FolderTileLabel(name: service.name)
             }
-            .frame(width: FolderTile.width, height: FolderTile.height)
-            .clipShape(FolderTile.shape)
-            .hairline(FolderTile.shape)
-            .artworkShadow(0.5)
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(CardButtonStyle(lift: 1.04))
         .accessibilityLabel(service.name)
     }
 
@@ -156,30 +158,22 @@ private struct GenreTileCard: View {
     let genre: GenreTile
     let artworkURL: URL?
 
-    private var hue: Double { Double(genre.id % 97) / 97 }
-
     var body: some View {
         NavigationLink(value: Route.shelf(shelf)) {
-            ZStack(alignment: .bottomLeading) {
-                LinearGradient(colors: [Color(hue: hue, saturation: 0.55, brightness: 0.42), Color(hue: (hue + 0.08).truncatingRemainder(dividingBy: 1), saturation: 0.7, brightness: 0.16)],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-                if artworkURL != nil {
-                    RemoteImage(url: artworkURL, maxPixel: Platform.isTV ? 1000 : 700)
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                ZStack {
+                    Theme.Palette.tint2
+                    if artworkURL != nil {
+                        RemoteImage(url: artworkURL, maxPixel: Platform.isTV ? 1000 : 700)
+                    }
                 }
-                LinearGradient(colors: [.black.opacity(0.1), .black.opacity(0.7)], startPoint: .center, endPoint: .bottom)
-                Text(genre.name)
-                    .font(.system(.headline, weight: .bold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .shadow(color: .black.opacity(0.5), radius: 4)
-                    .padding(Theme.Space.s)
+                .frame(width: FolderTile.width, height: FolderTile.height)
+                .clipped()
+                .cardFrame()
+                FolderTileLabel(name: genre.name)
             }
-            .frame(width: FolderTile.width, height: FolderTile.height)
-            .clipShape(FolderTile.shape)
-            .hairline(FolderTile.shape)
-            .artworkShadow(0.5)
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(CardButtonStyle(lift: 1.04))
         .accessibilityLabel(genre.name)
     }
 

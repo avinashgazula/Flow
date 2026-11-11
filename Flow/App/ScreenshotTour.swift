@@ -20,7 +20,9 @@ enum ScreenshotTour {
         var steps: [Step] = [
             Step(name: "welcome") { m in m.previewOnboarding = true },
             Step(name: "home") { m in m.previewOnboarding = false; m.selectedTab = .home; m.paths[.home] = [] },
-            Step(name: "detail-movie") { m in m.paths[.home] = [.detail(duneItem)] },
+            // The same page in light (Apple TV follows the system and ignores the setting); the next step puts it back.
+            Step(name: "home-light") { m in m.settings.general.appearance = .light },
+            Step(name: "detail-movie") { m in m.settings.general.appearance = .system; m.paths[.home] = [.detail(duneItem)] },
             Step(name: "detail-show") { m in m.paths[.home] = [.detail(bbItem)] },
             Step(name: "sources") { m in await m.play(duneItem) },
             Step(name: "player") { m in

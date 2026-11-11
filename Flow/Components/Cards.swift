@@ -58,24 +58,25 @@ extension AppModel {
     }
 }
 
-/// Thin progress line used on artwork: the control ink for the track, the spot for what's been played ("now").
+/// Thin progress line used on artwork: a flat track and a red bar for how far you are, square at both ends.
 struct ProgressCapsule: View {
     let value: Double
     var height: CGFloat = 3 * Theme.scale
-    var tint: Color = Theme.Palette.stock
+    var tint: Color = Theme.Palette.red
 
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                Capsule().fill(Theme.Palette.lineStrong)
-                Capsule().fill(tint).frame(width: max(height, proxy.size.width * min(1, max(0, value))))
+                Rectangle().fill(Theme.Palette.tint3)
+                Rectangle().fill(tint).frame(width: proxy.size.width * min(1, max(0, value)))
             }
         }
         .frame(height: height)
+        .accessibilityHidden(true)
     }
 }
 
-/// Long-press preview: the backdrop with title and overview.
+/// Long-press preview: the backdrop with title and overview, in the Index's type.
 struct PosterPreview: View {
     let item: MediaItem
 
@@ -85,34 +86,40 @@ struct PosterPreview: View {
                 .frame(width: 320, height: 180)
                 .clipped()
             VStack(alignment: .leading, spacing: 6) {
-                Text(item.title).font(.headline)
+                Text(item.title).font(Theme.Typeface.heading).foregroundStyle(Theme.Palette.fg)
                 MetadataLine(item: item, showRating: true)
-                if let overview = item.overview { Text(overview).font(.footnote).foregroundStyle(.secondary).lineLimit(4) }
+                if let overview = item.overview {
+                    Text(overview).font(Theme.Typeface.reading).foregroundStyle(Theme.Palette.muted).lineLimit(4)
+                }
             }
             .padding([.horizontal, .bottom], 14)
         }
         .frame(width: 320)
-        .background(Theme.Palette.elevated)
+        .background(Theme.Palette.bg)
     }
 }
 
 /// Lifts cards on focus (tvOS) and compresses gently on press elsewhere.
 struct CardButtonStyle: ButtonStyle {
-    /// How far a focused card grows on Apple TV; a frame with its strip, which draws its own ring, lifts less.
+    /// How far a focused card grows on Apple TV. A card that draws its own ring around its picture (`FilmFrame`,
+    /// `cardFrame()`) lifts less, and a smaller lift says so: this style then adds no ring of its own, so the ring
+    /// never takes in the card's words.
     var lift: CGFloat = 1.08
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .modifier(FocusLift(scale: lift))
+            .modifier(FocusLift(scale: lift, ring: lift == 1.08))
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .animation(Theme.Motion.snappy, value: configuration.isPressed)
     }
 }
 
-/// tvOS focus effect for custom button styles: scale up and cast a shadow. No-op elsewhere.
+/// tvOS focus effect for custom button styles: scale up and draw the blue focus ring. No-op elsewhere.
 struct FocusLift: ViewModifier {
     /// Artwork lifts a little more than a control, so it still reads as focused with no fill behind it.
     var scale: CGFloat = 1.08
+    /// False when the content draws its own focus ring.
+    var ring = true
     @Environment(\.isFocused) private var focused
 
     func body(content: Content) -> some View {
@@ -120,7 +127,7 @@ struct FocusLift: ViewModifier {
         content
             .scaleEffect(focused ? scale : 1)
             // Focus is a blue ring, always visible, on top of the lift: no shadow, nothing soft.
-            .overlay { Rectangle().strokeBorder(Theme.Palette.blue, lineWidth: focused ? Theme.Rule.focus : 0) }
+            .overlay { if ring { Rectangle().strokeBorder(Theme.Palette.blue, lineWidth: focused ? Theme.Rule.focus : 0) } }
             .animation(Theme.Motion.snappy, value: focused)
         #else
         content
@@ -128,96 +135,91 @@ struct FocusLift: ViewModifier {
     }
 }
 
-// MARK: - Frame and edge strip
+extension Theme.Typeface {
+    /// A card's title under its picture.
+    static var cardTitle: Font { custom(Theme.Face.condensedSemiBold, 16, .subheadline) }
+}
 
-/// The printed edge of 35mm stock under a frame: perforations that fill as you watch, then the facts that
-/// decide what to watch in edge print (condensed, uppercase, tracked), with the key one in yellow. It always
-/// carries real progress and/or real facts. The end time ticks each minute.
-struct EdgeStrip: View {
+/// The 2px ink frame around a card's picture. Blue under the pointer, and a thicker blue ring when focused (Apple TV, a
+/// keyboard), so there is always something unmistakable.
+private struct CardFrame: ViewModifier {
+    @Environment(\.isFocused) private var focused
+    @State private var hovering = false
+
+    func body(content: Content) -> some View {
+        let lit = focused || hovering
+        content
+            .overlay(Rectangle().strokeBorder(lit ? Theme.Palette.blue : Theme.Palette.rule, lineWidth: focused ? Theme.Rule.focus : Theme.Rule.heavy))
+            .animation(Theme.Motion.hover, value: lit)
+            #if !os(tvOS)
+            .onHover { hovering = $0 }
+            #endif
+    }
+}
+
+extension View {
+    /// Frames a card's picture: square, 2px ink, blue when hovered or focused.
+    func cardFrame() -> some View { modifier(CardFrame()) }
+}
+
+// MARK: - Frame and facts
+
+/// The facts under a card's picture as one mono line: `S2 E3 · 46M LEFT`, `2H47 · 8.4`, `WATCHED`. The fact that decides
+/// whether to press play is red. It always carries real facts, and the end time ticks each minute. All of the line if it
+/// fits, else without its least important facts, each dropped whole: an end time cut to "ENDS 8:4…" is worse than none.
+struct FactsLine: View {
     let print: EdgePrint
-    var focused = false
-
-    private var scale: CGFloat { Theme.scale }
 
     var body: some View {
         Group {
             if print.endsInMinutes != nil {
-                TimelineView(.everyMinute) { context in strip(now: context.date) }
+                TimelineView(.everyMinute) { context in line(now: context.date) }
             } else {
-                strip(now: Date())
+                line(now: Date())
             }
-        }
-        .frame(height: 24 * scale)
-        .background(Theme.Palette.edge)
-        .flowDimsWhenInactive()
-    }
-
-    private func strip(now: Date) -> some View {
-        GeometryReader { proxy in
-            HStack(spacing: 8 * scale) {
-                if let progress = print.progress { perforations(progress, frameWidth: proxy.size.width) }
-                // All of the print if it fits, else without its least important facts, each dropped whole: an end
-                // time cut to "ENDS 8:4…" is worse than none. Only the last choice may still truncate.
-                ViewThatFits(in: .horizontal) {
-                    printLine(now: now, dropping: 0)
-                    printLine(now: now, dropping: 1)
-                    printLine(now: now, dropping: 2)
-                    printLine(now: now, dropping: 3)
-                    printLine(now: now, dropping: 4)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(.horizontal, 8 * scale)
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .leading)
         }
     }
 
-    /// Fewer, never fewer than four, on a narrow frame so the print keeps its room.
-    private func perforations(_ progress: Double, frameWidth: CGFloat) -> some View {
-        let pitch = 11 * scale
-        let count = min(30, max(4, Int(frameWidth * 0.3 / pitch)))
-        let filled = EdgePrint.filledPerforations(progress: progress, of: count)
-        return HStack(spacing: 4 * scale) {
-            ForEach(0..<count, id: \.self) { index in
-                RoundedRectangle(cornerRadius: 2 * scale, style: .continuous)
-                    .fill(index < filled ? Theme.Palette.stock : Theme.Palette.lineStrong)
-                    .frame(width: 7 * scale, height: 9 * scale)
-            }
+    private func line(now: Date) -> some View {
+        ViewThatFits(in: .horizontal) {
+            text(now: now, dropping: 0)
+            text(now: now, dropping: 1)
+            text(now: now, dropping: 2)
+            text(now: now, dropping: 3)
+            text(now: now, dropping: 4)
         }
-        .accessibilityHidden(true)
     }
 
-    private func printLine(now: Date, dropping count: Int) -> some View {
-        printText(print.segments(droppingLeast: count, now: now))
-            .font(Theme.Typeface.edgePrint)
-            .edgePrint()
+    private func text(now: Date, dropping count: Int) -> some View {
+        factsText(print.segments(droppingLeast: count, now: now))
+            .font(Theme.Typeface.caption)
+            .textCase(.uppercase)
+            .tracking(0.06 * 12 * Theme.scale)
             .lineLimit(1)
             .truncationMode(.tail)
     }
 
-    private func printText(_ segments: [EdgePrint.Segment]) -> Text {
+    private func factsText(_ segments: [EdgePrint.Segment]) -> Text {
         var out = AttributedString()
         for (index, segment) in segments.enumerated() {
             if index > 0 {
                 var dot = AttributedString(" · ")
-                dot.foregroundColor = Theme.Palette.textTertiary
+                dot.foregroundColor = Theme.Palette.faint
                 out += dot
             }
             var part = AttributedString(segment.text)
-            // The key fact is yellow, and on Apple TV a focused frame prints all of it in yellow.
-            part.foregroundColor = (segment.isKey || focused) ? Theme.Palette.stock : Theme.Palette.print
+            part.foregroundColor = segment.isKey ? Theme.Palette.red : Theme.Palette.muted
             out += part
         }
         return Text(out)
     }
 }
 
-/// A still or poster with its edge strip attached, one object: the frame's top corners and the strip's bottom
-/// corners are the same radius. It fills the width it is given; the caller fixes the size per row.
+/// A still or poster in its 2px frame with the facts line under it, one object. Progress is a thin red bar along the
+/// foot of the picture. It fills the width it is given; the caller fixes the size per row.
 struct FilmFrame: View {
     let art: ProgrammeArt
     var strip: EdgePrint?
-    @Environment(\.isFocused) private var focused
 
     private var aspect: CGFloat {
         if case .posterImage = art { return 2.0 / 3.0 }
@@ -225,16 +227,20 @@ struct FilmFrame: View {
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.artwork, style: .continuous)
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Color.clear
                 .aspectRatio(aspect, contentMode: .fit)
                 .overlay(image)
-            if let strip { EdgeStrip(print: strip, focused: focused) }
+                .overlay(alignment: .bottom) {
+                    if let progress = strip?.progress, progress > 0 {
+                        ProgressCapsule(value: progress, height: 4 * Theme.scale)
+                            .padding(Theme.Rule.heavy)
+                    }
+                }
+                .clipped()
+                .cardFrame()
+            if let strip, !strip.segments().isEmpty { FactsLine(print: strip) }
         }
-        .clipShape(shape)
-        // Focus is a yellow outline around frame and strip together.
-        .overlay { shape.strokeBorder(focused ? Theme.Palette.stock : Theme.Palette.hairline, lineWidth: focused ? (Platform.isTV ? 4 : 2) : 1) }
     }
 
     @ViewBuilder
@@ -245,12 +251,12 @@ struct FilmFrame: View {
         case .stillImage(let url, let title):
             RemoteImage(url: url, maxPixel: Platform.isTV ? 1000 : 700, fallbackTitle: title)
         case .none:
-            Theme.Palette.control
+            Theme.Palette.tint2
         }
     }
 }
 
-/// A frame and strip with the title and one meta line under it. Wrap it in a button or link; its spoken
+/// A frame and facts line with the title and one meta line under it. Wrap it in a button or link; its spoken
 /// label reads the facts naturally ("Breaking Bad, season 3 episode 7, 18 minutes left, ends 9:30 PM").
 struct FilmCard: View {
     let art: ProgrammeArt
@@ -273,16 +279,16 @@ struct FilmCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     if let title {
                         Text(title)
-                            .font(Theme.Typeface.headline)
-                            .foregroundStyle(Theme.Palette.text)
+                            .font(Theme.Typeface.cardTitle)
+                            .foregroundStyle(Theme.Palette.fg)
                             // Two lines, so "Dune: Part Two" on a phone's narrow poster isn't cut to "Dune: Part T...".
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     if let meta, !meta.isEmpty {
                         Text(meta)
-                            .font(.system(.subheadline).monospacedDigit())
-                            .foregroundStyle(Theme.Palette.textSecondary)
+                            .font(Theme.Typeface.caption)
+                            .foregroundStyle(Theme.Palette.muted)
                             .lineLimit(1)
                     }
                 }
@@ -419,10 +425,13 @@ private struct ProgrammeRowContent: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .headline) private var timeWidth: CGFloat = ProgrammeMetrics.timeColumn
 
-    // On Apple TV a focused row is filled with the spot, so its text turns to ink.
-    private var primary: Color { focused ? Theme.Palette.onSpot : Theme.Palette.text }
-    private var secondary: Color { focused ? Theme.Palette.onSpot.opacity(0.85) : Theme.Palette.textSecondary }
-    private var tertiary: Color { focused ? Theme.Palette.onSpot.opacity(0.78) : Theme.Palette.textTertiary }
+    @Environment(\.rowLit) private var rowLit
+
+    // A row under the pointer, pressed or focused is filled blue, so its text turns to on-blue.
+    private var lit: Bool { focused || rowLit }
+    private var primary: Color { lit ? Theme.Palette.onBlue : Theme.Palette.fg }
+    private var secondary: Color { lit ? Theme.Palette.onBlue : Theme.Palette.muted }
+    private var tertiary: Color { lit ? Theme.Palette.onBlue : Theme.Palette.faint }
 
     private var hasColumn: Bool {
         if case .none = row.column { return false }
@@ -458,18 +467,18 @@ private struct ProgrammeRowContent: View {
             if roomy && row.art.hasImage { artwork }
             VStack(alignment: .leading, spacing: 2) {
                 Text(row.title)
-                    .font(Theme.Typeface.headline)
+                    .font(Theme.Typeface.cardTitle)
                     .foregroundStyle(primary)
                     .lineLimit(2)
                 if let meta = metaText(now: now, roomy: roomy) {
                     Text(meta)
-                        .font(.system(.subheadline).monospacedDigit())
+                        .font(Theme.Typeface.caption)
                         .foregroundStyle(secondary)
                         .lineLimit(2)
                 }
                 if let version = row.version, !version.isEmpty {
                     Text(version)
-                        .font(.system(.footnote).monospacedDigit())
+                        .font(Theme.Typeface.caption)
                         .foregroundStyle(tertiary)
                         .lineLimit(2)
                 }
@@ -506,7 +515,8 @@ private struct ProgrammeRowContent: View {
                 .minimumScaleFactor(0.6)
             if let sub {
                 Text(sub)
-                    .font(.system(.caption))
+                    .font(Theme.Typeface.micro)
+                    .textCase(.uppercase)
                     .foregroundStyle(tertiary)
                     .lineLimit(1)
             }
@@ -524,14 +534,13 @@ private struct ProgrammeRowContent: View {
 
     private var artwork: some View {
         let size = row.art.size
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.artwork, style: .continuous)
         return VStack(alignment: .leading, spacing: 4 * Theme.scale) {
             image
                 .frame(width: size.width, height: size.height)
-                .clipShape(shape)
-                .hairline(shape)
+                .clipped()
+                .ruleFrame(lit ? Theme.Palette.onBlue : Theme.Palette.rule)
             if let progress = row.progress {
-                ProgrammeProgressLine(value: progress, focused: focused).frame(width: size.width)
+                ProgrammeProgressLine(value: progress, focused: lit).frame(width: size.width)
             }
         }
     }
@@ -567,7 +576,7 @@ private struct ProgrammeRowContent: View {
     }
 }
 
-/// A 2 pt line under a listing's artwork: the control ink for the track, the spot for what's played.
+/// A 2 pt line under a listing's artwork: a flat track and a red bar for what's played.
 struct ProgrammeProgressLine: View {
     let value: Double
     var focused = false
@@ -575,9 +584,9 @@ struct ProgrammeProgressLine: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                Rectangle().fill(focused ? Theme.Palette.onSpot.opacity(0.25) : Theme.Palette.control)
+                Rectangle().fill(focused ? Theme.Palette.onBlue.opacity(0.35) : Theme.Palette.tint3)
                 Rectangle()
-                    .fill(focused ? Theme.Palette.onSpot : Theme.Palette.spot)
+                    .fill(focused ? Theme.Palette.onBlue : Theme.Palette.red)
                     .frame(width: proxy.size.width * min(1, max(0, value)))
             }
         }
@@ -586,8 +595,20 @@ struct ProgrammeProgressLine: View {
     }
 }
 
-/// A listing's own surface: nothing at rest, the panel ink under the pointer, a press or the selection,
-/// and on Apple TV the spot colour with a 1.02 lift.
+/// Whether the row around this content is lit (blue under the pointer, while pressed, or focused), so its words invert.
+private struct RowLitKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+private extension EnvironmentValues {
+    var rowLit: Bool {
+        get { self[RowLitKey.self] }
+        set { self[RowLitKey.self] = newValue }
+    }
+}
+
+/// A listing's own surface, an Index row: a 1px ink rule under it, and the whole row fills blue with on-blue words under
+/// the pointer, while pressed and (Apple TV) when focused. The selected row sits on a tint.
 struct ProgrammeRowButtonStyle: ButtonStyle {
     var selected = false
 
@@ -602,32 +623,20 @@ private struct ProgrammeRowChrome: View {
     @Environment(\.isFocused) private var focused
     @State private var hovering = false
 
-    private var fill: Color {
-        #if os(tvOS)
-        return focused ? Theme.Palette.spot : (selected ? Theme.Palette.panel : Color.clear)
-        #else
-        return configuration.isPressed || hovering || selected ? Theme.Palette.panel : Color.clear
-        #endif
-    }
+    private var lit: Bool { configuration.isPressed || hovering || focused }
 
-    private var scale: CGFloat {
-        if configuration.isPressed { return 0.98 }
-        #if os(tvOS)
-        return focused ? 1.02 : 1
-        #else
-        return 1
-        #endif
+    private var fill: Color {
+        if lit { return Theme.Palette.blue }
+        return selected ? Theme.Palette.tint2 : Color.clear
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.frame, style: .continuous)
         configuration.label
-            .background(fill, in: shape)
-            .contentShape(shape)
-            .scaleEffect(scale)
-            .shadow(color: .black.opacity(focused ? 0.35 : 0), radius: 24, y: 8)
-            .animation(Theme.Motion.snappy, value: focused)
-            .animation(Theme.Motion.snappy, value: configuration.isPressed)
+            .environment(\.rowLit, lit)
+            .background(fill)
+            .contentShape(Rectangle())
+            .ruledRow()
+            .animation(Theme.Motion.hover, value: lit)
             #if !os(tvOS)
             .onHover { hovering = $0 }
             #endif
@@ -730,16 +739,16 @@ struct PersonCard: View {
                     }
                 }
                 .frame(width: width, height: width * 1.5)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.artwork, style: .continuous))
-                .hairline(RoundedRectangle(cornerRadius: Theme.Radius.artwork, style: .continuous))
+                .clipped()
+                .cardFrame()
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(name).font(.system(.caption, weight: .semibold)).foregroundStyle(Theme.Palette.text).lineLimit(1)
-                    Text(role).font(.system(.caption2)).foregroundStyle(Theme.Palette.textTertiary).lineLimit(1)
+                    Text(name).font(Theme.Typeface.cardTitle).foregroundStyle(Theme.Palette.fg).lineLimit(1)
+                    Text(role).font(Theme.Typeface.micro).foregroundStyle(Theme.Palette.muted).lineLimit(1)
                 }
                 .frame(width: width, alignment: .leading)
             }
         }
-        .buttonStyle(CardButtonStyle())
+        .buttonStyle(CardButtonStyle(lift: 1.04))
         .accessibilityLabel(role.isEmpty ? name : "\(name), \(role)")
     }
 
@@ -756,11 +765,11 @@ struct Monogram: View {
     var condensed = false
 
     var body: some View {
-        Theme.Palette.control
+        Theme.Palette.tint2
             .overlay {
                 Text(Self.initials(name))
-                    .font(.system(size: fontSize, weight: .semibold))
-                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .font(.custom(Theme.Face.condensed, size: fontSize))
+                    .foregroundStyle(Theme.Palette.muted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
             }
@@ -779,42 +788,13 @@ struct Monogram: View {
     }
 }
 
-/// A text tab in a filter row (genres, channel groups, periods): the current one is paper with a stock underline,
-/// the rest are ink-2, so yellow marks selection without a filled pill. On Apple TV the focused tab gets a base-3
-/// plate and a stock ring, so something always reads as focused.
+/// A tab in a filter row (genres, channel groups, periods): a bordered mono cell, the current one inverted ink, blue under
+/// the pointer and on Apple TV focus. It is `FilterChipStyle` under the name the screens already use.
 struct FilterTabStyle: ButtonStyle {
     var selected: Bool
 
     func makeBody(configuration: Configuration) -> some View {
-        FilterTabBody(configuration: configuration, selected: selected)
-    }
-}
-
-private struct FilterTabBody: View {
-    let configuration: ButtonStyleConfiguration
-    let selected: Bool
-    @Environment(\.isFocused) private var focused
-
-    var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
-        configuration.label
-            .font(.system(.subheadline, weight: .semibold))
-            .foregroundStyle(selected || focused ? Theme.Palette.text : Theme.Palette.textSecondary)
-            .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.xs + 1)
-            .frame(minHeight: 44 * Theme.scale)
-            .overlay(alignment: .bottom) {
-                if selected {
-                    Capsule().fill(Theme.Palette.stock)
-                        .frame(height: 2 * Theme.scale)
-                        .padding(.horizontal, Theme.Space.m)
-                }
-            }
-            .background { if focused { shape.fill(Theme.Palette.control) } }
-            .overlay { if focused { shape.strokeBorder(Theme.Palette.stock, lineWidth: 4) } }
-            .contentShape(shape)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(Theme.Motion.snappy, value: configuration.isPressed)
-            .modifier(FocusLift(scale: 1.04))
+        FilterChipStyle(current: selected).makeBody(configuration: configuration)
     }
 }
 

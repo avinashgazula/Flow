@@ -18,17 +18,22 @@ struct HomeLead: Equatable, Identifiable {
     var minutes: Int? { Reel.minutesLeft(progress: progress, runtimeMinutes: item.runtimeMinutes) }
 }
 
-/// Home: a large title by the hour, the one thing to carry on with as a big frame with its edge strip and a
-/// yellow Resume, then Up Next as framed stills, then rows of posters to pick from. On wide screens (and
-/// Apple TV) the lead stands left and Up Next right.
+/// Home, as the website's lead: the day in a red label with the date in mono, the title of what to watch in giant Archivo
+/// capitals, one italic line of facts, a solid Resume (or Play) and a bordered Details, and the backdrop in its 2px frame
+/// with a thin red bar for how far you are. A numbered pager (`01 / 10`) turns through what's in progress and the top
+/// picks. Then Up Next and the shelves, each a ruled section under a red label. Wide screens and Apple TV put the words
+/// beside the backdrop.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
-    @State private var lead: HomeLead?
+    /// What the lead turns through: what is in progress first, then the top picks, ten at most.
+    @State private var leads: [HomeLead] = []
+    @State private var leadIndex = 0
     /// The greeting follows the hour, so it is refreshed each minute.
     @State private var now = Date()
 
     private var general: GeneralSettings { model.settings.general }
     private var dayPart: Reel.DayPart { Reel.DayPart(date: now) }
+    private var lead: HomeLead? { leads.indices.contains(leadIndex) ? leads[leadIndex] : nil }
 
     /// The enabled shelves, minus the ones their General switches turn off.
     private var shelves: [ShelfConfig] {
@@ -42,7 +47,7 @@ struct HomeView: View {
         }
     }
 
-    /// Continue Watching and Next Up are one section on Home, "Up Next", beside the lead; the other shelves are rows below.
+    /// Continue Watching and Next Up are one section on Home, "Up Next", under the lead; the other shelves are rows below.
     private var rowShelves: [ShelfConfig] {
         shelves.filter { shelf in
             if case .builtIn(let builtIn) = shelf.source, builtIn == .continueWatching || builtIn == .nextUp { return false }
@@ -81,16 +86,19 @@ struct HomeView: View {
             }
         }
         .background(Theme.Palette.ground.ignoresSafeArea())
-        .task(id: leadKey) { await loadLead() }
+        .task(id: leadKey) { await loadLeads() }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 60_000_000_000)
                 now = Date()
             }
         }
-        #if !os(tvOS)
-        .tabRootTitle(dayPart.title)
-        .largeNavigationTitle()
+        // The page names itself in its own red label, so the bar carries no title.
+        #if os(iOS)
+        .navigationTitle("")
+        .inlineNavigationTitle()
+        #elseif os(macOS)
+        .navigationTitle("Home")
         #endif
         #if os(iOS)
         .toolbar { SettingsToolbarItem { model.showSettings = true } }
@@ -119,12 +127,12 @@ struct HomeView: View {
 
     // MARK: Layout
 
-    /// Lead and Up Next side by side once there is room; always on Apple TV.
+    /// The words beside the backdrop once there is room; always on Apple TV.
     private static func splits(width: CGFloat) -> Bool {
         #if os(tvOS)
         return true
         #elseif os(macOS)
-        // A Mac window is wide even when it is not big: the lead and Up Next share it from here.
+        // A Mac window is wide even when it is not big: the words and the backdrop share it from here.
         return width >= 760
         #else
         return width >= 900
@@ -141,51 +149,28 @@ struct HomeView: View {
         #endif
     }
 
-    /// The lead takes about 55% of a wide page, never more than 760 pt, so a big window doesn't blow it up. When what
-    /// is left beside it fits only one column of Up Next, the lead grows to 65% instead: its frame, title and buttons
-    /// then stand about as tall as two stacked stills, rather than leaving a hole under the buttons.
-    /// Apple TV fixes it at 700 so its buttons stay on the first screen.
-    private func leadWidth(in width: CGFloat) -> CGFloat {
-        if Platform.isTV { return 700 }
-        let available = width - Theme.Space.gutter * 2 - Theme.Space.xl
-        let share = available * 0.45 < 460 ? 0.65 : 0.55
-        return min(760, max(320, available * share))
-    }
-
-    /// Two columns of Up Next beside the lead when there is room, one in a narrower window; two rows either way keeps
-    /// the column about as tall as the lead.
-    private func upNextColumns(in width: CGFloat) -> Int {
-        let beside = width - Theme.Space.gutter * 2 - Theme.Space.xl - leadWidth(in: width)
-        return beside >= 460 ? 2 : 1
+    /// The backdrop takes a little over half of a wide page, so its title and buttons stand beside it at about its height.
+    private func backdropWidth(in width: CGFloat) -> CGFloat {
+        max(320, (width - Theme.Space.gutter * 2 - Theme.Space.xl) * 0.56)
     }
 
     private func page(wide: Bool, width: CGFloat) -> some View {
         LazyVStack(alignment: .leading, spacing: Theme.Space.section) {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
-                header
-                if wide {
-                    HStack(alignment: .top, spacing: Theme.Space.xl) {
-                        if let lead {
-                            LeadBlock(lead: lead)
-                                .frame(width: leadWidth(in: width), alignment: .topLeading)
-                        }
-                        if showsUpNext {
-                            UpNextSection(leadEntryID: lead?.entryID, grid: true, columns: upNextColumns(in: width))
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
-                        }
-                    }
-                    .padding(.horizontal, Theme.Space.gutter)
-                } else if let lead {
-                    LeadBlock(lead: lead)
-                        .padding(.horizontal, Theme.Space.gutter)
-                        .frame(maxWidth: 720, alignment: .leading)
+            Group {
+                if let lead {
+                    LeadBlock(lead: lead, index: leadIndex, count: leads.count, wide: wide, backdropWidth: backdropWidth(in: width),
+                              dayTitle: dayPart.title, dateLine: Reel.dateLine(now), step: step)
+                        // Each title is its own block, so what was fetched for one never shows on the next.
+                        .id(lead.id)
+                        .transition(.opacity)
+                } else {
+                    LeadHeader(dayTitle: dayPart.title, dateLine: Reel.dateLine(now))
                 }
             }
-            if !wide && showsUpNext {
-                UpNextSection(leadEntryID: lead?.entryID, grid: false)
-            } else if wide && !Platform.isTV && showsUpNext {
-                // What doesn't fit beside the lead runs on as a row, so neither column ends in a hole.
-                UpNextSection(leadEntryID: lead?.entryID, grid: false, skip: upNextColumns(in: width) * 2, showsHeader: false)
+            .padding(.horizontal, Theme.Space.gutter)
+            .padding(.top, topInset)
+            if showsUpNext {
+                UpNextSection(leadEntryID: leads.first?.entryID)
             }
             ForEach(rowShelves) { shelf in
                 HomeRow(shelf: shelf)
@@ -200,42 +185,88 @@ struct HomeView: View {
         .padding(.bottom, Theme.Space.xxl)
     }
 
-    /// The date, and on Apple TV the greeting too: its tab bar names the page, so the title is drawn here.
-    private var header: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-            #if os(tvOS)
-            Text(dayPart.title)
-                .font(.system(.largeTitle, weight: .bold))
-                .foregroundStyle(Theme.Palette.text)
-            #endif
-            Text(Reel.dateLine(now))
-                .font(.system(.subheadline))
-                .foregroundStyle(Theme.Palette.textSecondary)
-        }
-        .padding(.horizontal, Theme.Space.gutter)
-        .padding(.top, topInset)
-        .accessibilityElement(children: .combine)
+    /// The pager's arrows go round: past the last pick is the first.
+    private func step(_ delta: Int) {
+        guard leads.count > 1 else { return }
+        withAnimation(Theme.Motion.enter) { leadIndex = (leadIndex + delta + leads.count) % leads.count }
     }
 
     // MARK: Loading
 
-    private func loadLead() async {
+    private func loadLeads() async {
+        var out: [HomeLead] = []
         if general.showContinueWatching, let entry = model.continueWatching.first, let item = await model.hydrate([entry.key]).first {
-            lead = HomeLead(item: item, episode: entry.episode, progress: entry.progress, kind: entry.isNextUp ? .nextUp : .resume, entryID: entry.id)
-        } else if let top = await model.heroItems().first {
-            lead = HomeLead(item: top)
-        } else {
-            lead = nil
+            out.append(HomeLead(item: item, episode: entry.episode, progress: entry.progress, kind: entry.isNextUp ? .nextUp : .resume, entryID: entry.id))
         }
+        for pick in await model.heroItems() where out.count < 10 && !out.contains(where: { $0.item.id == pick.id }) {
+            out.append(HomeLead(item: pick))
+        }
+        guard out != leads else { return }
+        leads = out
+        leadIndex = min(leadIndex, max(0, out.count - 1))
     }
 }
 
 // MARK: - The lead
 
-/// The one dominant item: a large 16:9 frame with its edge strip, the title, a line of meta, a yellow Resume
-/// (or Play) and a quiet Details.
+/// The day as a red mono label, with the date beside it in muted mono.
+private struct LeadHeader: View {
+    let dayTitle: String
+    let dateLine: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+            SectionLabel(dayTitle)
+            Text(dateLine)
+                .font(Theme.Typeface.caption)
+                .textCase(.uppercase)
+                .tracking(0.06 * 12 * Theme.scale)
+                .foregroundStyle(Theme.Palette.muted)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Which title of the turn you are on: `01 / 10` in red condensed figures between two square arrows. On Apple TV the
+/// arrows take focus, so the remote can turn through the picks.
+private struct LeadPager: View {
+    let index: Int
+    let count: Int
+    let step: (Int) -> Void
+
+    var body: some View {
+        HStack(spacing: -Theme.Rule.heavy) {
+            Button { step(-1) } label: { Image(systemName: "chevron.left") }
+                .buttonStyle(GlassButtonStyle(circle: true, compact: true))
+                .accessibilityLabel("Previous Title")
+            Text(String(format: "%02d / %02d", index + 1, count))
+                .font(.custom(Theme.Face.condensed, size: 22 * Theme.scale).monospacedDigit())
+                .foregroundStyle(Theme.Palette.red)
+                .padding(.horizontal, Theme.Space.m)
+                .frame(minHeight: 44 * Theme.scale)
+                .background(Theme.Palette.bg)
+                .ruleFrame()
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Title \(index + 1) of \(count)")
+            Button { step(1) } label: { Image(systemName: "chevron.right") }
+                .buttonStyle(GlassButtonStyle(circle: true, compact: true))
+                .accessibilityLabel("Next Title")
+        }
+    }
+}
+
+/// The one dominant item: the day label, its title in giant capitals, a line of facts, Resume (or Play) and Details, and
+/// its backdrop framed with the time left, when it would end and the format printed under it. The words stand beside the
+/// backdrop when `wide`, above it otherwise.
 struct LeadBlock: View {
     let lead: HomeLead
+    let index: Int
+    let count: Int
+    let wide: Bool
+    let backdropWidth: CGFloat
+    let dayTitle: String
+    let dateLine: String
+    let step: (Int) -> Void
     @Environment(AppModel.self) private var model
     /// A runtime fetched when the lead has none, which is the case for most picks.
     @State private var fetchedMinutes: Int?
@@ -247,6 +278,7 @@ struct LeadBlock: View {
     private var item: MediaItem { lead.item }
     private var minutes: Int? { lead.minutes ?? fetchedMinutes }
 
+    /// The facts printed under the backdrop.
     private var strip: EdgePrint {
         let format = model.lastEdgeFormat(for: item)
         switch lead.kind {
@@ -265,9 +297,17 @@ struct LeadBlock: View {
         return ["S\(episode.season) E\(episode.episode)"]
     }
 
-    /// The strip already says the episode or the year, so this line carries what it doesn't: the genres.
-    private var meta: String {
-        item.genres.prefix(2).map(\.name).joined(separator: ", ")
+    /// The italic line under the title: the episode (or the year) and the genres.
+    private var facts: String {
+        var parts: [String] = []
+        if let episode = lead.episode {
+            parts.append("Season \(episode.season), Episode \(episode.episode)")
+        } else if let year = item.year {
+            parts.append(String(year))
+        }
+        let genres = item.genres.prefix(2).map(\.name).joined(separator: ", ")
+        if !genres.isEmpty { parts.append(genres) }
+        return parts.joined(separator: " · ")
     }
 
     private var spoken: String {
@@ -275,49 +315,95 @@ struct LeadBlock: View {
                                 endsAt: minutes.map { Reel.endDate(from: Date(), minutesLeft: $0) }, extra: model.lastEdgeFormat(for: item))
     }
 
+    /// Phones 52, iPad 72, Mac 64, Apple TV 91 (48 scaled): about three-quarters of a page title, so a long name still
+    /// sits in two or three lines beside its backdrop.
+    private var titleSize: CGFloat {
+        let base: CGFloat = wide ? (Platform.isPad ? 72 : Platform.isMac ? 64 : 48) : 52
+        return base * Theme.scale
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Button { model.navigate(to: .detail(item)) } label: {
-                FilmFrame(art: .still(item), strip: strip)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(spoken)
-            }
-            .buttonStyle(CardButtonStyle(lift: 1.04))
-            #if os(tvOS)
-            // The Details button is the remote's way in; a frame that takes focus too would be one stop too many.
-            .focusable(false)
-            #endif
-            VStack(alignment: .leading, spacing: Theme.Space.xxs) {
-                Text(item.title)
-                    .font(.system(Platform.isTV ? .title2 : .title, weight: .bold))
-                    .foregroundStyle(Theme.Palette.text)
-                    .lineLimit(2)
-                if !meta.isEmpty {
-                    Text(meta)
-                        .font(.system(.subheadline).monospacedDigit())
-                        .foregroundStyle(Theme.Palette.textSecondary)
-                        .lineLimit(2)
+        Group {
+            if wide {
+                HStack(alignment: .top, spacing: Theme.Space.xl) {
+                    VStack(alignment: .leading, spacing: Theme.Space.m) {
+                        words
+                        actions
+                        if count > 1 { LeadPager(index: index, count: count, step: step) }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    backdrop.frame(width: backdropWidth)
                 }
-            }
-            HStack(spacing: Theme.Space.s) {
-                // The width goes on the label, so the button's own fill stretches with it.
-                Button { Task { await model.play(item) } } label: {
-                    Label(lead.kind == .resume ? "Resume" : "Play", systemImage: "play.fill")
-                        .frame(maxWidth: Platform.isTV ? nil : .infinity)
-                        .frame(minWidth: Platform.isTV ? 240 * Theme.scale : nil)
+            } else {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
+                    words
+                    actions
+                    backdrop
+                    if count > 1 { LeadPager(index: index, count: count, step: step) }
                 }
-                .buttonStyle(PrimaryButtonStyle())
-                #if os(tvOS)
-                .focused($resumeFocused)
-                #endif
-                Button { model.navigate(to: .detail(item)) } label: { Text("Details") }
-                    .buttonStyle(GlassButtonStyle())
             }
         }
         #if os(tvOS)
         .defaultFocus($resumeFocused, true)
         #endif
         .task(id: item.id) { await fetchMinutes() }
+    }
+
+    private var words: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            LeadHeader(dayTitle: dayTitle, dateLine: dateLine)
+            Text(item.title)
+                .font(.custom(Theme.Face.archivo, size: titleSize, relativeTo: .largeTitle))
+                .textCase(.uppercase)
+                .tracking(-0.03 * titleSize)
+                // The website sets it at 0.84 line height; a negative spacing pulls wrapped lines together.
+                .lineSpacing(-0.14 * titleSize)
+                .foregroundStyle(Theme.Palette.fg)
+                .lineLimit(3)
+                .minimumScaleFactor(0.5)
+                .accessibilityAddTraits(.isHeader)
+            if !facts.isEmpty {
+                Text(facts)
+                    .font(Theme.Typeface.readingItalic)
+                    .foregroundStyle(Theme.Palette.fg)
+                    .lineLimit(2)
+            }
+        }
+    }
+
+    private var primaryMinWidth: CGFloat? {
+        if Platform.isTV { return 240 * Theme.scale }
+        return wide ? 140 : nil
+    }
+
+    private var actions: some View {
+        HStack(spacing: Theme.Space.s) {
+            // The width goes on the label, so the button's own fill stretches with it.
+            Button { Task { await model.play(item) } } label: {
+                Label(lead.kind == .resume ? "Resume" : "Play", systemImage: "play.fill")
+                    .frame(maxWidth: wide || Platform.isTV ? nil : .infinity)
+                    .frame(minWidth: primaryMinWidth)
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            #if os(tvOS)
+            .focused($resumeFocused)
+            #endif
+            Button { model.navigate(to: .detail(item)) } label: { Text("Details") }
+                .buttonStyle(GlassButtonStyle())
+        }
+    }
+
+    private var backdrop: some View {
+        Button { model.navigate(to: .detail(item)) } label: {
+            FilmFrame(art: .still(item), strip: strip)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(spoken)
+        }
+        .buttonStyle(CardButtonStyle(lift: 1.04))
+        #if os(tvOS)
+        // The Details button is the remote's way in; a frame that takes focus too would be one stop too many.
+        .focusable(false)
+        #endif
     }
 
     private func fetchMinutes() async {
@@ -330,54 +416,30 @@ struct LeadBlock: View {
 
 // MARK: - Up Next
 
-/// What is in progress, and the next episodes, as framed stills whose strips fill as you watch.
+/// What is in progress, and the next episodes, as framed stills with the time left under each and a red bar along the
+/// foot of those you have started.
 private struct UpNextSection: View {
     let leadEntryID: String?
-    /// A two-column grid beside the lead; otherwise one row that scrolls sideways.
-    let grid: Bool
-    /// Beside the lead: how many columns of stills (two rows each).
-    var columns = 2
-    /// Entries already shown beside the lead, when this is the row that carries on from them.
-    var skip = 0
-    var showsHeader = true
     @Environment(AppModel.self) private var model
     @State private var items: [MediaKey: MediaItem] = [:]
-
-    private var gridCount: Int { Platform.isTV ? 6 : columns * 2 }
 
     /// Most recent first, so a limit keeps the latest; the lead is already on the page.
     private var entries: [ContinueWatchingBuilder.Entry] {
         let all = model.continueWatching
         let limited = model.settings.general.continueWatchingLimit.map { Array(all.prefix($0)) } ?? all
-        return Array(limited.filter { $0.id != leadEntryID }.dropFirst(skip))
+        return limited.filter { $0.id != leadEntryID }
     }
 
     var body: some View {
         if !entries.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                if showsHeader {
-                    SectionHeader("Up Next", route: .library(.continueWatching))
-                        .padding(.horizontal, grid ? -Theme.Space.gutter : 0)
-                }
-                if grid {
-                    // One column when the space beside the lead is narrow, two when there is room. Apple TV always
-                    // has room, and two smaller stills show more of the queue on the first screen than one big one.
-                    LazyVGrid(columns: Platform.isTV
-                                ? Array(repeating: GridItem(.flexible(), spacing: Theme.Space.m, alignment: .top), count: 2)
-                                : Array(repeating: GridItem(.flexible(), spacing: Theme.Space.m, alignment: .top), count: columns),
-                              alignment: .leading, spacing: Theme.Space.m) {
-                        ForEach(entries.prefix(gridCount)) { entry in
-                            if let item = items[entry.key] { UpNextCell(entry: entry, item: item, width: nil) }
-                        }
+                SectionHeader("Up Next", route: .library(.continueWatching))
+                FilmScroller(ids: entries.map(\.id), itemWidth: Platform.landscapeWidth) {
+                    ForEach(entries) { entry in
+                        if let item = items[entry.key] { UpNextCell(entry: entry, item: item, width: Platform.landscapeWidth) }
                     }
-                } else {
-                    FilmScroller(ids: entries.map(\.id), itemWidth: Platform.landscapeWidth) {
-                        ForEach(entries) { entry in
-                            if let item = items[entry.key] { UpNextCell(entry: entry, item: item, width: Platform.landscapeWidth) }
-                        }
-                    }
-                    .flowSwipeActionsContainer()
                 }
+                .flowSwipeActionsContainer()
             }
             .task(id: entries.map(\.id)) {
                 let hydrated = await model.hydrate(entries.map(\.key))
@@ -391,7 +453,7 @@ private struct UpNextSection: View {
     }
 }
 
-/// A Continue Watching or Up Next item as a frame with its edge strip: perforations for how far in, print for the rest.
+/// A Continue Watching or Up Next item as a framed still: a red bar for how far in, the facts line for the rest.
 struct UpNextCell: View {
     let entry: ContinueWatchingBuilder.Entry
     let item: MediaItem
@@ -458,7 +520,7 @@ struct UpNextCell: View {
 
 // MARK: - Rows
 
-/// One shelf as a row on the page: a plain heading over posters at one fixed size, each with a print-only strip.
+/// One shelf as a ruled section on the page: a red label over posters at one fixed size, each with its facts line.
 private struct HomeRow: View {
     let shelf: ShelfConfig
 
@@ -479,7 +541,7 @@ private struct HomeRow: View {
     }
 }
 
-/// A catalogue shelf: posters, each with the runtime and rating in edge print, no perforations (nothing watched).
+/// A catalogue shelf: posters, each with the runtime and rating under it in mono (and no bar: nothing is in progress).
 private struct PicksRow: View {
     let shelf: ShelfConfig
     @Environment(AppModel.self) private var model
@@ -515,7 +577,7 @@ private struct PicksRow: View {
     }
 }
 
-/// What is coming: stills with the air day in the key position of the strip.
+/// What is coming: stills with the air day in red in the facts line.
 struct UpcomingRow: View {
     let shelf: ShelfConfig
     @Environment(AppModel.self) private var model
@@ -645,8 +707,8 @@ private struct IndexSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             SectionHeader<Route>(title)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 170 * Theme.scale), spacing: Theme.Space.xxs, alignment: .top)],
-                      alignment: .leading, spacing: Theme.Space.xxs) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 170 * Theme.scale), spacing: Theme.Space.m, alignment: .top)],
+                      alignment: .leading, spacing: 0) {
                 ForEach(entries) { entry in
                     ProgrammeRow(title: entry.title, meta: entry.meta, action: { model.navigate(to: .shelf(entry.shelf)) })
                 }
@@ -661,7 +723,7 @@ struct ProgrammeList<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: Theme.Space.xxs) { content }
+        LazyVStack(alignment: .leading, spacing: 0) { content }
             .padding(.horizontal, Theme.Space.gutter - ProgrammeMetrics.inset)
     }
 }
@@ -714,12 +776,8 @@ struct ShelfGridView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let query = providerQuery {
-                Picker("Type", selection: Binding(get: { type ?? query.type }, set: { type = $0 })) {
-                    Text("Movies").tag(MediaType.movie)
-                    Text("TV Shows").tag(MediaType.show)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+                SegmentedTabs(options: [(value: MediaType.movie, title: "Movies"), (value: MediaType.show, title: "TV Shows")],
+                              selection: Binding(get: { type ?? query.type }, set: { type = $0 }))
                 .frame(maxWidth: 360 * Theme.scale)
                 .padding(.horizontal, Theme.Space.gutter)
                 .padding(.vertical, Theme.Space.xs)
