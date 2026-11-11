@@ -97,13 +97,15 @@ export function DetailScreen({ type, id, initialSeason, autoPlay }: { type: Medi
     void import('../player/engine').then((m) => m.warmEngines())
   }
 
-  const play = (episode?: { season: number; episode: number }, source?: Source) => {
+  const play = (episode?: { season: number; episode: number }, source?: Source, replace?: boolean) => {
     const at = episode ?? target
-    void navigate({ to: '/watch/$type/$id', params: { type, id }, search: { ...(at ? { season: at.season, episode: at.episode } : {}), ...(source ? { source: source.id } : {}) } })
+    void navigate({ to: '/watch/$type/$id', params: { type, id }, search: { ...(at ? { season: at.season, episode: at.episode } : {}), ...(source ? { source: source.id } : {}) }, replace })
   }
 
   useEffect(() => {
-    if (autoPlay && d && !isPlaceholderData) play()
+    // ?play= is a Play button that arrives through this page: it takes this page's place in the history, or Close in the
+    // player would come back here and start playing again.
+    if (autoPlay && d && !isPlaceholderData) play(undefined, undefined, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, isPlaceholderData])
 

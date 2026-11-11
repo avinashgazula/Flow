@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { Icon } from '../../components/Icon'
+import { PlayerIcon } from './playerIcons'
 import { browserCapabilities, type Source } from '../../lib/sources'
 import { useSettings } from '../../lib/store/settings'
 import { keepFocus } from './Controls'
@@ -21,6 +21,9 @@ export function NoSoundNotice({ controller, source, conversionFailed = false, on
   const proxySet = useSettings((x) => x.streamProxy.trim() !== '')
   // Why the proxy couldn't open the file, as the remuxer worded it: the host that refused and what it said.
   const proxyError = usePlayer(controller, (st) => st.proxyError)
+  const blocked = usePlayer(controller, (st) => st.blocked)
+  const audio = usePlayer(controller, (st) => st.audio)
+  const audioId = usePlayer(controller, (st) => st.audioId)
 
   useEffect(() => {
     if (conversionFailed) onSilent()
@@ -59,17 +62,22 @@ export function NoSoundNotice({ controller, source, conversionFailed = false, on
   }, [shown, onShowing])
   if (!shown) return null
   const names = silentAudioNames(source?.audio, browserCapabilities())
+  // The Matroska engine knows the track it opened: its format, as the file says it, is better than the add-on's list.
+  const played = audio.find((t) => t.id === (audioId ?? audio[0]?.id))
+  const ownFormat = !blocked && played?.format ? [played.format] : names
   return (
     <aside className={s.noSound} aria-label="No sound" role="status">
       <h2 className={s.noSoundTitle}>
-        <Icon name="mute" size={18} strokeWidth={2.2} /> {conversionFailed ? 'Couldn’t Convert the Audio' : 'No Sound in This Browser'}
+        <PlayerIcon name="mute" size={18} /> {conversionFailed ? 'Couldn’t Convert the Audio' : 'No Sound in This Browser'}
       </h2>
       <p className={s.noSoundText}>
         {conversionFailed
           ? `This file’s audio${names.length > 0 ? ` (${names.join(' and ')})` : ''} can’t play in a web browser, and Marquee couldn’t convert it, so the picture is playing without sound.`
-          : `This file’s audio${names.length > 0 ? ` (${names.join(' and ')})` : ''} can’t play in a web browser, and its host doesn’t let Marquee convert it.`}
+          : blocked
+            ? `This file’s audio${names.length > 0 ? ` (${names.join(' and ')})` : ''} can’t play in a web browser, and its host doesn’t let Marquee convert it.`
+            : `This file’s audio is ${ownFormat.length > 0 ? ownFormat.join(' and ') : 'in a format'}, which Marquee can’t play in this browser. Try another source.`}
       </p>
-      {!conversionFailed && proxySet && proxyError && (
+      {!conversionFailed && blocked && proxySet && proxyError && (
         <p className={s.noSoundReason}>
           <strong>Your stream proxy couldn’t open this file.</strong> {proxyError}
         </p>
@@ -82,7 +90,7 @@ export function NoSoundNotice({ controller, source, conversionFailed = false, on
           Keep Watching
         </button>
       </div>
-      {!conversionFailed && (
+      {!conversionFailed && blocked && (
         <p className={s.noSoundHint}>
           {proxySet ? (
             <>

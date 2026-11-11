@@ -26,7 +26,12 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; 
 
 function Pick<T extends string>({ id, label, value, options, onChange }: { id: string; label: string; value: T; options: readonly { value: T; label: string }[]; onChange: (value: T) => void }) {
   return (
-    <select id={id} className={`field ${s.select}`} aria-label={label} value={value} onChange={(e) => onChange(e.target.value as T)} onPointerUp={(e) => e.pointerType === 'mouse' && e.currentTarget.blur()}>
+    <select id={id} className={`field ${s.select}`} aria-label={label} value={value} onChange={(e) => {
+        onChange(e.target.value as T)
+        // Let go of focus once a mouse has chosen, so Space plays and pauses again; the keyboard keeps it to go on arrowing.
+        if (!e.currentTarget.matches(':focus-visible')) e.currentTarget.blur()
+      }}
+    >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}

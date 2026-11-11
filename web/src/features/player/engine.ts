@@ -6,6 +6,7 @@ import type { HlsConfig } from 'hls.js'
 import type { PictureCue } from '../../lib/remux/pictures'
 import type { Source } from '../../lib/sources'
 import { proxyLoader } from '../../lib/sources/hlsProxy'
+import { hostAllowsCors, sameOrigin } from '../../lib/sources/cors'
 import { needsProxy, proxied, rememberBlocked, streamProxy } from '../../lib/sources/proxy'
 import { settingsStore } from '../../lib/store/settings'
 import { hlsErrorMessage, PlaybackError } from './errors'
@@ -19,6 +20,9 @@ export interface Track {
   language?: string
   /** Why it can't be chosen (a DTS track in a browser that can't decode it). */
   unavailable?: string
+  /** The format as a viewer says it ("Dolby TrueHD"), and its channel count, for Playback Info. */
+  format?: string
+  channels?: number
   /** A word on how it plays, shown under its name (audio the player converts to something this browser plays). */
   note?: string
   /** Plays only by being converted, so a track in the same language that plays as it is comes first. */
@@ -59,7 +63,8 @@ export interface Engine {
   /** The picture subtitles (Blu-ray PGS, DVD VobSub) of the track `selectSubtitle` last chose, or null when it chose
    *  none or a text track. Drawn by PictureSubtitles.tsx. */
   pictures?(): PictureSource | null
-  audio(): { tracks: Track[]; selected?: string }
+  /** `cannotSwitch`: the file has audio the engine can't enumerate or switch (the browser's own player without the audioTracks API). */
+  audio(): { tracks: Track[]; selected?: string; cannotSwitch?: boolean }
   selectAudio(id: string): void | Promise<void>
   /** Subtitles inside the stream. External files are the controller's job. */
   subtitles(): Track[]
@@ -104,6 +109,8 @@ const hlsMime = 'application/vnd.apple.mpegurl'
 const nativeHls = (video: HTMLVideoElement) => video.canPlayType(hlsMime) !== '' && /Apple/.test(navigator.vendor)
 
 export async function attachSource(video: HTMLVideoElement, source: Source, options: AttachOptions): Promise<Engine> {
+  // Set again below for the one engine that needs it (a plain file read by the browser itself).
+  video.removeAttribute('crossorigin')
   const engine = await open(video, source, options)
   // A server that already cut the film into preview pictures (Jellyfin's trickplay) beats decoding them here, for any engine.
   const tiles = source.trickplay
@@ -123,7 +130,28 @@ async function open(video: HTMLVideoElement, source: Source, options: AttachOpti
   const looksHls = /\.m3u8($|\?)/i.test(source.url)
   if (source.engine === 'remux') return attachRemux(video, source, options)
   if ((source.engine === 'hls' || looksHls) && !nativeHls(video)) return attachHls(video, source, options)
-  return attachNative(video, source, options)
+  // A link that names no container (a debrid or add-on play link) is Matroska more often than not, and only the remuxer can list
+  // its audio tracks, convert DTS and TrueHD, and read a Dolby Vision picture. It looks at the first bytes and hands anything
+  // else (an MP4, a WebM) straight to the browser's own player (attachRemux), so a plain file costs one small request.
+  if (source.container === undefined && !source.headers && typeof MediaSource !== 'undefined') return attachRemux(video, source, options, true)
+  return openNative(video, source, options)
+}
+
+/** Sources the viewer asked to play through their stream proxy (X-Ray's "Play Through Your Stream Proxy"), by address. */
+const throughProxy = new Set<string>()
+export const playThroughProxy = (url: string) => void throughProxy.add(url)
+export const playsThroughProxy = (url: string) => throughProxy.has(url)
+
+/** The browser's own player, with its picture left readable where the host allows it. A page can only read a video's pixels
+ *  (X-Ray's faces) if the file was fetched with CORS, which a host that sends no CORS headers refuses to play at all, so
+ *  `crossorigin` is only set once the host has answered a small request the way a CORS host does. A file the viewer chose to
+ *  play through their stream proxy always qualifies: the proxy adds the headers. */
+async function openNative(video: HTMLVideoElement, source: Source, options: AttachOptions): Promise<Engine> {
+  const direct = sameOrigin(source.url) || !!source.headers
+  if (!direct && throughProxy.has(source.url) && streamProxy()) return attachNative(video, source, options, { viaProxy: true })
+  const cors = !direct && (await hostAllowsCors(source.url))
+  if (options.signal.aborted) throw new DOMException('Aborted', 'AbortError')
+  return attachNative(video, source, options, { cors })
 }
 
 // MARK: Native
@@ -142,24 +170,27 @@ function subtitleTracksOf(video: HTMLVideoElement): TextTrack[] {
   return Array.from(video.textTracks).filter((t) => (t.kind === 'subtitles' || t.kind === 'captions') && !ownTracks.has(t))
 }
 
-function attachNative(video: HTMLVideoElement, source: Source, { startAt, onTracks }: AttachOptions): Engine {
+function attachNative(video: HTMLVideoElement, source: Source, { startAt, onTracks }: AttachOptions, access: { cors?: boolean; viaProxy?: boolean } = {}): Engine {
   const audioList = (video as HTMLVideoElement & { audioTracks?: MediaTrackList }).audioTracks
   audioList?.addEventListener('addtrack', onTracks)
   audioList?.addEventListener('change', onTracks)
   video.textTracks.addEventListener('addtrack', onTracks)
   if (startAt) video.addEventListener('loadedmetadata', () => (video.currentTime = startAt), { once: true })
-  video.src = source.url
+  if (access.cors || access.viaProxy) video.crossOrigin = 'anonymous'
+  video.src = access.viaProxy ? proxied(source.url) : source.url
 
   // A second copy of the file is only worth loading for a plain file, on a device with bandwidth to spare.
   let preview: VideoPreview | null | undefined
   return {
     kind: 'native',
+    viaProxy: access.viaProxy,
     preview: () => {
       if (preview === undefined) preview = source.engine === 'hls' || /\.m3u8($|\?)/i.test(source.url) || !canPreviewWithVideo() ? null : new VideoPreview(source.url)
       return preview
     },
     audio() {
-      if (!audioList || audioList.length < 1) return { tracks: [] }
+      if (!audioList) return { tracks: [], cannotSwitch: true }
+      if (audioList.length < 1) return { tracks: [] }
       const tracks: Track[] = []
       let selected: string | undefined
       for (let i = 0; i < audioList.length; i++) {
@@ -345,10 +376,14 @@ function playBlockedFile(video: HTMLVideoElement, source: Source, options: Attac
   }
 }
 
-async function attachRemux(video: HTMLVideoElement, source: Source, options: AttachOptions): Promise<Engine> {
+/** `guessed`: the address didn't say it was Matroska, so a browser without the remuxer's needs or a file that isn't Matroska goes to the browser's own player. */
+async function attachRemux(video: HTMLVideoElement, source: Source, options: AttachOptions, guessed = false): Promise<Engine> {
   const { startAt, signal } = options
   const { attachMatroska, remuxSupported } = await import('../../lib/remux')
-  if (!remuxSupported()) throw new PlaybackError('This browser can’t play MKV files. On iPhone, update to iOS 17.1 or later, or pick another source.')
+  if (!remuxSupported()) {
+    if (guessed) return openNative(video, source, options)
+    throw new PlaybackError('This browser can’t play MKV files. On iPhone, update to iOS 17.1 or later, or pick another source.')
+  }
   // Through the stream proxy a host that sends no CORS headers can be read. An add-on's request
   // headers are meant for the host, not the proxy, and the proxy forwards only Range, so a proxied
   // attempt sends none.
@@ -379,7 +414,9 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
   } catch (error) {
     if (failedWith(error, 'AbortError')) throw error
     // Not Matroska after all (the link had no telling extension, and Marquee guessed): the browser's own player takes it from here.
-    if (failedWith(error, 'NotMatroskaError')) return attachNative(video, source, options)
+    if (failedWith(error, 'NotMatroskaError')) return openNative(video, source, options)
+    // Same for a guess that failed some other way (a host with no ranges, say): the browser's own player has its own go.
+    if (guessed && !viaProxy && !failedWith(error, 'UnplayableError') && !failedWith(error, 'BlockedError')) return openNative(video, source, options)
     // The proxy is only a way round a blocked host. If it was tried and the file still can't be
     // read (blocked, unreachable, refused), the browser's own player gets the original address. A
     // file the proxy did deliver but this browser can't play is a different problem, told as before.
@@ -419,7 +456,9 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
         id: String(t.id),
         label: trackLabel({ name: t.label, language: t.language }),
         language: t.language,
-        unavailable: t.playable ? undefined : `${t.codec} can’t play in this browser`,
+        unavailable: t.playable ? undefined : `${t.format ?? t.codec} can’t play in this browser`,
+        format: t.format,
+        channels: t.channels,
         // Surround is mixed down to stereo unless this browser and output can play 5.1 (7.1 is mixed down to 5.1);
         // a track that was stereo already is only converted.
         note: t.converted ? ((t.channels ?? 0) > 2 ? (surroundAudio ? 'Converted to 5.1' : 'Converted to stereo') : 'Converted') : undefined,

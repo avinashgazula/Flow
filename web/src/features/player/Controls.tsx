@@ -1,12 +1,11 @@
 import { useRef, type ReactNode } from 'react'
-import { Icon, type IconName } from '../../components/Icon'
 import type { Source } from '../../lib/sources'
 import { useSettings } from '../../lib/store/settings'
 import type { Episode } from '../../lib/tmdb/types'
 import { usePlayer, type Panel, type PlayerController } from './controller'
 import { EpisodeShelf } from './EpisodeShelf'
 import { OptionsPanel } from './OptionsPanel'
-import { PlayerIcon, type PlayerIconName } from './playerIcons'
+import { PlayerIcon, SkipGlyph, type PlayerIconName } from './playerIcons'
 import { playbackPreferences } from './preferences'
 import { Scrubber } from './Scrubber'
 import { VolumeControl } from './Volume'
@@ -69,7 +68,7 @@ export function Controls({ controller, title, line, onClose, sources, source, on
               <Titles where="bar" title={title} line={line} />
             </div>
             <div className={s.right}>
-              {episodes && <ClusterButton icon="grid" label="Episodes" active={panel === 'episodes'} onClick={() => toggle('episodes')} />}
+              {episodes && <ClusterButton icon="episodes" label="Episodes" active={panel === 'episodes'} onClick={() => toggle('episodes')} />}
               <ClusterButton icon="xray" label="X-Ray" active={panel === 'xray'} onClick={controller.toggleXRay} />
               <ClusterButton icon="subtitles" label="Audio and Subtitles" active={panel === 'tracks'} onClick={() => toggle('tracks')} />
               <ClusterButton icon="settings" label="Options" active={panel === 'options'} onClick={() => toggle('options')} />
@@ -119,10 +118,10 @@ function Cluster({ children, ...rest }: { children: ReactNode } & React.HTMLAttr
   )
 }
 
-function ClusterButton({ icon, label, onClick, active }: { icon: IconName | PlayerIconName; label: string; onClick: () => void; active?: boolean }) {
+function ClusterButton({ icon, label, onClick, active }: { icon: PlayerIconName; label: string; onClick: () => void; active?: boolean }) {
   return (
     <button className={s.clusterButton} aria-label={label} title={label} aria-pressed={active} onClick={onClick} onMouseDown={keepFocus}>
-      <PlayerIcon name={icon} size={22} strokeWidth={2} />
+      <PlayerIcon name={icon} />
     </button>
   )
 }
@@ -150,7 +149,7 @@ function PlayButton({ controller }: { controller: PlayerController }) {
   const paused = usePlayer(controller, (st) => st.paused)
   return (
     <button className={`${s.clusterButton} ${s.rowTransport}`} aria-label={paused ? 'Play' : 'Pause'} title={paused ? 'Play (Space)' : 'Pause (Space)'} onClick={controller.togglePlay} onMouseDown={keepFocus}>
-      <Icon name={paused ? 'play' : 'pause'} size={24} />
+      <PlayerIcon name={paused ? 'play' : 'pause'} />
     </button>
   )
 }
@@ -193,7 +192,7 @@ function SkipButton({ controller, direction, round, hover }: { controller: Playe
         hover?.onPointerLeave()
       }}
     >
-      <SkipGlyph forward={!onBack} seconds={seconds} size={round ? 32 : 26} />
+      <SkipGlyph forward={!onBack} seconds={seconds} size={round ? 32 : 24} />
     </button>
   )
 }
@@ -205,21 +204,9 @@ function Transport({ controller, hover }: { controller: PlayerController; hover:
     <div className={s.transport}>
       <SkipButton controller={controller} direction={-1} round hover={hover} />
       <button className={`${s.round} ${s.play} ${s.interactive}`} aria-label={paused ? 'Play' : 'Pause'} onClick={controller.togglePlay} onMouseDown={keepFocus} {...hover}>
-        <Icon name={paused ? 'play' : 'pause'} size={34} />
+        <PlayerIcon name={paused ? 'play' : 'pause'} size={34} />
       </button>
       <SkipButton controller={controller} direction={1} round hover={hover} />
     </div>
-  )
-}
-
-/** The go-back and go-forward arrows with the seconds inside (10 unless set), as SF Symbols draws them. */
-export function SkipGlyph({ forward, size = 30, seconds = 10 }: { forward: boolean; size?: number; seconds?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d={forward ? 'M13 4.6h3.6V1M16.3 4.5A8.6 8.6 0 1 0 20.6 12' : 'M11 4.6H7.4V1M7.7 4.5A8.6 8.6 0 1 1 3.4 12'} />
-      <text x="12" y="15.6" textAnchor="middle" fontSize="7.6" fontWeight="700" fill="currentColor" stroke="none" fontFamily="-apple-system, system-ui, sans-serif">
-        {seconds}
-      </text>
-    </svg>
   )
 }

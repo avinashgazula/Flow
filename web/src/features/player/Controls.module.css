@@ -788,3 +788,5 @@
   .track[data-dragging] .rail, .track:focus-visible .rail, .track:hover .rail { transform: none; }
   .upNext, .skipLayer, .suggest { transition: none; }
 }
+/* A line of information under a group, set apart from the sentence above it, with no box (a reason is boxed; this is only a fact). */
+.groupInfo { display: block; margin-top: 8px; }

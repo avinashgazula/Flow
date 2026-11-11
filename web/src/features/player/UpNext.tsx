@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Artwork } from '../../components/Artwork'
-import { Icon } from '../../components/Icon'
+import { PlayerIcon } from './playerIcons'
 import type { Episode } from '../../lib/tmdb/types'
 import { useSettings } from '../../lib/store/settings'
 import { usePlayer, type PlayerController } from './controller'
@@ -125,7 +125,7 @@ export function UpNext({ controller, next, autoplay, fallbackStill, onPlay }: { 
         <span className={s.upNextFrame}>
           <Artwork className={`${s.still} ${s.upNextPlate}`} path={next.still ?? fallbackStill} kind={next.still ? 'still' : 'backdrop'} alt="" sizes="148px" />
           <span className={s.upNextPlay}>
-            <Icon name="play" size={14} />
+            <PlayerIcon name="play" size={14} />
           </span>
           {counting && (
             <span className={s.upNextLine} aria-hidden="true">

@@ -37,6 +37,8 @@ export interface RemuxAudioTrack {
   label: string
   language?: string
   codec: string
+  /** The format as a viewer says it ("Dolby TrueHD", "Dolby Digital Plus"), where `codec` is the MIME codec string. */
+  format?: string
   channels?: number
   /** False when this browser can't decode it (DTS, TrueHD) and can't convert it either. */
   playable: boolean

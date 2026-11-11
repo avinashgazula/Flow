@@ -1,4 +1,3 @@
-import { Icon } from '../../components/Icon'
 import { PlayerIcon } from './playerIcons'
 import { Slider } from '../../components/Slider'
 import { useSettings } from '../../lib/store/settings'
@@ -21,13 +20,13 @@ export function DelayPage({ controller }: { controller: PlayerController }) {
     <>
       <div className={s.stepper}>
         <button className={s.step} aria-label="Show Subtitles Earlier" title="Show Subtitles Earlier" onClick={() => nudge(-delayRange.step)} onMouseDown={keepFocus} disabled={delay <= delayRange.min}>
-          <PlayerIcon name="minus" size={18} strokeWidth={2.4} />
+          <PlayerIcon name="minus" size={18} />
         </button>
         <output className={s.big} aria-live="polite">
           {delayLabel(delay)}
         </output>
         <button className={s.step} aria-label="Show Subtitles Later" title="Show Subtitles Later" onClick={() => nudge(delayRange.step)} onMouseDown={keepFocus} disabled={delay >= delayRange.max}>
-          <Icon name="plus" size={18} strokeWidth={2.4} />
+          <PlayerIcon name="plus" size={18} />
         </button>
       </div>
       <div className={s.slide}>

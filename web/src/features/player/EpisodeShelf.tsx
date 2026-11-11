@@ -1,5 +1,5 @@
 import { Artwork } from '../../components/Artwork'
-import { Icon } from '../../components/Icon'
+import { PlayerIcon } from './playerIcons'
 import type { Episode } from '../../lib/tmdb/types'
 import { keepFocus } from './Controls'
 import type { PlayerController } from './controller'
@@ -26,7 +26,7 @@ export function EpisodeShelf({ controller, season, current, list, onPick, onClos
       <div className={s.shelfHeader}>
         <h2>Season {season}</h2>
         <button className={s.clusterButton} aria-label="Close Episodes" onClick={onClose} onMouseDown={keepFocus}>
-          <Icon name="close" size={18} strokeWidth={2.4} />
+          <PlayerIcon name="close" size={20} />
         </button>
       </div>
       <ol className={s.shelfRow}>

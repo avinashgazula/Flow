@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Icon } from '../../components/Icon'
-import { SkipGlyph } from './Controls'
+import { PlayerIcon, SkipGlyph } from './playerIcons'
 import { usePlayer, type Feedback, type PlayerController } from './controller'
 import { useSettings } from '../../lib/store/settings'
 import { SubtitleLines, plainLines } from './SubtitleText'
@@ -107,7 +106,7 @@ export function FeedbackFlash({ controller }: { controller: PlayerController }) 
     flash.icon === 'back10' || flash.icon === 'forward10' ? (
       <SkipGlyph forward={flash.icon === 'forward10'} size={flash.side ? 30 : 38} seconds={flash.seconds} />
     ) : (
-      <Icon name={flash.icon} size={34} strokeWidth={2} />
+      <PlayerIcon name={flash.icon} size={34} />
     )
   if (flash.side) {
     return (
@@ -151,7 +150,7 @@ export function Notes({ controller }: { controller: PlayerController }) {
     <div className={s.notes} role="status">
       {fast ? (
         <span key="fast" className={s.note} data-fast="">
-          <Icon name="skipForward" size={14} />
+          <PlayerIcon name="skipForward" size={14} />
           <span aria-hidden="true">2×</span>
           <span className="sr-only">Playing at double speed</span>
         </span>

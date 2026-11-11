@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Icon } from '../../components/Icon'
+import { PlayerIcon } from './playerIcons'
 import type { Source } from '../../lib/sources'
 import { keepFocus } from './Controls'
 import type { PlayerController } from './controller'
@@ -113,7 +113,7 @@ export function StruggleNotice({ controller, titleKey, sources, findLower, suppr
   return (
     <aside className={s.noSound} aria-label="Playback is struggling" role="status">
       <h2 className={s.noSoundTitle}>
-        <Icon name="warning" size={18} strokeWidth={2.2} /> Playback Is Struggling
+        <PlayerIcon name="warning" size={18} /> Playback Is Struggling
       </h2>
       <p className={s.noSoundText}>{struggleText(cause, facts)}</p>
       <div className={s.noSoundActions}>

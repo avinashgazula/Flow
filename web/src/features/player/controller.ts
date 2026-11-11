@@ -72,6 +72,10 @@ export interface PlayerState {
   rate: number
   audio: Track[]
   audioId?: string
+  /** The engine can't list or switch this file's audio tracks (see Engine.audio). */
+  audioFixed: boolean
+  /** Counts the engines the player has opened, so what was learned about one stream (X-Ray couldn't read its picture) isn't kept for the next. */
+  engineSeq: number
   /** The file plays in the browser's own player because its host blocks web pages: Marquee can't see
    *  or pick its audio. */
   blocked: boolean
@@ -155,6 +159,8 @@ export class PlayerController {
     volume: 1,
     rate: 1,
     audio: [],
+    audioFixed: false,
+    engineSeq: 0,
     blocked: false,
     subtitles: [],
     subtitleId: null,
@@ -352,7 +358,7 @@ export class PlayerController {
     this.autoSearch = { key: '', timer: 0, ran: false }
     this.subtitleToken++
     this.endReplay()
-    this.set({ audio: [], audioId: undefined, blocked: engine?.fallback === 'blocked', proxyError: engine?.proxyError, subtitles: [], subtitleId: null, subtitleTrack: null, picture: null, chapters: [] })
+    this.set({ engineSeq: this.state.engineSeq + 1, audio: [], audioId: undefined, audioFixed: false, blocked: engine?.fallback === 'blocked', proxyError: engine?.proxyError, subtitles: [], subtitleId: null, subtitleTrack: null, picture: null, chapters: [] })
     if (engine) this.refreshTracks()
     this.set({ boostable: !!engine && !!source && !!this.boost?.supported && canBoost({ engine: engine.kind, blocked: engine.fallback === 'blocked', url: source.url, origin: location.origin }) })
     void this.applyBoost(false)
@@ -395,11 +401,11 @@ export class PlayerController {
   refreshTracks = () => {
     const engine = this.engine
     if (!engine) return
-    const { tracks: audio, selected } = engine.audio()
+    const { tracks: audio, selected, cannotSwitch } = engine.audio()
     const inside = engine.subtitles().map((t) => ({ ...t, id: `in:${t.id}` }))
     const outside = (this.source?.subtitles ?? []).map((s, i): Track => ({ id: `ext:${i}`, label: s.label, language: s.language }))
     const downloaded = [...this.online.values()].map((o) => o.info)
-    this.set({ audio, audioId: selected, subtitles: [...inside, ...outside, ...downloaded] })
+    this.set({ audio, audioId: selected, audioFixed: !!cannotSwitch, subtitles: [...inside, ...outside, ...downloaded] })
     this.applyPreferences()
   }
 
@@ -589,6 +595,15 @@ export class PlayerController {
   onSleepEnd(listener: () => void) {
     this.sleepEndListeners.add(listener)
     return () => void this.sleepEndListeners.delete(listener)
+  }
+
+  /** Set by the screen: plays this source again from here, through the viewer's stream proxy (see `playThroughProxy`). */
+  restartThroughProxy?: () => void
+  /** Whether "Play Through Your Stream Proxy" would help X-Ray: a proxy is set, and the picture is the browser's own player
+   *  reading the host directly, which can't be read from the page without it. */
+  get canReadThroughProxy(): boolean {
+    const e = this.engine
+    return !!e && e.kind === 'native' && !e.viaProxy && !e.fallback && !!this.restartThroughProxy
   }
 
   // MARK: What did they say?

@@ -15,7 +15,7 @@ import { SourcePicker } from '../sources/SourcePicker'
 import { ConnectingView, ErrorView } from './ConnectingView'
 import { Controls } from './Controls'
 import { PlayerController, usePlayer } from './controller'
-import { attachSource, warmEngines, type Engine } from './engine'
+import { attachSource, playThroughProxy, warmEngines, type Engine } from './engine'
 import { mediaErrorMessage, PlaybackError } from './errors'
 import { episodeLine } from './format'
 import { NoSoundNotice } from './NoSound'
@@ -37,6 +37,7 @@ import { useServerReport } from './useServerReport'
 import { useTraktScrobble } from './useTraktScrobble'
 import { XRay } from './xray/XRay'
 import { useXRayOnPause } from './xray/useXRayOnPause'
+import { closeAction, previousPath } from '../../lib/playerTrail'
 import s from './Player.module.css'
 
 /** How long X is held before it plays at 2× instead of being a tap for X-Ray. */
@@ -143,6 +144,8 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   const [connectingShown, setConnectingShown] = useState(true)
   // The file is playing through the browser's own player because its host blocks web pages.
   const [blocked, setBlocked] = useState(false)
+  // The Matroska engine is playing: if the sound still isn't decoded, say so (NoSoundNotice) instead of playing silently.
+  const [remuxing, setRemuxing] = useState(false)
   /** The file's audio was being converted for this browser and that failed: the picture plays without sound. */
   const [convertFailed, setConvertFailed] = useState(false)
   /** The No Sound notice is on screen, so the struggling notice waits. */
@@ -246,7 +249,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   const close = () => {
     save()
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
-    if (router.history.canGoBack()) router.history.back()
+    if (closeAction({ canGoBack: router.history.canGoBack(), previous: previousPath() }) === 'back') router.history.back()
     else void navigate({ to: '/title/$type/$id', params: { type, id }, replace: true })
   }
 
@@ -255,6 +258,18 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     return controller.onSleepEnd(close)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // X-Ray's "Play Through Your Stream Proxy": the same source again from here, with the proxy adding the headers that let the page read the picture.
+  useEffect(() => {
+    controller.restartThroughProxy = () => {
+      const cur = latest.current.source
+      if (!cur) return
+      playThroughProxy(cur.url)
+      start(cur, controller.currentTime())
+    }
+    return () => void (controller.restartThroughProxy = undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controller])
 
   const tryAnother = () => {
     const { sources: list, source: cur } = latest.current
@@ -467,6 +482,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
         engine = e
         controller.setEngine(e, source)
         setBlocked(e.fallback === 'blocked')
+        setRemuxing(e.kind === 'remux')
         // The chapters the server lists (Jellyfin) or the file holds: the Chapters page and the scrubber's ticks show them, and
         // ones named "Opening" or "Ending" stand in when no server or service knows this episode. A file can keep its list at
         // the far end, which arrives a moment after the engine is up.
@@ -808,7 +824,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
             episodes={epRef ? { season: epRef.season, current: epRef.episode, list: seasonEpisodes, onPick: playEpisode, fallbackStill: item?.backdrop } : undefined}
           />
           <XRay controller={controller} type={type} id={id} season={season} episode={episode} />
-          {(blocked || convertFailed) && (
+          {(blocked || convertFailed || remuxing) && (
             <NoSoundNotice key={`${source?.id}#${attempt}`} controller={controller} source={source} conversionFailed={convertFailed} onSilent={() => lastSources.forget(key)} onTryAnother={tryWithSound} onShowing={setNoSoundUp} />
           )}
           <StruggleNotice

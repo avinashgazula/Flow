@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Artwork } from '../../components/Artwork'
-import { Icon } from '../../components/Icon'
+import { PlayerIcon } from './playerIcons'
 import { imageURL } from '../../lib/tmdb/images'
 import { keepFocus } from './Controls'
 import { clock } from './format'
@@ -71,10 +71,10 @@ export function ConnectingView({ backdrop, logo, title, line, print, sourceKey, 
           {resumeAt !== null ? (
             <div className={s.resume}>
               <button className="btn btn-primary" onClick={onResume} autoFocus>
-                <Icon name="play" size={18} /> Resume from {clock(resumeAt)}
+                <PlayerIcon name="play" size={18} /> Resume from {clock(resumeAt)}
               </button>
               <button className="btn btn-secondary" onClick={onStartOver} onMouseDown={keepFocus}>
-                <Icon name="history" size={18} /> Start Over
+                <PlayerIcon name="history" size={18} /> Start Over
               </button>
             </div>
           ) : (
@@ -92,7 +92,7 @@ export function ConnectingView({ backdrop, logo, title, line, print, sourceKey, 
         </div>
       </div>
       <button className={`btn btn-quiet btn-circle ${s.connectingClose}`} onClick={onClose} aria-label="Close Player">
-        <Icon name="close" size={20} strokeWidth={2.4} />
+        <PlayerIcon name="close" size={22} />
       </button>
     </div>
   )
@@ -102,7 +102,7 @@ export function ErrorView({ message, detail, canTryAnother, onTryAnother, onRetr
   return (
     <div className={s.error} role="alertdialog" aria-labelledby="player-error-title" aria-describedby="player-error-message">
       <span className={s.errorIcon}>
-        <Icon name="alert" size={36} strokeWidth={2.2} />
+        <PlayerIcon name="alert" size={36} />
       </span>
       <h2 id="player-error-title" className={s.errorTitle}>
         Couldn’t Play

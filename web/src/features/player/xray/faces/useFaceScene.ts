@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CastMember } from '../../../../lib/tmdb/types'
-import type { PlayerController } from '../../controller'
+import { usePlayer, type PlayerController } from '../../controller'
 import { facesIn, load, printOfPhoto } from './client'
 import { grabFrame } from './frame'
 import { matchFaces, type CastPrint } from './match'
@@ -31,6 +31,7 @@ export function useFaceScene(controller: PlayerController, cast: CastMember[], e
   const [matched, setMatched] = useState<CastMember[]>([])
   const castRef = useRef(cast)
   castRef.current = cast
+  const engineSeq = usePlayer(controller, (st) => st.engineSeq)
   const castKey = cast.map((m) => `${m.id}:${m.profile ?? ''}`).join(',')
 
   useEffect(() => {
@@ -120,7 +121,7 @@ export function useFaceScene(controller: PlayerController, cast: CastMember[], e
       video.removeEventListener('seeked', soon)
       video.removeEventListener('pause', soon)
     }
-  }, [controller, enabled, castKey])
+  }, [controller, enabled, castKey, engineSeq])
 
   return { state, matched }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Icon } from '../../components/Icon'
+import { PlayerIcon } from './playerIcons'
 import { useSettings } from '../../lib/store/settings'
 import { usePlayer, type PlayerController } from './controller'
 import { keepFocus } from './Controls'
@@ -137,7 +137,7 @@ export function Skip({ controller, hasNext, onNext, hidesCredits }: { controller
           onMouseDown={keepFocus}
         >
           {skipTitle[shown.segment.kind]}
-          <Icon name="skipForward" size={16} />
+          <PlayerIcon name="skipForward" size={16} />
         </button>
       )}
     </div>

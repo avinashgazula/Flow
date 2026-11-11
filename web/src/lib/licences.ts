@@ -34,6 +34,7 @@ export const libraries: Licence[] = [
   { package: '@fontsource/ibm-plex-serif', name: 'IBM Plex Serif (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Reading text' },
   { package: 'onnxruntime-web', name: 'ONNX Runtime Web', version: '1.31.1', licence: 'MIT', url: 'https://github.com/microsoft/onnxruntime', use: 'Running the face models in X-Ray, as WebAssembly' },
   { package: 'simple-icons', name: 'Simple Icons', version: '16.37.0', licence: 'CC0-1.0', url: 'https://github.com/simple-icons/simple-icons', use: 'The marks beside each rating on a title page' },
+  { package: 'lucide-react', name: 'Lucide', version: '1.72.0', licence: 'ISC', url: 'https://github.com/lucide-icons/lucide', use: 'The icons in the player' },
   { package: 'jassub', name: 'JASSUB', version: '2.5.18', licence: 'LGPL-2.1-or-later AND (FTL OR GPL-2.0-or-later) AND MIT AND MIT-Modern-Variant AND ISC AND NTP AND Zlib AND BSL-1.0', url: 'https://github.com/ThaUnknown/jassub', use: 'Drawing ASS subtitles: libass and its libraries, as WebAssembly' },
 ]
 

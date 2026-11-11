@@ -10,6 +10,7 @@ import { listenForInstall } from './lib/pwa/install'
 import { registerServiceWorker } from './lib/pwa/update'
 import { hasCatalog, settingsStore } from './lib/store/settings'
 import { watchTheme } from './lib/theme'
+import { trailMoved } from './lib/playerTrail'
 import { libraryStore } from './lib/store/library'
 import { arriveFromHashLink } from './lib/hashLink'
 import { arriveFromTrakt } from './lib/trakt/arrive'
@@ -36,6 +37,11 @@ export const router = createRouter({
   // A page change cross-fades through the View Transitions API where there is one (global.css has the timing); a title's
   // poster still zooms into its page. Browsers without it just swap.
   defaultViewTransition: true,
+})
+
+// What the player's Close needs to know: the page before this one (lib/playerTrail.ts).
+router.subscribe('onResolved', (e) => {
+  if (e.pathChanged) trailMoved(e.fromLocation?.pathname, e.toLocation.pathname)
 })
 
 declare module '@tanstack/react-router' {

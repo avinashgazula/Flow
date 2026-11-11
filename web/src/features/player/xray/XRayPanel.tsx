@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Artwork } from '../../../components/Artwork'
-import { Icon } from '../../../components/Icon'
 import { PlayerIcon } from '../playerIcons'
 import { q } from '../../../lib/queries'
 import { useSettings } from '../../../lib/store/settings'
@@ -62,6 +61,7 @@ export function XRayPanel({ controller, type, id, season, episode }: XRayProps) 
   const named = useScene(controller, `${type}:${id}:${season ?? ''}:${episode ?? ''}`, cast, subtitleId)
   // Who the faces on screen are comes first; the dialogue's guess is what is left when no face was matched.
   const recognise = useSettings((x) => x.recogniseFaces !== false)
+  const proxySet = useSettings((x) => x.streamProxy.trim() !== '')
   const faces = useFaceScene(controller, cast, recognise)
   const view = sceneView({ state: faces.state, fromFaces: faces.matched.length, fromDialogue: named.scene.length, reads: named.reads, loaded: !loading })
   const scene = view.basis === 'faces' ? faces.matched : named.scene
@@ -126,7 +126,7 @@ export function XRayPanel({ controller, type, id, season, episode }: XRayProps) 
         <>
           <div className={s.head}>
             <button className={s.back} onClick={() => setPerson(null)} onMouseDown={keepFocus}>
-              <Icon name="chevronLeft" size={20} strokeWidth={2.2} />
+              <PlayerIcon name="chevronLeft" size={20} />
               X-Ray
             </button>
             <CloseButton onClick={close} />
@@ -147,7 +147,7 @@ export function XRayPanel({ controller, type, id, season, episode }: XRayProps) 
             ))}
           </div>
           <div className={s.body} id="xray-body" role="tabpanel" aria-labelledby={`xray-tab-${tab}`}>
-            {tab === 'scene' && <InScene scene={scene} view={view} onOpen={openPerson} />}
+            {tab === 'scene' && <InScene scene={scene} view={view} onOpen={openPerson} onProxy={faces.state.status === 'unavailable' && faces.state.reason === 'unreadable' && proxySet && controller.canReadThroughProxy ? () => controller.restartThroughProxy?.() : undefined} />}
             {tab === 'cast' && <Cast cast={cast} crew={crew} loading={loading} failed={detail.isError && cast.length === 0} onOpen={openPerson} />}
             {tab === 'scenes' && <Scenes controller={controller} />}
           </div>
@@ -160,7 +160,7 @@ export function XRayPanel({ controller, type, id, season, episode }: XRayProps) 
 function CloseButton({ onClick }: { onClick: () => void }) {
   return (
     <button className={s.iconButton} aria-label="Close X-Ray" title="Close (Esc)" onClick={onClick} onMouseDown={keepFocus}>
-      <Icon name="close" size={18} strokeWidth={2.2} />
+      <PlayerIcon name="close" size={20} />
     </button>
   )
 }
@@ -211,7 +211,7 @@ function useScene(controller: PlayerController, key: string, cast: CastMember[],
   return { scene, reads }
 }
 
-function InScene({ scene, view, onOpen }: { scene: CastMember[]; view: SceneView; onOpen: (m: CastMember) => void }) {
+function InScene({ scene, view, onOpen, onProxy }: { scene: CastMember[]; view: SceneView; onOpen: (m: CastMember) => void; onProxy?: () => void }) {
   return (
     <>
       {scene.map((m) => (
@@ -220,6 +220,11 @@ function InScene({ scene, view, onOpen }: { scene: CastMember[]; view: SceneView
       <p className={s.note} data-after={scene.length > 0 ? '' : undefined} role={view.busy ? 'status' : undefined}>
         {view.note}
       </p>
+      {onProxy && (
+        <button className="btn btn-secondary btn-compact" onClick={onProxy} onMouseDown={keepFocus}>
+          Play Through Your Stream Proxy
+        </button>
+      )}
     </>
   )
 }
@@ -261,7 +266,7 @@ function Scenes({ controller }: { controller: PlayerController }) {
         <button key={`${c.start}:${i}`} className={s.scene} aria-current={playing === i ? 'true' : undefined} onClick={() => controller.seekTo(c.start)} onMouseDown={keepFocus}>
           <span className={s.sceneTime}>{clock(c.start)}</span>
           <span className={s.sceneName}>{chapterTitle(c, i)}</span>
-          {playing === i && <Icon name="check" size={18} strokeWidth={2.4} className={s.check} />}
+          {playing === i && <PlayerIcon name="check" size={18} className={s.check} />}
         </button>
       ))}
     </>
@@ -357,7 +362,7 @@ function Details({ person, full, onMore }: { person: Person; full: boolean; onMo
       <div className={s.foot}>
         <Link to="/person/$id" params={{ id: person.id }} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-compact">
           Open Full Page
-          <PlayerIcon name="external" size={16} strokeWidth={2.2} />
+          <PlayerIcon name="external" size={16} />
         </Link>
       </div>
     </>

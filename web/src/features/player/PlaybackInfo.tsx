@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Icon } from '../../components/Icon'
+import { PlayerIcon } from './playerIcons'
 import { browserCapabilities, type Source } from '../../lib/sources'
 import { isHDR } from '../../lib/sources/smooth'
 import { keepFocus } from './Controls'
@@ -24,7 +24,7 @@ function decodingWords(source: Source | null): string {
 }
 
 /** The rows of the card, read from the element and the engine. */
-export function readInfo(controller: PlayerController, source: Source | null, audio: { label?: string; converted?: boolean; note?: string } | undefined): Row[] {
+export function readInfo(controller: PlayerController, source: Source | null, audio: { label?: string; converted?: boolean; note?: string; format?: string; channels?: number } | undefined): Row[] {
   const video = controller.video
   const engine = controller.engine
   const quality = video?.getVideoPlaybackQuality?.()
@@ -33,7 +33,9 @@ export function readInfo(controller: PlayerController, source: Source | null, au
   const codec = source?.videoCodec ?? codecName(info?.codec)
   const range = info?.range && info.range !== 'SDR' ? info.range : source?.hdr?.length ? source.hdr.join(' · ') : undefined
   const frames = quality ? `${quality.droppedVideoFrames.toLocaleString()} / ${quality.totalVideoFrames.toLocaleString()}${quality.totalVideoFrames > 0 ? ` (${((quality.droppedVideoFrames / quality.totalVideoFrames) * 100).toFixed(1)}%)` : ''}` : dash
-  const audioCodec = source?.audio?.[0] ?? audio?.label
+  // The track playing says what it is (format and speakers); the source's own list is what the add-on claims.
+  const layout = audio?.channels === 6 ? ' 5.1' : audio?.channels === 8 ? ' 7.1' : audio?.channels === 2 ? ' Stereo' : audio?.channels === 1 ? ' Mono' : ''
+  const audioCodec = audio?.format ? `${audio.format}${layout}` : (source?.audio?.[0] ?? audio?.label)
   const engineName = engine ? (engine.fallback === 'blocked' ? 'Browser’s own player, host blocks web pages' : engineNames[engine.kind]) : dash
   return [
     ['Resolution', video && video.videoWidth > 0 ? `${video.videoWidth}×${video.videoHeight}` : dash],
@@ -70,7 +72,7 @@ export function PlaybackInfo({ controller, source }: { controller: PlayerControl
       <header className={s.infoHeader}>
         <h2 className={s.infoTitle}>Playback Info</h2>
         <button className={s.infoClose} aria-label="Close Playback Info" title="Close (I)" onClick={controller.toggleInfo} onMouseDown={keepFocus}>
-          <Icon name="close" size={14} strokeWidth={2.6} />
+          <PlayerIcon name="close" size={16} />
         </button>
       </header>
       <dl className={s.infoRows}>

@@ -1,4 +1,4 @@
-import { Icon } from '../../components/Icon'
+import { PlayerIcon } from './playerIcons'
 import { usePlayer, volumeSettable, type PlayerController } from './controller'
 import s from './Controls.module.css'
 
@@ -19,7 +19,7 @@ export function VolumeControl({ controller, hover }: { controller: PlayerControl
         onClick={controller.toggleMute}
         onMouseDown={(e) => e.preventDefault()}
       >
-        <Icon name={level === 0 ? 'mute' : 'volume'} size={22} strokeWidth={2} />
+        <PlayerIcon name={level === 0 ? 'mute' : 'volume'} />
       </button>
       {volumeSettable && (
         <input

@@ -1,24 +1,103 @@
-import { Icon, type IconName } from '../../components/Icon'
+import {
+  AlertTriangle,
+  AudioLines,
+  Cast,
+  Captions,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  ExternalLink,
+  Gauge,
+  History,
+  Info,
+  ListMusic,
+  ListVideo,
+  Layers,
+  Maximize,
+  Minimize,
+  Minus,
+  Moon,
+  PictureInPicture2,
+  Pause,
+  Play,
+  Plus,
+  RotateCcw,
+  RotateCw,
+  ScanFace,
+  Search,
+  Settings,
+  SkipForward,
+  Type,
+  Volume2,
+  VolumeX,
+  X,
+  Airplay,
+  type LucideIcon,
+  type LucideProps,
+} from 'lucide-react'
+import type { ReactNode } from 'react'
 
-/* The drawings only the player uses, kept out of components/Icon.tsx so a first visit doesn't carry them. */
-const paths = {
-  moon: 'M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z',
-  replay: 'M4 12a8 8 0 1 0 2.4-5.7M4 4v4.8h4.8M10 11h5M10 14.5h3',
-  external: 'M13.5 4.5h6v6M19.5 4.5l-8 8M17 14v5.5H4.5V7H10',
-  minus: 'M5 12h14',
-  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
-  /* A person in a frame with a second frame behind it: who's in the picture, as SF Symbols' person.crop.rectangle.stack. */
-  xray: 'M7.5 4h9M4 7h16v13H4zM12 15.4a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6zM8 20a4 4 0 0 1 8 0',
-} as const
+/* The player's icons are Lucide (ISC), one family at one stroke width, imported by name so only these ship, in the player's
+   chunk. Names keep the site icon set's spelling where the drawing means the same thing. */
+const icons = {
+  close: X,
+  back: ChevronLeft,
+  chevronLeft: ChevronLeft,
+  chevronRight: ChevronRight,
+  check: Check,
+  plus: Plus,
+  minus: Minus,
+  play: Play,
+  pause: Pause,
+  volume: Volume2,
+  mute: VolumeX,
+  fullscreen: Maximize,
+  exitFullscreen: Minimize,
+  pip: PictureInPicture2,
+  cast: Cast,
+  airplay: Airplay,
+  settings: Settings,
+  /** Audio and Subtitles. */
+  subtitles: Captions,
+  /** Episodes. */
+  episodes: ListVideo,
+  xray: ScanFace,
+  external: ExternalLink,
+  search: Search,
+  text: Type,
+  clock: Clock,
+  music: AudioLines,
+  list: ListMusic,
+  stack: Layers,
+  gauge: Gauge,
+  moon: Moon,
+  replay: History,
+  history: History,
+  info: Info,
+  warning: AlertTriangle,
+  alert: AlertTriangle,
+  skipForward: SkipForward,
+} satisfies Record<string, LucideIcon>
 
-export type PlayerIconName = keyof typeof paths
+export type PlayerIconName = keyof typeof icons
 
-/** A site icon or one of the player's own, drawn the same way. */
-export function PlayerIcon({ name, size = 20, strokeWidth = 2 }: { name: IconName | PlayerIconName; size?: number; strokeWidth?: number }) {
-  if (!(name in paths)) return <Icon name={name as IconName} size={size} strokeWidth={strokeWidth} />
+/** The player's stroke width, the same on every icon so the row reads as one set. */
+export const iconStroke = 1.75
+
+export function PlayerIcon({ name, size = 24, strokeWidth = iconStroke, className }: { name: PlayerIconName; size?: number; strokeWidth?: number; className?: string }) {
+  const Glyph = icons[name]
+  return <Glyph size={size} strokeWidth={strokeWidth} className={className} aria-hidden="true" focusable="false" />
+}
+
+/** The go-back and go-forward arrows with the seconds inside (10 unless set). */
+export function SkipGlyph({ forward, size = 24, seconds = 10 }: { forward: boolean; size?: number; seconds?: number }) {
+  const Arrow: (p: LucideProps & { children?: ReactNode }) => ReactNode = forward ? RotateCw : RotateCcw
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <path d={paths[name as PlayerIconName]} />
-    </svg>
+    <Arrow size={size} strokeWidth={iconStroke} aria-hidden="true" focusable="false">
+      <text x="12" y="15.4" textAnchor="middle" fontSize="7.4" fontWeight="700" fill="currentColor" stroke="none" fontFamily="-apple-system, system-ui, sans-serif">
+        {seconds}
+      </text>
+    </Arrow>
   )
 }

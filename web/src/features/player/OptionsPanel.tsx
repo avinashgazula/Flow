@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Icon, type IconName } from '../../components/Icon'
+import { audioPanel, audioSummary, languagesNote } from './audioPanel'
 import { PlayerIcon, type PlayerIconName } from './playerIcons'
 import type { Source } from '../../lib/sources'
 import { useSettings } from '../../lib/store/settings'
@@ -39,7 +39,7 @@ const titles: Record<Page, string> = {
 
 interface Row {
   id: string
-  icon?: IconName | PlayerIconName
+  icon?: PlayerIconName
   title: string
   detail?: string
   value?: string
@@ -93,6 +93,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   const subtitles = usePlayer(controller, (st) => st.subtitles)
   const subtitleId = usePlayer(controller, (st) => st.subtitleId)
   const blocked = usePlayer(controller, (st) => st.blocked)
+  const audioFixed = usePlayer(controller, (st) => st.audioFixed)
   const proxyError = usePlayer(controller, (st) => st.proxyError)
   const rate = usePlayer(controller, (st) => st.rate)
   const fit = usePlayer(controller, (st) => st.fit)
@@ -120,12 +121,12 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   const currentAudio = audio.find((t) => t.id === playingAudio)
   const currentSubtitle = subtitles.find((t) => t.id === subtitleId)
 
-  // What the source says it carries ("English · Hindi"), for when the engine can't list tracks itself.
-  const listed = source?.languages?.length ? source.languages.join(' · ') : undefined
-  /** The audio choices, or an honest account of why there aren't any: the browser is picking the
-   *  track itself (a host that blocks web pages), or the stream carries one track and says so. */
+  /** The audio choices, or an honest account of why there aren't any: the browser is picking the track itself (a host
+   *  that blocks web pages, or a browser with no way to switch tracks in a plain file), or the stream carries one. */
+  const panel = audioPanel({ tracks: audio.length, blocked, cannotSwitch: audioFixed, languages: source?.languages })
+  const languagesLine = panel.kind !== 'tracks' && panel.languages ? <span className={s.groupInfo}>{languagesNote(panel.languages)}</span> : null
   const audioGroup = (after: () => void, title?: string): Group => {
-    if (audio.length > 0) {
+    if (panel.kind === 'tracks') {
       return {
         title,
         rows: audio.map((t) => ({
@@ -141,25 +142,34 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
         })),
       }
     }
-    if (blocked) {
+    if (panel.kind === 'fixed') {
       return {
         title,
-        rows: [{ id: 'browser', title: 'Chosen by the Browser', detail: listed && `The source lists ${listed}`, checked: true, disabled: true, plain: true, action: noop }],
-        footer: proxy ? (
-          <>
-            Your stream proxy couldn’t open this file, so the browser plays it and picks the audio itself.
-            {proxyError && <span className={s.groupReason}>{proxyError}</span>}
-          </>
-        ) : (
-          <>
-            A stream proxy, added in <Link to="/settings" hash="playback">Settings → Playback</Link>, lets Marquee offer every audio track.
-          </>
-        ),
+        rows: [{ id: 'browser', title: 'Chosen by the Browser', detail: 'This browser can’t switch tracks in this file', plain: true, disabled: true, action: noop }],
+        footer:
+          panel.why === 'blocked' ? (
+            <>
+              {proxy ? <>Your stream proxy couldn’t open this file, so the browser plays it and picks the audio itself.</> : <>This file’s host doesn’t let web pages read it, so the browser picks the audio itself.</>}
+              {proxyError && <span className={s.groupReason}>{proxyError}</span>}
+              {!proxy && (
+                <span className={s.groupReason}>
+                  A stream proxy, added in <Link to="/settings" hash="playback">Settings → Playback</Link>, lets Marquee offer every audio track.
+                </span>
+              )}
+              {languagesLine}
+            </>
+          ) : (
+            <>
+              It plays the file’s first track. For another, pick another source{apps.length > 0 ? ' or open it in another player (Options → Open in…)' : ''}.
+              {languagesLine}
+            </>
+          ),
       }
     }
     return {
       title,
-      rows: [listed ? { id: 'listed', title: listed, detail: 'Listed by the source', checked: true, disabled: true, plain: true, action: noop } : { id: 'default', title: 'Default', checked: true, disabled: true, plain: true, action: noop }],
+      rows: [{ id: 'default', title: 'Default', checked: true, disabled: true, plain: true, action: noop }],
+      footer: languagesLine,
     }
   }
   const subtitleRows = (after: () => void): Row[] => [
@@ -196,7 +206,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
   switch (page) {
     case 'root': {
       const rows: Row[] = []
-      rows.push({ id: 'audio', icon: 'music', title: `Audio · ${currentAudio?.label ?? audioGroup(noop).rows[0]!.title}`, chevron: true, action: () => setPage('audio') })
+      rows.push({ id: 'audio', icon: 'music', title: `Audio · ${currentAudio?.label ?? audioSummary(panel)}`, chevron: true, action: () => setPage('audio') })
       rows.push({ id: 'subtitles', icon: 'subtitles', title: currentSubtitle ? `Subtitles · ${currentSubtitle.label}` : 'Subtitles Off', chevron: true, action: () => setPage('subtitles') })
       rows.push(styleRow)
       rows.push(delayRow)
@@ -315,7 +325,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
     <div ref={clear} className={`${s.panel} ${s.interactive}`} data-page={page} role="dialog" aria-label={titles[page]} onPointerEnter={() => (controller.hovering = true)} onPointerLeave={() => (controller.hovering = false)}>
       {showHeader && (
         <button className={s.panelHeader} onClick={back} onMouseDown={keepFocus} aria-label={`Back to ${titles[page === 'search' ? searchFrom : home]}`}>
-          <Icon name="chevronLeft" size={16} strokeWidth={2.6} />
+          <PlayerIcon name="chevronLeft" size={18} />
           <span>{titles[page]}</span>
         </button>
       )}
@@ -331,7 +341,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
               <button key={row.id} className={s.row} data-plain={row.plain ? '' : undefined} onClick={row.action} onMouseDown={keepFocus} disabled={row.disabled} role={row.checked !== undefined ? 'menuitemradio' : 'menuitem'} aria-checked={row.checked}>
                 {row.icon && (
                   <span className={s.rowIcon}>
-                    <PlayerIcon name={row.icon} size={18} strokeWidth={2} />
+                    <PlayerIcon name={row.icon} size={18} />
                   </span>
                 )}
                 <span className={s.rowText}>
@@ -343,12 +353,12 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
                 {row.value && <span className={s.rowValue}>{row.value}</span>}
                 {row.checked && (
                   <span className={s.check}>
-                    <Icon name="check" size={16} strokeWidth={2.8} />
+                    <PlayerIcon name="check" size={18} />
                   </span>
                 )}
                 {row.chevron && (
                   <span className={s.chevron}>
-                    <Icon name="chevronRight" size={14} strokeWidth={2.6} />
+                    <PlayerIcon name="chevronRight" size={16} />
                   </span>
                 )}
               </button>
