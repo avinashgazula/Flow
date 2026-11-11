@@ -15,10 +15,10 @@ struct ShelvesSettingsView: View {
             Section {
                 ForEach($model.settings.shelves) { $shelf in
                     HStack {
-                        Image(systemName: icon(shelf.source)).foregroundStyle(.secondary).frame(width: 24)
+                        Image(systemName: icon(shelf.source)).foregroundStyle(Theme.Palette.muted).frame(width: 24)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(shelf.title)
-                            Text(subtitle(shelf.source)).font(.caption).foregroundStyle(.secondary)
+                            Text(subtitle(shelf.source)).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
                         }
                         Spacer()
                         Toggle("", isOn: $shelf.enabled).labelsHidden()
@@ -225,7 +225,7 @@ private struct DiscoverPreview: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(items.prefix(12)) { item in
-                    RemoteImage(url: item.posterURL, fallbackURL: item.tmdbPosterURL).frame(width: 60, height: 90).clipShape(RoundedRectangle(cornerRadius: 6))
+                    RemoteImage(url: item.posterURL, fallbackURL: item.tmdbPosterURL).frame(width: 60, height: 90).ruleFrame(width: Theme.Rule.thin)
                 }
             }
         }
@@ -260,7 +260,7 @@ struct ListShelfPicker: View {
                 }
                 if model.mdblist != nil {
                     Section(film: "MDBList") {
-                        if mdbLists.isEmpty { Text("No lists found").foregroundStyle(.secondary) }
+                        if mdbLists.isEmpty { Text("No lists found").foregroundStyle(Theme.Palette.muted) }
                         ForEach(mdbLists) { list in
                             Button("\(list.name) (\(list.itemCount))") { add(list.name, .mdblist(id: list.id)) }
                         }
@@ -274,7 +274,7 @@ struct ListShelfPicker: View {
                     }
                 }
                 if model.trakt == nil && model.mdblist == nil && model.mediaServers.isEmpty {
-                    Text("Connect Trakt, add an MDBList key or a media server to add list shelves.").foregroundStyle(.secondary)
+                    Text("Connect Trakt, add an MDBList key or a media server to add list shelves.").foregroundStyle(Theme.Palette.muted)
                 }
             }
             .flowPageTitle("Add List Shelf")

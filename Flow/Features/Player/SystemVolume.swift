@@ -67,17 +67,17 @@ struct VolumePill: View {
                 .contentTransition(.symbolEffect(.replace))
             // Fixed width, so the digits changing length doesn't nudge the slider under the finger.
             Text("\(Int((volume.level * 100).rounded()))%")
-                .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                .font(Theme.Typeface.time)
                 .foregroundStyle(Theme.Palette.textSecondary)
                 .frame(width: 40, alignment: .trailing)
             Slider(value: Binding(get: { volume.level }, set: { volume.set($0) }), in: 0...1, onEditingChanged: onEditingChanged)
-                .tint(.white)
+                .tint(Theme.Palette.red)
                 .frame(width: 140)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(Theme.Palette.fg)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .flowGlass(Capsule(), tint: Theme.Palette.overPicture)
+        .playerPanel()
         .background(VolumeViewHost(volume: volume).frame(width: 0, height: 0))
         .accessibilityElement(children: .contain)
     }

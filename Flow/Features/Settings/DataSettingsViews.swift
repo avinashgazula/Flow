@@ -72,7 +72,7 @@ struct DataStorageView: View {
                 Button { confirmClear = .shuffle } label: { Label("Clear Shuffle History", systemImage: "shuffle") }
                 Button(role: .destructive) { confirmClear = .progress } label: {
                     LabeledContent {
-                        Text(progressCount == 1 ? "1 item" : "\(progressCount) items").foregroundStyle(.red)
+                        Text(progressCount == 1 ? "1 item" : "\(progressCount) items").foregroundStyle(Theme.Palette.red)
                     } label: {
                         Label("Reset Playback Progress", systemImage: "gobackward")
                     }
@@ -222,7 +222,7 @@ struct DataStorageView: View {
             Image(systemName: symbol).foregroundStyle(color)
             Text(title).foregroundStyle(color)
             Spacer()
-            Text(detail).font(.caption).foregroundStyle(.secondary)
+            Text(detail).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
         }
         .accessibilityElement(children: .combine)
     }
@@ -285,7 +285,7 @@ struct ShareSetupView: View {
                         .frame(maxWidth: .infinity)
                 }
             } else {
-                Section { Text("Your setup is too large for a QR code — share the file or link instead.").foregroundStyle(.secondary) }
+                Section { Text("Your setup is too large for a QR code — share the file or link instead.").foregroundStyle(Theme.Palette.muted) }
             }
             #if !os(tvOS)
             Section {
@@ -332,7 +332,7 @@ struct ImportSetupView: View {
             } footer: { FilmFooter {
                 Text("Paste a link from Share Setup, scan its QR code with your camera, or pick an exported file.")
             } }
-            if let error { Section { Text(error).foregroundStyle(.red) } }
+            if let error { Section { Text(error).foregroundStyle(Theme.Palette.red) } }
             if let bundle {
                 Section(film: "This setup contains") {
                     LabeledContent("Shelves", value: "\(bundle.settings.shelves.count)")

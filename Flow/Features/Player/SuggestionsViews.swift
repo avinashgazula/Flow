@@ -11,17 +11,16 @@ struct SuggestionsCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 Text("Because You Watched \(session.request.item.title)")
-                    .font(.system(.subheadline, weight: .bold))
+                    .font(Theme.Typeface.heading)
+                    .foregroundStyle(Theme.Palette.fg)
                     .lineLimit(2)
                 Spacer(minLength: 12)
                 Button { session.dismissSuggestions() } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 11, weight: .bold))
                         .frame(width: 28, height: 28)
-                        .background(Theme.Palette.control, in: Circle())
-                        .contentShape(Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PlayerButtonStyle())
                 .accessibilityLabel("Keep watching the credits")
             }
             HStack(spacing: 10) {
@@ -31,7 +30,7 @@ struct SuggestionsCard: View {
             }
         }
         .padding(14)
-        .flowGlass(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .playerPanel()
     }
 }
 
@@ -51,12 +50,14 @@ struct SuggestionsEndScreen: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Because You Watched \(session.request.item.title)")
                         .font(Theme.Typeface.display)
-                        .displayTracking()
+                        .textCase(.uppercase)
+                        .tracking(-0.03 * 36)
+                        .foregroundStyle(Theme.Palette.fg)
                         .lineLimit(2)
                         .minimumScaleFactor(0.6)
                     // While it's fresh: a score for the film just watched.
                     HStack(spacing: Theme.Space.s) {
-                        Text("How was it?").font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.textSecondary)
+                        SectionLabel("How was it?")
                         RatingStars(item: session.request.item, size: 20)
                     }
                     .padding(.top, 4)
@@ -128,7 +129,7 @@ struct RatingStars: View {
                 } label: {
                     Image(systemName: star <= stars ? "star.fill" : "star")
                         .font(.system(size: size * Theme.scale, weight: .semibold))
-                        .foregroundStyle(star <= stars ? Theme.Palette.gold : .white.opacity(0.55))
+                        .foregroundStyle(star <= stars ? Theme.Palette.red : Theme.Palette.faint)
                         .contentTransition(.symbolEffect(.replace))
                         .frame(minWidth: 36 * Theme.scale, minHeight: 36 * Theme.scale)
                         .contentShape(Rectangle())

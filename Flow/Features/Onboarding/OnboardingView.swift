@@ -1,7 +1,8 @@
 import SwiftUI
 import FlowKit
 
-/// First run. A slow-drifting wall of posters, and a single glass card that asks for one thing.
+/// First run, as the website's Welcome: the wordmark cell, a giant MARQUEE, an italic serif line with its key phrase
+/// underlined in red dots, a 2px rule, then the TMDB key field and the other ways in as ruled rows.
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
     @State private var key = ""
@@ -9,121 +10,149 @@ struct OnboardingView: View {
     @State private var error: String?
     @State private var importing = false
     @State private var joiningSync = false
-    @State private var appeared = false
 
-    private static var bandHeight: CGFloat { Platform.isTV ? 300 : Platform.isMac ? 96 : 130 }
-    /// The Mac's window can be as short as 768 pt: tighter gaps keep the three ways in on screen without scrolling.
-    private static var gap: CGFloat { Platform.isMac ? Theme.Space.l : Theme.Space.xl }
+    /// The giant word's ceiling; it shrinks to fit a phone's width.
+    private static let wordSize: CGFloat = 190
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                // The collage sits in a band above the words, so nothing is set over artwork.
-                PosterWall()
-                    .frame(maxWidth: .infinity, maxHeight: Self.bandHeight, alignment: .top)
-                    .clipped()
-                    .opacity(appeared ? 0.5 : 0)
-                    .mask(LinearGradient(stops: [.init(color: .black, location: 0.5), .init(color: .clear, location: 1)],
-                                         startPoint: .top, endPoint: .bottom))
-                    .frame(maxHeight: .infinity, alignment: .top)
-                ScrollView {
-                    VStack(spacing: Self.gap) {
-                        Spacer(minLength: Self.bandHeight)
-                        VStack(spacing: Theme.Space.s) {
-                            Wordmark(size: 56)
-                                .padding(.horizontal, Theme.Space.xl)
-                                .padding(.vertical, Theme.Space.l)
-                                .background(Theme.Palette.blue)
-                            Text("Everything you watch, beautifully in one place.")
-                                .font(.system(size: 19 * Theme.scale, weight: .medium))
-                                .foregroundStyle(Theme.Palette.textSecondary)
-                                .multilineTextAlignment(.center)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    bar
+                    hero
+                    RuleLine().padding(.horizontal, Theme.Space.gutter)
+                    // Side by side where the window is wide enough (Mac, iPad, Apple TV); stacked on a phone.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .top, spacing: Theme.Space.xl) {
+                            form.frame(minWidth: 340 * Theme.scale, maxWidth: 640 * Theme.scale)
+                            alternatives.frame(minWidth: 300 * Theme.scale, maxWidth: 460 * Theme.scale)
                         }
-                        .opacity(appeared ? 1 : 0)
-                        .offset(y: appeared ? 0 : 12)
-
-                        card
-                            .opacity(appeared ? 1 : 0)
-                            .offset(y: appeared ? 0 : 24)
-
-                        VStack(spacing: Theme.Space.m) {
-                            Button("Explore with Sample Data") { model.setDemoMode(true) }
-                                .buttonStyle(GlassButtonStyle())
-                            #if os(macOS)
-                            // Side by side on the Mac, where the window has the width and not the height.
-                            HStack(spacing: Theme.Space.l) { otherWays }
-                            #else
-                            otherWays
-                            #endif
+                        VStack(alignment: .leading, spacing: Theme.Space.xl) {
+                            form
+                            alternatives
                         }
-                        .opacity(appeared ? 1 : 0)
                     }
-                    .padding(.horizontal, Theme.Space.l)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Theme.Space.gutter)
+                    .padding(.top, Theme.Space.l)
+                    .padding(.bottom, Theme.Space.xl)
                 }
-                .scrollBounceBehavior(.basedOnSize)
             }
-            .background(Theme.Palette.canvas)
+            .scrollBounceBehavior(.basedOnSize)
+            .background(Theme.Palette.bg.ignoresSafeArea())
+            #if !os(macOS)
+            .toolbar(.hidden, for: .navigationBar)
+            #endif
             .flowModal(isPresented: $importing) {
                 NavigationStack { ImportSetupView() }.environment(model)
             }
             .flowModal(isPresented: $joiningSync) {
                 NavigationStack { SyncJoinView(isSheet: true) }.environment(model)
             }
-            .onAppear { withAnimation(.easeOut(duration: 1.1)) { appeared = true } }
+        }
+    }
+
+    /// The top bar: the wordmark on its blue cell, ruled off from the page.
+    private var bar: some View {
+        HStack(spacing: 0) {
+            Wordmark(size: 22)
+                .padding(.horizontal, Theme.Space.l)
+                .frame(minHeight: 56 * Theme.scale)
+                .background(Theme.Palette.blue)
+            Spacer(minLength: 0)
+        }
+        .overlay(alignment: .bottom) { RuleLine() }
+    }
+
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Text("Marquee")
+                .font(.custom(Theme.Face.archivo, size: Self.wordSize))
+                .textCase(.uppercase)
+                .tracking(-0.03 * Self.wordSize)
+                .lineLimit(1)
+                .minimumScaleFactor(0.1)
+                .foregroundStyle(Theme.Palette.fg)
+                .accessibilityAddTraits(.isHeader)
+            Text("Your Jellyfin, Emby and Plex servers, stream add-ons and live TV, in one place. Marquee hosts no content: it \(Text("plays what you already have.").underline(pattern: .dot, color: Theme.Palette.red))")
+                .font(Theme.Typeface.readingItalic)
+                .lineSpacing(5)
+                .foregroundStyle(Theme.Palette.fg)
+                .frame(maxWidth: 560 * Theme.scale, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, Theme.Space.gutter)
+        .padding(.top, Theme.Space.xl)
+        .padding(.bottom, Theme.Space.l)
+    }
+
+    private var form: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            SectionLabel("TMDB API Key")
+            SecureField("API key or read-access token", text: $key)
+                #if os(macOS)
+                // The Mac's own bezel would draw a second box inside the ruled one.
+                .textFieldStyle(.plain)
+                #endif
+                .font(Theme.Typeface.body)
+                .foregroundStyle(Theme.Palette.fg)
+                .padding(.horizontal, Theme.Space.m)
+                .frame(height: 48 * Theme.scale)
+                .background(Theme.Palette.bg)
+                .ruleFrame()
+                .onSubmit { Task { await verify() } }
+            if let error {
+                Text(error)
+                    .font(Theme.Typeface.control)
+                    .foregroundStyle(Theme.Palette.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text("Marquee uses TMDB for posters, cast and details. A free key takes a minute at themoviedb.org → Settings → API. It stays on this device.")
+                .font(Theme.Typeface.caption)
+                .foregroundStyle(Theme.Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Space.s) { actions }
+                VStack(alignment: .leading, spacing: Theme.Space.s) { actions }
+            }
+            .padding(.top, Theme.Space.xs)
         }
     }
 
     @ViewBuilder
-    private var otherWays: some View {
-        Button("I have a setup from another device") { importing = true }
-            .font(Theme.Typeface.body)
-            .foregroundStyle(Theme.Palette.textSecondary)
-            .buttonStyle(.plain)
-        Button("Join Marquee Sync") { joiningSync = true }
-            .font(Theme.Typeface.body)
-            .foregroundStyle(Theme.Palette.textSecondary)
-            .buttonStyle(.plain)
+    private var actions: some View {
+        Button {
+            Task { await verify() }
+        } label: {
+            if checking { ProgressView().tint(Theme.Palette.bg) } else { Text("Continue") }
+        }
+        .buttonStyle(PrimaryButtonStyle())
+        .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty || checking)
+        Button("Explore with Sample Data") { model.setDemoMode(true) }
+            .buttonStyle(GlassButtonStyle())
     }
 
-    private var card: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            Label("Connect TMDB", systemImage: "film.stack")
-                .font(Theme.Typeface.headline)
-            Text("Marquee uses The Movie Database for posters, details and discovery. A free key takes a minute at themoviedb.org → Settings → API.")
-                .font(Theme.Typeface.caption)
-                .foregroundStyle(Theme.Palette.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-            SecureField("API key or read access token", text: $key)
-                #if os(macOS)
-                // The Mac's own bezel would draw a second box inside the card's field.
-                .textFieldStyle(.plain)
-                #endif
-                .padding(.horizontal, Theme.Space.m)
-                .frame(height: 48 * Theme.scale)
-                .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous).strokeBorder(Theme.Palette.hairline))
-                .onSubmit { Task { await verify() } }
-            if let error {
-                Label(error, systemImage: "exclamationmark.circle.fill")
-                    .font(Theme.Typeface.caption)
-                    .foregroundStyle(.red)
-            }
-            Button {
-                Task { await verify() }
-            } label: {
-                HStack {
-                    Spacer()
-                    if checking { ProgressView().tint(Theme.Palette.onStock) } else { Text("Continue") }
-                    Spacer()
-                }
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty || checking)
+    /// The other ways in, as the website's ruled rows.
+    private var alternatives: some View {
+        VStack(spacing: 0) {
+            RuleLine(thin: true)
+            Button { importing = true } label: { alternative("I Have a Setup From Another Device") }
+                .buttonStyle(RowButtonStyle())
+            Button { joiningSync = true } label: { alternative("Join Marquee Sync") }
+                .buttonStyle(RowButtonStyle())
         }
-        .padding(Theme.Space.l)
-        .frame(maxWidth: 460 * Theme.scale)
-        .background(Theme.Palette.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
+    }
+
+    private func alternative(_ title: String) -> some View {
+        HStack(spacing: Theme.Space.s) {
+            Text(title)
+                .font(Theme.Typeface.control)
+                .controlText()
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+            Text("→").font(Theme.Typeface.control)
+        }
+        .frame(minHeight: 32 * Theme.scale)
     }
 
     private func verify() async {
@@ -138,61 +167,5 @@ struct OnboardingView: View {
         } catch {
             withAnimation { self.error = "That key didn't work. Check it and try again." }
         }
-    }
-}
-
-/// Three rows of posters drifting in alternating directions.
-struct PosterWall: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    private let rows: [[String]] = {
-        let posters = DemoCatalog.titles.map(\.poster)
-        return (0..<3).map { r in Array(posters.dropFirst(r * 7) + posters.prefix(r * 7)) }
-    }()
-
-    var body: some View {
-        GeometryReader { proxy in
-            let width = Platform.isTV ? 220.0 : 120.0
-            let spacing = Platform.isTV ? 24.0 : 12.0
-            TimelineView(.animation(minimumInterval: nil, paused: reduceMotion)) { timeline in
-                let t = timeline.date.timeIntervalSinceReferenceDate
-                VStack(spacing: spacing) {
-                    ForEach(rows.indices, id: \.self) { r in
-                        PosterWallRow(posters: rows[r], width: width, spacing: spacing,
-                                      offset: Self.offset(time: t, row: r, count: rows[r].count, width: width, spacing: spacing))
-                    }
-                }
-                .rotationEffect(.degrees(-8))
-                .scaleEffect(1.25)
-                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
-                .offset(y: -30)
-            }
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
-    static func offset(time: Double, row: Int, count: Int, width: Double, spacing: Double) -> Double {
-        let rowWidth = Double(count) * (width + spacing)
-        let raw = (time * (9.0 + Double(row) * 4)).truncatingRemainder(dividingBy: rowWidth)
-        return row.isMultiple(of: 2) ? -raw : raw - rowWidth
-    }
-}
-
-private struct PosterWallRow: View {
-    let posters: [String]
-    let width: Double
-    let spacing: Double
-    let offset: Double
-
-    var body: some View {
-        HStack(spacing: spacing) {
-            ForEach(0..<(posters.count * 2), id: \.self) { i in
-                RemoteImage(url: TMDBImage.url(posters[i % posters.count], size: .posterSmall), maxPixel: 300)
-                    .frame(width: width, height: width * 1.5)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            }
-        }
-        .offset(x: offset)
     }
 }

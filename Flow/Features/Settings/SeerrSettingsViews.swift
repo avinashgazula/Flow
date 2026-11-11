@@ -55,7 +55,7 @@ struct ConnectSeerrView: View {
                     .disabled(address.isEmpty || apiKey.isEmpty || working)
                 }
                 if let error {
-                    Section { Text(error).foregroundStyle(.red) }
+                    Section { Text(error).foregroundStyle(Theme.Palette.red) }
                 }
             }
             .flowPageTitle("Connect Seerr")

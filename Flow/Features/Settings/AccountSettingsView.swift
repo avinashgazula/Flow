@@ -22,14 +22,14 @@ struct AccountSettingsView: View {
                 ForEach(TrackerKind.allCases) { kind in
                     Button { select(kind) } label: {
                         HStack(spacing: 14) {
-                            Image(systemName: icon(kind)).font(.title3).frame(width: 30)
-                                .foregroundStyle(model.settings.account.tracker == kind ? Color.green : .secondary)
+                            Image(systemName: icon(kind)).font(Theme.Typeface.heading).frame(width: 30)
+                                .foregroundStyle(model.settings.account.tracker == kind ? Theme.Palette.blue : Theme.Palette.muted)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(kind.displayName).font(.headline).foregroundStyle(.primary)
-                                Text(kind.blurb).font(.caption).foregroundStyle(.secondary)
+                                Text(kind.displayName).font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.fg)
+                                Text(kind.blurb).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
                             }
                             Spacer()
-                            if model.settings.account.tracker == kind { Image(systemName: "checkmark").foregroundStyle(.green) }
+                            if model.settings.account.tracker == kind { Image(systemName: "checkmark").foregroundStyle(Theme.Palette.blue) }
                         }
                     }
                     .disabled(!isAvailable(kind))
@@ -53,7 +53,7 @@ struct AccountSettingsView: View {
                     }
                 } else if model.traktClientID == nil {
                     NavigationLink(value: Route.settings(.apiKeys)) {
-                        Text("Add a Trakt Client ID in API Keys to sign in.").foregroundStyle(.secondary)
+                        Text("Add a Trakt Client ID in API Keys to sign in.").foregroundStyle(Theme.Palette.muted)
                     }
                 } else {
                     #if os(tvOS)
@@ -75,7 +75,7 @@ struct AccountSettingsView: View {
                 FilmSectionHeader("Trakt")
             } footer: { FilmFooter {
                 if let traktError {
-                    Text(traktError).foregroundStyle(.red)
+                    Text(traktError).foregroundStyle(Theme.Palette.red)
                 } else if Platform.isTV, model.credentials.traktToken == nil, model.traktClientID != nil {
                     // Apple TV signs in with a code. A sign-in made on another device arrives through Flow Sync, or through
                     // iCloud Keychain where the build can use it, without any code at all.
@@ -93,7 +93,7 @@ struct AccountSettingsView: View {
                     }
                 } else if model.simklClientID == nil {
                     NavigationLink(value: Route.settings(.apiKeys)) {
-                        Text("Add a Simkl Client ID in API Keys to sign in.").foregroundStyle(.secondary)
+                        Text("Add a Simkl Client ID in API Keys to sign in.").foregroundStyle(Theme.Palette.muted)
                     }
                 } else {
                     Button("Sign In to Simkl") { signIn = .simkl }
@@ -106,11 +106,11 @@ struct AccountSettingsView: View {
                     Spacer()
                     if model.isSyncing { ProgressView() }
                     else if let last = model.settings.sync.lastTrackerSync {
-                        Text(last, format: .relative(presentation: .numeric, unitsStyle: .wide)).foregroundStyle(.secondary)
+                        Text(last, format: .relative(presentation: .numeric, unitsStyle: .wide)).foregroundStyle(Theme.Palette.muted)
                     }
                 }
                 if let error = model.lastSyncError, !showsSyncIssueInAccountRow {
-                    Text(error).font(.caption).foregroundStyle(.orange)
+                    Text(error).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.warn)
                 }
                 FilmPicker("Sync Interval", selection: $model.settings.account.syncInterval) {
                     ForEach(SyncInterval.allCases) { Text($0.title).tag($0) }
@@ -181,20 +181,20 @@ struct AccountSettingsView: View {
             HStack(spacing: 12) {
                 RemoteImage(url: model.profile?.avatarURL)
                     .overlay { if model.profile?.avatarURL == nil { Image(systemName: "person.fill") } }
-                    .frame(width: 44, height: 44).clipShape(Circle())
+                    .frame(width: 44, height: 44).ruleFrame()
                 VStack(alignment: .leading) {
-                    Text(name ?? service).font(.headline)
-                    Text(issue == nil ? "Connected" : "Sync issues").font(.caption).foregroundStyle(.secondary)
+                    Text(name ?? service).font(Theme.Typeface.headline)
+                    Text(issue == nil ? "Connected" : "Sync issues").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
                 }
                 Spacer()
                 if issue == nil {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.Palette.blue)
                 } else {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.yellow)
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.Palette.warn)
                 }
             }
             if let issue {
-                Text(issue).font(.caption).foregroundStyle(.secondary)
+                Text(issue).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
             }
         }
     }
@@ -273,9 +273,9 @@ struct DeviceSignInView: View {
         NavigationStack {
             VStack(spacing: 24) {
                 if let code {
-                    Text("Go to").foregroundStyle(.secondary)
+                    Text("Go to").foregroundStyle(Theme.Palette.muted)
                     Text(code.verificationURL.absoluteString).font(.title3.weight(.semibold))
-                    Text("and enter").foregroundStyle(.secondary)
+                    Text("and enter").foregroundStyle(Theme.Palette.muted)
                     Text(code.userCode)
                         .font(.system(size: Platform.isTV ? 72 : 44, weight: .bold, design: .monospaced))
                         .kerning(4)

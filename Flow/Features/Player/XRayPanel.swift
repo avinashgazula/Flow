@@ -84,15 +84,15 @@ struct XRayPanel: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Label("X-Ray", systemImage: "person.crop.rectangle.stack")
-                    .font(.system(.headline, weight: .bold))
+                    .font(Theme.Typeface.heading)
+                    .foregroundStyle(Theme.Palette.fg)
                 Spacer()
                 Button(action: close) {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))
                         .frame(width: 28, height: 28)
-                        .background(.white.opacity(0.14), in: Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PlayerButtonStyle())
                 .accessibilityLabel("Close X-Ray")
             }
             .padding(.horizontal, 16)
@@ -113,7 +113,7 @@ struct XRayPanel: View {
         }
         .frame(width: Platform.isPhone ? 300 : 360)
         .frame(maxHeight: .infinity, alignment: .top)
-        .flowGlass(RoundedRectangle(cornerRadius: 22, style: .continuous), tint: Theme.Palette.overPicture)
+        .playerPanel()
         .environment(\.colorScheme, .dark)
         .task(id: session.request.id) { await reload() }
         .task(id: session.request.id) { await follow() }
@@ -128,23 +128,18 @@ struct XRayPanel: View {
 
     private var tabBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Platform.isPhone ? 4 : 6) {
+            // Bordered chips that share their borders, the current one inverted.
+            HStack(spacing: -Theme.Rule.heavy) {
                 ForEach(tabs) { option in
-                    Button {
+                    Button(option.rawValue) {
                         choseTab = true
                         withAnimation(Theme.Motion.snappy) { tab = option }
-                    } label: {
-                        Text(option.rawValue)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(tab == option ? Color.black : .white)
-                            .lineLimit(1)
-                            .padding(.horizontal, Platform.isPhone ? 9 : 12).padding(.vertical, 7)
-                            .background(tab == option ? Color.white : Color.white.opacity(0.12), in: Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(FilterChipStyle(current: tab == option))
                     .accessibilityAddTraits(tab == option ? .isSelected : [])
                 }
             }
+            .padding(Theme.Rule.heavy)
         }
         .onChange(of: store?.inScene.isEmpty) { _, empty in
             // Opens on whoever's in the scene once X-Ray knows, unless a tab has been picked.
@@ -170,7 +165,7 @@ struct XRayPanel: View {
             }
             ForEach(store.cast) { member in row(member) }
             if !store.crew.isEmpty {
-                Text("CREW").font(Theme.Typeface.micro).kerning(1).foregroundStyle(Theme.Palette.textSecondary).padding(.top, 8)
+                SectionLabel("Crew").padding(.top, 8)
                 ForEach(store.crew) { member in row(member) }
             }
         case .music:
@@ -180,18 +175,17 @@ struct XRayPanel: View {
                 Button { session.seek(toChapter: chapter) } label: {
                     HStack(spacing: 12) {
                         Text(TimeFormat.clock(chapter.start))
-                            .font(.system(.caption, weight: .semibold).monospacedDigit())
-                            .foregroundStyle(Theme.Palette.textSecondary)
-                            .frame(width: 58, alignment: .leading)
+                            .font(Theme.Typeface.time)
+                            .foregroundStyle(Theme.Palette.red)
+                            .frame(width: 66, alignment: .leading)
                         Text(chapter.title.isEmpty ? "Chapter \(index + 1)" : chapter.title)
-                            .font(.system(.subheadline, weight: .medium))
+                            .font(Theme.Typeface.body)
                             .lineLimit(1)
                         Spacer(minLength: 0)
                     }
-                    .padding(.vertical, 6)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(RowButtonStyle())
             }
         }
     }
@@ -204,9 +198,10 @@ struct XRayPanel: View {
                     .font(.system(size: 20))
                     .symbolEffect(.variableColor.iterative, isActive: session.songs.isListening)
                     .frame(width: 44, height: 44)
-                    .background(Color.blue.opacity(0.85), in: Circle())
+                    .foregroundStyle(Theme.Palette.onBlue)
+                    .background(Theme.Palette.blue)
                 Text(session.songs.isListening ? "Listening…" : "Identify Song")
-                    .font(.system(.subheadline, weight: .semibold))
+                    .font(Theme.Typeface.headline)
                 Spacer(minLength: 0)
             }
             .contentShape(Rectangle())
@@ -221,17 +216,17 @@ struct XRayPanel: View {
                 HStack(spacing: 12) {
                     RemoteImage(url: song.item.artworkURL, maxPixel: 200, fallbackTitle: song.title)
                         .frame(width: 44, height: 44)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .clipShape(Rectangle())
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(song.title).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
+                        Text(song.title).font(Theme.Typeface.headline).lineLimit(1)
                         Text([song.artist, TimeFormat.clock(song.at)].filter { !$0.isEmpty }.joined(separator: " · "))
-                            .font(.system(.caption)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+                            .font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted).lineLimit(1)
                     }
                     Spacer(minLength: 0)
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(RowButtonStyle())
             .accessibilityHint("Goes back to where it played")
         }
     }
@@ -239,13 +234,13 @@ struct XRayPanel: View {
     private func note(_ text: String) -> some View {
         Text(text)
             .font(Theme.Typeface.caption)
-            .foregroundStyle(Theme.Palette.textTertiary)
+            .foregroundStyle(Theme.Palette.faint)
             .fixedSize(horizontal: false, vertical: true)
     }
 
     private func row(_ member: CastMember) -> some View {
         Button { selected = member } label: { XRayPersonRow(member: member) }
-            .buttonStyle(.plain)
+            .buttonStyle(RowButtonStyle())
     }
 
     private func reload() async {
@@ -272,9 +267,9 @@ struct XRayPersonRow: View {
         HStack(spacing: 12) {
             XRayFace(member: member, size: 44)
             VStack(alignment: .leading, spacing: 2) {
-                Text(member.name).font(.system(.subheadline, weight: .semibold)).lineLimit(1)
+                Text(member.name).font(Theme.Typeface.headline).lineLimit(1)
                 if !member.role.isEmpty {
-                    Text(member.role).font(.system(.caption)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+                    Text(member.role).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted).lineLimit(1)
                 }
             }
             Spacer(minLength: 0)
@@ -302,8 +297,8 @@ struct XRayFace: View {
             }
         }
         .frame(width: size, height: size)
-        .clipShape(Circle())
-        .overlay(Circle().strokeBorder(Theme.Palette.hairline))
+        .clipShape(Rectangle())
+        .overlay(Rectangle().strokeBorder(Theme.Palette.rule, lineWidth: Theme.Rule.thin))
     }
 }
 

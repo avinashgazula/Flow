@@ -14,14 +14,14 @@ struct LicencesView: View {
         FilmList {
             Section(film: "Typefaces") {
                 Text("Archivo (Omnibus-Type), IBM Plex Mono, IBM Plex Sans Condensed and IBM Plex Serif (IBM) are set in Marquee under the SIL Open Font License 1.1. The fonts are free to use, study, modify and share; they may not be sold on their own. Archivo: Copyright 2020 The Archivo Project Authors (github.com/Omnibus-Type/Archivo). IBM Plex: Copyright 2017 IBM Corp., with Reserved Font Name \"Plex\" (github.com/IBM/plex). The full licence is bundled with the fonts.")
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
             }
             Section(film: "FFmpeg") {
                 Text(FFmpegLicence.notice)
             }
             Section(film: "GNU Lesser General Public License 2.1") {
                 ForEach(Array(paragraphs.enumerated()), id: \.offset) { _, paragraph in
-                    Text(paragraph).font(.footnote).foregroundStyle(.secondary)
+                    Text(paragraph).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
                 }
             }
         }
@@ -348,9 +348,9 @@ struct SubtitleSettingsView: View {
                         else { model.settings.subtitles.preferredLanguages.append(code) }
                     } label: {
                         HStack {
-                            Text(name).foregroundStyle(.primary)
+                            Text(name).foregroundStyle(Theme.Palette.fg)
                             Spacer()
-                            if let index { Text("\(index + 1)").font(.caption.weight(.bold)).foregroundStyle(.tint) }
+                            if let index { Text("\(index + 1)").font(Theme.Typeface.micro).foregroundStyle(Theme.Palette.blue) }
                         }
                     }
                 }

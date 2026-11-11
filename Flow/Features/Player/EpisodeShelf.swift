@@ -31,7 +31,7 @@ struct EpisodeShelf: View {
     private var shelf: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(seasonTitle).font(Theme.Typeface.headline)
+                Text(seasonTitle).font(Theme.Typeface.heading).foregroundStyle(Theme.Palette.fg)
                 Spacer()
                 CircleButton(systemImage: "xmark", label: "Close Episodes", size: 32) { close() }
                     .accessibilityLabel("Close episodes")
@@ -53,9 +53,8 @@ struct EpisodeShelf: View {
             }
         }
         .padding(.vertical, 16)
-        .foregroundStyle(.white)
-        .flowGlass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: Theme.Palette.overPicture)
-        .shadow(color: .black.opacity(0.28), radius: 24, y: 8)
+        .foregroundStyle(Theme.Palette.fg)
+        .playerPanel()
         .accessibilityAction(.escape) { close() }
     }
 
@@ -78,25 +77,26 @@ struct EpisodeShelf: View {
                         if isCurrent {
                             Label("Now Playing", systemImage: "play.fill")
                                 .font(Theme.Typeface.micro)
+                                .textCase(.uppercase)
+                                .foregroundStyle(Theme.Palette.bg)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
-                                .flowGlass(Capsule())
+                                .background(Theme.Palette.red)
                                 .padding(8)
                         }
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(Rectangle())
                     .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(.white, lineWidth: isCurrent ? 2.5 : 0)
+                        Rectangle().strokeBorder(Theme.Palette.fg, lineWidth: isCurrent ? Theme.Rule.heavy : 0)
                     }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("E\(episode.number) · \(episode.title)")
-                        .font(Theme.Typeface.body.weight(.semibold))
+                        .font(Theme.Typeface.headline)
                         .lineLimit(1)
                     if let minutes = episode.runtimeMinutes, minutes > 0 {
                         Text(TimeFormat.runtime(minutes))
                             .font(Theme.Typeface.caption)
-                            .foregroundStyle(Theme.Palette.textSecondary)
+                            .foregroundStyle(Theme.Palette.muted)
                     }
                 }
                 .frame(width: cardWidth, alignment: .leading)

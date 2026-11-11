@@ -59,13 +59,30 @@ struct ContinueProvider: TimelineProvider {
     }
 }
 
+// MARK: Palette
+
+/// Marquee's dark tokens (web/DESIGN.md): ink ground, paper text, one red for progress and labels. A widget is
+/// always dark, over artwork. It uses the system's monospaced face rather than bundling Plex Mono into the
+/// extension: a few small labels don't justify duplicating the font files, and the system's is close.
+private enum Ink {
+    static let ground = Color(red: 0x0A / 255, green: 0x0A / 255, blue: 0x0A / 255)
+    static let paper = Color(red: 0xF2 / 255, green: 0xF2 / 255, blue: 0xEE / 255)
+    static let muted = Color(red: 0xB0 / 255, green: 0xB0 / 255, blue: 0xAC / 255)
+    static let red = Color(red: 0xFF / 255, green: 0x5A / 255, blue: 0x4E / 255)
+    static let track = Color(red: 0x33 / 255, green: 0x33 / 255, blue: 0x33 / 255)
+
+    static func mono(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
+        .system(size: size, weight: weight, design: .monospaced)
+    }
+}
+
 // MARK: Widget
 
 struct ContinueWatchingWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "app.flow.continue", provider: ContinueProvider()) { entry in
             ContinueWatchingView(entry: entry)
-                .containerBackground(for: .widget) { Color.black }
+                .containerBackground(for: .widget) { Ink.ground }
         }
         .configurationDisplayName("Continue Watching")
         .description("Pick up where you left off.")
@@ -109,25 +126,26 @@ private struct Hero: View {
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             Artwork(image: card.image)
-            LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .center, endPoint: .bottom)
+            // Ink over the picture's foot, so paper text reads on bright artwork.
+            LinearGradient(colors: [.clear, Ink.ground.opacity(0.92)], startPoint: .center, endPoint: .bottom)
             VStack(alignment: .leading, spacing: 3) {
                 if !compact {
-                    Text("CONTINUE WATCHING")
-                        .font(.system(size: 10, weight: .bold)).kerning(1)
-                        .foregroundStyle(.white.opacity(0.6))
+                    Text("Continue Watching")
+                        .font(Ink.mono(10)).textCase(.uppercase).kerning(1.2)
+                        .foregroundStyle(Ink.red)
                 }
                 Text(card.item.title)
-                    .font(.system(size: compact ? 14 : 17, weight: .bold))
+                    .font(.system(size: compact ? 16 : 20, weight: .bold).width(.condensed))
                     .lineLimit(compact ? 2 : 1)
                 if !card.item.subtitle.isEmpty {
                     Text(card.item.subtitle)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .font(Ink.mono(10, .regular))
+                        .foregroundStyle(Ink.muted)
                         .lineLimit(1)
                 }
                 if let progress = card.item.progress { ProgressLine(value: progress).padding(.top, 4) }
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(Ink.paper)
             .padding(compact ? 12 : 14)
         }
     }
@@ -140,16 +158,15 @@ private struct Row: View {
         HStack(spacing: 12) {
             Artwork(image: card.image)
                 .frame(width: 96, height: 54)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(card.item.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
-                Text(card.item.subtitle).font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+                Text(card.item.title).font(.system(size: 16, weight: .bold).width(.condensed)).lineLimit(1)
+                Text(card.item.subtitle).font(Ink.mono(10, .regular)).foregroundStyle(Ink.muted).lineLimit(1)
                 if let progress = card.item.progress { ProgressLine(value: progress).padding(.top, 3) }
             }
             Spacer(minLength: 0)
-            Image(systemName: "play.fill").font(.system(size: 12, weight: .bold)).foregroundStyle(.white.opacity(0.8))
+            Image(systemName: "play.fill").font(.system(size: 12, weight: .bold)).foregroundStyle(Ink.paper)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(Ink.paper)
     }
 }
 
@@ -161,7 +178,7 @@ private struct Artwork: View {
             if let image {
                 Image(uiImage: image).resizable().scaledToFill()
             } else {
-                LinearGradient(colors: [Color(white: 0.16), Color(white: 0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                Ink.track
             }
         }
         .clipped()
@@ -174,8 +191,8 @@ private struct ProgressLine: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
-                Capsule().fill(.white.opacity(0.28))
-                Capsule().fill(.white).frame(width: max(3, proxy.size.width * min(1, max(0, value))))
+                Rectangle().fill(Ink.track)
+                Rectangle().fill(Ink.red).frame(width: max(3, proxy.size.width * min(1, max(0, value))))
             }
         }
         .frame(height: 3)
@@ -188,15 +205,15 @@ private struct Empty: View {
             Image(systemName: "play.rectangle.on.rectangle.fill")
                 .font(.system(size: 22, weight: .semibold))
             Text("Nothing in progress")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 16, weight: .bold).width(.condensed))
             Text("Start something in Marquee and it will wait for you here.")
-                .font(.system(size: 11))
-                .foregroundStyle(.white.opacity(0.6))
+                .font(Ink.mono(10, .regular))
+                .foregroundStyle(Ink.muted)
                 .multilineTextAlignment(.center)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(Ink.paper)
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(LinearGradient(colors: [Color(white: 0.12), .black], startPoint: .top, endPoint: .bottom))
+        .background(Ink.ground)
     }
 }

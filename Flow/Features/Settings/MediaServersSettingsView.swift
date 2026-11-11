@@ -12,16 +12,16 @@ struct MediaServersSettingsView: View {
             Section {
                 ForEach($model.settings.mediaServers.servers) { $server in
                     HStack(spacing: 12) {
-                        Circle().fill(reachable[server.id] == false ? Color.red : reachable[server.id] == true ? .green : .gray)
+                        Circle().fill(reachable[server.id] == false ? Theme.Palette.red : reachable[server.id] == true ? Theme.Palette.blue : Theme.Palette.faint)
                             .frame(width: 9, height: 9)
-                        Image(systemName: "server.rack").foregroundStyle(.secondary)
+                        Image(systemName: "server.rack").foregroundStyle(Theme.Palette.muted)
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(spacing: 6) {
-                                Text(server.name).font(.headline)
+                                Text(server.name).font(Theme.Typeface.headline)
                                 PillTag(text: server.kind.displayName, color: .purple)
                                 PillTag(text: server.isRemote ? "Remote" : "Local", color: .green)
                             }
-                            Text(server.baseURL.host ?? server.baseURL.absoluteString).font(.caption).foregroundStyle(.secondary)
+                            Text(server.baseURL.host ?? server.baseURL.absoluteString).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
                         }
                         Spacer()
                         Toggle("", isOn: $server.enabled).labelsHidden()
@@ -148,7 +148,7 @@ struct AddServerView: View {
                     }
                 }
                 if let error {
-                    Section { Text(error).foregroundStyle(.red) }
+                    Section { Text(error).foregroundStyle(Theme.Palette.red) }
                 }
             }
             .flowPageTitle("Add Server")
@@ -169,7 +169,7 @@ struct AddServerView: View {
                             Text(server.name)
                             Spacer()
                             if model.settings.mediaServers.servers.contains(where: { $0.machineID == server.machineID }) {
-                                Image(systemName: "checkmark").foregroundStyle(.green)
+                                Image(systemName: "checkmark").foregroundStyle(Theme.Palette.blue)
                             }
                         }
                     }
@@ -179,7 +179,7 @@ struct AddServerView: View {
         } else if let plexCode {
             Section {
                 VStack(spacing: 14) {
-                    Text("Go to **plex.tv/link** and enter").foregroundStyle(.secondary)
+                    Text("Go to **plex.tv/link** and enter").foregroundStyle(Theme.Palette.muted)
                     Text(plexCode.userCode).font(.system(size: 44, weight: .bold, design: .monospaced)).kerning(4)
                     if let qr = QRCode.image(for: plexCode.verificationURL.absoluteString) {
                         qr.interpolation(.none).resizable().frame(width: 160, height: 160).padding(8).background(.white, in: RoundedRectangle(cornerRadius: 10))
