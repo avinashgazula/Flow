@@ -1,5 +1,5 @@
 /* Reviews are ruled entries, not cards: who and how many stars on the left in mono, the words in serif on the right, a
-   3px rule above the list and 1px lines between. The one blur on the page is a spoiler waiting to be read, which is a
+   2px rule above the list and 1px lines between. The one blur on the page is a spoiler waiting to be read, which is a
    state and not decoration. */
 .reviews { margin-top: var(--space-xxl); padding-top: var(--space-s); border-top: var(--rule); }
 .head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-m); margin-bottom: var(--space-m); }
@@ -40,7 +40,7 @@
 
 /* Words inside a spoiler tag. */
 .hidden { display: inline; padding: 0; font: inherit; color: inherit; text-align: inherit; white-space: inherit; cursor: pointer; }
-.hidden > span { filter: blur(6px); transition: filter var(--dur-state) ease; user-select: none; }
+.hidden > span { filter: blur(6px); transition: filter var(--dur-hover) ease; user-select: none; }
 .hidden:hover > span { filter: blur(4px); }
 .revealed { color: var(--fg); }
 

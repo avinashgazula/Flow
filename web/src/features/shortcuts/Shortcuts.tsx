@@ -3,6 +3,7 @@ import { Icon } from '../../components/Icon'
 import { useSettings } from '../../lib/store/settings'
 import { orderTabs } from '../../lib/tabs'
 import { isMac, shortcutGroups, type Combo } from './shortcutList'
+import { useLeave } from '../../lib/leave'
 import s from './Shortcuts.module.css'
 
 /* The keyboard shortcuts sheet, opened by ? from anywhere. A native modal dialog, so the browser traps focus in it and
@@ -22,7 +23,8 @@ function Keys({ combo }: { combo: Combo }) {
   )
 }
 
-export default function Shortcuts({ onClose }: { onClose: () => void }) {
+export default function Shortcuts({ onClose: closeNow }: { onClose: () => void }) {
+  const [onClose, leaving] = useLeave(closeNow)
   const dialog = useRef<HTMLDialogElement>(null)
   const saved = useSettings((x) => x.tabOrder)
   const groups = shortcutGroups(isMac(), orderTabs(saved))
@@ -49,7 +51,7 @@ export default function Shortcuts({ onClose }: { onClose: () => void }) {
   }, [onClose])
 
   return (
-    <dialog ref={dialog} className={s.sheet} aria-labelledby="shortcuts-title" onClose={onClose} onClick={(e) => e.target === dialog.current && onClose()}>
+    <dialog ref={dialog} className={s.sheet} data-leaving={leaving ? '' : undefined} aria-labelledby="shortcuts-title" onClose={onClose} onClick={(e) => e.target === dialog.current && onClose()}>
       <div className={s.head}>
         <h2 id="shortcuts-title" className={s.title}>
           Keyboard Shortcuts

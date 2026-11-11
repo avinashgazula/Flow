@@ -12,18 +12,18 @@
 /* Fullscreen top pick: it bleeds out to the window's edges, and Continue Watching goes under it, full width. */
 .bleed { margin: 0 calc(var(--page-inset) * -1) var(--space-l); }
 
-/* Continue Watching: a ruled grid of cells under the lead. The cells share their 3px borders (each reaches 3px over its
+/* Continue Watching: a ruled grid of cells under the lead. The cells share their 2px borders (each reaches 2px over its
    neighbour) with no gaps; on a phone they are one row that scrolls sideways. */
 .side { margin-top: var(--section); }
 .sectionTitle { padding-bottom: var(--space-m); }
 .teach { max-width: var(--measure); font: 400 var(--fs-small) / 1.5 var(--font); color: var(--muted); }
 .cells { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-right: var(--page-inset); margin-right: calc(var(--page-inset) * -1); }
 .cells::-webkit-scrollbar { display: none; }
-.cells > * { flex: 0 0 min(72vw, 280px); scroll-snap-align: start; margin-left: -3px; }
+.cells > * { flex: 0 0 min(72vw, 280px); scroll-snap-align: start; margin-left: var(--border-w-neg); }
 .cells > :first-child { margin-left: 0; }
 @media (min-width: 721px) {
-  .cells { display: grid; --cols: 3; grid-template-columns: repeat(auto-fit, minmax(calc(100% / var(--cols) - 4px), 1fr)); overflow: visible; margin-right: 0; padding: 0 3px 3px 0; }
-  .cells > * { margin: 0 -3px -3px 0; }
+  .cells { display: grid; --cols: 3; grid-template-columns: repeat(auto-fit, minmax(calc(100% / var(--cols) - 4px), 1fr)); overflow: visible; margin-right: 0; padding: 0 var(--border-w) var(--border-w) 0; }
+  .cells > * { margin: 0 var(--border-w-neg) var(--border-w-neg) 0; }
 }
 @media (min-width: 1100px) {
   .cells { --cols: 4; }
@@ -35,7 +35,7 @@
   .cells > :nth-child(n + 5) { display: block; }
 }
 
-/* Rows of posters, one size, each a ruled section: a 3px rule, a red label and See all, then the row. Seven across on
+/* Rows of posters, one size, each a ruled section: a 2px rule, a red label and See all, then the row. Seven across on
    desktop, five on a tablet, a scrolling row on a phone. */
 .picks { margin-top: var(--section); }
 .rowSection { margin-top: var(--section); border-top: var(--rule); }
@@ -59,7 +59,7 @@
   .row > :nth-child(n + 6) { display: block; }
   .row > :nth-child(n + 8) { display: none; }
 }
-.ghost span { display: block; aspect-ratio: 2 / 3; border: 3px solid var(--fg); background: var(--tint-1); }
+.ghost span { display: block; aspect-ratio: 2 / 3; border: var(--rule); background: var(--tint-1); }
 
 /* Nothing to show yet: teach the next step. A ruled box, no icon. */
 .setup { max-width: 600px; padding: var(--space-l); border: var(--rule); }
@@ -76,20 +76,20 @@
   .stillRow { margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); scroll-padding-inline: var(--gutter); }
 }
 @media (min-width: 721px) { .stillRow > * { flex-basis: 280px; } }
-.stillGhost { aspect-ratio: 16 / 9; border: 3px solid var(--fg); background: var(--tint-1); }
+.stillGhost { aspect-ratio: 16 / 9; border: var(--rule); background: var(--tint-1); }
 .arrows { display: none; }
 @media (hover: hover) and (min-width: 721px) {
-  .arrows { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; opacity: 0; transition: opacity var(--dur-state) ease; }
-  .arrows > * + * { margin-left: -3px; }
+  .arrows { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; opacity: 0; transition: opacity var(--dur-hover) ease; }
+  .arrows > * + * { margin-left: var(--border-w-neg); }
   .rowSection:hover .arrows, .rowSection:focus-within .arrows { opacity: 1; }
 }
 
 /* The folder rows: names that open Explore, set as a grid of ruled cells that share their borders (a service's logo,
-   small, before its name). Each reaches 3px over its neighbour. */
-.index { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); padding: 0 3px 3px 0; }
-.index > li { margin: 0 -3px -3px 0; }
+   small, before its name). Each reaches 2px over its neighbour. */
+.index { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); padding: 0 var(--border-w) var(--border-w) 0; }
+.index > li { margin: 0 var(--border-w-neg) var(--border-w-neg) 0; }
 .indexGhost { height: 104px; background: var(--tint-1); }
-.tile { display: flex; align-items: center; gap: var(--space-s); min-height: 56px; height: 100%; padding: 0 var(--space-m); border: 3px solid var(--fg); background: var(--bg); color: var(--fg); font: 600 var(--fs-small) / 1.2 var(--font); text-transform: uppercase; letter-spacing: 0.06em; transition: background-color var(--dur-state) ease, color var(--dur-state) ease; -webkit-tap-highlight-color: transparent; }
+.tile { display: flex; align-items: center; gap: var(--space-s); min-height: 56px; height: 100%; padding: 0 var(--space-m); border: var(--rule); background: var(--bg); color: var(--fg); font: 600 var(--fs-small) / 1.2 var(--font); text-transform: uppercase; letter-spacing: 0.06em; transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease; -webkit-tap-highlight-color: transparent; }
 @media (hover: hover) { .tile:hover { background: var(--blue); color: var(--onblue); } }
 .tile:focus-visible { background: var(--blue); color: var(--onblue); outline-offset: -6px; outline-color: var(--onblue); }
 .tile svg { flex: none; margin-left: auto; }

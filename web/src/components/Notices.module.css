@@ -34,7 +34,7 @@
 .note button:last-child { margin-right: -8px; }
 
 @keyframes rise {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; translate: 0 8px; }
 }
 
 @media (max-width: 720px) {

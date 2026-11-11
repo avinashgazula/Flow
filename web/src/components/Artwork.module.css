@@ -11,7 +11,7 @@
   height: 100%;
   object-fit: cover;
   opacity: 0;
-  transition: opacity var(--dur-move) ease;
+  transition: opacity var(--dur-enter) var(--ease-out);
 }
 .img[data-loaded] { opacity: 1; }
 .empty { display: grid; place-items: center; }

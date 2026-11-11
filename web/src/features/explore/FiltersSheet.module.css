@@ -6,7 +6,7 @@
   z-index: 100;
   display: flex;
   justify-content: flex-end;
-  animation: fade var(--dur-move) ease;
+  animation: fade var(--dur-enter) var(--ease-out);
 }
 .scrim { position: absolute; inset: 0; background: var(--overlay); }
 
@@ -25,7 +25,7 @@
 /* The title and a square close cell, divided by rules, as the reference's dialog top. */
 .header { display: flex; align-items: stretch; justify-content: space-between; border-bottom: var(--rule); }
 .title { display: flex; align-items: center; padding: 0 var(--space-l); font: 700 28px / 1.1 var(--font-cond); text-transform: uppercase; }
-.header :global(.btn) { width: 56px; height: auto; min-height: 56px; border-width: 0 0 0 3px; border-color: var(--fg); }
+.header :global(.btn) { width: 56px; height: auto; min-height: 56px; border-width: 0 0 0 var(--border-w); border-color: var(--fg); }
 @media (hover: hover) { .header :global(.btn:hover) { border-color: var(--blue); } }
 
 .body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
@@ -36,9 +36,9 @@
 .legend + * { clear: both; }
 .region { margin-left: var(--space-xs); color: var(--muted); font-weight: 400; font-size: var(--fs-footnote); letter-spacing: 0.06em; }
 
-/* Chips share borders, wrapped or not: each pulls 3px over its neighbour, and the box pads the same back. */
-.chips { display: flex; flex-wrap: wrap; padding: 3px 0 0 3px; }
-.chips > * { margin: -3px 0 0 -3px; }
+/* Chips share borders, wrapped or not: each pulls 2px over its neighbour, and the box pads the same back. */
+.chips { display: flex; flex-wrap: wrap; padding: var(--border-w) 0 0 var(--border-w); }
+.chips > * { margin: var(--border-w-neg) 0 0 var(--border-w-neg); }
 .chips > [aria-pressed='true'] { z-index: 1; }
 
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-s); margin-top: var(--space-m); }
@@ -57,7 +57,7 @@
   gap: 6px;
   min-width: 0;
   padding: 6px 4px 6px;
-  border: 3px solid transparent;
+  border: var(--border-w) solid transparent;
   color: var(--muted);
   -webkit-tap-highlight-color: transparent;
 }
@@ -84,7 +84,7 @@
 
 .check { display: inline-block; vertical-align: -1px; margin-right: 3px; }
 
-.skeleton { justify-self: center; width: 56px; height: 56px; margin: 6px 0 24px; background: var(--tint-2); animation: pulse 1.4s ease-in-out infinite; }
+.skeleton { justify-self: center; width: 56px; height: 56px; margin: 6px 0 24px; background: var(--tint-2); animation: pulse 1.6s var(--ease-move) infinite; }
 .more { margin-top: var(--space-s); }
 .note { color: var(--muted); font-size: var(--fs-small); line-height: 1.5; }
 .link { color: var(--blue); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
@@ -98,8 +98,8 @@
 }
 
 @keyframes fade { from { opacity: 0; } }
-@keyframes slide { from { opacity: 0; transform: translateX(24px); } }
-@keyframes rise { from { opacity: 0; transform: translateY(24px); } }
+@keyframes slide { from { opacity: 0; translate: 24px 0; } }
+@keyframes rise { from { opacity: 0; translate: 0 24px; } }
 @keyframes pulse { 50% { opacity: 0.5; } }
 
 /* Phones: a bottom sheet, as tall as its content up to most of the screen. */
@@ -121,4 +121,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .skeleton { animation: none; }
+}
+
+/* Leaving mirrors arriving, quicker: the scrim fades while the panel slides back the way it came. */
+.overlay { transition: opacity var(--dur-exit) var(--ease-out); }
+.overlay[data-leaving] { opacity: 0; pointer-events: none; }
+.overlay[data-leaving] .panel { translate: 24px 0; transition: translate var(--dur-exit) var(--ease-out); }
+@media (max-width: 720px) {
+  .overlay[data-leaving] .panel { translate: 0 24px; }
 }

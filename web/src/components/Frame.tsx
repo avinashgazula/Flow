@@ -6,7 +6,7 @@ import { markZoomSource } from './zoom'
 import { toFacts, type PrintPart } from './printLayout'
 import s from './Frame.module.css'
 
-/* Frame: Flow's one repeating object. A still or a poster sits in a 3px ink rule, square, and what decides whether to
+/* Frame: Flow's one repeating object. A still or a poster sits in a 2px ink rule, square, and what decides whether to
    watch it is printed under it in mono capitals ("S3 E7 · 18M LEFT · ENDS 21:30 · 2160P · DV"), then its title in
    Plex Sans Condensed. Progress is a thin red bar along the foot of the picture.
 
@@ -92,7 +92,7 @@ export interface FrameCardProps extends Omit<PlateProps, 'hideStrip' | 'classNam
   dimmed?: boolean
   /** Not actionable yet (an episode that hasn't aired): a button that does nothing. Dims it too. */
   disabled?: boolean
-  /** A ruled cell (Continue Watching): picture and words share one 3px border, and the words invert to blue. */
+  /** A ruled cell (Continue Watching): picture and words share one 2px border, and the words invert to blue. */
   cell?: boolean
   /** More lines under the meta (inline spans), like an episode's synopsis. */
   extra?: ReactNode

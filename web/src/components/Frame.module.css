@@ -1,14 +1,14 @@
-/* Frame: a picture in a 3px ink rule, square, with its facts and title printed under it as mono and condensed text.
+/* Frame: a picture in a 2px ink rule, square, with its facts and title printed under it as mono and condensed text.
    A plate fills the width its parent gives it. */
 
 .plate { display: block; }
-.shot { position: relative; display: block; border: 3px solid var(--fg); background: var(--tint-1); transition: border-color var(--dur-state) ease; }
+.shot { position: relative; display: block; border: var(--rule); background: var(--tint-1); transition: border-color var(--dur-hover) ease; }
 .frame { width: 100%; background: var(--tint-1); }
 .plate[data-shape='still'] .frame { aspect-ratio: 16 / 9; }
 .plate[data-shape='poster'] .frame { aspect-ratio: 2 / 3; }
 
 /* How far along: a thin red bar on a paper track, along the foot of the picture. */
-.bar { position: absolute; inset: auto 0 0 0; height: 7px; background: var(--bg); border-top: 2px solid var(--fg); }
+.bar { position: absolute; inset: auto 0 0 0; height: 7px; background: var(--bg); border-top: var(--rule-thin); }
 .bar > i { display: block; height: 100%; background: var(--red); }
 
 /* The printed line: mono capitals under the picture. It wraps and its second row is clipped, so a narrow card shows
@@ -81,8 +81,8 @@
 
 /* A cell: one ruled box round the picture and its words, the words in a padded block that inverts to blue. Cells sit
    in a grid with no gaps and overlap their borders (HomeScreen.module.css). */
-.card[data-cell] { border: 3px solid var(--fg); background: var(--bg); }
-.card[data-cell] .shot { border-width: 0 0 3px; }
+.card[data-cell] { border: var(--rule); background: var(--bg); }
+.card[data-cell] .shot { border-width: 0 0 var(--border-w); }
 .card[data-cell] .words { padding: var(--space-s); }
 .card[data-cell] .print { margin-top: 0; }
 @media (hover: hover) {

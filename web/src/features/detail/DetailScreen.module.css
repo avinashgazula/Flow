@@ -1,7 +1,7 @@
-/* A title's page, in the Index system. The page head is the giant uppercase title with its facts line and a 3px rule
+/* A title's page, in the Index system. The page head is the giant uppercase title with its facts line and a 2px rule
    under it, edge to edge. Below: the framed still and the "how this plays" block in the left column from 1000px, the
    ratings, actions and overview beside them; on a phone one column. Everything after runs full width, each section
-   opened by a 3px rule and a red mono label. */
+   opened by a 2px rule and a red mono label. */
 .wrap { width: 100%; }
 
 /* The head pulls out to the viewport's edges and pads back in, so the title's left edge is still the page's. */
@@ -44,11 +44,11 @@
 .info { display: flex; flex-direction: column; min-width: 0; margin-top: var(--space-l); }
 @media (min-width: 1000px) { .info { margin-top: 0; } }
 
-/* The still: square, in a 3px frame, at 16:9; its progress is a thin red bar with an ink border, its facts mono text
+/* The still: square, in a 2px frame, at 16:9; its progress is a thin red bar with an ink border, its facts mono text
    under it. */
 .frame { border: var(--rule); }
 .art { aspect-ratio: 16 / 9; }
-.progress { height: 12px; margin-top: var(--space-xs); border: 2px solid var(--fg); }
+.progress { height: 12px; margin-top: var(--space-xs); border: var(--rule-thin); }
 .progress > i { display: block; height: 100%; background: var(--red); }
 .print { margin-top: var(--space-xs); font: 400 var(--fs-caption) / 1.4 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .print:empty { display: none; }
@@ -117,14 +117,14 @@
 }
 
 /* Watchlist, Watched, Favourite, Shuffle, Share: a bordered segmented row. The cells share borders (each is pulled
-   3px over its neighbour), and the one under the pointer is raised so its blue border shows whole. */
+   2px over its neighbour), and the one under the pointer is raised so its blue border shows whole. */
 .listActions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
   margin-top: var(--space-m);
-  padding: 0 3px 3px 0;
+  padding: 0 var(--border-w) var(--border-w) 0;
 }
-.listAction { margin: 0 -3px -3px 0; padding: 0 12px; min-width: 0; white-space: normal; text-align: center; }
+.listAction { margin: 0 var(--border-w-neg) var(--border-w-neg) 0; padding: 0 12px; min-width: 0; white-space: normal; text-align: center; }
 .listAction:hover, .listAction:focus-visible { position: relative; z-index: 1; }
 .listAction[data-on] { background: var(--fg); color: var(--bg); }
 @media (hover: hover) { .listAction[data-on]:hover { background: var(--blue); color: var(--onblue); } }
@@ -143,11 +143,11 @@
 .crew dt { font: 600 var(--fs-caption) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .crew dd { margin: 4px 0 0; font: 600 var(--fs-small) / 1.3 var(--font); }
 
-/* A section: a 3px rule above, a red mono label, then its ruled content. */
+/* A section: a 2px rule above, a red mono label, then its ruled content. */
 .section { margin-top: var(--space-xxl); padding-top: var(--space-s); border-top: var(--rule); }
 .section > :is(h2, .section-label) { margin-bottom: var(--space-m); }
 
-/* Cast: a grid of cells sharing 1px borders inside a 3px rule; each is a row, so hover and focus invert it. */
+/* Cast: a grid of cells sharing 1px borders inside a 2px rule; each is a row, so hover and focus invert it. */
 .castGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 232px), 1fr));
@@ -173,9 +173,9 @@
 .service img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .serviceName { padding: 4px; font: 600 10px / 1.1 var(--font); text-align: center; overflow-wrap: anywhere; }
 /* The hover is a blue frame drawn over the logo, since a logo fills its cell. */
-a.service::after { content: ''; position: absolute; inset: 0; border: 0 solid var(--blue); transition: border-width var(--dur-state) ease; }
-@media (hover: hover) { a.service:hover::after { border-width: 4px; } }
-a.service:focus-visible::after { border-width: 4px; }
+a.service::after { content: ''; position: absolute; inset: 0; border: var(--border-w) solid var(--blue); opacity: 0; transition: opacity var(--dur-hover) ease; }
+@media (hover: hover) { a.service:hover::after { opacity: 1; } }
+a.service:focus-visible::after { opacity: 1; }
 a.service:focus-visible { outline-offset: -3px; }
 .attribution { margin-top: var(--space-s); font: 400 var(--fs-caption) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 @media (max-width: 560px) {

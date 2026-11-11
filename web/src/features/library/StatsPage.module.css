@@ -19,7 +19,7 @@
 .bar[data-empty] { background: var(--faint); }
 .column[data-current] .bar { background: var(--red); }
 .column[data-current] .value { color: var(--red); }
-.axis { align-self: end; padding-top: 6px; border-top: 3px solid var(--fg); font: 400 var(--fs-caption) / 1 var(--font); color: var(--muted); white-space: nowrap; overflow: visible; }
+.axis { align-self: end; padding-top: 6px; border-top: var(--rule); font: 400 var(--fs-caption) / 1 var(--font); color: var(--muted); white-space: nowrap; overflow: visible; }
 .column:has(.axis:empty) .axis { visibility: hidden; }
 /* Past twelve bars (a long history by week or year) the labels skip, so each one has room; they sit centred on their bar. */
 .bars[data-crowded] { gap: 3px; }
@@ -30,7 +30,7 @@
 .genre { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-xs); align-items: baseline; padding: var(--space-s) 0 var(--space-m); border-bottom: 1px solid var(--fg); }
 .genreName { font: 700 20px / 1.2 var(--font-cond); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .genrePercent { font: 700 20px / 1.2 var(--font-cond); color: var(--red); }
-.track { grid-column: 1 / -1; height: 14px; border: 3px solid var(--fg); }
+.track { grid-column: 1 / -1; height: 14px; border: var(--rule); }
 .fill { display: block; height: 100%; background: var(--red); }
 
 /* Most watched: five posters at the library's size. */

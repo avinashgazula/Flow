@@ -19,14 +19,14 @@
 }
 .row::-webkit-scrollbar { display: none; }
 .row > * { flex: none; }
-.row > * + * { margin-left: -3px; }
+.row > * + * { margin-left: var(--border-w-neg); }
 /* The pressed chip's border draws over its neighbours' shared edge. */
 .row > [aria-pressed='true'], .row > :focus-visible { position: relative; z-index: 1; }
 
 /* Scroll buttons, for a mouse only. */
 .arrow { display: none; }
 @media (hover: hover) and (pointer: fine) and (min-width: 721px) {
-  .wrap .arrow { display: inline-flex; position: absolute; top: 50%; translate: 0 -50%; z-index: 2; }
+  .wrap .arrow { display: inline-flex; position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; }
   .back { left: 0; }
   .forward { right: 0; }
 }

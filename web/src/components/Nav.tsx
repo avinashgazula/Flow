@@ -6,7 +6,7 @@ import { orderTabs } from '../lib/tabs'
 import { Icon } from './Icon'
 import s from './Nav.module.css'
 
-/** The top bar, in Index's grammar: a blue logo cell with the Flow wordmark, then the sections as 3px-bordered
+/** The top bar, in Index's grammar: a blue logo cell with the Flow wordmark, then the sections as 2px-bordered
  *  uppercase cells (the current one inverted, the hovered one blue), Settings, and the Light/Dark toggle at the
  *  end. It slides away while the page scrolls down and comes back as soon as it scrolls up. On phones the top
  *  bar keeps only the logo, Settings and the toggle, and the sections move to a bar of bordered cells at the

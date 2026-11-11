@@ -7,7 +7,7 @@
   height: 44px;
   color: var(--faint);
   -webkit-tap-highlight-color: transparent;
-  transition: color var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
+  transition: color var(--dur-hover) ease, transform var(--dur-state) var(--ease-out);
 }
 .star[data-on] { color: var(--red); }
 @media (hover: hover) {

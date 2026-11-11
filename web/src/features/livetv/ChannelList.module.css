@@ -23,7 +23,7 @@
   gap: var(--space-m);
   padding: 0 var(--space-xs) 0 var(--page-inset);
   text-align: left;
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) { .main:hover { background: var(--blue); color: var(--onblue); } }
@@ -43,7 +43,7 @@
 .left { flex: none; font-size: var(--fs-caption); color: var(--muted); }
 
 /* How far through the programme: a bordered bar with a red fill, because it is live. */
-.bar { display: block; height: 8px; border: 2px solid currentColor; }
+.bar { display: block; height: 8px; border: var(--hair-w) solid currentColor; }
 .bar > span { display: block; height: 100%; background: var(--red); }
 .main:hover .bar > span, .main:focus-visible .bar > span { background: var(--onblue); }
 
@@ -56,7 +56,7 @@
   width: 56px;
   border-left: var(--rule);
   color: var(--fg);
-  transition: color var(--dur-state) ease, background-color var(--dur-state) ease;
+  transition: color var(--dur-hover) ease, background-color var(--dur-hover) ease;
   -webkit-tap-highlight-color: transparent;
 }
 @media (hover: hover) { .star:hover { color: var(--onblue); background: var(--blue); } }

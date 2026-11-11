@@ -17,7 +17,7 @@
 /* Placeholders: a framed poster-shaped block, then the printed line, the title and the year as flat bars, in the
    same sizes the real caption has. */
 .ghost { display: flex; flex-direction: column; }
-.ghostArt { aspect-ratio: 2 / 3; border: 3px solid var(--fg); background: var(--tint-1); }
+.ghostArt { aspect-ratio: 2 / 3; border: var(--rule); background: var(--tint-1); }
 .ghostPrint, .ghostLine, .ghostMeta { background: var(--tint-2); }
 .ghostPrint { width: 55%; height: 10px; margin-top: var(--space-xs); }
 .ghostLine { width: 80%; height: 14px; margin-top: var(--space-s); }

@@ -33,6 +33,9 @@ export const router = createRouter({
   scrollRestoration: true,
   defaultErrorComponent: ErrorScreen,
   defaultStructuralSharing: true,
+  // A page change cross-fades through the View Transitions API where there is one (global.css has the timing); a title's
+  // poster still zooms into its page. Browsers without it just swap.
+  defaultViewTransition: true,
 })
 
 declare module '@tanstack/react-router' {

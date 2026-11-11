@@ -7,7 +7,7 @@
   place-items: center;
   width: 28px;
   height: 28px;
-  border: 2px solid var(--fg);
+  border: var(--rule-thin);
   color: var(--onblue);
   -webkit-tap-highlight-color: transparent;
   transition: transform var(--dur-state) var(--ease-out);

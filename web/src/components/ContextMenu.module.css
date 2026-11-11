@@ -12,7 +12,7 @@
   background: var(--fg);
   color: var(--bg);
   opacity: 0;
-  transition: opacity var(--dur-state) ease, background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: opacity var(--dur-hover) ease, background-color var(--dur-hover) ease, color var(--dur-hover) ease;
   -webkit-tap-highlight-color: transparent;
 }
 .trigger::after { content: ''; position: absolute; inset: -4px; }
@@ -26,17 +26,21 @@ li:hover > .trigger, li:focus-within > .trigger, .trigger:focus-visible, .trigge
   .trigger svg { width: 16px; height: 16px; }
 }
 
-/* The menu is a ruled box: paper, a 3px ink rule, flat, over everything (the nav is 50). Its rows are mono capitals
+/* The menu is a ruled box: paper, a 2px ink rule, flat, over everything (the nav is 50). Its rows are mono capitals
    that invert to blue. */
 .menu {
   position: fixed;
   z-index: 120;
   min-width: 232px;
   max-width: min(320px, calc(100vw - 16px));
-  border: 3px solid var(--fg);
+  border: var(--rule);
   background: var(--bg);
   color: var(--fg);
+  /* It grows out of its trigger's corner (origin-aware), not out of its own middle. */
+  transform-origin: top left;
 }
+.menu[data-placed] { animation: menu var(--dur-state) var(--ease-out); }
+@keyframes menu { from { opacity: 0; scale: 0.96; } }
 .item {
   display: flex;
   align-items: center;

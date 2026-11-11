@@ -1,5 +1,5 @@
 /* The seek tooltip: a small square picture of where you would land above the progress bar, the time under it and the
-   chapter's name when there is one. An ink card with a 3px paper rule so the words read over any frame. No blur. */
+   chapter's name when there is one. An ink card with a 2px paper rule so the words read over any frame. No blur. */
 
 .preview {
   --p-width: 200px;
@@ -11,7 +11,7 @@
   pointer-events: none;
   opacity: 0;
   translate: 0 4px;
-  transition: opacity 0.12s ease, translate 0.12s ease-out;
+  transition: opacity var(--dur-hover) ease, translate var(--dur-hover) var(--ease-out);
 }
 .preview[data-on] {
   opacity: 1;
@@ -23,7 +23,7 @@
 .card {
   overflow: hidden;
   padding: 4px;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   background: var(--overlay);
 }
 .preview[data-mode='time'] .card { padding: 0; }
@@ -42,7 +42,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: opacity 0.12s ease;
+  transition: opacity var(--dur-hover) ease;
 }
 /* The last picture waits, dimmed, until the one for this time arrives. */
 .preview[data-state='loading'] .frame > * { opacity: 0.4; }
@@ -74,5 +74,5 @@
   .preview { --p-width: 160px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .preview { translate: 0 0; transition: opacity 0.12s linear; }
+  .preview { translate: 0 0; transition: opacity var(--dur-hover) ease; }
 }

@@ -1,4 +1,4 @@
-/* A square ruled dialog: a 3px border, a title with a square close cell divided by a rule, red group labels and keys as
+/* A square ruled dialog: a 2px border, a title with a square close cell divided by a rule, red group labels and keys as
    bordered mono cells. No blur, no shadow. */
 .sheet {
   width: min(680px, calc(100vw - 2 * var(--gutter)));
@@ -12,11 +12,14 @@
 }
 .sheet[open] { display: flex; flex-direction: column; animation: rise var(--dur-move) var(--ease-out); }
 .sheet::backdrop { background: var(--overlay); }
-@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes rise { from { opacity: 0; scale: 0.96; } }
+.sheet, .sheet::backdrop { transition: opacity var(--dur-exit) var(--ease-out), scale var(--dur-exit) var(--ease-out); }
+.sheet[data-leaving] { opacity: 0; scale: 0.98; pointer-events: none; }
+.sheet[data-leaving]::backdrop { opacity: 0; }
 
 .head { display: flex; align-items: stretch; justify-content: space-between; border-bottom: var(--rule); }
 .title { margin: 0; display: flex; align-items: center; padding: 0 var(--space-l); font: 700 26px / 1.1 var(--font-cond); text-transform: uppercase; }
-.head :global(.btn) { width: 56px; height: auto; min-height: 56px; border-width: 0 0 0 3px; border-color: var(--fg); }
+.head :global(.btn) { width: 56px; height: auto; min-height: 56px; border-width: 0 0 0 var(--border-w); border-color: var(--fg); }
 @media (hover: hover) { .head :global(.btn:hover) { border-color: var(--blue); } }
 
 .body { overflow-y: auto; padding: 0 var(--space-l) var(--space-m); display: grid; gap: var(--space-l); overscroll-behavior: contain; }
@@ -35,7 +38,7 @@
   min-width: 30px;
   height: 30px;
   padding: 0 8px;
-  border: 2px solid var(--fg);
+  border: var(--rule-thin);
   background: var(--bg);
   color: var(--fg);
   font: 600 var(--fs-footnote) / 1 var(--font);
@@ -50,4 +53,3 @@
   .keys { justify-content: flex-start; max-width: none; }
   .foot { padding-inline: var(--space-m); }
 }
-@media (prefers-reduced-motion: reduce) { .sheet[open] { animation: none; } }

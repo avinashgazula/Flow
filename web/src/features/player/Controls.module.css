@@ -2,7 +2,7 @@
    icons straight on the picture over a black gradient at the top and bottom, one continuous progress bar over a single
    row of controls, a flash of play or pause in the middle. The picture is what people came for, so the layout is every
    other player's; only the dress is Index: Plex Mono for times and labels, Plex Sans Condensed for the title, square
-   corners, a red played bar, a blue focus ring, and panels as ink with 3px paper rules. The round things that remain
+   corners, a red played bar, a blue focus ring, and panels as ink with 2px paper rules. The round things that remain
    are the loading ring and nothing else. No blur. --margin, --panel and --over-video are set on the player's root. */
 
 .controls {
@@ -18,12 +18,12 @@
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--dur-move) ease, visibility 0s linear var(--dur-move);
+  transition: opacity var(--dur-move) var(--ease-out), visibility 0s linear var(--dur-move);
 }
 .controls[data-visible] {
   opacity: 1;
   visibility: visible;
-  transition: opacity var(--dur-state) ease, visibility 0s;
+  transition: opacity var(--dur-state) var(--ease-out), visibility 0s;
 }
 .controls[data-visible] .interactive { pointer-events: auto; }
 .scrim[data-visible] { opacity: 1; transition-duration: var(--dur-state); }
@@ -36,7 +36,7 @@
   z-index: 1;
   pointer-events: none;
   opacity: 0;
-  transition: opacity var(--dur-move) ease;
+  transition: opacity var(--dur-move) var(--ease-out);
   background:
     linear-gradient(180deg, rgb(0 0 0 / 0.65), transparent) top / 100% 150px no-repeat,
     linear-gradient(0deg, rgb(0 0 0 / 0.85), rgb(0 0 0 / 0.5) 45%, transparent) bottom / 100% 240px no-repeat;
@@ -53,7 +53,7 @@
   place-items: center;
   flex: none;
   color: var(--fg);
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 /* Paper on the picture; the pointer fills the button blue, as everywhere else on the site. */
 @media (hover: hover) { .clusterButton:hover { background: var(--blue); color: var(--onblue); } }
@@ -114,10 +114,10 @@
 .round {
   display: grid;
   place-items: center;
-  border: 3px solid var(--fg);
+  border: var(--rule);
   background: rgb(10 10 10 / 0.6);
   color: var(--fg);
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 .round:active { background: var(--blue); border-color: var(--blue); color: var(--onblue); }
 .skip { width: 60px; height: 60px; }
@@ -181,20 +181,19 @@
   touch-action: none;
 }
 .track:focus-visible { outline: none; }
-/* 4px, and 6 under the pointer, while dragging and on focus. The gaps for chapters are a mask on it (Scrubber). */
+/* 4px, and 6 (scaled) under the pointer, while dragging and on focus. The gaps for chapters are a mask on it (Scrubber). */
 .rail {
   position: absolute;
   left: 0;
   right: 0;
-  top: 50%;
+  top: calc(50% - 2px);
   height: 4px;
-  margin-top: -2px;
   background: color-mix(in srgb, var(--fg) 25%, transparent);
   overflow: hidden;
-  transition: height 0.15s var(--ease-out), margin-top 0.15s var(--ease-out);
+  transition: transform var(--dur-hover) var(--ease-out);
 }
-.track[data-dragging] .rail, .track:focus-visible .rail { height: 6px; margin-top: -3px; }
-@media (hover: hover) { .track:hover .rail { height: 6px; margin-top: -3px; } }
+.track[data-dragging] .rail, .track:focus-visible .rail { transform: scaleY(1.5); }
+@media (hover: hover) { .track:hover .rail { transform: scaleY(1.5); } }
 .buffered, .played {
   position: absolute;
   inset: 0;
@@ -215,7 +214,7 @@
   margin: -7px 0 0 -7px;
   background: var(--fg);
   opacity: 0;
-  transition: opacity var(--dur-state) ease;
+  transition: opacity var(--dur-hover) ease;
   pointer-events: none;
 }
 .track[data-dragging] .thumb, .track:focus-visible .thumb { opacity: 1; }
@@ -230,7 +229,7 @@
 /* Options and Audio and Subtitles: one card above the buttons that open it. */
 .panel, .shelf, .upNext, .info, .noSound {
   background: var(--panel);
-  border: 3px solid var(--fg);
+  border: var(--rule);
 }
 .panel {
   position: absolute;
@@ -274,7 +273,7 @@
   font: 700 var(--fs-headline) / 1.2 var(--font-cond);
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  border-bottom: 3px solid var(--fg);
+  border-bottom: var(--rule);
   text-align: left;
 }
 .panelScroll { overflow-y: auto; padding: 4px 0; overscroll-behavior: contain; scrollbar-width: thin; }
@@ -298,7 +297,7 @@
   padding: 12px 16px;
   text-align: left;
   color: var(--fg);
-  transition: background-color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease;
 }
 @media (hover: hover) {
   .row:hover { background: var(--blue); color: var(--onblue); }
@@ -388,7 +387,7 @@
 .episodeCard[aria-current] .episodeStill { outline: 3px solid var(--blue); outline-offset: 3px; }
 .episodeCard:focus-visible { outline: none; }
 .episodeCard:focus-visible .episodeStill { outline: 3px solid var(--blue); outline-offset: 3px; }
-.episodeStill { display: block; transition: opacity var(--dur-state) ease; }
+.episodeStill { display: block; transition: opacity var(--dur-hover) ease; }
 @media (hover: hover) { .episodeCard:not(:disabled):hover .episodeStill { opacity: 0.88; } }
 .episodeName { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .episodeMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -426,13 +425,14 @@
   display: grid;
   place-items: center;
   background: var(--over-video);
-  border: 3px solid var(--fg);
+  border: var(--rule);
   color: var(--fg);
 }
 .upNextFrame { position: relative; display: block; overflow: hidden; }
 /* The countdown: a red line along the thumbnail's foot, emptying from the right. */
 .upNextLine { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgb(0 0 0 / 0.5); }
-.upNextLine > span { display: block; height: 100%; width: calc(var(--left, 1) * 100%); background: var(--red); transition: width 1s linear; }
+/* A countdown is a clock, so it is the one linear move; it scales rather than resizes. */
+.upNextLine > span { display: block; height: 100%; background: var(--red); transform: scaleX(var(--left, 1)); transform-origin: left; transition: transform 1s linear; }
 .upNextText { width: 188px; display: flex; flex-direction: column; gap: 3px; padding-top: 2px; }
 .upNextName {
   font: 700 var(--fs-headline) / 1.15 var(--font-cond);
@@ -472,7 +472,7 @@
 @keyframes skipIn { from { opacity: 0; translate: 0 6px; } }
 .skipLayer .skipButton {
   animation: skipIn var(--dur-move) var(--ease-out);
-  transition: opacity var(--dur-move) ease, transform var(--dur-state) var(--ease-out), background-color var(--dur-state) ease;
+  transition: opacity var(--dur-move) var(--ease-out), transform var(--dur-state) var(--ease-out), background-color var(--dur-hover) ease;
 }
 .skipLayer .skipButton[data-leaving] { opacity: 0; pointer-events: none; }
 .skipButton svg { width: 16px; height: 16px; }
@@ -487,7 +487,7 @@
   height: 44px;
   padding: 0 6px 0 16px;
   background: var(--panel);
-  border: 3px solid var(--fg);
+  border: var(--rule);
   font: 600 var(--fs-small) / 1 var(--font);
   animation: skipIn var(--dur-move) var(--ease-out);
 }
@@ -499,7 +499,7 @@
   text-decoration: underline dotted var(--red);
   text-decoration-thickness: 2px;
   text-underline-offset: 4px;
-  transition: background-color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease;
 }
 @media (hover: hover) { .skipUndo:hover { background: var(--blue); color: var(--onblue); } }
 
@@ -521,7 +521,7 @@
   gap: 8px;
   padding: 28px 24px 24px;
   background: var(--panel);
-  border: 3px solid var(--fg);
+  border: var(--rule);
   text-align: center;
 }
 .askTitle { font: 700 var(--fs-title2) / 1.05 var(--font-cond); text-transform: uppercase; text-wrap: balance; }
@@ -581,7 +581,7 @@
   place-items: center;
   flex: none;
   color: var(--muted);
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 @media (hover: hover) { .infoClose:hover { background: var(--blue); color: var(--onblue); } }
 .infoRows { display: grid; }
@@ -687,7 +687,7 @@
   padding: 12px 14px 14px;
   /* Solid, not the 94% panel colour: the subtitle line runs behind this corner and would show through the card. */
   background: var(--bg);
-  border: 3px solid var(--fg);
+  border: var(--rule);
   transition: transform var(--dur-move) var(--ease-out);
   animation: upNext var(--dur-move) var(--ease-out);
 }
@@ -710,7 +710,7 @@
   display: grid;
   place-items: center;
   color: var(--muted);
-  transition: background-color var(--dur-state) ease, color var(--dur-state) ease;
+  transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease;
 }
 @media (hover: hover) { .suggestClose:hover { background: var(--blue); color: var(--onblue); } }
 .suggestRow { display: flex; gap: 10px; }
@@ -719,7 +719,7 @@
 .suggestion { width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; color: var(--fg); }
 .suggestion:focus-visible { outline: none; }
 .suggestion:focus-visible .suggestionStill { outline: 3px solid var(--blue); outline-offset: 3px; }
-.suggestionStill { display: block; transition: opacity var(--dur-state) ease; }
+.suggestionStill { display: block; transition: opacity var(--dur-hover) ease; }
 @media (hover: hover) { .suggestion:hover .suggestionStill { opacity: 0.88; } }
 .suggestionTitle { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .suggestionMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -782,4 +782,9 @@
   .suggestEndBlock { gap: var(--space-s); }
   .suggestEndHead { font-size: var(--fs-title3); }
   .suggestEndRow > li { width: 150px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track[data-dragging] .rail, .track:focus-visible .rail, .track:hover .rail { transform: none; }
+  .upNext, .skipLayer, .suggest { transition: none; }
 }

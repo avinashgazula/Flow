@@ -1,4 +1,4 @@
-/* A ruled section: a 3px rule, its red label, then the posters. */
+/* A ruled section: a 2px rule, its red label, then the posters. */
 .section { margin-top: var(--section); border-top: var(--rule); }
 .title { padding: var(--space-m) 0 var(--space-m); }
 

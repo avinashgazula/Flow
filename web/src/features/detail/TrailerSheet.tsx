@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import type { Video } from '../../lib/tmdb/types'
+import { useLeave } from '../../lib/leave'
 import s from './TrailerSheet.module.css'
 
 /** The trailer, in YouTube's privacy-enhanced player, with a row of the title's other videos under it when there
  *  are more than one (best first: official trailers, teasers, then the rest). Loaded only when asked for. Focus
  *  moves in when it opens and goes back to the Trailer button when it closes. */
-export default function TrailerSheet({ videos, title, onClose }: { videos: Video[]; title: string; onClose: () => void }) {
+export default function TrailerSheet({ videos, title, onClose: closeNow }: { videos: Video[]; title: string; onClose: () => void }) {
+  const [onClose, leaving] = useLeave(closeNow)
   const [index, setIndex] = useState(0)
   const video = videos[index] ?? videos[0]!
   const close = useRef<HTMLButtonElement>(null)
@@ -26,7 +28,7 @@ export default function TrailerSheet({ videos, title, onClose }: { videos: Video
   }, [onClose])
 
   return (
-    <div className={s.backdrop} data-theme="dark" onClick={onClose} role="dialog" aria-modal="true" aria-label={`${title} trailer`}>
+    <div className={s.backdrop} data-theme="dark" data-leaving={leaving ? '' : undefined} onClick={onClose} role="dialog" aria-modal="true" aria-label={`${title} trailer`}>
       <div className={s.stage} onClick={(e) => e.stopPropagation()}>
         <div className={s.frame}>
           <iframe
