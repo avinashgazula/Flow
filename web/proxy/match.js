@@ -48,10 +48,16 @@ export function originAllowed(origin, allowedOrigins) {
   return allowedOrigins.includes(normal)
 }
 
-/** Whether the address is allowed as the first request (`ALLOWED_HOSTS`) or as a redirect target
- *  (`ALLOWED_HOSTS` or `ALLOWED_REDIRECT_HOSTS`). */
+/** Hosts the website itself needs read for the viewer, allowed whatever `ALLOWED_HOSTS` says so nobody has to find
+ *  them out from an error: OpenSubtitles' download links (the site sends no CORS headers) and IntroDB's skip times
+ *  (its CORS header names only its own page). Exact names, no wildcards. Keep in step with `builtInProxyHosts` in
+ *  src/lib/subtitles/download.ts, which tells a viewer whose proxy refuses one that it is out of date. */
+export const builtInHosts = ['www.opensubtitles.com', 'dl.opensubtitles.org', 'api.introdb.app']
+
+/** Whether the address is allowed as the first request (the built-in hosts or `ALLOWED_HOSTS`) or as a redirect
+ *  target (those or `ALLOWED_REDIRECT_HOSTS`). */
 export function targetAllowed(url, { allowedHosts, redirectHosts = [] }, redirected = false) {
-  return hostMatches(url.hostname, allowedHosts) || (redirected && hostMatches(url.hostname, redirectHosts))
+  return hostMatches(url.hostname, builtInHosts) || hostMatches(url.hostname, allowedHosts) || (redirected && hostMatches(url.hostname, redirectHosts))
 }
 
 /** Names the hosts that answered and how, so a failure can be read off Flow's screen and in

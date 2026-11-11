@@ -28,19 +28,23 @@
   transition: opacity var(--dur-enter) var(--ease-out) var(--dur-exit), transform var(--dur-enter) var(--ease-out) var(--dur-exit), visibility 0s;
 }
 
-/* The title is the giant face: Archivo capitals, three lines at most. */
+/* The title is the giant face: Archivo capitals, never cut. A long name steps down (data-size, from nameSize, as on the
+   title page) and breaks between words, so it takes the lines it needs instead of ending in an ellipsis. --base is the
+   size a short name gets at this width. */
 .name {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+  --base: clamp(44px, 13.5vw, 72px);
+  --step: 1;
   padding-bottom: 0.04em;
-  font: 700 clamp(44px, 13.5vw, 72px) / 0.9 var(--font-title);
+  font: 700 1em / 0.9 var(--font-title);
+  font-size: max(28px, calc(var(--base) * var(--step)));
   text-transform: uppercase;
   letter-spacing: -0.03em;
   overflow-wrap: break-word;
   text-wrap: balance;
 }
+.name[data-size='long'] { --step: 0.82; }
+.name[data-size='longer'] { --step: 0.68; }
+.name[data-size='longest'] { --step: 0.55; line-height: 0.95; }
 .meta { margin-top: var(--space-s); font: italic 400 18px / 1.45 var(--font-serif); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-s); margin-top: var(--space-m); }
 .actions > * { flex: 1 1 0; min-width: 0; }
@@ -56,7 +60,7 @@
 .count { padding: 0 var(--space-m); font: 700 24px / 1 var(--font-cond); letter-spacing: 0.02em; color: var(--red); white-space: nowrap; }
 
 @media (min-width: 721px) {
-  .name { font-size: clamp(64px, 9vw, 96px); }
+  .name { --base: clamp(64px, 9vw, 96px); }
   .meta { font-size: 20px; }
   .actions > * { flex: 0 0 auto; }
   .actions > :first-child { min-width: 168px; }
@@ -69,9 +73,8 @@
   .text { position: absolute; inset: 0 0 auto 0; }
   .text[data-current] { position: relative; }
   .pager { align-self: start; }
-  .name { -webkit-line-clamp: 3; }
   .plate { margin-top: 0; }
-  .name { font-size: clamp(56px, 4.9vw, 84px); }
+  .name { --base: clamp(56px, 4.9vw, 84px); }
 }
 
 /* Placeholder: the same box, a flat frame. */
@@ -92,7 +95,7 @@
   color: var(--fg);
   padding: var(--space-l) var(--page-inset);
 }
-.lead[data-style='fullscreen'] .name { font-size: clamp(44px, 12vw, 64px); }
+.lead[data-style='fullscreen'] .name { --base: clamp(44px, 12vw, 64px); }
 .lead[data-style='fullscreen'] .actions { margin-top: var(--space-m); }
 .lead[data-style='fullscreen'] .meta { color: var(--fg); }
 .lead[data-style='fullscreen'] .info > :global(span) { margin-top: var(--space-s); }
@@ -110,7 +113,7 @@
   .lead[data-style='fullscreen'] .info > :global(span) { grid-column: 1; grid-row: 2; }
   .lead[data-style='fullscreen'] .actions { grid-column: 2; grid-row: 1 / 3; margin-top: 0; flex-direction: column; align-items: stretch; }
   .lead[data-style='fullscreen'] .pager { grid-column: 2; grid-row: 3; margin-top: var(--space-s); }
-  .lead[data-style='fullscreen'] .name { font-size: clamp(56px, 6vw, 96px); -webkit-line-clamp: 2; }
+  .lead[data-style='fullscreen'] .name { --base: clamp(56px, 6vw, 96px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -44,6 +44,20 @@ const maxDownload = 12 * 1024 * 1024
 
 const proxyHint = 'Add the host to your proxy’s ALLOWED_HOSTS (web/proxy/README.md).'
 
+/** The hosts a current stream proxy always allows (`builtInHosts` in proxy/match.js; keep the two in step). A proxy
+ *  that refuses one of them is an older version, so the fix is to redeploy it, not to edit its list. */
+export const builtInProxyHosts = ['www.opensubtitles.com', 'dl.opensubtitles.org', 'api.introdb.app']
+
+const guide = import.meta.env.VITE_PROXY_GUIDE as string | undefined
+
+/** What to say when the proxy refused a subtitle's host (403): for a built-in host the Worker is out of date. */
+export function proxyRefusal(host: string, status: number, said: string): string {
+  if (status === 403 && builtInProxyHosts.includes(host.toLowerCase())) {
+    return `Your stream proxy needs updating to download OpenSubtitles files: redeploy it from web/proxy (see the README).${guide ? ` ${guide}` : ''}`
+  }
+  return `Your stream proxy couldn’t open the subtitle at ${host} (it answered ${status}).${said} ${proxyHint}`
+}
+
 async function proxyReason(response: Response): Promise<string> {
   try {
     const said = (await response.text()).trim().replace(/\s+/g, ' ').slice(0, 200)
@@ -78,7 +92,7 @@ async function fetchFile(url: string, headers: Record<string, string> | undefine
     }
     timer.done()
     if (!response.ok) {
-      if (attempt.viaProxy) throw new SubtitleError(`Your stream proxy couldn’t open the subtitle at ${host} (it answered ${response.status}).${await proxyReason(response)} ${proxyHint}`, 'blocked')
+      if (attempt.viaProxy) throw new SubtitleError(proxyRefusal(host, response.status, await proxyReason(response)), 'blocked')
       throw new SubtitleError(`${host} answered ${response.status} for that subtitle. Try again, or choose another.`)
     }
     const bytes = new Uint8Array(await response.arrayBuffer())
@@ -89,6 +103,9 @@ async function fetchFile(url: string, headers: Record<string, string> | undefine
   const triedProxy = plan.attempts.some((a) => a.viaProxy)
   if (headers) throw new SubtitleError(`${host} doesn’t let web pages download its files, and a stream proxy can’t pass on the key it needs. Use another service for this one.`, 'blocked')
   if (!triedProxy) {
+    if (builtInProxyHosts.includes(host.toLowerCase())) {
+      throw new SubtitleError(`${host} doesn’t let web pages download its files. Set up a stream proxy from web/proxy and add its address in Settings → Playback (it already allows OpenSubtitles), then choose the subtitle again.${guide ? ` ${guide}` : ''}`, 'blocked')
+    }
     throw new SubtitleError(`${host} doesn’t let web pages download its files. Add a stream proxy in Settings → Playback with ${host} in its allowed hosts, then choose the subtitle again.`, 'blocked')
   }
   throw new SubtitleError(`Marquee couldn’t download the subtitle from ${host}, directly or through your stream proxy. Check that the proxy is running, lists this page in ALLOWED_ORIGINS, and has ${host} in ALLOWED_HOSTS.`, 'blocked')

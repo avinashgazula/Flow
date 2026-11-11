@@ -142,6 +142,22 @@ describe('downloading a result', () => {
     await expect(downloadSubtitle(found, {}, { fetch: refused, plan: plan('https://proxy.example/?url={url}') })).rejects.toThrow(/Your stream proxy couldn’t open the subtitle at dl\.subdl\.com \(it answered 403\)\. It said: “Host dl\.subdl\.com is not allowed” Add the host to your proxy’s ALLOWED_HOSTS/)
   })
 
+  it('says an OpenSubtitles file refused by the proxy means the proxy is out of date', async () => {
+    const os: SubtitleResult = { ...found, id: 'os-1', provider: 'opensubtitles', token: '1' }
+    const fetch = async (url: string) => {
+      if (url.startsWith('https://api.opensubtitles.com')) return new Response(JSON.stringify({ link: 'https://www.opensubtitles.com/download/abc/subfile/x.srt' }))
+      if (url.startsWith('https://proxy.example')) return new Response('www.opensubtitles.com isn’t in ALLOWED_HOSTS.', { status: 403 })
+      return Promise.reject(new TypeError('Failed to fetch'))
+    }
+    await expect(downloadSubtitle(os, { openSubtitlesKey: 'k' }, { fetch, plan: plan('https://proxy.example/?url={url}', true) })).rejects.toThrow(/^Your stream proxy needs updating to download OpenSubtitles files: redeploy it from web\/proxy \(see the README\)\./)
+  })
+
+  it('tells a viewer with no proxy to set one up, and that the built-in hosts need no list', async () => {
+    const os: SubtitleResult = { ...found, id: 'os-1', provider: 'opensubtitles', token: '1' }
+    const fetch = async (url: string) => (url.startsWith('https://api.opensubtitles.com') ? new Response(JSON.stringify({ link: 'https://www.opensubtitles.com/download/abc/subfile/x.srt' })) : Promise.reject(new TypeError('Failed to fetch')))
+    await expect(downloadSubtitle(os, { openSubtitlesKey: 'k' }, { fetch, plan: plan() })).rejects.toThrow(/Set up a stream proxy from web\/proxy.*already allows OpenSubtitles/)
+  })
+
   it('does not send a key through a proxy that would drop it', async () => {
     const sub: SubtitleResult = { ...found, id: 'subsource-1', provider: 'subsource', token: 'ss_1' }
     const urls: string[] = []

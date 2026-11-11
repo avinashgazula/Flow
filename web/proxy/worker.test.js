@@ -154,6 +154,25 @@ describe('the Worker', () => {
     expect(calls).toHaveLength(0)
   })
 
+  it('always fetches the hosts the website needs, whatever ALLOWED_HOSTS lists, and still only with GET or HEAD', async () => {
+    const bare = { ALLOWED_ORIGINS: env.ALLOWED_ORIGINS }
+    const calls = network(file(200), file(200), file(200))
+    for (const host of ['www.opensubtitles.com', 'dl.opensubtitles.org', 'api.introdb.app']) {
+      expect((await ask(`https://${host}/f`, { extra: bare })).status).toBe(200)
+    }
+    expect(calls.map((c) => new URL(c.url).hostname)).toEqual(['www.opensubtitles.com', 'dl.opensubtitles.org', 'api.introdb.app'])
+    expect((await ask('https://www.opensubtitles.com/f', { extra: bare, method: 'POST' })).status).toBe(405)
+    expect((await ask('https://elsewhere.example.org/f', { extra: bare })).status).toBe(403)
+  })
+
+  it('follows a redirect from a built-in host only to a host that is listed', async () => {
+    const bare = { ALLOWED_ORIGINS: env.ALLOWED_ORIGINS }
+    network(redirect('https://elsewhere.example.org/f'))
+    expect((await ask('https://www.opensubtitles.com/f', { extra: bare })).status).toBe(403)
+    network(redirect('https://dl.opensubtitles.org/f'), file(200))
+    expect((await ask('https://www.opensubtitles.com/f', { extra: bare })).status).toBe(200)
+  })
+
   it('asks for the token when one is set', async () => {
     const secret = { ...env, TOKEN: 'abc123' }
     network(file())

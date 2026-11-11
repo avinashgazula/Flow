@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cleanSnippet, corsHeaders, downstreamHeaders, hopsSummary, hostMatches, originAllowed, parseList, parseTarget, rangeFromStart, snippetWanted, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
+import { builtInHosts, cleanSnippet, corsHeaders, downstreamHeaders, hopsSummary, hostMatches, originAllowed, parseList, parseTarget, rangeFromStart, snippetWanted, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
 
 describe('parseList', () => {
   it('splits, trims and lower-cases', () => {
@@ -57,6 +57,23 @@ describe('targetAllowed', () => {
     expect(targetAllowed(new URL('https://a.cdn.example.net/x'), hosts, true)).toBe(true)
     expect(targetAllowed(new URL('https://play.example.com/x'), hosts, true)).toBe(true)
     expect(targetAllowed(new URL('https://elsewhere.example.org/x'), hosts, true)).toBe(false)
+  })
+})
+
+describe('built-in hosts', () => {
+  const none = { allowedHosts: [] }
+  it('are allowed with an empty ALLOWED_HOSTS, as a first request and as a redirect', () => {
+    for (const host of builtInHosts) {
+      expect(targetAllowed(new URL(`https://${host}/x`), none)).toBe(true)
+      expect(targetAllowed(new URL(`https://${host}/x`), none, true)).toBe(true)
+    }
+  })
+
+  it('are exact names: no subdomain, no sibling, no other OpenSubtitles host', () => {
+    expect(builtInHosts).toEqual(['www.opensubtitles.com', 'dl.opensubtitles.org', 'api.introdb.app'])
+    for (const host of ['evil.www.opensubtitles.com', 'opensubtitles.com', 'api.opensubtitles.com', 'www.opensubtitles.com.evil.net', 'introdb.app']) {
+      expect(targetAllowed(new URL(`https://${host}/x`), none, true)).toBe(false)
+    }
   })
 })
 

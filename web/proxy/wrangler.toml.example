@@ -9,7 +9,8 @@ compatibility_date = "2025-01-01"
 ALLOWED_ORIGINS = "https://flow.example.com"
 
 # The hosts the proxy may fetch from, comma-separated. A leading *. matches any subdomain.
-# Put your add-on's host (the play link) and the host it redirects to (your debrid service).
+# Not needed for OpenSubtitles (www.opensubtitles.com, dl.opensubtitles.org) or IntroDB (api.introdb.app): the Worker
+# always allows those. Put your add-on's host (the play link) and the host it redirects to (your debrid service).
 ALLOWED_HOSTS = "aiostreams.example.com,*.real-debrid.com"
 
 # Optional. Hosts that are fine as the target of a redirect but not as a first request.
