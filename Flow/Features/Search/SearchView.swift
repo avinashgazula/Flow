@@ -7,6 +7,7 @@ struct SearchView: View {
     @State private var searching = false
     @State private var error: String?
     @State private var recents: [String] = []
+    @State private var searchPresented = false
 
     /// The rows leave out the top result, which the card above already shows.
     private var movies: [MediaItem] { media(.movie) }
@@ -75,10 +76,25 @@ struct SearchView: View {
             .padding(.vertical)
         }
         .navigationTitle("Search")
+        #if os(tvOS)
         .searchable(text: $model.searchText, prompt: "Movies, shows, and people")
+        #else
+        .searchable(text: $model.searchText, isPresented: $searchPresented, prompt: "Movies, shows, and people")
+        #endif
         .onSubmit(of: .search) { model.rememberSearch(text); recents = model.recentSearches }
         .task(id: text) { await runSearch() }
-        .onAppear { recents = model.recentSearches }
+        .onAppear { recents = model.recentSearches; takeFocusRequest() }
+        .onChange(of: model.searchFocusPending) { takeFocusRequest() }
+    }
+
+    /// The "/" shortcut asked for the cursor. The field is brought up a moment after the tab settles, or it is ignored.
+    private func takeFocusRequest() {
+        guard model.searchFocusPending else { return }
+        model.searchFocusPending = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(200))
+            searchPresented = true
+        }
     }
 
     @ViewBuilder

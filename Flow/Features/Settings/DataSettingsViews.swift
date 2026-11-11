@@ -9,6 +9,11 @@ struct DataStorageView: View {
     @State private var downloadBytes: Int64 = 0
     @State private var exportURL: URL?
     @State private var confirmClear: ClearAction?
+    #if !os(tvOS)
+    @State private var showImporter = false
+    @State private var pendingBackup: LibraryBackup.Parsed?
+    @State private var importError: String?
+    #endif
 
     enum ClearAction: String, Identifiable {
         case trakt, rewatches, shuffle, progress, resetCloud, allCache, cloud, downloads, tracking
@@ -87,12 +92,24 @@ struct DataStorageView: View {
                 if let exportURL {
                     ShareLink(item: exportURL) { Label("Export Tracking Data", systemImage: "square.and.arrow.up") }
                 }
+                Button { showImporter = true } label: { Label("Import Tracking Data", systemImage: "square.and.arrow.down") }
+                .confirmationDialog("Import Tracking Data", isPresented: Binding(get: { pendingBackup != nil }, set: { if !$0 { pendingBackup = nil } }), titleVisibility: .visible) {
+                    Button("Import") {
+                        if let parsed = pendingBackup { Task { await model.restoreTrackingData(parsed); refresh() } }
+                        pendingBackup = nil
+                    }
+                    Button("Cancel", role: .cancel) { pendingBackup = nil }
+                } message: {
+                    if let pendingBackup {
+                        Text("Adds \(pendingBackup.counts.summary) to this device. Nothing already here is removed; where a title is in both, the newer entry replaces the older one.")
+                    }
+                }
                 #endif
             } header: {
                 FilmSectionHeader("On-Device Tracking")
             } footer: { FilmFooter {
                 Text((model.settings.sync.iCloudEnabled ? "Re-download reads the whole iCloud copy and merges anything missing into this device. Reset replaces the iCloud copy with this device's. " : "")
-                     + "Export saves your watch history, watchlist, favourites, resume positions and rewatches as a JSON file.")
+                     + "Export saves your watch history, watchlist, favourites, resume positions and rewatches as a JSON file. Import reads that file, or the library part of a Flow website backup, and adds it to what is on this device: nothing here is removed, and where both have the same title the newer entry wins.")
             } }
 
             if Platform.supportsDownloads {
@@ -159,6 +176,25 @@ struct DataStorageView: View {
             } }
         }
         .onAppear { refresh() }
+        #if !os(tvOS)
+        .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json, .plainText]) { result in
+            guard case .success(let url) = result else { return }
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            do {
+                pendingBackup = try LibraryBackup.parse(try Data(contentsOf: url))
+            } catch let error as LibraryBackup.ParseError {
+                importError = error.errorDescription
+            } catch {
+                importError = "Couldn't read that file. Check that it's still there, then try again."
+            }
+        }
+        .alert("Couldn't Import", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
+            Button("OK", role: .cancel) { importError = nil }
+        } message: {
+            Text(importError ?? "")
+        }
+        #endif
         // Background pushes and pulls move the counts too.
         .onChange(of: model.settings.sync.lastCloudSync) { refresh() }
         .confirmationDialog(confirmClear?.title ?? "", isPresented: Binding(get: { confirmClear != nil }, set: { if !$0 { confirmClear = nil } }), titleVisibility: .visible) {

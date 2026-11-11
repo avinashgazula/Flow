@@ -183,6 +183,14 @@ public actor LocalTracker: TrackingService, ListService {
         save(merged)
     }
 
+    /// Folds a backup file's library in (Settings, Data, Import Tracking Data).
+    public func restore(_ backup: LocalLibrary) {
+        let restored = LibraryBackup.restore(backup, into: library)
+        guard restored != library else { return }
+        library = restored
+        save(restored)
+    }
+
     // MARK: Progress (also used to keep resume points for every tracker that lacks them)
 
     public func recordProgress(_ progress: PlaybackProgress, item: MediaItem) {
