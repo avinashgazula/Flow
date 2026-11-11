@@ -121,13 +121,23 @@ struct SettingsRootView: View {
     var body: some View {
         FilmList {
             if query.isEmpty {
+                // The page head of the website's Settings: a giant title over a 2px rule. The navigation title
+                // stays for the back stack and the Mac window.
+                Section {
+                    PageTitle("Settings")
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
+                        #if !os(tvOS)
+                        .listRowSeparator(.hidden)
+                        #endif
+                }
                 if model.isDemo {
                     Section {
                         VStack(alignment: .leading, spacing: Theme.Space.s) {
-                            Text("You're exploring sample data").font(.headline)
+                            Text("You're exploring sample data").font(Theme.Typeface.heading)
                             Text("Nothing here touches your accounts. Leave the demo to set Marquee up with your own sources.")
-                                .font(Platform.isTV ? .callout : .footnote)
-                                .foregroundStyle(Theme.Palette.textSecondary)
+                                .font(Theme.Typeface.caption)
+                                .foregroundStyle(Theme.Palette.muted)
                             Button("Leave Demo") { model.showSettings = false; model.setDemoMode(false) }
                                 .buttonStyle(GlassButtonStyle(compact: true))
                         }
@@ -140,10 +150,10 @@ struct SettingsRootView: View {
                             HStack(spacing: 12) {
                                 RemoteImage(url: profile.avatarURL)
                                     .overlay { if profile.avatarURL == nil { Image(systemName: "person.fill") } }
-                                    .frame(width: 44, height: 44).clipShape(Circle())
+                                    .frame(width: 44, height: 44).ruleFrame()
                                 VStack(alignment: .leading) {
-                                    Text(profile.displayName ?? profile.username).font(.headline)
-                                    Text("Tracking with \(model.settings.account.tracker.displayName)").font(.caption).foregroundStyle(.secondary)
+                                    Text(profile.displayName ?? profile.username).font(Theme.Typeface.heading)
+                                    Text("Tracking with \(model.settings.account.tracker.displayName)").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
                                 }
                             }
                         }
@@ -161,11 +171,16 @@ struct SettingsRootView: View {
                 let matches = SettingsPage.allCases.filter {
                     $0.title.localizedCaseInsensitiveContains(query) || $0.keywords.localizedCaseInsensitiveContains(query)
                 }
-                if matches.isEmpty { Text("No settings match “\(query)”").foregroundStyle(.secondary) }
+                if matches.isEmpty { Text("No settings match “\(query)”").foregroundStyle(Theme.Palette.muted) }
                 ForEach(matches) { row($0) }
             }
         }
-        .flowPageTitle("Settings")
+        #if os(tvOS)
+        .toolbar(.hidden, for: .navigationBar)
+        #else
+        .navigationTitle("Settings")
+        .inlineNavigationTitle()
+        #endif
         #if !os(tvOS)
         // On TV a search field is a full on-screen keyboard parked above the content.
         .searchable(text: $query, prompt: "Search Settings")
@@ -258,7 +273,8 @@ struct AboutView: View {
                         .background(Theme.Palette.blue)
                         .padding(.bottom, 4)
                     Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
-                        .foregroundStyle(.secondary)
+                        .font(Theme.Typeface.caption)
+                        .foregroundStyle(Theme.Palette.muted)
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -267,16 +283,17 @@ struct AboutView: View {
                 Text("Metadata and images from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.")
                 Text("Episode data from TheTVDB. Ratings via MDBList. Sports data from TheSportsDB.")
             }
-            .font(.footnote)
+            .font(Theme.Typeface.reading)
             Section(film: "Content") {
                 Text("Marquee does not host or provide any content. It plays media from servers, shares, providers and add-ons that you configure and are responsible for.")
-                    .font(.footnote)
+                    .font(Theme.Typeface.reading)
             }
         }
     }
 }
 
-/// A glyph in print colour on a flat control-ink squircle: the tint is kept for callers but no longer drawn.
+/// A plain glyph in muted ink: the tile it used to sit on is gone with the squircles. The tint is kept for callers
+/// but no longer drawn.
 struct SettingsIcon: View {
     let systemImage: String
     let tint: Color
@@ -284,8 +301,7 @@ struct SettingsIcon: View {
     var body: some View {
         Image(systemName: systemImage)
             .font(.system(.subheadline, weight: .semibold))
-            .foregroundStyle(Theme.Palette.print)
+            .foregroundStyle(Theme.Palette.muted)
             .frame(width: 29 * Theme.scale, height: 29 * Theme.scale)
-            .background(Theme.Palette.control, in: RoundedRectangle(cornerRadius: 7 * Theme.scale, style: .continuous))
     }
 }

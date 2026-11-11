@@ -58,9 +58,9 @@ struct AppIconSection: View {
                     .frame(width: 72, height: 72)
                     .clipShape(shape)
                     .hairline(shape)
-                Text(choice.title).font(.footnote)
+                Text(choice.title).font(Theme.Typeface.caption)
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(Theme.Palette.blue)
                     .opacity(selected ? 1 : 0)
             }
         }

@@ -373,9 +373,9 @@ struct LivePlayerView: View {
             if state == .connecting {
                 ProgressView()
                     .controlSize(.large)
-                    .tint(.white)
+                    .tint(Theme.Palette.fg)
                     .padding(22)
-                    .flowGlass(Circle())
+                    .playerPanel()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .allowsHitTesting(false)
             }
@@ -500,29 +500,30 @@ struct LiveInfoCard: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         if let number = channel.number {
-                            Text("\(number)").font(.system(.subheadline, weight: .bold).monospacedDigit()).foregroundStyle(Theme.Palette.textSecondary)
+                            Text("\(number)").font(Theme.Typeface.time).foregroundStyle(Theme.Palette.muted)
                         }
-                        Text(channel.name).font(Theme.Typeface.headline).lineLimit(1)
+                        Text(channel.name).font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.fg).lineLimit(1)
                         Text("LIVE")
                             .font(Theme.Typeface.micro).kerning(1)
+                            .foregroundStyle(Theme.Palette.bg)
                             .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(Theme.Palette.red, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                            .background(Theme.Palette.red)
                     }
                     if let now {
-                        Text(now.title).font(.system(.title3, weight: .semibold)).lineLimit(1)
+                        Text(now.title).font(Theme.Typeface.heading).foregroundStyle(Theme.Palette.fg).lineLimit(1)
                         HStack(spacing: 8) {
                             Text(now.start, style: .time)
                             ProgressCapsule(value: min(1, max(0, context.date.timeIntervalSince(now.start) / max(1, now.end.timeIntervalSince(now.start)))), height: 3, tint: Theme.Palette.red)
                                 .frame(width: 140)
                             Text(now.end, style: .time)
                         }
-                        .font(.system(.caption).monospacedDigit())
-                        .foregroundStyle(Theme.Palette.textSecondary)
+                        .font(Theme.Typeface.caption)
+                        .foregroundStyle(Theme.Palette.muted)
                     }
                     if let upcoming {
                         (Text("Next ") + Text(upcoming.start, style: .time) + Text(" · \(upcoming.title)"))
-                            .font(.system(.caption))
-                            .foregroundStyle(Theme.Palette.textTertiary)
+                            .font(Theme.Typeface.caption)
+                            .foregroundStyle(Theme.Palette.faint)
                             .lineLimit(1)
                     }
                 }
@@ -539,7 +540,7 @@ struct LiveInfoCard: View {
             // As wide as what it says, up to a limit, so it doesn't spread over the system's play buttons.
             .frame(maxWidth: 440, alignment: .leading)
             .fixedSize(horizontal: true, vertical: false)
-            .flowGlass(RoundedRectangle(cornerRadius: 22, style: .continuous), tint: Theme.Palette.overPicture)
+            .playerPanel()
         }
     }
 }

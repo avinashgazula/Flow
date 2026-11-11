@@ -22,11 +22,11 @@ struct SourcesSettingsView: View {
             Section {
                 ForEach(model.settings.sources.categoryOrder) { category in
                     HStack(spacing: 12) {
-                        Image(systemName: category.systemImage).foregroundStyle(.secondary).frame(width: 26)
+                        Image(systemName: category.systemImage).foregroundStyle(Theme.Palette.muted).frame(width: 26)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(category.displayName)
                             let count = model.providerEntries(for: category).count
-                            Text(count == 0 ? "Not configured" : "\(count) provider\(count == 1 ? "" : "s")").font(.caption).foregroundStyle(.secondary)
+                            Text(count == 0 ? "Not configured" : "\(count) provider\(count == 1 ? "" : "s")").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
                         }
                         Spacer()
                         #if os(tvOS)
@@ -100,7 +100,7 @@ struct SourcesSettingsView: View {
                     Text(rule.key.title)
                     Spacer()
                     Button(rule.descending ? "Best First" : "Lowest First") { rule.descending.toggle() }
-                        .font(.caption).buttonStyle(.bordered)
+                        .buttonStyle(GlassButtonStyle(compact: true))
                 }
                 .contextMenu {
                     Button(role: .destructive) { model.settings.sources.sortRules.removeAll { $0.key == rule.key } } label: { Label("Remove", systemImage: "trash") }
@@ -245,8 +245,8 @@ struct AddonsSettingsView: View {
                 ForEach($model.settings.sources.addons) { $addon in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(addon.name).font(.headline)
-                            Text(addon.manifestURL.host ?? "").font(.caption).foregroundStyle(.secondary)
+                            Text(addon.name).font(Theme.Typeface.headline)
+                            Text(addon.manifestURL.host ?? "").font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
                         }
                         Spacer()
                         Toggle("", isOn: $addon.enabled).labelsHidden()
@@ -277,7 +277,7 @@ struct AddonsSettingsView: View {
                     Task { await add() }
                 } label: { HStack { Text("Install Add-on"); if adding { Spacer(); ProgressView() } } }
                 .disabled(manifestText.isEmpty || adding)
-                if let error { Text(error).font(.caption).foregroundStyle(.red) }
+                if let error { Text(error).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.red) }
             } header: {
                 FilmSectionHeader("Add")
             } footer: { FilmFooter {

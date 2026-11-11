@@ -244,10 +244,11 @@ struct SongCard: View {
                 .symbolEffect(.variableColor.iterative, isActive: animating)
             Text(text).lineLimit(2)
         }
-        .font(.system(size: 14 * Theme.scale, weight: .semibold))
+        .font(Theme.Typeface.control)
+        .foregroundStyle(Theme.Palette.fg)
         .padding(.horizontal, 16 * Theme.scale).padding(.vertical, 10 * Theme.scale)
         .frame(maxWidth: 360 * Theme.scale)
-        .flowGlass(Capsule(), tint: Theme.Palette.overPicture)
+        .playerPanel()
         .onTapGesture { recognizer.dismiss() }
     }
 
@@ -255,14 +256,15 @@ struct SongCard: View {
         HStack(spacing: 14 * Theme.scale) {
             RemoteImage(url: match.item.artworkURL, maxPixel: 300, fallbackTitle: match.title)
                 .frame(width: 64 * Theme.scale, height: 64 * Theme.scale)
-                .clipShape(RoundedRectangle(cornerRadius: 10 * Theme.scale, style: .continuous))
+                .clipShape(Rectangle())
             VStack(alignment: .leading, spacing: 3) {
                 Label("Shazam", systemImage: "shazam.logo.fill")
-                    .font(.system(size: 11 * Theme.scale, weight: .bold))
-                    .foregroundStyle(Theme.Palette.textSecondary)
-                Text(match.title).font(.system(size: 16 * Theme.scale, weight: .bold)).lineLimit(1)
+                    .font(Theme.Typeface.micro)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.Palette.red)
+                Text(match.title).font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.fg).lineLimit(1)
                 if !match.artist.isEmpty {
-                    Text(match.artist).font(.system(size: 14 * Theme.scale)).foregroundStyle(Theme.Palette.textSecondary).lineLimit(1)
+                    Text(match.artist).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted).lineLimit(1)
                 }
                 #if !os(tvOS)
                 HStack(spacing: 8) {
@@ -274,9 +276,7 @@ struct SongCard: View {
                     } label: { Label(added ? "Added" : "My Shazam", systemImage: added ? "checkmark" : "plus") }
                     .disabled(added)
                 }
-                .font(.system(size: 12, weight: .semibold))
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+                .buttonStyle(GlassButtonStyle(compact: true))
                 .padding(.top, 4)
                 #endif
             }
@@ -284,13 +284,13 @@ struct SongCard: View {
         }
         .padding(12 * Theme.scale)
         .frame(width: 340 * Theme.scale)
-        .flowGlass(RoundedRectangle(cornerRadius: 20 * Theme.scale, style: .continuous), tint: Theme.Palette.overPicture)
+        .playerPanel()
         .overlay(alignment: .topTrailing) {
             #if !os(tvOS)
             Button { recognizer.dismiss() } label: {
-                Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).frame(width: 22, height: 22).background(.white.opacity(0.14), in: Circle())
+                Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).frame(width: 22, height: 22)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PlayerButtonStyle())
             .padding(8)
             .accessibilityLabel("Close")
             #endif

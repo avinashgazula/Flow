@@ -511,8 +511,8 @@ extension View {
         #endif
     }
 
-    /// Rows on base-2, so a group of settings reads as a panel on the ground. Apple TV keeps the system's own row
-    /// and focus look, which a custom row background would replace; it gets taller rows instead.
+    /// Rows on paper with 1px ink dividers, so a group of settings reads as a ruled list. Apple TV keeps the system's
+    /// own row and focus look, which a custom row background would replace; it gets taller rows instead.
     @ViewBuilder
     fileprivate func filmRows() -> some View {
         #if os(tvOS)
@@ -521,7 +521,8 @@ extension View {
         listRowInsets(EdgeInsets(top: Theme.Space.s, leading: 20, bottom: Theme.Space.s, trailing: 20))
             .textCase(nil)
         #else
-        listRowBackground(Theme.Palette.panel)
+        listRowBackground(Theme.Palette.bg)
+            .listRowSeparatorTint(Theme.Palette.rule)
         #endif
     }
 }
@@ -533,45 +534,37 @@ struct FilmFooter<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        #if os(tvOS)
+        // Muted mono, sentence case: the small print under a group.
         content
-            .font(.callout)
-            .foregroundStyle(Theme.Palette.textSecondary)
-            .padding(.top, Theme.Space.xs)
-        #elseif os(macOS)
-        // A Mac list centres a wrapped footer under its rows; it reads better flush with the rows' edge.
-        content
+            .font(Theme.Typeface.caption)
+            .foregroundStyle(Theme.Palette.muted)
+            .textCase(nil)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
-        #else
-        content
-        #endif
+            #if os(tvOS)
+            .padding(.top, Theme.Space.xs)
+            #endif
     }
 }
 
-/// A settings section header. tvOS's grouped list uppercases a plain string header itself, and a case reset set on
-/// the Form or the rows doesn't reach it, so the reset sits on the header's own Text. On Apple TV the title is also
-/// set larger, in secondary paper, for a screen read from a sofa; elsewhere it is the system's own header. Every
-/// settings Section header goes through this (or `Section(film:)`), so the casing and sizing live in one place.
+/// A settings section header: the 2px rule that opens a group, then its name as a red mono label. The Form's own
+/// header would uppercase and recolour a plain string, so the casing and styling live here. Every settings Section
+/// header goes through this (or `Section(film:)`).
 struct FilmSectionHeader: View {
     let title: String
 
     init(_ title: String) { self.title = title }
 
     var body: some View {
-        #if os(tvOS)
-        // A header that is only a Text goes to the system's own header label, which capitalises it whatever
-        // textCase says; inside a stack it stays a custom view and keeps its Title Case.
-        HStack(spacing: 0) {
-            Text(title)
-                .textCase(nil)
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(Theme.Palette.textSecondary)
-            Spacer(minLength: 0)
+        // Inside a stack the header stays a custom view; a bare Text goes to the system's header label, which
+        // capitalises it whatever textCase says.
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            RuleLine()
+            SectionLabel(title)
         }
-        #else
-        Text(title)
-        #endif
+        .padding(.top, Theme.Space.s)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .textCase(nil)
     }
 }
 
@@ -606,13 +599,9 @@ extension View {
         #if os(tvOS)
         toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) {
-                Text(title)
-                    .font(.system(.largeTitle, weight: .bold))
-                    .foregroundStyle(Theme.Palette.text)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                PageTitle(title)
                     .padding(.horizontal, inset)
                     .padding(.top, Theme.Space.s)
-                    .accessibilityAddTraits(.isHeader)
             }
         #else
         navigationTitle(title)
@@ -622,8 +611,8 @@ extension View {
 
 #if os(tvOS)
 /// A toggle as a row with its value on the right. The system draws a toggle in the app's tint on Apple TV, so unfocused
-/// rows read yellow; this draws the label in paper and the value in secondary, and flips both to dark ink on the system's
-/// light focus platter, so yellow stays for the focus ring and nothing else.
+/// rows read blue; this draws the label in ink and the value in muted, and flips both to on-blue when the row is focused,
+/// so blue stays for the focus and nothing else.
 struct FilmToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button { configuration.isOn.toggle() } label: { FilmToggleRow(configuration: configuration) }
@@ -638,11 +627,51 @@ private struct FilmToggleRow: View {
 
     var body: some View {
         HStack {
-            configuration.label.foregroundStyle(focused ? Theme.Palette.onStock : Theme.Palette.text)
+            configuration.label.foregroundStyle(focused ? Theme.Palette.onBlue : Theme.Palette.fg)
             Spacer(minLength: Theme.Space.m)
             Text(configuration.isOn ? "On" : "Off")
-                .foregroundStyle(focused ? Theme.Palette.onStock.opacity(0.7) : Theme.Palette.textSecondary)
+                .font(Theme.Typeface.control)
+                .foregroundStyle(focused ? Theme.Palette.onBlue.opacity(0.8) : Theme.Palette.muted)
         }
+    }
+}
+#else
+/// A square switch: a 2px ink frame with a square knob, filled blue when on. The system's round switch can't be
+/// restyled, so settings rows draw their own; the whole row is the button, as with the system's.
+struct FilmToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        FilmSwitchRow(configuration: configuration)
+    }
+}
+
+private struct FilmSwitchRow: View {
+    let configuration: ToggleStyleConfiguration
+    @Environment(\.isEnabled) private var enabled
+
+    var body: some View {
+        let on = configuration.isOn
+        Button { configuration.isOn.toggle() } label: {
+            HStack(spacing: Theme.Space.m) {
+                configuration.label
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                ZStack(alignment: on ? .trailing : .leading) {
+                    Rectangle().fill(on ? Theme.Palette.blue : Theme.Palette.bg)
+                    Rectangle()
+                        .fill(on ? Theme.Palette.onBlue : Theme.Palette.fg)
+                        .frame(width: 14, height: 14)
+                        .padding(3)
+                }
+                .frame(width: 46, height: 26)
+                .overlay(Rectangle().strokeBorder(on ? Theme.Palette.blue : Theme.Palette.fg, lineWidth: Theme.Rule.heavy))
+                .animation(Theme.Motion.state, value: on)
+                .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+            .opacity(enabled ? 1 : 0.5)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(.isToggle)
+        .accessibilityValue(on ? "On" : "Off")
     }
 }
 #endif
@@ -665,12 +694,12 @@ struct FilmPicker<SelectionValue: Hashable, Content: View>: View {
         Picker(title, selection: $selection) { content }
         #else
         Picker(title, selection: $selection) { content }
-            .tint(Theme.Palette.textSecondary)
+            .tint(Theme.Palette.muted)
         #endif
     }
 }
 
-/// A Form on the film ground with its rows on base-2. A row background belongs to the rows and can't be set from
+/// A Form on paper with ruled rows and mono labels. A row background belongs to the rows and can't be set from
 /// outside the form, so every settings page builds its form with this instead of the system Form.
 struct FilmForm<Content: View>: View {
     @ViewBuilder var content: Content
@@ -683,9 +712,8 @@ struct FilmForm<Content: View>: View {
             .formStyle(.grouped)
             #endif
             .filmGround()
-            #if os(tvOS)
+            .font(Theme.Typeface.body)
             .toggleStyle(FilmToggleStyle())
-            #endif
     }
 }
 
@@ -697,9 +725,8 @@ struct FilmList<Content: View>: View {
         List { content.filmRows() }
             .tvListRhythm()
             .filmGround()
-            #if os(tvOS)
+            .font(Theme.Typeface.body)
             .toggleStyle(FilmToggleStyle())
-            #endif
     }
 }
 

@@ -112,24 +112,22 @@ struct MacPlayerMenu: View {
     }
 }
 
-/// The Mac player's controls are a compact bar of small icon buttons like a toolbar's, not the phone's round
-/// glass buttons: one rounded glass strip over the picture, each button lighting under the pointer.
+/// The Mac player's controls are a compact bar of small icon buttons like a toolbar's: one flat ink strip over the
+/// picture with the paper rule, each button turning blue under the pointer.
 struct MacControlBar<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        GlassGroup(spacing: 4) {
-            HStack(spacing: 2) { content }
-                .padding(3)
-                .flowGlass(RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous), tint: Theme.Palette.overPicture)
-        }
+        HStack(spacing: 2) { content }
+            .padding(3)
+            .playerPanel()
     }
 }
 
 extension View {
     /// A bar icon: white, small, and the same size whichever control it sits in.
     func macBarIcon() -> some View {
-        font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
+        modifier(MacBarIcon())
     }
 
     /// A borderless menu dressed as a bar button.
@@ -143,15 +141,35 @@ extension View {
     }
 }
 
-/// A soft fill under the pointer, as a toolbar button gives.
+/// Whether the bar button around an icon is lit, so the icon can turn to on-blue with its fill.
+private struct MacBarLitKey: EnvironmentKey { static let defaultValue = false }
+
+extension EnvironmentValues {
+    fileprivate var macBarLit: Bool {
+        get { self[MacBarLitKey.self] }
+        set { self[MacBarLitKey.self] = newValue }
+    }
+}
+
+private struct MacBarIcon: ViewModifier {
+    @Environment(\.macBarLit) private var lit
+
+    func body(content: Content) -> some View {
+        content.font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
+    }
+}
+
+/// A blue fill under the pointer, with the icon turning to on-blue.
 struct MacBarHover: ViewModifier {
     @State private var hovering = false
 
     func body(content: Content) -> some View {
         content
             .frame(width: 30, height: 28)
-            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(.white.opacity(hovering ? 0.18 : 0)))
-            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .background(Rectangle().fill(hovering ? Theme.Palette.blue : Color.clear))
+            .environment(\.macBarLit, hovering)
+            .contentShape(Rectangle())
             .onHover { hovering = $0 }
             .animation(Theme.Motion.fade, value: hovering)
     }

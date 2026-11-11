@@ -56,7 +56,7 @@ struct SyncSettingsView: View {
             }
             .disabled(working || server.nonEmpty == nil || token.nonEmpty == nil)
             // Also what turned Sync off by itself, like an erase from another device.
-            if let message = failure ?? model.syncError { Text(message).font(.footnote).foregroundStyle(Theme.Palette.red) }
+            if let message = failure ?? model.syncError { Text(message).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.red) }
         } header: {
             FilmSectionHeader("Turn On Sync")
         } footer: { FilmFooter {
@@ -105,7 +105,7 @@ struct SyncSettingsView: View {
                 } icon: {
                     Image(systemName: "exclamationmark.triangle.fill")
                 }
-                .font(.footnote)
+                .font(Theme.Typeface.caption)
                 .foregroundStyle(Theme.Palette.warn)
             }
         } header: {
@@ -135,7 +135,7 @@ struct SyncSettingsView: View {
                     #endif
             }
             Button("Turn Off and Erase", role: .destructive) { confirmErase = true }
-            if let failure { Text(failure).font(.footnote).foregroundStyle(Theme.Palette.red) }
+            if let failure { Text(failure).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.red) }
         } footer: { FilmFooter {
             Text("Turn Off Sync forgets the key on this device and keeps your settings. Turn Off and Erase also deletes the synced copy from your Worker, so no other device can sync until you turn it on again.")
         } }
@@ -218,7 +218,7 @@ struct SyncPairingCard: View {
                 .buttonStyle(GlassButtonStyle(compact: true))
                 #endif
                 Text("Anyone with this link can read your synced settings. Share it only with your own devices.")
-                    .font(.footnote)
+                    .font(Theme.Typeface.caption)
                     .foregroundStyle(Theme.Palette.textTertiary)
                     .multilineTextAlignment(.center)
             }
@@ -288,7 +288,7 @@ struct SyncJoinView: View {
                     .lineLimit(1...4)
                     .syncField(url: true)
                 Button("Paste") { link = Platform.pasteboardString() ?? "" }
-                if let linkProblem { Text(linkProblem).font(.footnote).foregroundStyle(Theme.Palette.red) }
+                if let linkProblem { Text(linkProblem).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.red) }
             } header: {
                 FilmSectionHeader("Pairing Link")
             } footer: { FilmFooter {
@@ -320,7 +320,7 @@ struct SyncJoinView: View {
                     }
                 }
                 .disabled(!canJoin)
-                if let failure { Text(failure).font(.footnote).foregroundStyle(Theme.Palette.red) }
+                if let failure { Text(failure).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.red) }
             } footer: { FilmFooter {
                 if model.syncIsOn {
                     Text("This device is already syncing. Joining another sync replaces that one here and leaves it as it is on the server.")

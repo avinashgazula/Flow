@@ -33,10 +33,10 @@ struct PlayerMediaOptions {
     }
 }
 
-/// A row of player buttons on one glass capsule: close, picture in picture, info and AirPlay at the
+/// A row of player buttons on one flat ink panel: close, picture in picture, info and AirPlay at the
 /// top; episodes or chapters, X-Ray and options at the bottom.
 ///
-/// The glass isn't interactive: interactive glass answers touches itself, and on iOS 26 it can take
+/// The panel isn't interactive itself: interactive glass answered touches of its own, and on iOS 26 it could take
 /// the first tap meant for a button inside it, which is why options sometimes needed a second tap.
 struct PlayerCluster<Content: View>: View {
     @ViewBuilder let content: Content
@@ -45,7 +45,7 @@ struct PlayerCluster<Content: View>: View {
         HStack(spacing: 2) { content }
             .padding(.horizontal, 6)
             .padding(.vertical, 4)
-            .flowGlass(Capsule(), tint: Theme.Palette.overPicture)
+            .playerPanel()
     }
 }
 
@@ -60,23 +60,25 @@ struct ClusterButton: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
-                .background { if active { Circle().fill(.white.opacity(0.2)) } }
-                .contentShape(Circle())
         }
-        .buttonStyle(ClusterButtonStyle())
+        .buttonStyle(ClusterButtonStyle(active: active))
         .accessibilityLabel(label)
         .accessibilityAddTraits(active ? .isSelected : [])
     }
 }
 
+/// Blue while its panel is open or while pressed, ink and paper otherwise.
 private struct ClusterButtonStyle: ButtonStyle {
+    let active: Bool
+
     func makeBody(configuration: Configuration) -> some View {
+        let lit = active || configuration.isPressed
         configuration.label
-            .background { if configuration.isPressed { Circle().fill(.white.opacity(0.18)) } }
-            .scaleEffect(configuration.isPressed ? 0.92 : 1)
-            .animation(Theme.Motion.snappy, value: configuration.isPressed)
+            .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
+            .background(lit ? Theme.Palette.blue : Color.clear)
+            .contentShape(Rectangle())
+            .animation(Theme.Motion.hover, value: lit)
     }
 }
 
@@ -113,32 +115,35 @@ struct ChapterStrip: View {
     }
 
     private func card(_ chapter: PlayerChapter, number: Int, isCurrent: Bool) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        let shape = Rectangle()
         return VStack(alignment: .leading, spacing: 6) {
             ChapterThumbnail(session: session, time: chapter.start)
                 .frame(width: cardWidth, height: cardWidth * 9 / 16)
                 .clipShape(shape)
-                .overlay(shape.strokeBorder(isCurrent ? Color.white : Color.white.opacity(0.15), lineWidth: isCurrent ? 2.5 : 1))
+                .overlay(shape.strokeBorder(isCurrent ? Theme.Palette.fg : Theme.Palette.tint3,
+                                            lineWidth: isCurrent ? Theme.Rule.heavy : Theme.Rule.thin))
                 .overlay(alignment: .topLeading) {
                     if isCurrent {
                         Text("Now")
-                            .font(.system(size: 12, weight: .bold))
+                            .font(Theme.Typeface.micro)
+                            .textCase(.uppercase)
+                            .foregroundStyle(Theme.Palette.bg)
                             .padding(.horizontal, 8).padding(.vertical, 3)
-                            .background(.black.opacity(0.6), in: Capsule())
+                            .background(Theme.Palette.red)
                             .padding(8)
                     }
                 }
             HStack(spacing: 6) {
-                Text("\(number)").foregroundStyle(Theme.Palette.textTertiary).monospacedDigit()
+                Text("\(number)").foregroundStyle(Theme.Palette.faint).monospacedDigit()
                 Text(chapter.title.isEmpty ? "Chapter \(number)" : chapter.title).lineLimit(1)
             }
-            .font(.system(size: 14, weight: .semibold))
+            .font(Theme.Typeface.control)
             Text(TimeFormat.clock(chapter.start))
-                .font(.system(size: 12, weight: .medium).monospacedDigit())
-                .foregroundStyle(Theme.Palette.textSecondary)
+                .font(Theme.Typeface.caption)
+                .foregroundStyle(Theme.Palette.muted)
         }
         .frame(width: cardWidth, alignment: .leading)
-        .foregroundStyle(.white)
+        .foregroundStyle(Theme.Palette.fg)
     }
 }
 
@@ -150,7 +155,7 @@ private struct ChapterThumbnail: View {
 
     var body: some View {
         ZStack {
-            Rectangle().fill(.white.opacity(0.08))
+            Rectangle().fill(Theme.Palette.tint2)
             if let image {
                 Image(decorative: image, scale: 1).resizable().aspectRatio(contentMode: .fill)
                     .transition(.opacity)
@@ -164,7 +169,7 @@ private struct ChapterThumbnail: View {
     }
 }
 
-/// The player's options as one glass card under the top bar. Each row shows its current value and
+/// The player's options as one flat ink card under the top bar. Each row shows its current value and
 /// pushes a list inside the same card, so nothing covers the picture more than it has to.
 struct PlayerOptionsPanel: View {
     let session: PlaybackSession
@@ -229,7 +234,7 @@ struct PlayerOptionsPanel: View {
         VStack(spacing: 0) {
             if page != .root {
                 header
-                Divider().overlay(Theme.Palette.hairline)
+                RuleLine()
             }
             // Sized to its rows, so a short list doesn't leave an empty slab of glass; a long one scrolls.
             let visible = max(44, min(listHeight, maxHeight - (page == .root ? 12 : 60)))
@@ -252,9 +257,7 @@ struct PlayerOptionsPanel: View {
         .padding(.vertical, 6)
         .id(page)
         .transition(.opacity)
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .flowGlass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: Theme.Palette.overPicture)
-        .shadow(color: .black.opacity(0.28), radius: 24, y: 8)
+        .playerPanel()
         .animation(Theme.Motion.snappy, value: page)
         .accessibilityAction(.escape) { close() }
     }
@@ -265,10 +268,10 @@ struct PlayerOptionsPanel: View {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 14, weight: .bold))
                     .frame(width: 22)
-                Text(page.title).font(Theme.Typeface.headline)
+                Text(page.title).font(Theme.Typeface.headline).controlText()
                 Spacer()
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.Palette.fg)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .contentShape(Rectangle())
@@ -282,7 +285,7 @@ struct PlayerOptionsPanel: View {
         return VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.id) { index, item in
                 if index > 0 {
-                    Divider().overlay(Theme.Palette.hairline).padding(.leading, item.icon == nil ? 16 : 50)
+                    RuleLine(thin: true)
                 }
                 PanelRow(item: item)
             }
@@ -485,7 +488,7 @@ private struct PanelRow: View {
                     if let detail = item.detail, !detail.isEmpty {
                         Text(detail)
                             .font(Theme.Typeface.caption)
-                            .foregroundStyle(Theme.Palette.textSecondary)
+                            .opacity(0.7)
                             .lineLimit(2)
                     }
                 }
@@ -493,7 +496,7 @@ private struct PanelRow: View {
                 if let value = item.value {
                     Text(value)
                         .font(Theme.Typeface.body)
-                        .foregroundStyle(Theme.Palette.textSecondary)
+                        .opacity(0.7)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
@@ -503,10 +506,9 @@ private struct PanelRow: View {
                 if item.chevron {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Theme.Palette.textTertiary)
+                        .opacity(0.5)
                 }
             }
-            .foregroundStyle(.white)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -516,11 +518,23 @@ private struct PanelRow: View {
     }
 }
 
-/// A soft highlight while pressed, like a native list row.
+/// A row that inverts to blue while pressed or under the pointer, as every row in Marquee does.
 private struct PanelRowStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
+        PanelRowBody(configuration: configuration)
+    }
+}
+
+private struct PanelRowBody: View {
+    let configuration: ButtonStyleConfiguration
+    @State private var hovering = false
+
+    var body: some View {
+        let lit = hovering || configuration.isPressed
         configuration.label
-            .background(configuration.isPressed ? Theme.Palette.surfaceStrong : .clear)
+            .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
+            .background(lit ? Theme.Palette.blue : Color.clear)
+            .onHover { hovering = $0 }
     }
 }
 #endif

@@ -10,7 +10,7 @@ struct SubtitlePreviewSection: View {
             SubtitleOverlay(text: "This is a subtitle preview.\nIt updates as you change the options below.", settings: model.settings.subtitles)
                 .frame(height: Platform.isTV ? 300 : 170)
                 .background(LinearGradient(colors: [.gray, .black], startPoint: .top, endPoint: .bottom))
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .clipShape(Rectangle())
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 .accessibilityHidden(true)
         }

@@ -42,9 +42,9 @@ struct PlayerView: View {
             if session.isBuffering && session.phase == .playing {
                 ProgressView()
                     .controlSize(.large)
-                    .tint(.white)
+                    .tint(Theme.Palette.fg)
                     .padding(22)
-                    .flowGlass(Circle())
+                    .playerPanel()
                     .allowsHitTesting(false)
                     .transition(.opacity)
             }
@@ -307,8 +307,8 @@ struct ConnectingView: View {
     private var loadingLine: some View {
         if session.showsLoadingProgress {
             ZStack(alignment: .leading) {
-                Capsule().fill(Theme.Palette.lineStrong)
-                Capsule().fill(Theme.Palette.stock)
+                Rectangle().fill(Theme.Palette.tint3)
+                Rectangle().fill(Theme.Palette.red)
                     .frame(width: max(6, 160 * Theme.scale * min(1, max(0, progress))))
                     .animation(Theme.Motion.gentle, value: progress)
             }
@@ -317,7 +317,7 @@ struct ConnectingView: View {
             .accessibilityLabel("Loading")
             .accessibilityValue("\(Int(progress * 100)) percent")
         } else {
-            ProgressView().tint(.white).accessibilityLabel("Loading")
+            ProgressView().tint(Theme.Palette.fg).accessibilityLabel("Loading")
         }
     }
 }
@@ -340,7 +340,7 @@ struct PlaybackErrorView: View {
             VStack(spacing: Theme.Space.m) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 34 * Theme.scale, weight: .semibold))
-                    .foregroundStyle(.yellow)
+                    .foregroundStyle(Theme.Palette.warn)
                 Text("Couldn't Play").font(Theme.Typeface.title)
                 Text(message)
                     .font(Theme.Typeface.body)
@@ -349,7 +349,7 @@ struct PlaybackErrorView: View {
                     .frame(maxWidth: 460 * Theme.scale)
                 if let detail {
                     Text(detail)
-                        .font(.system(.caption2).monospaced())
+                        .font(Theme.Typeface.micro)
                         .foregroundStyle(Theme.Palette.textTertiary)
                         #if !os(tvOS)
                         .textSelection(.enabled)
@@ -380,12 +380,13 @@ struct PlayerNotice: View {
 
     var body: some View {
         Text(text)
-            .font(.system(.footnote, weight: .semibold))
+            .font(Theme.Typeface.control)
+            .foregroundStyle(Theme.Palette.fg)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
             .frame(maxWidth: 520 * Theme.scale)
-            .flowGlass(Capsule(), tint: Theme.Palette.overPicture)
+            .playerPanel()
             .padding(.horizontal, 24)
             .allowsHitTesting(false)
     }
@@ -578,13 +579,13 @@ struct SkipAndUpNextOverlay: View {
                             Text(segment.kind.buttonTitle)
                             Image(systemName: "forward.end.fill").font(.system(size: 12, weight: .bold))
                         }
-                        .font(.system(.subheadline, weight: .semibold))
+                        .font(Theme.Typeface.control)
+                        .controlText()
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
-                        .contentShape(Capsule())
-                        .flowGlass(Capsule(), tint: Theme.Palette.overPicture)
+                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PlayerButtonStyle())
                     .transition(.scale(scale: 0.9).combined(with: .opacity))
                 }
             }
@@ -619,14 +620,14 @@ struct UpNextCard: View {
                             Circle().stroke(.white.opacity(0.25), lineWidth: 2.5)
                             Circle()
                                 .trim(from: 0, to: fraction)
-                                .stroke(.white, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                                .stroke(Theme.Palette.red, style: StrokeStyle(lineWidth: 3, lineCap: .butt))
                                 .rotationEffect(.degrees(-90))
                                 .animation(.linear(duration: 1), value: fraction)
                             Image(systemName: "play.fill").font(.system(size: 13, weight: .bold))
                         }
                         .frame(width: 38, height: 38)
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .ruleFrame()
             }
             .buttonStyle(CardButtonStyle())
             .accessibilityLabel("Play next episode now")
@@ -634,28 +635,27 @@ struct UpNextCard: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("UP NEXT · \(countdown)s")
                     .font(Theme.Typeface.micro).kerning(1)
-                    .foregroundStyle(Theme.Palette.textSecondary)
+                    .foregroundStyle(Theme.Palette.red)
                     .contentTransition(.numericText(countsDown: true))
                 Text(next.episode?.title ?? next.item.title)
-                    .font(.system(.subheadline, weight: .semibold))
+                    .font(Theme.Typeface.headline)
+                    .foregroundStyle(Theme.Palette.fg)
                     .lineLimit(2)
                 if let ep = next.episode {
                     Text("Season \(ep.season), Episode \(ep.number)")
-                        .font(.system(.caption))
-                        .foregroundStyle(Theme.Palette.textSecondary)
+                        .font(Theme.Typeface.caption)
+                        .foregroundStyle(Theme.Palette.muted)
                 }
                 Button("Cancel", action: cancel)
-                    .font(.system(.caption, weight: .semibold))
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.white.opacity(0.85))
+                    .buttonStyle(QuietButtonStyle())
                     .padding(.top, 4)
             }
             .frame(width: 168, alignment: .leading)
         }
         .padding(10)
         .padding(.trailing, 6)
-        // It sits on the picture with no scrim; clear glass let its grey text vanish into a bright frame.
-        .flowGlass(RoundedRectangle(cornerRadius: 22, style: .continuous), tint: Theme.Palette.overPicture)
+        // It sits on the picture with no scrim, so it is a flat ink panel: grey text on clear glass vanished into a bright frame.
+        .playerPanel()
     }
 }
 
@@ -670,16 +670,49 @@ struct CircleButton: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: size * 0.38, weight: .semibold))
-                .foregroundStyle(.white)
                 .frame(width: size, height: size)
-                .flowGlass(Circle())
-                .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlayerButtonStyle())
         .accessibilityLabel(label)
         #if os(macOS)
         .help(label)
         #endif
+    }
+}
+
+extension View {
+    /// What every panel, chip and notice over the picture wears: flat ink with the 2px paper rule. The player is
+    /// always dark (`darkScope()`), so the tokens resolve to ink and paper here.
+    func playerPanel() -> some View {
+        background(Theme.Palette.overPicture)
+            .overlay(Rectangle().strokeBorder(Theme.Palette.rule, lineWidth: Theme.Rule.heavy))
+    }
+}
+
+/// A button on the picture: an ink square with a paper rule that turns blue under the pointer, on focus and while
+/// pressed (the player's version of the secondary button).
+struct PlayerButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        PlayerButtonBody(configuration: configuration)
+    }
+}
+
+private struct PlayerButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    @Environment(\.isFocused) private var focused
+    @State private var hovering = false
+
+    var body: some View {
+        let lit = focused || hovering || configuration.isPressed
+        configuration.label
+            .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
+            .background(lit ? Theme.Palette.blue : Theme.Palette.overPicture)
+            .overlay(Rectangle().strokeBorder(lit ? Theme.Palette.blue : Theme.Palette.rule, lineWidth: Theme.Rule.heavy))
+            .contentShape(Rectangle())
+            .animation(Theme.Motion.hover, value: lit)
+            #if !os(tvOS)
+            .onHover { hovering = $0 }
+            #endif
     }
 }
 
@@ -727,11 +760,11 @@ struct Scrubber: View {
                 let width = proxy.size.width
                 let fraction = duration > 0 ? (dragging ?? current) / duration : 0
                 ZStack(alignment: .leading) {
-                    // Film stock: the track in base-4, what is buffered in base-3, the played part in yellow.
-                    Capsule().fill(Theme.Palette.lineStrong)
-                    Capsule().fill(Theme.Palette.control).frame(width: width * min(1, buffered))
-                    Capsule().fill(Theme.Palette.stock).frame(width: max(0, width * min(1, fraction)))
-                    // Above the played fill, not under it: yellow stays visible once you have watched
+                    // The track in tint, what is buffered a step brighter, the played part in red.
+                    Rectangle().fill(Theme.Palette.tint3)
+                    Rectangle().fill(Theme.Palette.faint.opacity(0.6)).frame(width: width * min(1, buffered))
+                    Rectangle().fill(Theme.Palette.red).frame(width: max(0, width * min(1, fraction)))
+                    // Above the played fill, not under it: the warning colour stays visible once you have watched
                     // past a segment, and it is the one colour on the track that never reads as progress.
                     ZStack(alignment: .leading) {
                         Color.clear
@@ -748,7 +781,6 @@ struct Scrubber: View {
                                 .offset(x: width * start / duration - 1)
                         }
                     }
-                    .clipShape(Capsule())
                     .allowsHitTesting(false)
                 }
                 .frame(height: dragging == nil ? 4 : 9)
@@ -789,10 +821,9 @@ struct Scrubber: View {
                     Text("-" + TimeFormat.clock(left) + " · ends " + Reel.clock(context.date.addingTimeInterval(left)))
                 }
             }
-            // Timecode and the end time in edge print.
-            .font(Theme.Typeface.edgePrint)
-            .edgePrint()
-            .foregroundStyle(Theme.Palette.print)
+            // Timecode and the end time in mono.
+            .font(Theme.Typeface.time)
+            .foregroundStyle(Theme.Palette.fg)
         }
         .accessibilityElement()
         .accessibilityLabel("Playback position")
@@ -824,12 +855,10 @@ struct ScrubPreviewCard: View {
             Image(decorative: image, scale: 1)
                 .resizable()
                 .frame(width: width, height: width * CGFloat(image.height) / CGFloat(max(image.width, 1)))
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.white.opacity(0.35), lineWidth: 1))
-                .shadow(color: .black.opacity(0.5), radius: 14, y: 6)
+                .ruleFrame()
             Text(TimeFormat.clock(time))
-                .font(.system(size: 13, weight: .semibold).monospacedDigit())
-                .foregroundStyle(.white)
+                .font(Theme.Typeface.time)
+                .foregroundStyle(Theme.Palette.fg)
                 .shadow(color: .black.opacity(0.6), radius: 3)
                 .frame(height: 18)
         }
@@ -913,9 +942,10 @@ struct IOSPlayerControls: View {
             .overlay(alignment: .top) {
                 if boosting {
                     Label("2×", systemImage: "forward.fill")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(Theme.Typeface.control)
+                        .foregroundStyle(Theme.Palette.fg)
                         .padding(.horizontal, 14).padding(.vertical, 8)
-                        .flowGlass(Capsule(), tint: Theme.Palette.overPicture)
+                        .playerPanel()
                         .padding(.top, 20)
                         .transition(.opacity.combined(with: .move(edge: .top)))
                         .accessibilityLabel("Playing at double speed")
@@ -1076,12 +1106,13 @@ struct IOSPlayerControls: View {
                 HStack(alignment: .bottom, spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(session.title)
-                            .font(.system(size: Platform.isPhone ? 17 : 20, weight: .semibold))
+                            .font(.custom(Theme.Face.condensed, size: Platform.isPhone ? 22 : 26, relativeTo: .title3))
+                            .foregroundStyle(Theme.Palette.fg)
                             .lineLimit(1)
                         if let line = session.subtitleLine {
                             Text(line)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(Theme.Palette.textSecondary)
+                                .font(Theme.Typeface.caption)
+                                .foregroundStyle(Theme.Palette.muted)
                                 .lineLimit(1)
                         }
                     }
@@ -1138,12 +1169,10 @@ struct IOSPlayerControls: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: size * 0.4, weight: .semibold))
-                .foregroundStyle(.white)
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: size, height: size)
-                .flowGlass(Circle(), tint: Theme.Palette.overPicture)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlayerButtonStyle())
         .accessibilityLabel(label)
     }
 
@@ -1267,11 +1296,11 @@ struct SeekFlashView: View {
                 Image(systemName: flash.forward ? "chevron.forward.2" : "chevron.backward.2")
                     .font(.system(size: 22, weight: .bold))
                 Text("\(flash.seconds) seconds")
-                    .font(.system(.caption, weight: .semibold))
+                    .font(Theme.Typeface.control)
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.Palette.fg)
             .frame(width: 150, height: 150)
-            .background(Circle().fill(.white.opacity(0.12)).blur(radius: 6))
+            .background(Rectangle().fill(Theme.Palette.fg.opacity(0.12)).blur(radius: 6))
             .padding(.horizontal, 48)
             if !flash.forward { Spacer() }
         }
@@ -1355,16 +1384,16 @@ struct PlaybackInfoPanel: View {
                 ForEach(session.infoRows()) { row in
                     GridRow {
                         Text(row.label)
-                            .foregroundStyle(Theme.Palette.textSecondary)
+                            .foregroundStyle(Theme.Palette.muted)
                             .gridColumnAlignment(.trailing)
                         Text(row.value)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.Palette.fg)
                             .lineLimit(2)
                             .truncationMode(.middle)
                     }
                 }
             }
-            .font(.system(size: Platform.isTV ? 24 : 12, weight: .medium).monospacedDigit())
+            .font(.custom(Theme.Face.mono, size: Platform.isTV ? 24 : 12, relativeTo: .caption))
             .padding(card ? 16 : 40)
             .frame(maxWidth: card ? 380 : .infinity, alignment: .leading)
             .modifier(InfoCard(enabled: card))
@@ -1377,7 +1406,7 @@ struct PlaybackInfoPanel: View {
         let enabled: Bool
         func body(content: Content) -> some View {
             if enabled {
-                content.flowGlass(RoundedRectangle(cornerRadius: 18, style: .continuous), tint: Theme.Palette.overPicture)
+                content.playerPanel()
             } else {
                 content
             }
@@ -1459,7 +1488,7 @@ struct StillWatchingPrompt: View {
                 Image(systemName: "moon.zzz.fill")
                     .font(.system(size: 34 * Theme.scale, weight: .semibold))
                     .foregroundStyle(Theme.Palette.textSecondary)
-                Text("Are You Still Watching?").font(Theme.Typeface.title)
+                Text("Are You Still Watching?").font(Theme.Typeface.title).foregroundStyle(Theme.Palette.fg)
                 if let next = session.upNext?.episode {
                     Text("Next: \(next.code) · \(next.title)")
                         .font(Theme.Typeface.body)

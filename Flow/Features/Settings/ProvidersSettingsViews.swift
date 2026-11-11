@@ -15,8 +15,8 @@ struct WebDAVSettingsView: View {
                     HStack {
                         Button { editing = config } label: {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(config.name).font(.headline).foregroundStyle(.primary)
-                                Text(config.baseURL.absoluteString).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                Text(config.name).font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.fg)
+                                Text(config.baseURL.absoluteString).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted).lineLimit(1)
                             }
                         }
                         .buttonStyle(.plain)
@@ -65,7 +65,7 @@ struct WebDAVEditor: View {
                     Button {
                         Task { await test() }
                     } label: { HStack { Text("Test Connection"); if testing { Spacer(); ProgressView() } } }
-                    if let status { Text(status).font(.caption).foregroundStyle(.secondary) }
+                    if let status { Text(status).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted) }
                 }
             }
             .flowPageTitle(config.name)
@@ -116,8 +116,8 @@ struct LiveTVSettingsView: View {
                     HStack {
                         Button { editing = provider } label: {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(provider.name).font(.headline).foregroundStyle(.primary)
-                                Text(provider.kind.displayName + (provider.useForVOD ? " · VOD sources" : "")).font(.caption).foregroundStyle(.secondary)
+                                Text(provider.name).font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.fg)
+                                Text(provider.kind.displayName + (provider.useForVOD ? " · VOD sources" : "")).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
                             }
                         }
                         .buttonStyle(.plain)
@@ -185,7 +185,7 @@ struct IPTVEditor: View {
                 } }
                 Section {
                     Button { Task { await test() } } label: { HStack { Text("Test"); if testing { Spacer(); ProgressView() } } }
-                    if let status { Text(status).font(.caption).foregroundStyle(.secondary) }
+                    if let status { Text(status).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted) }
                 }
             }
             .flowPageTitle(config.name)
