@@ -107,3 +107,5 @@ VP9, 10-bit H.264, and AV1 on devices with no AV1 decoder; and files whose only 
 It takes over by itself ("Playing with Marquee's built-in decoder"), or for everything with Settings → Playback →
 Player Engine → Always Built-in Decoder. It gives up Picture in Picture, AirPlay video and Dolby Vision passthrough
 (HDR is tone mapped to SDR), and X-Ray's picture matching and scrub previews.
+
+

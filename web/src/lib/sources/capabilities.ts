@@ -2,6 +2,7 @@
    while the page is open, and the picker asks for every row. */
 
 import { canConvertAudio } from '../audio/support'
+import { canUseMediaEngine } from '../media/support'
 import { smoothnessOf, type Smoothness } from './smooth'
 import type { Source } from './types'
 
@@ -18,6 +19,8 @@ export interface Capabilities {
   /** This browser can turn audio it can't decode into Opus (src/lib/audio). It still needs a file
    *  Marquee can read, which is the source's business, not the browser's. */
   convertAudio: boolean
+  /** The universal engine (src/lib/media) can run here: it reads any container and converts any sound, whatever WebCodecs offers. */
+  universal: boolean
   video(codec: string): boolean
   audio(codec: string): boolean
   /** How well this device decodes that kind of video (see smooth.ts): undefined until the browser has
@@ -81,6 +84,7 @@ export function browserCapabilities(): Capabilities {
     get convertAudio() {
       return canConvertAudio()
     },
+    universal: canUseMediaEngine(),
     video: (codec) => (videoTypes[codec] ?? []).some(canPlayType),
     audio: (codec) => decodes(codec, (c) => (audioTypes[c] ?? []).some(canPlayType)),
     smoothVideo: smoothnessOf,
@@ -94,6 +98,7 @@ export function fixedCapabilities(c: {
   nativeHLS?: boolean
   hdr?: boolean
   convertAudio?: boolean
+  universal?: boolean
   video?: string[]
   audio?: string[]
   /** What the device says about decoding, by class: `'HEVC@2160'` for any range, `'HEVC@2160+hdr'` for
@@ -107,6 +112,7 @@ export function fixedCapabilities(c: {
     nativeHLS: c.nativeHLS ?? false,
     hdr: c.hdr ?? false,
     convertAudio: c.convertAudio ?? false,
+    universal: c.universal ?? false,
     video: (codec) => video.has(codec),
     audio: (codec) => decodes(codec, (c) => audio.has(c)),
     smoothVideo(codec, resolution, hdr) {

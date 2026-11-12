@@ -27,6 +27,7 @@
 import type { FromWorker, HeaderInfo, ToWorker } from './protocol'
 import { type BufferKind, isMediaSourceSupported, MseSink, typeSupported } from './mse'
 import { canConvertAudio } from '../audio/support'
+import { convertedSoundFormat } from '../media/support'
 import { type PictureCue, PictureTrack, parsePictureCues } from './pictures'
 import { parseHeader, type Plan, plan as makePlan, UnplayableError } from './tracks'
 
@@ -147,6 +148,8 @@ export interface RemuxSession {
 }
 
 export interface RemuxOptions {
+  /** Which worker reads the file: the Matroska remuxer (the default) or the universal FFmpeg engine (lib/media), which takes any container. */
+  engine?: 'matroska' | 'universal'
   headers?: Record<string, string>
   /** The address is the stream proxy's. A failure then says what the proxy answered (the host that
    *  refused it, and why) or that it didn't answer, and is never `BlockedError`. */
@@ -232,7 +235,8 @@ class Session implements RemuxSession {
     private url: string,
     private options: RemuxOptions,
   ) {
-    this.worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' })
+    // The literal forms are what let the bundler find each worker; neither is fetched until its engine is used.
+    this.worker = options.engine === 'universal' ? new Worker(new URL('../media/worker.ts', import.meta.url), { type: 'module' }) : new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' })
     this.sink = new MseSink(element, {
       onPressure: (ahead) => this.send({ type: 'pressure', ahead }),
       onStreaming: (streaming) => this.send({ type: 'hold', hold: !streaming }),
@@ -250,12 +254,12 @@ class Session implements RemuxSession {
     if (!this.destroyed) this.worker.postMessage(message)
   }
 
-  private fail(message: string, kind: 'blocked' | 'notMatroska' | null = null) {
+  private fail(message: string, kind: 'blocked' | 'notMatroska' | null = null, found?: { sniff?: string; sound?: string[] }) {
     if (this.destroyed) return
     if (this.failure) {
       const reject = this.failure
       this.failure = null
-      reject(kind === 'blocked' ? new BlockedError(message) : kind === 'notMatroska' ? new NotMatroskaError(message) : new Error(message))
+      reject(kind === 'blocked' ? new BlockedError(message) : kind === 'notMatroska' ? new NotMatroskaError(message, found?.sniff, found?.sound) : new Error(message))
     } else {
       for (const listener of this.errorListeners) listener(message)
     }
@@ -282,13 +286,15 @@ class Session implements RemuxSession {
     this.cleanups.push(() => options.signal?.removeEventListener('abort', onAbort))
     if (options.signal?.aborted) throw new DOMException('Stopped', 'AbortError')
 
-    this.send({ type: 'open', url: this.url, headers: options.headers ?? {}, viaProxy: options.viaProxy ?? false, hdr10Only: options.hdr10Only ?? false, surround: options.surroundAudio ?? false })
+    this.send({ type: 'open', url: this.url, headers: options.headers ?? {}, viaProxy: options.viaProxy ?? false, hdr10Only: options.hdr10Only ?? false, surround: options.surroundAudio ?? false, audioOut: convertedAudio()?.out })
     const opened = this.sink.open()
     opened.catch((error: Error) => this.fail(error.message))
     const info = await Promise.race([header, failed])
     await Promise.race([opened, failed])
 
-    this.plan = makePlan(info, typeSupported, canConvertAudio() && options.convertAudio !== false)
+    // The Matroska remuxer converts through WebCodecs' Opus encoder; the universal engine encodes in its own module, so only the output format must play here.
+    const universal = options.engine === 'universal'
+    this.plan = universal ? makePlan(info, typeSupported, options.convertAudio !== false, convertedAudio()?.mime ?? null) : makePlan(info, typeSupported, canConvertAudio() && options.convertAudio !== false)
     this.declared = info.duration ?? 0
     this.audioTracks = this.plan.audio.map(({ mime: _mime, ...track }) => track)
     this.subtitleTracks = this.plan.subtitles
@@ -344,7 +350,7 @@ class Session implements RemuxSession {
         return
       }
       case 'error':
-        this.fail(message.message, message.blocked ? 'blocked' : message.notMatroska ? 'notMatroska' : null)
+        this.fail(message.message, message.blocked ? 'blocked' : message.notMatroska ? 'notMatroska' : null, message)
         return
       case 'cues':
         this.takeCues(message.cues)
@@ -689,10 +695,24 @@ export class BlockedError extends Error {
 
 /** The file isn't Matroska at all (an MP4, say, or a page the server sent in its place). */
 export class NotMatroskaError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    /** What the first bytes say the file is (lib/media/sniff.ts), when they do. */
+    readonly sniff?: string,
+    /** The sound codecs of an MP4 whose moov was in those bytes. */
+    readonly sound?: string[],
+  ) {
     super(message)
     this.name = 'NotMatroskaError'
   }
+}
+
+/** What the universal engine's converted sound is encoded as in this browser: FLAC where MP4 carries it, else AAC; null when neither plays. */
+const convertedAudio = () => convertedSoundFormat(typeSupported)
+
+/** Plays any container through the universal FFmpeg engine (lib/media): the same session as `attachMatroska`, a different worker. */
+export async function attachUniversal(video: HTMLVideoElement, url: string, options: RemuxOptions = {}): Promise<RemuxSession> {
+  return attachMatroska(video, url, { ...options, engine: 'universal' })
 }
 
 export async function attachMatroska(video: HTMLVideoElement, url: string, options: RemuxOptions = {}): Promise<RemuxSession> {

@@ -378,7 +378,7 @@ struct UniversalTVPlayer: View {
                 row("sub-\(track.id)", track.title, checked: session.subtitleTrack == nil && universal.selectedSubtitle == track.id) { session.chooseUniversalSubtitle(track.id) }
             }
             row("sub-search", "Search for More…", checked: false) {
-                page = nil
+                self.page = nil
                 focus = .transport
                 onSubtitleSearch()
             }

@@ -17,9 +17,9 @@ export const dbToGain = (db: number): number => 10 ** (db / 20)
 /** Whether this stream can go through Web Audio without being silenced: engines that play through
  *  MediaSource hold bytes the page fetched itself (so they are CORS-clean by construction); a plain file or
  *  native HLS is played from its own address, which counts only when that is this page's origin. */
-export function canBoost({ engine, blocked, url, origin }: { engine: 'native' | 'hls' | 'remux'; blocked: boolean; url: string; origin: string }): boolean {
+export function canBoost({ engine, blocked, url, origin }: { engine: 'native' | 'hls' | 'remux' | 'universal'; blocked: boolean; url: string; origin: string }): boolean {
   if (blocked) return false
-  if (engine === 'remux' || engine === 'hls') return true
+  if (engine === 'remux' || engine === 'universal' || engine === 'hls') return true
   try {
     return new URL(url, origin).origin === origin
   } catch {

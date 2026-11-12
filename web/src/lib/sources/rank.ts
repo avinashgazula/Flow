@@ -40,7 +40,12 @@ export interface BuildInput {
 const resolutionNames: Record<ResolutionClass, Source['resolution']> = { 0: undefined, 480: 'SD', 720: '720p', 1080: '1080p', 1440: '1440p', 2160: '2160p' }
 const videoNames: Record<string, Source['videoCodec']> = { H264: 'H.264', HEVC: 'HEVC', AV1: 'AV1', VP9: 'VP9' }
 const hdrNames = new Set(['DV', 'HDR10+', 'HDR10', 'HDR', 'HLG'])
-const unplayableContainers = new Set(['avi', 'wmv', 'flv', 'ts', 'm2ts', 'mts', 'iso', 'mpg', 'mpeg', 'vob', 'divx', 'rmvb', 'rm', '3gp'])
+/** Containers the browser can't open and the Matroska remuxer doesn't read: the FFmpeg engine (src/lib/media) plays them. */
+const universalContainers = new Set(['avi', 'wmv', 'asf', 'flv', 'ts', 'm2ts', 'mts', 'mpg', 'mpeg', 'vob', 'divx', 'rmvb', 'rm', '3gp', '3g2', 'ogm'])
+/** Files a browser opens by itself (and Marquee hands to it) when their sound plays. */
+const nativeContainers = new Set(['mp4', 'm4v', 'mov', 'webm'])
+/** Disc images hold a whole disc, not one film: there's nothing to play until it's unpacked. */
+const discImages = new Set(['iso'])
 
 /** The container from the URL's path, else the file name: "mkv", "mp4", "m3u8"… */
 export function containerOf(url: string, filename?: string, container?: string): string | undefined {
@@ -64,10 +69,11 @@ export function containerOf(url: string, filename?: string, container?: string):
   return filename ? fromPath(filename) : undefined
 }
 
-/** How the player opens a URL: hls.js for HLS where the browser has none, the remuxer for Matroska. */
+/** How the player opens a URL: hls.js for HLS where the browser has none, the remuxer for Matroska, the FFmpeg engine for the other containers. */
 export function engineFor(container: string | undefined, caps: Capabilities, needsHeaders = false): PlaybackEngine {
   if (container === 'm3u8') return caps.nativeHLS && !(needsHeaders && caps.mse) ? 'native' : 'hls'
   if (container === 'mkv' || container === 'x-matroska') return 'remux'
+  if (container && universalContainers.has(container)) return 'universal'
   return 'native'
 }
 
@@ -103,20 +109,26 @@ function undecodableNames(audio: string[], caps: Capabilities): string {
   return named.slice(0, 2).map(audioLabel).join(' and ')
 }
 
-/** Whether conversion is what makes the file's audio play: the browser can convert, and Marquee can
- *  read the file, which conversion needs. Only the remuxer converts, so the container has to be
- *  Matroska, or unknown (an opaque debrid link, which is Matroska whenever it carries TrueHD or DTS). */
+/** Whether conversion is what makes the file's audio play: Marquee can read the file, which conversion needs, and an
+ *  engine that converts will open it. The FFmpeg engine converts any container's sound. The Matroska remuxer converts
+ *  through WebCodecs, so the container has to be Matroska, or unknown (an opaque debrid link, which is Matroska whenever
+ *  it carries TrueHD or DTS). */
 export function convertsAudio(input: { url?: string; container?: string; engine: PlaybackEngine; audio: string[]; transcoded?: boolean }, caps: Capabilities): boolean {
-  if (input.transcoded || !caps.convertAudio || undecodableAudio(input.audio, caps).length === 0) return false
-  if (input.engine !== 'remux' && input.container !== undefined) return false
-  return !input.url || isReadable(input.url)
+  if (input.transcoded || undecodableAudio(input.audio, caps).length === 0) return false
+  if (input.url && !isReadable(input.url)) return false
+  if (input.engine === 'universal') return caps.universal
+  if (!caps.convertAudio) return false
+  return input.engine === 'remux' || input.container === undefined
 }
+
+const newer = 'a newer browser: Safari 17.1 or later, Chrome, Edge or Firefox'
 
 /** Why this browser can't play the source, or undefined when it can. */
 export function unsupportedReason(input: { url?: string; container?: string; engine: PlaybackEngine; videoCodec?: string; audio: string[]; headers?: Record<string, string>; transcoded?: boolean }, caps: Capabilities): string | undefined {
   const { container, engine } = input
-  if (container && unplayableContainers.has(container)) return `${container.toUpperCase()} files can’t play in a browser`
-  if (engine === 'remux' && !caps.mse) return 'Matroska needs a newer browser: Safari 17.1 or later, Chrome, Edge or Firefox'
+  if (container && discImages.has(container)) return `${container.toUpperCase()} disc images can’t play in a browser`
+  if (engine === 'universal' && !caps.universal) return `${(container ?? 'This').toUpperCase()} needs ${newer}`
+  if (engine === 'remux' && !caps.mse) return `Matroska needs ${newer}`
   if (engine === 'hls' && !caps.mse) return 'This browser can’t play HLS streams'
   if (engine === 'native' && container !== 'm3u8' && input.headers && Object.keys(input.headers).length > 0) return 'Needs request headers a browser can’t send'
   if (input.transcoded) return undefined
@@ -150,6 +162,12 @@ export function buildSource(input: BuildInput, caps: Capabilities): Source {
   const headers = input.headers && Object.keys(input.headers).length > 0 ? input.headers : undefined
   let engine = input.transcoded ? engineFor('m3u8', caps, !!headers) : engineFor(container, caps, !!headers)
   const audio = audioList(t)
+  // Sound this browser can't play, in a file that would otherwise go to the browser's own player (MP4) or to the Matroska
+  // remuxer in a browser without WebCodecs' encoder: the FFmpeg engine converts it.
+  if (!input.transcoded && caps.universal && undecodableAudio(audio, caps).length > 0 && isReadable(input.url) && !headers) {
+    if (engine === 'native' && container !== undefined && nativeContainers.has(container)) engine = 'universal'
+    else if (engine === 'remux' && !caps.convertAudio) engine = 'universal'
+  }
   const converts = convertsAudio({ url: input.url, container, engine, audio, transcoded: input.transcoded }, caps)
   // A link that doesn't say what it is can only convert in the remuxer, so it goes there: the audio
   // that needs converting is TrueHD or DTS, which only Matroska files carry in practice.
@@ -187,10 +205,10 @@ export function buildSource(input: BuildInput, caps: Capabilities): Source {
   if (input.notWebReady) source.notWebReady = true
   const reason = unsupportedReason({ url: input.url, container: source.container, engine, videoCodec: t.videoCodec, audio, headers, transcoded: input.transcoded }, caps)
   if (reason) source.unsupported = reason
-  else if (converts && engine === 'remux') {
+  else if (converts && (engine === 'remux' || engine === 'universal')) {
     source.convertsAudio = true
     source.note = `${undecodableNames(audio, caps)} audio converted for this browser`
-  }
+  } else if (engine === 'universal' && container) source.note = `${container.toUpperCase()} converted for this browser`
   return source
 }
 
@@ -277,6 +295,8 @@ export function decodeFeel(s: Source, caps: Capabilities): 'rough' | 'warm' | un
 }
 
 export const stutterNote = 'May stutter on this device'
+/** The cost of a source that needs the FFmpeg engine: under a resolution step (1000), over the nudges for release type and HDR. */
+export const universalPenalty = 250
 
 export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilities): number {
   if (s.unsupported) return -1_000_000 + resolutionScore(s.resolution, prefs.preferredQuality) * 10
@@ -301,6 +321,8 @@ export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilitie
   // Converting costs the browser some work and the start a moment: the same file with sound that
   // plays as it is comes first, but a better picture is still worth the conversion.
   if (s.convertsAudio && prefs.preferPlayableAudio !== false) score -= 200
+  // The FFmpeg engine reads the whole file in a worker and rebuilds it as it goes: dearer than the browser's own player or the Matroska remuxer, so a copy that plays natively comes first at the same quality.
+  if (s.engine === 'universal') score -= universalPenalty
   score += audioLanguageScore(s.languages, prefs.audioLanguage)
   if (s.cached === true) score += 80
   if (s.cached === false) score -= 400
