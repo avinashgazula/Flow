@@ -83,7 +83,7 @@ struct MacPlayerMenu: View {
                 }
             }
         } label: {
-            Image(systemName: "ellipsis").macBarIcon()
+            Image(systemName: "gearshape").macBarIcon()
         }
         .macBarMenu(label: "Options")
         .onAppear { speed = session.player.defaultRate }
@@ -112,28 +112,32 @@ struct MacPlayerMenu: View {
     }
 }
 
-/// The Mac player's controls are a compact bar of small icon buttons like a toolbar's: one flat ink strip over the
-/// picture with the paper rule, each button turning blue under the pointer.
+/// The Mac player's controls are a small group of borderless icon buttons on one translucent capsule, like the
+/// toolbar of the system player: each lights with a round highlight under the pointer.
 struct MacControlBar<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
         HStack(spacing: 2) { content }
             .padding(3)
-            .playerPanel()
+            .playerCapsule()
     }
 }
 
 extension View {
-    /// A bar icon: white, small, and the same size whichever control it sits in.
+    /// A bar icon: white with a soft shadow, and the same size whichever control it sits in.
     func macBarIcon() -> some View {
-        modifier(MacBarIcon())
+        font(.system(size: 14, weight: .regular))
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.45), radius: 3, y: 1)
     }
 
     /// A borderless menu dressed as a bar button.
     func macBarMenu(label: String) -> some View {
         menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
+            // A menu tints its label with the accent colour; the bar's icons stay white.
+            .tint(.white)
             .fixedSize()
             .modifier(MacBarHover())
             .accessibilityLabel(label)
@@ -141,35 +145,15 @@ extension View {
     }
 }
 
-/// Whether the bar button around an icon is lit, so the icon can turn to on-blue with its fill.
-private struct MacBarLitKey: EnvironmentKey { static let defaultValue = false }
-
-extension EnvironmentValues {
-    fileprivate var macBarLit: Bool {
-        get { self[MacBarLitKey.self] }
-        set { self[MacBarLitKey.self] = newValue }
-    }
-}
-
-private struct MacBarIcon: ViewModifier {
-    @Environment(\.macBarLit) private var lit
-
-    func body(content: Content) -> some View {
-        content.font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
-    }
-}
-
-/// A blue fill under the pointer, with the icon turning to on-blue.
+/// A round highlight under the pointer.
 struct MacBarHover: ViewModifier {
     @State private var hovering = false
 
     func body(content: Content) -> some View {
         content
-            .frame(width: 30, height: 28)
-            .background(Rectangle().fill(hovering ? Theme.Palette.blue : Color.clear))
-            .environment(\.macBarLit, hovering)
-            .contentShape(Rectangle())
+            .frame(width: 32, height: 32)
+            .background(Circle().fill(.white.opacity(hovering ? 0.18 : 0)))
+            .contentShape(Circle())
             .onHover { hovering = $0 }
             .animation(Theme.Motion.fade, value: hovering)
     }
