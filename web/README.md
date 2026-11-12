@@ -43,6 +43,7 @@ npm test             # unit tests (Vitest)
 | `src/lib/store/` | Settings and library (watchlist, progress, history) in localStorage. |
 | `src/lib/trakt/` | Trakt: PKCE sign-in, the API client, the library sync and the player's scrobbler (see Trakt below). |
 | `src/lib/tracking/` | Which service tracks, and Simkl and MDBList as trackers: clients, sign-in, one shared sync engine (see Simkl and MDBList below). |
+| `src/lib/account/` | Marquee Accounts (docs/SYNC.md): the 16-digit number (`number.ts`), the PBKDF2 and HKDF keys and sealing (`keys.ts`), the library's wire shapes, merges with tombstones and history paging (`wire.ts`), the bridge to the website's library (`bridge.ts`), and the engine (`engine.ts`, its own chunk, loaded at start only when logged in). `VITE_ACCOUNT_SERVER` names the account server at build time. UI: `features/settings/AccountGroup.tsx` and Welcome's `WelcomeAccount.tsx`. |
 | `src/lib/sources/` | Stream add-ons, Jellyfin/Emby, Plex and WebDAV, and source ranking. |
 | `src/features/player/` | The player. |
 | `src/features/livetv/`, `src/lib/livetv/` | Live TV: the channel list, the timeline guide and the live player; the M3U, Xtream Codes and XMLTV code behind them. |

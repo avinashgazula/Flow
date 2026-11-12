@@ -65,7 +65,7 @@ export function TrackingWithGroup() {
     <Group
       title="Tracking With"
       footer={`One service tracks at a time; the others keep their sign-ins so you can switch back. What you watch stays in this browser whichever you choose. ${
-        sync.phase !== 'off' ? 'Sync carries a sign-in to your other devices.' : 'With Sync on (Settings → Data), a sign-in on one device arrives on the others.'
+        sync.phase !== 'off' ? 'Sync carries a sign-in to your other devices.' : 'With a Marquee Account (above), a sign-in on one device arrives on the others.'
       }`}
     >
       <div role="radiogroup" aria-label="Tracking With" className={t.options}>

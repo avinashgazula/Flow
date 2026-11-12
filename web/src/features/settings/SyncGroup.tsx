@@ -6,6 +6,9 @@ import { loadConfig } from '../../lib/sync/config'
 import { groupKey } from '../../lib/sync/crypto'
 import { joinSync, pairingLink, syncNow, syncStatus, turnOff, turnOffAndErase, turnOn } from '../../lib/sync/engine'
 import { normaliseServer, parsePairing, serverFromProxy, type Pairing } from '../../lib/sync/pairing'
+import { accountIsOn } from '../../lib/account/config'
+import { WriteItDown } from './AccountGroup'
+import { ago } from './ago'
 import { ConfirmButton, Group, Note, Row } from './controls'
 import s from './SettingsScreen.module.css'
 
@@ -33,18 +36,7 @@ function takeOffer(): Offer | null {
 
 // MARK: Small pieces
 
-/** "just now", "5 minutes ago", or the date once it's old. */
-export function ago(iso: string | undefined, now: number): string {
-  const at = iso ? Date.parse(iso) : NaN
-  if (!Number.isFinite(at)) return 'Not yet'
-  const seconds = Math.max(0, (now - at) / 1000)
-  if (seconds < 45) return 'just now'
-  const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
-  return new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
-}
+export { ago }
 
 const hostOf = (server: string) => {
   try {
@@ -158,12 +150,13 @@ export function SyncGroup() {
   const proxy = useSettings((x) => x.streamProxy)
   const [offer, setOffer] = useState(takeOffer)
   const [now, setNow] = useState(() => Date.now())
-  const [busy, setBusy] = useState<'on' | 'join' | 'erase'>()
+  const [busy, setBusy] = useState<'on' | 'join' | 'erase' | 'move'>()
   const [typed, setTyped] = useState<{ server: string; token: string }>()
   const [joining, setJoining] = useState(false)
   const [paste, setPaste] = useState('')
   const [showLink, setShowLink] = useState(false)
   const [note, setNote] = useState<{ tone: 'ok' | 'error'; text: string }>()
+  const [moved, setMoved] = useState<string>()
 
   const on = status.phase !== 'off'
   const config = on ? loadConfig() : null
@@ -268,6 +261,17 @@ export function SyncGroup() {
     )
   }
 
+  // Moved to an account a moment ago: the number comes first.
+  if (moved) {
+    return (
+      <Group title="Your Account Number" footer="Your settings now sync through your account. The old pairing is off on this device; its copy stays on your Worker until you erase it from a device that still has it.">
+        <WriteItDown digits={moved} onDone={() => setMoved(undefined)} doneLabel="Continue" />
+      </Group>
+    )
+  }
+  // An account does what Sync does, and more: with one on, a browser that isn't already paired isn't offered the old way.
+  if (!on && accountIsOn()) return null
+
   if (on && config) {
     const syncing = status.phase === 'syncing'
     const detail = syncing ? 'Syncing…' : status.lastSyncAt ? `Last synced ${ago(status.lastSyncAt, now)}` : 'Waiting for the first sync'
@@ -284,6 +288,25 @@ export function SyncGroup() {
               <Note tone="error">{status.error}</Note>
             </div>
           )}
+          <Row label="Move to an Account" detail="Marquee Accounts replace pairing: a 16-digit number, and your library syncs too">
+            <button
+              type="button"
+              className="btn btn-primary btn-compact"
+              disabled={busy !== undefined}
+              onClick={() => {
+                setBusy('move')
+                setNote(undefined)
+                void import('../../lib/account/engine').then(async (m) => {
+                  const result = await m.moveToAccount()
+                  setBusy(undefined)
+                  if (result.ok) setMoved(result.number)
+                  else setNote({ tone: 'error', text: result.error })
+                })
+              }}
+            >
+              {busy === 'move' ? 'Moving…' : 'Move to an Account'}
+            </button>
+          </Row>
           <Row label="Pairing Link" detail="Add another device to this sync">
             <button type="button" className="btn btn-secondary btn-compact" aria-expanded={showLink} onClick={() => setShowLink((v) => !v)}>
               {showLink ? 'Hide Pairing Link' : 'Show Pairing Link'}

@@ -1,0 +1,17 @@
+/* Marquee Account: the account number shown as four groups of four digits that wrap between groups, never inside one, and
+   the number field. The rest is Settings' own classes. */
+
+.number { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-m); font: 700 clamp(22px, 6.4vw, 32px) / 1.1 var(--font-mono); letter-spacing: 0.06em; color: var(--fg); user-select: all; }
+.number span { white-space: nowrap; }
+/* A number kept out of sight: the dots hold the place of the digits, with the last four left. */
+.hidden { color: var(--muted); user-select: none; }
+
+.panel { display: flex; flex-direction: column; gap: var(--space-m); padding: var(--space-m) var(--space-s); }
+.warn { padding: var(--space-s); border: var(--rule); font: 600 var(--fs-footnote) / 1.45 var(--font); color: var(--fg); }
+.warn strong { color: var(--red); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.field { font: 600 clamp(18px, 5vw, 22px) / 1 var(--font-mono); letter-spacing: 0.08em; }
+.choices { display: flex; flex-wrap: wrap; gap: var(--space-s); padding: 0 var(--space-s) var(--space-s); }
+.choices button { flex: 1 1 14rem; }
+.step { display: flex; align-items: center; gap: var(--space-s); font: 400 var(--fs-footnote) / 1.4 var(--font); color: var(--fg); }
+.step input { width: 20px; height: 20px; accent-color: var(--blue); flex: none; }

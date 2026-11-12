@@ -123,6 +123,18 @@ export function syncCorsHeaders(origin, allowedOrigins) {
   }
 }
 
+/** CORS for the account routes: no token header, and POST for creating an account. Retry-After is readable so a page can say when to try again. */
+export function accountCorsHeaders(origin, allowedOrigins) {
+  const headers = corsHeaders(origin, allowedOrigins)
+  if (!headers['Access-Control-Allow-Origin']) return headers
+  return {
+    ...headers,
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Expose-Headers': 'Content-Type, Retry-After',
+  }
+}
+
 const userAgent = 'Mozilla/5.0 (compatible; FlowStreamProxy)'
 
 /** What goes to the file's host: the Range the page asked for and a plain User-Agent. Never the

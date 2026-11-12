@@ -4,8 +4,10 @@
 //
 //   GET or HEAD  /?url=<encoded https address>[&token=<TOKEN>]
 //   GET, PUT, DELETE  /sync/<id>      Flow Sync's encrypted record (sync.js, docs/SYNC.md)
+//   GET, POST, PUT, DELETE  /account/<id>[/<section>]   Marquee Accounts (account.js, docs/SYNC.md)
 
 import { cleanSnippet, corsHeaders, directHeader, downstreamHeaders, hopsHeader, hopsSummary, originAllowed, parseList, parseTarget, rangeFromStart, redirectStatuses, snippetWanted, streamStatuses, targetAllowed, tokenMatches, upstreamHeaders } from './match.js'
+import { handleAccount, isAccountPath } from './account.js'
 import { handleSync, isSyncPath } from './sync.js'
 
 /** Redirect hops followed before giving up: debrid links take one or two. */
@@ -159,6 +161,12 @@ export default {
     if (isSyncPath(new URL(request.url).pathname)) {
       const response = await handleSync(request, env)
       console.log(`${request.method} sync -> ${response.status}`)
+      return response
+    }
+    // Accounts too, and the log line leaves the path out for the same reason.
+    if (isAccountPath(new URL(request.url).pathname)) {
+      const response = await handleAccount(request, env)
+      console.log(`${request.method} account -> ${response.status}`)
       return response
     }
     const hops = []

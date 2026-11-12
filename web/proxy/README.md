@@ -99,6 +99,40 @@ was missed: check that the binding is called `SYNC` and that you deployed after 
 Sync uses the free KV allowance: Flow writes only when something changed, about three seconds after
 you stop typing. A record is capped at 256 KB. **Turn Off and Erase** in Flow deletes the record.
 
+## Marquee Accounts (optional)
+
+The same Worker and the same `SYNC` KV namespace also run **Marquee Accounts**: a random 16-digit account number instead of a
+sync key, so a person can log in on a new device with nothing else, and the library (watchlist, favourites, history,
+resume points, ratings) syncs along with the settings. The contract is `docs/SYNC.md`.
+
+Setup is the same three steps as Flow Sync (a KV namespace bound as `SYNC`, then `npx wrangler deploy`), plus:
+
+1. **`ALLOWED_ORIGINS` must list every page that offers accounts** (the website, and `http://localhost:5173` while you
+   develop). Unlike the proxy, a page that isn't listed is refused outright on `/account` routes.
+2. **Tell each client where the Worker is.** There is no `TOKEN` on the account routes, because it would have to ship in
+   the public website. So the address is built into the clients:
+   - the website: build it with `VITE_ACCOUNT_SERVER=https://flow-stream-proxy.example.workers.dev` (the stream proxy's origin is used if you
+     leave it out and have set a stream proxy; otherwise Settings → Account asks for the address);
+   - the apps: `FLOW_ACCOUNT_SERVER_HOST = flow-stream-proxy.example.workers.dev` in `Config/Secrets.xcconfig` (a host name,
+     because `//` starts a comment in an xcconfig). Don't commit it.
+3. **Optional, recommended: a rate-limit binding.** The Worker already limits guessing itself with counters in KV: more than 20
+   failed requests (an account that doesn't exist, a wrong key) from one address in ten minutes answer `429` until the
+   window ends, and more than 10 new accounts an hour from one address are refused. Cloudflare's own
+   [Rate Limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) adds a flood
+   brake in front of that: add the `[[ratelimits]]` block from `wrangler.toml.example`, and the Worker asks it once per
+   request, answering `429` when it says no. Leave it out and the KV counters are the only limit.
+
+What the Worker does on `/account/<id>` and `/account/<id>/<section>`: `POST` creates an account (the first request stores
+a hash of its key), `GET` lists its values or reads one, `PUT` writes one if the revision the client saw is still current
+(`409` with what is stored if not), `DELETE` removes one or the whole account. Every request carries
+`Authorization: Bearer <key>`, derived on the device from the account number. An unknown account and a wrong key get the same `404`,
+so nothing says which accounts exist. Counters hold a hash of the address, not the address, and expire. Values are at most 256 KB, and an account
+holds at most 400 of them.
+
+It uses the free KV allowance gently: a device writes only the values that changed, about three seconds after the change
+(resume points about once a minute while something plays). The free plan allows 1,000 KV writes a day. **Delete Account** in
+Flow deletes the account's values.
+
 SubSource's key is a request header the proxy doesn't pass on, so SubSource can't be used from the website.
 
 ## Hosts that are always allowed
@@ -180,6 +214,8 @@ Flow Sync on, it is also kept, encrypted, in your Worker, so your other devices 
   based on an old revision (`409`, with the stored record so the device can merge) or a record over
   256 KB (`413`), and answers `501` when no KV namespace is bound as `SYNC`. The contract is
   `docs/SYNC.md`.
+- Answers `GET`, `POST`, `PUT`, `DELETE` and `OPTIONS` on `/account/<id>` and `/account/<id>/<section>` for Marquee
+  Accounts, also ahead of the proxy route. No token: the bearer key alone, with per-address rate limits (see above).
 - Adds `X-Flow-Proxy-Hops` (hosts and statuses only) to the answers it fetched, and logs one line a
   request for `wrangler tail`.
 

@@ -7,6 +7,7 @@ import { callbackPath } from '../../lib/trakt/arrive'
 import { redirectURI } from '../../lib/trakt/oauth'
 import { beginSignIn, checkClientID, finishingSignIn, signOut } from '../../lib/trakt/session'
 import { useTrakt } from '../../lib/trakt/store'
+import { AccountGroup } from './AccountGroup'
 import { ConfirmButton, Group, Note, Row } from './controls'
 import s from './SettingsScreen.module.css'
 import { ListsGroup, MDBListGroup, SimklAppGroup, SimklGroup, SyncPreferencesGroup, TrackingWithGroup, syncDetail } from './TrackerGroups'
@@ -200,6 +201,7 @@ function SignInGroup() {
 export function AccountSection() {
   return (
     <>
+      <AccountGroup />
       <TrackingWithGroup />
       <ListsGroup />
       <SyncPreferencesGroup />

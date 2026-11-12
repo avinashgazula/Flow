@@ -85,6 +85,14 @@ try {
   // Blocked storage means no sync setup to find.
 }
 
+// The same for a Marquee Account (lib/account/config.ts names the key): its engine is a chunk of its own, fetched only for a
+// browser that is logged in.
+try {
+  if (localStorage.getItem('flow.account.v1')) void import('./lib/account/engine').then(({ startAccount }) => startAccount())
+} catch {
+  // Blocked storage means no account to find.
+}
+
 // A browser signed in to a tracker (here, or through Sync) keeps its library in step with the one chosen in Settings →
 // Account. The code is a separate chunk, fetched only once there is something to track with.
 bootTrackers()

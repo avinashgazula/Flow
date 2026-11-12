@@ -8,6 +8,8 @@ import s from './Welcome.module.css'
 /* Reading a setup file and joining a sync pull in the codec and the sync engine, so they load when asked for. */
 const SetupImport = lazy(() => import('../settings/SetupImport').then((m) => ({ default: m.SetupImport })))
 const WelcomeJoin = lazy(() => import('./WelcomeJoin').then((m) => ({ default: m.WelcomeJoin })))
+const WelcomeLogIn = lazy(() => import('./WelcomeAccount').then((m) => ({ default: m.WelcomeLogIn })))
+const WelcomeCreate = lazy(() => import('./WelcomeAccount').then((m) => ({ default: m.WelcomeCreate })))
 
 export function Welcome() {
   const saved = useSettings((x) => x.tmdbKey)
@@ -24,7 +26,7 @@ export function Welcome() {
     takeLink('setup')
     takeLink('sync')
   }, [])
-  const [other, setOther] = useState<'setup' | 'join' | undefined>(arrived?.other)
+  const [other, setOther] = useState<'setup' | 'join' | 'login' | 'create' | undefined>(arrived?.other)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -71,6 +73,10 @@ export function Welcome() {
               <div className={s.other}>
                 <SetupImport backups link={arrived?.other === 'setup' ? arrived.link : undefined} onImported={() => setOther(undefined)} onCancel={() => setOther(undefined)} />
               </div>
+            ) : other === 'login' ? (
+              <WelcomeLogIn onBack={() => setOther(undefined)} />
+            ) : other === 'create' ? (
+              <WelcomeCreate onBack={() => setOther(undefined)} />
             ) : (
               <WelcomeJoin onBack={() => setOther(undefined)} link={arrived?.other === 'join' ? arrived.link : undefined} />
             )}
@@ -111,6 +117,16 @@ export function Welcome() {
               </div>
             </form>
             <ul className={`rows ${s.alternatives}`}>
+              <li>
+                <button className={`row ${s.alt}`} onClick={() => setOther('login')}>
+                  Log In to Your Account <span aria-hidden="true">→</span>
+                </button>
+              </li>
+              <li>
+                <button className={`row ${s.alt}`} onClick={() => setOther('create')}>
+                  Create an Account <span aria-hidden="true">→</span>
+                </button>
+              </li>
               <li>
                 <button className={`row ${s.alt}`} onClick={() => setOther('setup')}>
                   I Have a Setup From Another Device <span aria-hidden="true">→</span>
