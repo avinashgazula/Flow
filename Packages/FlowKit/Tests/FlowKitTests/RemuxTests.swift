@@ -501,8 +501,11 @@ final class AtmosTests: XCTestCase {
 }
 
 final class OpusTests: XCTestCase {
-    /// AVPlayer won't play Opus through HLS, so Opus tracks are reported, not remuxed.
-    func testOpusTracksAreSkippedWithAReason() async throws {
+    override func tearDown() { MatroskaRemuxer.audioDecoders = nil }
+
+    /// AVPlayer won't play Opus through HLS, so Opus is decoded and handed over as FLAC; while decoding is off, it is reported, not played silently.
+    func testOpusTracksAreSkippedWithAReasonWhileDecodingIsOff() async throws {
+        MatroskaRemuxer.audioDecoders = nil
         let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("opus")), targetSegment: 2)
         XCTAssertTrue(remuxer.audio.isEmpty)
         XCTAssertEqual(remuxer.skipped.map(\.reason), ["Opus audio", "Opus audio"])

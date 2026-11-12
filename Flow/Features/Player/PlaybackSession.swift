@@ -308,7 +308,7 @@ final class PlaybackSession: Identifiable {
             }
             let skippedAudio = remuxer.skipped.filter { $0.track.kind == .audio }
             if !remuxer.hasPlayableSoundtrack, let first = skippedAudio.first {
-                fail("This file's audio is \(first.reason), which Apple devices can't decode. Try another source, or open it in VLC or Infuse.")
+                fail(Self.undecodedAudioMessage(first, decodingIsOff: MatroskaRemuxer.audioDecoders == nil))
                 return
             }
             if let boost = model?.settings.playback.volumeBoostDB, boost > 0 { await remuxer.setLoudnessBoost(boost) }
@@ -326,7 +326,7 @@ final class PlaybackSession: Identifiable {
             chapterSegments = SkipSegmentResolver.fromChapters(chapters.map { ($0.title, $0.start) }, duration: remuxer.duration)
             if segments.isEmpty { segments = chapterSegments }
             if let first = skippedAudio.first(where: { !$0.track.isCommentary }), let playing = remuxer.audio.first {
-                show(notice: "\(first.reason) can't play on Apple devices. Playing \(playing.label) instead.")
+                show(notice: first.reason + (MatroskaRemuxer.audioDecoders == nil ? ": turn on Decode Audio Apple Can't Play in Settings. " : " can't play on Apple devices. ") + "Playing \(playing.label) instead.")
             }
             phase = .connecting(0.35)
             attach(AVURLAsset(url: hls))
@@ -556,6 +556,14 @@ final class PlaybackSession: Identifiable {
     }
 
     // MARK: Failure and fallback
+
+    /// What to tell the viewer when an MKV's only audio is something Flow didn't decode: with the setting off, how to turn it on.
+    private static func undecodedAudioMessage(_ skipped: MatroskaRemuxer.Skipped, decodingIsOff: Bool) -> String {
+        if decodingIsOff, AudioDecoderSetup.codecIDs.contains(skipped.track.codecID) {
+            return "This file's audio is \(skipped.reason), which plays once you turn on Decode Audio Apple Can't Play in Settings. Try another source, or open it in VLC or Infuse."
+        }
+        return "This file's audio is \(skipped.reason), which Apple devices can't decode. Try another source, or open it in VLC or Infuse."
+    }
 
     /// Reports a problem, or quietly moves to the next source when nothing has played yet.
     private func fail(_ message: String) {

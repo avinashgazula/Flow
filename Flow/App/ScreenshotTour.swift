@@ -66,6 +66,24 @@ enum ScreenshotTour {
                 log("suggestions: \(m.activePlayback?.suggestions.count ?? -1) phase=\(String(describing: m.activePlayback?.phase))")
                 m.activePlayback?.endWithSuggestions()
             },
+            // Audio Apple can't play (Opus, Vorbis, PCM) decoded on the device: the info panel lists the decoded tracks, and the log says it is playing.
+            Step(name: "player-mkv-audio") { m in
+                m.activePlayback?.stop()
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first(where: { $0.id == DemoSourceProvider.audioSampleID }) {
+                    m.startPlayback(source, request: PlaybackRequest(item: duneItem))
+                    Task {
+                        try? await Task.sleep(nanoseconds: 2_500_000_000)
+                        m.activePlayback?.showsInfo = true
+                        if let session = m.activePlayback {
+                            log("audio sample: remux=\(session.usesRemux) phase=\(session.phase) time=\(String(format: "%.1f", session.currentTime))")
+                            log("info: " + session.infoRows().map { "\($0.label)=\($0.value)" }.joined(separator: "; "))
+                        }
+                    }
+                } else {
+                    log("no bundled audio sample")
+                }
+            },
             Step(name: "person") { m in m.activePlayback?.stop(); m.paths[.home] = [.detail(duneItem), .person(id: 1190668, name: "Timothée Chalamet")] },
             // Home once more after the player has saved a new resume point: it must agree with the Library's row.
             Step(name: "home-after-playback") { m in m.paths[.home] = []; m.selectedTab = .home },

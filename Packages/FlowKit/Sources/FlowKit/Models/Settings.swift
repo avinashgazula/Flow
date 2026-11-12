@@ -863,7 +863,8 @@ public struct PlaybackSettings: Codable, Hashable, Sendable {
     /// Tried when no track is in `preferredAudioLanguage`.
     public var audioFallbackLanguage: String?
     public var animeAudio: AnimeAudio = .noPreference
-    /// Decode DTS and Dolby TrueHD in MKVs (with FFmpeg) instead of skipping them.
+    /// Decode the audio Apple's player can't play in MKVs (DTS, Dolby TrueHD, Opus, Vorbis, PCM and more) instead of skipping it.
+    /// Stored as `decodeLosslessAudio` since it began with DTS and TrueHD.
     public var decodeLosslessAudio = true
     /// Remember the audio and subtitle languages chosen for a show, so its next episodes start the same way.
     public var rememberTracksPerShow = true

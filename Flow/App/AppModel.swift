@@ -266,7 +266,7 @@ final class AppModel {
         applyAudioDecoding()
     }
 
-    /// DTS and Dolby TrueHD in MKVs: decoded with FFmpeg and handed to AVPlayer as FLAC, unless turned off.
+    /// Audio Apple's player can't play in MKVs (DTS, TrueHD, Opus, Vorbis, PCM…): decoded and handed to AVPlayer as FLAC, unless turned off.
     private func applyAudioDecoding() {
         MatroskaRemuxer.audioDecoders = settings.playback.decodeLosslessAudio ? FFmpegAudioDecoders() : nil
     }

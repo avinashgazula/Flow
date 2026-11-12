@@ -157,6 +157,7 @@ enum MKV {
     static let codecID: UInt32 = 0x86
     static let codecPrivate: UInt32 = 0x63A2
     static let codecDelay: UInt32 = 0x56AA
+    static let seekPreRoll: UInt32 = 0x56BB
     static let contentEncodings: UInt32 = 0x6D80
     static let contentEncoding: UInt32 = 0x6240
     static let contentCompression: UInt32 = 0x5034

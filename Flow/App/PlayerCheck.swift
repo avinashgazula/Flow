@@ -94,6 +94,21 @@ enum PlayerCheck {
                 session.selectBitmapSubtitle(nil)
             }
         }
+        if source.id == DemoSourceProvider.audioSampleID {
+            // Opus, Vorbis and PCM can't be played by AVPlayer as they are: each must come out of the remuxer as a FLAC rendition that plays.
+            let audio = (try? await session.player.currentItem?.asset.loadMediaSelectionGroup(for: .audible))?.options.map(\.displayName) ?? []
+            record(session.usesRemux, "MKV with Opus, Vorbis and PCM is remuxed on device", "usesRemux=\(session.usesRemux)")
+            for codec in ["Opus", "Vorbis", "PCM"] {
+                record(audio.contains { $0.contains(codec) }, "\(codec) track is offered and playable", audio.joined(separator: ", "))
+            }
+            // The clip is short: go back to its start, on the last track chosen above (PCM), and see it play on.
+            session.seek(to: 1)
+            session.player.play()
+            _ = await value(timeout: 5) { session.currentTime > 0.5 ? true : nil }
+            let before = session.currentTime
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            record(session.currentTime - before >= 1, "plays on after a seek, on the PCM track", String(format: "%.1f s in 2 s", session.currentTime - before))
+        }
         session.showsInfo = true
         await screen("\(source.id)-info")
         session.showsInfo = false

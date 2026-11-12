@@ -105,7 +105,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .dataStorage: return "icloud sync push pull cache storage clear downloads export tracking"
         case .shareSetup: return "export qr share backup"
         case .importSetup: return "import restore qr"
-        case .playback: return "resolution autoplay skip intro credits resume audio external player infuse vlc pip volume boost loud dialogue dts truehd lossless dolby vision hdr speed sleep timer seek up next rotate"
+        case .playback: return "resolution autoplay skip intro credits resume audio external player infuse vlc pip volume boost loud dialogue dts truehd lossless opus vorbis pcm flac decode codec wma alac wavpack mp2 dolby vision hdr speed sleep timer seek up next rotate"
         case .subtitles: return "subtitles captions language size color colour offset delay font edge outline background position ass styling auto-sync forced sdh weight opacity"
         case .metadata: return "tvdb tmdb episode source time zone unreleased language api key ratings imdb rotten tomatoes metacritic letterboxd rpdb rating posters reviews comments region adult prefetch"
         case .about: return "version licenses"

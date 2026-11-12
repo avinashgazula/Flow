@@ -73,6 +73,8 @@ public struct MatroskaTrack: Hashable, Sendable, Identifiable, Codable {
     /// Nanoseconds per frame, when the muxer recorded it.
     public var defaultDuration: Int64?
     public var codecDelay: Int64 = 0
+    /// Nanoseconds of audio a decoder must run through before a seek target to sound right (Opus: 80 ms).
+    public var seekPreRoll: Int64?
     /// Bytes removed from the start of every frame by "header stripping" compression.
     public var strippedHeader: [UInt8] = []
     public var isEncrypted = false
@@ -339,6 +341,7 @@ public enum MatroskaReader {
                 case MKV.codecID: t.codecID = EBML.string(b, child)
                 case MKV.codecPrivate: t.codecPrivate = EBML.bytes(b, child)
                 case MKV.codecDelay: t.codecDelay = Int64(EBML.uint(b, child))
+                case MKV.seekPreRoll: t.seekPreRoll = Int64(EBML.uint(b, child))
                 case MKV.contentEncodings: try parseEncodings(b, child, into: &t)
                 case MKV.video: try parseVideo(b, child, into: &t)
                 case MKV.audio:

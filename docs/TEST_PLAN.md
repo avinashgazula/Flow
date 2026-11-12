@@ -196,6 +196,11 @@ Redesigned in October 2026 as a plain table: no Best Match card, no sparkles or 
   - MKV remux: H.264, HEVC, AV1 on supported hardware.
   - Dolby Vision 5 and 8. Profile 7 converted to 8.1.
   - DTS and TrueHD decoded to FLAC.
+  - Opus, Vorbis, MP2, ALAC, WavPack, TTA, Windows Media Audio and PCM in MKV decoded to FLAC: every track of the file is in the
+    audio menu ("English (Opus 5.1)"), plays, keeps lip-sync (Opus's CodecDelay and pre-skip are handled) and seeks without a click.
+    `scripts/player-check.sh` plays the bundled FlowSampleAudio.mkv (Opus, 44.1 kHz Vorbis, 8-bit PCM) on every platform. With real files, also
+    try a 5.1 Opus and a 5.1 Vorbis (check the channels land in the right speakers) and an A_MS/ACM file (WMA, ADPCM) if you have one.
+    Turn **Decode Audio Apple Can't Play** off and the file's message must say how to turn it on.
   - PGS subtitles drawn by Marquee. ASS styling.
 
 ### Player: Apple TV
