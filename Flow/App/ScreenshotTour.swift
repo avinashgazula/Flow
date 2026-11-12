@@ -79,6 +79,11 @@ enum ScreenshotTour {
                             log("audio sample: remux=\(session.usesRemux) phase=\(session.phase) time=\(String(format: "%.1f", session.currentTime))")
                             log("info: " + session.infoRows().map { "\($0.label)=\($0.value)" }.joined(separator: "; "))
                         }
+                        // Time moving on means the decoded FLAC rendition is being played.
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        if let session = m.activePlayback {
+                            log("audio sample later: phase=\(session.phase) time=\(String(format: "%.1f", session.currentTime))")
+                        }
                     }
                 } else {
                     log("no bundled audio sample")
