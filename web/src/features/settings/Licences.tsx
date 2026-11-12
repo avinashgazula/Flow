@@ -16,7 +16,7 @@ export function Licences() {
   const fonts = `${base}fonts/`
   return (
     <>
-      <Group title="FFmpeg" footer="Marquee plays Dolby Digital, DTS and Dolby TrueHD by decoding them with FFmpeg’s libavcodec and libavutil, built to a WebAssembly file of their own (flow-audio.wasm). No GPL or non-free part is enabled. The file loads separately from the page, so a version built from changed source can take its place: the notice beside it says how.">
+      <Group title="FFmpeg" footer="Marquee plays Dolby Digital, DTS and Dolby TrueHD by decoding them with FFmpeg’s libavcodec and libavutil, built to a WebAssembly file of their own (flow-audio.wasm). Files in AVI, MPEG-TS, WMV, FLV and other containers, and sound no browser plays, go through a second build with FFmpeg’s demuxers, MP4 muxer, audio decoders, FLAC and AAC encoders and resampler (flow-media.wasm). No GPL or non-free part is enabled in either. Each file loads separately from the page, so a version built from changed source can take its place: the notices beside them say how.">
         <Row label="FFmpeg" detail={`Version ${ffmpeg.version} · LGPL-2.1-or-later`}>
           {link(ffmpeg.home, 'ffmpeg.org')}
         </Row>
@@ -25,6 +25,9 @@ export function Licences() {
         </Row>
         <Row label="Build Script and Notice" detail="How it is built, and how to replace it">
           {link(ffmpeg.script, 'Script')} {link(ffmpeg.notice, 'Notice')}
+        </Row>
+        <Row label="Media Engine Script and Notice" detail="Containers, converted sound: how it is built, and how to replace it">
+          {link(ffmpeg.mediaScript, 'Script')} {link(ffmpeg.mediaNotice, 'Notice')}
         </Row>
         <Row label="Licence Text" detail="GNU Lesser General Public License 2.1">
           {link(`${base}licences/COPYING.LGPLv2.1.txt`, 'Read')}

@@ -85,7 +85,7 @@ export const typefaces: { name: string; file: string }[] = [
  *  build has none and links the working branch instead. */
 const ref = import.meta.env.VITE_BUILD && import.meta.env.VITE_BUILD !== 'local' ? import.meta.env.VITE_BUILD : 'claude/build-flow-app'
 
-/** FFmpeg's decoders, as the LGPL asks them to be offered: what it is, where the source is, and how to swap it. */
+/** FFmpeg's two WebAssembly modules, as the LGPL asks them to be offered: what it is, where the source is, and how to swap them. */
 export const ffmpeg = {
   version: '7.1.1',
   source: 'https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz',
@@ -93,4 +93,7 @@ export const ffmpeg = {
   /** The notice that ships with the module, and the script that builds it from the release above. */
   notice: `https://github.com/avinashgazula/Flow/tree/${ref}/web/src/lib/audio/pkg`,
   script: `https://github.com/avinashgazula/Flow/blob/${ref}/web/scripts/build-audio-decoders.sh`,
+  /** The universal media engine: demuxers, the MP4 muxer, the decoders and the FLAC and AAC encoders (flow-media.wasm). */
+  mediaNotice: `https://github.com/avinashgazula/Flow/tree/${ref}/web/src/lib/media/pkg`,
+  mediaScript: `https://github.com/avinashgazula/Flow/blob/${ref}/web/scripts/build-media-engine.sh`,
 }

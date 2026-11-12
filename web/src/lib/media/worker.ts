@@ -97,7 +97,7 @@ async function open(message: Extract<ToWorker, { type: 'open' }>) {
   const info = headerFor(file.streams, file.durationMs)
   bitrate = length && file.durationMs ? length / (file.durationMs / 1000) : 0
   governor.reset(aheadCapFor(bitrate))
-  statsTimer ??= setInterval(postStats, STATS_EVERY_MS)
+  statsTimer ??= setInterval(() => postStats(), STATS_EVERY_MS)
   post({ type: 'header', json: JSON.stringify(info), length, ranges: http.ranges, cached: false })
   if (file.chapters.length) post({ type: 'chapters', chapters: file.chapters.map((c) => ({ title: c.title, start: Math.round(c.start) / 1000 })) })
 }
@@ -129,8 +129,8 @@ function drain(epoch: number) {
   }
 }
 
-function postStats() {
-  if (!streaming) return
+function postStats(force = false) {
+  if (!streaming && !force) return
   post({ type: 'stats', bytesPerSecond: Math.round(meter.rate(performance.now())), bitrate: Math.round(bitrate), inFlight, ahead: Math.max(0, Math.round((produced - playhead) * 10) / 10) })
 }
 
@@ -229,6 +229,8 @@ async function stream(epoch: number, signal: AbortSignal) {
     feeder.close()
   }
   if (signal.aborted) return
+  // A short file can be read before the first of the page's once-a-second reports: say how it went.
+  postStats(true)
   streaming = false
   post({ type: 'done', epoch })
 }

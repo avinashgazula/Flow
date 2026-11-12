@@ -95,7 +95,7 @@ is named after a fingerprint of its contents, so a deploy that changes any file 
 
 ## Matroska
 
-Browsers can't play `.mkv`, so `src/lib/remux` does it: a Rust crate (`crates/flow-remux`, 175 KB of
+Browsers can't play `.mkv`, so `src/lib/remux` does it (any other container, and Matroska whose sound the remuxer can't convert, goes to the universal engine below): a Rust crate (`crates/flow-remux`, 175 KB of
 WebAssembly) demuxes Matroska in a Web Worker, fed by range requests (header, seek index, then
 clusters a few MB at a time), and remuxes it to fragmented MP4 for Media Source Extensions. The page
 only sees `attachMatroska(video, url)`; nothing loads until an MKV is played. The built wasm and its
@@ -167,6 +167,73 @@ reads are done and loaded with `importHeader()` before the header is read, which
 Last-Modified (when the server lists them in `Access-Control-Expose-Headers`), and, for links that change on every
 request, by a hash of its first 64 KB and its size; the address itself is never stored. Records go after 30 days unused,
 beyond 24 MB or 150 files, or when the server shows a different ETag or date. Any failure is a miss.
+
+## Universal engine (any container, any sound)
+
+`src/lib/media` plays what the fast paths don't: AVI, MPEG-TS and M2TS, WMV and ASF, FLV, MPEG-PS and VOB, RealMedia, 3GP and Ogg
+files; an MP4 or MKV whose only sound is one the browser can't decode (Dolby Digital, DTS, TrueHD, Vorbis, PCM, MP2, WMA...)
+without WebCodecs' Opus encoder to convert it; and an MKV with sound the Rust remuxer can't play. It is a second lazy
+WebAssembly module, `src/lib/media/pkg/flow-media.wasm` (2.3 MB, 1.0 MB gzipped; none of it is in first-load code), built from
+unmodified FFmpeg 7.1.1 by `npm run media-wasm` (`scripts/build-media-engine.sh`: plain clang and the WASI sysroot like the audio module,
+pinned SHA-256 downloads, LGPL-only flags, no Emscripten) plus `native/flow-media/flow_media.c`. It holds:
+
+- **Demuxers:** AVI, MPEG-TS, MPEG-PS, ASF/WMV, FLV, MOV/MP4, Matroska/WebM, Ogg, RealMedia, WAV, AIFF, CAF, MP3, AAC, AC-3, E-AC-3, DTS,
+  TrueHD, FLAC, AMR and raw H.264, HEVC, MPEG video and VC-1 (the last four so a program stream's picture is recognised).
+  The MP4 muxer (fragmented), the ADTS and extradata bitstream filters, and parsers for the codecs above.
+- **Audio decoders:** AC-3, E-AC-3, DTS (core and HD), TrueHD, MLP, Vorbis, Opus, MP1/MP2/MP3, AAC, ALAC, FLAC, WMA 1/2/Pro/Lossless,
+  RealAudio (Cook, 14.4, 28.8), AMR, GSM, every PCM variant and the common ADPCM ones.
+- **Encoders:** FLAC (16-bit) and AAC, FFmpeg's own, and libswresample for the mix and the sample rate. No video decoder or encoder.
+
+**What it does.** `worker.ts` speaks the Matroska worker's protocol (`remux/protocol.ts`), so one `Session` (`remux/index.ts`:
+`attachUniversal` is `attachMatroska` with another worker) does the buffer management, quota handling, pacing, seeking and audio
+switching for both. The module opens the file, lists its tracks (`codecs.ts` turns them into the same header the Matroska worker posts),
+and writes two fragmented-MP4 streams, one for the picture and one for the sound, with FFmpeg's mov muxer: `delay_moov`
+(the init segment waits for the first packets, which E-AC-3 and ADTS AAC need), `default_base_moof`, no edit list, a
+fragment per key frame and at least a second (a second of sound), and `frag_discont` so each fragment's `tfdt` is the real time,
+also after a seek. `mp4.ts` splits the output into the init segment and fragments, reads the exact codec string out of the init segment
+(avcC, hvcC, av1C, esds...) and each fragment's start, end and whether it begins on a key frame.
+
+- **Picture:** copied unchanged when `MediaSource.isTypeSupported` accepts its real codec string (Annex B from TS or AVI is turned
+  into avcC and its parameter sets found by the muxer). Otherwise playback fails with the reason ("This browser can’t play MPEG-2 video…").
+- **Sound:** copied when this browser plays that codec in MP4 (AAC, MP3, Dolby Digital and Plus where the browser has them, FLAC, Opus,
+  ALAC); otherwise decoded, mixed to stereo or 5.1 (the same `checkSurroundAudio()` answer as the Matroska path; the stream's own downmix
+  levels are used and the mix never clips), resampled to 48 kHz and encoded as FLAC where `audio/mp4; codecs="flac"` plays and as AAC where
+  it doesn't. AAC starts about 20 ms late (the encoder's priming; there is no edit list to hide it). Gaps in the sound are filled with silence
+  up to ten seconds, overlaps trimmed, and a break in a transport stream's clock is closed up, per track, so the two stay together.
+  **Decode DTS and Dolby TrueHD** off turns this conversion off too. Every track shows in the Audio page, converted ones say so.
+- **Time:** the earliest packet of the picture or sound is timeline zero (an MPEG-TS file starts a second or so in), so times on the
+  `<video>` are times the file shows. Duration is the container's. A seek is `av_seek_frame` to the key frame at or before the time; a
+  transport or program stream has no index, so it is entered about three seconds early and read again from further back until a key frame
+  lands at or before the time asked for. A resume position is a seek.
+
+**How the file is read.** The module is WebAssembly and can't wait on the network, and there is no SharedArrayBuffer, cross-origin
+isolation or Asyncify here. It reads through two imported functions, and does a bounded amount of work per call: `fm_step` reads about
+1 MB of the file, routes the packets and returns to the worker's event loop, which then lets seeks and the playhead in and tops up the cache.
+`reader.ts`'s parallel range reader (the same one Matroska uses) keeps requests in flight and fills a `SegmentCache` (`blocks.ts`: sorted
+byte ranges, 160 MB at most, the ranges furthest from the read position going first) ahead of where the module reads; the read function
+serves from it. A read the cache lacks (the probe past the first 4 MB, an index at the end of an MP4, the binary search of a seek) is a
+blocking `XMLHttpRequest` for the range from the worker, at least 768 KB so a probe isn't a round trip per box. The stream proxy, its
+direct-address header, a redirect that expires and an add-on's request headers work as they do for Matroska (`http.ts`); a server that
+ignores `Range` can be played from the start only.
+
+**Routing.** `engineFor` (`lib/sources/rank.ts`) sends those containers to `universal`; an MP4 or WebM whose release name says its sound
+isn't decodable here, and a Matroska file where WebCodecs can't convert, go there too. It ranks 250 points below the same release that
+plays natively or through the Matroska remuxer (under a resolution step). A link that doesn't say what it is goes to the Matroska remuxer
+first, which already looks at the first bytes; when they aren't Matroska the worker says what they are (`media/sniff.ts`): AVI, MPEG-TS and
+friends go to the engine, an MP4 whose sound codecs (read from the moov in those bytes) all fail here too, and anything else to the browser's
+own player. A file the browser's own player plays without sound (`NoSoundNotice` notices) is opened again through the engine from the same
+place, once. A Matroska file whose sound the remuxer can't play (Vorbis, PCM, MP2...) falls through to the engine as well.
+Playback Info shows "FFmpeg engine" and "Converted" on the audio.
+
+**Limits.** The engine copies picture and does not decode it: MPEG-2, MPEG-4 Part 2 (XviD and DivX), VC-1 and WMV picture, VP8 outside
+WebM, H.264 10-bit where the browser can't and HEVC where it has no decoder stay unplayable here, with the reason, until a later
+step decodes them. Seek previews are off for it (the scrubber shows the time alone) and embedded subtitles aren't read. Dolby Vision
+plays as its HEVC picture. It needs MediaSource and a sound format MP4 carries (FLAC or AAC), so iPhone Safari before iOS 17.1 can't use it.
+`npm run media-fixtures` makes the two-second clips its tests read, and the tests run the real module against them.
+
+**Rebuilding.** Needs a clang with the wasm32 target and wasm-ld (`apt install clang lld`, `brew install llvm lld`); the build
+downloads FFmpeg and the WASI sysroot, checks their hashes and links the file, taking a few minutes. The module is a separate file, so a
+build from changed FFmpeg source can replace it; it must export the functions in `EXPORTS` in the script.
 
 ## Smooth playback
 
@@ -571,12 +638,16 @@ them playing within the hour with a channel on air in the sample guide.
   be read from a web page. Settings → Playback has a **Stream Proxy** field: a proxy you run fetches
   such files for Marquee and adds the headers. `proxy/` holds a Cloudflare Worker for it
   (`proxy/README.md`), and MediaFlow Proxy works too. Marquee uses it only for hosts that need it.
+- **Containers:** AVI, MPEG-TS, WMV, FLV, MPEG-PS/VOB, 3GP, Ogg and the rest play through the universal engine (see above) as long as the browser decodes
+  the picture. Disc images (`.iso`), raw torrents (a browser can't speak BitTorrent: use an add-on that resolves them through a debrid
+  service) and DRM streams don't play.
 - **Codecs:** browsers can't decode DTS or TrueHD audio, and some have no Dolby Digital decoder
   either (Chrome on Linux and Firefox). Marquee plays another audio track when the file has one that
   plays as it is. Otherwise it converts the sound: a Web Worker decodes it with FFmpeg's decoders
   (WebAssembly) and WebCodecs' `AudioEncoder` makes Opus of it, which the page plays. That
   needs a browser that can encode Opus (Chrome, Edge, Firefox and Safari 26) and a file Marquee can
-  read: not one behind a host that blocks web pages and no stream proxy. Converted sound is 5.1
+  read: not one behind a host that blocks web pages and no stream proxy. Where there's no `AudioEncoder`, or the file isn't Matroska, the universal engine
+  does the same in FFmpeg's own FLAC or AAC encoder. Picture the browser has no decoder for (MPEG-2, XviD, VC-1, WMV) can't play yet and says so. Converted sound is 5.1
   where the browser can play it and the output device has the speakers for it (7.1 is mixed down to 5.1);
   otherwise stereo (surround is mixed down), and the audio menu says which. If the conversion fails, the picture
   plays on without sound and the player says why.
