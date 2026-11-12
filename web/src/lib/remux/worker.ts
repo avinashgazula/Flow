@@ -252,7 +252,7 @@ async function open(message: Extract<ToWorker, { type: 'open' }>) {
   }
   const error = rem.headerError()
   if (error) throw error === NOT_MATROSKA ? new NotMatroskaError(error) : new Error(error)
-  for (const track of (JSON.parse(rem.headerJson()) as HeaderInfo).tracks) if (track.decode) decodes.set(track.id, track.decode)
+  for (const track of (JSON.parse(rem.headerJson()) as HeaderInfo).tracks) if (track.decode && track.decode !== 'ffmpeg') decodes.set(track.id, track.decode)
 
   const info = JSON.parse(rem.headerJson()) as { duration: number | null }
   bitrate = length && info.duration ? length / info.duration : 0

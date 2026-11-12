@@ -502,40 +502,31 @@ static int write_copy(FM *m, int kind, AVStream *ist, AVPacket *pkt) {
 
 /* ---- Converting a track: decode, mix, resample, encode ---- */
 
-static int pick_layout(const AVCodec *enc, int channels, int surround, AVChannelLayout *out) {
-  if (surround && channels >= 3) {
-    AVChannelLayout want[2] = {AV_CHANNEL_LAYOUT_5POINT1, AV_CHANNEL_LAYOUT_5POINT1_BACK};
-    const AVChannelLayout *have = NULL;
-    int count = 0;
-    if (avcodec_get_supported_config(NULL, enc, AV_CODEC_CONFIG_CHANNEL_LAYOUT, 0, (const void **)&have, &count) >= 0 && have) {
-      for (int i = 0; i < 2; i++)
-        for (int j = 0; j < count; j++)
-          if (!av_channel_layout_compare(&have[j], &want[i])) return av_channel_layout_copy(out, &want[i]);
-    }
-  }
-  AVChannelLayout stereo = AV_CHANNEL_LAYOUT_STEREO;
-  return av_channel_layout_copy(out, &stereo);
-}
-
 /* Opens the encoder, the muxer and the resampler for the sound's first decoded frame. */
 static int conv_start(FM *m, AVStream *ist, const AVFrame *frame) {
   Conv *c = m->conv;
   const AVCodec *enc = avcodec_find_encoder(c->mode == MODE_FLAC ? AV_CODEC_ID_FLAC : AV_CODEC_ID_AAC);
   if (!enc) return AVERROR_ENCODER_NOT_FOUND;
   int channels = frame->ch_layout.nb_channels;
-  int r = pick_layout(enc, channels, c->surround, &c->layout);
-  if (r < 0) return r;
-  c->enc = avcodec_alloc_context3(enc);
-  if (!c->enc) return AVERROR(ENOMEM);
   c->enc_fmt = c->mode == MODE_FLAC ? AV_SAMPLE_FMT_S16 : AV_SAMPLE_FMT_FLTP;
-  c->enc->sample_fmt = c->enc_fmt;
-  c->enc->sample_rate = OUT_RATE;
-  c->enc->time_base = (AVRational){1, OUT_RATE};
-  c->enc->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-  r = av_channel_layout_copy(&c->enc->ch_layout, &c->layout);
-  if (r < 0) return r;
-  if (c->mode == MODE_AAC) c->enc->bit_rate = c->layout.nb_channels > 2 ? 384000 : 160000;
-  r = avcodec_open2(c->enc, enc, NULL);
+  /* The layouts to try, best first: 5.1 for a surround source when asked for (the encoder says which flavour it takes), else stereo. */
+  AVChannelLayout tries[3] = {AV_CHANNEL_LAYOUT_5POINT1_BACK, AV_CHANNEL_LAYOUT_5POINT1, AV_CHANNEL_LAYOUT_STEREO};
+  int first = c->surround && channels >= 3 ? 0 : 2;
+  int r = AVERROR(EINVAL);
+  for (int i = first; i < 3 && r < 0; i++) {
+    avcodec_free_context(&c->enc);
+    c->enc = avcodec_alloc_context3(enc);
+    if (!c->enc) return AVERROR(ENOMEM);
+    c->enc->sample_fmt = c->enc_fmt;
+    c->enc->sample_rate = OUT_RATE;
+    c->enc->time_base = (AVRational){1, OUT_RATE};
+    c->enc->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+    r = av_channel_layout_copy(&c->enc->ch_layout, &tries[i]);
+    if (r < 0) return r;
+    if (c->mode == MODE_AAC) c->enc->bit_rate = tries[i].nb_channels > 2 ? 384000 : 160000;
+    r = avcodec_open2(c->enc, enc, NULL);
+    if (r >= 0) r = av_channel_layout_copy(&c->layout, &tries[i]);
+  }
   if (r < 0) return r;
   c->frame_size = c->enc->frame_size > 0 ? c->enc->frame_size : 4096;
   c->fifo = av_audio_fifo_alloc(c->enc_fmt, c->layout.nb_channels, c->frame_size * 4);
