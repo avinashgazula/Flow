@@ -156,6 +156,10 @@ enum ScreenshotTour {
             Step(name: "settings-sync") { m in m.showDemoSync(); m.settingsPath = [.settings(.sync)] },
             Step(name: "settings-sync-off") { m in m.hideDemoSync(); m.settingsPath = [.settings(.sync)] },
             Step(name: "settings-sync-join") { m in m.settingsPath = [.settings(.sync), .settings(.syncJoin)] },
+            // A Marquee Account made with a fixed, made-up number. Demo mode never sends anything, so it is only a picture.
+            Step(name: "settings-account-number") { m in m.showDemoAccount(writeDown: true); m.settingsPath = [.settings(.account), .settings(.accountNumber)] },
+            Step(name: "settings-account-on") { m in m.showDemoAccount(writeDown: false); m.settingsPath = [.settings(.account)] },
+            Step(name: "settings-account-login") { m in m.hideDemoAccount(); m.settingsPath = [.settings(.account), .settings(.accountLogIn)] },
         ]
         #else
         // The Mac's Settings is its own window; the pages open inside it.
@@ -176,6 +180,9 @@ enum ScreenshotTour {
             Step(name: "settings-sync-pairing") { m in m.settingsPath = [.settings(.sync), .settings(.syncPairing)] },
             Step(name: "settings-sync-off") { m in m.hideDemoSync(); m.settingsPath = [.settings(.sync)] },
             Step(name: "settings-sync-join") { m in m.settingsPath = [.settings(.sync), .settings(.syncJoin)] },
+            Step(name: "settings-account-number") { m in m.showDemoAccount(writeDown: true); m.settingsPath = [.settings(.account), .settings(.accountNumber)] },
+            Step(name: "settings-account-on") { m in m.showDemoAccount(writeDown: false); m.settingsPath = [.settings(.account)] },
+            Step(name: "settings-account-login") { m in m.hideDemoAccount(); m.settingsPath = [.settings(.account), .settings(.accountLogIn)] },
         ]
         #endif
         #if os(iOS)

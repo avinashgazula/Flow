@@ -33,6 +33,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>FlowAccountServerHost</key>
+	<string>$(FLOW_ACCOUNT_SERVER_HOST)</string>
 	<key>FlowSimklClientID</key>
 	<string>$(FLOW_SIMKL_CLIENT_ID)</string>
 	<key>FlowTMDBAPIKey</key>

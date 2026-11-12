@@ -9,5 +9,8 @@ FLOW_TRAKT_CLIENT_ID =
 FLOW_TRAKT_CLIENT_SECRET =
 FLOW_SIMKL_CLIENT_ID =
 FLOW_TVDB_API_KEY =
+// The host of the Worker that stores Marquee Accounts, like flow-stream-proxy.example.workers.dev (no https://).
+// Leave empty and Settings asks for it.
+FLOW_ACCOUNT_SERVER_HOST =
 
 #include? "Secrets.xcconfig"

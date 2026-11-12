@@ -183,6 +183,18 @@ public actor LocalTracker: TrackingService, ListService {
         save(merged)
     }
 
+    /// Puts in a library merged elsewhere (Marquee Accounts), but only if nothing here changed since `base` was read, so a
+    /// change made while the sync was out is never overwritten: it goes up on the next round. Returns whether it was put in.
+    @discardableResult
+    public func replace(with merged: LocalLibrary, unlessChangedSince base: LocalLibrary) -> Bool {
+        guard library == base else { return false }
+        if merged != library {
+            library = merged
+            save(merged)
+        }
+        return true
+    }
+
     /// Folds a backup file's library in (Settings, Data, Import Tracking Data).
     public func restore(_ backup: LocalLibrary) {
         let restored = LibraryBackup.restore(backup, into: library)
@@ -318,6 +330,7 @@ public actor LocalTracker: TrackingService, ListService {
         mutate { lib in
             guard let i = lib.rewatches.firstIndex(where: { $0.key == key }) else { return }
             lib.rewatches[i].watched.insert(episode)
+            lib.rewatches[i].updatedAt = Date()
         }
     }
 

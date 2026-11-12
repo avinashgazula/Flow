@@ -10,6 +10,8 @@ struct OnboardingView: View {
     @State private var error: String?
     @State private var importing = false
     @State private var joiningSync = false
+    @State private var loggingIn = false
+    @State private var creatingAccount = false
 
     /// The giant word's ceiling; it shrinks to fit a phone's width.
     private static let wordSize: CGFloat = 190
@@ -48,6 +50,12 @@ struct OnboardingView: View {
             }
             .flowModal(isPresented: $joiningSync) {
                 NavigationStack { SyncJoinView(isSheet: true) }.environment(model)
+            }
+            .flowModal(isPresented: $loggingIn) {
+                NavigationStack { AccountLogInView(isSheet: true) }.environment(model)
+            }
+            .flowModal(isPresented: $creatingAccount) {
+                NavigationStack { AccountCreateView(isSheet: true) }.environment(model)
             }
         }
     }
@@ -136,6 +144,10 @@ struct OnboardingView: View {
     private var alternatives: some View {
         VStack(spacing: 0) {
             RuleLine(thin: true)
+            Button { loggingIn = true } label: { alternative("Log In to Your Account") }
+                .buttonStyle(RowButtonStyle())
+            Button { creatingAccount = true } label: { alternative("Create an Account") }
+                .buttonStyle(RowButtonStyle())
             Button { importing = true } label: { alternative("I Have a Setup From Another Device") }
                 .buttonStyle(RowButtonStyle())
             Button { joiningSync = true } label: { alternative("Join Marquee Sync") }
