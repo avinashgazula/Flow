@@ -76,7 +76,7 @@ struct SuggestionsEndScreen: View {
                 Button { session.dismissSuggestions() } label: {
                     Label("Done", systemImage: "checkmark")
                 }
-                .buttonStyle(GlassButtonStyle(compact: true))
+                .buttonStyle(PlayerActionStyle(compact: true))
                 .focused($focused, equals: "done")
             }
             .padding(.horizontal, Platform.isTV ? 90 : Platform.isPhone ? 20 : 48)

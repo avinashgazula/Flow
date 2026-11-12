@@ -128,18 +128,18 @@ struct XRayPanel: View {
 
     private var tabBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            // Bordered chips that share their borders, the current one inverted.
-            HStack(spacing: -Theme.Rule.heavy) {
+            // Capsules like the system player's, the current one white.
+            HStack(spacing: 8) {
                 ForEach(tabs) { option in
                     Button(option.rawValue) {
                         choseTab = true
                         withAnimation(Theme.Motion.snappy) { tab = option }
                     }
-                    .buttonStyle(FilterChipStyle(current: tab == option))
+                    .buttonStyle(PlayerChipStyle(current: tab == option))
                     .accessibilityAddTraits(tab == option ? .isSelected : [])
                 }
             }
-            .padding(Theme.Rule.heavy)
+            .padding(2)
         }
         .onChange(of: store?.inScene.isEmpty) { _, empty in
             // Opens on whoever's in the scene once X-Ray knows, unless a tab has been picked.
@@ -297,8 +297,7 @@ struct XRayFace: View {
             }
         }
         .frame(width: size, height: size)
-        .clipShape(Rectangle())
-        .overlay(Rectangle().strokeBorder(Theme.Palette.rule, lineWidth: Theme.Rule.thin))
+        .clipShape(Circle())
     }
 }
 

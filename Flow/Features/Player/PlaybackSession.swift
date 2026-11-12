@@ -572,7 +572,8 @@ final class PlaybackSession: Identifiable {
     /// An add-on that refuses a request can answer with a short video saying so instead of an error. A
     /// few seconds of video for a title that runs an hour or more is that, not the title.
     private func looksLikeSlate(duration: Double, finalURL: URL? = nil, bytes: Int64? = nil) -> Bool {
-        guard source.category == .addons else { return false }
+        // Sample data plays short clips under feature-length titles on purpose; they are not slates.
+        guard source.category == .addons, model?.isDemo != true else { return false }
         let runtime = request.episode?.runtimeMinutes ?? request.item.runtimeMinutes
         return StreamSlate.detect(finalURL: finalURL, duration: duration > 0 ? duration : nil, bytes: bytes,
                                   listedBytes: source.traits.sizeBytes, expectedRuntimeMinutes: runtime)

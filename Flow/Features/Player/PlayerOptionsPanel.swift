@@ -119,13 +119,13 @@ struct ChapterStrip: View {
     }
 
     private func card(_ chapter: PlayerChapter, number: Int, isCurrent: Bool) -> some View {
-        let shape = Rectangle()
+        // Rounded and borderless like the system player's chapters; only the current one gets a white outline.
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.player * 0.8, style: .continuous)
         return VStack(alignment: .leading, spacing: 6) {
             ChapterThumbnail(session: session, time: chapter.start)
                 .frame(width: cardWidth, height: cardWidth * 9 / 16)
                 .clipShape(shape)
-                .overlay(shape.strokeBorder(isCurrent ? Theme.Palette.fg : Theme.Palette.tint3,
-                                            lineWidth: isCurrent ? Theme.Rule.heavy : Theme.Rule.thin))
+                .overlay(shape.strokeBorder(Color.white, lineWidth: isCurrent ? 2 : 0))
                 .overlay(alignment: .topLeading) {
                     if isCurrent {
                         Text("Now")
@@ -238,7 +238,7 @@ struct PlayerOptionsPanel: View {
         VStack(spacing: 0) {
             if page != .root {
                 header
-                RuleLine()
+                PanelSeparator()
             }
             // Sized to its rows, so a short list doesn't leave an empty slab of glass; a long one scrolls.
             let visible = max(44, min(listHeight, maxHeight - (page == .root ? 12 : 60)))
@@ -289,7 +289,7 @@ struct PlayerOptionsPanel: View {
         return VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.id) { index, item in
                 if index > 0 {
-                    RuleLine(thin: true)
+                    PanelSeparator()
                 }
                 PanelRow(item: item)
             }
@@ -523,6 +523,13 @@ private struct PanelRow: View {
 }
 
 /// A row that inverts to blue while pressed or under the pointer, as every row in Marquee does.
+/// A faint hairline between a panel's rows, like the system player's menus; a bright rule read as a box.
+private struct PanelSeparator: View {
+    var body: some View {
+        Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1).accessibilityHidden(true)
+    }
+}
+
 private struct PanelRowStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         PanelRowBody(configuration: configuration)

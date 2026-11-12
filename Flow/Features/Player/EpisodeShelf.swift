@@ -85,9 +85,10 @@ struct EpisodeShelf: View {
                                 .padding(8)
                         }
                     }
-                    .clipShape(Rectangle())
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.player * 0.8, style: .continuous))
                     .overlay {
-                        Rectangle().strokeBorder(Theme.Palette.fg, lineWidth: isCurrent ? Theme.Rule.heavy : 0)
+                        RoundedRectangle(cornerRadius: Theme.Radius.player * 0.8, style: .continuous)
+                            .strokeBorder(Color.white, lineWidth: isCurrent ? 2 : 0)
                     }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("E\(episode.number) · \(episode.title)")

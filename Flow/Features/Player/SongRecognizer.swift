@@ -276,7 +276,7 @@ struct SongCard: View {
                     } label: { Label(added ? "Added" : "My Shazam", systemImage: added ? "checkmark" : "plus") }
                     .disabled(added)
                 }
-                .buttonStyle(GlassButtonStyle(compact: true))
+                .buttonStyle(PlayerActionStyle(compact: true))
                 .padding(.top, 4)
                 #endif
             }

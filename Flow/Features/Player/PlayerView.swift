@@ -247,13 +247,13 @@ struct ConnectingView: View {
                                 .lineLimit(1)
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(PrimaryButtonStyle())
+                        .buttonStyle(PlayerActionStyle(prominent: true))
                         Button { session.answerResume(false) } label: {
                             Label("Start from the Beginning", systemImage: "arrow.counterclockwise")
                                 .lineLimit(1)
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(GlassButtonStyle())
+                        .buttonStyle(PlayerActionStyle())
                     }
                     .frame(width: 330 * Theme.scale)
                     .padding(.bottom, Theme.Space.xxl)
@@ -266,7 +266,7 @@ struct ConnectingView: View {
                                 .foregroundStyle(Theme.Palette.textSecondary)
                             if session.canTryAnotherSource {
                                 Button("Try Another Source") { session.tryNextSource() }
-                                    .buttonStyle(GlassButtonStyle())
+                                    .buttonStyle(PlayerActionStyle())
                             }
                         }
                         Text("From \(session.source.providerName)")
@@ -357,14 +357,15 @@ struct PlaybackErrorView: View {
                 }
                 VStack(spacing: Theme.Space.s) {
                     if canTryAnother {
-                        Button(tryAnotherTitle, action: tryAnother).buttonStyle(PrimaryButtonStyle())
+                        Button(tryAnotherTitle, action: tryAnother).buttonStyle(PlayerActionStyle(prominent: true))
                     }
                     if let externalPlayer {
-                        Button("Open in \(externalPlayer)", action: openExternally).buttonStyle(GlassButtonStyle())
+                        Button("Open in \(externalPlayer)", action: openExternally).buttonStyle(PlayerActionStyle())
                     }
                     HStack(spacing: Theme.Space.s) {
-                        Button("Try Again", action: retry).buttonStyle(GlassButtonStyle())
-                        Button("Close", action: close).buttonStyle(GlassButtonStyle())
+                        Button("Try Again", action: retry)
+                            .buttonStyle(PlayerActionStyle(prominent: !canTryAnother))
+                        Button("Close", action: close).buttonStyle(PlayerActionStyle())
                     }
                 }
                 .padding(.top, Theme.Space.s)
@@ -645,7 +646,7 @@ struct UpNextCard: View {
                         }
                         .frame(width: 38, height: 38)
                     }
-                    .ruleFrame()
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.player * 0.8, style: .continuous))
             }
             .buttonStyle(CardButtonStyle())
             .accessibilityLabel("Play next episode now")
@@ -699,11 +700,11 @@ struct CircleButton: View {
 }
 
 extension View {
-    /// What every panel, chip and notice over the picture wears: flat ink with the 2px paper rule. The player is
-    /// always dark (`darkScope()`), so the tokens resolve to ink and paper here.
+    /// What every panel and notice over the picture wears, as in Apple's player: a rounded dark material with no
+    /// border, dense enough that text stays readable over a bright frame. The player is always dark (`darkScope()`).
     func playerPanel() -> some View {
-        background(Theme.Palette.overPicture)
-            .overlay(Rectangle().strokeBorder(Theme.Palette.rule, lineWidth: Theme.Rule.heavy))
+        background(.regularMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.player, style: .continuous))
+            .environment(\.colorScheme, .dark)
     }
 }
 
@@ -764,19 +765,96 @@ struct PlayerPillStyle: ButtonStyle {
     }
 }
 
-private struct PlayerPillBody: View {
+/// A tab in a player panel: a white capsule when current, a faint one otherwise. No borders.
+struct PlayerChipStyle: ButtonStyle {
+    let current: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        PlayerChipBody(configuration: configuration, current: current)
+    }
+}
+
+private struct PlayerChipBody: View {
     let configuration: ButtonStyleConfiguration
+    let current: Bool
     @Environment(\.isFocused) private var focused
     @State private var hovering = false
 
     var body: some View {
         let lit = focused || hovering
         configuration.label
+            .font(Theme.Typeface.control)
+            .padding(.horizontal, 14 * Theme.scale)
+            .padding(.vertical, 7 * Theme.scale)
+            .foregroundStyle(current || focused ? Color.black : Color.white)
+            .background(Capsule().fill(Color.white.opacity(current || focused ? 1 : lit ? 0.25 : 0.12)))
+            .contentShape(Capsule())
+            .scaleEffect(configuration.isPressed ? 0.96 : focused ? 1.05 : 1)
+            .animation(Theme.Motion.hover, value: lit)
+            .animation(Theme.Motion.hover, value: configuration.isPressed)
+            #if !os(tvOS)
+            .onHover { hovering = $0 }
+            #endif
+    }
+}
+
+/// A text button in the player, like the system player's: a white pill for the main action, a glass one for the
+/// rest. No borders.
+struct PlayerActionStyle: ButtonStyle {
+    var prominent = false
+    /// For rows and cards, where a full-size pill would dominate.
+    var compact = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        let label = configuration.label
+            .font(compact ? Theme.Typeface.micro : Theme.Typeface.control)
+            .padding(.horizontal, (compact ? 14 : 22) * Theme.scale)
+            .padding(.vertical, (compact ? 7 : 12) * Theme.scale)
+        if prominent {
+            PlayerPillBody(configuration: configuration, label: AnyView(label))
+        } else {
+            PlayerGlassPillBody(configuration: configuration, label: AnyView(label))
+        }
+    }
+}
+
+private struct PlayerGlassPillBody: View {
+    let configuration: ButtonStyleConfiguration
+    let label: AnyView
+    @Environment(\.isFocused) private var focused
+    @State private var hovering = false
+
+    var body: some View {
+        let lit = focused || hovering
+        label
+            .foregroundStyle(lit ? Color.black : Color.white)
+            .background(Capsule().fill(.white.opacity(lit ? 0.9 : 0)))
+            .playerCapsule()
+            .contentShape(Capsule())
+            .scaleEffect(configuration.isPressed ? 0.96 : focused ? 1.06 : 1)
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .animation(Theme.Motion.hover, value: lit)
+            .animation(Theme.Motion.hover, value: configuration.isPressed)
+            #if !os(tvOS)
+            .onHover { hovering = $0 }
+            #endif
+    }
+}
+
+private struct PlayerPillBody: View {
+    let configuration: ButtonStyleConfiguration
+    var label: AnyView?
+    @Environment(\.isFocused) private var focused
+    @State private var hovering = false
+
+    var body: some View {
+        let lit = focused || hovering
+        (label ?? AnyView(configuration.label))
             .foregroundStyle(Color.black)
             .background(Capsule().fill(.white.opacity(configuration.isPressed ? 0.7 : lit ? 1 : 0.9)))
             .shadow(color: .black.opacity(0.3), radius: 8, y: 2)
             .contentShape(Capsule())
-            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .scaleEffect(configuration.isPressed ? 0.96 : focused ? 1.06 : 1)
             .animation(Theme.Motion.hover, value: lit)
             .animation(Theme.Motion.hover, value: configuration.isPressed)
             #if !os(tvOS)
@@ -931,7 +1009,8 @@ struct ScrubPreviewCard: View {
             Image(decorative: image, scale: 1)
                 .resizable()
                 .frame(width: width, height: width * CGFloat(image.height) / CGFloat(max(image.width, 1)))
-                .ruleFrame()
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.player * 0.8, style: .continuous))
+                .shadow(color: .black.opacity(0.4), radius: 8, y: 2)
             Text(TimeFormat.clock(time))
                 .font(Theme.Typeface.time)
                 .foregroundStyle(Theme.Palette.fg)
@@ -1581,8 +1660,8 @@ struct StillWatchingPrompt: View {
                     Button { session.confirmStillWatching() } label: {
                         Label("Continue Watching", systemImage: "play.fill").frame(minWidth: 220)
                     }
-                    .buttonStyle(PrimaryButtonStyle())
-                    Button("Stop") { session.stop() }.buttonStyle(GlassButtonStyle())
+                    .buttonStyle(PlayerActionStyle(prominent: true))
+                    Button("Stop") { session.stop() }.buttonStyle(PlayerActionStyle())
                 }
                 .padding(.top, Theme.Space.s)
                 #endif
