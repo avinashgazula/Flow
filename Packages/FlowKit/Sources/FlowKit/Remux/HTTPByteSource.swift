@@ -24,6 +24,9 @@ public actor HTTPByteSource: ByteSource {
         self.headSize = headSize
     }
 
+    /// Where the first request ended up after redirects, once one has been made.
+    public func finalURL() -> URL? { resolvedURL ?? (knownLength != nil ? url : nil) }
+
     public func length() async throws -> Int64? {
         if knownLength == nil { _ = try await read(0..<1) }
         return knownLength

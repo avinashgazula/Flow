@@ -8,6 +8,7 @@ import type { Source } from '../../lib/sources'
 import { proxyLoader } from '../../lib/sources/hlsProxy'
 import { hostAllowsCors, sameOrigin } from '../../lib/sources/cors'
 import { needsProxy, proxied, rememberBlocked, streamProxy } from '../../lib/sources/proxy'
+import { bindsLinksToConnection } from '../../lib/sources/slate'
 import { settingsStore } from '../../lib/store/settings'
 import { hlsErrorMessage, PlaybackError } from './errors'
 import { trackLabel } from './format'
@@ -407,7 +408,9 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
       // Remembered by the address Marquee was given (the add-on's play link), not where it redirects to:
       // that is what the next source from the same add-on starts with.
       rememberBlocked(source.url)
-      if (!streamProxy()) throw error
+      // An add-on whose links are tied to the connection that asked (ElfHosted's public ones) would see the proxy's address
+      // and answer with a slate: the browser's own player opens it instead.
+      if (!streamProxy() || bindsLinksToConnection(source.url)) throw error
       viaProxy = true
       session = await open(true)
     }

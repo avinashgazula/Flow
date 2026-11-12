@@ -9,6 +9,7 @@
    files that never needed one. */
 
 import { settingsStore } from '../store/settings'
+import { bindsLinksToConnection } from './slate'
 
 /** Download hosts of the debrid services, which send no CORS headers. A host matches when it is one
  *  of these or a subdomain of one. */
@@ -127,7 +128,8 @@ export function isDebridHost(url: string): boolean {
 
 /** True when a proxy is set and this file's host is one that needs it. */
 export function needsProxy(url: string, template: string = streamProxy()): boolean {
-  return template.trim() !== '' && (isKnownBlocked(url) || isDebridHost(url))
+  // A link tied to the connection that asked for it (ElfHosted's public add-ons) would be opened from the proxy's address instead.
+  return template.trim() !== '' && !bindsLinksToConnection(url) && (isKnownBlocked(url) || isDebridHost(url))
 }
 
 /** True when Marquee can expect to read this file's bytes: through the proxy, or because nothing says

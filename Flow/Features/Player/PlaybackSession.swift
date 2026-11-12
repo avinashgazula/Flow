@@ -286,12 +286,22 @@ final class PlaybackSession: Identifiable {
         phase = .connecting(0.2)
         do {
             let languages = audioLanguages
-            let remuxer = try await MatroskaRemuxer.open(reader ?? Self.byteSource(url, headers: headers),
+            let bytes = reader ?? Self.byteSource(url, headers: headers)
+            let remuxer = try await MatroskaRemuxer.open(bytes,
                                                          preferredAudioLanguage: languages.first, fallbackAudioLanguages: Array(languages.dropFirst()),
                                                          headerCache: .shared, compatible: remuxCompatible,
                                                          dolbyVision: model?.settings.playback.neverUseDolbyVision != true,
                                                          convertProfile7: model?.settings.playback.convertDolbyVisionProfile7 ?? true)
             guard !Task.isCancelled else { return }
+            // The link may have bounced to a slate (a refused request) that happens to be a valid video.
+            if let http = bytes as? HTTPByteSource {
+                let finalURL = await http.finalURL()
+                let size = try? await http.length()
+                if looksLikeSlate(duration: remuxer.duration, finalURL: finalURL, bytes: size) {
+                    rejectSlate()
+                    return
+                }
+            }
             if remuxer.video?.source.codecID == "V_AV1", !Platform.decodesAV1 {
                 fail("This video is AV1, which this \(Platform.deviceKind) can't decode. Try another source.")
                 return
@@ -559,14 +569,36 @@ final class PlaybackSession: Identifiable {
 
     var canTryAnotherSource: Bool { !alternatives.isEmpty }
 
+    /// An add-on that refuses a request can answer with a short video saying so instead of an error. A
+    /// few seconds of video for a title that runs an hour or more is that, not the title.
+    private func looksLikeSlate(duration: Double, finalURL: URL? = nil, bytes: Int64? = nil) -> Bool {
+        guard source.category == .addons else { return false }
+        let runtime = request.episode?.runtimeMinutes ?? request.item.runtimeMinutes
+        return StreamSlate.detect(finalURL: finalURL, duration: duration > 0 ? duration : nil, bytes: bytes,
+                                  listedBytes: source.traits.sizeBytes, expectedRuntimeMinutes: runtime)
+    }
+
+    /// Treats a slate as a failed source: it never plays as the film, and the next source is tried when
+    /// fail-over is on. Skip buttons belong to the title, so none show over the slate.
+    private func rejectSlate() {
+        ScreenshotTour.log("slate: \(source.providerName)")
+        player.pause()
+        activeSegment = nil
+        if model?.settings.playback.tryNextSourceOnFailure == true, !alternatives.isEmpty {
+            tryNextSource(notice: StreamSlate.triedNextMessage)
+        } else {
+            phase = .failed(StreamSlate.stoppedMessage)
+        }
+    }
+
     /// Moves to the next source in the list (the user asked, or this one wouldn't start).
-    func tryNextSource(reason: String? = nil) {
+    func tryNextSource(reason: String? = nil, notice: String? = nil) {
         guard !alternatives.isEmpty else { return }
         let next = alternatives.removeFirst()
         source = next
         remuxCompatible = false
         keptTracks = nil
-        show(notice: "That source didn't work, so Marquee is trying \(next.providerName)\(next.traits.resolution == .unknown ? "" : " " + next.traits.resolution.label).")
+        show(notice: notice ?? "That source didn't work, so Marquee is trying \(next.providerName)\(next.traits.resolution == .unknown ? "" : " " + next.traits.resolution.label).")
         load(next)
     }
 
@@ -868,6 +900,10 @@ final class PlaybackSession: Identifiable {
             if case .connecting(let p) = phase { phase = .connecting(max(p, 0.7)) }
             let seconds = item.duration.seconds
             if seconds.isFinite { duration = seconds }
+            if !didStart, seconds.isFinite, looksLikeSlate(duration: seconds) {
+                rejectSlate()
+                return
+            }
             if let recoverAt {
                 self.recoverAt = nil
                 player.seek(to: CMTime(seconds: recoverAt, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
@@ -1021,6 +1057,8 @@ final class PlaybackSession: Identifiable {
 
     private func updateSegment(_ time: Double) {
         guard let model else { return }
+        // No Skip Intro or Credits over an error screen or a slate.
+        if case .failed = phase { activeSegment = nil; return }
         let active = SkipSegmentResolver.active(segments, at: time)
         activeSegment = active
         guard let active, !skippedSegments.contains(active.start) else { return }
