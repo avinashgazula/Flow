@@ -29,7 +29,7 @@ import { type BufferKind, isMediaSourceSupported, MseSink, typeSupported } from 
 import { canConvertAudio } from '../audio/support'
 import { convertedSoundFormat } from '../media/support'
 import { type PictureCue, PictureTrack, parsePictureCues } from './pictures'
-import { parseHeader, type Plan, plan as makePlan, UnplayableError } from './tracks'
+import { codecName, parseHeader, type Plan, plan as makePlan, supportedMime, UnplayableError } from './tracks'
 
 export { UnplayableError }
 
@@ -83,6 +83,18 @@ export interface RemuxVideoInfo {
   /** The shape the file asks to be shown in, when it differs from the coded size (anamorphic DVD video, say). */
   displayWidth?: number
   displayHeight?: number
+  /** The browser can't decode this picture, so the engine decodes it and encodes it again as H.264 while it plays. `codec` is then the file's own (FFmpeg's name). */
+  converted?: boolean
+}
+
+/** How a converted picture is doing, about once a second. */
+export interface ConversionStats {
+  /** Seconds of film converted per second of work: 2 means twice as fast as it plays. Null until a couple of seconds have been measured. */
+  speed: number | null
+  /** The device can't keep up even after skipping frames. */
+  slow: boolean
+  /** Frames skipped to keep up: 0 none, 1 those nothing refers to, 2 and the loop filter too. */
+  skipping: 0 | 1 | 2
 }
 
 /** How the network is doing, about once a second while the file is being read. */
@@ -129,6 +141,8 @@ export interface RemuxSession {
   seek(seconds: number): Promise<void>
   /** The latest network figures; null until the first second of reading has passed. */
   readonly netStats: NetStats | null
+  /** How converting the picture is going; null when the picture isn't converted (or before the first second). */
+  readonly conversion: ConversionStats | null
   /** A picture for the scrubber at `seconds`, read from the file on a lane of its own (one at a time, low
    *  priority, after the stream's needs). Resolves with null when a newer request replaced this one, when
    *  the stream needs the connection, or when it can't be made; `thumbnailsSupported` tells those from
@@ -201,6 +215,7 @@ class Session implements RemuxSession {
   private audioFailedListeners = new Set<() => void>()
   private audioFailed = false
   private stats: NetStats | null = null
+  private convertStats: ConversionStats | null = null
   private statsListeners = new Set<(stats: NetStats) => void>()
   private thumbs = new Map<number, (thumb: RemuxThumbnail | null) => void>()
   private thumbId = 0
@@ -294,7 +309,17 @@ class Session implements RemuxSession {
 
     // The Matroska remuxer converts through WebCodecs' Opus encoder; the universal engine encodes in its own module, so only the output format must play here.
     const universal = options.engine === 'universal'
-    this.plan = universal ? makePlan(info, typeSupported, options.convertAudio !== false, convertedAudio()?.mime ?? null) : makePlan(info, typeSupported, canConvertAudio() && options.convertAudio !== false)
+    // A picture no decoder here plays: can this browser encode it again? Asked only when it comes to that.
+    let convertedVideo: { mime: string } | null = null
+    if (universal && !info.tracks.some((t) => t.type === 'video' && t.supported && supportedMime('video', t.codec, typeSupported))) {
+      const t = info.tracks.find((x) => x.type === 'video' && x.decode === 'ffmpeg')
+      if (t) {
+        const { pickEncoder } = await import('../media/transcode')
+        const config = await pickEncoder(t.width || 1280, t.height || 720, t.frameRate || 24)
+        if (config) convertedVideo = { mime: `video/mp4; codecs="${config.codec}"` }
+      }
+    }
+    this.plan = universal ? makePlan(info, typeSupported, options.convertAudio !== false, convertedAudio()?.mime ?? null, convertedVideo) : makePlan(info, typeSupported, canConvertAudio() && options.convertAudio !== false)
     this.declared = info.duration ?? 0
     this.audioTracks = this.plan.audio.map(({ mime: _mime, ...track }) => track)
     this.subtitleTracks = this.plan.subtitles
@@ -302,7 +327,8 @@ class Session implements RemuxSession {
     this.primary = this.plan.video ? 0 : 1
     const track = this.plan.video?.track
     if (track) {
-      this.video = { width: track.width ?? 0, height: track.height ?? 0, codec: track.codec, frameRate: track.frameRate, range: track.range, displayWidth: track.displayWidth, displayHeight: track.displayHeight }
+      const converted = this.plan.video?.converted === true
+      this.video = { width: track.width ?? 0, height: track.height ?? 0, codec: converted ? codecName(track.codecId) : track.codec, frameRate: track.frameRate, range: track.range, displayWidth: track.displayWidth, displayHeight: track.displayHeight, converted: converted || undefined }
     }
     this.sink.setDuration(this.declared)
 
@@ -319,7 +345,7 @@ class Session implements RemuxSession {
       this.cleanups.push(() => video.removeEventListener(event, handler))
     }
 
-    this.send({ type: 'start', epoch: this.epoch, video: track?.id ?? 0, audio: this.audioId ?? 0, at, convert: this.isConverted(this.audioId) })
+    this.send({ type: 'start', epoch: this.epoch, video: track?.id ?? 0, audio: this.audioId ?? 0, at, convert: this.isConverted(this.audioId), convertVideo: this.plan.video?.converted === true })
     await Promise.race([first, failed])
     this.failure = null
     return this
@@ -367,6 +393,7 @@ class Session implements RemuxSession {
         return
       case 'stats':
         this.stats = { bytesPerSecond: message.bytesPerSecond, bitrate: message.bitrate, inFlight: message.inFlight }
+        this.convertStats = message.convert ?? null
         for (const listener of this.statsListeners) listener(this.stats)
         return
     }
@@ -624,6 +651,10 @@ class Session implements RemuxSession {
 
   get netStats(): NetStats | null {
     return this.stats
+  }
+
+  get conversion(): ConversionStats | null {
+    return this.convertStats
   }
 
   get thumbnailsSupported(): boolean | null {

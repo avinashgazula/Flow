@@ -93,8 +93,28 @@ describe('the picture decision', () => {
   it('copies what the browser plays and refuses the rest with a reason', () => {
     const h264 = stream({ profile: 100, level: 40 })
     expect(videoDecision(h264, () => true)).toEqual({ action: 'copy', mime: 'video/mp4; codecs="avc1.640028"' })
-    expect(videoDecision(h264, () => false)).toMatchObject({ action: 'unsupported', reason: expect.stringContaining('avc1.640028') })
+    expect(videoDecision(h264, () => false)).toMatchObject({ action: 'unsupported', reason: expect.stringContaining('encoder') })
     expect(videoDecision(stream({ codec: 'mpeg2video' }), () => true)).toMatchObject({ action: 'unsupported' })
+    expect(videoDecision(stream({ codec: 'av1' }), () => false, true)).toMatchObject({ action: 'unsupported' })
+  })
+
+  it('converts what no browser plays, or that this one lacks, when it can encode again', () => {
+    expect(videoDecision(stream({ codec: 'mpeg2video', width: 720, height: 480 }), () => true, true).action).toBe('convert')
+    expect(videoDecision(stream({ codec: 'mpeg4', width: 720, height: 304 }), () => true, true).action).toBe('convert')
+    expect(videoDecision(stream({ profile: 110, level: 40 }), () => false, true).action).toBe('convert')
+    expect(videoDecision(stream({ codec: 'hevc', width: 1920, height: 1080 }), () => false, true).action).toBe('convert')
+    expect(videoDecision(stream({ codec: 'hevc', width: 1920, height: 1080 }), () => true, true).action).toBe('copy')
+  })
+
+  it('refuses a picture too big to convert in real time, and HDR, whatever the encoder', () => {
+    const big = videoDecision(stream({ codec: 'hevc', width: 3840, height: 2160 }), () => false, true)
+    expect(big).toMatchObject({ action: 'unsupported', reason: expect.stringContaining('too much') })
+    expect(videoDecision(stream({ codec: 'hevc', width: 1920, height: 1080, transfer: 16 }), () => false, true)).toMatchObject({ action: 'unsupported', reason: expect.stringContaining('HDR') })
+  })
+
+  it('lists a picture the module decodes as convertible in the header', () => {
+    const track = headerFor([stream({ codec: 'mpeg2video' })], 1000).tracks[0]!
+    expect(track).toMatchObject({ supported: false, decode: 'ffmpeg' })
   })
 
   it('builds the header: ids are stream indexes, cover art and data are left out', () => {

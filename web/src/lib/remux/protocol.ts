@@ -47,7 +47,7 @@ export type ToWorker =
   /** `viaProxy`: the address is the stream proxy's, so a failure is worded as the proxy's. */
   | { type: 'open'; url: string; headers: Record<string, string>; viaProxy: boolean; hdr10Only: boolean; surround?: boolean; /** The universal engine's converted sound: FLAC where this browser plays it in MP4, else AAC. */ audioOut?: 'flac' | 'aac' }
   /** `convert`: the audio track is one the browser can't play, to be decoded here and re-encoded as Opus. */
-  | { type: 'start'; epoch: number; video: number; audio: number; at: number; convert: boolean }
+  | { type: 'start'; epoch: number; video: number; audio: number; at: number; convert: boolean; /** The universal engine: the picture is one the browser can't decode, to be decoded in the module and encoded again as H.264. */ convertVideo?: boolean }
   /** Reads from the keyframe before `at`. */
   | { type: 'seek'; epoch: number; at: number }
   /** Rebuilds the audio from `at`; video before `floor` is already buffered and isn't sent again. */
@@ -80,7 +80,7 @@ export type FromWorker =
   /** About once a second while a file is being read: how fast it is arriving (`bytesPerSecond`, over
    *  the time requests were open), the file's average rate (`bitrate`, 0 when unknown), how many requests
    *  are in flight, and how many seconds are buffered ahead of the playhead as the worker counts them. */
-  | { type: 'stats'; bytesPerSecond: number; bitrate: number; inFlight: number; ahead: number }
+  | { type: 'stats'; bytesPerSecond: number; bitrate: number; inFlight: number; ahead: number; /** A converted picture: how many seconds of film are converted per second of work (null before it is known), whether the device can't keep up, and the frame skipping it has fallen back to (0 none, 1 frames nothing refers to, 2 and the loop filter). */ convert?: { speed: number | null; slow: boolean; skipping: 0 | 1 | 2 } }
   /** The file has been read to its end. */
   | { type: 'done'; epoch: number }
   /** The audio couldn't be converted (the decoder didn't load or crashed, the encoder failed). The

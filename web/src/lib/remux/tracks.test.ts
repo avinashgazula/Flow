@@ -132,3 +132,31 @@ describe('plan with audio conversion', () => {
     expect(p.defaultAudio).toBe(3)
   })
 })
+
+describe('plan with picture conversion', () => {
+  const mpeg2 = track({ id: 1, type: 'video', codecId: 'mpeg2video', codec: '', supported: false, reason: 'mpeg2video video isn’t carried', decode: 'ffmpeg', width: 720, height: 480 })
+  const hevc = (over: Partial<HeaderTrack> = {}) => track({ id: 1, type: 'video', codecId: 'hevc', codec: 'hvc1.1.6.L120.B0', width: 1920, height: 1080, decode: 'ffmpeg', ...over })
+  const noHevc = (mime: string) => mime.includes('avc1') || mime.includes('mp4a.40.2')
+  const encoder = { mime: 'video/mp4; codecs="avc1.64001E"' }
+
+  it('converts a picture no browser plays, keeping the track and saying what it becomes', () => {
+    const p = plan(header(mpeg2, aac), noHevc, false, null, encoder)
+    expect(p.video).toMatchObject({ converted: true, mime: encoder.mime, track: { id: 1 } })
+  })
+
+  it('converts HEVC where the browser has no decoder, and copies it where it has', () => {
+    expect(plan(header(hevc(), aac), noHevc, false, null, encoder).video?.converted).toBe(true)
+    expect(plan(header(hevc(), aac), () => true, false, null, encoder).video?.converted).toBeUndefined()
+  })
+
+  it('says what to do when the browser can’t encode, when it is too big, and when it is HDR', () => {
+    expect(() => plan(header(mpeg2, aac), noHevc)).toThrow(/no video encoder.*Chrome, Edge or Safari/)
+    expect(() => plan(header(hevc({ width: 3840, height: 2160 }), aac), noHevc, false, null, encoder)).toThrow(/too much to convert.*1080p/)
+    expect(() => plan(header(hevc({ range: 'HDR10' }), aac), noHevc, false, null, encoder)).toThrow(/HDR.*wash out.*SDR source/)
+  })
+
+  it('still refuses a picture the engine has no decoder for', () => {
+    const odd = track({ id: 1, type: 'video', codecId: 'prores', codec: '', supported: false, decode: '' })
+    expect(() => plan(header(odd, aac), noHevc, false, null, encoder)).toThrow(UnplayableError)
+  })
+})

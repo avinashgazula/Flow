@@ -56,7 +56,9 @@ export interface Engine {
   netStats?(): NetStats | null
   /** What the stream says its video is (a codec string like "hvc1.2.4.L153.B0", and "HDR10" or
    *  "Dolby Vision"), for engines that read it. */
-  videoInfo?(): { codec: string; range?: string } | undefined
+  videoInfo?(): { codec: string; range?: string; /** The picture is decoded by Marquee and encoded again as H.264 (`codec` is then the file's own). */ converted?: boolean } | undefined
+  /** How converting the picture is going (engines that do): seconds of film converted per second of work, and whether the device can't keep up. */
+  conversion?(): { speed: number | null; slow: boolean; skipping: 0 | 1 | 2 } | null
   /** Where the seek preview's pictures come from, made the first time it is asked for (the scrubber
    *  asks on the first hover); null when this engine can't give any. Torn down with the engine. */
   preview?(): PreviewSource | null
@@ -434,7 +436,8 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
       return openNative(video, source, options)
     }
     // A Matroska file whose sound the remuxer can't play or convert (Vorbis, PCM, MP2, or Dolby and DTS without WebCodecs' encoder): the FFmpeg engine decodes anything.
-    if (!universal && failedWith(error, 'UnplayableError') && (error as { code?: string }).code === 'audio' && canUseMediaEngine() && convertAudio) return attachRemux(video, source, options, false, 'universal')
+    // The same for a picture it can't play (MPEG-2, Xvid, 10-bit H.264, HEVC without a decoder): the engine converts what it can and says exactly why when it can't.
+    if (!universal && failedWith(error, 'UnplayableError') && canUseMediaEngine() && ((error as { code?: string }).code === 'video' || ((error as { code?: string }).code === 'audio' && convertAudio))) return attachRemux(video, source, options, false, 'universal')
     // Same for a guess that failed some other way (a host with no ranges, say): the browser's own player has its own go.
     if (guessed && !viaProxy && !failedWith(error, 'UnplayableError') && !failedWith(error, 'BlockedError')) return openNative(video, source, options)
     // The proxy is only a way round a blocked host. If it was tried and the file still can't be
@@ -470,7 +473,8 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
     chapters: () => remux.chapters,
     onChapters: (listener) => remux.onChapters(listener),
     pictures: () => picture,
-    videoInfo: () => (remux.video ? { codec: remux.video.codec, range: remux.video.range } : undefined),
+    videoInfo: () => (remux.video ? { codec: remux.video.codec, range: remux.video.range, converted: remux.video.converted } : undefined),
+    conversion: () => (remux as { conversion?: { speed: number | null; slow: boolean; skipping: 0 | 1 | 2 } | null }).conversion ?? null,
     audio: () => ({
       tracks: remux.audioTracks.map((t) => ({
         id: String(t.id),

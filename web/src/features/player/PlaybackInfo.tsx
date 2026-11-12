@@ -23,6 +23,13 @@ function decodingWords(source: Source | null): string {
   return answer.powerEfficient ? 'Smooth and efficient' : 'Smooth, in software'
 }
 
+/** How fast a converted picture is being made, in a few words. */
+function conversionWords(c: { speed: number | null; slow: boolean; skipping: 0 | 1 | 2 } | null): string {
+  if (!c || c.speed === null) return 'Measuring'
+  const speed = `${c.speed.toFixed(1)}× real time`
+  return c.slow ? `${speed}, too slow` : c.skipping ? `${speed}, skipping frames` : speed
+}
+
 /** The rows of the card, read from the element and the engine. */
 export function readInfo(controller: PlayerController, source: Source | null, audio: { label?: string; converted?: boolean; note?: string; format?: string; channels?: number } | undefined): Row[] {
   const video = controller.video
@@ -39,8 +46,9 @@ export function readInfo(controller: PlayerController, source: Source | null, au
   const engineName = engine ? (engine.fallback === 'blocked' ? 'Browser’s own player, host blocks web pages' : engineNames[engine.kind]) : dash
   return [
     ['Resolution', video && video.videoWidth > 0 ? `${video.videoWidth}×${video.videoHeight}` : dash],
-    ['Video', [codec, range].filter(Boolean).join(' · ') || dash],
-    ['Decoding', decodingWords(source)],
+    ['Video', [info?.converted ? info.codec : codec, info?.converted ? 'Converted to H.264' : '', range].filter(Boolean).join(' · ') || dash],
+    ['Decoding', info?.converted ? 'In software, then encoded again' : decodingWords(source)],
+    ...(info?.converted ? ([['Conversion', conversionWords(engine?.conversion?.() ?? null)]] as Row[]) : []),
     ['Engine', engine?.viaProxy ? `${engineName} · via stream proxy` : engineName],
     ['Dropped Frames', frames],
     ['Buffer Ahead', video ? `${bufferAhead(video).toFixed(1)} s` : dash],

@@ -286,10 +286,11 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
 
   // A file the browser's own player plays without sound (an MP4 with Dolby Digital in a browser without it): the universal engine reads
   // the same file, converts the sound and carries on from the same place, so the viewer gets sound instead of a notice to pick another source.
-  const retryWithConversion = () => {
+  // `picture`: the file didn't play at all (the browser has no decoder for its picture): the engine converts that too, where it can.
+  const retryWithConversion = (picture = false) => {
     const { source: cur } = latest.current
-    if (!cur || controller.engine?.kind !== 'native' || controller.engine.fallback || cur.container === 'm3u8' || forcedUniversal.current.has(cur.id)) return false
-    if (!canUseMediaEngine() || !isReadable(cur.url) || settingsStore.get().decodeLosslessAudio === false) return false
+    if (!cur || controller.engine?.kind !== 'native' || controller.engine.fallback || cur.container === 'm3u8' || cur.headers || forcedUniversal.current.has(cur.id)) return false
+    if (!canUseMediaEngine() || !isReadable(cur.url) || (!picture && settingsStore.get().decodeLosslessAudio === false)) return false
     forcedUniversal.current.add(cur.id)
     startAt.current = controller.currentTime()
     setAttempt((n) => n + 1)
@@ -477,6 +478,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
       const code = el.error?.code
       if (!code || code === 1 || !el.currentSrc) return
       if (controller.engine?.recover()) return
+      if ((code === 3 || code === 4) && !started.current && retryWithConversion(true)) return
       fail(new PlaybackError(controller.engine?.failureMessage ?? mediaErrorMessage(code, latest.current.source ?? undefined), `MediaError ${code}${el.error?.message ? `: ${el.error.message}` : ''}`))
     }
     const events: [string, EventListener][] = [

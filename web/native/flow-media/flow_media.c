@@ -285,6 +285,7 @@ static void queue_push(FM *m, int kind, const uint8_t *data, size_t len) {
   m->queue[m->q_len++] = (Chunk){.kind = kind, .ptr = copy, .len = len};
 }
 
+#if FM_VIDEO
 /* A decoded frame: the queue takes over `pixels`. */
 static int queue_push_frame(FM *m, uint8_t *pixels, size_t len, const Chunk *info) {
   if (!queue_room(m)) {
@@ -298,6 +299,7 @@ static int queue_push_frame(FM *m, uint8_t *pixels, size_t len, const Chunk *inf
   m->queue[m->q_len++] = c;
   return 0;
 }
+#endif
 
 static void queue_clear(FM *m) {
   for (int i = m->q_head; i < m->q_len; i++) free(m->queue[i].ptr);
