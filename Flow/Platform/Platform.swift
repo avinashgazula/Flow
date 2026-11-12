@@ -193,6 +193,8 @@ enum BundleKeys {
     static var traktClientSecret: String? { value("FlowTraktClientSecret") }
     static var simklClientID: String? { value("FlowSimklClientID") }
     static var tvdb: String? { value("FlowTVDBAPIKey") }
+    /// The Marquee Accounts Worker's host, from `FLOW_ACCOUNT_SERVER_HOST` in Config/Secrets.xcconfig; nil when the build names none.
+    static var accountServerHost: String? { value("FlowAccountServerHost") }
 }
 
 extension AccentColorChoice {

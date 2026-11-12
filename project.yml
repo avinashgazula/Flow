@@ -77,6 +77,7 @@ targets:
         FlowTraktClientSecret: $(FLOW_TRAKT_CLIENT_SECRET)
         FlowSimklClientID: $(FLOW_SIMKL_CLIENT_ID)
         FlowTVDBAPIKey: $(FLOW_TVDB_API_KEY)
+        FlowAccountServerHost: $(FLOW_ACCOUNT_SERVER_HOST)
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
           NSAllowsArbitraryLoadsForMedia: true
@@ -124,6 +125,7 @@ targets:
         FlowTraktClientSecret: $(FLOW_TRAKT_CLIENT_SECRET)
         FlowSimklClientID: $(FLOW_SIMKL_CLIENT_ID)
         FlowTVDBAPIKey: $(FLOW_TVDB_API_KEY)
+        FlowAccountServerHost: $(FLOW_ACCOUNT_SERVER_HOST)
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
           NSAllowsArbitraryLoadsForMedia: true
@@ -171,6 +173,7 @@ targets:
         FlowTraktClientSecret: $(FLOW_TRAKT_CLIENT_SECRET)
         FlowSimklClientID: $(FLOW_SIMKL_CLIENT_ID)
         FlowTVDBAPIKey: $(FLOW_TVDB_API_KEY)
+        FlowAccountServerHost: $(FLOW_ACCOUNT_SERVER_HOST)
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
           NSAllowsArbitraryLoadsForMedia: true

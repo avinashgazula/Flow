@@ -6,6 +6,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
     case playback, subtitles, metadata, about
     case sourceAppearance, apiKeys, addons
     case sync, syncPairing, syncJoin
+    case accountCreate, accountLogIn, accountNumber
 
     var id: String { rawValue }
 
@@ -31,6 +32,9 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .sync: return "Sync"
         case .syncPairing: return "Pairing Link"
         case .syncJoin: return "Join a Sync"
+        case .accountCreate: return "Create Account"
+        case .accountLogIn: return "Log In"
+        case .accountNumber: return "Account Number"
         }
     }
 
@@ -56,6 +60,9 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .sync: return "arrow.triangle.2.circlepath"
         case .syncPairing: return "qrcode"
         case .syncJoin: return "arrow.down.circle"
+        case .accountCreate: return "person.crop.circle.badge.plus"
+        case .accountLogIn: return "arrow.right.circle"
+        case .accountNumber: return "number"
         }
     }
 
@@ -81,6 +88,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .addons: return .purple
         case .sync: return .teal
         case .syncPairing, .syncJoin: return .teal
+        case .accountCreate, .accountLogIn, .accountNumber: return .blue
         }
     }
 
@@ -88,7 +96,7 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
     var keywords: String {
         switch self {
         case .general: return "appearance theme system light dark accent color start tab opening tab tab order app icon light dark notifications episodes matches poster titles hero top pick lead haptics specials season spoilers blur episodes left remaining"
-        case .account: return "trakt simkl mdblist publicmetadb tracking sync interval watchlist favourites sign in"
+        case .account: return "marquee account number 16 digit create account log in login log out delete account sync now library watchlist history progress resume ratings settings devices trakt simkl mdblist publicmetadb tracking sync interval favourites sign in account server"
         case .shelves: return "home rows discover lists reorder"
         case .mediaServers: return "jellyfin emby plex server badge artwork"
         case .webDAV: return "webdav nas share files"
@@ -104,9 +112,13 @@ enum SettingsPage: String, Hashable, CaseIterable, Identifiable {
         case .sourceAppearance: return "badges formatting title"
         case .apiKeys: return "keys opensubtitles subdl subsource wyzie introdb sports spoilers scores channel"
         case .addons: return "stremio manifest addon"
-        case .sync: return "marquee flow sync devices share keys api keys sideload sideloaded iphone ipad mac apple tv website cloudflare worker kv pairing link qr code key encrypted end-to-end trakt simkl add-ons servers subtitles languages without icloud"
+        case .sync: return "marquee flow sync devices share keys api keys sideload sideloaded iphone ipad mac apple tv website cloudflare worker kv pairing link qr code key encrypted end-to-end trakt simkl add-ons servers subtitles languages without icloud move to an account marquee account"
         case .syncPairing: return "qr code pairing link share copy sync key join another device"
         case .syncJoin: return "join sync pairing link paste key server token"
+        case .accountCreate: return "marquee account create new account number 16 digit write down"
+        case .accountLogIn: return "marquee account log in login sign in account number 16 digit"
+        // Opened from the account pages, with nothing of its own to search for.
+        case .accountNumber: return ""
         }
     }
 
@@ -232,6 +244,9 @@ struct SettingsPageView: View {
             case .sync: SyncSettingsView()
             case .syncPairing: SyncPairingView()
             case .syncJoin: SyncJoinView()
+            case .accountCreate: AccountCreateView()
+            case .accountLogIn: AccountLogInView()
+            case .accountNumber: AccountNumberView()
             }
         }
         .flowPageTitle(page.title)

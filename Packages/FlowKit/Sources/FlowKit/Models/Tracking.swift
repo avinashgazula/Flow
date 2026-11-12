@@ -98,11 +98,25 @@ public struct Rewatch: Codable, Hashable, Sendable, Identifiable {
     public var key: MediaKey
     public var startedAt: Date
     public var watched: Set<EpisodeRef>
+    /// When the set of watched episodes last changed: Marquee Accounts keeps the later of two copies of one round.
+    /// A rewatch saved before this existed reads it as its start.
+    public var updatedAt: Date
 
-    public init(key: MediaKey, startedAt: Date = Date(), watched: Set<EpisodeRef> = []) {
+    public init(key: MediaKey, startedAt: Date = Date(), watched: Set<EpisodeRef> = [], updatedAt: Date? = nil) {
         self.key = key
         self.startedAt = startedAt
         self.watched = watched
+        self.updatedAt = updatedAt ?? startedAt
+    }
+
+    private enum CodingKeys: String, CodingKey { case key, startedAt, watched, updatedAt }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        key = try c.decode(MediaKey.self, forKey: .key)
+        startedAt = try c.decode(Date.self, forKey: .startedAt)
+        watched = try c.decodeIfPresent(Set<EpisodeRef>.self, forKey: .watched) ?? []
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? startedAt
     }
 
     public var id: String { key.description }

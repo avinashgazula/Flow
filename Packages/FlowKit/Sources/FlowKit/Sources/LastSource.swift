@@ -25,6 +25,19 @@ public struct LastSource: Codable, Hashable, Sendable {
         self.date = date
     }
 
+    /// From a description that came over a Marquee Account, which carries the release and never its link.
+    public init(providerID: String, filename: String? = nil, bingeGroup: String? = nil, releaseGroup: String? = nil,
+                resolution: VideoResolution = .unknown, quality: ReleaseQuality = .unknown, hdr: [String] = [], date: Date) {
+        self.providerID = providerID
+        self.filename = filename
+        self.bingeGroup = bingeGroup
+        self.releaseGroup = releaseGroup
+        self.resolution = resolution
+        self.quality = quality
+        self.hdr = hdr
+        self.date = date
+    }
+
     /// The playable source in `list` that is this one again: the same file, else (another episode)
     /// the same add-on binge group, else the same release from the same provider. Nil when nothing
     /// is close enough, so the provider's own order stands.

@@ -45,7 +45,10 @@ struct FlowApp: App {
                         model.scheduleNotificationRefresh()
                         model.syncNow()
                     }
-                    if phase == .background { model.flushSettings(waits: true) }
+                    if phase == .background {
+                        model.flushSettings(waits: true)
+                        model.flushAccount()
+                    }
                 }
                 #if os(macOS)
                 .opensSettingsOnRequest(model)
@@ -67,6 +70,14 @@ struct FlowApp: App {
                     while !Task.isCancelled {
                         try? await Task.sleep(nanoseconds: 300_000_000_000)
                         if model.appIsActive { await model.runSync() }
+                    }
+                }
+                // The same for a Marquee Account, which also carries the library.
+                .task(id: model.account?.number) {
+                    guard model.account != nil else { return }
+                    while !Task.isCancelled {
+                        try? await Task.sleep(nanoseconds: 300_000_000_000)
+                        if model.appIsActive { await model.runAccountSync() }
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: IntentInbox.arrived)) { _ in IntentInbox.drain(into: model) }

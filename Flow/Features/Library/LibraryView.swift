@@ -387,7 +387,12 @@ extension AppModel {
     /// The order the viewer arranged their watchlist in, kept on this device and laid over the tracker's list.
     var watchlistOrder: [MediaKey] {
         get { (UserDefaults.standard.stringArray(forKey: "flow.watchlistOrder") ?? []).compactMap(MediaKey.init(string:)) }
-        set { UserDefaults.standard.set(newValue.map(\.description), forKey: "flow.watchlistOrder") }
+        set {
+            UserDefaults.standard.set(newValue.map(\.description), forKey: "flow.watchlistOrder")
+            // When it was arranged is what a Marquee Account merges by: the later arrangement wins whole.
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "flow.watchlistOrderUpdatedAt")
+            scheduleAccountPush()
+        }
     }
 }
 

@@ -64,6 +64,20 @@ final class AppModel {
     @ObservationIgnored var applyingSync = false
     @ObservationIgnored var appIsActive = true
 
+    /// The Marquee Account's number and server: in the keychain, never in settings, a backup or a setup file.
+    @ObservationIgnored let accountStore: AccountCredentialStore
+    @ObservationIgnored var accountState = AccountSyncState()
+    @ObservationIgnored var accountKeysCache: (number: String, keys: AccountKeys)?
+    @ObservationIgnored var accountPushTask: Task<Void, Never>?
+    /// A change that is only a resume point waits up to a minute for the next write, since those tick while something plays.
+    @ObservationIgnored var accountProgressTask: Task<Void, Never>?
+    @ObservationIgnored var accountInFlight: Task<Void, Never>?
+    @ObservationIgnored var accountAgain = false
+    /// Set while the account's changes are being put into settings and the library, so they don't count as the person's own.
+    @ObservationIgnored var applyingAccount = false
+    /// The library as the last pull put it in place, to tell its save from the person's own change.
+    @ObservationIgnored var accountAppliedLibrary: LocalLibrary?
+
     @ObservationIgnored private var settingsSaveTask: Task<Void, Never>?
     /// Settings and library writes, one at a time and in order, so an older copy never lands last.
     static let persistence = DispatchQueue(label: "app.flow.persistence", qos: .utility)
@@ -81,7 +95,10 @@ final class AppModel {
             guard credentials != oldValue else { return }
             secretStore.save(credentials)
             rebuildServices()
-            if FlowSyncMapping.changed(from: oldValue, to: credentials) { scheduleSyncPush() }
+            if FlowSyncMapping.changed(from: oldValue, to: credentials) {
+                scheduleSyncPush()
+                scheduleAccountPush()
+            }
         }
     }
 
@@ -132,6 +149,21 @@ final class AppModel {
     /// A flow://sync link waiting on the Join screen.
     var pendingSyncLink: String?
 
+    // MARK: Marquee Account
+
+    /// Present while this device is logged in to a Marquee Account.
+    var account: AccountCredentials?
+    var accountLastSynced: Date?
+    /// The last account sync's problem, in words; nil after a good one.
+    var accountError: String?
+    var isSyncingAccount = false
+    /// A number just made, waiting for the person to confirm they wrote it down.
+    var pendingAccountNumber: String?
+    /// An account server typed under Settings, for builds that name none. The build's own always wins.
+    var accountServerText = UserDefaults.standard.string(forKey: "flow.accountServer") ?? "" {
+        didSet { UserDefaults.standard.set(accountServerText, forKey: "flow.accountServer") }
+    }
+
     // MARK: Presentation
 
     var selectedTab: AppTab
@@ -173,6 +205,7 @@ final class AppModel {
             cache = ResponseCache(store: .caches("FlowDemoResponses"))
             cloud = CloudSync(store: InMemoryKeyValueStore())
             syncPairingStore = InMemoryFlowSyncPairingStore()
+            accountStore = InMemoryAccountCredentialStore()
             http = HTTPClient(transport: DemoTransport(), userAgent: "Marquee/1.0")
             settings = Self.demoSettings()
             selectedTab = .home
@@ -186,9 +219,11 @@ final class AppModel {
             #if canImport(Security)
             secretStore = KeychainSecretStore()
             syncPairingStore = KeychainFlowSyncPairingStore()
+            accountStore = KeychainAccountCredentialStore()
             #else
             secretStore = FileSecretStore(store: .applicationSupport())
             syncPairingStore = FileFlowSyncPairingStore(store: .applicationSupport())
+            accountStore = FileAccountCredentialStore(store: .applicationSupport())
             #endif
             #if os(iOS) || os(macOS) || os(tvOS)
             cloud = CloudSync(store: UbiquitousKeyValueStore())
@@ -220,6 +255,11 @@ final class AppModel {
             syncPairing = syncPairingStore.load()
             syncState = store.load(FlowSyncState.self, "sync-state") ?? FlowSyncState()
             syncLastSynced = syncState.lastSyncedAt
+            account = accountStore.load()
+            if account != nil {
+                accountState = store.load(AccountSyncState.self, "account-state") ?? AccountSyncState()
+                accountLastSynced = accountState.lastSyncedAt
+            }
         }
         rebuildServices()
         configureImageCache()
@@ -334,6 +374,7 @@ final class AppModel {
         // Everything iCloud carries, not just shelves, servers and General: a change that never went up would be
         // replaced by the cloud copy on the next pull.
         if FlowSyncMapping.changed(from: old, to: settings) { scheduleSyncPush() }
+        if FlowSyncMapping.changed(from: old, to: settings) || old.sources.lastSources != settings.sources.lastSources { scheduleAccountPush() }
         if settings.sync.iCloudEnabled, old.shelves != settings.shelves || old.mediaServers.servers != settings.mediaServers.servers
             || CloudSync.portableSettings(old) != CloudSync.portableSettings(settings) {
             scheduleCloudPush(settingsChanged: true)
@@ -476,6 +517,7 @@ final class AppModel {
     // MARK: Local library persistence
 
     private func localLibraryDidChange(_ library: LocalLibrary) {
+        let before = localLibrary
         localLibrary = library
         // The library carries every title's details, so encoding it is too slow for the main thread.
         let store = self.store
@@ -484,6 +526,7 @@ final class AppModel {
             applyLocalLists()
         }
         scheduleCloudPush()
+        noteAccountLibraryChange(from: before, to: library)
     }
 
     func applyLocalLists() {

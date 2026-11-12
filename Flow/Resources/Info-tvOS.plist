@@ -31,6 +31,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>FlowAccountServerHost</key>
+	<string>$(FLOW_ACCOUNT_SERVER_HOST)</string>
 	<key>FlowAppGroup</key>
 	<string>group.$(FLOW_BUNDLE_ID)</string>
 	<key>FlowSimklClientID</key>
