@@ -765,6 +765,36 @@ struct PlayerPillStyle: ButtonStyle {
     }
 }
 
+/// A row in a player panel, like the system player's menus: no rule under it, a soft rounded highlight under the
+/// pointer, on focus and while pressed.
+struct PlayerRowStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        PlayerRowBody(configuration: configuration)
+    }
+}
+
+private struct PlayerRowBody: View {
+    let configuration: ButtonStyleConfiguration
+    @Environment(\.isFocused) private var focused
+    @State private var hovering = false
+
+    var body: some View {
+        let lit = focused || hovering || configuration.isPressed
+        configuration.label
+            .foregroundStyle(focused ? Color.black : Color.white)
+            .padding(.vertical, Theme.Space.xs)
+            .padding(.horizontal, Theme.Space.xs)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.player * 0.8, style: .continuous)
+                .fill(Color.white.opacity(focused ? 0.95 : lit ? 0.14 : 0)))
+            .contentShape(Rectangle())
+            .animation(Theme.Motion.hover, value: lit)
+            #if !os(tvOS)
+            .onHover { hovering = $0 }
+            #endif
+    }
+}
+
 /// A tab in a player panel: a white capsule when current, a faint one otherwise. No borders.
 struct PlayerChipStyle: ButtonStyle {
     let current: Bool

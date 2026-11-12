@@ -185,7 +185,7 @@ struct XRayPanel: View {
                     }
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(RowButtonStyle())
+                .buttonStyle(PlayerRowStyle())
             }
         }
     }
@@ -216,7 +216,7 @@ struct XRayPanel: View {
                 HStack(spacing: 12) {
                     RemoteImage(url: song.item.artworkURL, maxPixel: 200, fallbackTitle: song.title)
                         .frame(width: 44, height: 44)
-                        .clipShape(Rectangle())
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     VStack(alignment: .leading, spacing: 2) {
                         Text(song.title).font(Theme.Typeface.headline).lineLimit(1)
                         Text([song.artist, TimeFormat.clock(song.at)].filter { !$0.isEmpty }.joined(separator: " · "))
@@ -226,7 +226,7 @@ struct XRayPanel: View {
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(RowButtonStyle())
+            .buttonStyle(PlayerRowStyle())
             .accessibilityHint("Goes back to where it played")
         }
     }
@@ -240,7 +240,7 @@ struct XRayPanel: View {
 
     private func row(_ member: CastMember) -> some View {
         Button { selected = member } label: { XRayPersonRow(member: member) }
-            .buttonStyle(RowButtonStyle())
+            .buttonStyle(PlayerRowStyle())
     }
 
     private func reload() async {
