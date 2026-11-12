@@ -131,6 +131,52 @@ private struct ListActionBody: View {
     }
 }
 
+/// Type-erased so a call site can pick the phone's chip or the grid cell at run time.
+struct AnyButtonStyle: ButtonStyle {
+    private let make: (Configuration) -> AnyView
+
+    init<S: ButtonStyle>(_ style: S) {
+        make = { AnyView(style.makeBody(configuration: $0)) }
+    }
+
+    func makeBody(configuration: Configuration) -> some View { make(configuration) }
+}
+
+/// A list action on the phone: its icon over a small label.
+struct ListChipLabel: View {
+    let title: String
+    let symbol: String
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .regular))
+                .frame(height: 24)
+            Text(title)
+                .font(Theme.Typeface.micro)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+    }
+}
+
+/// The phone's list action: no box. Off it is an outline icon; on, the icon is filled in an inverted tile, so "on" is
+/// told by shape and by contrast, never by colour alone.
+struct ListChipStyle: ButtonStyle {
+    var on = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(on ? Theme.Palette.bg : Theme.Palette.fg)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 8)
+            .frame(minWidth: 64, minHeight: 56)
+            .background(on ? Theme.Palette.fg : Color.clear)
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.6 : 1)
+    }
+}
+
 /// The page's name, set as the website sets it: giant, uppercase, Archivo, tight. A longer title steps down, and one
 /// with a long word steps down until the word fits on a line, so a word is never broken in two.
 struct GiantTitle: View {

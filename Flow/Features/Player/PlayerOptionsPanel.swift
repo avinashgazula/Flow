@@ -33,19 +33,19 @@ struct PlayerMediaOptions {
     }
 }
 
-/// A row of player buttons on one flat ink panel: close, picture in picture, info and AirPlay at the
+/// A row of player buttons on one translucent capsule: close, picture in picture, info and AirPlay at the
 /// top; episodes or chapters, X-Ray and options at the bottom.
 ///
-/// The panel isn't interactive itself: interactive glass answered touches of its own, and on iOS 26 it could take
+/// The capsule isn't interactive itself: interactive glass answered touches of its own, and on iOS 26 it could take
 /// the first tap meant for a button inside it, which is why options sometimes needed a second tap.
 struct PlayerCluster<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        HStack(spacing: 2) { content }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
-            .playerPanel()
+        HStack(spacing: 0) { content }
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .playerCapsule()
     }
 }
 
@@ -59,7 +59,7 @@ struct ClusterButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 18, weight: .regular))
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(ClusterButtonStyle(active: active))
@@ -68,17 +68,21 @@ struct ClusterButton: View {
     }
 }
 
-/// Blue while its panel is open or while pressed, ink and paper otherwise.
+/// White, with a round highlight while its panel is open, under the pointer or pressed.
 private struct ClusterButtonStyle: ButtonStyle {
     let active: Bool
+    @State private var hovering = false
 
     func makeBody(configuration: Configuration) -> some View {
-        let lit = active || configuration.isPressed
         configuration.label
-            .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
-            .background(lit ? Theme.Palette.blue : Color.clear)
-            .contentShape(Rectangle())
-            .animation(Theme.Motion.hover, value: lit)
+            .foregroundStyle(.white)
+            .background(Circle().fill(.white.opacity(configuration.isPressed ? 0.3 : active ? 0.24 : hovering ? 0.14 : 0)).padding(3))
+            .contentShape(Circle())
+            .animation(Theme.Motion.hover, value: active)
+            .animation(Theme.Motion.hover, value: configuration.isPressed)
+            #if !os(tvOS)
+            .onHover { hovering = $0 }
+            #endif
     }
 }
 

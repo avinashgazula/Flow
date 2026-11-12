@@ -81,6 +81,24 @@ enum ScreenshotTour {
             Step(name: "search-top") { m in m.searchText = "dune" },
             Step(name: "livetv") { m in m.searchText = ""; m.selectedTab = .liveTV },
         ]
+        #if !os(tvOS)
+        // Skip Intro with the controls up, to check it sits clear of the buttons under it.
+        if let index = steps.firstIndex(where: { $0.name == "player-still-watching" }) {
+            steps.insert(Step(name: "player-skip-intro") { m in
+                for _ in 0..<60 {
+                    guard let phase = m.activePlayback?.phase, case .connecting = phase else { break }
+                    try? await Task.sleep(nanoseconds: 250_000_000)
+                }
+                // Paused, so the time observer leaves the segment alone and the controls stay up.
+                m.activePlayback?.player.pause()
+                m.activePlayback?.showsInfo = false
+                let intro = SkipSegment(kind: .intro, start: 0, end: 90)
+                m.activePlayback?.segments = [intro]
+                m.activePlayback?.activeSegment = intro
+                m.activePlayback?.tourPanel = "controls"
+            }, at: index)
+        }
+        #endif
         #if os(iOS)
         // The player's options panel and Advanced Options, over the MKV sample.
         if let index = steps.firstIndex(where: { $0.name == "player-still-watching" }) {

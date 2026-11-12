@@ -44,11 +44,13 @@ private struct VolumeViewHost: UIViewRepresentable {
     }
 }
 
-/// A glass capsule with the volume as a speaker, a percentage and a slider.
+/// The volume as Apple's player draws it: a speaker and a thin track with a small knob, on a translucent capsule.
 struct VolumePill: View {
     let volume: SystemVolume
     /// Reports when a drag begins and ends, so the player's controls neither hide mid-drag nor linger after.
     var onEditingChanged: (Bool) -> Void = { _ in }
+
+    @State private var editing = false
 
     private var symbol: String {
         switch volume.level {
@@ -59,27 +61,54 @@ struct VolumePill: View {
         }
     }
 
+    private static let trackWidth: CGFloat = 130
+
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: symbol)
-                .font(.system(size: 14, weight: .semibold))
-                .frame(width: 20)
+                .font(.system(size: 15, weight: .regular))
+                .frame(width: 24)
                 .contentTransition(.symbolEffect(.replace))
-            // Fixed width, so the digits changing length doesn't nudge the slider under the finger.
-            Text("\(Int((volume.level * 100).rounded()))%")
-                .font(Theme.Typeface.time)
-                .foregroundStyle(Theme.Palette.textSecondary)
-                .frame(width: 40, alignment: .trailing)
-            Slider(value: Binding(get: { volume.level }, set: { volume.set($0) }), in: 0...1, onEditingChanged: onEditingChanged)
-                .tint(Theme.Palette.red)
-                .frame(width: 140)
+            track
         }
-        .foregroundStyle(Theme.Palette.fg)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .playerPanel()
+        .foregroundStyle(.white)
+        .shadow(color: .black.opacity(0.45), radius: 4, y: 1)
+        .padding(.horizontal, 14)
+        .frame(height: 48)
+        .playerCapsule()
         .background(VolumeViewHost(volume: volume).frame(width: 0, height: 0))
-        .accessibilityElement(children: .contain)
+        .accessibilityElement()
+        .accessibilityLabel("Volume")
+        .accessibilityValue("\(Int((volume.level * 100).rounded())) percent")
+        .accessibilityAdjustableAction { direction in
+            volume.set(volume.level + (direction == .increment ? 0.0625 : -0.0625))
+        }
+    }
+
+    /// A 4pt bar with a 12pt knob; the hit area is the full height of the capsule, so a finger doesn't have to find the line.
+    private var track: some View {
+        let fraction = CGFloat(min(1, max(0, volume.level)))
+        return ZStack(alignment: .leading) {
+            Capsule().fill(.white.opacity(0.3)).frame(height: editing ? 6 : 4)
+            Capsule().fill(.white).frame(width: Self.trackWidth * fraction, height: editing ? 6 : 4)
+            Circle().fill(.white)
+                .frame(width: 12, height: 12)
+                .offset(x: min(max(Self.trackWidth * fraction - 6, 0), Self.trackWidth - 12))
+        }
+        .frame(width: Self.trackWidth, height: 44)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    if !editing { editing = true; onEditingChanged(true) }
+                    volume.set(Float(value.location.x / Self.trackWidth))
+                }
+                .onEnded { _ in
+                    editing = false
+                    onEditingChanged(false)
+                }
+        )
+        .animation(Theme.Motion.snappy, value: editing)
     }
 }
 #endif
