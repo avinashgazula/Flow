@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 're
 import { q } from '../../lib/queries'
 import { queryClient } from '../../lib/queryClient'
 import { browserCapabilities, findSources, rememberSource, type PlaybackRequest, type Source } from '../../lib/sources'
+import { looksLikeSlate, slateStopped, slateTriedNext } from '../../lib/sources/slate'
 import { lastSourceStore, matchLastSource } from '../../lib/sources/lastSource'
 import { hasPlayableAudio } from '../../lib/sources/rank'
 import { library, libraryStore, mediaKey, type EpisodeRef } from '../../lib/store/library'
@@ -167,9 +168,10 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   const position = useRef(0)
   const length = useRef(Number.NaN)
   // The latest values, for handlers that effects registered once.
-  const latest = useRef({ item, epRef, current, source, sources, phase, resumeAt, next, title, picker })
+  const runtime = current?.runtime ?? detail?.runtime
+  const latest = useRef({ item, epRef, current, source, sources, phase, resumeAt, next, title, picker, runtime })
   useLayoutEffect(() => {
-    latest.current = { item, epRef, current, source, sources, phase, resumeAt, next, title, picker }
+    latest.current = { item, epRef, current, source, sources, phase, resumeAt, next, title, picker, runtime }
   })
 
   /** Goes on to the next episode. `automatic` is for the countdown running out, the credits being skipped by
@@ -309,6 +311,21 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     else setPicker(true)
   }
 
+  /** An add-on that refuses a request can answer with a short video saying so instead of an error. It never plays as the
+   *  film: the next source is tried when fail-over is on, and the player says why otherwise. */
+  const rejectSlate = () => {
+    video.current?.pause()
+    const { sources: list, source: cur } = latest.current
+    const candidate = settingsStore.get().tryNextSourceOnFailure !== false ? nextSource(list, cur ?? undefined, tried.current, { playableOnly: true }) : undefined
+    if (candidate) {
+      start(candidate, startAt.current)
+      controller.notify(slateTriedNext)
+      return
+    }
+    setError(new PlaybackError(slateStopped))
+    setPhase('error')
+  }
+
   const fail = (err: PlaybackError) => {
     if (!started.current && settingsStore.get().tryNextSourceOnFailure !== false) {
       // Nothing has played yet: move on to the next source quietly, as the apps do (Try the Next Source Automatically).
@@ -384,6 +401,11 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
       bump(0.4)()
       // A resume point from another cut can lie past this stream's end: start from the top instead.
       const d = controller.duration()
+      const { source: cur, runtime: minutes } = latest.current
+      if (!started.current && cur?.origin === 'addon' && looksLikeSlate({ duration: d, listedBytes: cur.sizeBytes, expectedRuntimeMinutes: minutes })) {
+        rejectSlate()
+        return
+      }
       const at = startAt.current
       if (at && !Number.isNaN(d) && at >= d - 30) {
         controller.seekTo(0)
