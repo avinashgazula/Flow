@@ -392,10 +392,28 @@ struct DetailView: View {
         return out
     }
 
-    /// A bordered segmented row: the cells share their borders, and the ones that are on are inverted with a check. More
+    /// Everywhere but the phone, a bordered segmented row: the cells share their borders, and the ones that are on are inverted with a check. More
     /// than four split into even lines (five become three and two) so a lone cell never hangs on a line of its own, and
     /// the last line's cells stretch to fill it.
+    @ViewBuilder
     private var listRow: some View {
+        if Platform.isPhone {
+            // One compact row of icon-over-label actions, as Apple's TV app sets them; it scrolls when a show adds
+            // Shuffle and Rewatch, and stays put when everything fits.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 2) {
+                    ForEach(listActions, id: \.self) { listCell($0) }
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Your List")
+        } else {
+            gridListRow
+        }
+    }
+
+    private var gridListRow: some View {
         let actions = listActions
         let perLine = Platform.isPhone ? 2 : 4
         let lines = Int((Double(actions.count) / Double(perLine)).rounded(.up))
@@ -417,31 +435,33 @@ struct DetailView: View {
         switch action {
         case .watched:
             let watched = model.isWatched(current)
-            toggleCell("Watched", on: watched, accessibility: watched ? "Watched" : "Mark Watched") {
+            toggleCell("Watched", symbol: "checkmark.circle", onSymbol: "checkmark.circle.fill", on: watched, accessibility: watched ? "Watched" : "Mark Watched") {
                 Task { await model.setWatched(current, episodes: nil, watched: !watched) }
             }
         case .watchlist:
             let listed = model.isWatchlisted(current)
-            toggleCell("Watchlist", on: listed, accessibility: listed ? "Remove from Watchlist" : "Add to Watchlist") {
+            toggleCell("Watchlist", symbol: "bookmark", onSymbol: "bookmark.fill", on: listed, accessibility: listed ? "Remove from Watchlist" : "Add to Watchlist") {
                 Task { await model.toggleWatchlist(current) }
             }
         case .favourite:
             let favourite = model.isFavourite(current)
-            toggleCell("Favourite", on: favourite, accessibility: favourite ? "Remove from Favourites" : "Add to Favourites") {
+            toggleCell("Favourite", symbol: "heart", onSymbol: "heart.fill", on: favourite, accessibility: favourite ? "Remove from Favourites" : "Add to Favourites") {
                 Task { await model.toggleFavourite(current) }
             }
         case .download:
-            toggleCell("Download", on: false, accessibility: "Download") { Task { await download() } }
+            toggleCell("Download", symbol: "arrow.down.circle", on: false, accessibility: "Download") { Task { await download() } }
         case .shuffle:
-            toggleCell("Shuffle", on: false, accessibility: "Shuffle Play") { Task { await model.shufflePlay(current) } }
+            toggleCell("Shuffle", symbol: "shuffle", on: false, accessibility: "Shuffle Play") { Task { await model.shufflePlay(current) } }
         case .rewatch:
-            toggleCell(rewatching ? "End Rewatch" : "Rewatch", on: rewatching, accessibility: rewatching ? "End Rewatch" : "Rewatch") { toggleRewatch() }
+            toggleCell(rewatching ? "End Rewatch" : "Rewatch", symbol: "arrow.counterclockwise", on: rewatching, accessibility: rewatching ? "End Rewatch" : "Rewatch") { toggleRewatch() }
         case .share:
             #if os(tvOS)
             EmptyView()
             #else
-            TitleShareLink(item: current) { Text("Share") }
-                .buttonStyle(ListActionStyle())
+            TitleShareLink(item: current) {
+                if Platform.isPhone { ListChipLabel(title: "Share", symbol: "square.and.arrow.up") } else { Text("Share") }
+            }
+            .buttonStyle(Platform.isPhone ? AnyButtonStyle(ListChipStyle()) : AnyButtonStyle(ListActionStyle()))
             #endif
         case .more:
             #if os(iOS)
@@ -465,14 +485,18 @@ struct DetailView: View {
     }
 
     /// One list action; a check before the word says it is on.
-    private func toggleCell(_ title: String, on: Bool, accessibility: String, perform: @escaping () -> Void) -> some View {
+    private func toggleCell(_ title: String, symbol: String, onSymbol: String? = nil, on: Bool, accessibility: String, perform: @escaping () -> Void) -> some View {
         Button(action: perform) {
-            HStack(spacing: 4) {
-                if on { Image(systemName: "checkmark").imageScale(.small) }
-                Text(title)
+            if Platform.isPhone {
+                ListChipLabel(title: title, symbol: on ? (onSymbol ?? symbol) : symbol)
+            } else {
+                HStack(spacing: 4) {
+                    if on { Image(systemName: "checkmark").imageScale(.small) }
+                    Text(title)
+                }
             }
         }
-        .buttonStyle(ListActionStyle(on: on))
+        .buttonStyle(Platform.isPhone ? AnyButtonStyle(ListChipStyle(on: on)) : AnyButtonStyle(ListActionStyle(on: on)))
         .accessibilityLabel(accessibility)
         .sensoryFeedbackIfAvailable(on)
     }

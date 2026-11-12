@@ -172,7 +172,7 @@ struct PlayerView: View {
                                 Button(chapter.title.isEmpty ? TimeFormat.clock(chapter.start) : chapter.title) { session.seek(toChapter: chapter) }
                             }
                         } label: {
-                            Image(systemName: "list.bullet").macBarIcon()
+                            Image(systemName: "list.bullet.rectangle").macBarIcon()
                         }
                         .macBarMenu(label: "Chapters")
                     }
@@ -555,6 +555,25 @@ struct SkipAndUpNextOverlay: View {
     let session: PlaybackSession
     @Environment(AppModel.self) private var model
 
+    /// Clear of the bottom row of controls: the scrubber and its times, then the title with the panel buttons, then a
+    /// gap. On the Mac the system's own transport bar sits there instead.
+    private static var bottomInset: CGFloat {
+        #if os(iOS)
+        Platform.isPhone ? 128 : 136
+        #else
+        120
+        #endif
+    }
+
+    /// In line with the right edge of the panel buttons beneath it.
+    private static var trailingInset: CGFloat {
+        #if os(iOS)
+        Platform.isPhone ? 16 : 28
+        #else
+        36
+        #endif
+    }
+
     var body: some View {
         VStack {
             Spacer()
@@ -583,14 +602,13 @@ struct SkipAndUpNextOverlay: View {
                         .controlText()
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(PlayerButtonStyle())
-                    .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    .buttonStyle(PlayerPillStyle())
+                    .transition(.scale(scale: 0.9, anchor: .bottomTrailing).combined(with: .opacity))
                 }
             }
-            .padding(.trailing, Platform.isPhone ? 24 : 36)
-            .padding(.bottom, Platform.isPhone ? 96 : 120)
+            .padding(.trailing, Self.trailingInset)
+            .padding(.bottom, Self.bottomInset)
         }
         .animation(Theme.Motion.gentle, value: session.activeSegment)
         .animation(Theme.Motion.gentle, value: session.panelOpen)
@@ -689,8 +707,29 @@ extension View {
     }
 }
 
-/// A button on the picture: an ink square with a paper rule that turns blue under the pointer, on focus and while
-/// pressed (the player's version of the secondary button).
+extension View {
+    /// What groups of controls over the picture sit on, as in Apple's player: Liquid Glass on iOS 26, an ultra-thin
+    /// material capsule before it. Only for a group's backing; a single button is bare.
+    func playerCapsule() -> some View { modifier(PlayerCapsule()) }
+}
+
+private struct PlayerCapsule: ViewModifier {
+    func body(content: Content) -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26, macOS 26, tvOS 26, *) {
+            // Not interactive: interactive glass could take the first tap meant for a button inside it.
+            content.glassEffect(.regular, in: Capsule())
+        } else {
+            content.background(.ultraThinMaterial, in: Capsule())
+        }
+        #else
+        content.background(.ultraThinMaterial, in: Capsule())
+        #endif
+    }
+}
+
+/// A button on the picture, like the system player's: no box and no border, a white symbol with a soft shadow for
+/// bright frames, and a round highlight under the pointer, on focus and while pressed.
 struct PlayerButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         PlayerButtonBody(configuration: configuration)
@@ -703,13 +742,43 @@ private struct PlayerButtonBody: View {
     @State private var hovering = false
 
     var body: some View {
-        let lit = focused || hovering || configuration.isPressed
+        let lit = focused || hovering
         configuration.label
-            .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
-            .background(lit ? Theme.Palette.blue : Theme.Palette.overPicture)
-            .overlay(Rectangle().strokeBorder(lit ? Theme.Palette.blue : Theme.Palette.rule, lineWidth: Theme.Rule.heavy))
-            .contentShape(Rectangle())
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.45), radius: 4, y: 1)
+            .background(Circle().fill(.white.opacity(configuration.isPressed ? 0.28 : lit ? 0.16 : 0)))
+            .contentShape(Circle())
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
             .animation(Theme.Motion.hover, value: lit)
+            .animation(Theme.Motion.hover, value: configuration.isPressed)
+            #if !os(tvOS)
+            .onHover { hovering = $0 }
+            #endif
+    }
+}
+
+/// Skip Intro and Next Episode: a white pill with dark text, the one filled control over the picture.
+struct PlayerPillStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        PlayerPillBody(configuration: configuration)
+    }
+}
+
+private struct PlayerPillBody: View {
+    let configuration: ButtonStyleConfiguration
+    @Environment(\.isFocused) private var focused
+    @State private var hovering = false
+
+    var body: some View {
+        let lit = focused || hovering
+        configuration.label
+            .foregroundStyle(Color.black)
+            .background(Capsule().fill(.white.opacity(configuration.isPressed ? 0.7 : lit ? 1 : 0.9)))
+            .shadow(color: .black.opacity(0.3), radius: 8, y: 2)
+            .contentShape(Capsule())
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .animation(Theme.Motion.hover, value: lit)
+            .animation(Theme.Motion.hover, value: configuration.isPressed)
             #if !os(tvOS)
             .onHover { hovering = $0 }
             #endif
@@ -746,12 +815,24 @@ struct Scrubber: View {
         return chapters.filter { $0 > 0 && $0 < duration }
     }
 
-    /// Content you skip is bright; things that merely might be skippable (trailers, ad breaks) are fainter.
-    private static func opacity(of kind: SkipSegmentKind) -> Double {
-        switch kind {
-        case .intro, .recap, .credits: 0.9
-        case .preview, .commercial: 0.5
+    /// Where the track breaks: chapter starts, and the edges of intros, recaps and credits, so you can see what a skip
+    /// button will jump over without any colour on the bar.
+    private var gapTimes: [Double] {
+        let edges = markedSegments.flatMap { [$0.start, $0.end] } + chapterNotches
+        return Array(Set(edges.filter { $0 > 0 && $0 < duration })).sorted()
+    }
+
+    private func gapMask(width: CGFloat) -> some View {
+        ZStack(alignment: .leading) {
+            Rectangle()
+            ForEach(Array(gapTimes.enumerated()), id: \.offset) { _, time in
+                Rectangle()
+                    .frame(width: 2)
+                    .offset(x: width * time / duration - 1)
+                    .blendMode(.destinationOut)
+            }
         }
+        .compositingGroup()
     }
 
     var body: some View {
@@ -760,28 +841,22 @@ struct Scrubber: View {
                 let width = proxy.size.width
                 let fraction = duration > 0 ? (dragging ?? current) / duration : 0
                 ZStack(alignment: .leading) {
-                    // The track in tint, what is buffered a step brighter, the played part in red.
-                    Rectangle().fill(Theme.Palette.tint3)
-                    Rectangle().fill(Theme.Palette.faint.opacity(0.6)).frame(width: width * min(1, buffered))
-                    Rectangle().fill(Theme.Palette.red).frame(width: max(0, width * min(1, fraction)))
-                    // Above the played fill, not under it: the warning colour stays visible once you have watched
-                    // past a segment, and it is the one colour on the track that never reads as progress.
+                    // A thin bar like Apple's: the track faint, what is buffered a step brighter, the played part in red.
                     ZStack(alignment: .leading) {
-                        Color.clear
-                        ForEach(Array(markedSegments.enumerated()), id: \.offset) { _, segment in
-                            Rectangle()
-                                .fill(Theme.Palette.warn.opacity(Self.opacity(of: segment.kind)))
-                                .frame(width: width * (segment.end - segment.start) / duration)
-                                .offset(x: width * segment.start / duration)
-                        }
-                        ForEach(Array(chapterNotches.enumerated()), id: \.offset) { _, start in
-                            Rectangle()
-                                .fill(.black.opacity(0.6))
-                                .frame(width: 2)
-                                .offset(x: width * start / duration - 1)
-                        }
+                        Rectangle().fill(.white.opacity(0.28))
+                        Rectangle().fill(.white.opacity(0.4)).frame(width: width * min(1, buffered))
+                        Rectangle().fill(Theme.Palette.red).frame(width: max(0, width * min(1, fraction)))
                     }
-                    .allowsHitTesting(false)
+                    .mask { gapMask(width: width) }
+                    .clipShape(Capsule())
+                    if dragging != nil {
+                        Circle().fill(.white)
+                            .frame(width: 14, height: 14)
+                            .shadow(color: .black.opacity(0.35), radius: 3)
+                            .offset(x: width * min(1, max(0, fraction)) - 7)
+                            .transition(.scale.combined(with: .opacity))
+                            .allowsHitTesting(false)
+                    }
                 }
                 .frame(height: dragging == nil ? 4 : 9)
                 .frame(maxHeight: .infinity)
@@ -824,6 +899,7 @@ struct Scrubber: View {
             // Timecode and the end time in mono.
             .font(Theme.Typeface.time)
             .foregroundStyle(Theme.Palette.fg)
+            .shadow(color: .black.opacity(0.5), radius: 4)
         }
         .accessibilityElement()
         .accessibilityLabel("Playback position")
@@ -1051,6 +1127,7 @@ struct IOSPlayerControls: View {
                         ClusterButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle", label: "Playback Info") { session.showsInfo.toggle() }
                         RoutePicker()
                             .frame(width: 44, height: 44)
+                            .shadow(color: .black.opacity(0.45), radius: 4, y: 1)
                             .accessibilityLabel("AirPlay")
                     }
                     Spacer(minLength: 12)
@@ -1066,7 +1143,7 @@ struct IOSPlayerControls: View {
                 Spacer()
 
                 GlassGroup(spacing: 28) {
-                    HStack(spacing: Platform.isPhone ? 36 : 48) {
+                    HStack(spacing: Platform.isPhone ? 40 : 56) {
                         transportButton("gobackward.\(model.settings.playback.seekBackwardSeconds)", label: "Back \(model.settings.playback.seekBackwardSeconds) Seconds", size: 60) {
                             // The lift that ends a hold also reads as a tap: the replay has already gone back.
                             if heldBack { heldBack = false; return }
@@ -1120,14 +1197,14 @@ struct IOSPlayerControls: View {
                     Spacer(minLength: 8)
                     PlayerCluster {
                         if hasEpisodes || !session.chapters.isEmpty {
-                            ClusterButton(systemImage: "square.grid.2x2", label: hasEpisodes ? "Episodes" : "Chapters",
+                            ClusterButton(systemImage: "list.bullet.rectangle", label: hasEpisodes ? "Episodes" : "Chapters",
                                           active: showsEpisodes || showsChapters, action: toggleBrowse)
                         }
                         ClusterButton(systemImage: "person.crop.rectangle.stack", label: "X-Ray", active: session.showsXRay) {
                             xrayFromPause = false
                             session.showsXRay.toggle()
                         }
-                        ClusterButton(systemImage: "gearshape.fill", label: "Options", active: showsOptions, action: toggleOptions)
+                        ClusterButton(systemImage: "gearshape", label: "Options", active: showsOptions, action: toggleOptions)
                     }
                 }
 
@@ -1168,7 +1245,7 @@ struct IOSPlayerControls: View {
     private func transportButton(_ symbol: String, label: String, size: CGFloat, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: size * 0.4, weight: .semibold))
+                .font(.system(size: size * (size > 70 ? 0.52 : 0.5), weight: .medium))
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: size, height: size)
         }
