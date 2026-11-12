@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType, type KeyboardEvent } from 'react'
+import { Link } from '@tanstack/react-router'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type KeyboardEvent } from 'react'
 import { flushSync } from 'react-dom'
 import { Icon } from '../../components/Icon'
 import { AppearanceSection } from './AppearanceSection'
 import { CatalogueSection } from './CatalogueSection'
+// The router's own history, not its hooks: the hooks split the router out of the first load into chunks of its own.
+import { router } from '../../main'
 import { buildIndex, search, step, type Entry, type RawRow } from './searchIndex'
 import s from './SettingsScreen.module.css'
 
@@ -12,24 +15,26 @@ import s from './SettingsScreen.module.css'
 interface Section {
   id: string
   title: string
+  /** What the page holds, under its name in the list a phone opens on. */
+  note: string
   body?: ComponentType
   load?: () => Promise<ComponentType>
 }
 
 const sections: Section[] = [
-  { id: 'appearance', title: 'Appearance', body: AppearanceSection },
-  { id: 'catalogue', title: 'Catalogue', body: CatalogueSection },
-  { id: 'metadata', title: 'Metadata', load: () => import('./MetadataSection').then((m) => m.MetadataSection) },
-  { id: 'shelves', title: 'Shelves', load: () => import('./ShelvesSection').then((m) => m.ShelvesSection) },
-  { id: 'addons', title: 'Stream Add-ons', load: () => import('./AddonsSection').then((m) => m.AddonsSection) },
-  { id: 'servers', title: 'Media Servers', load: () => import('./ServersSection').then((m) => m.ServersSection) },
-  { id: 'requests', title: 'Requests', load: () => import('./RequestsSection').then((m) => m.RequestsSection) },
-  { id: 'sources', title: 'Sources', load: () => import('./SourcesSection').then((m) => m.SourcesSection) },
-  { id: 'livetv', title: 'Live TV', load: () => import('./LiveTVSection').then((m) => m.LiveTVSection) },
-  { id: 'playback', title: 'Playback', load: () => import('./PlaybackSection').then((m) => m.PlaybackSection) },
-  { id: 'account', title: 'Account', load: () => import('./AccountSection').then((m) => m.AccountSection) },
-  { id: 'data', title: 'Data', load: () => import('./DataSection').then((m) => m.DataSection) },
-  { id: 'about', title: 'About', load: () => import('./AboutSection').then((m) => m.AboutSection) },
+  { id: 'appearance', title: 'Appearance', note: 'Theme, typefaces and the opening tab', body: AppearanceSection },
+  { id: 'catalogue', title: 'Catalogue', note: 'TMDB key, language and region', body: CatalogueSection },
+  { id: 'metadata', title: 'Metadata', note: 'TVDB, ratings and posters', load: () => import('./MetadataSection').then((m) => m.MetadataSection) },
+  { id: 'shelves', title: 'Shelves', note: 'What Home shows, and in what order', load: () => import('./ShelvesSection').then((m) => m.ShelvesSection) },
+  { id: 'addons', title: 'Stream Add-ons', note: 'Stremio-style stream add-ons', load: () => import('./AddonsSection').then((m) => m.AddonsSection) },
+  { id: 'servers', title: 'Media Servers', note: 'Jellyfin, Emby, Plex and WebDAV', load: () => import('./ServersSection').then((m) => m.ServersSection) },
+  { id: 'requests', title: 'Requests', note: 'Ask Seerr for what you don’t have', load: () => import('./RequestsSection').then((m) => m.RequestsSection) },
+  { id: 'sources', title: 'Sources', note: 'How streams are sorted and filtered', load: () => import('./SourcesSection').then((m) => m.SourcesSection) },
+  { id: 'livetv', title: 'Live TV', note: 'IPTV providers and the guide', load: () => import('./LiveTVSection').then((m) => m.LiveTVSection) },
+  { id: 'playback', title: 'Playback', note: 'Stream proxy, subtitles, skipping and X-Ray', load: () => import('./PlaybackSection').then((m) => m.PlaybackSection) },
+  { id: 'account', title: 'Account', note: 'Marquee Account, Trakt and Simkl', load: () => import('./AccountSection').then((m) => m.AccountSection) },
+  { id: 'data', title: 'Data', note: 'Backups, setup links and this device', load: () => import('./DataSection').then((m) => m.DataSection) },
+  { id: 'about', title: 'About', note: 'Version and licences', load: () => import('./AboutSection').then((m) => m.AboutSection) },
 ]
 
 // Kept at module level so coming back to Settings shows every section at once.
@@ -81,10 +86,25 @@ function scanRows(): { rows: RawRow[]; elements: Map<string, HTMLElement> } {
   return { rows, elements }
 }
 
-/** Settings, sectioned like the native screen: a list of anchors beside the sections on wide
- *  screens, and the sections one after another on a phone. */
+/** Wide enough for the list of pages beside the open one; narrower, the list is a page of its own, as on iPhone. */
+const wideQuery = '(min-width: 861px)'
+const subscribeWide = (cb: () => void) => {
+  const m = matchMedia(wideQuery)
+  m.addEventListener('change', cb)
+  return () => m.removeEventListener('change', cb)
+}
+const useWide = () => useSyncExternalStore(subscribeWide, () => matchMedia(wideQuery).matches, () => true)
+
+/** Settings works like the apps' settings: a list of pages, one page open at a time, instead of one long scroll. On a
+ *  wide screen the list sits beside the open page (the first one opens by default); on a phone the list is the page,
+ *  and a page opens over it with a way back. The page is in the address (`/settings#playback`), so links from elsewhere
+ *  open it and Back returns to the list. Every page stays drawn, hidden, so search can read every row. */
 export function SettingsScreen() {
-  const [current, setCurrent] = useState(sections[0]!.id)
+  const hash = useSyncExternalStore(router.history.subscribe, () => router.history.location.hash.replace(/^#/, ''))
+  const navigate: typeof router.navigate = (options) => router.navigate(options)
+  const wide = useWide()
+  const opened = sections.find((x) => x.id === hash)
+  const current = opened ?? (wide ? sections[0] : undefined)
   // A copy, so a section arriving is a state change the compiler's memoising can see (the module's map is mutated in place).
   const [bodies, setBodies] = useState(() => new Map(loaded))
   const refresh = () => setBodies(new Map(loaded))
@@ -96,10 +116,14 @@ export function SettingsScreen() {
   const searching = query.trim() !== ''
   const everyBody = sections.every((x) => x.body || bodies.has(x.id) || failed.has(x.id))
 
-  // Fetch the sections in order, one per idle moment, so no single task parses more than one of them.
+  // The open page first, then the rest in order, one per idle moment, so no single task parses more than one of them.
   useEffect(() => {
     let live = true
     void (async () => {
+      if (current) {
+        await fetchSection(current)
+        if (live) refresh()
+      }
       for (const x of sections) {
         if (!live) return
         if (!x.load || loaded.has(x.id)) continue
@@ -111,7 +135,13 @@ export function SettingsScreen() {
     return () => void (live = false)
   }, [])
 
-  /** Everything fetched and drawn: the sections above a target have their real height, so it can be scrolled to. */
+  // Opening a page fetches it at once, and starts it at its top.
+  useEffect(() => {
+    if (!current) return
+    void fetchSection(current).then(refresh)
+  }, [current?.id])
+
+  /** Everything fetched and drawn, so search can read every row. */
   const everything = async () => {
     await Promise.all(sections.map(fetchSection))
     refresh()
@@ -145,11 +175,14 @@ export function SettingsScreen() {
     if (searching && at >= 0) document.getElementById(`settings-hit-${at}`)?.scrollIntoView({ block: 'nearest' })
   }, [at, searching])
 
-  /** Back to the sections, scrolled to the row and quietly outlined for a moment. */
-  const choose = (key: string) => {
+  /** Opens the page a row is on, scrolled to the row and quietly outlined for a moment. */
+  const choose = async (key: string) => {
     const el = elements.current.get(key)
+    const section = key.slice(0, key.indexOf(':'))
     flushSync(() => setQuery(''))
+    if (section !== current?.id) await navigate({ to: '/settings', hash: section, hashScrollIntoView: false })
     if (!el) return
+    await new Promise((resolve) => requestAnimationFrame(resolve))
     el.scrollIntoView({ block: 'center' })
     window.clearTimeout(mark.current?.timer)
     mark.current?.el.removeAttribute('data-found')
@@ -169,118 +202,85 @@ export function SettingsScreen() {
       setActive(step(at, e.key === 'ArrowDown' ? 1 : -1, flat.length))
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      choose(flat[Math.max(at, 0)]!.entry.key)
+      void choose(flat[Math.max(at, 0)]!.entry.key)
     }
   }
 
-  // A link from elsewhere (the player's no-sound notice) names a section in the address.
-  useEffect(() => {
-    const id = location.hash.slice(1)
-    if (!sections.some((x) => x.id === id)) return
-    document.getElementById(id)?.scrollIntoView({ block: 'start' })
-    setCurrent(id)
-    // The sections above it fill in after this and push it down: scroll once more when they have, unless the reader has moved.
-    let moved = false
-    const stop = () => void (moved = true)
-    window.addEventListener('wheel', stop, { once: true, passive: true })
-    window.addEventListener('touchstart', stop, { once: true, passive: true })
-    window.addEventListener('keydown', stop, { once: true })
-    void everything().then(() => !moved && document.getElementById(id)?.scrollIntoView({ block: 'start' }))
-    return () => {
-      window.removeEventListener('wheel', stop)
-      window.removeEventListener('touchstart', stop)
-      window.removeEventListener('keydown', stop)
-    }
-  }, [])
-
-  // The anchor for the section in view follows the scroll; observers don't run per frame. A page that has run out of
-  // scroll names its last section, since the short ones at the end can never reach the line the others are read at.
-  useEffect(() => {
-    const visible = new Set<string>()
-    const last = sections[sections.length - 1]!.id
-    const atEnd = () => window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
-    const settle = () => {
-      const first = atEnd() ? sections.find((x) => x.id === last) : sections.find((x) => visible.has(x.id))
-      if (first) setCurrent(first.id)
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) e.isIntersecting ? visible.add(e.target.id) : visible.delete(e.target.id)
-        settle()
-      },
-      { rootMargin: '-20% 0px -65% 0px' },
-    )
-    sections.forEach((x) => {
-      const el = document.getElementById(x.id)
-      if (el) observer.observe(el)
-    })
-    let frame = 0
-    const onScroll = () => {
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(settle)
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('scroll', onScroll)
-      cancelAnimationFrame(frame)
-    }
-  }, [])
-
+  // On a phone an open page is the whole screen: its name is the title, with the way back above it.
+  const phonePage = !wide && opened
   return (
     <div className="page">
-      <h1 className="page-title">Settings</h1>
-      <div className={s.layout}>
-        <div className={s.search}>
-          <Icon name="search" size={18} strokeWidth={2.2} className={s.searchIcon} />
-          <input
-            type="search"
-            role="combobox"
-            aria-expanded={searching}
-            aria-controls="settings-results"
-            aria-activedescendant={searching && at >= 0 ? `settings-hit-${at}` : undefined}
-            aria-autocomplete="list"
-            className={`field ${s.searchInput}`}
-            placeholder="Search Settings"
-            aria-label="Search Settings"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setActive(0)
-            }}
-            onFocus={() => void everything()}
-            onKeyDown={onSearchKey}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            enterKeyHint="go"
-          />
-          {query && (
-            <button type="button" className={`btn btn-quiet btn-circle btn-compact ${s.searchClear}`} aria-label="Clear Search" onClick={() => setQuery('')}>
-              <Icon name="close" size={14} strokeWidth={2.8} />
-            </button>
-          )}
-        </div>
-        <nav className={s.toc} aria-label="Settings sections">
-          {sections.map((x) => (
-            <a
-              key={x.id}
-              href={`#${x.id}`}
-              aria-current={current === x.id ? 'true' : undefined}
-              onPointerEnter={() => void fetchSection(x)}
-              onFocus={() => void fetchSection(x)}
-              onClick={(e) => {
-                e.preventDefault()
-                setQuery('')
-                setCurrent(x.id)
-                void everything().then(() => document.getElementById(x.id)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }))
+      {phonePage ? (
+        <>
+          <Link to="/settings" className={s.back} activeProps={{}} resetScroll>
+            <Icon name="chevronLeft" size={16} strokeWidth={2.4} />
+            Settings
+          </Link>
+          <h1 className="page-title">{opened.title}</h1>
+        </>
+      ) : (
+        <h1 className="page-title">Settings</h1>
+      )}
+      <div className={s.layout} data-phone-page={phonePage ? '' : undefined}>
+        {!phonePage && (
+          <div className={s.search}>
+            <Icon name="search" size={18} strokeWidth={2.2} className={s.searchIcon} />
+            <input
+              type="search"
+              role="combobox"
+              aria-expanded={searching}
+              aria-controls="settings-results"
+              aria-activedescendant={searching && at >= 0 ? `settings-hit-${at}` : undefined}
+              aria-autocomplete="list"
+              className={`field ${s.searchInput}`}
+              placeholder="Search Settings"
+              aria-label="Search Settings"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setActive(0)
               }}
-            >
-              {x.title}
-            </a>
-          ))}
-        </nav>
+              onFocus={() => void everything()}
+              onKeyDown={onSearchKey}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              enterKeyHint="go"
+            />
+            {query && (
+              <button type="button" className={`btn btn-quiet btn-circle btn-compact ${s.searchClear}`} aria-label="Clear Search" onClick={() => setQuery('')}>
+                <Icon name="close" size={14} strokeWidth={2.8} />
+              </button>
+            )}
+          </div>
+        )}
+        {!phonePage && !(searching && !wide) && (
+          <nav className={s.toc} aria-label="Settings pages">
+            {sections.map((x) => (
+              // Plain links: the router's Link calls every one of these current, since they share a path.
+              <a
+                key={x.id}
+                href={`${import.meta.env.BASE_URL}settings#${x.id}`}
+                aria-current={current?.id === x.id ? 'page' : undefined}
+                onPointerEnter={() => void fetchSection(x)}
+                onFocus={() => void fetchSection(x)}
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+                  e.preventDefault()
+                  setQuery('')
+                  void navigate({ to: '/settings', hash: x.id, hashScrollIntoView: false, resetScroll: true })
+                }}
+              >
+                <span className={s.tocText}>
+                  <span className={s.tocTitle}>{x.title}</span>
+                  <span className={s.tocNote}>{x.note}</span>
+                </span>
+                <Icon name="chevronRight" size={16} strokeWidth={2.4} className={s.tocChevron} />
+              </a>
+            ))}
+          </nav>
+        )}
         {searching && (
           <div className={s.results} id="settings-results" role="listbox" aria-label="Matching settings">
             {results.map((r) => {
@@ -304,7 +304,7 @@ export function SettingsScreen() {
                           tabIndex={-1}
                           className={s.hit}
                           onMouseMove={() => n !== at && setActive(n)}
-                          onClick={() => choose(hit.entry.key)}
+                          onClick={() => void choose(hit.entry.key)}
                         >
                           <span className={s.rowLabel}>{hit.entry.title}</span>
                           {more && <span className={s.rowDetail}>{more}</span>}
@@ -325,15 +325,23 @@ export function SettingsScreen() {
             </p>
           </div>
         )}
-        <div className={s.content} hidden={searching}>
+        <div className={s.content} hidden={searching || !current}>
           {sections.map((x) => {
             const Body = x.body ?? bodies.get(x.id)
+            const shown = x.id === current?.id
             return (
-              <section key={x.id} id={x.id} className={s.section} aria-labelledby={`${x.id}-title`} aria-busy={Body ? undefined : !failed.has(x.id)}>
-                <h2 id={`${x.id}-title`} className={s.sectionTitle}>
+              <section
+                key={x.id}
+                id={x.id}
+                className={s.section}
+                hidden={!shown}
+                aria-labelledby={`${x.id}-title`}
+                aria-busy={Body ? undefined : !failed.has(x.id)}
+              >
+                <h2 id={`${x.id}-title`} className={phonePage ? 'sr-only' : s.sectionTitle}>
                   {x.title}
                 </h2>
-                {Body ? <Body /> : failed.has(x.id) ? <p className={s.hint}>This section didn’t load. Reload the page to try again.</p> : <div className={s.pending} />}
+                {Body ? <Body /> : failed.has(x.id) ? <p className={s.hint}>This page didn’t load. Reload to try again.</p> : <div className={s.pending} />}
               </section>
             )
           })}

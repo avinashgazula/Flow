@@ -66,8 +66,33 @@
   text-decoration: none;
 }
 .toc a:last-child { border-bottom: var(--rule); }
+.toc a { gap: var(--space-s); justify-content: space-between; }
+.tocText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tocTitle { overflow-wrap: anywhere; }
+/* The notes and chevrons are for the phone's list page; beside an open page the names alone read faster. */
+.tocNote { display: none; font: 400 var(--fs-footnote) / 1.4 var(--font); text-transform: none; letter-spacing: 0; color: var(--muted); }
+.tocChevron { display: none; flex: none; }
+.toc a[aria-current='page'] .tocNote, .toc a:focus-visible .tocNote { color: inherit; }
+@media (hover: hover) { .toc a:hover .tocNote { color: inherit; } }
+
+/* The way back to the list from an open page on a phone. */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-bottom: var(--space-xs);
+  color: var(--fg);
+  font: 600 var(--fs-small) / 1.2 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: underline dotted var(--red);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+@media (hover: hover) { .back:hover { color: var(--blue); } }
 @media (hover: hover) { .toc a:hover { background: var(--blue); color: var(--onblue); } }
-.toc a[aria-current='true'] { background: var(--fg); color: var(--bg); }
+.toc a[aria-current='page'] { background: var(--fg); color: var(--bg); }
 .toc a:focus-visible { background: var(--blue); color: var(--onblue); outline-offset: -3px; outline-color: var(--onblue); }
 
 .content { display: flex; flex-direction: column; gap: var(--space-xxl); min-width: 0; }
@@ -80,7 +105,9 @@
   /* No content-visibility here: these sections are far taller than any estimate, and Safari stalls or jumps
      the page while it swaps an estimate for the real height. The page is short enough to lay out at once. */
 }
-.sectionTitle { font: 600 14px / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); }
+.section[hidden] { display: none; }
+/* The open page's name, beside the list: a condensed heading over its groups. */
+.sectionTitle { font: 700 clamp(28px, 3vw, 40px) / 1 var(--font-cond); text-transform: uppercase; letter-spacing: -0.01em; color: var(--fg); }
 
 .groupWrap { display: flex; flex-direction: column; gap: var(--space-xs); }
 .groupTitle { font: 600 var(--fs-footnote) / 1.2 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg); }
@@ -276,23 +303,14 @@ img.logo { padding: 4px; }
   .layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-m); }
   .search, .toc, .content, .results { grid-column: 1; grid-row: auto; }
   .content { gap: var(--space-xl); }
-  /* On a phone the sections are a ruled, wrapping grid of cells (cells share borders), not a sideways strip. */
-  .toc {
-    position: static;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    border: var(--rule);
-    border-right-width: 0;
-    border-bottom-width: 0;
-  }
-  .toc a { border-right: var(--rule); border-bottom: var(--rule); }
-  /* Thirteen sections: the last cell takes the whole last row rather than leave a hole beside it. */
-  .toc a:last-child { grid-column: 1 / -1; border-bottom: var(--rule); }
+  /* On a phone the list is the page, as in the apps: full-width rows with what each page holds and a chevron. */
+  .toc { position: static; }
+  .toc a { min-height: 64px; padding: 10px var(--space-s); }
+  .tocNote, .tocChevron { display: block; }
   .section { scroll-margin-top: 64px; }
 }
 
 @media (max-width: 560px) {
-  .toc { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .item { grid-template-columns: 40px minmax(0, 1fr); }
   .itemActions, .itemRemove { grid-column: 2; }
   .itemRemove { margin-top: -4px; }
