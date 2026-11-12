@@ -1,7 +1,7 @@
 // swift-tools-version:5.10
 import PackageDescription
 
-// FFmpeg's audio decoders (DTS, TrueHD, Opus, Vorbis and more) for the MKV remuxer. Apps only: FlowKit itself stays pure Swift.
+// FFmpeg's DTS and TrueHD decoders for the MKV remuxer. Apps only: FlowKit itself stays pure Swift.
 let package = Package(
     name: "FlowDecoders",
     platforms: [.iOS(.v17), .macOS(.v14), .tvOS(.v17)],
