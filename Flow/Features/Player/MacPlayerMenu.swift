@@ -136,6 +136,8 @@ extension View {
     func macBarMenu(label: String) -> some View {
         menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
+            // A menu tints its label with the accent colour; the bar's icons stay white.
+            .tint(.white)
             .fixedSize()
             .modifier(MacBarHover())
             .accessibilityLabel(label)
