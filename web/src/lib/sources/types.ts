@@ -20,6 +20,8 @@ export type PlaybackEngine =
   | 'hls'
   /** Matroska, remuxed to fragmented MP4 in a worker (src/lib/remux). */
   | 'remux'
+  /** Any other container (AVI, MPEG-TS, WMV, FLV, MPEG-PS…), or sound the browser can't play, through the FFmpeg engine (src/lib/media). */
+  | 'universal'
 
 export interface ExternalSubtitle {
   url: string

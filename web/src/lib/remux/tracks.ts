@@ -36,10 +36,45 @@ const CODEC_NAMES: Record<string, string> = {
   'A_DTS/EXPRESS': 'DTS Express',
   'A_DTS/LOSSLESS': 'DTS-HD',
   A_VORBIS: 'Vorbis',
+  // FFmpeg's names, from the universal engine (lib/media).
+  h264: 'H.264',
+  hevc: 'HEVC',
+  av1: 'AV1',
+  vp9: 'VP9',
+  vp8: 'VP8',
+  mpeg2video: 'MPEG-2',
+  mpeg1video: 'MPEG-1',
+  mpeg4: 'MPEG-4',
+  msmpeg4v3: 'MPEG-4 (Microsoft)',
+  wmv1: 'Windows Media Video',
+  wmv2: 'Windows Media Video',
+  wmv3: 'Windows Media Video',
+  vc1: 'VC-1',
+  flv1: 'Sorenson Spark',
+  aac: 'AAC',
+  ac3: 'Dolby Digital',
+  eac3: 'Dolby Digital Plus',
+  dts: 'DTS',
+  truehd: 'Dolby TrueHD',
+  mlp: 'Dolby TrueHD',
+  mp3: 'MP3',
+  mp2: 'MP2',
+  mp1: 'MP1',
+  vorbis: 'Vorbis',
+  opus: 'Opus',
+  flac: 'FLAC',
+  alac: 'Apple Lossless',
+  wmav1: 'Windows Media Audio',
+  wmav2: 'Windows Media Audio',
+  wmapro: 'Windows Media Audio Pro',
+  wmalossless: 'Windows Media Audio Lossless',
+  cook: 'RealAudio',
+  amr_nb: 'AMR',
+  amr_wb: 'AMR',
 }
 
 export function codecName(codecId: string): string {
-  return CODEC_NAMES[codecId] ?? codecId.replace(/^[AV]_/, '')
+  return CODEC_NAMES[codecId] ?? (codecId.startsWith('pcm_') ? 'PCM' : codecId.replace(/^[AV]_/, ''))
 }
 
 function languageName(code: string): string | undefined {
@@ -114,7 +149,7 @@ export class UnplayableError extends Error {
 /** Decides what this browser can play from the file's tracks. A track it can't decode but the
  *  worker can (`decode` is set) still plays when `convert` says Opus can be encoded here. Throws
  *  when it can't play the picture or any of the sound. */
-export function plan(info: HeaderInfo, isSupported: (mime: string) => boolean, convert = false): Plan {
+export function plan(info: HeaderInfo, isSupported: (mime: string) => boolean, convert = false, convertedMime: string | null = CONVERTED_MIME): Plan {
   const videos = info.tracks.filter((t) => t.type === 'video')
   let video: Plan['video'] = null
   if (videos.length) {
@@ -137,8 +172,8 @@ export function plan(info: HeaderInfo, isSupported: (mime: string) => boolean, c
     .map((t) => {
       const native = t.supported ? supportedMime('audio', t.codec, isSupported) : null
       // Only a track the browser can't play itself is converted: one it can play never costs the CPU.
-      const converted = native === null && convert && !!t.decode
-      const mime = converted ? CONVERTED_MIME : native
+      const converted = native === null && convert && !!t.decode && convertedMime !== null
+      const mime = converted ? convertedMime : native
       return { id: t.id, label: audioLabel(t), language: t.language && t.language !== 'und' ? t.language : undefined, codec: t.codec || codecName(t.codecId), format: codecName(t.codecId), channels: t.channels, playable: mime !== null, converted, default: t.default, commentary: t.commentary, mime }
     })
   const playable = audio.filter((a) => a.playable)

@@ -16,6 +16,8 @@ import { SourcePicker } from '../sources/SourcePicker'
 import { ConnectingView, ErrorView } from './ConnectingView'
 import { Controls } from './Controls'
 import { PlayerController, usePlayer } from './controller'
+import { canUseMediaEngine } from '../../lib/media/support'
+import { isReadable } from '../../lib/sources/proxy'
 import { attachSource, playThroughProxy, warmEngines, type Engine } from './engine'
 import { mediaErrorMessage, PlaybackError } from './errors'
 import { episodeLine } from './format'
@@ -163,6 +165,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
 
   const tried = useRef(new Set<string>())
   const startAt = useRef<number | undefined>(undefined)
+  const forcedUniversal = useRef(new Set<string>())
   const started = useRef(false)
   const offeredResume = useRef(false)
   const position = useRef(0)
@@ -279,6 +282,18 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     const candidate = nextSource(list, cur ?? undefined, tried.current)
     if (candidate) start(candidate, keep)
     else setPicker(true)
+  }
+
+  // A file the browser's own player plays without sound (an MP4 with Dolby Digital in a browser without it): the universal engine reads
+  // the same file, converts the sound and carries on from the same place, so the viewer gets sound instead of a notice to pick another source.
+  const retryWithConversion = () => {
+    const { source: cur } = latest.current
+    if (!cur || controller.engine?.kind !== 'native' || controller.engine.fallback || cur.container === 'm3u8' || forcedUniversal.current.has(cur.id)) return false
+    if (!canUseMediaEngine() || !isReadable(cur.url) || settingsStore.get().decodeLosslessAudio === false) return false
+    forcedUniversal.current.add(cur.id)
+    startAt.current = controller.currentTime()
+    setAttempt((n) => n + 1)
+    return true
   }
 
   // From a file that plays without sound: the best source left that this browser can decode, and
@@ -498,13 +513,15 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
       setConvertFailed(true)
     }
     const onFatal = (err: PlaybackError) => !abort.signal.aborted && fail(err)
-    attachSource(el, source, { startAt: startAt.current, signal: abort.signal, onTracks: controller.refreshTracks, onFatal, onAudioFailed })
+    // A file the browser played without sound is opened again through the universal engine, which converts the sound.
+    const opened = forcedUniversal.current.has(source.id) ? { ...source, engine: 'universal' as const } : source
+    attachSource(el, opened, { startAt: startAt.current, signal: abort.signal, onTracks: controller.refreshTracks, onFatal, onAudioFailed })
       .then((e) => {
         if (abort.signal.aborted) return e.destroy()
         engine = e
         controller.setEngine(e, source)
         setBlocked(e.fallback === 'blocked')
-        setRemuxing(e.kind === 'remux')
+        setRemuxing(e.kind === 'remux' || e.kind === 'universal')
         // The chapters the server lists (Jellyfin) or the file holds: the Chapters page and the scrubber's ticks show them, and
         // ones named "Opening" or "Ending" stand in when no server or service knows this episode. A file can keep its list at
         // the far end, which arrives a moment after the engine is up.
@@ -847,7 +864,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
           />
           <XRay controller={controller} type={type} id={id} season={season} episode={episode} />
           {(blocked || convertFailed || remuxing) && (
-            <NoSoundNotice key={`${source?.id}#${attempt}`} controller={controller} source={source} conversionFailed={convertFailed} onSilent={() => lastSources.forget(key)} onTryAnother={tryWithSound} onShowing={setNoSoundUp} />
+            <NoSoundNotice key={`${source?.id}#${attempt}`} controller={controller} source={source} conversionFailed={convertFailed} onSilent={() => (retryWithConversion() ? undefined : lastSources.forget(key))} onTryAnother={tryWithSound} onShowing={setNoSoundUp} />
           )}
           <StruggleNotice
             key={`${source?.id}#${attempt}`}

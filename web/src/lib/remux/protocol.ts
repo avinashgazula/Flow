@@ -17,7 +17,7 @@ export interface HeaderTrack {
   commentary: boolean
   hearingImpaired: boolean
   /** Audio only: which in-browser decoder can play a track browsers can't ('' when none applies). */
-  decode?: 'ac3' | 'eac3' | 'dts' | 'truehd' | ''
+  decode?: 'ac3' | 'eac3' | 'dts' | 'truehd' | 'ffmpeg' | ''
   width?: number
   height?: number
   frameRate?: number
@@ -45,7 +45,7 @@ export interface RawCue {
 
 export type ToWorker =
   /** `viaProxy`: the address is the stream proxy's, so a failure is worded as the proxy's. */
-  | { type: 'open'; url: string; headers: Record<string, string>; viaProxy: boolean; hdr10Only: boolean; surround?: boolean }
+  | { type: 'open'; url: string; headers: Record<string, string>; viaProxy: boolean; hdr10Only: boolean; surround?: boolean; /** The universal engine's converted sound: FLAC where this browser plays it in MP4, else AAC. */ audioOut?: 'flac' | 'aac' }
   /** `convert`: the audio track is one the browser can't play, to be decoded here and re-encoded as Opus. */
   | { type: 'start'; epoch: number; video: number; audio: number; at: number; convert: boolean }
   /** Reads from the keyframe before `at`. */
@@ -95,4 +95,4 @@ export type FromWorker =
   | { type: 'thumbs-unsupported'; reason: string }
   /** `blocked`: the host answers but doesn't let web pages read its files (no CORS headers).
    *  `notMatroska`: the file is something else (MP4, say), which the browser's own player may take. */
-  | { type: 'error'; message: string; blocked?: boolean; notMatroska?: boolean }
+  | { type: 'error'; message: string; blocked?: boolean; notMatroska?: boolean; /** With `notMatroska`: what the first bytes say it is (media/sniff.ts), and the sound codecs of an MP4 whose moov was in them. */ sniff?: string; sound?: string[] }

@@ -91,6 +91,8 @@ CI (`.github/workflows/ci.yml`) runs the FlowKit tests on Linux and macOS and bu
 
 ## Third-party software
 
+On the website, a second FFmpeg 7.1.1 build (`web/scripts/build-media-engine.sh`, `web/src/lib/media/pkg/`) reads AVI, MPEG-TS, WMV, FLV and other containers and converts sound a browser can't play; it is LGPL 2.1 too, with no GPL or non-free part, and is listed under Settings → About → Open Source Licences.
+
 Marquee decodes DTS, Dolby TrueHD, Opus, Vorbis and other audio that Apple's player can't play with [FFmpeg](https://ffmpeg.org) 7.1.1, licensed under the
 [LGPL 2.1](Packages/FlowDecoders/Sources/FlowDecoders/Resources/COPYING.LGPLv2.1). It is built from the
 unmodified release with only its audio decoders (DTS, TrueHD/MLP, Opus, Vorbis, MPEG audio layers 1 and 2, ALAC, WavPack, TTA, Windows Media Audio, ADPCM, A-law, mu-law, AC-3 and E-AC-3; libavcodec, libavutil and libswresample; no GPL or non-free parts) by

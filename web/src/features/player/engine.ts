@@ -1,6 +1,7 @@
-/* Opens a source in a <video>: the browser's own player, hls.js, or the Matroska remuxer. Each
+/* Opens a source in a <video>: the browser's own player, hls.js, the Matroska remuxer, or the universal FFmpeg engine. Each
    engine answers the same small interface, so the controls never ask which one is running.
-   hls.js and the remuxer are dynamic imports: a film that plays natively never downloads them. */
+   hls.js and the remuxer are dynamic imports: a film that plays natively never downloads them, and the universal
+   engine's WebAssembly module (lib/media) is fetched only when a file needs it. */
 
 import type { HlsConfig } from 'hls.js'
 import type { PictureCue } from '../../lib/remux/pictures'
@@ -9,6 +10,9 @@ import { proxyLoader } from '../../lib/sources/hlsProxy'
 import { hostAllowsCors, sameOrigin } from '../../lib/sources/cors'
 import { needsProxy, proxied, rememberBlocked, streamProxy } from '../../lib/sources/proxy'
 import { bindsLinksToConnection } from '../../lib/sources/slate'
+import { canUseMediaEngine } from '../../lib/media/support'
+import { engineContainers, silentInBrowser } from '../../lib/media/sniff'
+import { canPlayType } from '../../lib/sources/capabilities'
 import { settingsStore } from '../../lib/store/settings'
 import { hlsErrorMessage, PlaybackError } from './errors'
 import { trackLabel } from './format'
@@ -45,7 +49,7 @@ export interface NetStats {
 }
 
 export interface Engine {
-  readonly kind: 'native' | 'hls' | 'remux'
+  readonly kind: 'native' | 'hls' | 'remux' | 'universal'
   /** The bytes come through the stream proxy, not straight from the host. */
   readonly viaProxy?: boolean
   /** Download figures, for engines that measure them (the remuxer, hls.js); null until there are some. */
@@ -130,6 +134,7 @@ export async function attachSource(video: HTMLVideoElement, source: Source, opti
 async function open(video: HTMLVideoElement, source: Source, options: AttachOptions): Promise<Engine> {
   const looksHls = /\.m3u8($|\?)/i.test(source.url)
   if (source.engine === 'remux') return attachRemux(video, source, options)
+  if (source.engine === 'universal') return attachRemux(video, source, options, false, 'universal')
   if ((source.engine === 'hls' || looksHls) && !nativeHls(video)) return attachHls(video, source, options)
   // A link that names no container (a debrid or add-on play link) is Matroska more often than not, and only the remuxer can list
   // its audio tracks, convert DTS and TrueHD, and read a Dolby Vision picture. It looks at the first bytes and hands anything
@@ -377,13 +382,16 @@ function playBlockedFile(video: HTMLVideoElement, source: Source, options: Attac
   }
 }
 
-/** `guessed`: the address didn't say it was Matroska, so a browser without the remuxer's needs or a file that isn't Matroska goes to the browser's own player. */
-async function attachRemux(video: HTMLVideoElement, source: Source, options: AttachOptions, guessed = false): Promise<Engine> {
+/** `guessed`: the address didn't say it was Matroska, so a browser without the remuxer's needs or a file that isn't Matroska goes to the browser's own player
+ *  (or to the universal engine, when the first bytes say it is another container, or an MP4 whose sound this browser can't play).
+ *  `mode`: which engine reads the file: the Matroska remuxer (the fast path), or the universal FFmpeg engine, which takes any container. */
+async function attachRemux(video: HTMLVideoElement, source: Source, options: AttachOptions, guessed = false, mode: 'matroska' | 'universal' = 'matroska'): Promise<Engine> {
   const { startAt, signal } = options
-  const { attachMatroska, remuxSupported } = await import('../../lib/remux')
+  const { attachMatroska, attachUniversal, remuxSupported } = await import('../../lib/remux')
+  const universal = mode === 'universal'
   if (!remuxSupported()) {
     if (guessed) return openNative(video, source, options)
-    throw new PlaybackError('This browser can’t play MKV files. On iPhone, update to iOS 17.1 or later, or pick another source.')
+    throw new PlaybackError(`This browser can’t play ${universal ? 'this kind of file' : 'MKV files'}. On iPhone, update to iOS 17.1 or later, or pick another source.`)
   }
   // Through the stream proxy a host that sends no CORS headers can be read. An add-on's request
   // headers are meant for the host, not the proxy, and the proxy forwards only Range, so a proxied
@@ -394,7 +402,8 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
   const convertAudio = settingsStore.get().decodeLosslessAudio !== false
   // Converted sound keeps 5.1 where the browser can play it and the output has the speakers; otherwise stereo.
   const surroundAudio = convertAudio && (await (await import('../../lib/audio/surround')).checkSurroundAudio())
-  const open = (viaProxy: boolean) => attachMatroska(video, viaProxy ? proxied(source.url) : source.url, { headers: viaProxy ? undefined : source.headers, viaProxy, hdr10Only, convertAudio, surroundAudio, startAt, signal })
+  const attach = universal ? attachUniversal : attachMatroska
+  const open = (viaProxy: boolean) => attach(video, viaProxy ? proxied(source.url) : source.url, { headers: viaProxy ? undefined : source.headers, viaProxy, hdr10Only, convertAudio, surroundAudio, startAt, signal })
   const failedWith = (error: unknown, name: string) => (error as Error).name === name
 
   let session
@@ -416,8 +425,16 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
     }
   } catch (error) {
     if (failedWith(error, 'AbortError')) throw error
-    // Not Matroska after all (the link had no telling extension, and Marquee guessed): the browser's own player takes it from here.
-    if (failedWith(error, 'NotMatroskaError')) return openNative(video, source, options)
+    // Not Matroska after all (the link had no telling extension, and Marquee guessed): what the first bytes say it is decides who takes it.
+    if (failedWith(error, 'NotMatroskaError')) {
+      const { sniff, sound } = error as { sniff?: string; sound?: string[] }
+      const engineFile = sniff !== undefined && (engineContainers as ReadonlySet<string>).has(sniff)
+      // AVI, MPEG-TS and the rest, which no browser opens, and an MP4 whose every sound track is one this browser can't decode.
+      if (!universal && canUseMediaEngine() && (engineFile || (sniff === 'mp4' && sound && silentInBrowser(sound, canPlayType)))) return attachRemux(video, source, options, false, 'universal')
+      return openNative(video, source, options)
+    }
+    // A Matroska file whose sound the remuxer can't play or convert (Vorbis, PCM, MP2, or Dolby and DTS without WebCodecs' encoder): the FFmpeg engine decodes anything.
+    if (!universal && failedWith(error, 'UnplayableError') && (error as { code?: string }).code === 'audio' && canUseMediaEngine() && convertAudio) return attachRemux(video, source, options, false, 'universal')
     // Same for a guess that failed some other way (a host with no ranges, say): the browser's own player has its own go.
     if (guessed && !viaProxy && !failedWith(error, 'UnplayableError') && !failedWith(error, 'BlockedError')) return openNative(video, source, options)
     // The proxy is only a way round a blocked host. If it was tried and the file still can't be
@@ -444,7 +461,7 @@ async function attachRemux(video: HTMLVideoElement, source: Source, options: Att
   let picture: PictureSource | null = null
 
   return {
-    kind: 'remux',
+    kind: universal ? 'universal' : 'remux',
     viaProxy,
     // Keyframes read and decoded in the worker; none where this browser or file can't (then the scrubber shows the time alone).
     preview: () => (remux.thumbnailsSupported === false ? null : (preview ??= new BitmapPreview(remux, remux.video && remux.video.height > 0 ? remux.video.width / remux.video.height : undefined))),
