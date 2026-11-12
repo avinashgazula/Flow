@@ -121,12 +121,14 @@ export function convertsAudio(input: { url?: string; container?: string; engine:
   return input.engine === 'remux' || input.container === undefined
 }
 
+const newer = 'a newer browser: Safari 17.1 or later, Chrome, Edge or Firefox'
+
 /** Why this browser can't play the source, or undefined when it can. */
 export function unsupportedReason(input: { url?: string; container?: string; engine: PlaybackEngine; videoCodec?: string; audio: string[]; headers?: Record<string, string>; transcoded?: boolean }, caps: Capabilities): string | undefined {
   const { container, engine } = input
-  if (container && discImages.has(container)) return `${container.toUpperCase()} disc images can’t play in a browser. Unpack the film and play the file inside`
-  if (engine === 'universal' && !caps.universal) return `${container ? `${container.toUpperCase()} files need` : 'This file needs'} a newer browser: Safari 17.1 or later, Chrome, Edge or Firefox`
-  if (engine === 'remux' && !caps.mse) return 'Matroska needs a newer browser: Safari 17.1 or later, Chrome, Edge or Firefox'
+  if (container && discImages.has(container)) return `${container.toUpperCase()} disc images can’t play in a browser`
+  if (engine === 'universal' && !caps.universal) return `${(container ?? 'This').toUpperCase()} needs ${newer}`
+  if (engine === 'remux' && !caps.mse) return `Matroska needs ${newer}`
   if (engine === 'hls' && !caps.mse) return 'This browser can’t play HLS streams'
   if (engine === 'native' && container !== 'm3u8' && input.headers && Object.keys(input.headers).length > 0) return 'Needs request headers a browser can’t send'
   if (input.transcoded) return undefined

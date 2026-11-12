@@ -83,7 +83,7 @@ describe('engine and container', () => {
     expect(source('hevc', '2160p HEVC AAC', 'https://x.test/a.mkv').unsupported).toBe('HEVC video can’t play in this browser')
     expect(source('hevc-safari', '2160p HEVC AAC', 'https://x.test/a.mp4', {}, safari).unsupported).toBeUndefined()
     // A browser that can't run the FFmpeg engine can't open an AVI; one that can, only refuses the XviD picture.
-    expect(source('avi', '1080p x264 AAC', 'https://x.test/a.avi').unsupported).toBe('AVI files need a newer browser: Safari 17.1 or later, Chrome, Edge or Firefox')
+    expect(source('avi', '1080p x264 AAC', 'https://x.test/a.avi').unsupported).toBe('AVI needs a newer browser: Safari 17.1 or later, Chrome, Edge or Firefox')
     expect(source('avi-xvid', 'XviD', 'https://x.test/a.avi', {}, universal).unsupported).toBe('XviD video can’t play in a browser')
     expect(source('iso', '1080p x264', 'https://x.test/a.iso', {}, universal).unsupported).toMatch(/disc images can’t play/)
     expect(source('mkv-old', '1080p x264', 'https://x.test/a.mkv', {}, fixedCapabilities({ mse: false })).unsupported).toMatch(/Matroska needs a newer browser/)
