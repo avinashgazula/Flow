@@ -679,6 +679,12 @@ static int conv_encode(FM *m, int flush) {
 static int conv_frame(FM *m, AVStream *ist, AVFrame *frame) {
   Conv *c = m->conv;
   int r;
+  /* A decoder that doesn't know the speaker order (PCM, WMA) says "unspecified": give it the usual one for that many channels. */
+  if (frame->ch_layout.order == AV_CHANNEL_ORDER_UNSPEC && frame->ch_layout.nb_channels > 0) {
+    int n = frame->ch_layout.nb_channels;
+    av_channel_layout_uninit(&frame->ch_layout);
+    av_channel_layout_default(&frame->ch_layout, n);
+  }
   if (!c->enc) {
     r = conv_start(m, ist, frame);
     if (r < 0) return r;
@@ -788,7 +794,11 @@ static int audio_packet(FM *m, AVPacket *pkt) {
 
 /* ---- Seeking ---- */
 
+static int rewind_input(FM *m);
+
 static int seek_to(FM *m, int64_t media_us) {
+  /* The very start is the start of the file: a time seek near it can land after the first key frame. */
+  if (media_us <= 1000000) return rewind_input(m);
   int idx = m->vidx >= 0 ? m->vidx : m->aidx;
   int64_t target = media_us + m->offset_us;
   int r = -1;
@@ -884,6 +894,9 @@ static int finish(FM *m) {
   }
   for (int k = 0; k < 2; k++) {
     if (!m->out[k].oc) continue;
+    /* With delay_moov the first flush may only write the moov, so ask twice. */
+    av_write_frame(m->out[k].oc, NULL);
+    out_flush(m, k);
     av_write_frame(m->out[k].oc, NULL);
     out_flush(m, k);
   }
@@ -1078,7 +1091,12 @@ int fm_start(int video, int audio, int mode, double at_ms, double floor_ms, int 
   /* Tracks that aren't played are never read out of the container's packets. */
   for (unsigned i = 0; i < m->ic->nb_streams; i++) m->ic->streams[i]->discard = (int)i == video || (int)i == audio ? AVDISCARD_DEFAULT : AVDISCARD_ALL;
   if (m->at_us > 50000) {
-    if (seek_to(m, m->at_us) < 0) rewind_input(m);
+    /* A transport or program stream is entered by time, not at a key frame: aim a few seconds early, so the first key frame
+       is usually at or before the time asked for. (The run goes back further if it isn't.) */
+    const char *name = m->ic->iformat ? m->ic->iformat->name : "";
+    int64_t lead = (!strcmp(name, "mpegts") || !strcmp(name, "mpeg")) && video >= 0 ? 3000000 : 0;
+    int64_t aim = m->at_us > lead ? m->at_us - lead : 0;
+    if (seek_to(m, aim) < 0) rewind_input(m);
   } else if (m->consumed) {
     rewind_input(m);
   }
@@ -1094,6 +1112,14 @@ int fm_step(int max_bytes) {
   int bad = 0;
   for (;;) {
     int r = av_read_frame(m->ic, m->pkt);
+    if (r == AVERROR_EOF && m->vidx >= 0 && !m->v_started && m->at_us > 0 && m->reseeks < MAX_RESEEKS) {
+      /* The file ended before a key frame came: this run landed after the last one. */
+      int64_t back = m->at_us - 5000000LL * (m->reseeks + 1);
+      reset_run(m);
+      m->reseeks++;
+      if (seek_to(m, back < 0 ? 0 : back) < 0) rewind_input(m);
+      continue;
+    }
     if (r == AVERROR_EOF) return finish(m);
     if (r < 0) {
       if (r == AVERROR(EAGAIN)) continue;

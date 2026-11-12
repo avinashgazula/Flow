@@ -113,7 +113,7 @@ if [ ! -f "$PREFIX/lib/libavcodec.a" ] || [ "$(cat "$WORK/.opt" 2>/dev/null)" !=
   rm -rf "$WORK/ffmpeg-build" "$PREFIX" && mkdir -p "$WORK/ffmpeg-build" && cd "$WORK/ffmpeg-build"
   # Everything that carries a picture or sound a browser may be handed, minus video codecs (the engine
   # copies video; decoding it is a later step) and minus every protocol (the page supplies the bytes).
-  DEMUXERS=(avi mpegts mpegps asf flv mov matroska ogg rm wav mp3 aac ac3 eac3 dts dtshd truehd mlp flac aiff caf amr au w64 gsm)
+  DEMUXERS=(avi mpegts mpegps asf flv mov matroska ogg rm wav mp3 aac ac3 eac3 dts dtshd truehd mlp flac aiff caf amr au w64 gsm mpegvideo m4v h264 hevc vc1)
   PARSERS=(aac aac_latm ac3 dca flac mlp mpegaudio opus vorbis cook gsm h264 hevc mpegvideo mpeg4video vc1 vp8 vp9 av1 dvdsub)
   BSFS=(aac_adtstoasc extract_extradata)
   # Audio decoders: the four Dolby/DTS formats, the usual lossy codecs, every PCM and the common ADPCM flavours.
