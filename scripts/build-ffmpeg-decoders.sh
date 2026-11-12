@@ -1,6 +1,7 @@
 #!/bin/bash
-# Builds a minimal FFmpeg (libavcodec + libavutil with only the DTS and Dolby TrueHD/MLP decoders)
-# as a static xcframework for iOS, tvOS, macOS and their simulators, into Packages/FlowDecoders/FFmpegDecoders.
+# Builds a minimal FFmpeg (libavcodec + libavutil, plus libswresample which the Opus decoder needs, with only
+# audio decoders: DTS, Dolby TrueHD/MLP, Opus, Vorbis, MPEG audio layers 1 to 3, ALAC, WavPack, TTA,
+# Windows Media Audio, Microsoft and IMA ADPCM, A-law and mu-law, AC-3 and E-AC-3) as a static xcframework for iOS, tvOS, macOS and their simulators, into Packages/FlowDecoders/FFmpegDecoders.
 #
 # LGPL 2.1: no GPL or non-free parts are enabled. Flow links it statically, which the LGPL allows
 # because Flow's own source is public, so anyone can relink against a modified FFmpeg.
@@ -26,10 +27,13 @@ SRC=$WORK/ffmpeg-$VERSION
 
 FLAGS=(
   --disable-everything --disable-programs --disable-doc --disable-debug --disable-autodetect
-  --disable-network --disable-avdevice --disable-avformat --disable-swscale --disable-swresample
+  --disable-network --disable-avdevice --disable-avformat --disable-swscale --enable-swresample
   --disable-avfilter --enable-avcodec --enable-avutil
-  --enable-decoder=dca --enable-decoder=truehd --enable-decoder=mlp
-  --enable-parser=dca --enable-parser=mlp
+  --enable-decoder=dca,truehd,mlp
+  --enable-decoder=opus,vorbis,mp1float,mp2float,mp3float,alac,wavpack,tta
+  --enable-decoder=wmav1,wmav2,wmapro,wmalossless,adpcm_ms,adpcm_ima_wav,pcm_alaw,pcm_mulaw
+  --enable-decoder=ac3,eac3
+  --enable-parser=dca,mlp,opus,vorbis,mpegaudio,ac3
   --enable-static --disable-shared --enable-pic --enable-cross-compile --target-os=darwin
 )
 
@@ -48,7 +52,7 @@ build() {
     "${FLAGS[@]}" ${extra[@]+"${extra[@]}"} > "$WORK/configure-$name-$arch.log"
   make -j"$JOBS" > "$WORK/make-$name-$arch.log" 2>&1 || { tail -40 "$WORK/make-$name-$arch.log"; exit 1; }
   make install > /dev/null
-  libtool -static -o "$dir/libFFmpegDecoders.a" "$dir/lib/libavcodec.a" "$dir/lib/libavutil.a" 2>/dev/null
+  libtool -static -o "$dir/libFFmpegDecoders.a" "$dir/lib/libavcodec.a" "$dir/lib/libavutil.a" "$dir/lib/libswresample.a" 2>/dev/null
   cd "$WORK"
 }
 
@@ -100,8 +104,10 @@ cp "$SRC/COPYING.LGPLv2.1" "$OUT/COPYING.LGPLv2.1"
 cat > "$OUT/README.md" <<EOF
 # FFmpeg decoders
 
-FFmpeg $VERSION (https://ffmpeg.org), built by \`scripts/build-ffmpeg-decoders.sh\` with only libavcodec
-and libavutil and the DTS (dca) and Dolby TrueHD/MLP decoders. Licensed under the LGPL 2.1 (see
+FFmpeg $VERSION (https://ffmpeg.org), built by \`scripts/build-ffmpeg-decoders.sh\` with only libavcodec,
+libavutil and libswresample (which the Opus decoder uses) and these audio decoders: DTS (dca), Dolby TrueHD
+and MLP, Opus, Vorbis, MPEG audio layers 1, 2 and 3, ALAC, WavPack, TTA, Windows Media Audio (versions 1, 2,
+Pro and Lossless), Microsoft and IMA ADPCM, A-law, mu-law, AC-3 and E-AC-3. Licensed under the LGPL 2.1 (see
 COPYING.LGPLv2.1); no GPL or non-free components are enabled. The source is the unmodified release
 tarball (SHA-256 $SHA256). Run the script on a Mac to rebuild it or to link a modified FFmpeg.
 EOF

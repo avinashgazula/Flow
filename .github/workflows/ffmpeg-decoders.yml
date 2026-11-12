@@ -1,6 +1,6 @@
 name: FFmpeg decoders
 
-# Builds Packages/FlowDecoders/FFmpegDecoders (DTS and TrueHD decoders for Apple platforms) and commits it,
+# Builds Packages/FlowDecoders/FFmpegDecoders (audio decoders for Apple platforms) and commits it,
 # whenever the build script changes or on request.
 on:
   push:
@@ -32,5 +32,5 @@ jobs:
           git config user.email "ci@users.noreply.github.com"
           git add Packages/FlowDecoders/FFmpegDecoders
           if git diff --cached --quiet; then echo "unchanged"; exit 0; fi
-          git commit -m "Build FFmpeg decoders (DTS, TrueHD) for Apple platforms"
+          git commit -m "Build FFmpeg audio decoders (DTS, TrueHD, Opus, Vorbis and more) for Apple platforms"
           git push origin HEAD:${GITHUB_REF_NAME}
