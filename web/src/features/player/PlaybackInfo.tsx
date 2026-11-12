@@ -13,7 +13,7 @@ type Row = [label: string, value: string]
 
 const dash = '—'
 
-const engineNames = { remux: 'Matroska remux', hls: 'HLS in hls.js', native: 'Browser’s own player' } as const
+const engineNames = { remux: 'Matroska remux', universal: 'Universal engine (FFmpeg)', hls: 'HLS in hls.js', native: 'Browser’s own player' } as const
 
 /** What the device said about decoding this kind of video (smooth.ts), in a few words. */
 function decodingWords(source: Source | null): string {

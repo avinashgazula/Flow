@@ -27,6 +27,7 @@
 import type { FromWorker, HeaderInfo, ToWorker } from './protocol'
 import { type BufferKind, isMediaSourceSupported, MseSink, typeSupported } from './mse'
 import { canConvertAudio } from '../audio/support'
+import { convertedSoundFormat } from '../media/support'
 import { type PictureCue, PictureTrack, parsePictureCues } from './pictures'
 import { parseHeader, type Plan, plan as makePlan, UnplayableError } from './tracks'
 
@@ -253,12 +254,12 @@ class Session implements RemuxSession {
     if (!this.destroyed) this.worker.postMessage(message)
   }
 
-  private fail(message: string, kind: 'blocked' | 'notMatroska' | null = null) {
+  private fail(message: string, kind: 'blocked' | 'notMatroska' | null = null, found?: { sniff?: string; sound?: string[] }) {
     if (this.destroyed) return
     if (this.failure) {
       const reject = this.failure
       this.failure = null
-      reject(kind === 'blocked' ? new BlockedError(message) : kind === 'notMatroska' ? new NotMatroskaError(message) : new Error(message))
+      reject(kind === 'blocked' ? new BlockedError(message) : kind === 'notMatroska' ? new NotMatroskaError(message, found?.sniff, found?.sound) : new Error(message))
     } else {
       for (const listener of this.errorListeners) listener(message)
     }
@@ -349,7 +350,7 @@ class Session implements RemuxSession {
         return
       }
       case 'error':
-        this.fail(message.message, message.blocked ? 'blocked' : message.notMatroska ? 'notMatroska' : null)
+        this.fail(message.message, message.blocked ? 'blocked' : message.notMatroska ? 'notMatroska' : null, message)
         return
       case 'cues':
         this.takeCues(message.cues)
@@ -694,18 +695,20 @@ export class BlockedError extends Error {
 
 /** The file isn't Matroska at all (an MP4, say, or a page the server sent in its place). */
 export class NotMatroskaError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    /** What the first bytes say the file is (lib/media/sniff.ts), when they do. */
+    readonly sniff?: string,
+    /** The sound codecs of an MP4 whose moov was in those bytes. */
+    readonly sound?: string[],
+  ) {
     super(message)
     this.name = 'NotMatroskaError'
   }
 }
 
 /** What the universal engine's converted sound is encoded as in this browser: FLAC where MP4 carries it, else AAC; null when neither plays. */
-export function convertedAudio(isSupported: (mime: string) => boolean = typeSupported): { out: 'flac' | 'aac'; mime: string } | null {
-  if (isSupported('audio/mp4; codecs="flac"')) return { out: 'flac', mime: 'audio/mp4; codecs="flac"' }
-  if (isSupported('audio/mp4; codecs="mp4a.40.2"')) return { out: 'aac', mime: 'audio/mp4; codecs="mp4a.40.2"' }
-  return null
-}
+const convertedAudio = () => convertedSoundFormat(typeSupported)
 
 /** Plays any container through the universal FFmpeg engine (lib/media): the same session as `attachMatroska`, a different worker. */
 export async function attachUniversal(video: HTMLVideoElement, url: string, options: RemuxOptions = {}): Promise<RemuxSession> {

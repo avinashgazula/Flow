@@ -95,4 +95,4 @@ export type FromWorker =
   | { type: 'thumbs-unsupported'; reason: string }
   /** `blocked`: the host answers but doesn't let web pages read its files (no CORS headers).
    *  `notMatroska`: the file is something else (MP4, say), which the browser's own player may take. */
-  | { type: 'error'; message: string; blocked?: boolean; notMatroska?: boolean }
+  | { type: 'error'; message: string; blocked?: boolean; notMatroska?: boolean; /** With `notMatroska`: what the first bytes say it is (media/sniff.ts), and the sound codecs of an MP4 whose moov was in them. */ sniff?: string; sound?: string[] }

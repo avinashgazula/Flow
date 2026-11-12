@@ -11,6 +11,7 @@ import { AHEAD_TARGET, aheadCapFor, AheadGovernor, RateMeter } from './pacing'
 import { cacheKeys, type CacheKeys, type FileIdentity, HeaderCache } from './headerCache'
 import type { FromWorker, HeaderInfo, RawCue, ToWorker } from './protocol'
 import { PieceReader, planReads } from './reader'
+import { mp4SoundCodecs, sniffContainer } from '../media/sniff'
 import { CACHE_SIZE, firstRead, type Found, Lru, readKeyframe, thumbSize } from './thumbs'
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope
@@ -121,7 +122,8 @@ async function readDetail(res: Response): Promise<string | undefined> {
  *  the proxy is what blocked would send the page to. */
 async function report(error: unknown) {
   if (error instanceof NotMatroskaError) {
-    post({ type: 'error', message: error.message, notMatroska: true })
+    const sniff = sniffContainer(head)
+    post({ type: 'error', message: error.message, notMatroska: true, sniff, sound: sniff === 'mp4' ? (mp4SoundCodecs(head) ?? undefined) : undefined })
     return
   }
   if (error instanceof TypeError && !(error instanceof HttpError)) {

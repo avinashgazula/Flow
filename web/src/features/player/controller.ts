@@ -490,7 +490,7 @@ export class PlayerController {
    *  for a segment per pixel. The remuxer seeks through the file's index, so it waits for the release. */
   previewSeek(time: number) {
     const video = this.video
-    if (!video || this.engine?.kind === 'remux') return
+    if (!video || this.engine?.kind === 'remux' || this.engine?.kind === 'universal') return
     const run = () => {
       this.previewAt = performance.now()
       const v = video as HTMLVideoElement & { fastSeek?: (t: number) => void }

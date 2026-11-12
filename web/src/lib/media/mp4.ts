@@ -96,9 +96,29 @@ export interface TrackInit {
 /** What the init segment says about its first track. */
 export function readInit(init: Uint8Array): TrackInit | null {
   const moov = find(init, 'moov')
+  const trak = moov && boxes(init, moov.body, moov.end).find((b) => b.type === 'trak')
+  return trak ? readTrack(init, trak) : null
+}
+
+/** The sound tracks of a file's moov (found in `data`, which may be the start or the end of the file), or null when no moov is in it. */
+export function soundTracks(data: Uint8Array): TrackInit[] | null {
+  const moov = find(data, 'moov')
   if (!moov) return null
-  const mdhd = find(init, 'trak/mdia/mdhd', moov)
-  const stsd = find(init, 'trak/mdia/minf/stbl/stsd', moov)
+  const out: TrackInit[] = []
+  for (const trak of boxes(data, moov.body, moov.end)) {
+    if (trak.type !== 'trak') continue
+    const hdlr = find(data, 'mdia/hdlr', trak)
+    if (!hdlr || fourcc(data, hdlr.body + 8) !== 'soun') continue
+    const track = readTrack(data, trak)
+    if (track) out.push(track)
+  }
+  return out
+}
+
+/** One track of a moov: its clock, sample entry and codec string. */
+export function readTrack(init: Uint8Array, trak: Box): TrackInit | null {
+  const mdhd = find(init, 'mdia/mdhd', trak)
+  const stsd = find(init, 'mdia/minf/stbl/stsd', trak)
   if (!mdhd || !stsd) return null
   const timescale = init[mdhd.body] === 1 ? u32(init, mdhd.body + 20) : u32(init, mdhd.body + 12)
   // stsd: version+flags (4), entry count (4), then the entries as boxes.

@@ -15,6 +15,45 @@ function source(id: string, text: string, url = `https://cdn.example/${id}.mp4`,
 }
 
 const ids = (list: Source[]) => list.map((s) => s.id)
+/** A browser that runs the FFmpeg engine (src/lib/media) but plays no Dolby or DTS sound itself. */
+const universal = fixedCapabilities({ universal: true })
+
+describe('the FFmpeg engine', () => {
+  it('opens every container the browser and the Matroska remuxer don’t', () => {
+    for (const ext of ['avi', 'wmv', 'asf', 'flv', 'ts', 'm2ts', 'mts', 'mpg', 'mpeg', 'vob', 'divx', 'rm', 'rmvb', '3gp']) {
+      expect(engineFor(ext, universal)).toBe('universal')
+      expect(source(ext, '1080p x264 AAC', `https://x.test/a.${ext}`, {}, universal).unsupported).toBeUndefined()
+    }
+    expect(engineFor('mkv', universal)).toBe('remux')
+    expect(engineFor('mp4', universal)).toBe('native')
+  })
+
+  it('says what is converted, and ranks below the same quality that plays natively or through the remuxer', () => {
+    const avi = source('avi', '1080p WEB-DL x264 AAC', 'https://x.test/a.avi', {}, universal)
+    expect(avi.note).toBe('AVI converted for this browser')
+    const list = [avi, source('mkv', '1080p WEB-DL x264 AAC', 'https://x.test/a.mkv', {}, universal), source('mp4', '1080p WEB-DL x264 AAC', 'https://x.test/a.mp4', {}, universal)]
+    expect(ids(rankSources(list, { preferredQuality: '1080p' }, universal)).at(-1)).toBe('avi')
+    // Under a resolution step: a 4K AVI still beats a 720p MP4 that the viewer would rather not have.
+    const better = [source('hd', '720p x264 AAC', 'https://x.test/a.mp4', {}, universal), source('uhd', '1080p x264 AAC', 'https://x.test/b.avi', {}, universal)]
+    expect(ids(rankSources(better, { preferredQuality: '1080p' }, universal))).toEqual(['uhd', 'hd'])
+  })
+
+  it('converts the sound of an MP4 the browser would play silent, and of an MKV where WebCodecs can’t', () => {
+    const mp4 = source('mp4', '2160p WEB-DL DDP5.1 x264', 'https://x.test/a.mp4', {}, universal)
+    expect(mp4.engine).toBe('universal')
+    expect(mp4.unsupported).toBeUndefined()
+    expect(mp4.convertsAudio).toBe(true)
+    expect(mp4.note).toBe('Dolby Digital Plus audio converted for this browser')
+    // Without the engine the same file is refused, as before.
+    expect(source('mp4-no', '2160p WEB-DL DDP5.1 x264', 'https://x.test/a.mp4').unsupported).toBe('Dolby Digital Plus audio can’t play in this browser')
+    // Matroska keeps the fast remuxer wherever it can convert; only without WebCodecs' encoder does the engine take it.
+    const both = fixedCapabilities({ universal: true, convertAudio: true })
+    expect(source('mkv-remux', '1080p BluRay TrueHD x264', 'https://x.test/a.mkv', {}, both).engine).toBe('remux')
+    expect(source('mkv-engine', '1080p BluRay TrueHD x264', 'https://x.test/a.mkv', {}, universal).engine).toBe('universal')
+    // A native file whose sound plays is left to the browser.
+    expect(source('aac', '1080p x264 AAC', 'https://x.test/a.mp4', {}, universal).engine).toBe('native')
+  })
+})
 
 describe('engine and container', () => {
   it('reads the container from the path, else the add-on’s file name', () => {
@@ -43,7 +82,10 @@ describe('engine and container', () => {
     expect(source('mixed', '720p DTS AAC x264', 'https://x.test/a.mkv').unsupported).toBeUndefined()
     expect(source('hevc', '2160p HEVC AAC', 'https://x.test/a.mkv').unsupported).toBe('HEVC video can’t play in this browser')
     expect(source('hevc-safari', '2160p HEVC AAC', 'https://x.test/a.mp4', {}, safari).unsupported).toBeUndefined()
-    expect(source('avi', 'XviD', 'https://x.test/a.avi').unsupported).toBe('AVI files can’t play in a browser')
+    // A browser that can't run the FFmpeg engine can't open an AVI; one that can, only refuses the XviD picture.
+    expect(source('avi', '1080p x264 AAC', 'https://x.test/a.avi').unsupported).toBe('AVI files need a newer browser: Safari 17.1 or later, Chrome, Edge or Firefox')
+    expect(source('avi-xvid', 'XviD', 'https://x.test/a.avi', {}, universal).unsupported).toBe('XviD video can’t play in a browser')
+    expect(source('iso', '1080p x264', 'https://x.test/a.iso', {}, universal).unsupported).toMatch(/disc images can’t play/)
     expect(source('mkv-old', '1080p x264', 'https://x.test/a.mkv', {}, fixedCapabilities({ mse: false })).unsupported).toMatch(/Matroska needs a newer browser/)
     expect(source('headers', '1080p x264', 'https://x.test/a.mp4', { headers: { Referer: 'https://x.test' } }).unsupported).toBe('Needs request headers a browser can’t send')
     // A server transcode makes anything playable.

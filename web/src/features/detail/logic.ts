@@ -46,11 +46,11 @@ export interface PlayFacts {
 
 /** The PLAYS row: how this browser will play the source, and what's compromised. */
 export function playFacts(s: Source): PlayFacts {
-  const direct = s.engine !== 'remux'
+  const direct = s.engine !== 'remux' && s.engine !== 'universal'
   const notes: PlayFacts['notes'] = []
   if (s.convertsAudio) notes.push({ text: 'Audio converted for this browser', tone: 'plain' })
   if (s.mayStutter) notes.push({ text: 'May stutter on this device', tone: 'warn' })
-  return { direct, mode: direct ? 'Direct' : 'Remuxed in this browser', notes }
+  return { direct, mode: direct ? 'Direct' : s.engine === 'universal' ? 'Converted in this browser' : 'Remuxed in this browser', notes }
 }
 
 /** The SOURCES row: how many were found and who offered them, "5 · AIOStreams, Trellis". */
