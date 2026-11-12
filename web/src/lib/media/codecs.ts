@@ -2,14 +2,22 @@
    strings Media Source Extensions are asked about. Pure functions over `MediaStream`s, so routing and codec naming are
    tested without the WebAssembly module.
 
-   This is also where the seam for converting video lives. Today every track of a file is one of two things: copied
-   as it is (its codec plays in MP4 here) or refused with a reason (`supported: false`, which `tracks.plan` turns into
-   "This browser can’t play X video"). A later step that decodes video in the module and re-encodes it with WebCodecs
-   adds a third answer for the refused ones: see `videoDecision`. */
+   This is also where converting video is decided. A picture is copied as it is (its codec plays in MP4 here), converted
+   (the module decodes it and WebCodecs encodes it again as H.264) or refused with a reason: see `videoDecision`, which
+   `tracks.plan` follows. */
 
 import type { HeaderInfo, HeaderTrack } from '../remux/protocol'
+import { convertRefusal } from './convertible'
 import { av1Codec, esdsCodec, hevcCodec } from './mp4'
 import type { MediaStream } from './engine'
+
+/** The pictures the video module (pkg/flow-media-video.wasm) decodes, by FFmpeg's name for the codec. Keep in step with
+ *  VIDEO_DECODERS in scripts/build-media-engine.sh (video.test.ts checks the module against this list). The ones a browser
+ *  often plays itself (H.264, HEVC) are here for the cases it doesn't: 10-bit and 4:2:2 H.264, HEVC without a decoder. */
+export const VIDEO_DECODERS: ReadonlySet<string> = new Set([
+  'mpeg1video', 'mpeg2video', 'mpeg4', 'msmpeg4v1', 'msmpeg4v2', 'msmpeg4v3', 'h263', 'h263p', 'flv1', 'wmv1', 'wmv2', 'wmv3', 'vc1',
+  'vp6', 'vp6f', 'vp8', 'h264', 'hevc', 'theora', 'rv10', 'rv20', 'rv30', 'rv40', 'mjpeg', 'dvvideo', 'cinepak', 'msvideo1',
+])
 
 const hex = (n: number) => n.toString(16).toUpperCase().padStart(2, '0')
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -84,16 +92,23 @@ function rangeOf(s: MediaStream): string | undefined {
   return s.bitDepth > 8 ? 'SDR' : undefined
 }
 
-/** What happens to a picture track. `copy` is the only thing the engine does today; `convert` is for the step that decodes the picture and encodes it again. */
+/** What happens to a picture track: copied as it is, decoded here and encoded again (`convert`), or refused with a reason. */
 export type VideoDecision = { action: 'copy'; mime: string } | { action: 'convert'; reason: string } | { action: 'unsupported'; reason: string }
 
-/** The one place that decides what to do with a picture track. `isSupported` is MediaSource.isTypeSupported (the worker can't ask). */
-export function videoDecision(s: MediaStream, isSupported: (mime: string) => boolean): VideoDecision {
+/** The one place that decides what to do with a picture track. `isSupported` is MediaSource.isTypeSupported (the worker can't ask);
+ *  `canConvert` says whether this browser can encode the converted picture (WebCodecs' VideoEncoder takes H.264). */
+export function videoDecision(s: MediaStream, isSupported: (mime: string) => boolean, canConvert = false): VideoDecision {
   const codec = videoCodecString(s)
-  if (!codec) return { action: 'unsupported', reason: `Marquee can’t carry ${s.codec} video.` }
-  const mime = `video/mp4; codecs="${codec}"`
-  if (isSupported(mime)) return { action: 'copy', mime }
-  return { action: 'unsupported', reason: `This browser can’t decode ${codec}.` }
+  if (codec) {
+    const mime = `video/mp4; codecs="${codec}"`
+    if (isSupported(mime)) return { action: 'copy', mime }
+  }
+  if (!VIDEO_DECODERS.has(s.codec)) return { action: 'unsupported', reason: codec ? `This browser can’t decode ${codec}.` : `Marquee can’t carry ${s.codec} video.` }
+  const refusal = convertRefusal({ width: s.width, height: s.height, hdr: s.transfer === 16 || s.transfer === 18 })
+  if (refusal === 'size') return { action: 'unsupported', reason: `${s.codec} video at ${s.width}×${s.height} is too much to convert in a browser.` }
+  if (refusal === 'hdr') return { action: 'unsupported', reason: `${s.codec} HDR video can’t be converted without washing out its colours.` }
+  if (!canConvert) return { action: 'unsupported', reason: 'This browser has no video encoder to convert the picture with.' }
+  return { action: 'convert', reason: codec ? `This browser can’t decode ${codec}.` : `No browser plays ${s.codec} video in MP4.` }
 }
 
 /** Streams that are neither a picture nor a sound the player lists: cover art, data, subtitles (not read yet). */
@@ -121,6 +136,8 @@ export function headerFor(streams: MediaStream[], durationMs: number, title: str
         codec,
         supported: codec !== '',
         reason: codec ? '' : `${s.codec} video isn’t carried`,
+        // The video module has a decoder for it: when the browser has none, the picture can be converted as it plays.
+        decode: VIDEO_DECODERS.has(s.codec) ? ('ffmpeg' as const) : ('' as const),
         width: s.width,
         height: s.height,
         frameRate: s.frameRate || undefined,
