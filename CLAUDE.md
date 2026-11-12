@@ -40,6 +40,7 @@ scripts/sim.sh        simulator helper (below); scripts/screenshot-tour.sh is CI
 Key types: `AppModel` (observable app state, services, navigation `paths[tab]`), `PlaybackSession`
 (one playing title: AVPlayer, remux, tracks, subtitles, skip segments, Up Next, X-Ray/Shazam hooks),
 `PlayerView` (+ `IOSPlayerControls`, `TVPlayerController` in PlayerSurface.swift, `MacPlayerMenu`),
+`UniversalPlayer` (+ `UniversalSurface`, `UniversalControls`: libmpv, the built-in decoder for what Apple's player can't play, driven by the session),
 `SourcePickerView`, `DetailView`, `HeroCarousel`/`ShelfView` in Components/Shelves.swift.
 
 ## Commands

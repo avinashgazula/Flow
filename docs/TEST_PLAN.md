@@ -375,6 +375,19 @@ Judge any idea by whether it makes Marquee simpler to use, not just bigger.
 
 ## Session handover
 
+### Built-in decoder (libmpv), added without a Mac to run it on
+
+`UniversalPlayer.swift` plays what Apple's player and the remuxer can't (MPVKit 1.1.0-n9.0.2, LGPL product). It was written and pushed
+from a Linux machine and verified only by CI builds and tour screenshots, so check on a Mac first:
+- `-FlowPlayerEngine universal` forces it; the tour steps `player-universal*` and `scripts/player-check.sh <platform>` with
+  `FLOW_CHECK_ONLY=universal` run the bundled MKV through it. Look for a drawn picture (not black), controls, and on Apple TV
+  focus on the scrubber and the panel rows.
+- Rendering uses gpu-next on Vulkan/MoltenVK. If the simulator shows black, that is the first thing to fix (vo=gpu fallback).
+- Open on a device: HDR/Dolby Vision colours (tone mapped to SDR), real AVI/WMV/MPEG-2/VP9 files, background audio, tvOS
+  remote feel (held left/right), IPA size change.
+- FlowDecoders no longer links its own FFmpeg: it uses MPVKit's headers and library (two copies clash).
+
+
 What the October 2026 sessions learned about working here, so the next one can start straight away.
 Commits on `claude/build-flow-app` describe each fix; `git log` is the full record.
 

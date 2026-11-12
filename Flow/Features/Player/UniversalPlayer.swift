@@ -179,7 +179,6 @@ final class UniversalPlayer {
         option("input-default-bindings", "no")
         option("input-vo-keyboard", "no")
         option("input-media-keys", "no")
-        option("ytdl", "no")
         option("sub-auto", "no")
         option("load-scripts", "no")
         // Sound: the session's AVAudioSession category stays; channels follow the route, no passthrough.
@@ -225,7 +224,8 @@ final class UniversalPlayer {
             ("track-list", MPV_FORMAT_NONE), ("chapter-list", MPV_FORMAT_NONE),
             ("video-format", MPV_FORMAT_STRING), ("hwdec-current", MPV_FORMAT_STRING), ("file-format", MPV_FORMAT_STRING),
             ("audio-codec-name", MPV_FORMAT_STRING), ("video-params/colormatrix", MPV_FORMAT_STRING),
-            ("video-params/gamma", MPV_FORMAT_STRING), ("current-vo", MPV_FORMAT_STRING), ("audio-params/hr-channels", MPV_FORMAT_STRING),
+            ("video-params/gamma", MPV_FORMAT_STRING), ("current-vo", MPV_FORMAT_STRING), ("vo-configured", MPV_FORMAT_FLAG),
+            ("estimated-vf-fps", MPV_FORMAT_DOUBLE), ("frame-drop-count", MPV_FORMAT_INT64), ("audio-params/hr-channels", MPV_FORMAT_STRING),
         ]
         for (name, format) in observed { mpv_observe_property(created, 0, name, format) }
 
@@ -343,12 +343,17 @@ final class UniversalPlayer {
             var parts: [String] = []
             parts.append(language.isEmpty ? "Track \(id)" : LanguageName.display(language))
             // A title that only repeats the language adds nothing.
-            if !name.isEmpty, name.caseInsensitiveCompare(parts[0]) != .orderedSame, name.caseInsensitiveCompare(language) != .orderedSame { parts.append(name) }
+            if kind == "sub", !name.isEmpty, name.caseInsensitiveCompare(parts[0]) != .orderedSame, name.caseInsensitiveCompare(language) != .orderedSame { parts.append(name) }
             if kind == "audio" {
-                var detail = codecName(codec)
+                let codecLabel = codecName(codec)
                 let channels = MPVOptions.channelLabel(int(h, base + "demux-channel-count") ?? 0)
+                var detail = codecLabel
                 if !channels.isEmpty { detail += detail.isEmpty ? channels : " " + channels }
                 if !detail.isEmpty { parts.append(detail) }
+                // The file's own title when it says more than the codec and layout already do ("Director's Commentary").
+                let lowered = name.lowercased()
+                let repeats = ["dts", "ac3", "aac", "truehd", "atmos", "flac", "opus", "mp3", "stereo", "mono", "5.1", "7.1", "surround", "dolby"].contains { lowered.contains($0) }
+                if !name.isEmpty, !repeats, name.caseInsensitiveCompare(language) != .orderedSame { parts.insert(name, at: 1) }
             } else {
                 if forced { parts.append("Forced") }
                 if sdh { parts.append("SDH") }
@@ -410,6 +415,8 @@ final class UniversalPlayer {
         case .flag("core-idle", let idle):
             isCoreIdle = idle
             onTransport?()
+        case .flag(let name, let value): info[name] = value ? "yes" : "no"
+        case .number(let name, let value) where name == "estimated-vf-fps" || name == "frame-drop-count": info[name] = String(format: "%.1f", value)
         case .text(let name, let value): info[name] = value
         case .unset(let name):
             if name == "time-pos" { timePosition = 0 }
