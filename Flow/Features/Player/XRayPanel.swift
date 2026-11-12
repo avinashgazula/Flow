@@ -122,7 +122,7 @@ struct XRayPanel: View {
         }
         .onChange(of: selected) { _, member in
             // Reading about someone shouldn't mean missing the scene they're in.
-            if member != nil { session.player.pause() }
+            if member != nil { session.pausePlayback() }
         }
     }
 

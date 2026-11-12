@@ -90,7 +90,7 @@ enum ScreenshotTour {
                     try? await Task.sleep(nanoseconds: 250_000_000)
                 }
                 // Paused, so the time observer leaves the segment alone and the controls stay up.
-                m.activePlayback?.player.pause()
+                m.activePlayback?.pausePlayback()
                 m.activePlayback?.showsInfo = false
                 let intro = SkipSegment(kind: .intro, start: 0, end: 90)
                 m.activePlayback?.segments = [intro]
@@ -112,7 +112,7 @@ enum ScreenshotTour {
                         try? await Task.sleep(nanoseconds: 250_000_000)
                     }
                     // Held still: the sample is short, and would otherwise end under the panels.
-                    m.activePlayback?.player.pause()
+                    m.activePlayback?.pausePlayback()
                     m.activePlayback?.tourPanel = "options"
                 },
                 Step(name: "player-advanced") { m in m.activePlayback?.tourPanel = "advanced" },
@@ -132,7 +132,7 @@ enum ScreenshotTour {
                         try? await Task.sleep(nanoseconds: 250_000_000)
                     }
                     // Held still: the sample is short, and would otherwise end under the panel.
-                    m.activePlayback?.player.pause()
+                    m.activePlayback?.pausePlayback()
                     m.settings.subtitles.resetAppearance()
                     m.activePlayback?.tourPanel = "subtitle-style"
                 },
@@ -148,6 +148,38 @@ enum ScreenshotTour {
                     m.activePlayback?.tourPanel = nil
                 },
             ], at: index)
+        }
+        #endif
+        #if DEBUG
+        // The bundled MKV through the built-in decoder (libmpv), with the controls up; on Apple TV also with the panel open.
+        if let index = steps.firstIndex(where: { $0.name == "player-still-watching" }) {
+            var universal: [Step] = [
+                Step(name: "player-universal") { m in
+                    m.activePlayback?.stop()
+                    try? await Task.sleep(nanoseconds: 800_000_000)
+                    PlaybackSession.forcedUniversal = true
+                    if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first(where: { $0.id == DemoSourceProvider.matroskaSampleID }) {
+                        m.startPlayback(source, request: PlaybackRequest(item: duneItem))
+                        for _ in 0..<80 {
+                            guard let phase = m.activePlayback?.phase, case .connecting = phase else { break }
+                            try? await Task.sleep(nanoseconds: 250_000_000)
+                        }
+                        try? await Task.sleep(nanoseconds: 1_500_000_000)
+                        m.activePlayback?.pausePlayback()
+                        m.activePlayback?.tourPanel = "controls"
+                        log("universal: \(m.activePlayback?.universal != nil) info: " + (m.activePlayback?.infoRows().map { "\($0.label)=\($0.value)" }.joined(separator: "; ") ?? ""))
+                    }
+                },
+            ]
+            #if os(tvOS)
+            universal.append(Step(name: "player-universal-panel") { m in m.activePlayback?.tourPanel = "universal-audio" })
+            universal.append(Step(name: "player-universal-subtitles") { m in m.activePlayback?.tourPanel = "universal-subtitles" })
+            #endif
+            universal.append(Step(name: "player-universal-done") { m in
+                m.activePlayback?.tourPanel = "controls"
+                PlaybackSession.forcedUniversal = false
+            })
+            steps.insert(contentsOf: universal, at: index)
         }
         #endif
         #if !os(macOS)

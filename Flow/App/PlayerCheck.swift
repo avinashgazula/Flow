@@ -35,6 +35,7 @@ enum PlayerCheck {
         let only = Set((ProcessInfo.processInfo.environment["FLOW_CHECK_ONLY"] ?? "").split(separator: ",").map(String.init))
         func wants(_ name: String) -> Bool { only.isEmpty || only.contains(name) }
         if wants("streams") { for source in sources { await checkStream(source, request: movie, model: model) } }
+        if wants("universal") { await checkUniversal(sources, request: movie, model: model) }
         if wants("switch") { await checkSwitchingSource(sources, request: movie, model: model) }
         if wants("intro") { await checkSkipIntro(sources[0], request: movie, model: model) }
         if wants("fallback") { await checkFallback(sources[0], request: movie, model: model) }
@@ -72,13 +73,13 @@ enum PlayerCheck {
             record(back != nil, "skip back 10 s", back.map { String(format: "at %.0f", $0) } ?? String(format: "still at %.0f", session.currentTime))
         }
 
-        session.player.pause()
+        session.pausePlayback()
         let paused = await value(timeout: 3) { session.isPlaying ? nil : true }
-        record(paused == true, "pause", "rate \(session.player.rate)")
-        session.player.playImmediately(atRate: 2)
-        let fast = await value(timeout: 3) { session.player.rate == 2 ? true : nil }
-        record(fast == true, "play at 2×", "rate \(session.player.rate)")
-        session.player.rate = 1
+        record(paused == true, "pause", "rate \(session.playbackRate)")
+        session.playImmediately(rate: 2)
+        let fast = await value(timeout: 3) { session.playbackRate == 2 ? true : nil }
+        record(fast == true, "play at 2×", "rate \(session.playbackRate)")
+        session.setRateNow(1)
 
         await checkTracks(session)
         let info = session.infoRows()
@@ -101,8 +102,47 @@ enum PlayerCheck {
         _ = await value(timeout: 5) { model.activePlayback == nil ? true : nil }
     }
 
+    /// The bundled MKV through the built-in decoder: it plays, seeks, switches audio and ends.
+    private static func checkUniversal(_ sources: [StreamSource], request: PlaybackRequest, model: AppModel) async {
+        section("Built-in decoder")
+        guard let sample = sources.first(where: { $0.id == DemoSourceProvider.matroskaSampleID }) else { record(false, "setup", "no bundled MKV"); return }
+        PlaybackSession.forcedUniversal = true
+        defer { PlaybackSession.forcedUniversal = false }
+        guard let session = await start(sample, request: request, model: model, label: "built-in decoder") else { return }
+        record(session.universal != nil, "the built-in decoder has the stream", "usesRemux=\(session.usesRemux)")
+        let duration = await value(timeout: 15) { session.duration > 0 ? session.duration : nil }
+        record(duration != nil, "duration known", duration.map { "\(Int($0)) s" } ?? "still 0")
+        let t0 = session.currentTime
+        try? await Task.sleep(nanoseconds: 3_000_000_000)
+        record(session.currentTime - t0 >= 1.5, "time advances while playing", String(format: "%.1f s in 3 s", session.currentTime - t0))
+        await screen("universal-playing")
+        if let duration, duration > 8 {
+            session.seek(to: duration * 0.5, exact: true)
+            let landed = await value(timeout: 10) { abs(session.currentTime - duration * 0.5) < 3 ? true : nil }
+            record(landed != nil, "seek to the middle", String(format: "at %.0f", session.currentTime))
+        }
+        await checkTracks(session)
+        if let duration, duration > 4 {
+            session.seek(to: duration - 3, exact: true)
+            let ended = await value(timeout: 20) { session.phase == .finished || model.activePlayback == nil ? true : nil }
+            record(ended != nil, "plays to the end", "phase \(session.phase)")
+        }
+        session.stop()
+        _ = await value(timeout: 5) { model.activePlayback == nil ? true : nil }
+    }
+
     /// Every audio and subtitle option the stream offers can be chosen, and subtitles turned off again.
     private static func checkTracks(_ session: PlaybackSession) async {
+        if let universal = session.universal {
+            line("  audio: " + universal.audioTracks.map(\.title).joined(separator: ", "))
+            line("  subtitles: " + universal.subtitleTracks.map(\.title).joined(separator: ", "))
+            for track in universal.audioTracks {
+                session.chooseUniversalAudio(track.id)
+                let ok = await value(timeout: 3) { universal.selectedAudio == track.id ? true : nil }
+                record(ok == true, "audio track \(track.id) can be chosen", track.title)
+            }
+            return
+        }
         guard let item = session.player.currentItem else { record(false, "tracks", "no item"); return }
         let audio = try? await item.asset.loadMediaSelectionGroup(for: .audible)
         let legible = try? await item.asset.loadMediaSelectionGroup(for: .legible)

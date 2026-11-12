@@ -834,6 +834,17 @@ public enum MatroskaPlayback: String, Codable, Hashable, Sendable, CaseIterable,
     public var title: String { self == .remux ? "Play in Marquee" : "External Player" }
 }
 
+/// Which engine plays a stream. Apple's player (direct, or an MKV repackaged for it) keeps AirPlay,
+/// Picture in Picture, Dolby Vision and HDR; the built-in decoder (libmpv with FFmpeg) plays anything else.
+public enum PlayerEngine: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    /// Apple's player, and the built-in decoder for files it can't play.
+    case automatic
+    /// Everything through the built-in decoder.
+    case builtIn
+    public var id: String { rawValue }
+    public var title: String { self == .automatic ? "Automatic" : "Always Built-in Decoder" }
+}
+
 public struct PlaybackSettings: Codable, Hashable, Sendable {
     public var preferredResolutionCap: VideoResolution = .uhd4k
     public var autoPlayNextEpisode = true
@@ -850,6 +861,8 @@ public struct PlaybackSettings: Codable, Hashable, Sendable {
     public var pictureInPicture = true
     public var rememberLastSourcePerShow = true
     public var matroskaPlayback: MatroskaPlayback = .remux
+    /// Apple's player where it can play the file, the built-in decoder where it can't (or everywhere).
+    public var playerEngine: PlayerEngine = .automatic
     /// When a source fails to start, quietly move on to the next one.
     public var tryNextSourceOnFailure = true
     /// Say so when a film has a scene during or after its credits.

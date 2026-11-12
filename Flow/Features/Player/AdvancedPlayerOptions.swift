@@ -100,7 +100,7 @@ struct AdvancedPlayerOptions: View {
                     .accessibilityLabel("Show subtitles later")
             }
             .buttonStyle(.borderless)
-            .disabled(session.subtitle == nil)
+            .disabled(!session.canDelaySubtitles)
             Text("Positive shows subtitles later. Only for subtitles Marquee loads itself.")
                 .font(Theme.Typeface.caption)
                 .foregroundStyle(Theme.Palette.textSecondary)

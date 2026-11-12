@@ -22,6 +22,10 @@ final class PlaybackSession: Identifiable {
     private(set) var request: PlaybackRequest
     private(set) var source: StreamSource
     let player = AVPlayer()
+    /// The built-in player (libmpv), when this stream plays there instead of in Apple's. `player` then idles.
+    private(set) var universal: UniversalPlayer?
+    /// Why the built-in player has the stream, for the details panel.
+    private(set) var universalReason: String?
 
     var phase: Phase = .connecting(0.05)
     var currentTime: Double = 0
@@ -31,7 +35,10 @@ final class PlaybackSession: Identifiable {
     var subtitle: SubtitleDocument?
     var subtitleTrack: SubtitleTrackInfo?
     /// Seconds the subtitle is delayed by (negative shows it earlier), as `SubtitleDocument.text(at:offset:)` takes it.
-    var subtitleOffset: Double = 0
+    var subtitleOffset: Double = 0 {
+        // Subtitles the built-in player draws follow the same delay as the ones Flow draws.
+        didSet { universal?.setSubtitleDelay(subtitleOffset) }
+    }
     var upNext: PlaybackRequest?
     var upNextCountdown: Int?
     /// Counts player items, so views holding an item's tracks know to read them again.
@@ -132,6 +139,13 @@ final class PlaybackSession: Identifiable {
     /// The viewer picked a subtitle themselves, which a search still running for the automatic choice must not override.
     @ObservationIgnored private var subtitleChosenByViewer = false
     @ObservationIgnored private var legibleGroup: AVMediaSelectionGroup?
+    /// This stream plays in the built-in player and stays there, also when it reloads after a drop.
+    @ObservationIgnored private var universalRouted = false
+    #if DEBUG
+    /// `-FlowPlayerEngine universal` (and the screenshot tour) send every stream to the built-in player.
+    static var forcesUniversal: Bool { forcedUniversal || UserDefaults.standard.string(forKey: "FlowPlayerEngine") == "universal" }
+    nonisolated(unsafe) static var forcedUniversal = false
+    #endif
 
     private struct KeptTracks {
         var audio: String?
@@ -185,7 +199,7 @@ final class PlaybackSession: Identifiable {
                   AVAudioSession.InterruptionType(rawValue: raw) == .ended,
                   let options = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt,
                   AVAudioSession.InterruptionOptions(rawValue: options).contains(.shouldResume) else { return }
-            MainActor.assumeIsolated { self?.player.play() }
+            MainActor.assumeIsolated { self?.resumePlayback() }
         }
         #endif
     }
@@ -193,11 +207,11 @@ final class PlaybackSession: Identifiable {
     private func beginNowPlaying() {
         guard let model else { return }
         let handlers = NowPlaying.Handlers(
-            play: { [weak self] in self?.player.play() },
-            pause: { [weak self] in self?.player.pause() },
+            play: { [weak self] in self?.resumePlayback() },
+            pause: { [weak self] in self?.pausePlayback() },
             toggle: { [weak self] in self?.togglePlay() },
             skip: { [weak self] seconds in self?.seek(by: seconds) },
-            seek: { [weak self] position in self?.player.seek(to: CMTime(seconds: position, preferredTimescale: 600)) })
+            seek: { [weak self] position in self?.nowPlayingSeek(position) })
         nowPlaying.begin(title: request.episode?.title ?? request.item.title,
                          subtitle: request.episode != nil ? "\(request.item.title) · \(request.episode!.code)" : request.item.year.map(String.init),
                          artwork: request.item.smallBackdropURL ?? request.item.tmdbPosterURL,
@@ -234,6 +248,7 @@ final class PlaybackSession: Identifiable {
         teardownObservers()
         releaseRemux()
         player.replaceCurrentItem(with: nil)
+        releaseUniversal()
         releaseFinishedDownloads()
         usesRemux = false
         chapters = []
@@ -265,17 +280,31 @@ final class PlaybackSession: Identifiable {
         }
         guard !Task.isCancelled else { return }
         ScreenshotTour.log("prepare \(container) for \(url.lastPathComponent)")
+        if container == .matroska, model?.settings.playback.matroskaPlayback == .external, handOffToExternalPlayer(url) { return }
+        // Everything through the built-in decoder: the viewer's choice, or a stream Apple's player already let go of.
+        if universalRouted || model?.settings.playback.playerEngine == .builtIn || Self.debugForcesUniversal {
+            startUniversal(url: url, headers: headers, notice: nil)
+            return
+        }
         switch container {
         case .matroska:
-            if model?.settings.playback.matroskaPlayback == .external, handOffToExternalPlayer(url) { return }
             await startRemux(url: url, headers: headers, reader: probed)
-        case .unsupported(let name):
-            fail("\(name) files can't play on Apple devices. Try another source, or open it in an app like VLC or Infuse.")
+        case .unsupported:
+            // AVI, WMV, FLV, DVD and Ogg files: nothing on the Apple path opens them.
+            startUniversal(url: url, headers: headers, notice: Self.universalNotice)
         case .native, .unknown:
             var options: [String: Any] = [:]
             if !headers.isEmpty { options["AVURLAssetHTTPHeaderFieldsKey"] = headers }
             attach(AVURLAsset(url: url, options: options))
         }
+    }
+
+    private static var debugForcesUniversal: Bool {
+        #if DEBUG
+        forcesUniversal
+        #else
+        false
+        #endif
     }
 
     private static func byteSource(_ url: URL, headers: [String: String]) -> ByteSource {
@@ -302,13 +331,15 @@ final class PlaybackSession: Identifiable {
                     return
                 }
             }
+            // AV1 with no decoder in this device: the built-in decoder has one.
             if remuxer.video?.source.codecID == "V_AV1", !Platform.decodesAV1 {
-                fail("This video is AV1, which this \(Platform.deviceKind) can't decode. Try another source.")
+                startUniversal(url: url, headers: headers, notice: Self.universalNotice)
                 return
             }
             let skippedAudio = remuxer.skipped.filter { $0.track.kind == .audio }
-            if !remuxer.hasPlayableSoundtrack, let first = skippedAudio.first {
-                fail("This file's audio is \(first.reason), which Apple devices can't decode. Try another source, or open it in VLC or Infuse.")
+            // Only audio Apple's player can't decode: the built-in decoder plays it.
+            if !remuxer.hasPlayableSoundtrack, !skippedAudio.isEmpty {
+                startUniversal(url: url, headers: headers, notice: Self.universalNotice)
                 return
             }
             if let boost = model?.settings.playback.volumeBoostDB, boost > 0 { await remuxer.setLoudnessBoost(boost) }
@@ -334,8 +365,9 @@ final class PlaybackSession: Identifiable {
             // A load that was replaced while this one opened must not report its failure over the new one.
             guard !Task.isCancelled else { return }
             switch error {
-            case .unsupported(let what):
-                fail("This file uses \(what), which Apple devices can't play. Try another source, or open it in VLC or Infuse.")
+            case .unsupported:
+                // MPEG-2, VC-1, Xvid, VP8, VP9 and the like: not video Apple's player decodes.
+                startUniversal(url: url, headers: headers, notice: Self.universalNotice)
             default:
                 fail(error.localizedDescription)
             }
@@ -503,6 +535,7 @@ final class PlaybackSession: Identifiable {
     func refreshTextStyle() {
         guard let settings = model?.settings.subtitles else { return }
         player.currentItem?.textStyleRules = Self.textStyleRules(settings)
+        universal?.applySubtitleStyle(settings)
     }
 
     private func applyChapters(to item: AVPlayerItem) {
@@ -527,10 +560,14 @@ final class PlaybackSession: Identifiable {
     /// The viewer chose where to begin.
     func answerResume(_ resume: Bool) {
         if resume, let position = resumePrompt {
-            player.seek(to: CMTime(seconds: position, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
+            if let universal {
+                universal.seek(to: position, exact: true)
+            } else {
+                player.seek(to: CMTime(seconds: position, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
+            }
         }
         resumePrompt = nil
-        player.play()
+        resumePlayback()
     }
 
     private func scheduleSleep() {
@@ -542,14 +579,14 @@ final class PlaybackSession: Identifiable {
             let fade = 30.0
             try? await Task.sleep(nanoseconds: UInt64((Double(minutes) * 60 - fade) * 1_000_000_000))
             guard !Task.isCancelled, let self else { return }
-            let volume = self.player.volume
+            let volume = self.playbackVolume
             for step in 1...30 {
                 try? await Task.sleep(nanoseconds: UInt64(fade / 30 * 1_000_000_000))
-                guard !Task.isCancelled else { self.player.volume = volume; return }
-                self.player.volume = volume * Float(30 - step) / 30
+                guard !Task.isCancelled else { self.playbackVolume = volume; return }
+                self.playbackVolume = volume * Float(30 - step) / 30
             }
-            self.player.pause()
-            self.player.volume = volume
+            self.pausePlayback()
+            self.playbackVolume = volume
             self.sleepTimer = nil
             self.show(notice: "Paused by the sleep timer.")
         }
@@ -583,7 +620,7 @@ final class PlaybackSession: Identifiable {
     /// fail-over is on. Skip buttons belong to the title, so none show over the slate.
     private func rejectSlate() {
         ScreenshotTour.log("slate: \(source.providerName)")
-        player.pause()
+        pausePlayback()
         activeSegment = nil
         if model?.settings.playback.tryNextSourceOnFailure == true, !alternatives.isEmpty {
             tryNextSource(notice: StreamSlate.triedNextMessage)
@@ -598,6 +635,7 @@ final class PlaybackSession: Identifiable {
         let next = alternatives.removeFirst()
         source = next
         remuxCompatible = false
+        universalRouted = false
         keptTracks = nil
         show(notice: notice ?? "That source didn't work, so Marquee is trying \(next.providerName)\(next.traits.resolution == .unknown ? "" : " " + next.traits.resolution.label).")
         load(next)
@@ -678,7 +716,7 @@ final class PlaybackSession: Identifiable {
             var shown: Double?
             while !Task.isCancelled {
                 guard let self else { return }
-                let time = self.player.currentTime().seconds
+                let time = self.playbackTime
                 let cue = time.isFinite ? await remuxer.bitmapSubtitle(at: time) : nil
                 if cue?.start != shown {
                     shown = cue?.start
@@ -715,6 +753,15 @@ final class PlaybackSession: Identifiable {
         noteInteraction()
         let target = max(0, duration > 0 ? min(seconds, duration) : seconds)
         seekTarget = target
+        if let universal {
+            universal.seek(to: target, exact: exact)
+            // mpv reports where it landed with its restart event; a seek that never reports mustn't pin the clock.
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                if self?.seekTarget == target { self?.seekTarget = nil }
+            }
+            return
+        }
         let before = exact ? CMTime.zero : CMTime(seconds: 3, preferredTimescale: 600)
         player.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: before, toleranceAfter: .zero) { [weak self] finished in
             Task { @MainActor in
@@ -730,6 +777,7 @@ final class PlaybackSession: Identifiable {
     func previewSeek(to seconds: Double) {
         guard Date().timeIntervalSince(lastPreviewSeek) > 0.25 else { return }
         lastPreviewSeek = Date()
+        if let universal { universal.seek(to: max(0, seconds), exact: false); return }
         player.seek(to: CMTime(seconds: max(0, seconds), preferredTimescale: 600), toleranceBefore: .positiveInfinity, toleranceAfter: .positiveInfinity)
     }
     @ObservationIgnored private var lastPreviewSeek = Date.distantPast
@@ -793,6 +841,8 @@ final class PlaybackSession: Identifiable {
         // Opening an MKV takes a few seconds, so wait until the stream's tracks are known.
         var waited = 0
         while player.currentItem?.status != .readyToPlay, waited < 120 {
+            // Switched to the built-in player (its own track rules run once it has opened the file).
+            if universal != nil { return }
             switch phase { case .failed, .finished: return; default: break }
             try? await Task.sleep(nanoseconds: 250_000_000)
             if Task.isCancelled { return }
@@ -802,6 +852,13 @@ final class PlaybackSession: Identifiable {
         let audible = try? await item.asset.loadMediaSelectionGroup(for: .audible)
         let legible = try? await item.asset.loadMediaSelectionGroup(for: .legible)
         guard !Task.isCancelled, item === player.currentItem else { return }
+        // A direct file whose only soundtrack Apple's player can't decode (DTS in an MP4, say) would play in silence.
+        if !usesRemux, universal == nil, await hasOnlyUndecodableAudio(item.asset), let url = source.location.playableURL {
+            ScreenshotTour.log("audio can't be decoded: switching to the built-in decoder")
+            if currentTime > 1 { recoverAt = currentTime }
+            startUniversal(url: url, headers: source.location.headers, notice: Self.universalNotice)
+            return
+        }
 
         let audioTracks = (audible?.options ?? []).enumerated().map { index, option in
             TrackSelection.AudioTrack(id: index, language: option.extendedLanguageTag ?? "und",
@@ -934,6 +991,12 @@ final class PlaybackSession: Identifiable {
                 load(source)
                 return
             }
+            // Apple's player can't open or decode this file: the built-in decoder gets it, where it stopped.
+            if !didStart, universal == nil, shouldRetryInBuiltInDecoder(item.error), let url = source.location.playableURL {
+                ScreenshotTour.log("Apple's player failed (\(failureDetail ?? "?")): trying the built-in decoder")
+                startUniversal(url: url, headers: source.location.headers, notice: Self.universalNotice)
+                return
+            }
             // A dropped connection mid-film: reconnect where it stopped, a couple of times, before giving up.
             // Drops far apart in a long film are separate bad moments, not a dead stream: each gets its own tries.
             if let lastRecovery, Date().timeIntervalSince(lastRecovery) > 600 { recoveries = 0 }
@@ -961,11 +1024,23 @@ final class PlaybackSession: Identifiable {
         phase = .connecting(max(p, 0.15 + buffered * 0.8))
     }
 
+    private enum Transport { case playing, paused, waiting }
+
     private func timeControlChanged(_ status: AVPlayer.TimeControlStatus) {
-        guard let model else { return }
-        isBuffering = status == .waitingToPlayAtSpecifiedRate && didStart
-        nowPlaying.update(elapsed: currentTime, duration: duration, rate: player.rate)
         switch status {
+        case .playing: transportChanged(.playing)
+        case .paused: transportChanged(.paused)
+        case .waitingToPlayAtSpecifiedRate: transportChanged(.waiting)
+        @unknown default: transportChanged(.waiting)
+        }
+    }
+
+    /// Playing, paused or waiting for data, from either engine.
+    private func transportChanged(_ state: Transport) {
+        guard let model else { return }
+        isBuffering = state == .waiting && didStart
+        nowPlaying.update(elapsed: currentTime, duration: duration, rate: playbackRate)
+        switch state {
         case .playing:
             if case .connecting = phase { phase = .playing }
             if !didStart {
@@ -997,13 +1072,14 @@ final class PlaybackSession: Identifiable {
         currentTime = seconds
         if !playedLongEnough, seconds >= 60 { playedLongEnough = true }
         if duration <= 0, let d = player.currentItem?.duration.seconds, d.isFinite { duration = d }
+        if duration <= 0, let d = universal?.duration, d > 0 { duration = d }
         updateSegment(seconds)
         alertCreditsScenes(seconds)
         offerSuggestions(seconds)
         if Date().timeIntervalSince(lastReport) > 10 {
             lastReport = Date()
             Task { await report(.progress) }
-            nowPlaying.update(elapsed: seconds, duration: duration, rate: player.rate)
+            nowPlaying.update(elapsed: seconds, duration: duration, rate: playbackRate)
         }
         maybeStartUpNextCountdown()
     }
@@ -1035,7 +1111,7 @@ final class PlaybackSession: Identifiable {
     /// Stops the credits and goes straight to the end screen's suggestions (tvOS offers this from the transport bar).
     func endWithSuggestions() {
         guard !suggestions.isEmpty, phase == .playing else { return }
-        player.pause()
+        pausePlayback()
         countdownTask?.cancel()
         phase = .finished
         showsSuggestions = true
@@ -1084,6 +1160,8 @@ final class PlaybackSession: Identifiable {
         // "End of episode" means this one: let the credits run out instead of starting the next.
         if segment.kind == .credits, upNext != nil, sleepTimer != .endOfItem, segment.end >= duration - 5 {
             Task { await playUpNext() }
+        } else if let universal {
+            universal.seek(to: segment.end, exact: false)
         } else {
             player.seek(to: CMTime(seconds: segment.end, preferredTimescale: 600))
         }
@@ -1118,7 +1196,7 @@ final class PlaybackSession: Identifiable {
         if stillWatching.shouldAsk(limit: model?.settings.playback.stillWatchingAfterEpisodes ?? 0) {
             asksStillWatching = true
             upNextCountdown = nil
-            player.pause()
+            pausePlayback()
             return
         }
         stillWatching.noteAutomaticAdvance()
@@ -1144,6 +1222,10 @@ final class PlaybackSession: Identifiable {
         noteInteraction()
         let until = currentTime
         seek(to: until - 10)
+        if let universal {
+            replayWithSubtitles(in: universal, until: until)
+            return
+        }
         guard subtitle == nil, selectedBitmapTrack == nil, let item = player.currentItem else { return }
         // Forced subtitles (signs, foreign lines) don't count as subtitles being on; full ones do,
         // and then the seek alone is enough. Without this, disc subtitles were added on top.
@@ -1212,6 +1294,8 @@ final class PlaybackSession: Identifiable {
     /// How many dB louder Dolby soundtracks can play here: the headroom their mix leaves. Zero when
     /// the stream isn't remuxed by Flow or has no Dolby audio, where boost can't apply.
     var volumeBoostHeadroom: Int {
+        // The built-in decoder can lift any soundtrack.
+        if universal != nil { return 12 }
         guard usesRemux, let remuxer else { return 0 }
         return remuxer.audio.compactMap(\.loudnessHeadroom).max() ?? 0
     }
@@ -1220,6 +1304,7 @@ final class PlaybackSession: Identifiable {
     func setVolumeBoost(_ dB: Int) {
         guard let model, model.settings.playback.volumeBoostDB != dB else { return }
         model.settings.playback.volumeBoostDB = dB
+        if let universal { universal.setBoost(dB); return }
         guard usesRemux, let remuxer, let asset = player.currentItem?.asset as? AVURLAsset else { return }
         Task { [weak self] in
             await remuxer.setLoudnessBoost(dB)
@@ -1269,6 +1354,7 @@ final class PlaybackSession: Identifiable {
         alternatives = sources.filter { $0.id != next.id }
         source = next
         remuxCompatible = false
+        universalRouted = false
         recoveries = 0
         keptTracks = nil
         // "1080p BluRay" tells one AIOStreams source from another; the provider's name alone doesn't.
@@ -1300,6 +1386,7 @@ final class PlaybackSession: Identifiable {
             alternatives = []
             sources = [source]
             remuxCompatible = false
+            universalRouted = false
             upNext = nil
             didStart = false
             skippedSegments = []
@@ -1339,6 +1426,7 @@ final class PlaybackSession: Identifiable {
         if let file = source.filename ?? source.location.playableURL?.lastPathComponent, !file.isEmpty {
             rows.append(InfoRow(label: "File", value: file))
         }
+        if let universal { return universalInfoRows(rows, universal) }
         let item = player.currentItem
         if usesRemux, let remuxer {
             rows.append(InfoRow(label: "Playback", value: "MKV, remuxed on this device"))
@@ -1413,6 +1501,11 @@ final class PlaybackSession: Identifiable {
     /// Only one kind of subtitle shows at a time: a downloaded one replaces the stream's own and the disc's pictures.
     private func turnOffStreamSubtitles() async {
         if selectedBitmapTrack != nil { showBitmapSubtitle(nil) }
+        if let universal {
+            if universal.selectedSubtitle != nil { universal.selectSubtitle(nil) }
+            itemGeneration += 1
+            return
+        }
         guard let item = player.currentItem, let group = try? await item.asset.loadMediaSelectionGroup(for: .legible),
               item === player.currentItem, group.allowsEmptySelection,
               item.currentMediaSelection.selectedMediaOption(in: group) != nil else { return }
@@ -1534,7 +1627,7 @@ final class PlaybackSession: Identifiable {
         guard !isClosed, !isStopping else { return }
         isStopping = true
         let wasPlaying = didStart
-        player.pause()
+        pausePlayback()
         Task {
             if wasPlaying { await finishCurrent(completed: false) }
             close()
@@ -1557,6 +1650,7 @@ final class PlaybackSession: Identifiable {
         interruptionObserver = nil
         player.pause()
         player.replaceCurrentItem(with: nil)
+        releaseUniversal()
         teardownObservers()
         releaseRemux()
         stopBitmapSubtitles()
@@ -1640,7 +1734,10 @@ final class PlaybackSession: Identifiable {
 
     // MARK: Transport (shared by on-screen controls and the keyboard)
 
-    var isPlaying: Bool { player.rate > 0 }
+    var isPlaying: Bool {
+        if let universal { return !universal.isPaused }
+        return player.rate > 0
+    }
 
     /// Twelve-odd seconds of the soundtrack from the playhead, as an MP4, when Flow is remuxing the file itself.
     func soundtrackClip() async -> [UInt8]? {
@@ -1650,7 +1747,7 @@ final class PlaybackSession: Identifiable {
 
     /// The stream's address, when AVFoundation can read its soundtrack directly: a plain file, not HLS.
     var directSoundtrack: (url: URL, headers: [String: String])? {
-        guard !usesRemux, let url = source.location.playableURL else { return nil }
+        guard !usesRemux, universal == nil, let url = source.location.playableURL else { return nil }
         let address = url.absoluteString.lowercased()
         guard !address.contains(".m3u8"), !address.contains("/hls/"), url.pathExtension.lowercased() != "m3u" else { return nil }
         return (url, source.location.headers)
@@ -1659,7 +1756,7 @@ final class PlaybackSession: Identifiable {
     func togglePlay() {
         guard phase != .finished else { return }
         noteInteraction()
-        if isPlaying { player.pause() } else { player.play() }
+        if isPlaying { pausePlayback() } else { resumePlayback() }
     }
 
     func seek(by seconds: Double) {
@@ -1725,5 +1822,380 @@ extension AVMediaSelectionOption {
     /// so several English tracks would read alike.
     var title: String {
         AVMetadataItem.metadataItems(from: commonMetadata, filteredByIdentifier: .commonIdentifierTitle).first?.stringValue ?? displayName
+    }
+}
+
+// MARK: - Built-in decoder
+
+/// The built-in player (libmpv) as a second engine: everything Apple's player and the remuxer can't
+/// play lands here. The rest of the session (progress, skips, Up Next, tracking, Now Playing) doesn't
+/// care which engine runs; it reads and drives it through these calls.
+extension PlaybackSession {
+    static let universalNotice = "Playing with Marquee's built-in decoder"
+
+    // MARK: Engine-neutral transport
+
+    func resumePlayback() {
+        if let universal { universal.play() } else { player.play() }
+    }
+
+    func pausePlayback() {
+        if let universal { universal.pause() } else { player.pause() }
+    }
+
+    /// Plays now, at `rate`.
+    func playImmediately(rate: Double) {
+        if let universal {
+            universal.setSpeed(rate)
+            universal.play()
+        } else {
+            player.playImmediately(atRate: Float(rate))
+        }
+    }
+
+    /// The viewer's chosen speed: kept for when playback is paused and resumed, and applied if it's playing.
+    func setPlaybackSpeed(_ rate: Double) {
+        if let universal {
+            universal.setSpeed(rate)
+        } else {
+            player.defaultRate = Float(rate)
+            if player.rate > 0 { player.rate = Float(rate) }
+        }
+    }
+
+    /// A speed for the moment only (holding the picture for double speed).
+    func setRateNow(_ rate: Double) {
+        if let universal { universal.setSpeed(rate) } else { player.rate = Float(rate) }
+    }
+
+    /// The speed the viewer chose, which a hold for double speed gives back to.
+    var chosenSpeed: Double {
+        universal?.speed ?? Double(player.defaultRate)
+    }
+
+    var playbackRate: Float {
+        if let universal { return universal.isPaused ? 0 : Float(universal.speed) }
+        return player.rate
+    }
+
+    /// The playhead right now, for what draws on its own clock (subtitles).
+    var playbackTime: Double {
+        if let universal { return universal.timePosition }
+        let now = player.currentTime().seconds
+        return now.isFinite ? now : currentTime
+    }
+
+    var playbackVolume: Float {
+        get { universal.map { Float($0.currentLevel) } ?? player.volume }
+        set { if let universal { universal.setLevel(Double(newValue)) } else { player.volume = newValue } }
+    }
+
+    /// How much of the film is read ahead of the playhead, as a fraction of its length.
+    var bufferedFraction: Double {
+        guard duration > 0 else { return 0 }
+        if let universal { return min(1, (currentTime + universal.bufferedAhead) / duration) }
+        guard let range = player.currentItem?.loadedTimeRanges.last?.timeRangeValue else { return 0 }
+        return min(1, (range.start.seconds + range.duration.seconds) / duration)
+    }
+
+    /// A downloaded subtitle, or one the built-in player draws, can be moved in time.
+    var canDelaySubtitles: Bool { subtitle != nil || universal?.selectedSubtitle != nil }
+
+    /// The built-in decoder draws no AirPlay or Picture in Picture; the buttons for them hide while it plays.
+    var supportsPictureInPicture: Bool { universal == nil }
+
+    /// The built-in player has no frame to grab, so X-Ray's picture matching and scrub previews step aside.
+    var supportsFrameGrabs: Bool { universal == nil }
+
+    func nowPlayingSeek(_ position: Double) {
+        if let universal {
+            universal.seek(to: position, exact: false)
+        } else {
+            player.seek(to: CMTime(seconds: position, preferredTimescale: 600))
+        }
+    }
+
+    // MARK: Routing
+
+    /// Apple's player turned a stream down because of its format, or the stream is Flow's own repackaging
+    /// that Apple's player won't take (a 10-bit H.264 an iPhone's decoder refuses): the built-in decoder tries it.
+    func shouldRetryInBuiltInDecoder(_ error: Error?) -> Bool {
+        guard universal == nil else { return false }
+        if usesRemux { return true }
+        guard let error = error as NSError?, error.domain == AVFoundationErrorDomain else { return false }
+        // fileFormatNotRecognized, decoderNotFound, decoderTemporarilyUnavailable, decodeFailed, fileFailedToParse, failedToParse.
+        return [-11828, -11833, -11834, -11821, -11829, -11853].contains(error.code)
+    }
+
+    /// An MP4 or TS that loads but whose every soundtrack is in a codec Apple's player has no decoder for.
+    func hasOnlyUndecodableAudio(_ asset: AVAsset) async -> Bool {
+        guard let tracks = try? await asset.loadTracks(withMediaType: .audio), !tracks.isEmpty else { return false }
+        for track in tracks {
+            if (try? await track.load(.isPlayable)) == true { return false }
+        }
+        return true
+    }
+
+    /// Plays the stream in the built-in decoder, from `recoverAt` if the other engine got that far.
+    func startUniversal(url: URL, headers: [String: String], notice: String?) {
+        guard !isClosed, let model else { return }
+        // Let go of whatever Apple's player had open.
+        player.pause()
+        player.replaceCurrentItem(with: nil)
+        teardownObservers()
+        releaseRemux()
+        stopBitmapSubtitles()
+        usesRemux = false
+        releaseUniversal()
+        universalRouted = true
+        let startAt = recoverAt
+        recoverAt = nil
+        guard let engine = UniversalPlayer(url: url, headers: headers, startAt: startAt, audioLanguages: audioLanguages,
+                                           subtitleLanguages: TrackSelection.subtitleLanguages(model.settings.subtitles, showChoice: showChoice),
+                                           subtitles: model.settings.subtitles, boostDB: model.settings.playback.volumeBoostDB) else {
+            fail("The built-in decoder couldn't start. Try another source.")
+            return
+        }
+        if subtitleOffset != 0 { engine.setSubtitleDelay(subtitleOffset) }
+        engine.onLoaded = { [weak self] in self?.universalLoaded() }
+        engine.onTime = { [weak self] seconds in self?.tick(seconds) }
+        engine.onTransport = { [weak self] in self?.universalTransportChanged() }
+        engine.onEnded = { [weak self] in Task { await self?.didFinish() } }
+        engine.onFailed = { [weak self] message in self?.universalFailed(message) }
+        engine.onTracks = { [weak self] in self?.universalMediaChanged() }
+        engine.onSeekFinished = { [weak self] in self?.universalSeekFinished() }
+        universal = engine
+        universalReason = notice ?? "Chosen in Settings"
+        itemGeneration += 1
+        readyAt = nil
+        tracksApplied = false
+        phase = .connecting(0.4)
+        beginNowPlaying()
+        if let notice { show(notice: notice) }
+        trackTask?.cancel()
+        trackTask = Task { [weak self] in await self?.applyUniversalTrackSelection() }
+        ScreenshotTour.log("built-in decoder for \(url.lastPathComponent)")
+    }
+
+    func releaseUniversal() {
+        guard let engine = universal else { return }
+        engine.shutdown()
+        universal = nil
+        universalReason = nil
+    }
+
+    // MARK: Engine events
+
+    /// The file is open and its length known: the counterpart of an AVPlayerItem becoming ready.
+    private func universalLoaded() {
+        guard let universal else { return }
+        if readyAt == nil { readyAt = Date() }
+        if case .connecting(let p) = phase { phase = .connecting(max(p, 0.7)) }
+        let seconds = universal.duration
+        if seconds > 0 { duration = seconds }
+        if !didStart, seconds > 0, looksLikeSlate(duration: seconds) {
+            rejectSlate()
+            return
+        }
+        var startsPlaying = true
+        if let resumeAt, !didStart {
+            self.resumeAt = nil
+            if Self.shouldResume(at: resumeAt, duration: seconds > 0 ? seconds : .infinity) {
+                if model?.settings.playback.askToResume == true {
+                    resumePrompt = resumeAt
+                    startsPlaying = false
+                } else {
+                    universal.seek(to: resumeAt, exact: true)
+                }
+            }
+        }
+        if startsPlaying { universal.play() }
+    }
+
+    private func universalTransportChanged() {
+        guard let universal else { return }
+        if universal.isPaused {
+            transportChanged(.paused)
+        } else if universal.isBuffering || universal.isCoreIdle {
+            transportChanged(.waiting)
+        } else {
+            transportChanged(.playing)
+        }
+    }
+
+    /// The track list or chapters changed.
+    private func universalMediaChanged() {
+        guard let universal else { return }
+        itemGeneration += 1
+        let list = universal.chapters
+        guard list != chapters else { return }
+        chapters = list
+        chapterSegments = SkipSegmentResolver.fromChapters(list.map { ($0.title, $0.start) }, duration: duration)
+        if segments.isEmpty { segments = chapterSegments }
+    }
+
+    private func universalSeekFinished() {
+        guard let target = seekTarget else { return }
+        currentTime = target
+        seekTarget = nil
+    }
+
+    private func universalFailed(_ message: String) {
+        guard !isClosed, universal != nil else { return }
+        failureDetail = "libmpv · \(message)"
+        ScreenshotTour.log("built-in decoder failed: \(message)")
+        // A dropped connection mid-film: reconnect where it stopped, as the Apple path does.
+        if didStart, recoveries < 2 {
+            recoveries += 1
+            lastRecovery = Date()
+            if currentTime > 1 { recoverAt = currentTime }
+            show(notice: "Connection lost. Reconnecting…")
+            recoveryTask?.cancel()
+            recoveryTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard !Task.isCancelled else { return }
+                self?.retry()
+            }
+            return
+        }
+        fail(Self.describeBuiltIn(message))
+    }
+
+    /// mpv's error strings, in words that say what to do.
+    static func describeBuiltIn(_ message: String) -> String {
+        switch message.lowercased() {
+        case let m where m.contains("unrecognized file format"):
+            return "Marquee can't read this file. Try another source."
+        case let m where m.contains("loading failed"):
+            return "Couldn't open this stream. Its link may have expired; searching again usually finds a fresh one."
+        case let m where m.contains("video output"):
+            return "The built-in decoder couldn't draw video on this device. Try another source."
+        case let m where m.contains("audio output"):
+            return "The built-in decoder couldn't open the sound output. Check that nothing else is using it, then try again."
+        default:
+            return "The built-in decoder couldn't play this file. Try another source."
+        }
+    }
+
+    // MARK: Tracks
+
+    /// The counterpart of `applyTrackSelection` for the built-in player: the same rules, over mpv's track list.
+    private func applyUniversalTrackSelection() async {
+        guard let model else { return }
+        var waited = 0
+        while readyAt == nil, waited < 120 {
+            guard universal != nil, !Task.isCancelled else { return }
+            switch phase { case .failed, .finished: return; default: break }
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            waited += 1
+        }
+        guard let engine = universal, !Task.isCancelled else { return }
+        // The track list follows the file's first frames a moment later.
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        guard universal === engine, !Task.isCancelled else { return }
+
+        let audioTracks = engine.audioTracks.map {
+            TrackSelection.AudioTrack(id: $0.id, language: LanguageName.bcp47($0.language),
+                                      isCommentary: $0.title.localizedCaseInsensitiveContains("comment"), isDefault: $0.isDefault)
+        }
+        let subtitleTracks = engine.subtitleTracks.map {
+            TrackSelection.SubtitleTrack(id: $0.id, language: LanguageName.bcp47($0.language), isForced: $0.isForced, isSDH: $0.isSDH)
+        }
+        let decision = TrackSelection.decide(audio: audioTracks, subtitles: subtitleTracks, playback: model.settings.playback, subtitleSettings: model.settings.subtitles,
+                                             isAnime: isAnime, showChoice: showChoice, deviceLanguage: Locale.current.language.languageCode?.identifier)
+        if let id = decision.audio, engine.selectedAudio != id { engine.selectAudio(id) }
+        tracksApplied = true
+        // A downloaded subtitle stays through a source switch.
+        guard subtitle == nil else { return }
+        switch decision.subtitle {
+        case .off:
+            engine.selectSubtitle(nil)
+        case .track(let id):
+            engine.selectSubtitle(id)
+        case .search(let languages):
+            engine.selectSubtitle(nil)
+            subtitleChosenByViewer = false
+            itemGeneration += 1
+            let tracks = await SubtitleSearch.search(model.subtitleProviders(), request: request, languages: languages,
+                                                     hearingImpaired: model.settings.subtitles.subtitleType == .sdh)
+            guard !Task.isCancelled, universal === engine, !subtitleChosenByViewer, subtitle == nil,
+                  engine.selectedSubtitle == nil, let first = tracks.first else { return }
+            await selectSubtitle(first, automatic: true)
+            return
+        }
+        itemGeneration += 1
+    }
+
+    /// The viewer's audio pick from a menu: heard now, and remembered for the show.
+    func chooseUniversalAudio(_ id: Int) {
+        guard let universal else { return }
+        universal.selectAudio(id)
+        let language = universal.audioTracks.first { $0.id == id }?.language
+        remember { choice in
+            if let language, !language.isEmpty { choice.audioLanguage = LanguageName.bcp47(language) }
+        }
+        itemGeneration += 1
+    }
+
+    /// The viewer's subtitle pick from a menu (nil for off).
+    func chooseUniversalSubtitle(_ id: Int?) {
+        guard let universal else { return }
+        subtitleChosenByViewer = true
+        if id != nil {
+            // Only one kind shows at a time: the file's own replaces a downloaded one.
+            subtitle = nil
+            subtitleTrack = nil
+        }
+        universal.selectSubtitle(id)
+        let language = id.flatMap { id in universal.subtitleTracks.first { $0.id == id }?.language }
+        remember { choice in
+            choice.subtitleLanguage = language.flatMap { $0.isEmpty ? nil : LanguageName.bcp47($0) }
+            choice.subtitlesOff = id == nil
+        }
+        itemGeneration += 1
+    }
+
+    /// "What did they say?" with the built-in player: the file's subtitles for ten seconds.
+    func replayWithSubtitles(in universal: UniversalPlayer, until: Double) {
+        guard subtitle == nil else { return }
+        let current = universal.selectedSubtitle
+        if let current, universal.subtitleTracks.first(where: { $0.id == current })?.isForced == false { return }
+        let preferred = model.map { TrackSelection.subtitleLanguages($0.settings.subtitles) } ?? []
+        let options = universal.subtitleTracks.filter { !$0.isForced }
+        let pick = options.first { option in
+            preferred.contains { LanguageName.bcp47(option.language).hasPrefix(LanguageName.bcp47($0)) }
+        } ?? options.first
+        guard let pick else {
+            show(notice: "This video has no subtitles to show.")
+            return
+        }
+        replayingWithSubtitles = true
+        universal.selectSubtitle(pick.id)
+        revertReplay(at: until) { [weak self] in
+            guard let self, self.universal === universal, universal.selectedSubtitle == pick.id else { return }
+            universal.selectSubtitle(current)
+        }
+    }
+
+    // MARK: Details
+
+    func universalInfoRows(_ base: [InfoRow], _ engine: UniversalPlayer) -> [InfoRow] {
+        var rows = base
+        rows.append(InfoRow(label: "Playback", value: "Built-in decoder"))
+        if let reason = universalReason { rows.append(InfoRow(label: "Why", value: reason)) }
+        if let format = engine.info["file-format"], !format.isEmpty { rows.append(InfoRow(label: "Container", value: format)) }
+        var video: [String] = []
+        if engine.videoSize.width > 0 { video.append("\(Int(engine.videoSize.width))×\(Int(engine.videoSize.height))") }
+        if let codec = engine.info["video-format"], !codec.isEmpty { video.append(codec.uppercased()) }
+        if let hardware = engine.info["hwdec-current"], !hardware.isEmpty, hardware != "no" { video.append("hardware decoded") } else if engine.info["video-format"] != nil { video.append("software decoded") }
+        if !video.isEmpty { rows.append(InfoRow(label: "Video", value: video.joined(separator: " · "))) }
+        if let gamma = engine.info["video-params/gamma"], gamma == "pq" || gamma == "hlg" {
+            rows.append(InfoRow(label: "HDR", value: "\(gamma.uppercased()), tone mapped to this display"))
+        }
+        if let id = engine.selectedAudio, let track = engine.audioTracks.first(where: { $0.id == id }) {
+            rows.append(InfoRow(label: "Audio", value: track.title))
+        }
+        if engine.bufferedAhead > 0 { rows.append(InfoRow(label: "Buffered", value: String(format: "%.0f s ahead", engine.bufferedAhead))) }
+        return rows
     }
 }
