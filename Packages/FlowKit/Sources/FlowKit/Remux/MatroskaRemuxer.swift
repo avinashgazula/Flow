@@ -686,12 +686,19 @@ public actor MatroskaRemuxer {
 
     private var peakBandwidth: Int {
         let peak = segments.map { Double($0.byteEnd - $0.byteStart) * 8 / max($0.duration, 0.5) }.max() ?? 5_000_000
-        return max(64_000, Int(peak * 1.1))
+        return max(64_000, Int(peak * 1.1)) + decodedAudioBandwidth
     }
 
     private var averageBandwidth: Int {
         guard let last = segments.last, let first = segments.first, duration > 0 else { return peakBandwidth }
-        return max(64_000, Int(Double(last.byteEnd - first.byteStart) * 8 / duration))
+        return max(64_000, Int(Double(last.byteEnd - first.byteStart) * 8 / duration)) + decodedAudioBandwidth
+    }
+
+    /// Audio decoded on the device is served as lossless FLAC, which can be many times the size of the track in the
+    /// file (Opus especially). The playlist promises room for the largest such track at its uncompressed rate, so the
+    /// player doesn't report segments that exceed the bandwidth it was told.
+    private var decodedAudioBandwidth: Int {
+        audio.compactMap { $0.codec == .decoded ? $0.decodeSetup : nil }.map { $0.sampleRate * $0.channels * 24 }.max() ?? 0
     }
 
     private static func quoted(_ s: String) -> String { s.replacingOccurrences(of: "\"", with: "'") }

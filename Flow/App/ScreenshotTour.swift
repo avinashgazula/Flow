@@ -95,9 +95,14 @@ enum ScreenshotTour {
                     item.select(option, in: group)
                     session.seek(to: 1)
                     session.player.play()
-                    // A switch re-seeks and rebuilds buffers: wait until it is really playing again, then see time move.
+                    // A switch re-seeks and rebuilds buffers. First let the seek land (the old track is still playing, seconds
+                    // ahead, for a moment), then wait until the new one is really playing, and only then see time move.
                     var waited = 0.0
-                    while waited < 15, !(session.player.timeControlStatus == .playing && session.currentTime >= 1) {
+                    while waited < 5, session.player.timeControlStatus == .playing, session.currentTime >= 2 {
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                        waited += 0.25
+                    }
+                    while waited < 20, !(session.player.timeControlStatus == .playing && session.currentTime >= 1) {
                         try? await Task.sleep(nanoseconds: 250_000_000)
                         waited += 0.25
                     }
