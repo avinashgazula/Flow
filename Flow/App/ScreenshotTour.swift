@@ -175,6 +175,23 @@ enum ScreenshotTour {
             universal.append(Step(name: "player-universal-panel") { m in m.activePlayback?.tourPanel = "universal-audio" })
             universal.append(Step(name: "player-universal-subtitles") { m in m.activePlayback?.tourPanel = "universal-subtitles" })
             #endif
+            // An Xvid AVI: nothing on the Apple path opens it, and it must play without anyone asking.
+            universal.append(Step(name: "player-avi") { m in
+                m.activePlayback?.stop()
+                try? await Task.sleep(nanoseconds: 800_000_000)
+                PlaybackSession.forcedUniversal = false
+                if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first(where: { $0.id == DemoSourceProvider.aviSampleID }) {
+                    m.startPlayback(source, request: PlaybackRequest(item: duneItem))
+                    for _ in 0..<80 {
+                        guard let phase = m.activePlayback?.phase, case .connecting = phase else { break }
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                    }
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    m.activePlayback?.pausePlayback()
+                    m.activePlayback?.tourPanel = "controls"
+                    log("avi: universal=\(m.activePlayback?.universal != nil) phase=\(String(describing: m.activePlayback?.phase))")
+                }
+            })
             universal.append(Step(name: "player-universal-done") { m in
                 m.activePlayback?.tourPanel = "controls"
                 PlaybackSession.forcedUniversal = false

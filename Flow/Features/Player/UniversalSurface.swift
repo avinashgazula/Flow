@@ -65,11 +65,11 @@ final class UniversalSurfaceNSView: NSView {
     func host(_ layer: CAMetalLayer) {
         guard hosted !== layer else { return }
         hosted = layer
-        // A layer-backed view with the Metal layer as a sublayer, as the iPhone's: SwiftUI owns the view's
-        // own layer and can replace it, which would take the picture with it.
+        // A layer-hosting view, in the order of MPVKit's Demo-macOS: backing layer first, then the Metal layer
+        // takes its place.
         wantsLayer = true
-        self.layer?.backgroundColor = CGColor(gray: 0, alpha: 1)
-        self.layer?.addSublayer(layer)
+        self.layer = layer
+        wantsLayer = true
         needsLayout = true
     }
 

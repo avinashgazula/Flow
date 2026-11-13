@@ -71,28 +71,47 @@ enum UniversalEvent: Sendable {
 /// The mpv handle and the lock that keeps it alive while a thread uses it. mpv's client API is thread
 /// safe, but destroying the handle under a thread that is still reading events is not.
 private final class MPVHandle: @unchecked Sendable {
-    private let lock = NSLock()
+    private let condition = NSCondition()
     private var raw: OpaquePointer?
+    private var users = 0
     let queue = DispatchQueue(label: "app.flow.mpv.events", qos: .userInitiated)
     var onWake: (@Sendable () -> Void)?
 
     init(_ raw: OpaquePointer) { self.raw = raw }
 
-    /// Runs `body` with the handle, or returns nil once it has been taken for destruction.
+    /// Runs `body` with the handle, or returns nil once it has been taken for destruction. The lock is held
+    /// only to count the user, never during `body`: a property read on the event thread waits for mpv's
+    /// video thread, which can be waiting for the main thread, and the main thread must never queue behind it.
     @discardableResult
     func with<T>(_ body: (OpaquePointer) -> T) -> T? {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let raw else { return nil }
+        condition.lock()
+        guard let raw else { condition.unlock(); return nil }
+        users += 1
+        condition.unlock()
+        defer {
+            condition.lock()
+            users -= 1
+            condition.broadcast()
+            condition.unlock()
+        }
         return body(raw)
     }
 
+    /// Stops new use of the handle and returns it; `destroy` waits for the calls still inside it.
     func take() -> OpaquePointer? {
-        lock.lock()
-        defer { lock.unlock() }
+        condition.lock()
+        defer { condition.unlock() }
         let taken = raw
         raw = nil
         return taken
+    }
+
+    /// Waits for calls in flight, then destroys. Call away from the main thread: both steps can block.
+    func destroy(_ taken: OpaquePointer) {
+        condition.lock()
+        while users > 0 { condition.wait() }
+        condition.unlock()
+        mpv_terminate_destroy(taken)
     }
 }
 
@@ -211,7 +230,8 @@ final class UniversalPlayer {
         mpv_request_log_messages(created, "warn")
 
         guard mpv_initialize(created) >= 0 else {
-            handle.take().map { raw in DispatchQueue.global(qos: .utility).async { mpv_terminate_destroy(raw) } }
+            let failed = handle
+            failed.take().map { raw in DispatchQueue.global(qos: .utility).async { failed.destroy(raw) } }
             return nil
         }
         // Subtitles' look, now that the options exist (they are properties, so also changeable later).
@@ -248,10 +268,7 @@ final class UniversalPlayer {
         let handle = self.handle
         if let raw = handle.take() {
             mpv_set_wakeup_callback(raw, nil, nil)
-            DispatchQueue.global(qos: .utility).async {
-                mpv_terminate_destroy(raw)
-                withExtendedLifetime(handle) {}
-            }
+            DispatchQueue.global(qos: .utility).async { handle.destroy(raw) }
         }
     }
 
@@ -561,7 +578,7 @@ final class UniversalPlayer {
         mpv_set_wakeup_callback(raw, nil, nil)
         let keepAlive = layer
         DispatchQueue.global(qos: .utility).async {
-            mpv_terminate_destroy(raw)
+            handle.destroy(raw)
             // The layer and the wakeup context outlive the handle they were given to.
             withExtendedLifetime((handle, keepAlive)) {}
         }

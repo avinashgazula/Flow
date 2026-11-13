@@ -84,6 +84,9 @@ enum PlayerCheck {
         await checkTracks(session)
         let info = session.infoRows()
         record(!info.isEmpty, "info card has details", info.map { "\($0.label)=\($0.value)" }.joined(separator: "; "))
+        if source.id == DemoSourceProvider.aviSampleID {
+            record(session.universal != nil, "an Xvid AVI plays in the built-in decoder by itself", "universal=\(session.universal != nil)")
+        }
         if source.id == DemoSourceProvider.matroskaSampleID {
             record(session.usesRemux, "MKV is remuxed on device", "usesRemux=\(session.usesRemux)")
             record(!session.chapters.isEmpty, "MKV chapters read", "\(session.chapters.count) chapters")
