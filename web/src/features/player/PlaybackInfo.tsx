@@ -47,7 +47,7 @@ export function readInfo(controller: PlayerController, source: Source | null, au
   return [
     ['Resolution', video && video.videoWidth > 0 ? `${video.videoWidth}×${video.videoHeight}` : dash],
     ['Video', [info?.converted ? info.codec : codec, info?.converted ? 'Converted to H.264' : '', range].filter(Boolean).join(' · ') || dash],
-    ['Decoding', info?.converted ? 'In software, then encoded again' : decodingWords(source)],
+    ['Decoding', info?.converted ? 'In software' : decodingWords(source)],
     ...(info?.converted ? ([['Conversion', conversionWords(engine?.conversion?.() ?? null)]] as Row[]) : []),
     ['Engine', engine?.viaProxy ? `${engineName} · via stream proxy` : engineName],
     ['Dropped Frames', frames],

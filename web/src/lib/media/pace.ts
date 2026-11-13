@@ -40,15 +40,15 @@ export class ConversionMeter {
     return this.busyMs + (this.since === null ? 0 : now - this.since)
   }
 
-  /** Seconds of film converted per second of work over the last several seconds of work; null until there are two seconds of work to judge. */
+  /** Seconds of film converted per second of work over the last several seconds of work; null until there is a second of work to judge. */
   speed(now: number): number | null {
     const busy = this.total(now)
     this.marks.push({ busy, seconds: this.seconds })
     while (this.marks.length > 2 && busy - this.marks[1]!.busy >= 8000) this.marks.shift()
     const from = this.marks[0]!
     const span = busy - from.busy
-    if (span >= 2000) return (this.seconds - from.seconds) / (span / 1000)
-    return busy >= 2000 ? this.seconds / (busy / 1000) : null
+    if (span >= 1000) return (this.seconds - from.seconds) / (span / 1000)
+    return busy >= 1000 ? this.seconds / (busy / 1000) : null
   }
 }
 

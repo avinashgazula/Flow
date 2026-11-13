@@ -13,7 +13,8 @@
     "wasm": "sh crates/flow-remux/build-wasm.sh",
     "audio-wasm": "bash scripts/build-audio-decoders.sh",
     "media-wasm": "bash scripts/build-media-engine.sh",
-    "media-fixtures": "bash scripts/media-fixtures.sh"
+    "media-fixtures": "bash scripts/media-fixtures.sh",
+    "media-fixtures-video": "bash scripts/media-fixtures-video.sh"
   },
   "dependencies": {
     "@fontsource/archivo": "^5.3.0",

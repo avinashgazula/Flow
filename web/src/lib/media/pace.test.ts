@@ -12,11 +12,11 @@ describe('the conversion meter', () => {
     expect(m.speed(12_000)).toBeCloseTo(2, 5)
   })
 
-  it('says nothing before it has two seconds of work to judge', () => {
+  it('says nothing before it has a second of work to judge', () => {
     const m = new ConversionMeter()
     m.busy(true, 0)
     m.produced(1)
-    expect(m.speed(1500)).toBeNull()
+    expect(m.speed(800)).toBeNull()
   })
 
   it('follows the last few seconds, not the whole run', () => {
