@@ -58,7 +58,11 @@ fi
 
 os=${FLOW_SIM_OS:-26}   # the simulator runtime's major version; the Xcode 27 image sets 27
 if [ "$platform" = "ios" ]; then
-  udid=$(pick_device "iPhone 17 Pro" "iOS-$os"); [ -z "$udid" ] && udid=$(pick_device "iPhone" "iOS-$os")
+  # "iPhone 1" keeps the fallback on a numbered model: a two-screen iPhone can't be photographed without naming a display.
+  udid=""
+  for name in "iPhone 17 Pro" "iPhone 18 Pro" "iPhone 1" "iPhone"; do
+    udid=$(pick_device "$name" "iOS-$os"); [ -n "$udid" ] && break
+  done
   scheme=Flow-iOS; products=Debug-iphonesimulator
 elif [ "$platform" = "ipad" ]; then
   udid=$(pick_device "iPad Pro 13" "iOS-$os"); [ -z "$udid" ] && udid=$(pick_device "iPad" "iOS-$os")

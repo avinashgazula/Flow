@@ -47,7 +47,7 @@ pick_device() {
 import json, re, sys
 platform = sys.argv[1]
 family = "tvOS" if platform == "tvos" else "iOS"
-names = {"ios": ["iPhone 17 Pro", "iPhone 16 Pro", "iPhone"],
+names = {"ios": ["iPhone 17 Pro", "iPhone 18 Pro", "iPhone 16 Pro", "iPhone 1", "iPhone"],
          "ipad": ["iPad Pro 13", "iPad Pro", "iPad"],
          "tvos": ["Apple TV 4K", "Apple TV"]}[platform]
 def version(rt):
