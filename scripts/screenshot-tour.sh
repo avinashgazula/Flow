@@ -35,7 +35,15 @@ capture_loop() { # $1 = capture command template (uses $file)
       local idx=${step%%:*} name=${step#*:}
       local file
       file=$(printf "%s/%02d-%s.png" "$out" "$idx" "$name")
-      eval "$1" || true
+      # A capture that hangs (seen with screencapture on a macOS 27 runner) is given up on after 30 seconds, so one
+      # missing picture doesn't cost the whole tour.
+      ( eval "$1" ) &
+      local capture=$!
+      ( sleep 30; pkill -P $capture; kill $capture ) > /dev/null 2>&1 &
+      local watchdog=$!
+      wait $capture || true
+      pkill -P $watchdog > /dev/null 2>&1 || true
+      kill $watchdog > /dev/null 2>&1 || true
       echo "$idx" > "$tour_file.ack"
       echo "captured $file"
     fi
