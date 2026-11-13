@@ -62,7 +62,8 @@ enum UniversalEvent: Sendable {
     case unset(String)
     case tracks(audio: [UniversalTrack], subtitles: [UniversalTrack])
     case chapters([PlayerChapter])
-    case loaded
+    /// The file is open. Carries its length, read then and there: the length's own change event can arrive later.
+    case loaded(duration: Double)
     case restarted
     case ended(failure: String?)
     case log(String)
@@ -318,7 +319,7 @@ final class UniversalPlayer {
             default: return .unset(name)
             }
         case MPV_EVENT_FILE_LOADED:
-            return .loaded
+            return .loaded(duration: number(h, "duration") ?? 0)
         case MPV_EVENT_PLAYBACK_RESTART:
             return .restarted
         case MPV_EVENT_END_FILE:
@@ -453,7 +454,8 @@ final class UniversalPlayer {
             selectedSubtitle = subtitles.first(where: \.isSelected)?.id
             onTracks?()
         case .chapters(let list): chapters = list
-        case .loaded:
+        case .loaded(let seconds):
+            if seconds > 0 { duration = seconds }
             onLoaded?()
         case .restarted:
             onSeekFinished?()

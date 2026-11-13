@@ -107,13 +107,17 @@ jobs:
           xcodegen generate
       - name: Run tour
         run: scripts/screenshot-tour.sh ${{ matrix.platform }} shots/${{ matrix.xcode == '27' && 'xcode27/' || '' }}${{ matrix.platform }}
-      - name: Check the built-in player shots and the app size
+      - name: Check the built-in player and decoded audio played, and the app size
         run: |
           dir=shots/${{ matrix.xcode == '27' && 'xcode27/' || '' }}${{ matrix.platform }}
           missing=0
           for name in player-universal player-avi player-universal-done; do
             ls "$dir"/*-"$name".png > /dev/null 2>&1 || { echo "::error::No $name screenshot: the app died or the step never ran"; missing=1; }
           done
+          # A screenshot alone can be of a player that never started: the tour log says whether each one played.
+          log="$dir/tour.log"
+          grep -q "avi: universal=true phase=.*playing" "$log" || { echo "::error::The AVI sample never started in the built-in player"; missing=1; }
+          [ "$(grep -c "audio track .* PLAYING" "$log")" -ge 3 ] || { echo "::error::Not every track of the Opus, Vorbis and PCM sample played"; missing=1; }
           for app in dd/Build/Products/*/Flow.app; do
             size=$(du -sh "$app" | awk '{print $1}')
             echo "${{ matrix.platform }} Flow.app (Xcode ${{ matrix.xcode }}): $size on disk" | tee -a "$GITHUB_STEP_SUMMARY"
