@@ -137,7 +137,7 @@ final class FFmpegAudioDecoder: AudioDecoding {
     }
 
     /// Converts a decoded frame to interleaved 24-bit samples in WAVE order, exactly `channels` wide.
-    private func append(_ frame: UnsafeMutablePointer<AVFrame>, to out: inout [Int32]) {
+    @_optimize(speed) private func append(_ frame: UnsafeMutablePointer<AVFrame>, to out: inout [Int32]) {
         let count = Int(frame.pointee.nb_samples)
         let decodedChannels = Int(frame.pointee.ch_layout.nb_channels)
         guard count > 0, decodedChannels > 0, let planes = frame.pointee.extended_data else { return }

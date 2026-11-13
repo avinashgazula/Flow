@@ -143,6 +143,19 @@ struct PlayerView: View {
         #endif
     }
 
+    #if os(macOS)
+    /// AVPlayerView brings Apple's own controls; the built-in decoder's picture gets Flow's.
+    @ViewBuilder
+    private var macVideo: some View {
+        if let universal = session.universal {
+            UniversalSurface(player: universal)
+                .overlay { UniversalMacControls(session: session) }
+        } else {
+            MacPlayerView(player: session.player)
+        }
+    }
+    #endif
+
     private var externalPlayerName: String? {
         let player = model.settings.playback.externalPlayer
         return player != .none && Platform.externalPlayers.contains(player) ? player.title : nil
@@ -153,10 +166,14 @@ struct PlayerView: View {
         #if os(iOS)
         IOSPlayerControls(session: session, showSubtitles: $showSubtitles)
         #elseif os(tvOS)
-        TVPlayerController(session: session, model: model, subtitleSettings: model.settings.subtitles) { showSubtitles = true }
-            .ignoresSafeArea()
+        if let universal = session.universal {
+            UniversalTVPlayer(session: session, universal: universal, model: model) { showSubtitles = true }
+        } else {
+            TVPlayerController(session: session, model: model, subtitleSettings: model.settings.subtitles) { showSubtitles = true }
+                .ignoresSafeArea()
+        }
         #else
-        MacPlayerView(player: session.player)
+        macVideo
             .overlay(alignment: .topLeading) {
                 // Close sits top left, where a Mac window's own close lives; Esc does the same.
                 MacControlBar {
@@ -188,6 +205,7 @@ struct PlayerView: View {
                         }
                         .macBarMenu(label: "Disc Subtitles")
                     }
+                    if let universal = session.universal { UniversalTrackMenu(session: session, universal: universal) }
                     MacPlayerMenu(session: session)
                     MacBarButton(systemImage: "person.crop.rectangle.stack", label: "X-Ray") { session.showsXRay.toggle() }
                     MacBarButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle", label: "Playback Info") { session.showsInfo.toggle() }
@@ -1090,13 +1108,7 @@ struct IOSPlayerControls: View {
 
     var body: some View {
         ZStack {
-            PlayerLayerView(player: session.player, gravity: fill ? .resizeAspectFill : .resizeAspect) { layer in
-                if AVPictureInPictureController.isPictureInPictureSupported(), pip == nil {
-                    let controller = AVPictureInPictureController(playerLayer: layer)
-                    controller?.canStartPictureInPictureAutomaticallyFromInline = model.settings.playback.pictureInPicture
-                    DispatchQueue.main.async { pip = controller }
-                }
-            }
+            videoSurface
             .ignoresSafeArea()
             .overlay {
                 // Double-tap either side to skip, single tap to show or hide the controls.
@@ -1112,14 +1124,14 @@ struct IOSPlayerControls: View {
                         .onTapGesture { toggle() }
                         // Hold for double speed, as long as the finger stays down.
                         .onLongPressGesture(minimumDuration: 0.45, maximumDistance: 40) {
-                            guard session.player.rate > 0 else { return }
+                            guard session.isPlaying else { return }
                             session.noteInteraction()
                             boosting = true
-                            session.player.rate = 2
+                            session.setRateNow(2)
                         } onPressingChanged: { pressing in
                             guard !pressing, boosting else { return }
                             boosting = false
-                            session.player.rate = Float(speed)
+                            session.setRateNow(speed)
                         }
                 }
                 .ignoresSafeArea()
@@ -1203,8 +1215,10 @@ struct IOSPlayerControls: View {
             updatePreview(time)
         }
         .onReceive(NotificationCenter.default.publisher(for: AVPlayer.rateDidChangeNotification, object: session.player)) { _ in
-            isPlaying = session.player.rate > 0
+            isPlaying = session.isPlaying
         }
+        // The built-in player reports through the session instead of AVPlayer's notification.
+        .onChange(of: session.universal?.isPaused) { _, _ in isPlaying = session.isPlaying }
         .onChange(of: isPlaying) { _, playing in
             if playing {
                 if xrayFromPause { session.showsXRay = false }
@@ -1230,14 +1244,17 @@ struct IOSPlayerControls: View {
                 HStack(alignment: .center) {
                     PlayerCluster {
                         ClusterButton(systemImage: "xmark", label: "Close Player") { session.stop() }
-                        if let pip {
+                        // The built-in decoder draws on its own layer: no Picture in Picture or AirPlay video from it.
+                        if let pip, session.supportsPictureInPicture {
                             ClusterButton(systemImage: "pip.enter", label: "Picture in Picture") { pip.startPictureInPicture() }
                         }
                         ClusterButton(systemImage: session.showsInfo ? "info.circle.fill" : "info.circle", label: "Playback Info") { session.showsInfo.toggle() }
-                        RoutePicker()
-                            .frame(width: 44, height: 44)
-                            .shadow(color: .black.opacity(0.45), radius: 4, y: 1)
-                            .accessibilityLabel("AirPlay")
+                        if session.supportsPictureInPicture {
+                            RoutePicker()
+                                .frame(width: 44, height: 44)
+                                .shadow(color: .black.opacity(0.45), radius: 4, y: 1)
+                                .accessibilityLabel("AirPlay")
+                        }
                     }
                     Spacer(minLength: 12)
                     // iPhone in portrait has no room for it; the side buttons do the job there.
@@ -1362,24 +1379,51 @@ struct IOSPlayerControls: View {
         .accessibilityLabel(label)
     }
 
-    private var buffered: Double {
-        guard session.duration > 0, let range = session.player.currentItem?.loadedTimeRanges.last?.timeRangeValue else { return 0 }
-        return min(1, (range.start.seconds + range.duration.seconds) / session.duration)
+    /// Apple's player draws into an AVPlayerLayer, which also feeds Picture in Picture; the built-in
+    /// decoder (libmpv) draws on a Metal layer of its own.
+    @ViewBuilder
+    private var videoSurface: some View {
+        if let universal = session.universal {
+            UniversalSurface(player: universal, fill: fill)
+        } else {
+            PlayerLayerView(player: session.player, gravity: fill ? .resizeAspectFill : .resizeAspect) { layer in
+                if AVPictureInPictureController.isPictureInPictureSupported(), pip == nil {
+                    let controller = AVPictureInPictureController(playerLayer: layer)
+                    controller?.canStartPictureInPictureAutomaticallyFromInline = model.settings.playback.pictureInPicture
+                    DispatchQueue.main.async { pip = controller }
+                }
+            }
+        }
     }
+
+    private var buffered: Double { session.bufferedFraction }
 
     private func setRate(_ rate: Double) {
         speed = rate
-        session.player.defaultRate = Float(rate)
-        if session.player.rate > 0 { session.player.rate = Float(rate) }
+        session.setPlaybackSpeed(rate)
     }
 
     /// What the options panel and Advanced Options read and change.
     private var mediaOptions: PlayerMediaOptions {
-        PlayerMediaOptions(audio: audioOptions, audioSelection: audioChoice,
-                           legible: legibleOptions, legibleSelection: legibleChoice, speed: speed,
-                           selectAudio: { select($0, characteristic: .audible) },
-                           selectLegible: { select($0, characteristic: .legible) },
-                           setSpeed: setRate)
+        if let universal = session.universal {
+            let audio = universal.audioTracks.map { PlayerTrack(id: $0.id, title: $0.title) }
+            let legible = universal.subtitleTracks.map { PlayerTrack(id: $0.id, title: $0.title) }
+            return PlayerMediaOptions(audio: audio, audioSelection: audio.first { $0.id == universal.selectedAudio },
+                                      legible: legible, legibleSelection: legible.first { $0.id == universal.selectedSubtitle }, speed: speed,
+                                      selectAudio: { session.chooseUniversalAudio($0.id) },
+                                      selectLegible: { session.chooseUniversalSubtitle($0?.id) },
+                                      setSpeed: setRate)
+        }
+        // Apple's tracks are numbered by their place in the group.
+        func tracks(_ options: [AVMediaSelectionOption]) -> [PlayerTrack] { options.enumerated().map { PlayerTrack(id: $0.offset, title: $0.element.title) } }
+        func track(_ option: AVMediaSelectionOption?, in options: [AVMediaSelectionOption]) -> PlayerTrack? {
+            option.flatMap { options.firstIndex(of: $0) }.map { PlayerTrack(id: $0, title: options[$0].title) }
+        }
+        return PlayerMediaOptions(audio: tracks(audioOptions), audioSelection: track(audioChoice, in: audioOptions),
+                                  legible: tracks(legibleOptions), legibleSelection: track(legibleChoice, in: legibleOptions), speed: speed,
+                                  selectAudio: { if audioOptions.indices.contains($0.id) { select(audioOptions[$0.id], characteristic: .audible) } },
+                                  selectLegible: { select($0.flatMap { legibleOptions.indices.contains($0.id) ? legibleOptions[$0.id] : nil }, characteristic: .legible) },
+                                  setSpeed: setRate)
     }
 
     private var hasEpisodes: Bool { session.request.episode != nil && !session.seasonEpisodes.isEmpty }
@@ -1418,7 +1462,7 @@ struct IOSPlayerControls: View {
     }
 
     private func togglePlay() {
-        if session.player.rate > 0 { session.player.pause() } else { session.player.playImmediately(atRate: Float(speed)) }
+        if session.isPlaying { session.pausePlayback() } else { session.playImmediately(rate: speed) }
         scheduleHide()
     }
 
@@ -1614,8 +1658,7 @@ struct SubtitleLayer: View {
                 if let subtitle = session.subtitle {
                     // Its own clock, a tenth of a second: the session's half-second tick would show lines late.
                     TimelineView(.periodic(from: .now, by: 0.1)) { _ in
-                        let now = session.player.currentTime().seconds
-                        let time = now.isFinite ? now : session.currentTime
+                        let time = session.playbackTime
                         SubtitleOverlay(text: subtitle.text(at: time, offset: session.subtitleOffset), settings: settings,
                                         cues: settings.keepASSStyling ? subtitle.cues(at: time, offset: session.subtitleOffset) : [])
                     }

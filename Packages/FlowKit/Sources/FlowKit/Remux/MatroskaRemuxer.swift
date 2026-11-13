@@ -88,6 +88,9 @@ public actor MatroskaRemuxer {
     private var bitmapCues: [BitmapSubtitle] = []
     private var decodedSegments = Set<Int>()
     private var transcoders: [Int: AudioTranscoder] = [:]
+    /// Segments of decoded tracks already built, newest last. The player gives up on a request after about two seconds and asks
+    /// again; without this every retry would decode the same segment once more, and none would ever finish in time.
+    private var finishedDecodedSegments: [(key: String, bytes: [UInt8])] = []
     /// dB of Dolby headroom to give back (see `DolbyLoudness`); applies to segments built from now on.
     private var loudnessBoost = 0
 
@@ -718,12 +721,20 @@ public actor MatroskaRemuxer {
         } else if t.codec == .decoded {
             // Opus after a seek: the decoder first runs through the end of the previous segment, which the
             // player never hears, so the music starts clean instead of with a click.
+            let key = "\(track)/\(index)"
+            if let cached = finishedDecodedSegments.first(where: { $0.key == key }) { return cached.bytes }
             var prime: [MatroskaBlock] = []
             if let setup = t.decodeSetup, setup.seekPreRoll > 0, index > 0, let first = blocks.first, transcoders[t.id]?.lastSegment != index - 1 {
                 let reach = first.time - Int64(setup.seekPreRoll) * 1_000_000_000 / Int64(setup.sampleRate) - 40_000_000
                 prime = try await self.blocks(for: index - 1).filter { $0.track == track && $0.time >= reach && $0.time < first.time }
             }
+            // A retry of this very request may have finished while the blocks above were loading.
+            if let cached = finishedDecodedSegments.first(where: { $0.key == key }) { return cached.bytes }
             (samples, base) = decodedSamples(blocks, segment: segment, track: t, prime: prime)
+            let bytes = MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: base, samples: samples, isVideo: false)
+            finishedDecodedSegments.append((key, bytes))
+            if finishedDecodedSegments.count > 8 { finishedDecodedSegments.removeFirst() }
+            return bytes
         } else {
             (samples, base) = audioSamples(blocks, segment: segment, track: t)
         }

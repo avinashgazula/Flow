@@ -91,12 +91,22 @@ CI (`.github/workflows/ci.yml`) runs the FlowKit tests on Linux and macOS and bu
 
 ## Third-party software
 
+Marquee's built-in decoder for files Apple's player can't play is [mpv](https://mpv.io)'s libmpv, through
+[MPVKit](https://github.com/mpvkit/MPVKit) 1.1.0-n9.0.2 (its LGPL product, never the GPL one). That brings
+[FFmpeg](https://ffmpeg.org) n9.0.2 (LGPL 2.1 or later), libass, libplacebo, MoltenVK, dav1d, FreeType, HarfBuzz, FriBidi,
+GnuTLS, libbluray and lcms2, all LGPL or more permissive; no GPL or non-free parts. The same FFmpeg decodes DTS, Dolby
+TrueHD, Opus, Vorbis, MP2, ALAC, WavPack, TTA and Windows Media audio for the MKV remuxer (`Packages/FlowDecoders` only carries its headers; the old standalone build in
+`Packages/FlowDecoders/FFmpegDecoders` is no longer linked, since two copies of FFmpeg clash). Because Marquee's
+source is public, the app can be relinked against modified versions of these libraries. The licences appear in
+the app under Settings → General → Open Source Licences, and **Decode Audio Apple Can't Play** in Playback settings
+turns that decoding off.
+
+What plays where: Apple's player plays MP4, MOV, HLS and TS directly, and MKV/WebM through the on-device remux. The
+built-in decoder takes AVI, WMV/ASF, FLV, RealMedia, VOB/MPEG-PS and Ogg files; video in MPEG-2, VC-1, Xvid/DivX, VP8,
+VP9, 10-bit H.264, and AV1 on devices with no AV1 decoder; and files whose only soundtrack Apple's player can't decode.
+It takes over by itself ("Playing with Marquee's built-in decoder"), or for everything with Settings → Playback →
+Player Engine → Always Built-in Decoder. It gives up Picture in Picture, AirPlay video and Dolby Vision passthrough
+(HDR is tone mapped to SDR), and X-Ray's picture matching and scrub previews.
+
 On the website, a second FFmpeg 7.1.1 build (`web/scripts/build-media-engine.sh`, `web/src/lib/media/pkg/`) reads AVI, MPEG-TS, WMV, FLV and other containers, converts sound a browser can't play, and (a second module) decodes pictures it can't, which the browser then encodes again as H.264 (MPEG-2, Xvid, WMV, 10-bit H.264, HEVC without a decoder; not 4K or HDR); it is LGPL 2.1 too, with no GPL or non-free part, and is listed under Settings → About → Open Source Licences.
 
-Marquee decodes DTS, Dolby TrueHD, Opus, Vorbis and other audio that Apple's player can't play with [FFmpeg](https://ffmpeg.org) 7.1.1, licensed under the
-[LGPL 2.1](Packages/FlowDecoders/Sources/FlowDecoders/Resources/COPYING.LGPLv2.1). It is built from the
-unmodified release with only its audio decoders (DTS, TrueHD/MLP, Opus, Vorbis, MPEG audio layers 1 and 2, ALAC, WavPack, TTA, Windows Media Audio, ADPCM, A-law, mu-law, AC-3 and E-AC-3; libavcodec, libavutil and libswresample; no GPL or non-free parts) by
-`scripts/build-ffmpeg-decoders.sh`, which CI runs on macOS to produce
-`Packages/FlowDecoders/FFmpegDecoders`. Marquee links it statically; because Marquee's source is public, it
-can be rebuilt against a modified FFmpeg. The licence also appears in the app under Settings → General →
-Open Source Licences, and **Decode Audio Apple Can't Play** in Playback settings turns the decoding off.

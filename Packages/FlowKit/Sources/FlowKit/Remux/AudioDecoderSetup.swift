@@ -190,7 +190,7 @@ public final class PCMDecoder: AudioDecoding {
 
     public func reset() {}
 
-    public func decode(_ frame: [UInt8]) -> [Int32] {
+    @_optimize(speed) public func decode(_ frame: [UInt8]) -> [Int32] {
         let width = format.bytesPerSample
         let count = frame.count / (width * format.channels) * format.channels
         guard count > 0 else { return [] }

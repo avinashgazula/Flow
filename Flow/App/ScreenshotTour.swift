@@ -91,23 +91,38 @@ enum ScreenshotTour {
                     log("audio sample: no audio group")
                     return
                 }
-                for option in group.options + [group.options[0]] {
+                for option in group.options {
                     item.select(option, in: group)
                     session.seek(to: 1)
                     session.player.play()
-                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    // A switch re-seeks and rebuilds buffers: wait until it is really playing again, then see time move.
+                    var waited = 0.0
+                    while waited < 15, !(session.player.timeControlStatus == .playing && session.currentTime >= 1) {
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                        waited += 0.25
+                    }
                     let before = session.currentTime
-                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
                     let moved = session.currentTime - before
-                    log("audio track \(option.displayName): phase=\(session.phase) time=\(String(format: "%.1f", session.currentTime)) moved=\(String(format: "%.1f", moved)) s in 1.5 s \(moved >= 1 ? "PLAYING" : "STALLED")")
+                    let why = session.player.reasonForWaitingToPlay?.rawValue ?? "-"
+                    log("audio track \(option.displayName): ready after \(String(format: "%.1f", waited)) s, time=\(String(format: "%.1f", session.currentTime)) moved=\(String(format: "%.1f", moved)) s in 2 s waiting=\(why) \(moved >= 1.5 ? "PLAYING" : "STALLED")")
                 }
+                // Back on the first track, paused, so the screenshot is the picture with its controls.
+                item.select(group.options[0], in: group)
+                session.seek(to: 1)
+                session.player.play()
+                var waited = 0.0
+                while waited < 15, !(session.player.timeControlStatus == .playing && session.currentTime >= 1.2) {
+                    try? await Task.sleep(nanoseconds: 250_000_000)
+                    waited += 0.25
+                }
+                session.player.pause()
                 for event in item.accessLog()?.events ?? [] {
                     log("access: \(event.uri ?? "-") segments=\(event.numberOfMediaRequests) stalls=\(event.numberOfStalls) bitrate=\(Int(event.observedBitrate))")
                 }
                 for event in item.errorLog()?.events ?? [] {
                     log("error log: \(event.errorStatusCode) \(event.errorComment ?? "-") \(event.uri ?? "-")")
                 }
-                session.seek(to: 1)
             },
             Step(name: "person") { m in m.activePlayback?.stop(); m.paths[.home] = [.detail(duneItem), .person(id: 1190668, name: "Timothée Chalamet")] },
             // Home once more after the player has saved a new resume point: it must agree with the Library's row.
@@ -133,7 +148,7 @@ enum ScreenshotTour {
                     try? await Task.sleep(nanoseconds: 250_000_000)
                 }
                 // Paused, so the time observer leaves the segment alone and the controls stay up.
-                m.activePlayback?.player.pause()
+                m.activePlayback?.pausePlayback()
                 m.activePlayback?.showsInfo = false
                 let intro = SkipSegment(kind: .intro, start: 0, end: 90)
                 m.activePlayback?.segments = [intro]
@@ -155,7 +170,7 @@ enum ScreenshotTour {
                         try? await Task.sleep(nanoseconds: 250_000_000)
                     }
                     // Held still: the sample is short, and would otherwise end under the panels.
-                    m.activePlayback?.player.pause()
+                    m.activePlayback?.pausePlayback()
                     m.activePlayback?.tourPanel = "options"
                 },
                 Step(name: "player-advanced") { m in m.activePlayback?.tourPanel = "advanced" },
@@ -175,7 +190,7 @@ enum ScreenshotTour {
                         try? await Task.sleep(nanoseconds: 250_000_000)
                     }
                     // Held still: the sample is short, and would otherwise end under the panel.
-                    m.activePlayback?.player.pause()
+                    m.activePlayback?.pausePlayback()
                     m.settings.subtitles.resetAppearance()
                     m.activePlayback?.tourPanel = "subtitle-style"
                 },
@@ -191,6 +206,55 @@ enum ScreenshotTour {
                     m.activePlayback?.tourPanel = nil
                 },
             ], at: index)
+        }
+        #endif
+        #if DEBUG
+        // The bundled MKV through the built-in decoder (libmpv), with the controls up; on Apple TV also with the panel open.
+        if let index = steps.firstIndex(where: { $0.name == "player-still-watching" }) {
+            var universal: [Step] = [
+                Step(name: "player-universal") { m in
+                    m.activePlayback?.stop()
+                    try? await Task.sleep(nanoseconds: 800_000_000)
+                    PlaybackSession.forcedUniversal = true
+                    if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first(where: { $0.id == DemoSourceProvider.matroskaSampleID }) {
+                        m.startPlayback(source, request: PlaybackRequest(item: duneItem))
+                        for _ in 0..<80 {
+                            guard let phase = m.activePlayback?.phase, case .connecting = phase else { break }
+                            try? await Task.sleep(nanoseconds: 250_000_000)
+                        }
+                        try? await Task.sleep(nanoseconds: 1_500_000_000)
+                        m.activePlayback?.pausePlayback()
+                        m.activePlayback?.tourPanel = "controls"
+                        log("universal: \(m.activePlayback?.universal != nil) info: " + (m.activePlayback?.infoRows().map { "\($0.label)=\($0.value)" }.joined(separator: "; ") ?? ""))
+                    }
+                },
+            ]
+            #if os(tvOS)
+            universal.append(Step(name: "player-universal-panel") { m in m.activePlayback?.tourPanel = "universal-audio" })
+            universal.append(Step(name: "player-universal-subtitles") { m in m.activePlayback?.tourPanel = "universal-subtitles" })
+            #endif
+            // An Xvid AVI: nothing on the Apple path opens it, and it must play without anyone asking.
+            universal.append(Step(name: "player-avi") { m in
+                m.activePlayback?.stop()
+                try? await Task.sleep(nanoseconds: 800_000_000)
+                PlaybackSession.forcedUniversal = false
+                if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first(where: { $0.id == DemoSourceProvider.aviSampleID }) {
+                    m.startPlayback(source, request: PlaybackRequest(item: duneItem))
+                    for _ in 0..<80 {
+                        guard let phase = m.activePlayback?.phase, case .connecting = phase else { break }
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                    }
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    m.activePlayback?.pausePlayback()
+                    m.activePlayback?.tourPanel = "controls"
+                    log("avi: universal=\(m.activePlayback?.universal != nil) phase=\(String(describing: m.activePlayback?.phase))")
+                }
+            })
+            universal.append(Step(name: "player-universal-done") { m in
+                m.activePlayback?.tourPanel = "controls"
+                PlaybackSession.forcedUniversal = false
+            })
+            steps.insert(contentsOf: universal, at: index)
         }
         #endif
         #if !os(macOS)

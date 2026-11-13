@@ -13,15 +13,15 @@ enum PlaybackSpeed {
 }
 
 /// The media-selection state the panel shows. It lives in `IOSPlayerControls`, which owns the
-/// AVFoundation groups, so the panel only reads values and calls back.
+/// AVFoundation groups (or reads the built-in player's track list), so the panel only reads values and calls back.
 struct PlayerMediaOptions {
-    var audio: [AVMediaSelectionOption] = []
-    var audioSelection: AVMediaSelectionOption?
-    var legible: [AVMediaSelectionOption] = []
-    var legibleSelection: AVMediaSelectionOption?
+    var audio: [PlayerTrack] = []
+    var audioSelection: PlayerTrack?
+    var legible: [PlayerTrack] = []
+    var legibleSelection: PlayerTrack?
     var speed = 1.0
-    let selectAudio: (AVMediaSelectionOption) -> Void
-    let selectLegible: (AVMediaSelectionOption?) -> Void
+    let selectAudio: (PlayerTrack) -> Void
+    let selectLegible: (PlayerTrack?) -> Void
     let setSpeed: (Double) -> Void
 
     /// "Off", or the picture, embedded or downloaded subtitle on screen.

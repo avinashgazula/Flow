@@ -30,7 +30,7 @@ Flow/                 the app (one SwiftUI code base, #if os(...) where platform
 Packages/FlowKit/     everything testable without UI: models, TMDb/Trakt/Simkl/servers clients, source
                       parsing and ranking, MKV demuxer + fMP4/HLS remuxer, Dolby Vision RPU rewriting,
                       subtitles, X-Ray matching, sync, stats. Pure Swift, also builds on Linux.
-Packages/FlowDecoders FFmpeg DTS/TrueHD decoders (built by scripts/build-ffmpeg-decoders.sh)
+Packages/FlowDecoders FFmpeg audio decoders (DTS, TrueHD, Opus, Vorbis, ...) through the FFmpeg bundled with MPVKit
 Widgets/, TopShelf/   widget and Apple TV Top Shelf extensions
 web/                  Marquee for the web: Vite + React + TanStack; see web/README.md (npm run dev, ?demo for sample data)
 project.yml           XcodeGen spec. Flow.xcodeproj is generated from it and committed.
@@ -40,6 +40,7 @@ scripts/sim.sh        simulator helper (below); scripts/screenshot-tour.sh is CI
 Key types: `AppModel` (observable app state, services, navigation `paths[tab]`), `PlaybackSession`
 (one playing title: AVPlayer, remux, tracks, subtitles, skip segments, Up Next, X-Ray/Shazam hooks),
 `PlayerView` (+ `IOSPlayerControls`, `TVPlayerController` in PlayerSurface.swift, `MacPlayerMenu`),
+`UniversalPlayer` (+ `UniversalSurface`, `UniversalControls`: libmpv, the built-in decoder for what Apple's player can't play, driven by the session),
 `SourcePickerView`, `DetailView`, `HeroCarousel`/`ShelfView` in Components/Shelves.swift.
 
 ## Commands

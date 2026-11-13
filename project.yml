@@ -30,6 +30,10 @@ packages:
     path: Packages/FlowKit
   FlowDecoders:
     path: Packages/FlowDecoders
+  # libmpv with FFmpeg: the built-in player for what Apple's can't play (LGPL build, never MPVKit-GPL).
+  MPVKit:
+    url: https://github.com/mpvkit/MPVKit.git
+    exactVersion: 1.1.0-n9.0.2
 
 targetTemplates:
   FlowApp:
@@ -47,6 +51,8 @@ targetTemplates:
     dependencies:
       - package: FlowKit
       - package: FlowDecoders
+      - package: MPVKit
+        product: MPVKit
     settings:
       base:
         INFOPLIST_KEY_CFBundleDisplayName: Marquee

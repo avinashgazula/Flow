@@ -434,6 +434,19 @@ final class DecodedAudioTrackTests: XCTestCase {
         XCTAssertTrue(decoded.prefix(expected.count) == expected[...], "the FLAC the player decodes is the file's PCM")
     }
 
+    /// The player gives up on a slow request and asks again: the second answer is the first, not another decode.
+    func testARetriedSegmentIsAnsweredWithoutDecodingAgain() async throws {
+        let provider = RecordingProvider()
+        MatroskaRemuxer.audioDecoders = provider
+        let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture("opus")), targetSegment: 1)
+        let opus = try XCTUnwrap(remuxer.audio.first { $0.source.channels == 2 })
+        let first = try await remuxer.mediaSegment(track: opus.id, index: 0)
+        let calls = try XCTUnwrap(provider.made["A_OPUS"]).calls
+        let again = try await remuxer.mediaSegment(track: opus.id, index: 0)
+        XCTAssertEqual(try XCTUnwrap(provider.made["A_OPUS"]).calls, calls)
+        XCTAssertTrue(first == again)
+    }
+
     /// The whole FLAC frames in a fragment's mdat, split by the run's sample sizes.
     static func flacFrames(_ b: [UInt8]) -> [[UInt8]] {
         guard let at = b.indices.dropLast(16).first(where: { b[$0] == 0x74 && b[$0 + 1] == 0x72 && b[$0 + 2] == 0x75 && b[$0 + 3] == 0x6E }) else { return [] }

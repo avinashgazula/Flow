@@ -62,7 +62,7 @@ struct MacPlayerMenu: View {
                 Divider()
                 Button("Reset to Default") { model.settings.subtitles.resetAppearance() }
             }
-            if session.subtitle != nil {
+            if session.canDelaySubtitles {
                 Menu("Subtitle Timing") {
                     Text(String(format: "Delay %+.2f s", session.subtitleOffset))
                     Button("Show Earlier (−0.25 s)") { session.subtitleOffset -= 0.25 }
@@ -86,7 +86,7 @@ struct MacPlayerMenu: View {
             Image(systemName: "gearshape").macBarIcon()
         }
         .macBarMenu(label: "Options")
-        .onAppear { speed = session.player.defaultRate }
+        .onAppear { speed = Float(session.chosenSpeed) }
     }
 
     @Environment(AppModel.self) private var model
@@ -102,8 +102,7 @@ struct MacPlayerMenu: View {
 
     private func setSpeed(_ rate: Float) {
         speed = rate
-        session.player.defaultRate = rate
-        if session.player.rate > 0 { session.player.rate = rate }
+        session.setPlaybackSpeed(Double(rate))
     }
 
     @ViewBuilder

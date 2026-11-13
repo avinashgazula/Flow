@@ -16,6 +16,10 @@ struct LicencesView: View {
                 Text("Archivo (Omnibus-Type), IBM Plex Mono, IBM Plex Sans Condensed and IBM Plex Serif (IBM) are set in Marquee under the SIL Open Font License 1.1. The fonts are free to use, study, modify and share; they may not be sold on their own. Archivo: Copyright 2020 The Archivo Project Authors (github.com/Omnibus-Type/Archivo). IBM Plex: Copyright 2017 IBM Corp., with Reserved Font Name \"Plex\" (github.com/IBM/plex). The full licence is bundled with the fonts.")
                     .font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
             }
+            Section(film: "Built-in Player") {
+                Text("The built-in decoder is libmpv (mpv 0.41, the LGPL build, through MPVKit 1.1.0) with FFmpeg n9.0.2 (LGPL 2.1+), libass, libplacebo, MoltenVK (Apache 2.0), dav1d (BSD), FreeType, HarfBuzz, FriBidi, GnuTLS, libbluray and lcms2. All are licensed under the LGPL or a more permissive licence; none is GPL. Marquee's source is public, so the app can be relinked against modified versions of these libraries. mpv: mpv.io; FFmpeg: ffmpeg.org; MPVKit: github.com/mpvkit/MPVKit.")
+                    .font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
+            }
             Section(film: "Rating Marks") {
                 Text("The marks beside each rating on a title page (IMDb, Rotten Tomatoes, Metacritic, TMDB, Letterboxd, Trakt) are from Simple Icons (simpleicons.org), released under CC0 1.0 Universal. The Popcornmeter bucket is drawn by Marquee. The marks are trademarks of their owners and only say where a score comes from; their owners do not endorse Marquee.")
                     .font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
@@ -292,6 +296,9 @@ struct PlaybackSettingsView: View {
             } }
             Section {
                 Toggle("Try the Next Source Automatically", isOn: $model.settings.playback.tryNextSourceOnFailure)
+                FilmPicker("Player Engine", selection: $model.settings.playback.playerEngine) {
+                    ForEach(PlayerEngine.allCases) { Text($0.title).tag($0) }
+                }
                 Toggle("Decode Audio Apple Can't Play", isOn: $model.settings.playback.decodeLosslessAudio)
                 Toggle("Prefer Sources With Playable Audio", isOn: $model.settings.sources.preferPlayableAudio)
                 #if os(iOS) || os(macOS)
@@ -302,7 +309,7 @@ struct PlaybackSettingsView: View {
             } header: {
                 FilmSectionHeader("Formats")
             } footer: { FilmFooter {
-                Text("Marquee plays MKV files itself by repackaging them on the fly for Apple's player, without re-encoding: HDR, Dolby Vision, Dolby Atmos, embedded and disc subtitles and chapters all come through, and audio Apple's player can't play (DTS, Dolby TrueHD, Opus, Vorbis, uncompressed PCM and more) is decoded to lossless FLAC. When a file still can't play, Marquee moves to the next source or offers your external player.")
+                Text("Marquee plays MKV files itself by repackaging them on the fly for Apple's player, without re-encoding: HDR, Dolby Vision, Dolby Atmos, embedded and disc subtitles and chapters all come through, and audio Apple's player can't play (DTS, Dolby TrueHD, Opus, Vorbis, uncompressed PCM and more) is decoded to lossless FLAC. Files Apple's player can't play at all (AVI, WMV, FLV, DVD and Ogg files; MPEG-2, VC-1, Xvid, VP8 and VP9 video; 10-bit H.264; soundtracks it can't decode) play in Marquee's built-in decoder, automatically. It gives up Picture in Picture, AirPlay video and Dolby Vision passthrough, so Automatic keeps Apple's player for everything it can play; Always Built-in Decoder sends every file through it.")
             } }
             #if os(iOS) || os(macOS)
             Section {

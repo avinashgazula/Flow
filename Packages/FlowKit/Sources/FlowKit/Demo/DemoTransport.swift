@@ -397,8 +397,19 @@ public struct DemoSourceProvider: SourceProvider {
                                         title: "AIOStreams\n" + text, detail: text, filename: "Flow.Sample.360p.Opus.Vorbis.PCM.mkv",
                                         location: .url(sample, headers: [:]), traits: StreamParser.parse(text, "Flow.Sample.360p.mkv")))
         }
+        if let sample = Self.aviSample {
+            let text = "🧿 240p\nAVI · Xvid and MP2\n🔊 MP2"
+            sources.append(StreamSource(id: Self.aviSampleID, category: .addons, providerID: providerID, providerName: providerName,
+                                        title: "AIOStreams\n" + text, detail: text, filename: "Flow.Sample.Xvid.MP2.avi",
+                                        location: .url(sample, headers: [:]), traits: StreamParser.parse(text, "Flow.Sample.Xvid.avi")))
+        }
         return sources
     }
+
+    public static let aviSampleID = "demo#avi"
+
+    /// A few seconds of Xvid video and MP2 audio in an AVI (45 KB): a file only the built-in decoder plays.
+    public static var aviSample: URL? { Bundle.main.url(forResource: "FlowSampleXvid", withExtension: "avi") }
 
     public static let matroskaSampleID = "demo#mkv"
     public static let audioSampleID = "demo#audio"
