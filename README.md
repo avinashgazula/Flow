@@ -108,4 +108,5 @@ It takes over by itself ("Playing with Marquee's built-in decoder"), or for ever
 Player Engine → Always Built-in Decoder. It gives up Picture in Picture, AirPlay video and Dolby Vision passthrough
 (HDR is tone mapped to SDR), and X-Ray's picture matching and scrub previews.
 
+On the website, a second FFmpeg 7.1.1 build (`web/scripts/build-media-engine.sh`, `web/src/lib/media/pkg/`) reads AVI, MPEG-TS, WMV, FLV and other containers, converts sound a browser can't play, and (a second module) decodes pictures it can't, which the browser then encodes again as H.264 (MPEG-2, Xvid, WMV, 10-bit H.264, HEVC without a decoder; not 4K or HDR); it is LGPL 2.1 too, with no GPL or non-free part, and is listed under Settings → About → Open Source Licences.
 

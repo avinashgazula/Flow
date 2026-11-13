@@ -3,8 +3,10 @@
 
    It turns any container a source hands the page (AVI, MPEG-TS, MP4, WMV, FLV, Ogg, ...) into the two
    fragmented-MP4 streams that Media Source Extensions play, one for the picture and one for the sound. The
-   picture is copied as it is (this build decodes no video). The sound is copied when the browser plays that
-   codec in MP4, and otherwise decoded, mixed to stereo or 5.1 at 48 kHz and encoded again as FLAC or AAC.
+   picture is copied as it is, or, when the browser has no decoder for it, decoded here (the video build only,
+   FM_VIDEO) and handed to the page as plain frames, which the page encodes again with WebCodecs and gives back
+   packet by packet to the same muxer. The sound is copied when the browser plays that codec in MP4, and
+   otherwise decoded, mixed to stereo or 5.1 at 48 kHz and encoded again as FLAC or AAC.
 
    Calling convention (src/lib/media/engine.ts is the only caller; every number is an int or a double, every
    pointer an offset into the module's memory):
@@ -23,8 +25,9 @@
      fm_start(video, audio, mode, at_ms, floor_ms, flags)
                          begins (or begins again) at a media time: reads from the keyframe at or before it.
                          video / audio: stream indexes, -1 for none. mode: 0 copy the sound, 1 convert to FLAC,
-                         2 convert to AAC. flags: 1 keep 5.1 in converted sound. floor_ms: video before this
-                         time is already buffered and is skipped (an audio switch), 0 for none.
+                         2 convert to AAC. flags: 1 keep 5.1 in converted sound, 2 convert the picture (below).
+                         floor_ms: video before this time is already buffered and is skipped (an audio switch),
+                         0 for none.
      fm_step(max_bytes)  reads about that many bytes of the file and routes the packets; 0 more to come, 1 at
                          the end of the file (everything is then flushed), < 0 an error
      fm_out_next()       the next piece of output: its length, 0 when there is none. Then fm_out_ptr(),
@@ -32,6 +35,23 @@
                          The bytes are whole boxes: ftyp and moov (the init segment), then moof and mdat pairs.
      fm_info(key)        counters and facts about the run (see INFO_*)
      fm_close()
+
+   Converting the picture (flag 2 of fm_start, video build only). The step decodes the picture instead of copying
+   it and queues each frame as output of kind 2: whole frames of planar 8-bit 4:2:0 (Y, then U, then V, no padding,
+   an even width and height locked on the first frame), in presentation order, already on the timeline, 10-bit and
+   4:2:2 or 4:4:4 sources reduced to it and interlaced frames blended. fm_out_info(key) says what a frame is: 1 its
+   time in microseconds, 2 its duration, 3 and 4 its size, 5 how it was handled (bit 0 interlaced, bit 1 full range
+   made limited), 6 and 7 the pixel aspect ratio, 8 the colour matrix (an AVCOL_SPC_* value). The page encodes the
+   frames and hands the encoder's packets back:
+     fm_scratch(size)    a buffer of at least `size` bytes inside the module, for what the page passes in
+     fm_video_open(width, height, sar_num, sar_den, extradata_len)
+                         opens the picture's muxer for H.264 in AVC form; the avcC record is in the scratch buffer
+     fm_video_packet(length, pts_us, dur_us, key)
+                         one encoded packet, in the scratch buffer; times are on the timeline, in microseconds
+     fm_video_end()      the encoder is flushed: write the last fragment
+     fm_video_tune(bits) 1 skip frames nothing refers to, 2 also skip the loop filter (both trade picture for speed when
+                         the device can't keep up), 4 leave interlaced frames as they are (a diagnostic)
+   A step returns after a few frames (FRAME_BATCH), so the page can encode them before more are decoded.
 
    Time: the file's own timestamps are moved so the earliest packet sits at zero (an MPEG-TS file starts a second
    or so in), and a jump in the stream (a splice, a reset clock) is closed up so the output is one continuous
@@ -65,9 +85,18 @@
 IMPORT("fm_js_read") extern int js_read(uint8_t *buf, int size);
 IMPORT("fm_js_seek") extern double js_seek(double offset, int whence);
 
+#ifndef FM_VIDEO
+#define FM_VIDEO 0 /* 1: the build with the picture decoders */
+#endif
+
 enum { MODE_COPY = 0, MODE_FLAC = 1, MODE_AAC = 2 };
-enum { FLAG_SURROUND = 1 };
-enum { KIND_VIDEO = 0, KIND_AUDIO = 1 };
+enum { FLAG_SURROUND = 1, FLAG_CONVERT_VIDEO = 2 };
+enum { KIND_VIDEO = 0, KIND_AUDIO = 1, KIND_FRAME = 2 };
+enum { TUNE_SKIP_NONREF = 1, TUNE_SKIP_LOOP = 2, TUNE_KEEP_INTERLACED = 4 };
+/* A step hands the page at most this many decoded frames: they are big, and the page encodes them before asking for more. */
+#define FRAME_BATCH 4
+/* A picture decoder that fails on this many packets in a row, with no frame between, is a picture that can't be played. */
+#define MAX_VIDEO_ERRORS 200
 enum {
   INFO_AUDIO_FAILED = 1,   /* the converted sound gave up (no decoder, or every packet fails): the picture plays on without it */
   INFO_AUDIO_ERRORS = 2,   /* packets the decoder refused, this run */
@@ -80,7 +109,13 @@ enum {
   INFO_OUT_CHANNELS = 9,   /* converted sound: 2 or 6 */
   INFO_BITRATE = 10,       /* the container's overall bit rate, 0 when it doesn't say */
   INFO_AUDIO_ERROR = 11,   /* the FFmpeg error code of the last audio failure */
-  INFO_AUDIO_START_MS = 12 /* where the converted sound begins on the timeline, -1 before it has */
+  INFO_AUDIO_START_MS = 12, /* where the converted sound begins on the timeline, -1 before it has */
+  INFO_VIDEO_FRAMES = 13,   /* converted picture: frames decoded and handed to the page, this run */
+  INFO_VIDEO_FAILED = 14,   /* converted picture: the decoder gave up (no decoder, or every packet fails) */
+  INFO_VIDEO_ERRORS = 15,   /* packets the picture decoder refused, this run */
+  INFO_INTERLACED = 16,     /* frames that were flagged interlaced and blended, this run */
+  INFO_VIDEO_ERROR = 17,    /* the FFmpeg error code of the last picture failure */
+  INFO_VIDEO_DROPPED = 18   /* frames decoded and dropped for coming before the time the run began at */
 };
 enum { OUT_RATE = 48000 };
 /* A jump of the packet clock this far backwards, or this far forwards, is a break in the stream, not play. */
@@ -126,7 +161,32 @@ typedef struct {
   int surround;
 } Conv;
 
-typedef struct { int kind, init; uint8_t *ptr; size_t len; double pos; } Chunk;
+/* A piece of output. Fragments and init segments are copies the queue owns; a frame's pixels are the queue's too, and
+   `pts`, `dur`, `w`, `h`, `flags`, `sar_*` and `matrix` say what the frame is (fm_out_info). */
+typedef struct {
+  int kind, init;
+  uint8_t *ptr;
+  size_t len;
+  int64_t pts, dur;
+  int w, h, flags, sar_num, sar_den, matrix;
+} Chunk;
+
+/* Converting the picture: the decoder, and what the frames are being made into. */
+typedef struct {
+  AVCodecContext *dec;
+  AVFrame *frame;
+  uint8_t *row; /* two rows of one source plane reduced to 8 bits */
+  size_t row_cap;
+  int out_w, out_h; /* locked by the first frame */
+  int sar_num, sar_den;
+  int64_t frames, errors_in_a_row;
+  int64_t next_file_us; /* where a frame that carries no time goes: after the last one */
+  int64_t last_dur_us;
+  int64_t last_t; /* the last frame's place on the timeline, to keep them strictly in order */
+  int64_t first_file_us;
+  int range_full;
+  uint8_t lut_y[256], lut_c[256];
+} VConv;
 
 typedef struct {
   AVFormatContext *ic;
@@ -135,6 +195,11 @@ typedef struct {
   int64_t offset_us;  /* the file's clock at media time zero */
   int64_t shift[2];   /* what closing up jumps in each track has added, this run */
   int vidx, aidx, mode, surround;
+  int convert_video, tune, video_failed, video_error, frames_out;
+  int64_t video_errors, interlaced, dropped;
+  VConv *vconv;
+  uint8_t *scratch; /* what the page hands in: an avcC record, an encoded packet */
+  size_t scratch_cap;
   int64_t at_us, floor_us;
   int reseeks;
   int v_started, a_started;
@@ -194,7 +259,7 @@ static int64_t io_seek(void *opaque, int64_t offset, int whence) {
 
 /* ---- The queue of output the host collects ---- */
 
-static void queue_push(FM *m, int kind, const uint8_t *data, size_t len) {
+static int queue_room(FM *m) {
   if (m->q_len == m->q_cap) {
     if (m->q_head > 0) {
       memmove(m->queue, m->queue + m->q_head, (size_t)(m->q_len - m->q_head) * sizeof(Chunk));
@@ -204,16 +269,37 @@ static void queue_push(FM *m, int kind, const uint8_t *data, size_t len) {
     if (m->q_len == m->q_cap) {
       int cap = m->q_cap ? m->q_cap * 2 : 16;
       Chunk *q = realloc(m->queue, (size_t)cap * sizeof(Chunk));
-      if (!q) return;
+      if (!q) return 0;
       m->queue = q;
       m->q_cap = cap;
     }
   }
+  return 1;
+}
+
+static void queue_push(FM *m, int kind, const uint8_t *data, size_t len) {
+  if (!queue_room(m)) return;
   uint8_t *copy = malloc(len);
   if (!copy) return;
   memcpy(copy, data, len);
-  m->queue[m->q_len++] = (Chunk){kind, 0, copy, len, 0};
+  m->queue[m->q_len++] = (Chunk){.kind = kind, .ptr = copy, .len = len};
 }
+
+#if FM_VIDEO
+/* A decoded frame: the queue takes over `pixels`. */
+static int queue_push_frame(FM *m, uint8_t *pixels, size_t len, const Chunk *info) {
+  if (!queue_room(m)) {
+    free(pixels);
+    return AVERROR(ENOMEM);
+  }
+  Chunk c = *info;
+  c.kind = KIND_FRAME;
+  c.ptr = pixels;
+  c.len = len;
+  m->queue[m->q_len++] = c;
+  return 0;
+}
+#endif
 
 static void queue_clear(FM *m) {
   for (int i = m->q_head; i < m->q_len; i++) free(m->queue[i].ptr);
@@ -269,12 +355,28 @@ static void conv_free(Conv *c) {
   free(c);
 }
 
+#if FM_VIDEO
+static void vconv_free(VConv *v) {
+  if (!v) return;
+  avcodec_free_context(&v->dec);
+  av_frame_free(&v->frame);
+  free(v->row);
+  free(v);
+}
+#endif
+
 /* Forgets everything of the previous run: the outputs (their time starts again), the converter, the queue. */
 static void reset_run(FM *m) {
   out_close(&m->out[0]);
   out_close(&m->out[1]);
   conv_free(m->conv);
   m->conv = NULL;
+#if FM_VIDEO
+  vconv_free(m->vconv);
+  m->vconv = NULL;
+#endif
+  m->video_failed = m->video_error = m->frames_out = 0;
+  m->video_errors = m->interlaced = m->dropped = 0;
   av_bsf_free(&m->adts);
   av_bsf_free(&m->extra);
   queue_clear(m);
@@ -783,6 +885,258 @@ static int audio_packet(FM *m, AVPacket *pkt) {
   return 0;
 }
 
+/* ---- Converting the picture: decode, reduce to 8-bit 4:2:0, hand the frame to the page ---- */
+
+#if FM_VIDEO
+
+static const uint8_t bayer4[16] = {0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5};
+
+/* A row of one source plane as 8-bit samples. Deeper samples (10-bit anime, 12-bit HEVC) are dithered with a 4x4 ordered
+   pattern on the way down, so smooth gradients keep their steps from showing as bands. */
+static void reduce_row(uint8_t *dst, const uint8_t *src, int n, int depth, int bytes, int be, int y) {
+  if (bytes == 1 && depth == 8) {
+    memcpy(dst, src, (size_t)n);
+    return;
+  }
+  const int shift = depth - 8;
+  const uint8_t *d = bayer4 + (y & 3) * 4;
+  for (int x = 0; x < n; x++) {
+    int v = bytes == 1 ? src[x] : be ? (src[2 * x] << 8) | src[2 * x + 1] : src[2 * x] | (src[2 * x + 1] << 8);
+    v = (v + ((d[x & 3] << shift) >> 4)) >> shift;
+    dst[x] = (uint8_t)(v > 255 ? 255 : v);
+  }
+}
+
+/* Full-range ("JPEG") samples to the limited range every H.264 decoder assumes. */
+static void make_range_tables(VConv *v) {
+  for (int i = 0; i < 256; i++) {
+    int y = (i * 219 + 127) / 255 + 16;
+    int c = ((i - 128) * 224 + (i >= 128 ? 127 : -127)) / 255 + 128;
+    v->lut_y[i] = (uint8_t)(y < 16 ? 16 : y > 235 ? 235 : y);
+    v->lut_c[i] = (uint8_t)(c < 16 ? 16 : c > 240 ? 240 : c);
+  }
+}
+
+static void apply_lut(uint8_t *p, int n, const uint8_t *lut) {
+  for (int i = 0; i < n; i++) p[i] = lut[p[i]];
+}
+
+/* Blends the rows that show combing: a row that sits above or below both its neighbours by a clear margin is the
+   signature of two fields taken at different moments, and a [1 2 1] filter across the three takes it out. Rows that
+   already agree with their neighbours (everything still, and flat areas) are left exactly as they are. `line` is 2*w bytes. */
+static void deint_plane(uint8_t *p, int w, int h, uint8_t *line) {
+  if (h < 3) return;
+  uint8_t *prev = line, *orig = line + w;
+  memcpy(prev, p, (size_t)w);
+  for (int y = 1; y < h - 1; y++) {
+    uint8_t *cur = p + (size_t)y * w;
+    const uint8_t *next = cur + w;
+    memcpy(orig, cur, (size_t)w);
+    for (int x = 0; x < w; x++) {
+      int c = orig[x], da = prev[x] - c, db = next[x] - c;
+      if (da * db > 400) cur[x] = (uint8_t)((prev[x] + 2 * c + next[x] + 2) >> 2);
+    }
+    uint8_t *t = prev;
+    prev = orig;
+    orig = t;
+  }
+}
+
+/* The frame as planar 8-bit 4:2:0 of exactly out_w x out_h (even): luma, then the two chroma planes. A frame of another
+   size than the first is cropped or has its last row and column repeated; a source with finer chroma has it averaged down. */
+static void frame_to_i420(VConv *v, const AVFrame *f, const AVPixFmtDescriptor *d, uint8_t *dst, int deinterlace) {
+  const int ow = v->out_w, oh = v->out_h, cw = ow / 2, ch = oh / 2;
+  const int depth = d->comp[0].depth, bytes = d->comp[0].step > 1 ? 2 : 1, be = !!(d->flags & AV_PIX_FMT_FLAG_BE);
+  uint8_t *row = v->row;
+  const int n = f->width < ow ? f->width : ow;
+
+  for (int y = 0; y < oh; y++) {
+    int sy = y < f->height ? y : f->height - 1;
+    uint8_t *out = dst + (size_t)y * ow;
+    reduce_row(out, f->data[0] + (ptrdiff_t)sy * f->linesize[0], n, depth, bytes, be, sy);
+    for (int x = n; x < ow; x++) out[x] = out[n - 1];
+  }
+  if (v->range_full) apply_lut(dst, ow * oh, v->lut_y);
+
+  uint8_t *u = dst + (size_t)ow * oh, *vv = u + (size_t)cw * ch;
+  if (d->nb_components < 3) {
+    memset(u, 128, (size_t)cw * ch * 2);
+  } else {
+    const int lw = d->log2_chroma_w, lh = d->log2_chroma_h;
+    const int scw = AV_CEIL_RSHIFT(f->width, lw), sch = AV_CEIL_RSHIFT(f->height, lh);
+    uint8_t *a = row, *b = row + v->row_cap / 2;
+    for (int plane = 1; plane <= 2; plane++) {
+      uint8_t *base = plane == 1 ? u : vv;
+      for (int cy = 0; cy < ch; cy++) {
+        uint8_t *out = base + (size_t)cy * cw;
+        int r0 = (2 * cy) >> lh, r1 = (2 * cy + 1) >> lh;
+        if (r0 > sch - 1) r0 = sch - 1;
+        if (r1 > sch - 1) r1 = sch - 1;
+        const uint8_t *s0 = f->data[plane] + (ptrdiff_t)r0 * f->linesize[plane];
+        if (lw == 1 && lh == 1 && scw >= cw && sch >= ch) {
+          reduce_row(out, s0, cw, depth, bytes, be, r0);
+          continue;
+        }
+        reduce_row(a, s0, scw, depth, bytes, be, r0);
+        const uint8_t *two = a;
+        if (r1 != r0) {
+          reduce_row(b, f->data[plane] + (ptrdiff_t)r1 * f->linesize[plane], scw, depth, bytes, be, r1);
+          two = b;
+        }
+        for (int cx = 0; cx < cw; cx++) {
+          int c0 = (2 * cx) >> lw, c1 = (2 * cx + 1) >> lw;
+          if (c0 > scw - 1) c0 = scw - 1;
+          if (c1 > scw - 1) c1 = scw - 1;
+          out[cx] = (uint8_t)((a[c0] + a[c1] + two[c0] + two[c1] + 2) >> 2);
+        }
+      }
+    }
+  }
+  if (v->range_full) apply_lut(u, cw * ch * 2, v->lut_c);
+  if (deinterlace) {
+    deint_plane(dst, ow, oh, row);
+    deint_plane(u, cw, ch, row);
+    deint_plane(vv, cw, ch, row);
+  }
+}
+
+static void vconv_tune(FM *m) {
+  if (!m->vconv) return;
+  AVCodecContext *c = m->vconv->dec;
+  c->skip_frame = (m->tune & TUNE_SKIP_NONREF) ? AVDISCARD_NONREF : AVDISCARD_DEFAULT;
+  c->skip_loop_filter = (m->tune & TUNE_SKIP_LOOP) ? AVDISCARD_ALL : AVDISCARD_DEFAULT;
+}
+
+static int vconv_open(FM *m, AVStream *ist) {
+  const AVCodec *dec = avcodec_find_decoder(ist->codecpar->codec_id);
+  if (!dec) return AVERROR_DECODER_NOT_FOUND;
+  VConv *v = calloc(1, sizeof(VConv));
+  if (!v) return AVERROR(ENOMEM);
+  m->vconv = v;
+  v->next_file_us = AV_NOPTS_VALUE;
+  v->last_t = INT64_MIN;
+  v->dec = avcodec_alloc_context3(dec);
+  v->frame = av_frame_alloc();
+  if (!v->dec || !v->frame) return AVERROR(ENOMEM);
+  int r = avcodec_parameters_to_context(v->dec, ist->codecpar);
+  if (r < 0) return r;
+  v->dec->pkt_timebase = ist->time_base;
+  v->dec->thread_count = 1;
+  r = avcodec_open2(v->dec, dec, NULL);
+  if (r < 0) return r;
+  vconv_tune(m);
+  return 0;
+}
+
+/* One decoded frame: its time on the timeline, then its pixels, queued for the page. */
+static int vconv_emit(FM *m, AVStream *ist, AVFrame *f) {
+  VConv *v = m->vconv;
+  const AVPixFmtDescriptor *d = av_pix_fmt_desc_get((enum AVPixelFormat)f->format);
+  if (!d || (d->flags & (AV_PIX_FMT_FLAG_RGB | AV_PIX_FMT_FLAG_PAL | AV_PIX_FMT_FLAG_BITSTREAM | AV_PIX_FMT_FLAG_HWACCEL)) ||
+      (d->nb_components >= 3 && !(d->flags & AV_PIX_FMT_FLAG_PLANAR)) || d->comp[0].depth < 8 || d->comp[0].depth > 16 || f->width < 2 || f->height < 2)
+    return AVERROR(EINVAL);
+
+  int64_t pts = f->pts != AV_NOPTS_VALUE ? f->pts : f->best_effort_timestamp;
+  int64_t dur_us = f->duration > 0 ? to_us(f->duration, ist->time_base) : 0;
+  if (dur_us <= 0) {
+    AVRational r = ist->avg_frame_rate.num > 0 ? ist->avg_frame_rate : ist->r_frame_rate;
+    dur_us = r.num > 0 && r.den > 0 ? 1000000LL * r.den / r.num : v->last_dur_us > 0 ? v->last_dur_us : 40000;
+  }
+  int64_t file_us;
+  if (pts != AV_NOPTS_VALUE) file_us = to_us(pts, ist->time_base);
+  else if (v->next_file_us != AV_NOPTS_VALUE) file_us = v->next_file_us;
+  else return 0;
+  v->next_file_us = file_us + dur_us;
+  v->last_dur_us = dur_us;
+
+  int64_t t = timeline_us(m, KIND_VIDEO, file_us, dur_us);
+  /* Frames before the time this run began at (the key frame it had to start from comes earlier than the seek) and before
+     the floor (picture already buffered, after an audio switch) are decoded, since the ones after depend on them, and dropped. */
+  if (t < 0 || (m->floor_us > 0 && t < m->floor_us) || t + dur_us / 2 < m->at_us || t <= v->last_t) {
+    m->dropped++;
+    return 0;
+  }
+
+  if (v->out_w == 0) {
+    v->out_w = f->width & ~1;
+    v->out_h = f->height & ~1;
+    AVRational sar = f->sample_aspect_ratio;
+    if (sar.num <= 0 || sar.den <= 0) sar = ist->sample_aspect_ratio;
+    if (sar.num <= 0 || sar.den <= 0) sar = ist->codecpar->sample_aspect_ratio;
+    v->sar_num = sar.num > 0 && sar.den > 0 ? sar.num : 1;
+    v->sar_den = sar.num > 0 && sar.den > 0 ? sar.den : 1;
+  }
+  /* Two rows of the widest source plane (also what the deinterlacer works in), for a frame of any size. */
+  size_t need = (size_t)(f->width > v->out_w ? f->width : v->out_w) * 2 + 64;
+  if (need > v->row_cap) {
+    uint8_t *grown = realloc(v->row, need);
+    if (!grown) return AVERROR(ENOMEM);
+    v->row = grown;
+    v->row_cap = need;
+  }
+  v->range_full = f->color_range == AVCOL_RANGE_JPEG || f->format == AV_PIX_FMT_YUVJ420P || f->format == AV_PIX_FMT_YUVJ422P ||
+                  f->format == AV_PIX_FMT_YUVJ444P || f->format == AV_PIX_FMT_YUVJ440P;
+  if (v->range_full) make_range_tables(v);
+
+  size_t size = (size_t)v->out_w * v->out_h * 3 / 2;
+  uint8_t *pixels = malloc(size);
+  if (!pixels) return AVERROR(ENOMEM);
+  int interlaced = !!(f->flags & AV_FRAME_FLAG_INTERLACED);
+  frame_to_i420(v, f, d, pixels, interlaced && !(m->tune & TUNE_KEEP_INTERLACED));
+  if (interlaced) m->interlaced++;
+
+  Chunk info = {.pts = t, .dur = dur_us, .w = v->out_w, .h = v->out_h, .flags = (interlaced ? 1 : 0) | (v->range_full ? 2 : 0), .sar_num = v->sar_num, .sar_den = v->sar_den, .matrix = f->colorspace};
+  v->last_t = t;
+  v->frames++;
+  m->frames_out++;
+  return queue_push_frame(m, pixels, size, &info);
+}
+
+static int vconv_receive(FM *m, AVStream *ist) {
+  VConv *v = m->vconv;
+  for (;;) {
+    int r = avcodec_receive_frame(v->dec, v->frame);
+    if (r == AVERROR(EAGAIN) || r == AVERROR_EOF) return 0;
+    if (r < 0) {
+      m->video_errors++;
+      m->video_error = r;
+      return 0;
+    }
+    v->errors_in_a_row = 0;
+    r = vconv_emit(m, ist, v->frame);
+    av_frame_unref(v->frame);
+    if (r < 0) {
+      m->video_error = r;
+      m->video_failed = 1;
+      return 0;
+    }
+  }
+}
+
+static int vconv_packet(FM *m, AVStream *ist, AVPacket *pkt) {
+  if (m->video_failed) return 0;
+  if (!m->vconv) {
+    int r = vconv_open(m, ist);
+    if (r < 0) {
+      m->video_error = r;
+      m->video_failed = 1;
+      return 0;
+    }
+  }
+  VConv *v = m->vconv;
+  int r = avcodec_send_packet(v->dec, pkt);
+  if (r < 0 && r != AVERROR(EAGAIN)) {
+    /* A corrupt packet or two is part of life; a decoder that never succeeds is a picture that can't be played. */
+    m->video_errors++;
+    m->video_error = r;
+    if (++v->errors_in_a_row > MAX_VIDEO_ERRORS || r == AVERROR(ENOMEM)) m->video_failed = 1;
+    return 0;
+  }
+  return vconv_receive(m, ist);
+}
+
+#endif /* FM_VIDEO */
+
 /* ---- Seeking ---- */
 
 static int rewind_input(FM *m);
@@ -846,9 +1200,13 @@ static int video_packet(FM *m, AVPacket *pkt) {
     m->v_first_us = t;
   }
   int64_t dts = pkt->dts != AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
-  /* Pictures before the floor are already buffered (an audio switch): the stream joins where they end. */
-  if (m->floor_us > 0 && dts != AV_NOPTS_VALUE && to_us(dts, ist->time_base) - m->offset_us + m->shift[KIND_VIDEO] < m->floor_us) return 0;
+  /* Pictures before the floor are already buffered (an audio switch): the stream joins where they end. A converted picture
+     decodes them all, since what follows refers to them, and drops the frames instead. */
+  if (!m->convert_video && m->floor_us > 0 && dts != AV_NOPTS_VALUE && to_us(dts, ist->time_base) - m->offset_us + m->shift[KIND_VIDEO] < m->floor_us) return 0;
   m->video_packets++;
+#if FM_VIDEO
+  if (m->convert_video) return vconv_packet(m, ist, pkt);
+#endif
   return write_copy(m, KIND_VIDEO, ist, pkt);
 }
 
@@ -883,8 +1241,16 @@ static int finish(FM *m) {
       conv_encode(m, 1);
     }
   }
+#if FM_VIDEO
+  if (m->vconv && !m->video_failed) {
+    /* The frames the decoder still holds (it reorders): the page encodes them, and then calls fm_video_end. */
+    avcodec_send_packet(m->vconv->dec, NULL);
+    vconv_receive(m, m->ic->streams[m->vidx]);
+  }
+#endif
   for (int k = 0; k < 2; k++) {
-    if (!m->out[k].oc) continue;
+    /* A converted picture's last fragment waits for the encoder to be flushed (fm_video_end). */
+    if (!m->out[k].oc || (k == KIND_VIDEO && m->convert_video)) continue;
     /* With delay_moov the first flush may only write the moov, so ask twice. */
     av_write_frame(m->out[k].oc, NULL);
     out_flush(m, k);
@@ -1075,6 +1441,11 @@ int fm_start(int video, int audio, int mode, double at_ms, double floor_ms, int 
   m->aidx = audio;
   m->mode = mode;
   m->surround = flags & FLAG_SURROUND;
+  m->convert_video = (flags & FLAG_CONVERT_VIDEO) && video >= 0;
+#if !FM_VIDEO
+  /* This build has no picture decoders: the page asks for the other module. */
+  if (m->convert_video) return AVERROR(ENOSYS);
+#endif
   m->at_us = at_ms > 0 ? (int64_t)(at_ms * 1000.0) : 0;
   m->floor_us = floor_ms > 0 ? (int64_t)(floor_ms * 1000.0) : 0;
   m->reseeks = 0;
@@ -1101,6 +1472,7 @@ int fm_step(int max_bytes) {
   if (m->eof) return 1;
   int64_t from = avio_tell(m->ic->pb);
   int bad = 0;
+  m->frames_out = 0;
   for (;;) {
     int r = av_read_frame(m->ic, m->pkt);
     if (r == AVERROR_EOF && m->vidx >= 0 && !m->v_started && m->at_us > 0 && m->reseeks < MAX_RESEEKS) {
@@ -1124,7 +1496,7 @@ int fm_step(int max_bytes) {
     r = route(m, m->pkt);
     av_packet_unref(m->pkt);
     if (r < 0) return r;
-    if (avio_tell(m->ic->pb) - from >= max_bytes) return 0;
+    if (avio_tell(m->ic->pb) - from >= max_bytes || m->frames_out >= FRAME_BATCH || m->video_failed) return 0;
   }
 }
 
@@ -1139,6 +1511,23 @@ int fm_out_next(void) {
 }
 const uint8_t *fm_out_ptr(void) { return M ? M->cur.ptr : NULL; }
 int fm_out_kind(void) { return M ? M->cur.kind : 0; }
+
+/* What the current piece of output is, when it is a frame (see the notes at the top). */
+double fm_out_info(int key) {
+  if (!M) return 0;
+  const Chunk *c = &M->cur;
+  switch (key) {
+    case 1: return (double)c->pts;
+    case 2: return (double)c->dur;
+    case 3: return c->w;
+    case 4: return c->h;
+    case 5: return c->flags;
+    case 6: return c->sar_num;
+    case 7: return c->sar_den;
+    case 8: return c->matrix;
+  }
+  return 0;
+}
 
 double fm_info(int key) {
   FM *m = M;
@@ -1156,6 +1545,12 @@ double fm_info(int key) {
     case INFO_BITRATE: return m->ic ? (double)m->ic->bit_rate : 0;
     case INFO_AUDIO_ERROR: return m->audio_error;
     case INFO_AUDIO_START_MS: return m->conv && m->conv->first_pts != INT64_MIN ? (double)m->conv->first_pts * 1000.0 / OUT_RATE : -1;
+    case INFO_VIDEO_FRAMES: return m->vconv ? (double)m->vconv->frames : 0;
+    case INFO_VIDEO_FAILED: return m->video_failed;
+    case INFO_VIDEO_ERRORS: return (double)m->video_errors;
+    case INFO_INTERLACED: return (double)m->interlaced;
+    case INFO_VIDEO_ERROR: return m->video_error;
+    case INFO_VIDEO_DROPPED: return (double)m->dropped;
   }
   return 0;
 }
@@ -1165,6 +1560,7 @@ void fm_close(void) {
   if (!m) return;
   reset_run(m);
   free(m->queue);
+  free(m->scratch);
   av_packet_free(&m->pkt);
   if (m->ic) {
     if (m->io) {
@@ -1177,6 +1573,103 @@ void fm_close(void) {
   free(m);
   M = NULL;
 }
+
+/* ---- The converted picture's way back: the page's encoded packets into the muxer ---- */
+
+uint8_t *fm_scratch(int size) {
+  FM *m = M;
+  if (!m || size < 0) return NULL;
+  uint8_t *p = grow(m->scratch, &m->scratch_cap, (size_t)size + AV_INPUT_BUFFER_PADDING_SIZE);
+  if (!p) return NULL;
+  m->scratch = p;
+  return p;
+}
+
+#if FM_VIDEO
+
+int fm_video_open(int width, int height, int sar_num, int sar_den, int extradata_len) {
+  FM *m = M;
+  if (!m || !m->convert_video || extradata_len <= 0 || (size_t)extradata_len > m->scratch_cap) return AVERROR(EINVAL);
+  if (m->out[KIND_VIDEO].oc) return 0;
+  AVCodecParameters *par = avcodec_parameters_alloc();
+  if (!par) return AVERROR(ENOMEM);
+  par->codec_type = AVMEDIA_TYPE_VIDEO;
+  par->codec_id = AV_CODEC_ID_H264;
+  par->format = AV_PIX_FMT_YUV420P;
+  par->width = width;
+  par->height = height;
+  par->extradata = av_mallocz((size_t)extradata_len + AV_INPUT_BUFFER_PADDING_SIZE);
+  if (!par->extradata) {
+    avcodec_parameters_free(&par);
+    return AVERROR(ENOMEM);
+  }
+  memcpy(par->extradata, m->scratch, (size_t)extradata_len);
+  par->extradata_size = extradata_len;
+  /* Microseconds, the clock the frames came on: nothing is rounded between the page's times and the file's. */
+  int r = out_open(m, KIND_VIDEO, par, (AVRational){1, 1000000}, (AVRational){sar_num, sar_den});
+  avcodec_parameters_free(&par);
+  return r;
+}
+
+int fm_video_packet(int length, double pts_us, double dur_us, int key) {
+  FM *m = M;
+  Out *o = m ? &m->out[KIND_VIDEO] : NULL;
+  if (!o || !o->oc || length <= 0 || (size_t)length > m->scratch_cap) return AVERROR(EINVAL);
+  AVPacket *pkt = av_packet_alloc();
+  if (!pkt) return AVERROR(ENOMEM);
+  int r = av_new_packet(pkt, length);
+  if (r >= 0) {
+    memcpy(pkt->data, m->scratch, (size_t)length);
+    /* The encoder makes no B-frames in real-time mode: the time a picture is shown is the time it is decoded. */
+    int64_t dts = (int64_t)pts_us;
+    if (o->last_dts != INT64_MIN && dts <= o->last_dts) dts = o->last_dts + 1;
+    o->last_dts = dts;
+    pkt->dts = pkt->pts = dts;
+    pkt->duration = (int64_t)dur_us;
+    pkt->flags = key ? AV_PKT_FLAG_KEY : 0;
+    pkt->stream_index = 0;
+    pkt->pos = -1;
+    r = av_write_frame(o->oc, pkt);
+    out_flush(m, KIND_VIDEO);
+  }
+  av_packet_free(&pkt);
+  return r;
+}
+
+int fm_video_end(void) {
+  FM *m = M;
+  if (!m) return AVERROR(EINVAL);
+  Out *o = &m->out[KIND_VIDEO];
+  if (!o->oc) return 0;
+  /* With delay_moov the first flush may only write the moov, so ask twice. */
+  av_write_frame(o->oc, NULL);
+  out_flush(m, KIND_VIDEO);
+  av_write_frame(o->oc, NULL);
+  out_flush(m, KIND_VIDEO);
+  return 0;
+}
+
+void fm_video_tune(int bits) {
+  FM *m = M;
+  if (!m) return;
+  m->tune = bits;
+  vconv_tune(m);
+}
+
+#else
+
+int fm_video_open(int width, int height, int sar_num, int sar_den, int extradata_len) {
+  (void)width; (void)height; (void)sar_num; (void)sar_den; (void)extradata_len;
+  return AVERROR(ENOSYS);
+}
+int fm_video_packet(int length, double pts_us, double dur_us, int key) {
+  (void)length; (void)pts_us; (void)dur_us; (void)key;
+  return AVERROR(ENOSYS);
+}
+int fm_video_end(void) { return AVERROR(ENOSYS); }
+void fm_video_tune(int bits) { (void)bits; }
+
+#endif /* FM_VIDEO */
 
 /* ---- Parts of FFmpeg replaced at link time ----
 

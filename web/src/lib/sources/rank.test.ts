@@ -378,3 +378,29 @@ describe('audio language in ranking', () => {
     expect(ids(rankSources([dts, hindi], { ...prefs, audioLanguage: 'en' }, chrome))).toEqual(['hi', 'dts'])
   })
 })
+
+describe('pictures converted for this browser', () => {
+  const converting = fixedCapabilities({ universal: true, convertVideo: true })
+
+  it('plays Xvid and HEVC by converting them, with a plain note, where the browser can encode again', () => {
+    const xvid = source('xvid', '720p XviD AAC', 'https://x.test/a.avi', {}, converting)
+    expect(xvid.unsupported).toBeUndefined()
+    expect(xvid.convertsVideo).toBe(true)
+    expect(xvid.note).toContain('converted for this browser')
+    const hevc = source('hevc', '1080p WEB-DL x265 AAC', 'https://x.test/a.mp4', {}, converting)
+    expect(hevc.convertsVideo).toBe(true)
+  })
+
+  it('keeps the old refusal where the browser can’t encode, and refuses 4K and HDR conversions with the reason', () => {
+    expect(source('xvid', '720p XviD AAC', 'https://x.test/a.avi', {}, universal).unsupported).toBe('XviD video can’t play in a browser')
+    expect(source('uhd', '2160p WEB-DL x265 AAC', 'https://x.test/a.mkv', {}, converting).unsupported).toBe('4K HEVC video is too much to convert in a browser')
+    expect(source('hdr', '1080p WEB-DL HDR10 x265 AAC', 'https://x.test/a.mkv', {}, converting).unsupported).toBe('HEVC HDR video can’t be converted in a browser')
+  })
+
+  it('ranks a converted picture below the same title that plays as it is, but above one that can’t play', () => {
+    const copy = source('copy', '1080p WEB-DL x264 AAC', 'https://x.test/a.mp4', {}, converting)
+    const converted = source('conv', '1080p WEB-DL x265 AAC', 'https://x.test/b.mp4', {}, converting)
+    const nope = source('nope', '2160p WEB-DL x265 AAC', 'https://x.test/c.mp4', {}, converting)
+    expect(ids(rankSources([nope, converted, copy], { preferredQuality: '1080p' }, converting))).toEqual(['copy', 'conv', 'nope'])
+  })
+})

@@ -3,6 +3,11 @@
    and write the fragmented MP4 that Media Source Extensions play. The C side is native/flow-media/flow_media.c,
    which documents the calling convention; this file is the only caller.
 
+   A second module (pkg/flow-media-video.wasm, `{ video: true }`) is the same plus the picture decoders. Asked to
+   convert the picture (`convertVideo`), it decodes it and hands the frames out as planar 8-bit 4:2:0 (`take`'s
+   `onFrame`) for the page to encode with WebCodecs; the encoder's packets go back in through `videoOpen`,
+   `videoPacket` and `videoEnd` and come out of `take` as the same fragmented MP4 as a copied picture.
+
    const engine = await loadMediaEngine()
    const file = engine.open(source)                  // a ByteSource: the whole file, readable at any offset
    file.streams, file.durationMs, file.offsetMs      // what the file holds
@@ -79,6 +84,8 @@ export interface StartOptions {
   mode: ConvertMode
   /** Keep 5.1 in converted sound (otherwise stereo). */
   surround?: boolean
+  /** Decode the picture instead of copying it (the video module only): frames come out of `take` and the encoder's packets go back in. */
+  convertVideo?: boolean
   /** Where to begin, in timeline milliseconds: reading starts at the key frame at or before it. */
   atMs?: number
   /** Pictures before this time are already buffered and are skipped (after an audio switch). */
@@ -89,6 +96,36 @@ export interface StartOptions {
 export interface Chunk {
   kind: 0 | 1
   data: Uint8Array
+}
+
+/** A decoded picture, as the page encodes it. */
+export interface PictureFrame {
+  /** Planar 8-bit 4:2:0 (Y, then U, then V, no padding) of `width` x `height`, both even. A view into the module's memory: valid
+   *  until the next call into the engine, so a caller that keeps it copies it. (`new VideoFrame(data, …)` copies it.) */
+  data: Uint8Array
+  width: number
+  height: number
+  /** Microseconds on the timeline, and how long the picture lasts. */
+  timestamp: number
+  duration: number
+  /** The frame was flagged interlaced and had its combing blended out. */
+  interlaced: boolean
+  /** The source was full range and has been made limited range. */
+  fullRange: boolean
+  /** How a pixel is shaped (1:1 is square), from the stream or the first frame. */
+  sarNumerator: number
+  sarDenominator: number
+  /** FFmpeg's AVCOL_SPC_* for the colour matrix (2 when the file doesn't say). */
+  matrix: number
+}
+
+export interface EncodedPicture {
+  /** The AVC decoder configuration record (avcC) of the encoder's output. */
+  description: Uint8Array
+  width: number
+  height: number
+  sarNumerator: number
+  sarDenominator: number
 }
 
 export interface StepResult {
@@ -108,8 +145,17 @@ export interface MediaFile {
   start(options: StartOptions): void
   /** Reads about `maxBytes` of the file and returns; throws on a failure that ends playback. */
   step(maxBytes: number): StepResult
-  /** The output produced since the last call. */
-  take(): Chunk[]
+  /** The output produced since the last call. Decoded frames (only when converting the picture) go to `onFrame`, one at a time and
+   *  in order, as views that are valid for the length of the call; without a handler they are discarded. */
+  take(onFrame?: (frame: PictureFrame) => void): Chunk[]
+  /** Starts the converted picture's muxer from the encoder's configuration: once per run, before the first packet. */
+  videoOpen(picture: EncodedPicture): void
+  /** One encoded H.264 packet, in AVC form (length-prefixed); `fill` writes its bytes into the buffer it is given. Times are microseconds on the timeline. */
+  videoPacket(size: number, fill: (into: Uint8Array) => void, timestamp: number, duration: number, key: boolean): void
+  /** The encoder has been flushed: writes the picture's last fragment. */
+  videoEnd(): void
+  /** Trades picture for speed when conversion can't keep up: 0 none, 1 skip frames nothing refers to, 2 also skip the loop filter. */
+  videoTune(level: 0 | 1 | 2, keepInterlaced?: boolean): void
   /** FFmpeg's words for one of its error codes. */
   explain(code: number): string
   /** Counters from the current run (see `RunInfo`). */
@@ -137,10 +183,27 @@ export interface RunInfo {
   audioStartMs: number
   /** Channels of the converted sound (2 or 6), 0 before it has started. */
   outputChannels: number
+  /** Converted picture: frames decoded and handed out in this run. */
+  videoFrames: number
+  /** Converted picture: the decoder gave up (no decoder for it, or every packet fails), and FFmpeg's error code. */
+  videoFailed: boolean
+  videoError: number
+  videoErrors: number
+  /** Frames that were flagged interlaced (and blended). */
+  interlacedFrames: number
+  /** Frames decoded and dropped for coming before the time this run began at. */
+  videoDropped: number
 }
 
 export interface MediaEngine {
   open(source: ByteSource): MediaFile
+  /** True for the module that has the picture decoders. */
+  readonly video: boolean
+}
+
+export interface EngineOptions {
+  /** Load the module with the picture decoders (a few MB more: only for a file whose picture is to be converted). */
+  video?: boolean
 }
 
 /** A file that isn't a media file (or whose format the engine doesn't carry). */
@@ -170,18 +233,26 @@ interface Exports {
   fm_out_next(): number
   fm_out_ptr(): number
   fm_out_kind(): number
+  fm_out_info(key: number): number
+  fm_scratch(size: number): number
+  fm_video_open(width: number, height: number, sarNum: number, sarDen: number, extradataLength: number): number
+  fm_video_packet(length: number, ptsUs: number, durUs: number, key: number): number
+  fm_video_end(): number
+  fm_video_tune(bits: number): void
   fm_info(key: number): number
   fm_close(): void
 }
 
 // The keys of fm_stream_info and fm_info (flow_media.c).
 const S = { type: 1, codecId: 2, profile: 3, level: 4, width: 5, height: 6, channels: 7, rate: 8, bitrate: 9, extradata: 10, default: 11, forced: 12, comment: 13, hearing: 14, fps: 15, depth: 16, transfer: 17, delay: 18, sarNum: 19, sarDen: 20, decodable: 21, attachedPic: 23 } as const
-const I = { audioFailed: 1, audioErrors: 2, seekFailed: 3, bytes: 4, videoPackets: 5, audioPackets: 6, discontinuities: 7, startMs: 8, outChannels: 9, audioError: 11, audioStartMs: 12 } as const
+const I = { audioFailed: 1, audioErrors: 2, seekFailed: 3, bytes: 4, videoPackets: 5, audioPackets: 6, discontinuities: 7, startMs: 8, outChannels: 9, audioError: 11, audioStartMs: 12, videoFrames: 13, videoFailed: 14, videoErrors: 15, interlaced: 16, videoError: 17, videoDropped: 18 } as const
+const FRAME = { pts: 1, duration: 2, width: 3, height: 4, flags: 5, sarNum: 6, sarDen: 7, matrix: 8 } as const
 const TYPES = ['video', 'audio', 'subtitle', 'other'] as const
 const MODES: Record<ConvertMode, number> = { copy: 0, flac: 1, aac: 2 }
 
 /* One compiled module per source, shared by every instance. A failed load isn't kept, so the next try fetches again. */
 let defaultModule: Promise<WebAssembly.Module> | undefined
+let defaultVideoModule: Promise<WebAssembly.Module> | undefined
 const modules = new WeakMap<object, Promise<WebAssembly.Module>>()
 
 async function compileFromURL(url: URL): Promise<WebAssembly.Module> {
@@ -195,9 +266,15 @@ async function compileFromURL(url: URL): Promise<WebAssembly.Module> {
   }
 }
 
-function loadModule(source?: BufferSource | URL): Promise<WebAssembly.Module> {
+function loadModule(source: BufferSource | URL | undefined, video: boolean): Promise<WebAssembly.Module> {
   if (source === undefined) {
-    // The literal form below is what lets the bundler find the file and give it a hashed name.
+    // The literal forms below are what lets the bundler find each file and give it a hashed name.
+    if (video) {
+      return (defaultVideoModule ??= compileFromURL(new URL('./pkg/flow-media-video.wasm', import.meta.url)).catch((error) => {
+        defaultVideoModule = undefined
+        throw error
+      }))
+    }
     return (defaultModule ??= compileFromURL(new URL('./pkg/flow-media.wasm', import.meta.url)).catch((error) => {
       defaultModule = undefined
       throw error
@@ -212,10 +289,12 @@ function loadModule(source?: BufferSource | URL): Promise<WebAssembly.Module> {
   return loading
 }
 
-/** Loads the engine: `source` is the module's bytes (tests) or address; by default the file next to this one. */
-export async function loadMediaEngine(source?: BufferSource | URL): Promise<MediaEngine> {
-  const module = await loadModule(source)
+/** Loads the engine: `source` is the module's bytes (tests) or address; by default the file next to this one (the one with the picture decoders when `video`). */
+export async function loadMediaEngine(source?: BufferSource | URL, options: EngineOptions = {}): Promise<MediaEngine> {
+  const video = options.video === true
+  const module = await loadModule(source, video)
   return {
+    video,
     open(bytes) {
       return openFile(module, bytes)
     },
@@ -334,7 +413,7 @@ function openFile(module: WebAssembly.Module, source: ByteSource): MediaFile {
     offsetMs,
     bitRate,
     start(o) {
-      const code = x.fm_start(o.video, o.audio, MODES[o.mode], o.atMs ?? 0, o.floorMs ?? 0, o.surround ? 1 : 0)
+      const code = x.fm_start(o.video, o.audio, MODES[o.mode], o.atMs ?? 0, o.floorMs ?? 0, (o.surround ? 1 : 0) | (o.convertVideo ? 2 : 0))
       if (code < 0) fail(code, 'Marquee couldn’t start reading this file')
     },
     step(maxBytes) {
@@ -342,12 +421,50 @@ function openFile(module: WebAssembly.Module, source: ByteSource): MediaFile {
       if (code < 0) fail(code, 'Marquee couldn’t read this file')
       return { done: code === 1 }
     },
-    take() {
+    take(onFrame) {
       const chunks: Chunk[] = []
       for (let length = x.fm_out_next(); length > 0; length = x.fm_out_next()) {
-        chunks.push({ kind: x.fm_out_kind() === 1 ? 1 : 0, data: new Uint8Array(x.memory.buffer, x.fm_out_ptr(), length).slice() })
+        const kind = x.fm_out_kind()
+        if (kind === 2) {
+          if (!onFrame) continue
+          const flags = x.fm_out_info(FRAME.flags)
+          onFrame({
+            data: new Uint8Array(x.memory.buffer, x.fm_out_ptr(), length),
+            width: x.fm_out_info(FRAME.width),
+            height: x.fm_out_info(FRAME.height),
+            timestamp: x.fm_out_info(FRAME.pts),
+            duration: x.fm_out_info(FRAME.duration),
+            interlaced: (flags & 1) !== 0,
+            fullRange: (flags & 2) !== 0,
+            sarNumerator: x.fm_out_info(FRAME.sarNum),
+            sarDenominator: x.fm_out_info(FRAME.sarDen),
+            matrix: x.fm_out_info(FRAME.matrix),
+          })
+          continue
+        }
+        chunks.push({ kind: kind === 1 ? 1 : 0, data: new Uint8Array(x.memory.buffer, x.fm_out_ptr(), length).slice() })
       }
       return chunks
+    },
+    videoOpen(picture) {
+      const pointer = x.fm_scratch(picture.description.length)
+      if (!pointer) throw new Error('Marquee ran out of memory converting this picture. Reload the page and try again.')
+      new Uint8Array(x.memory.buffer, pointer, picture.description.length).set(picture.description)
+      const code = x.fm_video_open(picture.width, picture.height, picture.sarNumerator, picture.sarDenominator, picture.description.length)
+      if (code < 0) fail(code, 'Marquee couldn’t start the converted picture')
+    },
+    videoPacket(size, fill, timestamp, duration, key) {
+      const pointer = x.fm_scratch(size)
+      if (!pointer) throw new Error('Marquee ran out of memory converting this picture. Reload the page and try again.')
+      fill(new Uint8Array(x.memory.buffer, pointer, size))
+      const code = x.fm_video_packet(size, timestamp, duration, key ? 1 : 0)
+      if (code < 0) fail(code, 'Marquee couldn’t write the converted picture')
+    },
+    videoEnd() {
+      x.fm_video_end()
+    },
+    videoTune(level, keepInterlaced = false) {
+      x.fm_video_tune((level === 2 ? 3 : level === 1 ? 1 : 0) | (keepInterlaced ? 4 : 0))
     },
     explain: (code) => text(x.fm_strerror(code)),
     info() {
@@ -363,6 +480,12 @@ function openFile(module: WebAssembly.Module, source: ByteSource): MediaFile {
         startMs: x.fm_info(I.startMs),
         audioStartMs: x.fm_info(I.audioStartMs),
         outputChannels: x.fm_info(I.outChannels),
+        videoFrames: x.fm_info(I.videoFrames),
+        videoFailed: x.fm_info(I.videoFailed) === 1,
+        videoError: x.fm_info(I.videoError),
+        videoErrors: x.fm_info(I.videoErrors),
+        interlacedFrames: x.fm_info(I.interlaced),
+        videoDropped: x.fm_info(I.videoDropped),
       }
     },
     close() {

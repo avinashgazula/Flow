@@ -121,10 +121,25 @@ export function convertsAudio(input: { url?: string; container?: string; engine:
   return input.engine === 'remux' || input.container === undefined
 }
 
+/** What happens to the source's picture in this browser: it plays, it plays by being converted (the FFmpeg engine decodes it and WebCodecs encodes it
+ *  again), or it can't, with the reason. Only what a release name says is known here (codec, resolution, HDR), so the engine checks the file itself. */
+export function pictureFate(input: { videoCodec?: string; resolution?: Source['resolution']; hdr?: Source['hdr'] }, caps: Capabilities): { reason?: string; converts?: boolean } {
+  const video = input.videoCodec
+  if (!video || (video !== 'XviD' && caps.video(video))) return {}
+  const name = video === 'H264' ? 'H.264' : video
+  // The engine has decoders for these; AV1 and VP9 have none, and a browser without them has none to offer.
+  if (video !== 'XviD' && video !== 'H264' && video !== 'HEVC') return { reason: `${name} video can’t play in this browser` }
+  if (!caps.convertVideo) return { reason: video === 'XviD' ? 'XviD video can’t play in a browser' : `${name} video can’t play in this browser` }
+  const resolution = input.resolution
+  if (resolution === '2160p' || resolution === '1440p') return { reason: `${resolution === '2160p' ? '4K' : resolution} ${name} video is too much to convert in a browser` }
+  if (isHDR(input.hdr)) return { reason: `${name} HDR video can’t be converted in a browser` }
+  return { converts: true }
+}
+
 const newer = 'a newer browser: Safari 17.1 or later, Chrome, Edge or Firefox'
 
 /** Why this browser can't play the source, or undefined when it can. */
-export function unsupportedReason(input: { url?: string; container?: string; engine: PlaybackEngine; videoCodec?: string; audio: string[]; headers?: Record<string, string>; transcoded?: boolean }, caps: Capabilities): string | undefined {
+export function unsupportedReason(input: { url?: string; container?: string; engine: PlaybackEngine; videoCodec?: string; resolution?: Source['resolution']; hdr?: Source['hdr']; audio: string[]; headers?: Record<string, string>; transcoded?: boolean }, caps: Capabilities): string | undefined {
   const { container, engine } = input
   if (container && discImages.has(container)) return `${container.toUpperCase()} disc images can’t play in a browser`
   if (engine === 'universal' && !caps.universal) return `${(container ?? 'This').toUpperCase()} needs ${newer}`
@@ -140,10 +155,7 @@ export function unsupportedReason(input: { url?: string; container?: string; eng
     // DTS and TrueHD play nowhere; Dolby Digital depends on the browser.
     return `${undecodableNames(input.audio, caps)} audio can’t play in ${mute.every(losslessCinemaAudio) ? 'a' : 'this'} browser`
   }
-  const video = input.videoCodec
-  if (video === 'XviD') return 'XviD video can’t play in a browser'
-  if (video && !caps.video(video)) return `${video === 'H264' ? 'H.264' : video} video can’t play in this browser`
-  return undefined
+  return pictureFate(input, caps).reason
 }
 
 /** A short hash, so the same URL gets the same id on every search. */
@@ -203,9 +215,15 @@ export function buildSource(input: BuildInput, caps: Capabilities): Source {
   if (input.serverPosition && input.serverPosition > 0) source.serverPosition = input.serverPosition
   if (input.subtitles?.length) source.subtitles = input.subtitles
   if (input.notWebReady) source.notWebReady = true
-  const reason = unsupportedReason({ url: input.url, container: source.container, engine, videoCodec: t.videoCodec, audio, headers, transcoded: input.transcoded }, caps)
+  const reason = unsupportedReason({ url: input.url, container: source.container, engine, videoCodec: t.videoCodec, resolution: source.resolution, hdr: source.hdr, audio, headers, transcoded: input.transcoded }, caps)
+  const fate = input.transcoded ? {} : pictureFate({ videoCodec: t.videoCodec, resolution: source.resolution, hdr: source.hdr }, caps)
   if (reason) source.unsupported = reason
-  else if (converts && (engine === 'remux' || engine === 'universal')) {
+  else if (fate.converts) {
+    source.convertsVideo = true
+    const audioPart = converts && (engine === 'remux' || engine === 'universal') ? ` and ${undecodableNames(audio, caps)} audio` : ''
+    if (audioPart) source.convertsAudio = true
+    source.note = `${t.videoCodec === 'H264' ? 'H.264' : t.videoCodec} video${audioPart} converted for this browser, which takes more power`
+  } else if (converts && (engine === 'remux' || engine === 'universal')) {
     source.convertsAudio = true
     source.note = `${undecodableNames(audio, caps)} audio converted for this browser`
   } else if (engine === 'universal' && container) source.note = `${container.toUpperCase()} converted for this browser`
@@ -297,6 +315,9 @@ export function decodeFeel(s: Source, caps: Capabilities): 'rough' | 'warm' | un
 export const stutterNote = 'May stutter on this device'
 /** The cost of a source that needs the FFmpeg engine: under a resolution step (1000), over the nudges for release type and HDR. */
 export const universalPenalty = 250
+/** The cost of a source whose picture has to be converted: it decodes in software and encodes again, so it costs power and a little quality. More than the engine
+ *  itself, less than a resolution step: a copy of the same title that plays as it is comes first, but a converted 1080p still beats a 720p copy. */
+export const convertVideoPenalty = 600
 
 export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilities): number {
   if (s.unsupported) return -1_000_000 + resolutionScore(s.resolution, prefs.preferredQuality) * 10
@@ -323,6 +344,7 @@ export function scoreSource(s: Source, prefs: RankPreferences, caps: Capabilitie
   if (s.convertsAudio && prefs.preferPlayableAudio !== false) score -= 200
   // The FFmpeg engine reads the whole file in a worker and rebuilds it as it goes: dearer than the browser's own player or the Matroska remuxer, so a copy that plays natively comes first at the same quality.
   if (s.engine === 'universal') score -= universalPenalty
+  if (s.convertsVideo) score -= convertVideoPenalty
   score += audioLanguageScore(s.languages, prefs.audioLanguage)
   if (s.cached === true) score += 80
   if (s.cached === false) score -= 400

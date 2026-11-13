@@ -72,6 +72,8 @@ export interface Source {
   unsupported?: string
   /** True when the audio is one this browser can't decode and Marquee converts it while playing. */
   convertsAudio?: boolean
+  /** The picture is one this browser can't decode, and plays by being converted as it plays (a little slower to start, and it costs CPU). */
+  convertsVideo?: boolean
   /** A short remark for the picker: "TrueHD audio converted for this browser". */
   note?: string
   /** True when this device is known to decode this kind of video too slowly (set by ranking, with a note). */

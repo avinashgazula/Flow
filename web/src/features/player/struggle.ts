@@ -7,7 +7,7 @@
    same on screen, so the cause is told from the buffer: dry means the connection, healthy means the
    device. */
 
-export type Cause = 'connection' | 'device' | 'unknown'
+export type Cause = 'connection' | 'device' | 'converting' | 'unknown'
 
 export const limits = {
   /** Nothing counts this long after the start or a seek: a stream is allowed to settle. */
@@ -182,6 +182,7 @@ export function struggleText(cause: Cause, { size, codec, bytesPerSecond, bitrat
     const what = size && codec ? `${size} ${codec}` : size ? `${size} video` : codec ? `${codec} video` : 'this video'
     return `This device can’t keep up with ${what} here.`
   }
+  if (cause === 'converting') return 'This file’s picture is being converted as it plays and this device can’t keep up. Try a lower-resolution source.'
   if (cause === 'connection') {
     if (bytesPerSecond && bitrate) return `The file isn’t arriving fast enough: about ${megabits(bytesPerSecond)}, and it needs ${megabits(bitrate)}.`
     if (bytesPerSecond) return `The file isn’t arriving fast enough: about ${megabits(bytesPerSecond)}.`

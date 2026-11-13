@@ -93,7 +93,7 @@ export const ffmpeg = {
   /** The notice that ships with the module, and the script that builds it from the release above. */
   notice: `https://github.com/avinashgazula/Flow/tree/${ref}/web/src/lib/audio/pkg`,
   script: `https://github.com/avinashgazula/Flow/blob/${ref}/web/scripts/build-audio-decoders.sh`,
-  /** The universal media engine: demuxers, the MP4 muxer, the decoders and the FLAC and AAC encoders (flow-media.wasm). */
+  /** The universal media engine: demuxers, the MP4 muxer, the decoders (a second module adds the picture decoders) and the FLAC and AAC encoders (flow-media.wasm). */
   mediaNotice: `https://github.com/avinashgazula/Flow/tree/${ref}/web/src/lib/media/pkg`,
   mediaScript: `https://github.com/avinashgazula/Flow/blob/${ref}/web/scripts/build-media-engine.sh`,
 }
