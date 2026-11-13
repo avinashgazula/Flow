@@ -1,6 +1,7 @@
 /* Turns the remuxer's track list into what the player shows, and picks what to play. Pure
    functions, so they're tested without a browser. */
 
+import { convertRefusal } from '../media/convertible'
 import type { HeaderInfo, HeaderTrack } from './protocol'
 import type { RemuxAudioTrack, RemuxSubtitleTrack } from './index'
 
@@ -129,7 +130,8 @@ export const CONVERTED_MIME = 'audio/mp4; codecs="opus"'
 
 export interface Plan {
   /** Null when the file has no video (audio only). */
-  video: { track: HeaderTrack; mime: string } | null
+  /** `converted`: the browser has no decoder for it, so the engine decodes the picture and encodes it again as H.264 (`mime` is that output). */
+  video: { track: HeaderTrack; mime: string; converted?: boolean } | null
   /** `converted` tracks play through the worker's decoder and Opus encoder instead of straight from the file. */
   audio: (RemuxAudioTrack & { mime: string | null })[]
   /** The audio track to start with, or null when the file has none. */
@@ -149,7 +151,7 @@ export class UnplayableError extends Error {
 /** Decides what this browser can play from the file's tracks. A track it can't decode but the
  *  worker can (`decode` is set) still plays when `convert` says Opus can be encoded here. Throws
  *  when it can't play the picture or any of the sound. */
-export function plan(info: HeaderInfo, isSupported: (mime: string) => boolean, convert = false, convertedMime: string | null = CONVERTED_MIME): Plan {
+export function plan(info: HeaderInfo, isSupported: (mime: string) => boolean, convert = false, convertedMime: string | null = CONVERTED_MIME, convertedVideo: { mime: string } | null = null): Plan {
   const videos = info.tracks.filter((t) => t.type === 'video')
   let video: Plan['video'] = null
   if (videos.length) {
@@ -160,9 +162,19 @@ export function plan(info: HeaderInfo, isSupported: (mime: string) => boolean, c
         break
       }
     }
+    // No decoder for any picture here: one the engine can decode is converted, when this browser can encode it again and it is a size worth trying.
+    if (!video && convertedVideo) {
+      const convertible = videos.filter((t) => t.decode === 'ffmpeg' && !convertRefusal({ width: t.width, height: t.height, hdr: t.range === 'HDR10' || t.range === 'HLG' })).sort((a, b) => Number(b.default) - Number(a.default))[0]
+      if (convertible) video = { track: convertible, mime: convertedVideo.mime, converted: true }
+    }
     if (!video) {
       const first = videos[0]!
       const name = codecName(first.codecId)
+      const size = first.width && first.height ? ` at ${first.width}×${first.height}` : ''
+      const refusal = first.decode === 'ffmpeg' ? convertRefusal({ width: first.width, height: first.height, hdr: first.range === 'HDR10' || first.range === 'HLG' }) : null
+      if (refusal === 'size') throw new UnplayableError('video', `This browser can’t decode ${name} video${size}, and that is too much to convert as it plays. Try a 1080p or smaller source, or watch it in the Marquee app.`)
+      if (refusal === 'hdr') throw new UnplayableError('video', `This browser can’t decode ${name} HDR video, and converting it would wash out its colours. Try an SDR source, or watch it in the Marquee app.`)
+      if (first.decode === 'ffmpeg') throw new UnplayableError('video', `This browser can’t decode ${name} video, and it has no video encoder to convert it with. Try another source, or open Marquee in Chrome, Edge or Safari.`)
       throw new UnplayableError('video', first.supported ? `This browser can’t play ${name} video. Try a different browser, or another source.` : `Marquee can’t read ${name} video yet. Try another source.`)
     }
   }

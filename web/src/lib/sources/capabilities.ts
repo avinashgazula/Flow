@@ -2,7 +2,7 @@
    while the page is open, and the picker asks for every row. */
 
 import { canConvertAudio } from '../audio/support'
-import { canUseMediaEngine } from '../media/support'
+import { canConvertVideo, canUseMediaEngine } from '../media/support'
 import { smoothnessOf, type Smoothness } from './smooth'
 import type { Source } from './types'
 
@@ -21,6 +21,8 @@ export interface Capabilities {
   convertAudio: boolean
   /** The universal engine (src/lib/media) can run here: it reads any container and converts any sound, whatever WebCodecs offers. */
   universal: boolean
+  /** The engine can also convert a picture this browser can't decode (it has WebCodecs' VideoEncoder): MPEG-2, Xvid, HEVC without a decoder. */
+  convertVideo: boolean
   video(codec: string): boolean
   audio(codec: string): boolean
   /** How well this device decodes that kind of video (see smooth.ts): undefined until the browser has
@@ -85,6 +87,7 @@ export function browserCapabilities(): Capabilities {
       return canConvertAudio()
     },
     universal: canUseMediaEngine(),
+    convertVideo: canConvertVideo(),
     video: (codec) => (videoTypes[codec] ?? []).some(canPlayType),
     audio: (codec) => decodes(codec, (c) => (audioTypes[c] ?? []).some(canPlayType)),
     smoothVideo: smoothnessOf,
@@ -99,6 +102,7 @@ export function fixedCapabilities(c: {
   hdr?: boolean
   convertAudio?: boolean
   universal?: boolean
+  convertVideo?: boolean
   video?: string[]
   audio?: string[]
   /** What the device says about decoding, by class: `'HEVC@2160'` for any range, `'HEVC@2160+hdr'` for
@@ -113,6 +117,7 @@ export function fixedCapabilities(c: {
     hdr: c.hdr ?? false,
     convertAudio: c.convertAudio ?? false,
     universal: c.universal ?? false,
+    convertVideo: c.convertVideo ?? false,
     video: (codec) => video.has(codec),
     audio: (codec) => decodes(codec, (c) => audio.has(c)),
     smoothVideo(codec, resolution, hdr) {

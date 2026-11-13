@@ -71,12 +71,16 @@ export function StruggleNotice({ controller, titleKey, sources, findLower, suppr
       const quality = video.getVideoPlaybackQuality?.()
       if (quality) tracker.sample({ at: now, dropped: quality.droppedVideoFrames, total: quality.totalVideoFrames, ahead: bufferAhead(video) })
       const verdict = tracker.judge(now, rates())
-      if (verdict.struggling && !up) {
+      // A picture the engine converts as it plays says for itself when the device can't keep up: that is the cause, whatever the buffer shows.
+      if (controller.engine?.conversion?.()?.slow && !up) {
+        up = true
+        setShown({ cause: 'converting', facts: {}, lower: lowerNow.current() })
+      } else if (verdict.struggling && !up) {
         up = true
         const { bytesPerSecond, bitrate } = rates()
         const info = controller.engine?.videoInfo?.()
         setShown({ cause: verdict.cause, facts: { size: sizeName(controller.source?.resolution, video.videoWidth, video.videoHeight), codec: controller.source?.videoCodec ?? codecName(info?.codec), bytesPerSecond, bitrate }, lower: lowerNow.current() })
-      } else if (!verdict.struggling && up) {
+      } else if (!verdict.struggling && up && !controller.engine?.conversion?.()?.slow) {
         // It passed: the notice goes, and doesn't come back for this playback.
         finished.current = true
         setShown(null)

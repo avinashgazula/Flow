@@ -1,12 +1,18 @@
 #!/bin/bash
 # Builds FFmpeg's demuxers, the mov muxer, the audio decoders and the FLAC and AAC encoders (libavformat +
-# libavcodec + libswresample + libavutil) plus native/flow-media/flow_media.c into one WebAssembly module,
-# src/lib/media/pkg/flow-media.wasm. It is Marquee's universal media engine: it reads any container a
-# source hands the page (AVI, MPEG-TS, MP4, WMV, FLV, Ogg, ...) and writes fragmented MP4 that Media Source
-# Extensions can play, converting the sound the browser can't decode (src/lib/media/).
+# libavcodec + libswresample + libavutil) plus native/flow-media/flow_media.c into WebAssembly modules in
+# src/lib/media/pkg/. It is Marquee's universal media engine: it reads any container a source hands the page
+# (AVI, MPEG-TS, MP4, WMV, FLV, Ogg, ...) and writes fragmented MP4 that Media Source Extensions can play,
+# converting the sound the browser can't decode (src/lib/media/).
 #
-# LGPL 2.1: no GPL or non-free parts are enabled, the module is loaded as a separate file so it can
-# be swapped for one built from modified FFmpeg, and the source is the unmodified release tarball
+# Two modules come out of one run:
+#   flow-media.wasm        containers and sound only (the picture is copied): loaded for every file the engine plays
+#   flow-media-video.wasm  the same plus the video decoders (MPEG-2, MPEG-4 ASP, VC-1/WMV, VP8, H.264, HEVC, Theora,
+#                          RealVideo, ...): loaded only when the browser has no decoder for a file's picture, which
+#                          the page then converts by decoding it here and encoding it again with WebCodecs
+#
+# LGPL 2.1: no GPL or non-free parts are enabled, the modules are loaded as separate files so they can
+# be swapped for ones built from modified FFmpeg, and the source is the unmodified release tarball
 # (plus the one size patch described below). Same toolchain as build-audio-decoders.sh: plain clang against
 # the WASI sysroot, no Emscripten.
 #
@@ -14,7 +20,8 @@
 # macOS: brew install llvm lld (Apple's own clang has no wasm32 target; this finds Homebrew's).
 #
 # Usage: npm run media-wasm      (from web/; WORK=dir keeps the downloads and build tree elsewhere;
-#                                 OPT=-O2 trades size for speed)
+#                                 OPT=-O2 trades size for speed in the sound-only module; VIDEO_OPT sets the video
+#                                 module's optimisation; VARIANTS="audio" or "video" builds just one)
 set -euo pipefail
 
 FFMPEG_VERSION=7.1.1
@@ -28,12 +35,17 @@ WEB=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${WORK:-$WEB/build/media-engine}
 OUT=$WEB/src/lib/media/pkg
 OPT=${OPT:--Oz}
-# Memory is in 64 KiB pages: start at 4 MiB (the decoders' state and one frame of output fit), grow to 256 MiB.
+# Decoding pictures is the hot loop of the whole engine, so that module is built for speed, with WebAssembly SIMD
+# (every browser that has WebCodecs' VideoEncoder, which the conversion needs, has had it for years).
+VIDEO_OPT=${VIDEO_OPT:--O2}
+VARIANTS=${VARIANTS:-audio video}
+# Memory is in 64 KiB pages: start at 8 MiB (the decoders' state and one frame of output fit), grow to 512 MiB.
 INITIAL_MEMORY=$((8 * 1024 * 1024))
 MAX_MEMORY=$((512 * 1024 * 1024))
 STACK_SIZE=$((256 * 1024))
 EXPORTS=(fm_open fm_strerror fm_close fm_streams fm_stream_info fm_stream_str fm_stream_extradata fm_can_decode fm_container_bitrate
-         fm_duration_ms fm_offset_ms fm_chapters fm_chapter fm_chapter_title fm_start fm_step fm_out_next fm_out_ptr fm_out_kind fm_info)
+         fm_duration_ms fm_offset_ms fm_chapters fm_chapter fm_chapter_title fm_start fm_step fm_out_next fm_out_ptr fm_out_kind fm_out_info fm_info
+         fm_scratch fm_video_open fm_video_packet fm_video_end fm_video_tune)
 
 if command -v nproc >/dev/null 2>&1; then JOBS=$(nproc); else JOBS=$(sysctl -n hw.ncpu); fi
 
@@ -102,63 +114,84 @@ BUILTINS=$WORK/libclang_rt.builtins-wasm32-wasi-$WASI_VERSION
 
 # The same instruction set the Rust remuxer's module already needs (bulk memory, saturating float
 # conversion, sign extension), so no browser that plays the video is left without the audio.
-TARGET_FLAGS="--target=wasm32-wasi --sysroot=$SYSROOT -mbulk-memory -mnontrapping-fptoint -msign-ext"
+BASE_FLAGS="--target=wasm32-wasi --sysroot=$SYSROOT -mbulk-memory -mnontrapping-fptoint -msign-ext"
 # The compiler-rt builtins (64-bit division, soft-float helpers) come from the wasi-sdk archive, because a
 # distro clang doesn't ship them for wasm32; -nodefaultlibs lets us name libc and the builtins ourselves.
 LINK_FLAGS="--target=wasm32-wasi --sysroot=$SYSROOT -fuse-ld=$WASM_LD -nodefaultlibs -L$BUILTINS"
 LIBS="-lm -lc -lclang_rt.builtins-wasm32"
 
-PREFIX=$WORK/prefix
-if [ ! -f "$PREFIX/lib/libavcodec.a" ] || [ "$(cat "$WORK/.opt" 2>/dev/null)" != "$OPT" ]; then
-  rm -rf "$WORK/ffmpeg-build" "$PREFIX" && mkdir -p "$WORK/ffmpeg-build" && cd "$WORK/ffmpeg-build"
-  # Everything that carries a picture or sound a browser may be handed, minus video codecs (the engine
-  # copies video; decoding it is a later step) and minus every protocol (the page supplies the bytes).
-  DEMUXERS=(avi mpegts mpegps asf flv mov matroska ogg rm wav mp3 aac ac3 eac3 dts dtshd truehd mlp flac aiff caf amr au w64 gsm mpegvideo m4v h264 hevc vc1)
-  PARSERS=(aac aac_latm ac3 dca flac mlp mpegaudio opus vorbis cook gsm h264 hevc mpegvideo mpeg4video vc1 vp8 vp9 av1 dvdsub)
-  BSFS=(aac_adtstoasc extract_extradata)
-  # Audio decoders: the four Dolby/DTS formats, the usual lossy codecs, every PCM and the common ADPCM flavours.
-  DECODERS=(ac3 eac3 dca truehd mlp vorbis opus mp1 mp1float mp2 mp2float mp3 mp3float mp3adu mp3adufloat aac aac_latm alac flac
-            wmav1 wmav2 wmapro wmalossless cook ra_144 ra_288 amrnb amrwb gsm gsm_ms
-            pcm_s8 pcm_u8 pcm_s16le pcm_s16be pcm_u16le pcm_u16be pcm_s24le pcm_s24be pcm_u24le pcm_u24be pcm_s32le pcm_s32be
-            pcm_u32le pcm_u32be pcm_f32le pcm_f32be pcm_f64le pcm_f64be pcm_alaw pcm_mulaw pcm_s24daud pcm_bluray pcm_dvd
-            pcm_lxf pcm_s8_planar pcm_s16le_planar pcm_s16be_planar pcm_s24le_planar pcm_s32le_planar pcm_f16le pcm_f24le
-            adpcm_ms adpcm_ima_wav adpcm_ima_qt adpcm_ima_dk3 adpcm_ima_dk4 adpcm_swf adpcm_yamaha adpcm_g722 adpcm_g726
-            adpcm_ima_ws adpcm_ima_smjpeg adpcm_ima_apm adpcm_ima_oki adpcm_ct)
-  ENABLES=(--enable-muxer=mp4 --enable-encoder=flac --enable-encoder=aac)
-  for x in "${DEMUXERS[@]}"; do ENABLES+=(--enable-demuxer=$x); done
-  for x in "${PARSERS[@]}"; do ENABLES+=(--enable-parser=$x); done
-  for x in "${BSFS[@]}"; do ENABLES+=(--enable-bsf=$x); done
-  for x in "${DECODERS[@]}"; do ENABLES+=(--enable-decoder=$x); done
-  "$SRC/configure" --prefix="$PREFIX" \
-    --enable-cross-compile --target-os=none --arch=wasm32 --cc="$CC" --ar="$AR" --ranlib="$RANLIB" --nm="$NM" --strip="$STRIP" \
-    --extra-cflags="$TARGET_FLAGS -ffunction-sections -fdata-sections" --extra-ldflags="$LINK_FLAGS" \
-    --extra-libs="$LIBS" --optflags="$OPT" \
-    --disable-everything --disable-asm --disable-pthreads --disable-programs --disable-doc --disable-debug \
-    --disable-network --disable-avdevice --disable-swscale --disable-avfilter --disable-autodetect --disable-runtime-cpudetect \
-    --disable-stripping --disable-iconv --disable-zlib --disable-bzlib --disable-lzma \
-    --enable-avcodec --enable-avformat --enable-avutil --enable-swresample --enable-small \
-    "${ENABLES[@]}" \
-    --enable-static --disable-shared > "$WORK/configure.log" 2>&1 || { tail -40 "$WORK/configure.log"; exit 1; }
-  make -j"$JOBS" > "$WORK/make.log" 2>&1 || { tail -40 "$WORK/make.log"; exit 1; }
-  make install-libs install-headers > /dev/null
-  echo "$OPT" > "$WORK/.opt"
-  cd "$WORK"
-fi
+# Everything that carries a picture or sound a browser may be handed, minus every protocol (the page supplies the bytes).
+DEMUXERS=(avi mpegts mpegps asf flv mov matroska ogg rm wav mp3 aac ac3 eac3 dts dtshd truehd mlp flac aiff caf amr au w64 gsm mpegvideo m4v h264 hevc vc1)
+PARSERS=(aac aac_latm ac3 dca flac mlp mpegaudio opus vorbis cook gsm h264 hevc mpegvideo mpeg4video vc1 vp8 vp9 av1 dvdsub h263)
+BSFS=(aac_adtstoasc extract_extradata)
+# Audio decoders: the four Dolby/DTS formats, the usual lossy codecs, every PCM and the common ADPCM flavours.
+DECODERS=(ac3 eac3 dca truehd mlp vorbis opus mp1 mp1float mp2 mp2float mp3 mp3float mp3adu mp3adufloat aac aac_latm alac flac
+          wmav1 wmav2 wmapro wmalossless cook ra_144 ra_288 amrnb amrwb gsm gsm_ms
+          pcm_s8 pcm_u8 pcm_s16le pcm_s16be pcm_u16le pcm_u16be pcm_s24le pcm_s24be pcm_u24le pcm_u24be pcm_s32le pcm_s32be
+          pcm_u32le pcm_u32be pcm_f32le pcm_f32be pcm_f64le pcm_f64be pcm_alaw pcm_mulaw pcm_s24daud pcm_bluray pcm_dvd
+          pcm_lxf pcm_s8_planar pcm_s16le_planar pcm_s16be_planar pcm_s24le_planar pcm_s32le_planar pcm_f16le pcm_f24le
+          adpcm_ms adpcm_ima_wav adpcm_ima_qt adpcm_ima_dk3 adpcm_ima_dk4 adpcm_swf adpcm_yamaha adpcm_g722 adpcm_g726
+          adpcm_ima_ws adpcm_ima_smjpeg adpcm_ima_apm adpcm_ima_oki adpcm_ct)
+# Picture decoders, for the video module only: what no browser plays in MP4 (MPEG-1/2, MPEG-4 part 2 from DivX and Xvid,
+# Microsoft's MPEG-4 and Windows Media Video, VC-1, H.263 and Flash's Sorenson, VP6 and VP8, RealVideo, Theora, Motion JPEG,
+# DV, and two old AVI favourites) and the two a browser may not have (H.264 beyond 8-bit 4:2:0, and HEVC). Keep in step with
+# VIDEO_DECODERS in src/lib/media/codecs.ts, which names the same codecs the way FFmpeg reports them.
+VIDEO_DECODERS=(mpeg1video mpeg2video mpeg4 msmpeg4v1 msmpeg4v2 msmpeg4v3 h263 h263p flv wmv1 wmv2 wmv3 vc1 vp6 vp6f vp8 h264 hevc
+                theora rv10 rv20 rv30 rv40 mjpeg dvvideo cinepak msvideo1)
 
-# The shim only steers FFmpeg (the hot loops are inside it), so it is built for size like the rest.
-"$CC" $TARGET_FLAGS $OPT -Wall -Wextra -I"$PREFIX/include" -c "$WEB/native/flow-media/flow_media.c" -o "$WORK/flow_media.o"
+# build_variant <name> <optimisation flags> <extra compiler flags> <output file> <shim define>
+build_variant() {
+  local name=$1 opt=$2 extra=$3 out=$4 define=$5
+  local prefix=$WORK/prefix-$name target_flags="$BASE_FLAGS $extra"
+  # What the libraries were built from: a change to any list or flag builds them again, one to the shim doesn't.
+  local key="$name $opt $extra ${DEMUXERS[*]} ${PARSERS[*]} ${BSFS[*]} ${DECODERS[*]} ${VIDEO_DECODERS[*]}"
+  if [ ! -f "$prefix/lib/libavcodec.a" ] || [ "$(cat "$WORK/.opt-$name" 2>/dev/null)" != "$key" ]; then
+    rm -rf "$WORK/ffmpeg-build-$name" "$prefix" && mkdir -p "$WORK/ffmpeg-build-$name" && cd "$WORK/ffmpeg-build-$name"
+    local enables=(--enable-muxer=mp4 --enable-encoder=flac --enable-encoder=aac) x
+    for x in "${DEMUXERS[@]}"; do enables+=(--enable-demuxer=$x); done
+    for x in "${PARSERS[@]}"; do enables+=(--enable-parser=$x); done
+    for x in "${BSFS[@]}"; do enables+=(--enable-bsf=$x); done
+    for x in "${DECODERS[@]}"; do enables+=(--enable-decoder=$x); done
+    if [ "$name" = video ]; then for x in "${VIDEO_DECODERS[@]}"; do enables+=(--enable-decoder=$x); done; fi
+    "$SRC/configure" --prefix="$prefix" \
+      --enable-cross-compile --target-os=none --arch=wasm32 --cc="$CC" --ar="$AR" --ranlib="$RANLIB" --nm="$NM" --strip="$STRIP" \
+      --extra-cflags="$target_flags -ffunction-sections -fdata-sections" --extra-ldflags="$LINK_FLAGS" \
+      --extra-libs="$LIBS" --optflags="$opt" \
+      --disable-everything --disable-asm --disable-pthreads --disable-programs --disable-doc --disable-debug \
+      --disable-network --disable-avdevice --disable-swscale --disable-avfilter --disable-autodetect --disable-runtime-cpudetect \
+      --disable-stripping --disable-iconv --disable-zlib --disable-bzlib --disable-lzma \
+      --enable-avcodec --enable-avformat --enable-avutil --enable-swresample --enable-small \
+      "${enables[@]}" \
+      --enable-static --disable-shared > "$WORK/configure-$name.log" 2>&1 || { tail -40 "$WORK/configure-$name.log"; exit 1; }
+    make -j"$JOBS" > "$WORK/make-$name.log" 2>&1 || { tail -40 "$WORK/make-$name.log"; exit 1; }
+    make install-libs install-headers > /dev/null
+    echo "$key" > "$WORK/.opt-$name"
+    cd "$WORK"
+  fi
 
-EXPORT_FLAGS=()
-for e in "${EXPORTS[@]}"; do EXPORT_FLAGS+=("-Wl,--export=$e"); done
+  # The shim only steers FFmpeg (the hot loops are inside it), apart from the picture converter, which is why it takes the optimisation flags too.
+  "$CC" $target_flags $define $opt -Wall -Wextra -I"$prefix/include" -c "$WEB/native/flow-media/flow_media.c" -o "$WORK/flow_media-$name.o"
 
-mkdir -p "$OUT"
-# --no-entry makes it a library, not a program; -nostartfiles drops the WASI start-up code (which would
-# import environment and argument calls nobody uses). Memory starts small and grows on demand.
-"$CC" $LINK_FLAGS $OPT -nostartfiles \
-  -Wl,--no-entry "${EXPORT_FLAGS[@]}" -Wl,--gc-sections -Wl,--strip-all \
-  -Wl,--initial-memory=$INITIAL_MEMORY -Wl,--max-memory=$MAX_MEMORY -Wl,-z,stack-size=$STACK_SIZE \
-  "$WORK/flow_media.o" -L"$PREFIX/lib" -lavformat -lavcodec -lswresample -lavutil $LIBS \
-  -o "$OUT/flow-media.wasm"
+  local export_flags=() e
+  for e in "${EXPORTS[@]}"; do export_flags+=("-Wl,--export=$e"); done
+
+  mkdir -p "$OUT"
+  # --no-entry makes it a library, not a program; -nostartfiles drops the WASI start-up code (which would
+  # import environment and argument calls nobody uses). Memory starts small and grows on demand.
+  "$CC" $LINK_FLAGS $target_flags $opt -nostartfiles \
+    -Wl,--no-entry "${export_flags[@]}" -Wl,--gc-sections -Wl,--strip-all \
+    -Wl,--initial-memory=$INITIAL_MEMORY -Wl,--max-memory=$MAX_MEMORY -Wl,-z,stack-size=$STACK_SIZE \
+    "$WORK/flow_media-$name.o" -L"$prefix/lib" -lavformat -lavcodec -lswresample -lavutil $LIBS \
+    -o "$OUT/$out"
+  echo "$OUT/$out: $(wc -c < "$OUT/$out") bytes, $(gzip -9 -c "$OUT/$out" | wc -c) gzipped"
+}
+
+for variant in $VARIANTS; do
+  case $variant in
+    audio) build_variant audio "$OPT" "" flow-media.wasm "-DFM_VIDEO=0" ;;
+    video) build_variant video "$VIDEO_OPT" "-msimd128" flow-media-video.wasm "-DFM_VIDEO=1" ;;
+    *) echo "Unknown variant $variant (audio or video)." >&2; exit 1 ;;
+  esac
+done
 
 cp "$SRC/COPYING.LGPLv2.1" "$OUT/COPYING.LGPLv2.1"
-echo "$OUT/flow-media.wasm: $(wc -c < "$OUT/flow-media.wasm") bytes, $(gzip -9 -c "$OUT/flow-media.wasm" | wc -c) gzipped"

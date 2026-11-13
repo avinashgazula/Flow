@@ -173,7 +173,7 @@ beyond 24 MB or 150 files, or when the server shows a different ETag or date. An
 `src/lib/media` plays what the fast paths don't: AVI, MPEG-TS and M2TS, WMV and ASF, FLV, MPEG-PS and VOB, RealMedia, 3GP and Ogg
 files; an MP4 or MKV whose only sound is one the browser can't decode (Dolby Digital, DTS, TrueHD, Vorbis, PCM, MP2, WMA...)
 without WebCodecs' Opus encoder to convert it; and an MKV with sound the Rust remuxer can't play. It is a second lazy
-WebAssembly module, `src/lib/media/pkg/flow-media.wasm` (2.3 MB, 1.0 MB gzipped; none of it is in first-load code), built from
+WebAssembly module, `src/lib/media/pkg/flow-media.wasm` (2.3 MB, 1.0 MB gzipped; none of it is in first-load code; a superset with picture decoders, `flow-media-video.wasm`, is loaded only to convert a picture: see below), built from
 unmodified FFmpeg 7.1.1 by `npm run media-wasm` (`scripts/build-media-engine.sh`: plain clang and the WASI sysroot like the audio module,
 pinned SHA-256 downloads, LGPL-only flags, no Emscripten) plus `native/flow-media/flow_media.c`. It holds:
 
@@ -182,7 +182,8 @@ pinned SHA-256 downloads, LGPL-only flags, no Emscripten) plus `native/flow-medi
   The MP4 muxer (fragmented), the ADTS and extradata bitstream filters, and parsers for the codecs above.
 - **Audio decoders:** AC-3, E-AC-3, DTS (core and HD), TrueHD, MLP, Vorbis, Opus, MP1/MP2/MP3, AAC, ALAC, FLAC, WMA 1/2/Pro/Lossless,
   RealAudio (Cook, 14.4, 28.8), AMR, GSM, every PCM variant and the common ADPCM ones.
-- **Encoders:** FLAC (16-bit) and AAC, FFmpeg's own, and libswresample for the mix and the sample rate. No video decoder or encoder.
+- **Encoders:** FLAC (16-bit) and AAC, FFmpeg's own, and libswresample for the mix and the sample rate. The video module (below) adds picture
+  decoders and no encoder: H.264 is encoded by the browser's WebCodecs.
 
 **What it does.** `worker.ts` speaks the Matroska worker's protocol (`remux/protocol.ts`), so one `Session` (`remux/index.ts`:
 `attachUniversal` is `attachMatroska` with another worker) does the buffer management, quota handling, pacing, seeking and audio
@@ -194,7 +195,7 @@ also after a seek. `mp4.ts` splits the output into the init segment and fragment
 (avcC, hvcC, av1C, esds...) and each fragment's start, end and whether it begins on a key frame.
 
 - **Picture:** copied unchanged when `MediaSource.isTypeSupported` accepts its real codec string (Annex B from TS or AVI is turned
-  into avcC and its parameter sets found by the muxer). Otherwise playback fails with the reason ("This browser can’t play MPEG-2 video…").
+  into avcC and its parameter sets found by the muxer). Otherwise it is converted (next section), or playback fails with the reason.
 - **Sound:** copied when this browser plays that codec in MP4 (AAC, MP3, Dolby Digital and Plus where the browser has them, FLAC, Opus,
   ALAC); otherwise decoded, mixed to stereo or 5.1 (the same `checkSurroundAudio()` answer as the Matroska path; the stream's own downmix
   levels are used and the mix never clips), resampled to 48 kHz and encoded as FLAC where `audio/mp4; codecs="flac"` plays and as AAC where
@@ -225,15 +226,56 @@ own player. A file the browser's own player plays without sound (`NoSoundNotice`
 place, once. A Matroska file whose sound the remuxer can't play (Vorbis, PCM, MP2...) falls through to the engine as well.
 Playback Info shows "FFmpeg engine" and "Converted" on the audio.
 
-**Limits.** The engine copies picture and does not decode it: MPEG-2, MPEG-4 Part 2 (XviD and DivX), VC-1 and WMV picture, VP8 outside
-WebM, H.264 10-bit where the browser can't and HEVC where it has no decoder stay unplayable here, with the reason, until a later
-step decodes them. Seek previews are off for it (the scrubber shows the time alone) and embedded subtitles aren't read. Dolby Vision
+**Converting a picture the browser can't decode.** MPEG-1/2, MPEG-4 part 2 (Xvid, DivX, Microsoft's MPEG-4), WMV 1/2/3 and VC-1,
+H.263, Sorenson (FLV), VP6 and VP8, Theora, RealVideo 1-4, Motion JPEG, DV, Cinepak, MSVideo1, 10-bit and 4:2:2 H.264 and HEVC where the
+browser has no decoder play by being converted as they play. `plan` (`remux/tracks.ts`) keeps the picture track with `converted: true`
+when `videoDecision` (`media/codecs.ts`) says convert: no copy plays, the module has a decoder, the size is worth trying, and
+`pickEncoder` (`media/transcode.ts`) found an H.264 configuration this browser's `VideoEncoder` accepts. The worker then loads the
+second module and reads the same file again with it (`fm_start` flag 2):
+
+1. `fm_step` decodes (FFmpeg, one thread, WebAssembly SIMD, built `-O2`) and queues frames as planar 8-bit 4:2:0 on the timeline: 10-bit
+   and 12-bit are dithered down (4x4 ordered), 4:2:2 and 4:4:4 chroma averaged, full range made limited, an odd size cropped by a pixel,
+   and frames flagged interlaced (DVD and broadcast MPEG-2, VC-1) have their combing blended out (`[1 2 1]` only on rows that show it, so
+   a still picture is untouched). Frames before the time the run began at (the key frame it had to start from) are decoded and dropped. A
+   step returns after four frames, and only when the encoder has room (`PictureConverter.ready`: encode queue 2, 12 in flight), so no more
+   than a handful of pictures exist at once; every `VideoFrame` is closed as soon as it has been handed to the encoder.
+2. The worker wraps each frame as a `VideoFrame` (read straight out of module memory: one copy, the browser's) and encodes it: H.264 High
+   (Main, then Baseline, if refused) at the level the size needs, `avc` format so the description is the `avcC`, `latencyMode: 'realtime'`
+   (no B-frames, so presentation and decode time are the same), hardware preferred, about 8 Mb/s at 1080p30 and never under 2.5 Mb/s
+   (the encode is thrown away as it is played), a key frame every second.
+3. Each encoded packet goes back through `fm_video_packet` into the same mov muxer a copied picture uses (the `avcC` opens it; fragments
+   are cut at key frames, so one is about a second). Picture and sound share the file's timeline, so they stay in step, and a seek, an audio
+   switch or the end of the file reset or flush the encoder (a seek makes a new one and starts at the frames after the time asked for).
+4. The pixel aspect ratio of the stream (or the first frame) is written as `pasp`, so an anamorphic DVD picture (720x480 at 16:9) is shown
+   at 853x480 and not squashed.
+
+Playback Info reads "MPEG-2 · Converted to H.264" and a Conversion row: seconds of film converted per second of work (only the time the
+worker was working counts, so a full buffer isn't slowness), "skipping frames" when it had to, "too slow" when it couldn't.
+**Can't keep up** means that speed stays under 1.1 while less than four seconds are buffered ahead: the worker first tells the decoder to
+skip frames nothing refers to, then to skip the loop filter, and if it still can't keep up the player says once "This file’s picture is being
+converted as it plays and this device can’t keep up. Try a lower-resolution source." (the Struggle notice, with Switch to a lower resolution and
+Keep Watching). A picture whose decoding alone, in the first second of film, runs under 0.75x real time fails at the start with that reason
+instead of playing as a slideshow. A picture over about 2.95 million pixels (anything above 1080p: 4K HEVC especially) is refused at once, and
+HDR (PQ or HLG) is refused too, because an 8-bit SDR copy without tone mapping would come out washed out: both say what to do (a 1080p or SDR
+source, or the Marquee app). Where there is no `VideoEncoder` (Safari before 16.4, Firefox before 130) or it takes none of the H.264
+configurations, the file fails with "no video encoder to convert it with. Try another source, or open Marquee in Chrome, Edge or Safari."
+Ranking (`pictureFate`, `convertVideoPenalty`) puts a source whose picture needs converting 600 points below the same release that plays as it
+is, above any that can't play, and the picker's note says "HEVC video converted for this browser, which takes more power". A Matroska file whose
+picture the remuxer can't play, and an MP4 that fails to start in the browser's own player, fall through to the engine. The colours of an SD
+picture are marked BT.601 and an HD one BT.709 (the file's own matrix when it says); nothing converts between them.
+
+**Limits.** Conversion needs WebCodecs' `VideoEncoder` and runs in one thread, so it is a matter of the device: on the 4-core machine it was
+measured on (software encoder) a DVD picture converts at about 10x real time, 720p at 2 to 7x, 1080p at 1.3 to 2.3x, and 1080p 10-bit
+H.264 at high bit rates and 1080p HEVC at the edge of real time. A phone is slower. Seek previews are off for it (the scrubber shows the time alone) and embedded subtitles aren't read. Dolby Vision
 plays as its HEVC picture. It needs MediaSource and a sound format MP4 carries (FLAC or AAC), so iPhone Safari before iOS 17.1 can't use it.
-`npm run media-fixtures` makes the two-second clips its tests read, and the tests run the real module against them.
+`npm run media-fixtures` and `npm run media-fixtures-video` make the short clips its tests read (VC-1 has no encoder in FFmpeg, so it is
+covered by the decoder being built and listed, not by a clip), and the tests run the real modules against them; the encoder half is run
+with a stub, since node has no `VideoEncoder`.
 
 **Rebuilding.** Needs a clang with the wasm32 target and wasm-ld (`apt install clang lld`, `brew install llvm lld`); the build
 downloads FFmpeg and the WASI sysroot, checks their hashes and links the file, taking a few minutes. The module is a separate file, so a
-build from changed FFmpeg source can replace it; it must export the functions in `EXPORTS` in the script.
+build from changed FFmpeg source can replace it; it must export the functions in `EXPORTS` in the script. The script builds both modules
+(`VARIANTS="video"` for one); the video one is 5.5 MB (1.9 MB gzipped), which is why the sound-only module stays separate.
 
 ## Smooth playback
 
@@ -647,7 +689,8 @@ them playing within the hour with a channel on air in the sample guide.
   (WebAssembly) and WebCodecs' `AudioEncoder` makes Opus of it, which the page plays. That
   needs a browser that can encode Opus (Chrome, Edge, Firefox and Safari 26) and a file Marquee can
   read: not one behind a host that blocks web pages and no stream proxy. Where there's no `AudioEncoder`, or the file isn't Matroska, the universal engine
-  does the same in FFmpeg's own FLAC or AAC encoder. Picture the browser has no decoder for (MPEG-2, XviD, VC-1, WMV) can't play yet and says so. Converted sound is 5.1
+  does the same in FFmpeg's own FLAC or AAC encoder. Picture the browser has no decoder for (MPEG-2, XviD, VC-1, WMV, 10-bit H.264, HEVC) is converted
+  as it plays where the browser has a `VideoEncoder` (the universal engine, above): not 4K or HDR, and not on a device too slow to keep up. Converted sound is 5.1
   where the browser can play it and the output device has the speakers for it (7.1 is mixed down to 5.1);
   otherwise stereo (surround is mixed down), and the audio menu says which. If the conversion fails, the picture
   plays on without sound and the player says why.

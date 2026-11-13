@@ -11,9 +11,11 @@
 
 import { cachedSource, SegmentCache } from './blocks'
 import { headerFor } from './codecs'
-import { type ConvertMode, loadMediaEngine, type MediaFile, UnrecognisedError } from './engine'
+import { type ByteSource, type ConvertMode, loadMediaEngine, type MediaFile, UnrecognisedError } from './engine'
 import { NoSeekError, RangeHttp, totalLength } from './http'
 import { fragmentTimes, readInit, splitSegments } from './mp4'
+import { ConversionMeter, ConversionPolicy, tooSlowToStart } from './pace'
+import { pickEncoder, PictureConverter, webCodecs } from './transcode'
 import { AHEAD_TARGET, aheadCapFor, AheadGovernor, RateMeter } from '../remux/pacing'
 import { PieceReader, planReads } from '../remux/reader'
 import type { FromWorker, ToWorker } from '../remux/protocol'
@@ -39,6 +41,16 @@ let audioIndex = -1
 /** Set when converting the sound failed: it stays off until the page chooses a track again. */
 let audioDisabled = false
 let convert = false
+/** The picture is one the browser can't decode: this run decodes it here and encodes it again (transcode.ts). */
+let convertVideo = false
+let source: ByteSource | null = null
+let converter: PictureConverter | null = null
+let videoEngineLoaded = false
+let currentEpoch = 0
+let conversion = new ConversionMeter()
+let policy = new ConversionPolicy()
+/** The start-up check: film decoded and time spent decoding it, until it has judged. */
+let startCheck: { seconds: number; ms: number; done: boolean } = { seconds: 0, ms: 0, done: true }
 let sent = { video: false, audio: false }
 let timescales: [number, number] = [0, 0]
 let bitrate = 0
@@ -92,7 +104,7 @@ async function open(message: Extract<ToWorker, { type: 'open' }>) {
   cache.add(0, head)
   const engine = await loading
   // Everything the module reads that isn't in the cache is fetched on the spot; without ranges only the head is available.
-  const source = cachedSource(cache, length > 0 ? length : null, http.ranges ? (s, e) => http.readSync(s, e) : null)
+  source = cachedSource(cache, length > 0 ? length : null, http.ranges ? (s, e) => http.readSync(s, e) : null)
   file = engine.open(source)
   const info = headerFor(file.streams, file.durationMs)
   bitrate = length && file.durationMs ? length / (file.durationMs / 1000) : 0
@@ -107,7 +119,10 @@ async function open(message: Extract<ToWorker, { type: 'open' }>) {
 /** Posts what the engine has produced: init segments (once, unless the page asked for them again) and each fragment with where it sits. */
 function drain(epoch: number) {
   const f = file!
-  for (const chunk of f.take()) {
+  for (const chunk of f.take((frame) => {
+    converter?.submit(frame)
+    startCheck.seconds += frame.duration / 1e6
+  })) {
     const { init, fragments } = splitSegments(chunk.data)
     const kind = chunk.kind
     if (init) {
@@ -131,7 +146,15 @@ function drain(epoch: number) {
 
 function postStats(force = false) {
   if (!streaming && !force) return
-  post({ type: 'stats', bytesPerSecond: Math.round(meter.rate(performance.now())), bitrate: Math.round(bitrate), inFlight, ahead: Math.max(0, Math.round((produced - playhead) * 10) / 10) })
+  const ahead = Math.max(0, Math.round((produced - playhead) * 10) / 10)
+  let convertStats: Extract<FromWorker, { type: 'stats' }>['convert']
+  if (convertVideo) {
+    const speed = conversion.speed(performance.now())
+    const skip = policy.look(speed, ahead)
+    if (skip !== null) file?.videoTune(skip)
+    convertStats = { speed: speed === null ? null : Math.round(speed * 100) / 100, slow: policy.slow, skipping: policy.level }
+  }
+  post({ type: 'stats', bytesPerSecond: Math.round(meter.rate(performance.now())), bitrate: Math.round(bitrate), inFlight, ahead, convert: convertStats })
 }
 
 /** Backpressure: stops reading while enough is buffered ahead of the playhead. */
@@ -209,11 +232,27 @@ async function stream(epoch: number, signal: AbortSignal) {
   const feeder = new Feeder(signal)
   try {
     for (;;) {
+      conversion.busy(false, performance.now())
       await throttle(signal)
+      conversion.busy(true, performance.now())
       await feeder.cover(f.info().bytes, STEP_BYTES + STEP_SLACK)
       if (signal.aborted) return
+      await converter?.ready(signal)
+      if (signal.aborted) return
+      const began = performance.now()
       const { done } = f.step(STEP_BYTES)
+      if (!startCheck.done) startCheck.ms += performance.now() - began
       drain(epoch)
+      if (converter?.failure) throw converter.failure
+      if (convertVideo) {
+        const info = f.info()
+        if (info.videoFailed) throw new Error('Marquee couldn’t decode this file’s picture. Pick another source.')
+        // The first second of film says whether this device can decode it in real time at all: better to say so now than to play a slideshow.
+        if (!startCheck.done && startCheck.seconds >= 1) {
+          startCheck.done = true
+          if (tooSlowToStart(startCheck.seconds, startCheck.ms)) throw new SlowError(startCheck.seconds / (startCheck.ms / 1000))
+        }
+      }
       if (f.info().audioFailed && !audioDisabled) {
         audioDisabled = true
         post({ type: 'audio-failed', epoch, message: 'This browser can’t convert that audio.' })
@@ -229,6 +268,13 @@ async function stream(epoch: number, signal: AbortSignal) {
     feeder.close()
   }
   if (signal.aborted) return
+  if (converter) {
+    // What the encoder still holds comes out, and the last fragment is written.
+    await converter.flush()
+    f.videoEnd()
+    drain(epoch)
+  }
+  conversion.busy(false, performance.now())
   // A short file can be read before the first of the page's once-a-second reports: say how it went.
   postStats(true)
   streaming = false
@@ -240,6 +286,9 @@ async function begin(epoch: number, at: number, floor = 0, inits: 'all' | 'audio
   run?.ctl.abort()
   wake?.()
   await run?.done
+  converter?.close()
+  converter = null
+  currentEpoch = epoch
   if (inits === 'all') sent = { video: false, audio: false }
   else if (inits === 'audio') sent.audio = false
   const ctl = new AbortController()
@@ -247,7 +296,23 @@ async function begin(epoch: number, at: number, floor = 0, inits: 'all' | 'audio
   const task = (async () => {
     const f = file!
     const mode: ConvertMode = audioIndex >= 0 && convert ? audioOut : 'copy'
-    f.start({ video: videoIndex, audio: audioDisabled ? -1 : audioIndex, mode, surround, atMs: Math.round(at * 1000), floorMs: Math.round(floor * 1000) })
+    if (convertVideo && videoIndex >= 0) {
+      const s = f.streams[videoIndex]!
+      const config = await pickEncoder(s.width || 1280, s.height || 720, s.frameRate || 24)
+      if (!config) throw new Error('This browser’s video encoder won’t take this picture. Try another source, or Chrome, Edge or Safari.')
+      const api = webCodecs()!
+      converter = new PictureConverter(api, config, f, {
+        onPacket: () => {
+          if (currentEpoch === epoch) drain(epoch)
+        },
+        onProduced: (seconds) => conversion.produced(seconds),
+      })
+      conversion = new ConversionMeter()
+      policy = new ConversionPolicy()
+      f.videoTune(0)
+      startCheck = { seconds: 0, ms: 0, done: at > 0 }
+    }
+    f.start({ video: videoIndex, audio: audioDisabled ? -1 : audioIndex, mode, surround, convertVideo: convertVideo && videoIndex >= 0, atMs: Math.round(at * 1000), floorMs: Math.round(floor * 1000) })
     produced = at
     await stream(epoch, ctl.signal)
   })().catch((error) => {
@@ -256,6 +321,23 @@ async function begin(epoch: number, at: number, floor = 0, inits: 'all' | 'audio
     void report(error)
   })
   run = { ctl, done: task }
+}
+
+/** The module with the picture decoders replaces the one the file was opened with: the same file, read again from the cache. */
+async function useVideoModule() {
+  if (!file || !source || videoEngineLoaded) return
+  const engine = await loadMediaEngine(undefined, { video: true })
+  file.close()
+  file = engine.open(source)
+  videoEngineLoaded = true
+}
+
+/** Playback stopped on a device too slow to decode this picture in real time. */
+class SlowError extends Error {
+  constructor(speed: number) {
+    super(`This device is too slow to convert this file’s picture as it plays (it managed ${speed.toFixed(1)}× real time). Try a lower-resolution source.`)
+    this.name = 'SlowError'
+  }
 }
 
 /** The page numbers streams by their index; an id that isn't the kind of stream wanted means there isn't one (an audio-only file's "video 0"). */
@@ -317,6 +399,8 @@ ctx.onmessage = (event: MessageEvent<ToWorker>) => {
           convert = message.convert
           audioDisabled = false
           playhead = message.at
+          convertVideo = message.convertVideo === true
+          if (convertVideo) await useVideoModule()
           await begin(message.epoch, message.at, 0, 'all')
           break
         case 'seek':

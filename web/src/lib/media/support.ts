@@ -21,6 +21,13 @@ export function convertedSoundFormat(isSupported?: (mime: string) => boolean): {
   return null
 }
 
+/** True when this browser can encode the pictures the engine decodes (WebCodecs' VideoEncoder, which takes H.264 nearly everywhere it exists):
+ *  what converting a picture it can't play needs, besides the engine. Whether it takes a particular size is asked when a file is opened. */
+export function canConvertVideo(): boolean {
+  const g = globalThis as { VideoEncoder?: unknown; VideoFrame?: unknown }
+  return canUseMediaEngine() && typeof g.VideoEncoder === 'function' && typeof g.VideoFrame === 'function'
+}
+
 /** True when the engine can run here. */
 export function canUseMediaEngine(): boolean {
   cached ??= typeof WebAssembly === 'object' && convertedSoundFormat() !== null
