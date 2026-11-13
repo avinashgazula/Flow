@@ -299,7 +299,7 @@ struct PlaybackSettingsView: View {
                 FilmPicker("Player Engine", selection: $model.settings.playback.playerEngine) {
                     ForEach(PlayerEngine.allCases) { Text($0.title).tag($0) }
                 }
-                Toggle("Decode DTS and Dolby TrueHD", isOn: $model.settings.playback.decodeLosslessAudio)
+                Toggle("Decode Audio Apple Can't Play", isOn: $model.settings.playback.decodeLosslessAudio)
                 Toggle("Prefer Sources With Playable Audio", isOn: $model.settings.sources.preferPlayableAudio)
                 #if os(iOS) || os(macOS)
                 FilmPicker("MKV Files", selection: $model.settings.playback.matroskaPlayback) {
@@ -309,7 +309,7 @@ struct PlaybackSettingsView: View {
             } header: {
                 FilmSectionHeader("Formats")
             } footer: { FilmFooter {
-                Text("Marquee plays MKV files itself by repackaging them on the fly for Apple's player, without re-encoding: HDR, Dolby Vision, Dolby Atmos, embedded and disc subtitles and chapters all come through, and DTS and TrueHD are decoded to lossless FLAC. Files Apple's player can't play at all (AVI, WMV, FLV, DVD and Ogg files; MPEG-2, VC-1, Xvid, VP8 and VP9 video; 10-bit H.264; soundtracks it can't decode) play in Marquee's built-in decoder, automatically. It gives up Picture in Picture, AirPlay video and Dolby Vision passthrough, so Automatic keeps Apple's player for everything it can play; Always Built-in Decoder sends every file through it.")
+                Text("Marquee plays MKV files itself by repackaging them on the fly for Apple's player, without re-encoding: HDR, Dolby Vision, Dolby Atmos, embedded and disc subtitles and chapters all come through, and audio Apple's player can't play (DTS, Dolby TrueHD, Opus, Vorbis, uncompressed PCM and more) is decoded to lossless FLAC. Files Apple's player can't play at all (AVI, WMV, FLV, DVD and Ogg files; MPEG-2, VC-1, Xvid, VP8 and VP9 video; 10-bit H.264; soundtracks it can't decode) play in Marquee's built-in decoder, automatically. It gives up Picture in Picture, AirPlay video and Dolby Vision passthrough, so Automatic keeps Apple's player for everything it can play; Always Built-in Decoder sends every file through it.")
             } }
             #if os(iOS) || os(macOS)
             Section {

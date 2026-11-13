@@ -1,5 +1,8 @@
 import Foundation
 
+// The hot functions below are marked `@_optimize(speed)`: debug builds (the simulator, CI's tour) otherwise take longer to
+// encode a segment than AVPlayer waits for it.
+
 /// A small lossless FLAC encoder, for audio Flow decodes itself (DTS, Dolby TrueHD) and hands to
 /// AVPlayer as FLAC in fragmented MP4. Fixed predictors (orders 0–4) with partitioned Rice coding:
 /// a little larger than libFLAC's output, but fast, and bit-exact.
@@ -31,7 +34,7 @@ struct FLACEncoder {
     }
 
     /// Encodes one frame from interleaved samples (`count` per channel, at most `blockSize`).
-    mutating func encodeFrame(_ interleaved: UnsafeBufferPointer<Int32>, count: Int) -> [UInt8] {
+    @_optimize(speed) mutating func encodeFrame(_ interleaved: UnsafeBufferPointer<Int32>, count: Int) -> [UInt8] {
         var w = FastBitWriter(capacity: count * channels * bitsPerSample / 8 + 64)
         // Header
         w.write(0b11111111111110, 14); w.write(0, 1); w.write(0, 1)     // sync, reserved, fixed blocking
@@ -60,7 +63,7 @@ struct FLACEncoder {
         return bytes
     }
 
-    private func writeSubframe(_ x: [Int64], _ w: inout FastBitWriter) {
+    @_optimize(speed) private func writeSubframe(_ x: [Int64], _ w: inout FastBitWriter) {
         let n = x.count
         let bps = bitsPerSample
         if x.allSatisfy({ $0 == x[0] }) {                                // silence, or any constant
@@ -105,10 +108,10 @@ struct FLACEncoder {
 
     // MARK: Rice coding
 
-    private static func zigzag(_ v: Int64) -> UInt64 { UInt64(bitPattern: (v << 1) ^ (v >> 63)) }
+    @_optimize(speed) private static func zigzag(_ v: Int64) -> UInt64 { UInt64(bitPattern: (v << 1) ^ (v >> 63)) }
 
     /// The partition order (0–4) and parameters that code the residual in the fewest bits.
-    private static func bestRice(_ e: [Int64], order: Int, blockSize: Int) -> (bits: Int, partitionOrder: Int) {
+    @_optimize(speed) private static func bestRice(_ e: [Int64], order: Int, blockSize: Int) -> (bits: Int, partitionOrder: Int) {
         var best = (bits: Int.max, partitionOrder: 0)
         for p in 0...4 {
             let parts = 1 << p
@@ -122,7 +125,7 @@ struct FLACEncoder {
         return best
     }
 
-    private static func partitions(count: Int, order: Int, blockSize: Int, partitionOrder p: Int) -> [Range<Int>] {
+    @_optimize(speed) private static func partitions(count: Int, order: Int, blockSize: Int, partitionOrder p: Int) -> [Range<Int>] {
         let size = blockSize >> p
         var out: [Range<Int>] = []
         var start = 0
@@ -135,7 +138,7 @@ struct FLACEncoder {
     }
 
     /// The best Rice parameter for a partition, and its cost in bits.
-    private static func parameter(_ e: [Int64], _ range: Range<Int>) -> (k: Int, bits: Int) {
+    @_optimize(speed) private static func parameter(_ e: [Int64], _ range: Range<Int>) -> (k: Int, bits: Int) {
         guard !range.isEmpty else { return (0, 0) }
         var sum: UInt64 = 0
         for i in range { sum &+= zigzag(e[i]) }
@@ -150,7 +153,7 @@ struct FLACEncoder {
         return best
     }
 
-    private static func writeResidual(_ e: [Int64], order: Int, blockSize: Int, partitionOrder p: Int, _ w: inout FastBitWriter) {
+    @_optimize(speed) private static func writeResidual(_ e: [Int64], order: Int, blockSize: Int, partitionOrder p: Int, _ w: inout FastBitWriter) {
         w.write(1, 2)                                                    // 5-bit Rice parameters
         w.write(UInt64(p), 4)
         for range in partitions(count: e.count, order: order, blockSize: blockSize, partitionOrder: p) {
@@ -213,7 +216,7 @@ struct FastBitWriter {
     }
 
     /// Writes the low `count` bits of `value` (count ≤ 56).
-    mutating func write(_ value: UInt64, _ count: Int) {
+    @_optimize(speed) mutating func write(_ value: UInt64, _ count: Int) {
         guard count > 0 else { return }
         if count > 32 {
             write(value >> 32, count - 32)
@@ -228,12 +231,12 @@ struct FastBitWriter {
         }
     }
 
-    mutating func writeSigned(_ value: Int64, _ count: Int) {
+    @_optimize(speed) mutating func writeSigned(_ value: Int64, _ count: Int) {
         write(UInt64(bitPattern: value) & ((1 << UInt64(count)) - 1), count)
     }
 
     /// `q` zeros, then a one.
-    mutating func writeUnary(_ q: UInt64) {
+    @_optimize(speed) mutating func writeUnary(_ q: UInt64) {
         var q = q
         while q >= 32 { write(0, 32); q -= 32 }
         write(1, Int(q) + 1)

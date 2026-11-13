@@ -391,6 +391,12 @@ public struct DemoSourceProvider: SourceProvider {
                                         title: "AIOStreams\n" + text, detail: text, filename: "Flow.Sample.720p.DTS.AAC.AC3.mkv",
                                         location: .url(sample, headers: [:]), traits: StreamParser.parse(text, "Flow.Sample.720p.mkv")))
         }
+        if let sample = Self.audioSample {
+            let text = "🧿 360p\nMKV · Opus, Vorbis and PCM decoded on device\n🔊 Opus • Vorbis • PCM\n🌎 English • Spanish • French"
+            sources.append(StreamSource(id: Self.audioSampleID, category: .addons, providerID: providerID, providerName: providerName,
+                                        title: "AIOStreams\n" + text, detail: text, filename: "Flow.Sample.360p.Opus.Vorbis.PCM.mkv",
+                                        location: .url(sample, headers: [:]), traits: StreamParser.parse(text, "Flow.Sample.360p.mkv")))
+        }
         if let sample = Self.aviSample {
             let text = "🧿 240p\nAVI · Xvid and MP2\n🔊 MP2"
             sources.append(StreamSource(id: Self.aviSampleID, category: .addons, providerID: providerID, providerName: providerName,
@@ -406,6 +412,10 @@ public struct DemoSourceProvider: SourceProvider {
     public static var aviSample: URL? { Bundle.main.url(forResource: "FlowSampleXvid", withExtension: "avi") }
 
     public static let matroskaSampleID = "demo#mkv"
+    public static let audioSampleID = "demo#audio"
+
+    /// A tiny MKV bundled with the app (H.264; Opus, Vorbis and 8-bit PCM audio, none of which Apple's player plays) to prove they are decoded.
+    public static var audioSample: URL? { Bundle.main.url(forResource: "FlowSampleAudio", withExtension: "mkv") }
 
     /// A short MKV bundled with the app (H.264, DTS + AAC + AC-3, ASS and forced PGS subtitles, chapters) to show the remuxer at work.
     public static var matroskaSample: URL? { Bundle.main.url(forResource: "FlowSample", withExtension: "mkv") }

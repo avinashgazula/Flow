@@ -28,7 +28,7 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
 - **Ratings and posters**: choose and order the ratings shown, tap one to open that site's reviews, use a custom icon pack, or swap posters for RatingPosterDB's rated artwork.
 - **Settings in depth**: tab order, light or dark app icon, notifications for new episodes and followed teams' matches, score-spoiler hiding, Resolution on Cellular, an SDR preference, download size and resolution limits with automatic source choice, source prefetching on detail pages, audio and subtitle language fallbacks, sources sorted by audio language, Play From This Library Only, per-domain iCloud sync status with storage use, granular cache and progress resets, tracking-data export, and a sync-issue readout for Trakt and Simkl.
 - **MKV playback**: Matroska files play in Apple's own player. Marquee remuxes them on the device, without re-encoding, into HLS served from a loopback address.
-  - Codecs: H.264, HEVC (HDR10, and Dolby Vision profiles 5 and 8; profile 7 plays as HDR10), AV1 (on devices with an AV1 decoder), AAC, Dolby Digital (Plus) with Atmos, FLAC and MP3, plus DTS (including DTS-HD Master Audio) and Dolby TrueHD, which Marquee decodes with FFmpeg and hands over as lossless FLAC.
+  - Codecs: H.264, HEVC (HDR10, and Dolby Vision profiles 5 and 8; profile 7 plays as HDR10), AV1 (on devices with an AV1 decoder), AAC, Dolby Digital (Plus) with Atmos, FLAC and MP3, plus every audio codec Apple's player can't play: DTS (including DTS-HD Master Audio), Dolby TrueHD, Opus, Vorbis, MP2, ALAC, WavPack, TTA, Windows Media Audio, ADPCM and uncompressed PCM (8 to 32 bits, any sample rate, up to 8 channels). Marquee decodes them on the device (FFmpeg, and its own code for PCM) and hands them over as lossless FLAC, so seeking stays gap-free and a track that plays as it is is never converted.
   - Every audio track, text subtitles and chapters come through, plus Blu-ray and DVD picture subtitles (PGS and VobSub), which Marquee draws itself.
   - Scrubbing previews on Apple TV, iPhone and iPad.
   - Each file's index is cached, so reopening it is quick.
@@ -86,7 +86,7 @@ CI (`.github/workflows/ci.yml`) runs the FlowKit tests on Linux and macOS and bu
 
 ## Notes
 
-- Apple's player can't play Opus or Vorbis audio or VP9 video from these files. Marquee skips those tracks, says so, and prefers sources whose soundtrack plays. Media servers are asked for HLS when direct play isn't possible. On iPhone, iPad and Mac, MKV files can also go to an external player (Settings → Playback).
+- Apple's player can't play VP9 video from these files, and an MKV soundtrack with more than 8 channels, or one Marquee has no decoder for, is skipped: Marquee says so and prefers sources whose soundtrack plays. Opus, Vorbis and PCM audio play, because Marquee decodes them (Settings → Playback → Decode Audio Apple Can't Play). Media servers are asked for HLS when direct play isn't possible. On iPhone, iPad and Mac, MKV files can also go to an external player (Settings → Playback).
 - The PublicMetaDB and IntroDB base URLs are configurable because deployments differ.
 
 ## Third-party software
@@ -94,11 +94,11 @@ CI (`.github/workflows/ci.yml`) runs the FlowKit tests on Linux and macOS and bu
 Marquee's built-in decoder for files Apple's player can't play is [mpv](https://mpv.io)'s libmpv, through
 [MPVKit](https://github.com/mpvkit/MPVKit) 1.1.0-n9.0.2 (its LGPL product, never the GPL one). That brings
 [FFmpeg](https://ffmpeg.org) n9.0.2 (LGPL 2.1 or later), libass, libplacebo, MoltenVK, dav1d, FreeType, HarfBuzz, FriBidi,
-GnuTLS, libbluray and lcms2, all LGPL or more permissive; no GPL or non-free parts. The same FFmpeg decodes DTS and
-Dolby TrueHD for the MKV remuxer (`Packages/FlowDecoders` only carries its headers; the old standalone build in
+GnuTLS, libbluray and lcms2, all LGPL or more permissive; no GPL or non-free parts. The same FFmpeg decodes DTS, Dolby
+TrueHD, Opus, Vorbis, MP2, ALAC, WavPack, TTA and Windows Media audio for the MKV remuxer (`Packages/FlowDecoders` only carries its headers; the old standalone build in
 `Packages/FlowDecoders/FFmpegDecoders` is no longer linked, since two copies of FFmpeg clash). Because Marquee's
 source is public, the app can be relinked against modified versions of these libraries. The licences appear in
-the app under Settings → General → Open Source Licences, and **Decode DTS and Dolby TrueHD** in Playback settings
+the app under Settings → General → Open Source Licences, and **Decode Audio Apple Can't Play** in Playback settings
 turns that decoding off.
 
 What plays where: Apple's player plays MP4, MOV, HLS and TS directly, and MKV/WebM through the on-device remux. The

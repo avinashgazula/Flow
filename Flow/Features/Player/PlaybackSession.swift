@@ -357,7 +357,7 @@ final class PlaybackSession: Identifiable {
             chapterSegments = SkipSegmentResolver.fromChapters(chapters.map { ($0.title, $0.start) }, duration: remuxer.duration)
             if segments.isEmpty { segments = chapterSegments }
             if let first = skippedAudio.first(where: { !$0.track.isCommentary }), let playing = remuxer.audio.first {
-                show(notice: "\(first.reason) can't play on Apple devices. Playing \(playing.label) instead.")
+                show(notice: first.reason + (MatroskaRemuxer.audioDecoders == nil ? ": turn on Decode Audio Apple Can't Play in Settings. " : " can't play on Apple devices. ") + "Playing \(playing.label) instead.")
             }
             phase = .connecting(0.35)
             attach(AVURLAsset(url: hls))

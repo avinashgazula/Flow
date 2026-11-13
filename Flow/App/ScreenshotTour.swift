@@ -66,6 +66,64 @@ enum ScreenshotTour {
                 log("suggestions: \(m.activePlayback?.suggestions.count ?? -1) phase=\(String(describing: m.activePlayback?.phase))")
                 m.activePlayback?.endWithSuggestions()
             },
+            // Audio Apple can't play (Opus, Vorbis, PCM) decoded on the device: each track of the bundled clip is chosen in turn and
+            // must play on (the log says so), and the screenshot is the picture with its controls.
+            Step(name: "player-mkv-audio") { m in
+                m.activePlayback?.stop()
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                guard let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first(where: { $0.id == DemoSourceProvider.audioSampleID }) else {
+                    log("no bundled audio sample")
+                    return
+                }
+                m.startPlayback(source, request: PlaybackRequest(item: duneItem))
+                guard let session = m.activePlayback else { return }
+                // The first picture can take a while on a busy simulator.
+                for second in 0..<40 {
+                    if case .playing = session.phase { break }
+                    if second % 4 == 0, let item = session.player.currentItem {
+                        log("audio sample waiting: phase=\(session.phase) status=\(item.status.rawValue) error=\(item.error?.localizedDescription ?? "-")")
+                    }
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                }
+                log("audio sample: remux=\(session.usesRemux) phase=\(session.phase) time=\(String(format: "%.1f", session.currentTime))")
+                log("info: " + session.infoRows().map { "\($0.label)=\($0.value)" }.joined(separator: "; "))
+                guard let item = session.player.currentItem, let group = try? await item.asset.loadMediaSelectionGroup(for: .audible) else {
+                    log("audio sample: no audio group")
+                    return
+                }
+                for option in group.options {
+                    item.select(option, in: group)
+                    session.seek(to: 1)
+                    session.player.play()
+                    // A switch re-seeks and rebuilds buffers: wait until it is really playing again, then see time move.
+                    var waited = 0.0
+                    while waited < 15, !(session.player.timeControlStatus == .playing && session.currentTime >= 1) {
+                        try? await Task.sleep(nanoseconds: 250_000_000)
+                        waited += 0.25
+                    }
+                    let before = session.currentTime
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    let moved = session.currentTime - before
+                    let why = session.player.reasonForWaitingToPlay?.rawValue ?? "-"
+                    log("audio track \(option.displayName): ready after \(String(format: "%.1f", waited)) s, time=\(String(format: "%.1f", session.currentTime)) moved=\(String(format: "%.1f", moved)) s in 2 s waiting=\(why) \(moved >= 1.5 ? "PLAYING" : "STALLED")")
+                }
+                // Back on the first track, paused, so the screenshot is the picture with its controls.
+                item.select(group.options[0], in: group)
+                session.seek(to: 1)
+                session.player.play()
+                var waited = 0.0
+                while waited < 15, !(session.player.timeControlStatus == .playing && session.currentTime >= 1.2) {
+                    try? await Task.sleep(nanoseconds: 250_000_000)
+                    waited += 0.25
+                }
+                session.player.pause()
+                for event in item.accessLog()?.events ?? [] {
+                    log("access: \(event.uri ?? "-") segments=\(event.numberOfMediaRequests) stalls=\(event.numberOfStalls) bitrate=\(Int(event.observedBitrate))")
+                }
+                for event in item.errorLog()?.events ?? [] {
+                    log("error log: \(event.errorStatusCode) \(event.errorComment ?? "-") \(event.uri ?? "-")")
+                }
+            },
             Step(name: "person") { m in m.activePlayback?.stop(); m.paths[.home] = [.detail(duneItem), .person(id: 1190668, name: "Timothée Chalamet")] },
             // Home once more after the player has saved a new resume point: it must agree with the Library's row.
             Step(name: "home-after-playback") { m in m.paths[.home] = []; m.selectedTab = .home },
