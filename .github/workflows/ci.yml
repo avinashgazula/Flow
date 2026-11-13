@@ -107,6 +107,18 @@ jobs:
           xcodegen generate
       - name: Run tour
         run: scripts/screenshot-tour.sh ${{ matrix.platform }} shots/${{ matrix.xcode == '27' && 'xcode27/' || '' }}${{ matrix.platform }}
+      - name: Check the built-in player shots and the app size
+        run: |
+          dir=shots/${{ matrix.xcode == '27' && 'xcode27/' || '' }}${{ matrix.platform }}
+          missing=0
+          for name in player-universal player-avi player-universal-done; do
+            ls "$dir"/*-"$name".png > /dev/null 2>&1 || { echo "::error::No $name screenshot: the app died or the step never ran"; missing=1; }
+          done
+          for app in dd/Build/Products/*/Flow.app; do
+            size=$(du -sh "$app" | awk '{print $1}')
+            echo "${{ matrix.platform }} Flow.app (Xcode ${{ matrix.xcode }}): $size on disk" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+          exit $missing
       - uses: actions/upload-artifact@v4
         if: always()
         with:

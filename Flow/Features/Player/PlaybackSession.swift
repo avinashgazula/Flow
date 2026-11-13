@@ -2196,7 +2196,7 @@ extension PlaybackSession {
             rows.append(InfoRow(label: "Audio", value: track.title))
         }
         if let configured = engine.info["vo-configured"] {
-            rows.append(InfoRow(label: "Renderer", value: "\(engine.info["current-vo"] ?? "?"), \(configured == "yes" ? "drawing" : "not drawing"), \(engine.info["estimated-vf-fps"] ?? "0") fps, \(engine.info["frame-drop-count"] ?? "0") dropped"))
+            rows.append(InfoRow(label: "Renderer", value: "\(engine.info["current-vo"] ?? "?"), \(configured == "yes" ? "drawing" : "not drawing"), \(engine.info["estimated-vf-fps"] ?? "0") fps, \(engine.info["frame-drop-count"] ?? "0") dropped, window \(engine.info["osd-width"] ?? "?")x\(engine.info["osd-height"] ?? "?")"))
         }
         if engine.bufferedAhead > 0 { rows.append(InfoRow(label: "Buffered", value: String(format: "%.0f s ahead", engine.bufferedAhead))) }
         return rows

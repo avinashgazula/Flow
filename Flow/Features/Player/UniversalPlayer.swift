@@ -158,6 +158,7 @@ final class UniversalPlayer {
     @ObservationIgnored private var boostDB = 0
     @ObservationIgnored private var logTail: [String] = []
     @ObservationIgnored private var lifecycleObservers: [NSObjectProtocol] = []
+    @ObservationIgnored private var pendingURL: URL?
 
     /// Creates the player and starts opening `url`, paused. Nil if libmpv can't be created.
     init?(url: URL, headers: [String: String], startAt: Double?, audioLanguages: [String], subtitleLanguages: [String],
@@ -245,7 +246,7 @@ final class UniversalPlayer {
             ("video-format", MPV_FORMAT_STRING), ("hwdec-current", MPV_FORMAT_STRING), ("file-format", MPV_FORMAT_STRING),
             ("audio-codec-name", MPV_FORMAT_STRING), ("video-params/colormatrix", MPV_FORMAT_STRING),
             ("video-params/gamma", MPV_FORMAT_STRING), ("current-vo", MPV_FORMAT_STRING), ("vo-configured", MPV_FORMAT_FLAG),
-            ("estimated-vf-fps", MPV_FORMAT_DOUBLE), ("frame-drop-count", MPV_FORMAT_INT64), ("audio-params/hr-channels", MPV_FORMAT_STRING),
+            ("estimated-vf-fps", MPV_FORMAT_DOUBLE), ("osd-width", MPV_FORMAT_INT64), ("osd-height", MPV_FORMAT_INT64), ("frame-drop-count", MPV_FORMAT_INT64), ("audio-params/hr-channels", MPV_FORMAT_STRING),
         ]
         for (name, format) in observed { mpv_observe_property(created, 0, name, format) }
 
@@ -260,7 +261,13 @@ final class UniversalPlayer {
         }, Unmanaged.passUnretained(handle).toOpaque())
 
         observeLifecycle()
-        command(["loadfile", url.absoluteString, "replace"])
+        // The file opens once the surface has its real size: mpv sizes its swapchain when the video output
+        // starts, and a small file starts it before SwiftUI has laid the view out, leaving a stale size.
+        pendingURL = url
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            self?.beginLoading()
+        }
     }
 
     deinit {
@@ -434,6 +441,7 @@ final class UniversalPlayer {
             onTransport?()
         case .flag(let name, let value): info[name] = value ? "yes" : "no"
         case .number(let name, let value) where name == "estimated-vf-fps" || name == "frame-drop-count": info[name] = String(format: "%.1f", value)
+        case .number(let name, let value) where name == "osd-width" || name == "osd-height": info[name] = String(Int(value))
         case .text(let name, let value): info[name] = value
         case .unset(let name):
             if name == "time-pos" { timePosition = 0 }
@@ -467,6 +475,19 @@ final class UniversalPlayer {
     }
 
     // MARK: Control
+
+    /// The view holding the layer has been laid out at its real size; the file can open.
+    func surfaceLaidOut(size: CGSize, scale: CGFloat) {
+        ScreenshotTour.log("mpv surface \(Int(size.width))x\(Int(size.height)) @\(scale)x, layer \(layer.frame.size) drawable \(layer.drawableSize)")
+        guard size.width > 1, size.height > 1 else { return }
+        beginLoading()
+    }
+
+    private func beginLoading() {
+        guard let url = pendingURL, !isShutDown else { return }
+        pendingURL = nil
+        command(["loadfile", url.absoluteString, "replace"])
+    }
 
     /// Commands and property changes go out asynchronously: the main thread never waits on mpv, whose
     /// video thread can be waiting on the main thread (the layer's extended-range switch).

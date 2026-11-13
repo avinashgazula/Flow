@@ -6,6 +6,7 @@ import FlowKit
 #if os(iOS) || os(tvOS)
 final class UniversalSurfaceUIView: UIView {
     private var hosted: CALayer?
+    var onLayout: ((CGSize, CGFloat) -> Void)?
 
     func host(_ layer: CALayer) {
         guard hosted !== layer else { return }
@@ -28,6 +29,7 @@ final class UniversalSurfaceUIView: UIView {
             metal.drawableSize = CGSize(width: bounds.width * scale, height: bounds.height * scale)
         }
         CATransaction.commit()
+        if window != nil { onLayout?(bounds.size, scale) }
     }
 }
 
@@ -39,6 +41,7 @@ struct UniversalSurface: UIViewRepresentable {
         let view = UniversalSurfaceUIView()
         view.backgroundColor = .black
         view.host(player.layer)
+        view.onLayout = { [weak player] size, scale in player?.surfaceLaidOut(size: size, scale: scale) }
         player.setFill(fill)
         return view
     }
@@ -61,6 +64,7 @@ struct UniversalSurface: UIViewRepresentable {
 #else
 final class UniversalSurfaceNSView: NSView {
     private var hosted: CAMetalLayer?
+    var onLayout: ((CGSize, CGFloat) -> Void)?
 
     func host(_ layer: CAMetalLayer) {
         guard hosted !== layer else { return }
@@ -88,6 +92,7 @@ final class UniversalSurfaceNSView: NSView {
         hosted.contentsScale = scale
         hosted.drawableSize = CGSize(width: bounds.width * scale, height: bounds.height * scale)
         CATransaction.commit()
+        if window != nil { onLayout?(bounds.size, scale) }
     }
 }
 
@@ -98,6 +103,7 @@ struct UniversalSurface: NSViewRepresentable {
     func makeNSView(context: Context) -> UniversalSurfaceNSView {
         let view = UniversalSurfaceNSView()
         view.host(player.layer)
+        view.onLayout = { [weak player] size, scale in player?.surfaceLaidOut(size: size, scale: scale) }
         player.setFill(fill)
         return view
     }
