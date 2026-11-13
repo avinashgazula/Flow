@@ -391,6 +391,12 @@ from a Linux machine and verified only by CI builds and tour screenshots, so che
 - Open on a device: HDR/Dolby Vision colours (tone mapped to SDR), real AVI/WMV/MPEG-2/VP9 files, background audio, tvOS
   remote feel (held left/right), IPA size change.
 - FlowDecoders no longer links its own FFmpeg: it uses MPVKit's headers and library (two copies clash).
+- CI now reads the tour log, not only the screenshots: the job fails unless the Xvid AVI reached playing in the built-in
+  player and all three tracks of `FlowSampleAudio.mkv` (Opus, Vorbis, PCM) carried playback on after a switch. Debug
+  simulator builds take 2 to 4 seconds to build the first decoded audio segment, so the player logs "No response for media
+  file in 2 s" there and retries; time a release build on a device before worrying about it.
+- Seen once on the Mac: the built-in player opened a file before mpv had reported its length, and a saved resume point
+  past the end brought up the resume prompt. The length now travels with the "file loaded" event.
 
 
 What the October 2026 sessions learned about working here, so the next one can start straight away.

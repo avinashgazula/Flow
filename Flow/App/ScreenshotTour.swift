@@ -95,22 +95,22 @@ enum ScreenshotTour {
                     item.select(option, in: group)
                     session.seek(to: 1)
                     session.player.play()
-                    // A switch re-seeks and rebuilds buffers. First let the seek land (the old track is still playing, seconds
-                    // ahead, for a moment), then wait until the new one is really playing, and only then see time move.
+                    // A switch re-seeks and rebuilds buffers, and the player can pause for a moment at any point while it does.
+                    // So let the seek land (the old track plays on, seconds ahead, for a moment), then give the new track
+                    // time to carry playback two seconds on: a track that can't be decoded never gets there.
                     var waited = 0.0
-                    while waited < 5, session.player.timeControlStatus == .playing, session.currentTime >= 2 {
+                    while waited < 5, session.currentTime >= 2 {
                         try? await Task.sleep(nanoseconds: 250_000_000)
                         waited += 0.25
                     }
-                    while waited < 20, !(session.player.timeControlStatus == .playing && session.currentTime >= 1) {
+                    let landed = session.currentTime
+                    while waited < 20, session.currentTime < landed + 2 {
                         try? await Task.sleep(nanoseconds: 250_000_000)
                         waited += 0.25
                     }
-                    let before = session.currentTime
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    let moved = session.currentTime - before
+                    let moved = session.currentTime - landed
                     let why = session.player.reasonForWaitingToPlay?.rawValue ?? "-"
-                    log("audio track \(option.displayName): ready after \(String(format: "%.1f", waited)) s, time=\(String(format: "%.1f", session.currentTime)) moved=\(String(format: "%.1f", moved)) s in 2 s waiting=\(why) \(moved >= 1.5 ? "PLAYING" : "STALLED")")
+                    log("audio track \(option.displayName): moved \(String(format: "%.1f", moved)) s from \(String(format: "%.1f", landed)) within \(String(format: "%.1f", waited)) s waiting=\(why) \(moved >= 2 ? "PLAYING" : "STALLED")")
                 }
                 // Back on the first track, paused, so the screenshot is the picture with its controls.
                 item.select(group.options[0], in: group)
