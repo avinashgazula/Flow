@@ -66,28 +66,48 @@ enum ScreenshotTour {
                 log("suggestions: \(m.activePlayback?.suggestions.count ?? -1) phase=\(String(describing: m.activePlayback?.phase))")
                 m.activePlayback?.endWithSuggestions()
             },
-            // Audio Apple can't play (Opus, Vorbis, PCM) decoded on the device: the info panel lists the decoded tracks, and the log says it is playing.
+            // Audio Apple can't play (Opus, Vorbis, PCM) decoded on the device: each track of the bundled clip is chosen in turn and
+            // must play on (the log says so), and the screenshot is the picture with its controls.
             Step(name: "player-mkv-audio") { m in
                 m.activePlayback?.stop()
                 try? await Task.sleep(nanoseconds: 600_000_000)
-                if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first(where: { $0.id == DemoSourceProvider.audioSampleID }) {
-                    m.startPlayback(source, request: PlaybackRequest(item: duneItem))
-                    Task {
-                        try? await Task.sleep(nanoseconds: 2_500_000_000)
-                        m.activePlayback?.showsInfo = true
-                        if let session = m.activePlayback {
-                            log("audio sample: remux=\(session.usesRemux) phase=\(session.phase) time=\(String(format: "%.1f", session.currentTime))")
-                            log("info: " + session.infoRows().map { "\($0.label)=\($0.value)" }.joined(separator: "; "))
-                        }
-                        // Time moving on means the decoded FLAC rendition is being played.
-                        try? await Task.sleep(nanoseconds: 2_000_000_000)
-                        if let session = m.activePlayback {
-                            log("audio sample later: phase=\(session.phase) time=\(String(format: "%.1f", session.currentTime))")
-                        }
-                    }
-                } else {
+                guard let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first(where: { $0.id == DemoSourceProvider.audioSampleID }) else {
                     log("no bundled audio sample")
+                    return
                 }
+                m.startPlayback(source, request: PlaybackRequest(item: duneItem))
+                guard let session = m.activePlayback else { return }
+                // The first picture can take a while on a busy simulator.
+                for second in 0..<40 {
+                    if case .playing = session.phase { break }
+                    if second % 4 == 0, let item = session.player.currentItem {
+                        log("audio sample waiting: phase=\(session.phase) status=\(item.status.rawValue) error=\(item.error?.localizedDescription ?? "-")")
+                    }
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                }
+                log("audio sample: remux=\(session.usesRemux) phase=\(session.phase) time=\(String(format: "%.1f", session.currentTime))")
+                log("info: " + session.infoRows().map { "\($0.label)=\($0.value)" }.joined(separator: "; "))
+                guard let item = session.player.currentItem, let group = try? await item.asset.loadMediaSelectionGroup(for: .audible) else {
+                    log("audio sample: no audio group")
+                    return
+                }
+                for option in group.options + [group.options[0]] {
+                    item.select(option, in: group)
+                    session.seek(to: 1)
+                    session.player.play()
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    let before = session.currentTime
+                    try? await Task.sleep(nanoseconds: 1_500_000_000)
+                    let moved = session.currentTime - before
+                    log("audio track \(option.displayName): phase=\(session.phase) time=\(String(format: "%.1f", session.currentTime)) moved=\(String(format: "%.1f", moved)) s in 1.5 s \(moved >= 1 ? "PLAYING" : "STALLED")")
+                }
+                for event in item.accessLog()?.events ?? [] {
+                    log("access: \(event.uri ?? "-") segments=\(event.numberOfMediaRequests) stalls=\(event.numberOfStalls) bitrate=\(Int(event.observedBitrate))")
+                }
+                for event in item.errorLog()?.events ?? [] {
+                    log("error log: \(event.errorStatusCode) \(event.errorComment ?? "-") \(event.uri ?? "-")")
+                }
+                session.seek(to: 1)
             },
             Step(name: "person") { m in m.activePlayback?.stop(); m.paths[.home] = [.detail(duneItem), .person(id: 1190668, name: "Timothée Chalamet")] },
             // Home once more after the player has saved a new resume point: it must agree with the Library's row.

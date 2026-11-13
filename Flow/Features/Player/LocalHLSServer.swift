@@ -155,6 +155,7 @@ final class LocalHLSServer: @unchecked Sendable {
         }
 
         // The remuxer is async; this worker thread waits for it.
+        let started = Date()
         let semaphore = DispatchSemaphore(value: 0)
         let box = ResponseBox()
         Task.detached {
@@ -164,6 +165,8 @@ final class LocalHLSServer: @unchecked Sendable {
         semaphore.wait()
 
         guard let response = box.response else {
+            let line = "hls \(method) \(pathParts[1]) -> \(box.failed ? 502 : 404)"
+            Task { @MainActor in ScreenshotTour.log(line) }
             return send(fd, status: box.failed ? 502 : 404, keepAlive: keepAlive && !box.failed)
         }
         let body: [UInt8]
@@ -172,6 +175,11 @@ final class LocalHLSServer: @unchecked Sendable {
         case .playlist(let text): body = Array(text.utf8); type = "application/vnd.apple.mpegurl"
         case .text(let text): body = Array(text.utf8); type = "text/vtt; charset=utf-8"
         case .media(let bytes): body = bytes; type = "video/mp4"
+        }
+        // Media segments only: the tour log shows what the player asked for and how long building it took.
+        if case .media = response {
+            let line = "hls \(method) \(pathParts[1]) -> \(body.count) bytes in \(Int(Date().timeIntervalSince(started) * 1000)) ms"
+            Task { @MainActor in ScreenshotTour.log(line) }
         }
         return send(fd, status: 200, type: type, body: body, range: headers["range"], headOnly: method == "HEAD", keepAlive: keepAlive)
     }
