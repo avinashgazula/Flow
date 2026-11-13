@@ -91,7 +91,7 @@ CI (`.github/workflows/ci.yml`) runs the FlowKit tests on Linux and macOS and bu
 
 ## Third-party software
 
-On the website, a second FFmpeg 7.1.1 build (`web/scripts/build-media-engine.sh`, `web/src/lib/media/pkg/`) reads AVI, MPEG-TS, WMV, FLV and other containers and converts sound a browser can't play; it is LGPL 2.1 too, with no GPL or non-free part, and is listed under Settings → About → Open Source Licences.
+On the website, a second FFmpeg 7.1.1 build (`web/scripts/build-media-engine.sh`, `web/src/lib/media/pkg/`) reads AVI, MPEG-TS, WMV, FLV and other containers, converts sound a browser can't play, and (a second module) decodes pictures it can't, which the browser then encodes again as H.264 (MPEG-2, Xvid, WMV, 10-bit H.264, HEVC without a decoder; not 4K or HDR); it is LGPL 2.1 too, with no GPL or non-free part, and is listed under Settings → About → Open Source Licences.
 
 Marquee decodes DTS and Dolby TrueHD with [FFmpeg](https://ffmpeg.org) 7.1.1, licensed under the
 [LGPL 2.1](Packages/FlowDecoders/Sources/FlowDecoders/Resources/COPYING.LGPLv2.1). It is built from the
