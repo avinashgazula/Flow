@@ -53,6 +53,8 @@ enum Contracts {
         "playback-still-watching": Contracts.stillWatching,
         "watchlist-order": Contracts.watchlistOrder,
         "calendar-ics": Contracts.calendarICS,
+        "language": Contracts.language,
+        "track-selection": Contracts.trackSelection,
     ]
 }
 

@@ -10,6 +10,8 @@
   "source-slate": { "swift": true, "web": true },
   "playback-still-watching": { "swift": true, "web": true },
   "watchlist-order": { "swift": true, "web": true },
-  "calendar-ics": { "swift": true, "web": true }
+  "calendar-ics": { "swift": true, "web": true },
+  "language": { "swift": true, "web": true },
+  "track-selection": { "swift": true, "web": true }
  }
 }
