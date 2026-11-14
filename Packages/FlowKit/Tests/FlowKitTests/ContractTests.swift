@@ -48,6 +48,7 @@ enum Contracts {
         "account-wire": accountWire,
         "sync-key": Contracts.syncKey,
         "sync-link": Contracts.syncLink,
+        "source-parser": Contracts.sourceParser,
     ]
 }
 

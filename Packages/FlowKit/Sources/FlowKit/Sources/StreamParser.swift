@@ -84,8 +84,9 @@ public enum StreamParser {
         if matches(#"\bdts-?hd(\.| )?ma\b"#, s) { return "DTS-HD MA" }
         if matches(#"\bdts-?x\b"#, s) { return "DTS:X" }
         if matches(#"\bdts\b"#, s) { return "DTS" }
-        if matches(#"(\bddp|\bdd\+|\be-?ac-?3\b|\beac3\b)"#, s) { return "DD+" }
-        if matches(#"\b(dd|ac-?3|dolby digital)\b"#, s) { return "DD" }
+        if matches(#"(\bddp|\bdd\+|\be-?ac-?3\b|\beac3\b|\bdolby digital plus)"#, s) { return "DD+" }
+        // "DD5.1" is Dolby Digital, though there is no word boundary between the DD and the 5; "DD+", "DDP" and "E-AC-3" are Plus.
+        if matches(#"(\bdd(?![+p])(?=\d|\b)|\b(?<!e-?)ac-?3\b|\bdolby digital(?! plus))"#, s) { return "DD" }
         if matches(#"\baac\b"#, s) { return "AAC" }
         if matches(#"\bflac\b"#, s) { return "FLAC" }
         if matches(#"\bopus\b"#, s) { return "Opus" }
