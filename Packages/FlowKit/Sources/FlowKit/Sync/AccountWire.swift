@@ -209,10 +209,39 @@ public enum AccountWire {
         }
     }
 
+    /// A number as `JSON.stringify` writes it (ECMAScript's Number::toString): the shortest digits that read back the same,
+    /// plain up to 21 digits and down to 1e-6, an exponent beyond that. Swift's own description switches to an exponent
+    /// much sooner and pads it ("1e-06"), which would give the same value a different text on the two sides.
     private static func numberText(_ n: Double) -> String {
         guard n.isFinite else { return "null" }
-        if n == n.rounded(), abs(n) < 9e18 { return String(Int64(n)) }
-        return "\(n)"
+        if n == 0 { return "0" }
+        if n == n.rounded(), abs(n) < 1e15 { return String(Int64(n)) }
+        let description = "\(abs(n))"
+        let parts = description.split(separator: "e", maxSplits: 1)
+        let exponent = parts.count > 1 ? Int(parts[1]) ?? 0 : 0
+        let mantissa = parts[0].split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
+        var digits = Array((mantissa[0] + (mantissa.count > 1 ? mantissa[1] : "")).utf8)
+        var point = mantissa[0].count
+        while digits.first == UInt8(ascii: "0"), digits.count > 1 {
+            digits.removeFirst()
+            point -= 1
+        }
+        while digits.last == UInt8(ascii: "0"), digits.count > 1 { digits.removeLast() }
+        let k = digits.count, position = point + exponent
+        let text = String(decoding: digits, as: UTF8.self)
+        let out: String
+        if k <= position, position <= 21 {
+            out = text + String(repeating: "0", count: position - k)
+        } else if 0 < position, position <= 21 {
+            out = String(text.prefix(position)) + "." + String(text.dropFirst(position))
+        } else if -6 < position, position <= 0 {
+            out = "0." + String(repeating: "0", count: -position) + text
+        } else {
+            let e = position - 1
+            let lead = k == 1 ? text : String(text.prefix(1)) + "." + String(text.dropFirst())
+            out = lead + "e" + (e < 0 ? "-" : "+") + String(abs(e))
+        }
+        return n < 0 ? "-" + out : out
     }
 
     private static func writeString(_ s: String, _ out: inout String) {

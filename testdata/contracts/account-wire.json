@@ -1,0 +1,444 @@
+{
+ "area": "account-wire",
+ "description": "The library on the wire (docs/SYNC.md, What an account holds): canonical JSON, times, identities, section names, and reading, writing and merging a library. Ops: canonical, time, parseTime, id, section, read, write, merge. A state omits any field that is empty; both readers fill it in.",
+ "cases": [
+  { "name": "canonical sorts object keys", "op": "canonical", "input": { "b": 1, "a": 2, "c": { "z": 1, "y": [3, 2, 1] } }, "expected": "{\"a\":2,\"b\":1,\"c\":{\"y\":[3,2,1],\"z\":1}}" },
+  { "name": "canonical keeps array order and writes no whitespace", "op": "canonical", "input": [3, "x", null, true, false, []], "expected": "[3,\"x\",null,true,false,[]]" },
+  { "name": "canonical orders keys by UTF-16 code unit, so an emoji sorts before U+E000", "op": "canonical", "input": { "": 1, "😀": 2, "z": 3 }, "expected": "{\"z\":3,\"😀\":2,\"\":1}" },
+  { "name": "canonical writes non-ASCII text as is and escapes quotes, backslashes and control characters", "op": "canonical", "input": { "t": "ünï \"q\" \\ \n\t\u0001 / 🎬" }, "expected": "{\"t\":\"ünï \\\"q\\\" \\\\ \\n\\t\\u0001 / 🎬\"}" },
+  { "name": "canonical writes whole numbers without a decimal point", "op": "canonical", "input": [1, 0, -3, 6000.25, 41.5, 1.0, 100000], "expected": "[1,0,-3,6000.25,41.5,1,100000]" },
+  { "name": "canonical writes small and large fractions as JSON.stringify does", "op": "canonical", "input": [0.1, 0.000001, 123456789.125, 2.5e-7, 1e21], "expected": "[0.1,0.000001,123456789.125,2.5e-7,1e+21]" },
+  { "name": "canonical writes the last exponent-free fraction and the first exponent below it", "op": "canonical", "input": [0.000001, 1e-7, -1e-7, 1.5e-7, 5e-324], "expected": "[0.000001,1e-7,-1e-7,1.5e-7,5e-324]" },
+  { "name": "canonical writes numbers up to 21 digits in full and larger ones with an exponent", "op": "canonical", "input": [1e15, 1e20, 12345678901234567890, 1e21, 1.5e300, 9007199254740993], "expected": "[1000000000000000,100000000000000000000,12345678901234567000,1e+21,1.5e+300,9007199254740992]" },
+  { "name": "canonical writes negative fractions and negative zero", "op": "canonical", "input": [-0.5, -0, 0.5, 100.5, -41.25], "expected": "[-0.5,0,0.5,100.5,-41.25]" },
+  { "name": "canonical of an empty object and nested empties", "op": "canonical", "input": { "a": {}, "b": [], "c": [{}] }, "expected": "{\"a\":{},\"b\":[],\"c\":[{}]}" },
+  { "name": "canonical keeps a null value", "op": "canonical", "input": { "a": null }, "expected": "{\"a\":null}" },
+
+  { "name": "a time is written in UTC with milliseconds", "op": "time", "input": 1792670400123, "expected": "2026-10-22T12:00:00.123Z" },
+  { "name": "the epoch", "op": "time", "input": 0, "expected": "1970-01-01T00:00:00.000Z" },
+  { "name": "the last millisecond of a year", "op": "time", "input": 1798761599999, "expected": "2026-12-31T23:59:59.999Z" },
+  { "name": "a leap day", "op": "time", "input": 1709164800000, "expected": "2024-02-29T00:00:00.000Z" },
+  { "name": "a time before 1970 is written correctly", "op": "time", "input": -1, "expected": "1969-12-31T23:59:59.999Z" },
+  { "name": "a wire time with milliseconds is read", "op": "parseTime", "input": "2026-10-22T12:00:00.123Z", "expected": 1792670400123 },
+  { "name": "a wire time without a fraction is read", "op": "parseTime", "input": "2026-10-22T12:00:00Z", "expected": 1792670400000 },
+  { "name": "a short fraction is read as a fraction of a second", "op": "parseTime", "input": "2026-10-22T12:00:00.5Z", "expected": 1792670400500 },
+  { "name": "an offset is applied", "op": "parseTime", "input": "2026-10-22T14:00:00+02:00", "expected": 1792670400000 },
+  { "name": "a date alone is midnight UTC", "op": "parseTime", "input": "2026-10-22", "expected": 1792627200000 },
+  { "name": "text that is not a time reads as 0, so its entry is dropped", "op": "parseTime", "input": "yesterday", "expected": 0 },
+  { "name": "an empty time reads as 0", "op": "parseTime", "input": "", "expected": 0 },
+
+  { "name": "a movie's progress id is its key", "op": "id", "input": { "kind": "progress", "entry": { "key": "movie:693134" } }, "expected": "movie:693134" },
+  { "name": "an episode's progress id adds a padded code", "op": "id", "input": { "kind": "progress", "entry": { "key": "show:1396", "episode": { "season": 3, "episode": 7 } } }, "expected": "show:1396:S03E07" },
+  { "name": "episode numbers past two digits are not truncated", "op": "id", "input": { "kind": "progress", "entry": { "key": "show:1", "episode": { "season": 12, "episode": 101 } } }, "expected": "show:1:S12E101" },
+  { "name": "a history id uses a dash for a movie and the whole second", "op": "id", "input": { "kind": "history", "entry": { "key": "movie:1", "watchedAt": "2026-11-01T11:59:59.999Z" } }, "expected": "movie:1:-:1793534399" },
+  { "name": "a history id for an episode", "op": "id", "input": { "kind": "history", "entry": { "key": "show:2", "episode": { "season": 1, "episode": 2 }, "watchedAt": "2026-11-01T11:59:59.000Z" } }, "expected": "show:2:S01E02:1793534399" },
+  { "name": "the removal key joins the list and the id", "op": "id", "input": { "kind": "removed", "list": "watchlist", "id": "movie:1" }, "expected": "watchlist:movie:1" },
+
+  { "name": "a movie key is a key", "op": "section", "input": { "isKey": "movie:693134" }, "expected": true },
+  { "name": "a show key is a key", "op": "section", "input": { "isKey": "show:1" }, "expected": true },
+  { "name": "tv is not a wire type", "op": "section", "input": { "isKey": "tv:1396" }, "expected": false },
+  { "name": "a key needs digits", "op": "section", "input": { "isKey": "movie:abc" }, "expected": false },
+  { "name": "a key needs an id", "op": "section", "input": { "isKey": "movie:" }, "expected": false },
+  { "name": "a key may not carry a third part", "op": "section", "input": { "isKey": "movie:1:2" }, "expected": false },
+  { "name": "a key may not be signed", "op": "section", "input": { "isKey": "movie:-1" }, "expected": false },
+  { "name": "a key may not have a space", "op": "section", "input": { "isKey": "movie: 1" }, "expected": false },
+  { "name": "a key is lower case", "op": "section", "input": { "isKey": "Movie:1" }, "expected": false },
+  { "name": "a month of history is a history section", "op": "section", "input": { "isHistory": "history-2026-11" }, "expected": true },
+  { "name": "a later page of a month is a history section", "op": "section", "input": { "isHistory": "history-2026-11-12" }, "expected": true },
+  { "name": "a month needs two digits", "op": "section", "input": { "isHistory": "history-2026-1" }, "expected": false },
+  { "name": "a year needs four digits", "op": "section", "input": { "isHistory": "history-26-11" }, "expected": false },
+  { "name": "a page number needs digits", "op": "section", "input": { "isHistory": "history-2026-11-x" }, "expected": false },
+  { "name": "history alone is not a history section", "op": "section", "input": { "isHistory": "history" }, "expected": false },
+  { "name": "an items shard is one hex digit", "op": "section", "input": { "isItems": "items-a" }, "expected": true },
+  { "name": "an items shard is lower case hex", "op": "section", "input": { "isItems": "items-A" }, "expected": false },
+  { "name": "an items shard past f is not one", "op": "section", "input": { "isItems": "items-g" }, "expected": false },
+  { "name": "two hex digits are not a shard", "op": "section", "input": { "isItems": "items-10" }, "expected": false },
+  { "name": "lists is a library section", "op": "section", "input": { "isLibrary": "lists" }, "expected": true },
+  { "name": "settings is not a library section", "op": "section", "input": { "isLibrary": "settings" }, "expected": false },
+  { "name": "a title's card shard is its id modulo 16 in hex", "op": "section", "input": { "shard": "movie:693134" }, "expected": "items-e" },
+  { "name": "id 16 lands in shard 0", "op": "section", "input": { "shard": "show:16" }, "expected": "items-0" },
+  { "name": "id 15 lands in shard f", "op": "section", "input": { "shard": "movie:15" }, "expected": "items-f" },
+  { "name": "id 1396 lands in shard 4", "op": "section", "input": { "shard": "show:1396" }, "expected": "items-4" },
+
+  {
+    "name": "reading every section of a library",
+    "op": "read",
+    "input": {
+      "lists": "{\"v\":1,\"watchlist\":[{\"key\":\"movie:1\",\"addedAt\":\"2026-11-01T11:00:00.000Z\",\"note\":\"keep\"},{\"key\":\"tv:5\",\"addedAt\":\"2026-11-01T11:00:00.000Z\"},{\"key\":\"movie:2\",\"addedAt\":\"not a time\"},{\"key\":\"movie:3\"}],\"favourites\":[{\"key\":\"show:2\",\"addedAt\":\"2026-11-01T10:00:00Z\"}],\"ratings\":{\"movie:1\":{\"value\":9,\"ratedAt\":\"2026-11-01T11:30:00.000Z\"},\"movie:x\":{\"value\":5,\"ratedAt\":\"2026-11-01T11:30:00.000Z\"},\"movie:4\":{\"ratedAt\":\"2026-11-01T11:30:00.000Z\"}},\"order\":{\"keys\":[\"movie:1\",\"show:2\"],\"updatedAt\":\"2026-11-01T11:45:00.000Z\"},\"rewatches\":[{\"key\":\"show:2\",\"startedAt\":\"2026-10-01T00:00:00.000Z\",\"watched\":[{\"season\":1,\"episode\":1},{\"season\":1,\"episode\":1.5},{\"season\":\"1\",\"episode\":2}]}],\"shuffle\":[{\"key\":\"show:2\",\"played\":[{\"season\":2,\"episode\":4}]},{\"key\":\"show:abc\",\"played\":[]}],\"removed\":{\"watchlist:movie:9\":\"2026-10-31T00:00:00.000Z\",\"watchlist:movie:8\":5},\"futureField\":{\"a\":[1,2]}}",
+      "progress": "{\"v\":1,\"entries\":[{\"key\":\"movie:1\",\"percent\":12.5,\"positionSeconds\":750,\"durationSeconds\":6000.25,\"updatedAt\":\"2026-11-01T11:59:59.100Z\"},{\"key\":\"show:2\",\"episode\":{\"season\":1,\"episode\":3},\"percent\":41.5,\"updatedAt\":\"2026-11-01T11:59:59.200Z\"},{\"key\":\"movie:5\",\"updatedAt\":\"2026-11-01T11:59:59.200Z\"},{\"key\":\"show:6\",\"episode\":{\"season\":1},\"percent\":1,\"updatedAt\":\"2026-11-01T11:59:59.200Z\"}],\"removed\":{\"progress:movie:7\":\"2026-10-30T00:00:00.000Z\"},\"extraProgress\":true}",
+      "sources": "{\"v\":1,\"entries\":{\"movie:1\":{\"providerID\":\"p\",\"date\":\"2026-11-01T11:59:59.300Z\",\"quality\":\"WEB-DL\",\"resolution\":2160,\"hdr\":[\"DV\"]},\"movie:2\":{\"date\":\"2026-11-01T11:59:59.300Z\"},\"movie:3\":{\"providerID\":\"p\",\"date\":\"later\"}},\"removed\":{}}",
+      "history-2026-11": "{\"v\":1,\"month\":\"2026-11\",\"entries\":[{\"key\":\"movie:1\",\"watchedAt\":\"2026-11-01T11:59:59.300Z\"},{\"key\":\"movie:abc\",\"watchedAt\":\"2026-11-01T11:59:59.300Z\"}],\"removed\":{\"history:movie:9:-:1\":\"2026-11-01T11:59:59.500Z\"}}",
+      "items-1": "{\"v\":1,\"items\":{\"movie:1\":{\"title\":\"One\",\"year\":2024},\"movie:17\":{\"title\":\"Seventeen\"},\"movie:33\":{\"year\":2000},\"movie:x\":{\"title\":\"Bad\"}}}",
+      "settings": "{\"v\":1}",
+      "history-bogus": "{\"v\":1}"
+    },
+    "expected": {
+      "state": {
+        "watchlist": [{ "key": "movie:1", "addedAt": "2026-11-01T11:00:00.000Z", "note": "keep" }],
+        "favourites": [{ "key": "show:2", "addedAt": "2026-11-01T10:00:00Z" }],
+        "ratings": { "movie:1": { "value": 9, "ratedAt": "2026-11-01T11:30:00.000Z" } },
+        "order": { "keys": ["movie:1", "show:2"], "updatedAt": "2026-11-01T11:45:00.000Z" },
+        "rewatches": [{ "key": "show:2", "startedAt": "2026-10-01T00:00:00.000Z", "watched": [{ "season": 1, "episode": 1 }] }],
+        "shuffle": [{ "key": "show:2", "played": [{ "season": 2, "episode": 4 }] }],
+        "progress": [
+          { "key": "movie:1", "percent": 12.5, "positionSeconds": 750, "durationSeconds": 6000.25, "updatedAt": "2026-11-01T11:59:59.100Z" },
+          { "key": "show:2", "episode": { "season": 1, "episode": 3 }, "percent": 41.5, "updatedAt": "2026-11-01T11:59:59.200Z" }
+        ],
+        "sources": { "movie:1": { "providerID": "p", "date": "2026-11-01T11:59:59.300Z", "quality": "WEB-DL", "resolution": 2160, "hdr": ["DV"] } },
+        "history": [{ "key": "movie:1", "watchedAt": "2026-11-01T11:59:59.300Z" }],
+        "removed": { "watchlist:movie:9": "2026-10-31T00:00:00.000Z", "progress:movie:7": "2026-10-30T00:00:00.000Z", "history:movie:9:-:1": "2026-11-01T11:59:59.500Z" },
+        "items": { "movie:1": { "title": "One", "year": 2024 }, "movie:17": { "title": "Seventeen" } },
+        "extra": { "lists": { "futureField": { "a": [1, 2] } }, "progress": { "extraProgress": true } }
+      },
+      "unreadable": [],
+      "newer": []
+    }
+  },
+  {
+    "name": "a value of a newer version is left alone and reported, one that is not JSON is reported as unreadable",
+    "op": "read",
+    "input": { "lists": "{\"v\":2,\"watchlist\":[]}", "progress": "not json", "sources": "[1,2]", "history-2026-10": "{\"entries\":[]}", "items-3": "{\"v\":3,\"items\":{}}", "history-2026-11": "{\"v\":1,\"entries\":[]}" },
+    "expected": { "state": {}, "unreadable": ["history-2026-10", "progress", "sources"], "newer": ["items-3", "lists"] }
+  },
+  {
+    "name": "reading nothing gives an empty library",
+    "op": "read",
+    "input": {},
+    "expected": { "state": {}, "unreadable": [], "newer": [] }
+  },
+  {
+    "name": "history entries from several months are gathered into one list and their removals joined",
+    "op": "read",
+    "input": {
+      "history-2026-09": "{\"v\":1,\"entries\":[{\"key\":\"show:2\",\"episode\":{\"season\":1,\"episode\":1},\"watchedAt\":\"2026-09-22T12:00:00.000Z\",\"runtime\":47}],\"removed\":{\"history:movie:1:-:1\":\"2026-10-01T00:00:00.000Z\"}}",
+      "history-2026-09-2": "{\"v\":1,\"entries\":[{\"key\":\"show:2\",\"episode\":{\"season\":1,\"episode\":2},\"watchedAt\":\"2026-09-23T12:00:00.000Z\"}]}"
+    },
+    "expected": {
+      "state": {
+        "history": [
+          { "key": "show:2", "episode": { "season": 1, "episode": 1 }, "watchedAt": "2026-09-22T12:00:00.000Z", "runtime": 47 },
+          { "key": "show:2", "episode": { "season": 1, "episode": 2 }, "watchedAt": "2026-09-23T12:00:00.000Z" }
+        ],
+        "removed": { "history:movie:1:-:1": "2026-10-01T00:00:00.000Z" }
+      },
+      "unreadable": [],
+      "newer": []
+    }
+  },
+
+  {
+    "name": "a busy month is split into numbered pages at the limit, in id order",
+    "op": "splitHistory",
+    "input": {
+      "limit": 200,
+      "removed": {},
+      "entries": [
+        { "key": "movie:1", "watchedAt": "2026-11-01T00:00:05.000Z" },
+        { "key": "movie:1", "watchedAt": "2026-11-01T00:00:02.000Z" },
+        { "key": "movie:1", "watchedAt": "2026-11-01T00:00:01.000Z" },
+        { "key": "movie:1", "watchedAt": "2026-11-01T00:00:04.000Z" },
+        { "key": "movie:1", "watchedAt": "2026-11-01T00:00:03.000Z" }
+      ]
+    },
+    "expected": {
+      "history-2026-11": "{\"entries\":[{\"key\":\"movie:1\",\"watchedAt\":\"2026-11-01T00:00:01.000Z\"},{\"key\":\"movie:1\",\"watchedAt\":\"2026-11-01T00:00:02.000Z\"}],\"month\":\"2026-11\",\"removed\":{},\"v\":1}",
+      "history-2026-11-2": "{\"entries\":[{\"key\":\"movie:1\",\"watchedAt\":\"2026-11-01T00:00:03.000Z\"},{\"key\":\"movie:1\",\"watchedAt\":\"2026-11-01T00:00:04.000Z\"}],\"month\":\"2026-11\",\"v\":1}",
+      "history-2026-11-3": "{\"entries\":[{\"key\":\"movie:1\",\"watchedAt\":\"2026-11-01T00:00:05.000Z\"}],\"month\":\"2026-11\",\"v\":1}"
+    }
+  },
+  {
+    "name": "a removal counts toward the first page of its month",
+    "op": "splitHistory",
+    "input": {
+      "limit": 200,
+      "removed": { "history:movie:9:-:1793491200": "2026-11-01T01:00:00.000Z" },
+      "entries": [
+        { "key": "movie:1", "watchedAt": "2026-11-01T00:00:01.000Z" },
+        { "key": "movie:1", "watchedAt": "2026-11-01T00:00:02.000Z" },
+        { "key": "movie:1", "watchedAt": "2026-11-01T00:00:03.000Z" }
+      ]
+    },
+    "expected": {
+      "history-2026-11": "{\"entries\":[{\"key\":\"movie:1\",\"watchedAt\":\"2026-11-01T00:00:01.000Z\"}],\"month\":\"2026-11\",\"removed\":{\"history:movie:9:-:1793491200\":\"2026-11-01T01:00:00.000Z\"},\"v\":1}",
+      "history-2026-11-2": "{\"entries\":[{\"key\":\"movie:1\",\"watchedAt\":\"2026-11-01T00:00:02.000Z\"},{\"key\":\"movie:1\",\"watchedAt\":\"2026-11-01T00:00:03.000Z\"}],\"month\":\"2026-11\",\"v\":1}"
+    }
+  },
+  {
+    "name": "writing an empty library writes nothing",
+    "op": "write",
+    "input": { "now": "2026-11-01T12:00:00.000Z", "state": {} },
+    "expected": {}
+  },
+  {
+    "name": "a library is written as one canonical value per section, with cards in shards and history by UTC month",
+    "op": "write",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "state": {
+        "watchlist": [{ "key": "movie:1", "addedAt": "2026-11-01T11:59:55.000Z" }],
+        "ratings": { "movie:1": { "value": 9, "ratedAt": "2026-11-01T11:59:57.000Z" } },
+        "order": { "keys": ["movie:1"], "updatedAt": "2026-11-01T11:59:59.600Z" },
+        "progress": [{ "key": "movie:1", "percent": 12.5, "updatedAt": "2026-11-01T11:59:59.100Z" }],
+        "sources": { "movie:1": { "providerID": "p", "date": "2026-11-01T11:59:59.300Z", "quality": "WEB-DL", "resolution": 2160, "hdr": [] } },
+        "history": [
+          { "key": "movie:1", "watchedAt": "2026-10-31T23:59:59.999Z" },
+          { "key": "movie:1", "watchedAt": "2026-11-01T00:00:00.000Z" }
+        ],
+        "items": { "movie:1": { "title": "One" }, "movie:17": { "title": "Seventeen" }, "movie:99": { "title": "Not mentioned" } }
+      }
+    },
+    "expected": {
+      "lists": "{\"favourites\":[],\"order\":{\"keys\":[\"movie:1\"],\"updatedAt\":\"2026-11-01T11:59:59.600Z\"},\"ratings\":{\"movie:1\":{\"ratedAt\":\"2026-11-01T11:59:57.000Z\",\"value\":9}},\"removed\":{},\"rewatches\":[],\"shuffle\":[],\"v\":1,\"watchlist\":[{\"addedAt\":\"2026-11-01T11:59:55.000Z\",\"key\":\"movie:1\"}]}",
+      "progress": "{\"entries\":[{\"key\":\"movie:1\",\"percent\":12.5,\"updatedAt\":\"2026-11-01T11:59:59.100Z\"}],\"removed\":{},\"v\":1}",
+      "sources": "{\"entries\":{\"movie:1\":{\"date\":\"2026-11-01T11:59:59.300Z\",\"hdr\":[],\"providerID\":\"p\",\"quality\":\"WEB-DL\",\"resolution\":2160}},\"removed\":{},\"v\":1}",
+      "history-2026-10": "{\"entries\":[{\"key\":\"movie:1\",\"watchedAt\":\"2026-10-31T23:59:59.999Z\"}],\"month\":\"2026-10\",\"removed\":{},\"v\":1}",
+      "history-2026-11": "{\"entries\":[{\"key\":\"movie:1\",\"watchedAt\":\"2026-11-01T00:00:00.000Z\"}],\"month\":\"2026-11\",\"removed\":{},\"v\":1}",
+      "items-1": "{\"items\":{\"movie:1\":{\"title\":\"One\"}},\"v\":1}"
+    }
+  },
+  {
+    "name": "removals older than ninety days are dropped on writing and the rest go to their own section",
+    "op": "write",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "state": {
+        "watchlist": [{ "key": "movie:1", "addedAt": "2026-11-01T11:59:55.000Z" }],
+        "removed": {
+          "watchlist:movie:2": "2026-10-31T00:00:00.000Z",
+          "watchlist:movie:3": "2026-08-03T12:00:00.001Z",
+          "watchlist:movie:4": "2026-08-03T12:00:00.000Z",
+          "progress:movie:5": "2026-10-30T00:00:00.000Z",
+          "sources:movie:6": "2026-10-29T00:00:00.000Z"
+        }
+      }
+    },
+    "expected": {
+      "lists": "{\"favourites\":[],\"order\":null,\"ratings\":{},\"removed\":{\"watchlist:movie:2\":\"2026-10-31T00:00:00.000Z\",\"watchlist:movie:3\":\"2026-08-03T12:00:00.001Z\"},\"rewatches\":[],\"shuffle\":[],\"v\":1,\"watchlist\":[{\"addedAt\":\"2026-11-01T11:59:55.000Z\",\"key\":\"movie:1\"}]}",
+      "progress": "{\"entries\":[],\"removed\":{\"progress:movie:5\":\"2026-10-30T00:00:00.000Z\"},\"v\":1}",
+      "sources": "{\"entries\":{},\"removed\":{\"sources:movie:6\":\"2026-10-29T00:00:00.000Z\"},\"v\":1}"
+    }
+  },
+  {
+    "name": "a field a newer version added to a document is written back unchanged",
+    "op": "write",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "state": {
+        "favourites": [{ "key": "show:2", "addedAt": "2026-11-01T11:59:56.000Z", "tag": "x" }],
+        "extra": { "lists": { "futureField": { "a": [1, 2] } } }
+      }
+    },
+    "expected": {
+      "lists": "{\"favourites\":[{\"addedAt\":\"2026-11-01T11:59:56.000Z\",\"key\":\"show:2\",\"tag\":\"x\"}],\"futureField\":{\"a\":[1,2]},\"order\":null,\"ratings\":{},\"removed\":{},\"rewatches\":[],\"shuffle\":[],\"v\":1,\"watchlist\":[]}"
+    }
+  },
+  {
+    "name": "history within a month is ordered by id so the same history is the same text everywhere",
+    "op": "write",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "state": {
+        "history": [
+          { "key": "show:2", "episode": { "season": 1, "episode": 2 }, "watchedAt": "2026-11-01T09:00:00.000Z" },
+          { "key": "movie:9", "watchedAt": "2026-11-01T10:00:00.000Z" },
+          { "key": "movie:10", "watchedAt": "2026-11-01T08:00:00.000Z" }
+        ]
+      }
+    },
+    "expected": {
+      "history-2026-11": "{\"entries\":[{\"key\":\"movie:10\",\"watchedAt\":\"2026-11-01T08:00:00.000Z\"},{\"key\":\"movie:9\",\"watchedAt\":\"2026-11-01T10:00:00.000Z\"},{\"episode\":{\"episode\":2,\"season\":1},\"key\":\"show:2\",\"watchedAt\":\"2026-11-01T09:00:00.000Z\"}],\"month\":\"2026-11\",\"removed\":{},\"v\":1}"
+    }
+  },
+
+  {
+    "name": "merging two empty libraries gives an empty library",
+    "op": "merge",
+    "input": { "now": "2026-11-01T12:00:00.000Z", "local": {}, "remote": {} },
+    "expected": {}
+  },
+  {
+    "name": "a title on both watchlists is kept once, as the newer addition has it",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "watchlist": [{ "key": "movie:1", "addedAt": "2026-10-01T00:00:00.000Z", "from": "local" }], "items": { "movie:1": { "title": "Local card" } } },
+      "remote": { "watchlist": [{ "key": "movie:1", "addedAt": "2026-10-02T00:00:00.000Z", "from": "remote" }, { "key": "movie:2", "addedAt": "2026-10-03T00:00:00.000Z" }], "items": { "movie:1": { "title": "Remote card" }, "movie:2": { "title": "Two" } } }
+    },
+    "expected": {
+      "watchlist": [{ "key": "movie:2", "addedAt": "2026-10-03T00:00:00.000Z" }, { "key": "movie:1", "addedAt": "2026-10-02T00:00:00.000Z", "from": "remote" }],
+      "items": { "movie:1": { "title": "Local card" }, "movie:2": { "title": "Two" } }
+    }
+  },
+  {
+    "name": "a removal at or after an addition wins; a later addition survives the removal",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "watchlist": [{ "key": "movie:1", "addedAt": "2026-10-01T00:00:00.000Z" }, { "key": "movie:2", "addedAt": "2026-10-05T00:00:00.000Z" }, { "key": "movie:3", "addedAt": "2026-10-03T00:00:00.000Z" }] },
+      "remote": { "removed": { "watchlist:movie:1": "2026-10-02T00:00:00.000Z", "watchlist:movie:2": "2026-10-04T00:00:00.000Z", "watchlist:movie:3": "2026-10-03T00:00:00.000Z" } }
+    },
+    "expected": {
+      "watchlist": [{ "key": "movie:2", "addedAt": "2026-10-05T00:00:00.000Z" }],
+      "removed": { "watchlist:movie:1": "2026-10-02T00:00:00.000Z", "watchlist:movie:2": "2026-10-04T00:00:00.000Z", "watchlist:movie:3": "2026-10-03T00:00:00.000Z" }
+    }
+  },
+  {
+    "name": "the later of two removal times is kept, and removals past ninety days are forgotten",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "removed": { "favourites:movie:1": "2026-10-01T00:00:00.000Z", "favourites:movie:2": "2026-07-01T00:00:00.000Z" } },
+      "remote": { "removed": { "favourites:movie:1": "2026-10-10T00:00:00.000Z", "favourites:movie:3": "2026-08-03T12:00:00.000Z" } }
+    },
+    "expected": { "removed": { "favourites:movie:1": "2026-10-10T00:00:00.000Z" } }
+  },
+  {
+    "name": "an addition older than a forgotten removal comes back once the removal is pruned",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "watchlist": [{ "key": "movie:1", "addedAt": "2026-06-01T00:00:00.000Z" }] },
+      "remote": { "removed": { "watchlist:movie:1": "2026-07-01T00:00:00.000Z" } }
+    },
+    "expected": { "watchlist": [{ "key": "movie:1", "addedAt": "2026-06-01T00:00:00.000Z" }] }
+  },
+  {
+    "name": "resume points: the newest per title or episode wins, newest first, ties by id",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "progress": [
+        { "key": "movie:1", "percent": 10, "updatedAt": "2026-10-01T00:00:00.000Z" },
+        { "key": "show:2", "episode": { "season": 1, "episode": 1 }, "percent": 50, "updatedAt": "2026-10-03T00:00:00.000Z" },
+        { "key": "movie:9", "percent": 1, "updatedAt": "2026-10-02T00:00:00.000Z" }
+      ] },
+      "remote": { "progress": [
+        { "key": "movie:1", "percent": 20, "updatedAt": "2026-10-04T00:00:00.000Z" },
+        { "key": "show:2", "episode": { "season": 1, "episode": 2 }, "percent": 5, "updatedAt": "2026-10-03T00:00:00.000Z" },
+        { "key": "show:2", "episode": { "season": 1, "episode": 1 }, "percent": 60, "updatedAt": "2026-10-02T00:00:00.000Z" }
+      ] }
+    },
+    "expected": { "progress": [
+      { "key": "movie:1", "percent": 20, "updatedAt": "2026-10-04T00:00:00.000Z" },
+      { "key": "show:2", "episode": { "season": 1, "episode": 1 }, "percent": 50, "updatedAt": "2026-10-03T00:00:00.000Z" },
+      { "key": "show:2", "episode": { "season": 1, "episode": 2 }, "percent": 5, "updatedAt": "2026-10-03T00:00:00.000Z" },
+      { "key": "movie:9", "percent": 1, "updatedAt": "2026-10-02T00:00:00.000Z" }
+    ] }
+  },
+  {
+    "name": "two resume points with the same time keep the one whose text sorts last, on either side",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "progress": [{ "key": "movie:1", "percent": 10, "updatedAt": "2026-10-01T00:00:00.000Z" }] },
+      "remote": { "progress": [{ "key": "movie:1", "percent": 30, "updatedAt": "2026-10-01T00:00:00.000Z" }] }
+    },
+    "expected": { "progress": [{ "key": "movie:1", "percent": 30, "updatedAt": "2026-10-01T00:00:00.000Z" }] }
+  },
+  {
+    "name": "a rating: the later rating wins, a tie goes to the text that sorts last",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "ratings": { "movie:1": { "value": 5, "ratedAt": "2026-10-01T00:00:00.000Z" }, "movie:2": { "value": 4, "ratedAt": "2026-10-01T00:00:00.000Z" } } },
+      "remote": { "ratings": { "movie:1": { "value": 8, "ratedAt": "2026-10-02T00:00:00.000Z" }, "movie:2": { "value": 9, "ratedAt": "2026-10-01T00:00:00.000Z" }, "movie:3": { "value": 7, "ratedAt": "2026-10-01T00:00:00.000Z" } } }
+    },
+    "expected": { "ratings": { "movie:1": { "value": 8, "ratedAt": "2026-10-02T00:00:00.000Z" }, "movie:2": { "value": 9, "ratedAt": "2026-10-01T00:00:00.000Z" }, "movie:3": { "value": 7, "ratedAt": "2026-10-01T00:00:00.000Z" } } }
+  },
+  {
+    "name": "a rating removed after it was made is gone",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "ratings": { "movie:1": { "value": 5, "ratedAt": "2026-10-01T00:00:00.000Z" } } },
+      "remote": { "removed": { "ratings:movie:1": "2026-10-02T00:00:00.000Z" } }
+    },
+    "expected": { "removed": { "ratings:movie:1": "2026-10-02T00:00:00.000Z" } }
+  },
+  {
+    "name": "a rewatch in the same round unions the episodes ticked, in order",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "rewatches": [{ "key": "show:2", "startedAt": "2026-10-01T00:00:00.000Z", "updatedAt": "2026-10-05T00:00:00.000Z", "watched": [{ "season": 1, "episode": 3 }, { "season": 1, "episode": 1 }] }] },
+      "remote": { "rewatches": [{ "key": "show:2", "startedAt": "2026-10-01T00:00:00.000Z", "updatedAt": "2026-10-06T00:00:00.000Z", "watched": [{ "season": 1, "episode": 2 }, { "season": 1, "episode": 1 }] }] }
+    },
+    "expected": { "rewatches": [{ "key": "show:2", "startedAt": "2026-10-01T00:00:00.000Z", "updatedAt": "2026-10-06T00:00:00.000Z", "watched": [{ "season": 1, "episode": 1 }, { "season": 1, "episode": 2 }, { "season": 1, "episode": 3 }] }] },
+    "note": "items cards omitted on purpose: the title is referenced by the rewatch"
+  },
+  {
+    "name": "a rewatch with a later start replaces an earlier round",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "rewatches": [{ "key": "show:2", "startedAt": "2026-10-01T00:00:00.000Z", "watched": [{ "season": 1, "episode": 1 }] }] },
+      "remote": { "rewatches": [{ "key": "show:2", "startedAt": "2026-10-20T00:00:00.000Z", "watched": [{ "season": 1, "episode": 2 }] }] }
+    },
+    "expected": { "rewatches": [{ "key": "show:2", "startedAt": "2026-10-20T00:00:00.000Z", "watched": [{ "season": 1, "episode": 2 }] }] }
+  },
+  {
+    "name": "shuffle's memory unions the episodes played and is ordered by key",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "shuffle": [{ "key": "show:9", "played": [{ "season": 1, "episode": 1 }] }, { "key": "show:2", "played": [{ "season": 2, "episode": 4 }] }] },
+      "remote": { "shuffle": [{ "key": "show:2", "played": [{ "season": 1, "episode": 9 }, { "season": 2, "episode": 4 }] }] }
+    },
+    "expected": { "shuffle": [{ "key": "show:2", "played": [{ "season": 1, "episode": 9 }, { "season": 2, "episode": 4 }] }, { "key": "show:9", "played": [{ "season": 1, "episode": 1 }] }] }
+  },
+  {
+    "name": "the watchlist order that changed last wins",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "watchlist": [{ "key": "movie:1", "addedAt": "2026-10-01T00:00:00.000Z" }, { "key": "movie:2", "addedAt": "2026-10-01T00:00:00.000Z" }], "order": { "keys": ["movie:1", "movie:2"], "updatedAt": "2026-10-05T00:00:00.000Z" } },
+      "remote": { "order": { "keys": ["movie:2", "movie:1"], "updatedAt": "2026-10-06T00:00:00.000Z" } }
+    },
+    "expected": { "watchlist": [{ "key": "movie:1", "addedAt": "2026-10-01T00:00:00.000Z" }, { "key": "movie:2", "addedAt": "2026-10-01T00:00:00.000Z" }], "order": { "keys": ["movie:2", "movie:1"], "updatedAt": "2026-10-06T00:00:00.000Z" } }
+  },
+  {
+    "name": "the source a title last played from: the newest by date wins",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "sources": { "movie:1": { "providerID": "a", "date": "2026-10-01T00:00:00.000Z", "quality": "WEB-DL", "resolution": 1080, "hdr": [] } } },
+      "remote": { "sources": { "movie:1": { "providerID": "b", "date": "2026-10-02T00:00:00.000Z", "quality": "BluRay", "resolution": 2160, "hdr": ["DV"] }, "movie:2": { "providerID": "c", "date": "2026-10-01T00:00:00.000Z", "quality": "WEB-DL", "resolution": 720, "hdr": [] } } }
+    },
+    "expected": { "sources": { "movie:1": { "providerID": "b", "date": "2026-10-02T00:00:00.000Z", "quality": "BluRay", "resolution": 2160, "hdr": ["DV"] }, "movie:2": { "providerID": "c", "date": "2026-10-01T00:00:00.000Z", "quality": "WEB-DL", "resolution": 720, "hdr": [] } } }
+  },
+  {
+    "name": "history is append-only by id: the same play on two devices is one entry",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "history": [{ "key": "movie:1", "watchedAt": "2026-10-01T10:00:00.200Z" }, { "key": "movie:1", "watchedAt": "2026-10-03T10:00:00.000Z" }] },
+      "remote": { "history": [{ "key": "movie:1", "watchedAt": "2026-10-01T10:00:00.900Z" }, { "key": "show:2", "episode": { "season": 1, "episode": 1 }, "watchedAt": "2026-10-02T10:00:00.000Z" }] }
+    },
+    "expected": { "history": [
+      { "key": "movie:1", "watchedAt": "2026-10-03T10:00:00.000Z" },
+      { "key": "show:2", "episode": { "season": 1, "episode": 1 }, "watchedAt": "2026-10-02T10:00:00.000Z" },
+      { "key": "movie:1", "watchedAt": "2026-10-01T10:00:00.900Z" }
+    ] }
+  },
+  {
+    "name": "a play taken out of History stays out",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "history": [{ "key": "movie:1", "watchedAt": "2026-10-01T10:00:00.000Z" }] },
+      "remote": { "removed": { "history:movie:1:-:1790848800": "2026-10-20T00:00:00.000Z" } }
+    },
+    "expected": { "removed": { "history:movie:1:-:1790848800": "2026-10-20T00:00:00.000Z" } }
+  },
+  {
+    "name": "cards for titles nothing mentions are dropped, and fields a newer version added are kept from both sides",
+    "op": "merge",
+    "input": {
+      "now": "2026-11-01T12:00:00.000Z",
+      "local": { "favourites": [{ "key": "movie:1", "addedAt": "2026-10-01T00:00:00.000Z" }], "items": { "movie:1": { "title": "One" }, "movie:2": { "title": "Gone" } }, "extra": { "lists": { "a": 1, "shared": "local" } } },
+      "remote": { "items": { "movie:3": { "title": "Orphan" } }, "extra": { "lists": { "b": 2, "shared": "remote" }, "progress": { "p": true } } }
+    },
+    "expected": { "favourites": [{ "key": "movie:1", "addedAt": "2026-10-01T00:00:00.000Z" }], "items": { "movie:1": { "title": "One" } }, "extra": { "lists": { "a": 1, "shared": "local" }, "progress": { "p": true } } }
+  }
+]
+}

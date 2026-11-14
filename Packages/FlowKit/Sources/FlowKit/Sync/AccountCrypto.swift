@@ -90,8 +90,9 @@ public enum AccountNumber {
     /// The 16 digits of what a person typed or pasted (spaces, dashes and other separators ignored), or nil unless there
     /// are exactly 16.
     public static func parse(_ input: String) -> String? {
-        let separators: Set<Character> = [" ", "-", "–", "—", ".", "\n", "\r", "\r\n", "\t", "\u{00A0}"]
-        let digits = input.filter { !separators.contains($0) }
+        // Any space, as the website reads it (a pasted number may carry a no-break or thin space), and the dashes and dot.
+        let separators: Set<Character> = ["-", "–", "—", "."]
+        let digits = input.filter { !separators.contains($0) && !$0.isWhitespace }
         guard digits.count == length, digits.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
         return digits
     }

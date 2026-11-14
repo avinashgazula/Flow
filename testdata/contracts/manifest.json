@@ -1,0 +1,8 @@
+{
+ "description": "Which readers consume which area. A vector file that is not listed, or a listed area that one of its readers doesn't run, fails a test.",
+ "areas": {
+  "account-number": { "swift": true, "web": true },
+  "account-crypto": { "swift": true, "web": true },
+  "account-wire": { "swift": true, "web": true }
+ }
+}

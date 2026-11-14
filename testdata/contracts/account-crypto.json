@@ -1,0 +1,136 @@
+{
+ "area": "account-crypto",
+ "description": "Account keys from the number (PBKDF2 then HKDF) and sealed values (AES-256-GCM, AAD = id/section), computed independently with Python's hashlib and cryptography. seal runs only where AES-GCM exists (CryptoKit, WebCrypto).",
+ "cases": [
+  {
+   "name": "the documented parameters: 600,000 rounds and the two salts (the full-cost vector is pinned in each side's own tests, as it takes seconds)",
+   "op": "constants",
+   "input": null,
+   "expected": {
+    "iterations": 600000,
+    "pbkdf2Salt": "marquee-account-v1",
+    "hkdfSalt": "marquee-account-hkdf-v1"
+   }
+  },
+  {
+   "name": "the documented number at 1,000 rounds",
+   "op": "derive",
+   "input": {
+    "number": "0123456789012345",
+    "iterations": 1000
+   },
+   "expected": {
+    "master": "dbea4b96b71d6216f94efe9fed930df181e894a70bf06567e844b6ae3cf87301",
+    "id": "2faef848e4805e584214eeeff2882041",
+    "auth": "_WLeftO41z1ICyAPVw42DerbQnOn_hPJzGbyHrqDd1A",
+    "enc": "2e859cca2b46e7d3987433055f95dba42ad6de1d2ed4bb8ad42c5f28b6c748a6",
+    "authHash": "8bd8b46df2d7ea6fb63ef6640166fc2e34e711cb11bffefae078ae592ff13418"
+   }
+  },
+  {
+   "name": "all zeros, one round",
+   "op": "derive",
+   "input": {
+    "number": "0000000000000000",
+    "iterations": 1
+   },
+   "expected": {
+    "master": "4043bf744e1fdeb4a2234d34628afbc71f700e3f1f8a039d3e46c1c06eea3090",
+    "id": "a5805ba4a2b0e75dec43cf6e3b20a7cb",
+    "auth": "PYN_KfjrD_eA84LUGUfbzTQ3S4mO70K_fjY-oztAG28",
+    "enc": "5d07ffb05d6ba0c7bb434aacccf49ca48e95a2a75d15a4943741d3836c73fc05",
+    "authHash": "b390804caa4c8e3299edda179ec44609749bc9dce67a29aad79bd2299482861e"
+   }
+  },
+  {
+   "name": "all nines, 1,000 rounds",
+   "op": "derive",
+   "input": {
+    "number": "9999999999999999",
+    "iterations": 1000
+   },
+   "expected": {
+    "master": "01730f299cbee07b61b6f3804643b4b7b3fa331c7889e0bba788c67055df14c0",
+    "id": "04a22826610e390770b021a780941b7e",
+    "auth": "FzJz9cDtKmajndw3bKvZuBbK5nAUJviB2_-291EJtQ4",
+    "enc": "87a83f4449f620e3460a90a049d79e3a9be4bd4359ac3eb58800ecee87e157b2",
+    "authHash": "83d0e2845b14258543f598dab6cf8a3d9513ca9ee1129ab5f65aed5c03f30a2e"
+   }
+  },
+  {
+   "name": "a mixed number, 20 rounds",
+   "op": "derive",
+   "input": {
+    "number": "4821907365120473",
+    "iterations": 20
+   },
+   "expected": {
+    "master": "ca5f68204b8eaf33672a1b9c79c4e032bfde8aa749471cbd0adc90410b17deeb",
+    "id": "30d891c26c07b35be0f69e34e94572d7",
+    "auth": "ZM_SUhRzc5Nalh-NZRv3bH06bUsl2ZBD5FpigUMniw8",
+    "enc": "1a8771e67c95f13b0a27a6b443230c948b457c45d4546648eebf13a570d92e17",
+    "authHash": "1062b6aef45ef20255131a13acc2ef757d846c5563a9f68e77171d56e6d8843f"
+   }
+  },
+  {
+   "name": "the documented settings value at 1,000 rounds",
+   "op": "seal",
+   "input": {
+    "number": "0123456789012345",
+    "iterations": 1000,
+    "section": "settings",
+    "plaintext": "{\"v\":1,\"sections\":{}}",
+    "nonce": "000102030405060708090a0b"
+   },
+   "expected": "AAECAwQFBgcICQoLZz6GwuWx-yaFqYSz9ww0V_ERUpbGSjZfx2Dwqi7_ZGRB-ZuKkg"
+  },
+  {
+   "name": "a lists value with an all-ones nonce",
+   "op": "seal",
+   "input": {
+    "number": "4821907365120473",
+    "iterations": 20,
+    "section": "lists",
+    "plaintext": "{\"v\":1}",
+    "nonce": "ffffffffffffffffffffffff"
+   },
+   "expected": "________________sR6m1ZerwqItHRzOsn8Q6X7wdywna78"
+  },
+  {
+   "name": "unicode plaintext in a history month",
+   "op": "seal",
+   "input": {
+    "number": "4821907365120473",
+    "iterations": 20,
+    "section": "history-2026-11",
+    "plaintext": "{\"v\":1,\"note\":\"ünï 🎬 \\\"q\\\"\"}",
+    "nonce": "6465666768696a6b6c6d6e6f"
+   },
+   "expected": "ZGVmZ2hpamtsbW5vmd1z26K8VtFYcbdoGHRkft6r5JsMF2_mrlBv7gPaIubmN_GbMCLdmrdgyjZIepLjrQ"
+  },
+  {
+   "name": "an empty plaintext",
+   "op": "seal",
+   "input": {
+    "number": "4821907365120473",
+    "iterations": 20,
+    "section": "progress",
+    "plaintext": "",
+    "nonce": "000000000000000000000000"
+   },
+   "expected": "AAAAAAAAAAAAAAAA7UzuEFkNn-6dMSuptjGbSQ"
+  },
+  {
+   "name": "the same plaintext in another section differs",
+   "op": "seal",
+   "input": {
+    "number": "4821907365120473",
+    "iterations": 20,
+    "section": "lists",
+    "plaintext": "{\"v\":1}",
+    "nonce": "000102030405060708090a0b"
+   },
+   "expected": "AAECAwQFBgcICQoLVmZb77xV4kNEH8c2CYF2iiGe-QhR2t0"
+  }
+ ]
+}
