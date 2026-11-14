@@ -252,7 +252,8 @@ public struct OpusHead: Equatable, Sendable {
     /// A header for the rare file without CodecPrivate. Only mono and stereo need no channel table.
     public static func make(channels: Int, preSkip: Int, inputRate: Int) -> [UInt8]? {
         guard (1...2).contains(channels) else { return nil }
-        var out = Array("OpusHead".utf8) + [1, UInt8(channels), UInt8(preSkip & 0xFF), UInt8(preSkip >> 8)]
+        let skip = max(0, min(preSkip, 0xFFFF)) // two bytes in the header; more would trap
+        var out = Array("OpusHead".utf8) + [1, UInt8(channels), UInt8(skip & 0xFF), UInt8(skip >> 8)]
         let rate = UInt32(max(0, inputRate))
         out += [UInt8(rate & 0xFF), UInt8((rate >> 8) & 0xFF), UInt8((rate >> 16) & 0xFF), UInt8(rate >> 24)]
         return out + [0, 0, 0]
