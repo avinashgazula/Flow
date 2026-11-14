@@ -2,7 +2,7 @@ import { Icon } from '../../components/Icon'
 import type { Source } from '../../lib/sources'
 import type { SourceAppearance } from '../../lib/sources/sourceSettings'
 import { playFacts } from '../detail/logic'
-import { resolutionText, rowText, spokenLabel } from './labels'
+import { resolutionText, rowText } from './labels'
 import s from './SourcePicker.module.css'
 
 export const optionId = (source: Source) => `source-${source.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
@@ -43,7 +43,6 @@ export function SourceRow({
       role="option"
       aria-selected={active}
       aria-disabled={source.unsupported ? true : undefined}
-      aria-label={spokenLabel(source, lastPlayed, { provider: !providerAbove, size: appearance.showSize })}
       className={s.row}
       data-active={active ? '' : undefined}
       data-divider={divider ? '' : undefined}
@@ -51,6 +50,8 @@ export function SourceRow({
       onClick={() => onPick(source)}
       onPointerEnter={() => !source.unsupported && onHover(source.id)}
     >
+      {/* The row is named by what it shows, so a spoken "click 1080p" finds it; what only a mark shows is said here. */}
+      {(lastPlayed || source.cached) && <span className="sr-only">{[lastPlayed && 'Last played', source.cached && 'Cached'].filter(Boolean).join(', ')}.</span>}
       <span className={s.resolution}>{resolutionText(source) ?? '–'}</span>
       <span className={s.body}>
         <span className={s.content}>

@@ -101,7 +101,7 @@ test.describe('playing a film', () => {
     await wake(page)
     await control(page, 'Audio and Subtitles').click()
     const panel = page.getByRole('dialog', { name: 'Audio and Subtitles' })
-    const subtitles = panel.getByRole('group', { name: 'Subtitles' })
+    const subtitles = panel.getByRole('menu', { name: 'Subtitles' })
     await expect(subtitles.getByRole('menuitemradio', { name: 'Off' })).toBeChecked()
     await subtitles.getByRole('menuitemradio', { name: 'Spanish' }).click()
     // Choosing a track closes the panel; the cue for the playing moment is on the picture.
@@ -109,8 +109,8 @@ test.describe('playing a film', () => {
     await expect(page.getByText(/^Spanish subtitle \d$/)).toBeVisible()
     await wake(page)
     await control(page, 'Audio and Subtitles').click()
-    await expect(page.getByRole('group', { name: 'Subtitles' }).getByRole('menuitemradio', { name: 'Spanish' })).toBeChecked()
-    await page.getByRole('group', { name: 'Subtitles' }).getByRole('menuitemradio', { name: 'Off' }).click()
+    await expect(page.getByRole('menu', { name: 'Subtitles' }).getByRole('menuitemradio', { name: 'Spanish' })).toBeChecked()
+    await page.getByRole('menu', { name: 'Subtitles' }).getByRole('menuitemradio', { name: 'Off' }).click()
     await expect(page.getByText(/^Spanish subtitle \d$/)).toHaveCount(0)
   })
 

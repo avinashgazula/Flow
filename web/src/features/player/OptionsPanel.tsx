@@ -335,7 +335,7 @@ export function OptionsPanel({ controller, start, sources, source, onPickSource,
         {page === 'delay' && <DelayPage controller={controller} />}
         {page === 'boost' && <BoostPage controller={controller} />}
         {groups.map((g, i) => (
-          <div key={g.title ?? i} role="group" aria-label={g.title}>
+          <div key={g.title ?? i} role="menu" aria-label={g.title}>
             {g.title && <p className={s.groupTitle}>{g.title}</p>}
             {g.rows.map((row) => (
               <button key={row.id} className={s.row} data-plain={row.plain ? '' : undefined} onClick={row.action} onMouseDown={keepFocus} disabled={row.disabled} role={row.checked !== undefined ? 'menuitemradio' : 'menuitem'} aria-checked={row.checked}>

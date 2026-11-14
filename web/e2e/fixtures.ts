@@ -43,17 +43,20 @@ export interface Report {
 export interface Options {
   /** Allow console errors whose text matches (an error a test provokes on purpose). */
   expectedConsoleErrors: RegExp[]
+  /** Allow failed requests to the site itself whose "METHOD url reason" text matches (a test that cuts the network). */
+  expectedFailedRequests: RegExp[]
   /** Let the site's service worker run (only the offline spec wants it). */
   workers: boolean
 }
 
 export const test = base.extend<{ report: Report; boot: (path: string) => Promise<void> } & Options>({
   expectedConsoleErrors: [[], { option: true }],
+  expectedFailedRequests: [[], { option: true }],
   workers: [false, { option: true }],
   serviceWorkers: async ({ workers }, use) => use(workers ? 'allow' : 'block'),
 
   report: [
-    async ({ page, context, baseURL, expectedConsoleErrors }, use) => {
+    async ({ page, context, baseURL, expectedConsoleErrors, expectedFailedRequests }, use) => {
       const origin = new URL(baseURL!).origin
       const report: Report = { console: [], pageErrors: [], failedRequests: [], unstubbed: [] }
 
@@ -95,7 +98,8 @@ export const test = base.extend<{ report: Report; boot: (path: string) => Promis
         const why = request.failure()?.errorText ?? ''
         // A request the page itself gave up on (it left the page, or the player seeked past it) isn't a failure.
         if (/abort|cancel/i.test(why)) return
-        report.failedRequests.push(`${request.method()} ${request.url()} ${why}`)
+        const line = `${request.method()} ${request.url()} ${why}`
+        if (!expectedFailedRequests.some((pattern) => pattern.test(line))) report.failedRequests.push(line)
       })
       page.on('response', (response) => {
         if (new URL(response.url()).origin === origin && response.status() >= 400) report.failedRequests.push(`${response.status()} ${response.request().method()} ${response.url()}`)

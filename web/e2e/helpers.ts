@@ -38,7 +38,7 @@ export async function wake(page: Page) {
 
 /** Opens a path in the player and plays the first source in the picker, which the sample data puts at the top. */
 export async function playFirstSource(page: Page) {
-  await page.getByRole('option', { name: /1080p WEB-DL/ }).click()
+  await page.getByRole('option', { name: /1080p.*WEB-DL/ }).click()
   await expectPlaying(page)
 }
 

@@ -364,6 +364,8 @@ export async function demoTmdb(rawPath: string, query: Record<string, unknown>):
     case 'tv': {
       const lists = ['popular', 'top_rated', 'now_playing', 'upcoming', 'airing_today', 'on_the_air']
       const list = lists.indexOf(parts[1] ?? '')
+      // Top Rated is in order of rating, as TMDB's is; the other lists are only different orders of the same titles.
+      if (parts[1] === 'top_rated') return page([...ofType(rawPath)].sort((a, b) => b.rating - a.rating), n)
       if (list >= 0) return page(shuffled(ofType(rawPath), list * 97), n)
       const t = byId.get(Number(parts[1]))
       if (!t) throw new Error('Not in the sample data')
