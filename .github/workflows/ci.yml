@@ -17,9 +17,15 @@ jobs:
     container: swift:6.1-noble
     steps:
       - uses: actions/checkout@v4
-      - name: Test
-        working-directory: Packages/FlowKit
-        run: swift test
+      # ffmpeg and ffprobe check what the remuxer and the FLAC encoder write, with code that isn't ours.
+      - name: Install ffmpeg
+        run: apt-get update && apt-get install -y --no-install-recommends ffmpeg
+      # Runs the whole suite with coverage, prints line coverage per folder (also in the job summary), and fails
+      # when a folder drops under its floor in Packages/FlowKit/coverage-floors.txt.
+      - name: Test with coverage
+        env:
+          FLOWKIT_REQUIRE_FFPROBE: "1"
+        run: scripts/flowkit-coverage.sh
 
   flowkit-apple:
     name: FlowKit tests (macOS)

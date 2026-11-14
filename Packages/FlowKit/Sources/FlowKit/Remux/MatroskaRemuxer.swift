@@ -743,7 +743,7 @@ public actor MatroskaRemuxer {
             if finishedDecodedSegments.count > 8 { finishedDecodedSegments.removeFirst() }
             return bytes
         } else {
-            (samples, base) = audioSamples(blocks, segment: segment, track: t)
+            (samples, base) = audioSamples(try await withoutNextSegmentsAudio(blocks, index: index, track: track), segment: segment, track: t)
         }
         return MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: base, samples: samples, isVideo: t.role == .video)
     }
@@ -818,6 +818,17 @@ public actor MatroskaRemuxer {
                                       isSync: block.isKeyframe))
         }
         return (samples, UInt64(max(0, dts[0])))
+    }
+
+    /// A segment's bytes end after the cluster holding the next segment's keyframe, but when that keyframe sits
+    /// mid-cluster the next segment's bytes start at the cluster's beginning: its audio is in both. Each frame
+    /// belongs to the first segment that reaches it, so this one stops where the next one's audio begins,
+    /// and the player never hears the overlap twice (or sees timestamps step backwards at the join).
+    private func withoutNextSegmentsAudio(_ blocks: [MatroskaBlock], index: Int, track: Int) async throws -> [MatroskaBlock] {
+        guard segments.indices.contains(index + 1), let first = blocks.first?.time else { return blocks }
+        let next = try await self.blocks(for: index + 1)
+        guard let nextStart = next.first(where: { $0.track == track })?.time, nextStart > first else { return blocks }
+        return blocks.filter { $0.time < nextStart }
     }
 
     private func audioSamples(_ blocks: [MatroskaBlock], segment: Segment, track: OutputTrack) -> ([MP4.Sample], UInt64) {
