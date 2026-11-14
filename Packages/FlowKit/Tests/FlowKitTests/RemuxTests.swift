@@ -112,6 +112,49 @@ final class RemuxTests: XCTestCase {
         XCTAssertEqual(SubtitleText.fromASSEvent("0,0,Default,,0,0,0,,{\\i1}Hello{\\i0}\\Nthere, friend"), "<i>Hello</i>\nthere, friend")
     }
 
+    /// The keyframe that opens a segment can sit in the middle of a cluster, and the previous segment's bytes
+    /// run to the end of that cluster, so its audio used to appear in two segments: played twice, with
+    /// timestamps stepping backwards at the join. (Packet counts are what ffprobe reports for the source files.)
+    func testAudioFramesBelongToExactlyOneSegment() async throws {
+        for (fixture, track, packets, frameSamples) in [("hevc-eac3-ac3", 3, 125, 1536), ("avc-aac-srt", 2, 283, 1024)] {
+            let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture(fixture)), targetSegment: 2)
+            var total = 0
+            var expectedNext: UInt64?
+            for segment in remuxer.segments {
+                let media = try await remuxer.mediaSegment(track: track, index: segment.index)
+                let bytes = try XCTUnwrap(media)
+                let base = try XCTUnwrap(Self.baseDecodeTime(bytes))
+                if let expectedNext { XCTAssertEqual(Int64(base), Int64(expectedNext), accuracy: 24, "\(fixture): segment \(segment.index) starts where the last one ended") }
+                let count = Self.sampleCount(bytes)
+                total += count
+                expectedNext = base + UInt64(count * frameSamples)
+            }
+            XCTAssertEqual(total, packets, "\(fixture): every audio frame exactly once")
+        }
+    }
+
+    /// Start-up on a slow link: an audio segment is built from its own bytes alone. One that waited for the next
+    /// segment to download (to see where its audio begins) would double the time to the first sound.
+    func testAnAudioSegmentNeverWaitsForTheNextSegmentsBytes() async throws {
+        let file = FileByteSource(url: MatroskaTests.fixture("hevc-eac3-ac3"))
+        let whole = try await MatroskaRemuxer.open(file, targetSegment: 2)
+        let segments = whole.segments
+        XCTAssertGreaterThan(segments.count, 1)
+        let expected = try await whole.mediaSegment(track: 3, index: 0)
+        // The same file, but once it is open, a read of any later segment never comes back in time.
+        let stalled = StallingByteSource(base: file)
+        let remuxer = try await MatroskaRemuxer.open(stalled, targetSegment: 2)
+        stalled.stallReadsStartingAfter(segments[0].byteStart)
+        let first = try await withThrowingTaskGroup(of: [UInt8]?.self) { group -> [UInt8]? in
+            group.addTask { try await remuxer.mediaSegment(track: 3, index: 0) }
+            group.addTask { try await Task.sleep(nanoseconds: 3_000_000_000); throw CancellationError() }
+            let value = try await group.next()!
+            group.cancelAll()
+            return value
+        }
+        XCTAssertEqual(first, expected, "the first audio segment, complete, without the second segment's bytes")
+    }
+
     /// trun sample_count of a fragment.
     static func sampleCount(_ b: [UInt8]) -> Int {
         guard let range = b.indices.dropLast(12).first(where: { b[$0] == 0x74 && b[$0 + 1] == 0x72 && b[$0 + 2] == 0x75 && b[$0 + 3] == 0x6E }) else { return 0 }
@@ -123,6 +166,21 @@ final class RemuxTests: XCTestCase {
     static func baseDecodeTime(_ b: [UInt8]) -> UInt64? {
         guard let at = b.indices.dropLast(16).first(where: { b[$0] == 0x74 && b[$0 + 1] == 0x66 && b[$0 + 2] == 0x64 && b[$0 + 3] == 0x74 }) else { return nil }
         return (0..<8).reduce(UInt64(0)) { $0 << 8 | UInt64(b[at + 8 + $1]) }
+    }
+}
+
+/// A file whose reads starting after a given offset hang, like a link that has stalled partway.
+final class StallingByteSource: ByteSource, @unchecked Sendable {
+    private let base: FileByteSource
+    private let lock = NSLock()
+    private var stallAfter: Int64?
+    init(base: FileByteSource) { self.base = base }
+    func stallReadsStartingAfter(_ offset: Int64) { lock.lock(); stallAfter = offset; lock.unlock() }
+    func length() async throws -> Int64? { try await base.length() }
+    func read(_ range: Range<Int64>) async throws -> [UInt8] {
+        let limit = lock.withLock { stallAfter }
+        if let limit, range.lowerBound > limit { try await Task.sleep(nanoseconds: 10_000_000_000) }
+        return try await base.read(range)
     }
 }
 
