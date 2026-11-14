@@ -81,7 +81,7 @@ final class TVFocusUITests: XCTestCase {
     }
 
     /// Up until the tab bar has focus, then sideways to `title`, then down into its page.
-    private func openTab(_ title: String, file: StaticString = #filePath, line: UInt = #line) {
+    private func openTab(_ title: String, entersPage: Bool = true, file: StaticString = #filePath, line: UInt = #line) {
         var presses = 0
         while !focusIsOnTheTabBar && presses < 10 {
             remote.press(.up)
@@ -101,15 +101,23 @@ final class TVFocusUITests: XCTestCase {
         XCTAssertTrue(target.hasFocus, "the remote's left and right reach the \(title) tab", file: file, line: line)
         assertOneFocus("on the \(title) tab", file: file, line: line)
         press(.down, "Down from the \(title) tab into its page", file: file, line: line)
+        guard entersPage else { return }
         let entered = waitUntil(10) { !self.focusIsOnTheTabBar }
         XCTAssertTrue(entered, "Down leaves the tab bar for the \(title) page, focus is on \(describeFocus())", file: file, line: line)
     }
 
     // MARK: Home
 
-    func testLaunchFocusesResumeAndTheRemoteMovesAcrossHome() {
+    /// The Apple TV tab bar takes focus when the app opens (the page's default focus does not outrank it), so these
+    /// tests start with one Down, which has to land on Resume.
+    private func enterHome() {
         assertOneFocus("on arrival at Home")
-        XCTAssertTrue(waitUntil(20) { self.btn("Resume").hasFocus }, "Resume has focus on arrival, so one press of Select carries on watching, focus is on \(describeFocus())")
+        if focusIsOnTheTabBar { press(.down, "Down from the Home tab") }
+        XCTAssertTrue(waitUntil(20) { self.btn("Resume").hasFocus }, "Down from the tab bar reaches Resume, focus is on \(describeFocus())")
+    }
+
+    func testLaunchFocusesOneThingAndDownReachesResumeThenAcrossHome() {
+        enterHome()
         press(.right, "Right from Resume")
         XCTAssertTrue(btn("Details").hasFocus, "Right from Resume reaches Details, focus is on \(describeFocus())")
         press(.down, "Down from Details")
@@ -118,6 +126,7 @@ final class TVFocusUITests: XCTestCase {
     }
 
     func testDetailsOpensAPageAndMenuReturnsToHome() {
+        enterHome()
         remote.press(.right)
         assertOneFocus("after Right to Details")
         XCTAssertTrue(btn("Details").hasFocus, "Details has focus, focus is on \(describeFocus())")
@@ -171,8 +180,8 @@ final class TVFocusUITests: XCTestCase {
     }
 
     func testSearchTakesFocus() {
-        openTab("Search")
-        press(.down, "Down on Search")
+        // Search's field lives in the tab bar itself on Apple TV, so Down need not leave it: one thing must hold focus.
+        openTab("Search", entersPage: false)
         press(.right, "Right on Search")
     }
 

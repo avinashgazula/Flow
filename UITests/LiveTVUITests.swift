@@ -13,6 +13,11 @@ final class LiveTVUITests: XCTestCase {
         app.launch()
     }
 
+    /// A button by its exact label, ignoring case: button styles set their words in capitals, and the spoken label follows.
+    private func btn(_ label: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label ==[c] %@", label)).firstMatch
+    }
+
     private func openFirstChannel() {
         let liveTV = btn("Live TV")
         XCTAssertTrue(liveTV.waitForExistence(timeout: 15))
