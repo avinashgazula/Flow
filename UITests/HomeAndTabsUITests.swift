@@ -10,17 +10,17 @@ final class HomeAndTabsUITests: FlowUITestCase {
 
     func testLaunchLandsOnHomeWithTheLatestResumeAsItsLead() {
         XCTAssertTrue(btn("Resume").waitForExistence(timeout: patience), "the lead offers Resume, since Breaking Bad is in progress")
-        XCTAssertTrue(text("Breaking Bad").waitForExistence(timeout: patience), "the lead is the title watched most recently")
-        XCTAssertFalse(text("Dune: Part Two").exists, "Dune, watched earlier, is not the lead")
+        XCTAssertTrue(waitUntil(patience) { self.leadIs("Breaking Bad") }, "the lead is the title watched most recently")
+        XCTAssertFalse(leadIs("Dune: Part Two"), "Dune, watched earlier, is only in Up Next")
     }
 
     func testLeadPagerTurnsThroughThePicksAndBack() {
         XCTAssertTrue(anyElement(startingWith: "Title 1 of").waitForExistence(timeout: patience), "the pager starts on the first pick")
         btn("Next Title").tap()
         XCTAssertTrue(anyElement(startingWith: "Title 2 of").waitForExistence(timeout: 10), "Next Title moves to the second pick")
-        XCTAssertTrue(waitUntilGone(text("Breaking Bad"), timeout: 10), "the first pick's title is replaced")
+        XCTAssertTrue(waitUntil(10) { !self.leadIs("Breaking Bad") }, "the first pick's title is replaced")
         btn("Previous Title").tap()
-        XCTAssertTrue(text("Breaking Bad").waitForExistence(timeout: 10), "Previous Title comes back to the first pick")
+        XCTAssertTrue(waitUntil(10) { self.leadIs("Breaking Bad") }, "Previous Title comes back to the first pick")
     }
 
     func testUpNextListsWhatIsInProgress() {

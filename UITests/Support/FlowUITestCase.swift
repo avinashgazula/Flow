@@ -105,12 +105,31 @@ class FlowUITestCase: XCTestCase {
 
     // MARK: Navigating
 
-    /// Opens a tab by its title. The tab bar is the system's: on iPhone at the foot, on iPad along the top.
+    /// The tab button for `title` that a finger could press: the system's bar also exposes an empty, off-screen twin
+    /// of some tabs (Search), and the bar may sit along the top (iPad) or at the foot (iPhone).
+    func tabButton(_ title: String) -> XCUIElement? {
+        let label = NSPredicate(format: "label ==[c] %@", title)
+        for query in [app.tabBars.buttons.matching(label), app.buttons.matching(label)] {
+            if let found = query.allElementsBoundByIndex.first(where: { $0.frame.width > 0 && $0.isHittable }) { return found }
+        }
+        return nil
+    }
+
+    /// Opens a tab by its title.
     func openTab(_ title: String, file: StaticString = #filePath, line: UInt = #line) {
-        let inBar = app.tabBars.buttons[title]
-        let tab = inBar.exists ? inBar : btn(title)
-        XCTAssertTrue(tab.waitForExistence(timeout: patience), "the \(title) tab is in the tab bar", file: file, line: line)
-        tab.tap()
+        var tab: XCUIElement?
+        waitUntil(patience) { tab = self.tabButton(title); return tab != nil }
+        XCTAssertNotNil(tab, "the \(title) tab is in the tab bar and can be pressed", file: file, line: line)
+        tab?.tap()
+    }
+
+    /// Whether `title` is the lead of Home: its title is set above the Up Next row, where the same title in that row is below.
+    func leadIs(_ title: String) -> Bool {
+        let upNext = text("Up Next")
+        guard upNext.exists else { return false }
+        let limit = upNext.frame.minY
+        return app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", title)).allElementsBoundByIndex
+            .contains { $0.frame.minY < limit }
     }
 
     /// Swipes the page up until `element` can be tapped. Lists and shelves build their rows lazily, so what is off
@@ -155,7 +174,7 @@ class FlowUITestCase: XCTestCase {
     /// Chooses the bundled MKV from the source list: it plays offline, through the app's own remuxer, so no test depends
     /// on a stream somewhere on the network.
     func chooseBundledSample(file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertTrue(app.buttons["Search Again"].waitForExistence(timeout: patience), "the source list opens", file: file, line: line)
+        XCTAssertTrue(btn("Search Again").waitForExistence(timeout: patience), "the source list opens", file: file, line: line)
         XCTAssertTrue(element("source-demo#0").waitForExistence(timeout: patience), "the first source is listed", file: file, line: line)
         let row = element("source-\(Self.bundledSampleID)")
         XCTAssertTrue(reveal(row), "the bundled sample is in the list", file: file, line: line)

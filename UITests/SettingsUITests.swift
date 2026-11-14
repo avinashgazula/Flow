@@ -38,8 +38,10 @@ final class SettingsUITests: FlowUITestCase {
             let row = element("settings-row-\(page.id)")
             XCTAssertTrue(reveal(row), "the \(page.title) row can be tapped")
             row.tap()
-            XCTAssertTrue(app.navigationBars[page.title].waitForExistence(timeout: patience), "\(page.title) opens a page with that title")
-            goBack(from: page.title)
+            // A page may title itself more fully than its row does ("Live TV" opens a longer name).
+            let bar = app.navigationBars.matching(NSPredicate(format: "identifier CONTAINS[c] %@", page.title)).firstMatch
+            XCTAssertTrue(bar.waitForExistence(timeout: patience), "\(page.title) opens a page whose title has that name in it")
+            bar.buttons.firstMatch.tap()
             XCTAssertTrue(element("settings-row-\(page.id)").waitForExistence(timeout: patience), "Back returns to the list")
         }
     }
@@ -73,11 +75,12 @@ final class SettingsUITests: FlowUITestCase {
         XCTAssertTrue(btn("Resume").waitForExistence(timeout: patience), "Home's lead resumes Breaking Bad")
         openSettings()
         element("settings-row-general").tap()
-        let toggle = btn("Show Continue Watching")
+        // The custom switch carries the toggle trait, so the system calls it a switch, not a button.
+        let toggle = app.descendants(matching: .any).matching(NSPredicate(format: "label ==[c] %@", "Show Continue Watching")).firstMatch
         XCTAssertTrue(reveal(toggle), "General has Show Continue Watching")
-        XCTAssertEqual(toggle.value as? String, "On", "it starts on")
+        XCTAssertTrue(["On", "1"].contains(toggle.value as? String ?? ""), "it starts on, got \(String(describing: toggle.value))")
         toggle.tap()
-        XCTAssertTrue(waitUntil(10) { (toggle.value as? String) == "Off" }, "a tap turns it off, and its spoken value says so")
+        XCTAssertTrue(waitUntil(10) { ["Off", "0"].contains(toggle.value as? String ?? "") }, "a tap turns it off, and its spoken value says so")
         goBack(from: "General")
         btn("Done").tap()
         waitForHome()

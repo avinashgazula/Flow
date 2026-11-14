@@ -125,15 +125,15 @@ final class TitleAndPlayerUITests: FlowUITestCase {
     }
 
     func testAPlaceSavedInThePlayerShowsOnHome() {
-        XCTAssertTrue(text("Breaking Bad").waitForExistence(timeout: patience), "Home's lead starts as Breaking Bad")
+        XCTAssertTrue(waitUntil(patience) { self.leadIs("Breaking Bad") }, "Home's lead starts as Breaking Bad")
         playDuneAndPause()
         scrubber.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
         XCTAssertTrue(waitUntil(15) { (self.playbackPosition()?.now ?? 0) > 3 }, "the playhead moved into the clip")
         closePlayer()
         goBack()
         waitForHome()
-        XCTAssertTrue(text("Dune: Part Two").waitForExistence(timeout: patience), "Dune, played last, is Home's lead now")
+        XCTAssertTrue(waitUntil(patience) { self.leadIs("Dune: Part Two") }, "Dune, played last, is Home's lead now")
         XCTAssertTrue(btn("Resume").exists, "and it offers Resume")
-        XCTAssertTrue(waitUntilGone(text("Breaking Bad"), timeout: 10), "in place of Breaking Bad")
+        XCTAssertFalse(leadIs("Breaking Bad"), "in place of Breaking Bad")
     }
 }
