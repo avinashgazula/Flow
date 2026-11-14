@@ -276,7 +276,9 @@ enum PlayerCheck {
         let w0 = Date()
         try? await Task.sleep(nanoseconds: 2_000_000_000)
         let rate = (session.playbackTime - s0) / Date().timeIntervalSince(w0)
-        record(rate >= 1.5, "2× speed moves the picture twice as fast", String(format: "%.1f× over 2 s", rate))
+        let waiting = session.player.reasonForWaitingToPlay?.rawValue ?? "-"
+        record(rate >= 1.5, "2× speed moves the picture twice as fast",
+               String(format: "%.1f× over 2 s", rate) + (rate >= 1.5 ? "" : ", player rate \(session.player.rate), \(session.player.timeControlStatus.rawValue), waiting: \(waiting)"))
         session.setRateNow(1)
 
         await checkTracks(session)
@@ -762,7 +764,10 @@ enum PlayerCheck {
     private static func rewind(_ session: PlaybackSession, to seconds: Double = 1) async {
         session.seek(to: seconds, exact: true)
         session.resumePlayback()
-        _ = await value(timeout: 8) { abs(session.currentTime - seconds) < 1.5 && session.isPlaying ? true : nil }
+        // The seek has landed (the playhead is only updated when it does) and the clip is moving again.
+        _ = await value(timeout: 8) { session.seekTarget == nil && abs(session.currentTime - seconds) < 1.5 && session.isPlaying ? true : nil }
+        let at = session.playbackTime
+        _ = await value(timeout: 5) { session.playbackTime > at + 0.3 ? true : nil }
     }
 
     /// Polls `probe` until it returns a value or `timeout` seconds pass. A scenario that was given up on stops waiting at once.
