@@ -80,9 +80,16 @@ public actor MatroskaRemuxer {
     public nonisolated var hasPlayableSoundtrack: Bool { audio.contains { !$0.source.isCommentary } }
 
     private let source: ByteSource
-    private var cache: [Int: [MatroskaBlock]] = [:]
+    private var cache: [Int: LoadedSegment] = [:]
     private var cacheOrder: [Int] = []
-    private var inflight: [Int: Task<[MatroskaBlock], Error>] = [:]
+    private var inflight: [Int: Task<LoadedSegment, Error>] = [:]
+
+    /// A segment's demuxed blocks, and for each track the time of its first block in the stretch of bytes the next
+    /// segment also covers (see `withoutNextSegmentsAudio`); empty when the two segments share no bytes.
+    private struct LoadedSegment: Sendable {
+        var blocks: [MatroskaBlock]
+        var sharedWithNext: [Int: Int64]
+    }
     private var bitmapTrack: Int?
     private var bitmapDecoder = BitmapDecoder.pgs(PGSDecoder())
     private var bitmapCues: [BitmapSubtitle] = []
@@ -720,7 +727,8 @@ public actor MatroskaRemuxer {
     public func mediaSegment(track: Int, index: Int) async throws -> [UInt8]? {
         guard let t = output(track), t.role != .subtitle, segments.indices.contains(index) else { return nil }
         let segment = segments[index]
-        let blocks = try await blocks(for: index).filter { $0.track == track }
+        let loaded = try await loaded(index)
+        let blocks = loaded.blocks.filter { $0.track == track }
         let samples: [MP4.Sample]
         let base: UInt64
         if t.role == .video {
@@ -743,7 +751,7 @@ public actor MatroskaRemuxer {
             if finishedDecodedSegments.count > 8 { finishedDecodedSegments.removeFirst() }
             return bytes
         } else {
-            (samples, base) = audioSamples(try await withoutNextSegmentsAudio(blocks, index: index, track: track), segment: segment, track: t)
+            (samples, base) = audioSamples(Self.withoutNextSegmentsAudio(blocks, nextStart: loaded.sharedWithNext[track]), segment: segment, track: t)
         }
         return MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: base, samples: samples, isVideo: t.role == .video)
     }
@@ -822,12 +830,11 @@ public actor MatroskaRemuxer {
 
     /// A segment's bytes end after the cluster holding the next segment's keyframe, but when that keyframe sits
     /// mid-cluster the next segment's bytes start at the cluster's beginning: its audio is in both. Each frame
-    /// belongs to the first segment that reaches it, so this one stops where the next one's audio begins,
+    /// belongs to the segment that starts with it, so this one stops where the next one's audio begins,
     /// and the player never hears the overlap twice (or sees timestamps step backwards at the join).
-    private func withoutNextSegmentsAudio(_ blocks: [MatroskaBlock], index: Int, track: Int) async throws -> [MatroskaBlock] {
-        guard segments.indices.contains(index + 1), let first = blocks.first?.time else { return blocks }
-        let next = try await self.blocks(for: index + 1)
-        guard let nextStart = next.first(where: { $0.track == track })?.time, nextStart > first else { return blocks }
+    /// `nextStart` comes from this segment's own bytes, so serving it never waits for the next one to download.
+    private static func withoutNextSegmentsAudio(_ blocks: [MatroskaBlock], nextStart: Int64?) -> [MatroskaBlock] {
+        guard let nextStart, let first = blocks.first?.time, nextStart > first else { return blocks }
         return blocks.filter { $0.time < nextStart }
     }
 
@@ -925,10 +932,12 @@ public actor MatroskaRemuxer {
 
     /// Demuxed blocks for a segment, shared by every rendition that asks for it. Serving one
     /// segment starts fetching the next, so the server's response time overlaps playback.
-    private func blocks(for index: Int) async throws -> [MatroskaBlock] {
-        let blocks = try await load(index)
+    private func blocks(for index: Int) async throws -> [MatroskaBlock] { try await loaded(index).blocks }
+
+    private func loaded(_ index: Int) async throws -> LoadedSegment {
+        let loaded = try await load(index)
         if segments.indices.contains(index + 1) { prefetch(index + 1) }
-        return blocks
+        return loaded
     }
 
     private func prefetch(_ index: Int) {
@@ -936,7 +945,7 @@ public actor MatroskaRemuxer {
         Task { _ = try? await self.load(index) }
     }
 
-    private func load(_ index: Int) async throws -> [MatroskaBlock] {
+    private func load(_ index: Int) async throws -> LoadedSegment {
         if let cached = cache[index] {
             cacheOrder.removeAll { $0 == index }
             cacheOrder.append(index)
@@ -947,21 +956,31 @@ public actor MatroskaRemuxer {
         let source = self.source
         let scale = header.timecodeScale
         let tracks = header.tracks
-        let task = Task { () throws -> [MatroskaBlock] in
+        // Where the next segment's bytes begin inside this one's, when they overlap.
+        let shared = segments.indices.contains(index + 1) ? segments[index + 1].byteStart - segment.byteStart : 0
+        let task = Task { () throws -> LoadedSegment in
             let bytes = try await source.read(segment.byteStart..<segment.byteEnd)
-            return try MatroskaClusterParser.blocks(Self.fromFirstCluster(bytes), timecodeScale: scale, tracks: tracks)
+            let blocks = try MatroskaClusterParser.blocks(Self.fromFirstCluster(bytes), timecodeScale: scale, tracks: tracks)
+            var sharedWithNext: [Int: Int64] = [:]
+            if shared > 0, shared < Int64(bytes.count) {
+                let tail = Self.fromFirstCluster(Array(bytes[Int(shared)...]))
+                for block in (try? MatroskaClusterParser.blocks(tail, timecodeScale: scale, tracks: tracks)) ?? [] where sharedWithNext[block.track] == nil {
+                    sharedWithNext[block.track] = block.time
+                }
+            }
+            return LoadedSegment(blocks: blocks, sharedWithNext: sharedWithNext)
         }
         inflight[index] = task
         defer { inflight[index] = nil }
-        let blocks = try await task.value
+        let loaded = try await task.value
         if cache[index] == nil {
-            cache[index] = blocks
+            cache[index] = loaded
             cacheOrder.append(index)
             // Room for the segment playing, the one prefetched, and renditions that lag behind.
             while cacheOrder.count > 5 { cache[cacheOrder.removeFirst()] = nil }
-            decodeBitmaps(blocks, segment: index)
+            decodeBitmaps(loaded.blocks, segment: index)
         }
-        return blocks
+        return loaded
     }
 
     /// Some muxers write seek positions a little off a cluster's start; resynchronise on the next
@@ -1009,7 +1028,7 @@ public actor MatroskaRemuxer {
         }
         bitmapCues = []
         decodedSegments = []
-        for (index, blocks) in cache { decodeBitmaps(blocks, segment: index) }
+        for (index, loaded) in cache { decodeBitmaps(loaded.blocks, segment: index) }
     }
 
     /// The picture subtitle on screen at `seconds` (media time), if any. Also prunes cues far behind.
