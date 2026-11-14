@@ -1,5 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { test, expect } from './fixtures'
+import { go, reload } from './helpers'
 
 /* Settings: every page opens, search lands on a row, a change survives a reload, and a setup exported from here comes
    back after everything is cleared. */
@@ -96,10 +97,10 @@ test.describe('changes stick', () => {
     await expect(reviews).toBeChecked()
     await reviews.click()
     await expect(reviews).not.toBeChecked()
-    await page.reload()
+    await reload(page)
     await expect(page.getByRole('switch', { name: 'Reviews' })).not.toBeChecked()
     // Title pages follow: with Reviews off there is no Reviews section.
-    await page.goto('/title/movie/693134')
+    await go(page, '/title/movie/693134')
     await expect(page.getByRole('heading', { level: 1, name: 'Dune: Part Two' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Reviews', exact: true })).toHaveCount(0)
   })
@@ -107,10 +108,10 @@ test.describe('changes stick', () => {
   test('a menu choice (Opening Tab) is kept and the front address then opens there', async ({ boot, page }) => {
     await boot('/settings#appearance')
     await page.getByRole('combobox', { name: 'Opening Tab' }).selectOption({ label: 'Library' })
-    await page.reload()
+    await reload(page)
     await expect(page.getByRole('combobox', { name: 'Opening Tab' })).toHaveValue(/library/i)
     // The front address redirects to the opening tab as it loads, which Firefox reports as the first load aborted.
-    await page.goto('/', { waitUntil: 'commit' })
+    await go(page, '/')
     await expect(page).toHaveURL(/\/library/)
   })
 
@@ -121,7 +122,7 @@ test.describe('changes stick', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
     // The button now offers the other one.
     await expect(page.getByRole('button', { name: 'Light mode' })).toBeVisible()
-    await page.reload()
+    await reload(page)
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   })
 })
@@ -132,7 +133,7 @@ test.describe('setup file', () => {
     await page.getByRole('combobox', { name: 'Audio language' }).selectOption({ label: 'Spanish' })
     await page.getByRole('combobox', { name: 'Preferred quality' }).selectOption({ label: '720p' })
 
-    await page.goto('/settings#data')
+    await go(page, '/settings#data')
     const download = page.waitForEvent('download')
     await page.getByRole('button', { name: 'Export' }).first().click()
     const file = testInfo.outputPath('setup.json')
@@ -144,10 +145,10 @@ test.describe('setup file', () => {
     await page.getByRole('button', { name: 'Reset Everything' }).click()
     await page.getByRole('button', { name: 'Reset', exact: true }).last().click()
     await expect(page.getByText('Marquee is back to a fresh start.')).toBeVisible()
-    await page.goto('/settings#playback')
+    await go(page, '/settings#playback')
     await expect(page.getByRole('combobox', { name: 'Preferred quality' })).toHaveValue(/1080/)
 
-    await page.goto('/settings#data')
+    await go(page, '/settings#data')
     await page.getByRole('button', { name: 'Import', exact: true }).first().click()
     const chooser = page.waitForEvent('filechooser')
     await page.getByRole('button', { name: 'Choose File' }).click()
@@ -155,7 +156,7 @@ test.describe('setup file', () => {
     await expect(page.getByRole('heading', { name: 'This setup contains' })).toBeVisible()
     await page.getByRole('button', { name: 'Import and Replace My Setup' }).click()
 
-    await page.goto('/settings#playback')
+    await go(page, '/settings#playback')
     await expect(page.getByRole('combobox', { name: 'Audio language' })).toHaveValue(/es|spanish/i)
     await expect(page.getByRole('combobox', { name: 'Preferred quality' })).toHaveValue(/720/)
   })

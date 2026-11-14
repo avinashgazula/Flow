@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './fixtures'
+import { settle } from './helpers'
 
 /* Using the site without a pointer: the Tab key reaches every control, the focus is visible, the Go shortcuts and the
    shortcuts sheet work, and Escape closes what opened. (The player's own keys are in player.spec.ts.) */
@@ -80,6 +81,7 @@ test.describe('tab order', () => {
       await page.keyboard.press('Tab')
       const target = await page.evaluateHandle(() => document.activeElement as HTMLElement)
       const label = await target.evaluate((el) => el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 40) ?? el.tagName)
+      await settle(page)
       const box = (await target.asElement()!.boundingBox())!
       // A frame, a ring or a colour change can sit just outside the control's box: look a little wider.
       const clip = { x: Math.max(0, box.x - 8), y: Math.max(0, box.y - 8), width: box.width + 16, height: box.height + 16 }

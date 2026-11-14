@@ -42,16 +42,16 @@ export interface Report {
 /** Test-specific things a spec may ask for. */
 export interface Options {
   /** Allow console errors whose text matches (an error a test provokes on purpose). */
-  expectedConsoleErrors: RegExp[]
+  expectedConsoleErrors: RegExp | null
   /** Allow failed requests to the site itself whose "METHOD url reason" text matches (a test that cuts the network). */
-  expectedFailedRequests: RegExp[]
+  expectedFailedRequests: RegExp | null
   /** Let the site's service worker run (only the offline spec wants it). */
   workers: boolean
 }
 
 export const test = base.extend<{ report: Report; boot: (path: string) => Promise<void> } & Options>({
-  expectedConsoleErrors: [[], { option: true }],
-  expectedFailedRequests: [[], { option: true }],
+  expectedConsoleErrors: [null, { option: true }],
+  expectedFailedRequests: [null, { option: true }],
   workers: [false, { option: true }],
   serviceWorkers: async ({ workers }, use) => use(workers ? 'allow' : 'block'),
 
@@ -91,7 +91,7 @@ export const test = base.extend<{ report: Report; boot: (path: string) => Promis
       page.on('console', (message) => {
         if (message.type() !== 'error') return
         const text = message.text()
-        if (expectedConsoleErrors.some((pattern) => pattern.test(text))) return
+        if (expectedConsoleErrors?.test(text)) return
         if (leaving() && /Failed to load resource/.test(text) && cutOff.test(text)) return
         report.console.push(`${message.type()}: ${text}`)
       })
@@ -111,7 +111,7 @@ export const test = base.extend<{ report: Report; boot: (path: string) => Promis
         if (/abort|cancel/i.test(why)) return
         if (leaving() && cutOff.test(why)) return
         const line = `${request.method()} ${request.url()} ${why}`
-        if (!expectedFailedRequests.some((pattern) => pattern.test(line))) report.failedRequests.push(line)
+        if (!expectedFailedRequests?.test(line)) report.failedRequests.push(line)
       })
       page.on('response', (response) => {
         if (new URL(response.url()).origin === origin && response.status() >= 400) report.failedRequests.push(`${response.status()} ${response.request().method()} ${response.url()}`)

@@ -44,3 +44,25 @@ export async function playFirstSource(page: Page) {
 
 /** The player's panel buttons are in the controls bar. A phone shows them behind the same names. */
 export const control = (page: Page, name: string | RegExp) => page.getByRole('button', { name, exact: typeof name === 'string' })
+
+/** Lets everything that is fading or sliding finish (a loop would never), so what is read or photographed is the resting page. */
+export const settle = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => void Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))).then(() => resolve())),
+        ),
+      ),
+  )
+
+/* A page that is still finishing its own navigation (a redirect, the router tidying the address) makes Firefox and WebKit
+   abort or interrupt the next goto or reload: let it go quiet first. */
+export async function go(page: Page, url: string) {
+  await page.waitForLoadState('networkidle')
+  await page.goto(url, { waitUntil: 'domcontentloaded' })
+}
+export async function reload(page: Page) {
+  await page.waitForLoadState('networkidle')
+  await page.reload({ waitUntil: 'domcontentloaded' })
+}

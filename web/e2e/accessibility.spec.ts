@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { test, expect, type Page } from './fixtures'
 import { routes } from './sitemap'
-import { control, playFirstSource, wake } from './helpers'
+import { control, go, playFirstSource, wake, settle } from './helpers'
 
 /* axe against WCAG 2.1 A and AA on every address, the settings pages, and the sheets and panels that open over them.
    A violation is a bug to fix in the page; where one is a design choice, the single rule is switched off for the single
@@ -18,8 +18,10 @@ const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 const allowed: { rule: string; selector: string; why: string }[] = []
 
 async function audit(page: Page, scope?: string) {
-  // Contrast is read from the colours on screen: let anything fading in or sliding finish first (a loop would never).
-  await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))))
+  // Contrast is read from the colours on screen: let anything fading in or sliding finish first, and keep a resting
+  // pointer from highlighting a row under it half way through.
+  await page.mouse.move(0, 0)
+  await settle(page)
   let builder = new AxeBuilder({ page }).withTags(tags)
   if (scope) builder = builder.include(scope)
   for (const { rule, selector } of allowed) builder = builder.disableRules([rule]).exclude(selector)
@@ -40,7 +42,7 @@ test.describe('every address', () => {
   }
 
   test('the welcome page has none', async ({ page }) => {
-    await page.goto('/')
+    await go(page, '/')
     await expect(page.getByLabel('TMDB API Key')).toBeVisible()
     await audit(page)
   })

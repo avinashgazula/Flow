@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures'
-import { expectPlaying } from './helpers'
+import { expectPlaying, go, reload } from './helpers'
 
 /* Home, a title page and the source picker, driven the way a visitor does: by clicking and pressing keys. */
 
@@ -78,7 +78,7 @@ test.describe('a film’s page', () => {
     await expect(watchlist).toHaveAttribute('aria-pressed', 'false')
     await watchlist.click()
     await expect(watchlist).toHaveAttribute('aria-pressed', 'true')
-    await page.goto('/library?list=watchlist')
+    await go(page, '/library?list=watchlist')
     await expect(page.getByRole('link', { name: /^The Dark Knight, film/ })).toBeVisible()
     await expect(page.getByText('7 titles')).toBeVisible()
     await page.goBack()
@@ -93,7 +93,7 @@ test.describe('a film’s page', () => {
     const now = was === 'true' ? 'false' : 'true'
     await favourite.click()
     await expect(favourite).toHaveAttribute('aria-pressed', now)
-    await page.reload()
+    await reload(page)
     await expect(favourite).toHaveAttribute('aria-pressed', now)
   })
 
@@ -115,8 +115,13 @@ test.describe('a film’s page', () => {
   test('the collection row opens the franchise page', async ({ boot, page }) => {
     await boot('/title/movie/693134')
     // The row loads its films once it is near the screen.
-    await page.keyboard.press('End')
-    await page.getByRole('link', { name: 'See every film in Dune Collection' }).click()
+    const seeAll = page.getByRole('link', { name: 'See every film in Dune Collection' })
+    await expect(async () => {
+      // In steps, as a person scrolls: a row only loads when it comes near the screen, and a jump past it never does.
+      await page.mouse.wheel(0, 500)
+      await expect(seeAll).toBeVisible({ timeout: 700 })
+    }).toPass()
+    await seeAll.click()
     await expect(page.getByRole('heading', { level: 1, name: 'Dune Collection' })).toBeVisible()
     await expect(page.getByRole('link', { name: /^Dune, film, 2021/ })).toBeVisible()
     await expect(page.getByRole('link', { name: /^Dune: Part Two, film, 2024/ })).toBeVisible()

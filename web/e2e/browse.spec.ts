@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures'
-import { expectPlaying } from './helpers'
+import { expectPlaying, go, reload } from './helpers'
 
 /* Search, Explore, Library, Upcoming, Live TV, a person and a collection: the places you look for something. */
 
@@ -50,7 +50,7 @@ test.describe('search', () => {
     await page.getByRole('searchbox', { name: 'Search' }).fill('inception')
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/\/title\/movie\/27205/)
-    await page.goto('/search', { waitUntil: 'commit' })
+    await go(page, '/search')
     await expect(page.getByText('Recent')).toBeVisible()
     await expect(page.getByRole('button', { name: 'inception', exact: true })).toBeVisible()
   })
@@ -150,7 +150,7 @@ test.describe('library', () => {
     await page.getByRole('list', { name: 'Watchlist' }).getByRole('link').first().focus()
     await page.keyboard.press('Alt+ArrowRight')
     await expect.poll(names).toEqual([before[1], before[0], ...before.slice(2)])
-    await page.reload()
+    await reload(page)
     expect(await names()).toEqual([before[1], before[0], ...before.slice(2)])
   })
 

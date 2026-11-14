@@ -24,7 +24,7 @@ test.describe('first run', () => {
 
   test.describe('a refused key', () => {
     // The browser logs the 401 it was given, which is the point of the test.
-    test.use({ expectedConsoleErrors: [/status of 401/] })
+    test.use({ expectedConsoleErrors: /status of 401/ })
     test('stays on the welcome page and says what to do', async ({ page }) => {
       await page.route('https://api.themoviedb.org/3/configuration**', (route) => route.fulfill({ status: 401, json: { status_message: 'Invalid API key' } }))
       await page.goto('/')
