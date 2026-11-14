@@ -49,6 +49,10 @@ enum Contracts {
         "sync-key": Contracts.syncKey,
         "sync-link": Contracts.syncLink,
         "source-parser": Contracts.sourceParser,
+        "source-slate": Contracts.sourceSlate,
+        "playback-still-watching": Contracts.stillWatching,
+        "watchlist-order": Contracts.watchlistOrder,
+        "calendar-ics": Contracts.calendarICS,
     ]
 }
 
