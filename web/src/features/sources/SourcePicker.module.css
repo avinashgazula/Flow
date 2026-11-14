@@ -2,6 +2,7 @@
    the title and a status line, with square control cells at its top right; the filters are bordered cells under it; each
    source is a ruled row: its resolution in red condensed numerals, the release in condensed type, the facts in mono. */
 .overlay {
+  outline: none;
   position: fixed;
   inset: 0;
   z-index: 100;

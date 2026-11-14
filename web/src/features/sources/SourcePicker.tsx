@@ -49,6 +49,7 @@ export function SourcePicker({ request, seed, onPick, onClose: closeNow }: { req
   const saved = useSettings((x) => x.sources)
   const appearance = useMemo(() => normaliseSourceOrdering(saved).appearance, [saved])
   const listRef = useRef<HTMLDivElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
   // A parent may build the request afresh on every render; only a different title searches again.
   const requestRef = useRef(request)
   requestRef.current = request
@@ -72,8 +73,10 @@ export function SourcePicker({ request, seed, onPick, onClose: closeNow }: { req
     const overflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     // With a keyboard and mouse the list takes focus, so arrows and Enter work at once; on touch
-    // screens that would only draw a focus ring nobody asked for.
+    // screens that would only draw a focus ring nobody asked for. The sheet itself still takes it, so a keyboard on a
+    // tablet or a screen reader lands inside the sheet (and Escape closes it) instead of on the page behind.
     if (matchMedia('(pointer: fine)').matches) listRef.current?.focus({ preventScroll: true })
+    else overlayRef.current?.focus({ preventScroll: true })
     return () => {
       document.body.style.overflow = overflow
       previous?.focus?.({ preventScroll: true })
@@ -178,7 +181,7 @@ export function SourcePicker({ request, seed, onPick, onClose: closeNow }: { req
     )
 
   return (
-    <div className={s.overlay} data-leaving={leaving ? '' : undefined} role="dialog" aria-modal="true" aria-label={`Sources for ${request.item.title}`} onKeyDown={onKeyDown}>
+    <div ref={overlayRef} tabIndex={-1} className={s.overlay} data-leaving={leaving ? '' : undefined} role="dialog" aria-modal="true" aria-label={`Sources for ${request.item.title}`} onKeyDown={onKeyDown}>
       <div className={s.scrim} onClick={onClose} aria-hidden />
       <div className={s.sheet}>
         <div className={s.controls}>

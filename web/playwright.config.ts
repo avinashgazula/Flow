@@ -49,6 +49,7 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${port}`,
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
     locale: 'en-US',
     timezoneId: 'UTC',
     colorScheme: 'light',
