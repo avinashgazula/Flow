@@ -1,0 +1,152 @@
+{
+ "area": "sync-key",
+ "description": "Marquee Sync's key (docs/SYNC.md, Legacy: Marquee Sync): the 16 bytes written as 26 Crockford base32 characters, read back leniently, and the id, auth and AES key derived from it with HKDF-SHA256 (salt flow-sync-v1). Computed independently with Python. Bytes are lower-case hex.",
+ "cases": [
+  {
+   "name": "encode: all zero bytes",
+   "op": "encode",
+   "input": "00000000000000000000000000000000",
+   "expected": "00000000000000000000000000"
+  },
+  {
+   "name": "encode: all one bits",
+   "op": "encode",
+   "input": "ffffffffffffffffffffffffffffffff",
+   "expected": "ZZZZZZZZZZZZZZZZZZZZZZZZZW"
+  },
+  {
+   "name": "encode: bytes 0 to 15",
+   "op": "encode",
+   "input": "000102030405060708090a0b0c0d0e0f",
+   "expected": "000G40R40M30E209185GR38E1W"
+  },
+  {
+   "name": "encode: a mixed key",
+   "op": "encode",
+   "input": "8f3a1c5de2b7460971a4c0de5b2f9e63",
+   "expected": "HWX1RQF2PX30JWD4R3F5PBWYCC"
+  },
+  {
+   "name": "derive: all zero bytes",
+   "op": "derive",
+   "input": "00000000000000000000000000000000",
+   "expected": {
+    "id": "793d1f74b09ddee80e4fadfc43c9936e",
+    "auth": "Va6X3u8_c1SE17GGTBMb00dwhoHlDIjWxOUGME-wTnc",
+    "enc": "c373ca582cb29bb473c69c0dc0a2a1fd16c281bb286bfdc941bcd28e71e90b25",
+    "authHash": "a866971a0130f4058cb1b2b4c6ad0906c5f120125ed122bf4dc39e1fe94eed76"
+   }
+  },
+  {
+   "name": "derive: all one bits",
+   "op": "derive",
+   "input": "ffffffffffffffffffffffffffffffff",
+   "expected": {
+    "id": "352b700d1dc7b2b4b8f2a205b6c39203",
+    "auth": "axUu5vUclf_8doDumyACdQgQbHwWzpgbHZdpsUr8C6M",
+    "enc": "14cc997b4755399fdf2f1676b104e08bdfd7b38c3bbac5e2a7dcfd4231eaf84d",
+    "authHash": "40984042519b91b2df2c66c0084cbb6ef191a69e9d870e504d6538aaeebb9844"
+   }
+  },
+  {
+   "name": "derive: bytes 0 to 15",
+   "op": "derive",
+   "input": "000102030405060708090a0b0c0d0e0f",
+   "expected": {
+    "id": "625ee37823f4fad87a1591ef9038d5c6",
+    "auth": "MF8YRcz1DFlJqMdCJgMOrexYxSLXV50cYLJsfg2ts50",
+    "enc": "7216fa3c9cdb9f4f1cd4b5a76c3aa5414ec5d741e8eb1b5f1f8b242fbad13eca",
+    "authHash": "4c921fbf5d2aa65f33ff2423208ef4628a74ddb6f96196e2ff212c073cbd02b0"
+   }
+  },
+  {
+   "name": "derive: a mixed key",
+   "op": "derive",
+   "input": "8f3a1c5de2b7460971a4c0de5b2f9e63",
+   "expected": {
+    "id": "587cfa601796e8d947c51d11f3be792d",
+    "auth": "nxlmX-ytLxAxtYcKYCU2T0Rb_MwsZmt-ItkEV-nnEQI",
+    "enc": "46e241788fff9e5124ca7cec8f81ef342ac4183e02d402ae62b623245e062387",
+    "authHash": "5af785045a0e66b12dbec2dba64542c9705cc2c9a684a3db3de4cb7cb50e9e82"
+   }
+  },
+  {
+   "name": "parse: the plain written form",
+   "op": "parse",
+   "input": "HWX1RQF2PX30JWD4R3F5PBWYCC",
+   "expected": "8f3a1c5de2b7460971a4c0de5b2f9e63"
+  },
+  {
+   "name": "parse: groups of four with dashes",
+   "op": "parse",
+   "input": "HWX1-RQF2-PX30-JWD4-R3F5-PBWY-CC",
+   "expected": "8f3a1c5de2b7460971a4c0de5b2f9e63"
+  },
+  {
+   "name": "parse: lower case",
+   "op": "parse",
+   "input": "hwx1rqf2px30jwd4r3f5pbwycc",
+   "expected": "8f3a1c5de2b7460971a4c0de5b2f9e63"
+  },
+  {
+   "name": "parse: spaces and a trailing newline",
+   "op": "parse",
+   "input": "HWX1 RQF2 PX30 JWD4 R3F5 PBWY CC\n",
+   "expected": "8f3a1c5de2b7460971a4c0de5b2f9e63"
+  },
+  {
+   "name": "parse: O reads as 0 and I and L as 1",
+   "op": "parse",
+   "input": "OOOOOOOOOOOOOOOOOOOOOOOOOO",
+   "expected": "00000000000000000000000000000000"
+  },
+  {
+   "name": "parse: I and L read as 1",
+   "op": "parse",
+   "input": "000G0000000000000000000000",
+   "expected": "00010000000000000000000000000000"
+  },
+  {
+   "name": "parse: L reads as 1",
+   "op": "parse",
+   "input": "000G0000000000000000000000",
+   "expected": "00010000000000000000000000000000"
+  },
+  {
+   "name": "parse: twenty-five characters are refused",
+   "op": "parse",
+   "input": "HWX1RQF2PX30JWD4R3F5PBWYC",
+   "expected": null
+  },
+  {
+   "name": "parse: twenty-seven characters are refused",
+   "op": "parse",
+   "input": "HWX1RQF2PX30JWD4R3F5PBWYCC0",
+   "expected": null
+  },
+  {
+   "name": "parse: U is not in the alphabet",
+   "op": "parse",
+   "input": "HWX1RQF2PX30JWD4R3F5PBWYCU",
+   "expected": null
+  },
+  {
+   "name": "parse: empty is refused",
+   "op": "parse",
+   "input": "",
+   "expected": null
+  },
+  {
+   "name": "parse: a symbol is refused",
+   "op": "parse",
+   "input": "HWX1RQF2PX30JWD4R3F5PBWYC!",
+   "expected": null
+  },
+  {
+   "name": "parse: padding bits that are not zero are ignored",
+   "op": "parse",
+   "input": "HWX1RQF2PX30JWD4R3F5PBWYCF",
+   "expected": "8f3a1c5de2b7460971a4c0de5b2f9e63"
+  }
+ ]
+}

@@ -46,6 +46,8 @@ enum Contracts {
         "account-number": accountNumber,
         "account-crypto": accountCrypto,
         "account-wire": accountWire,
+        "sync-key": Contracts.syncKey,
+        "sync-link": Contracts.syncLink,
     ]
 }
 

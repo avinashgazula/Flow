@@ -55,8 +55,11 @@ export function parsePairing(input: string): { ok: true; pairing: Pairing } | { 
   const text = input.trim()
   let params: URLSearchParams | undefined
   const fragment = /#sync=(.*)$/s.exec(text) ?? /^sync=(.*)$/s.exec(text)
-  if (fragment) params = new URLSearchParams(fragment[1])
-  else if (/^flow:\/\/sync\b/i.test(text)) params = new URLSearchParams(text.slice(text.indexOf('?') + 1 || text.length))
+  // A plus is a plus: both ends write one as %2B, and a token pasted by hand with a raw one must not turn into a space
+  // (URLSearchParams reads it as form encoding), or the apps and the site would send different tokens.
+  const literal = (query: string) => new URLSearchParams(query.replace(/\+/g, '%2B'))
+  if (fragment) params = literal(fragment[1]!)
+  else if (/^flow:\/\/sync\b/i.test(text)) params = literal(text.slice(text.indexOf('?') + 1 || text.length))
   if (!params) {
     const key = parseKey(text)
     return key ? { ok: true, pairing: { key } } : { ok: false, error: incompleteKey }
