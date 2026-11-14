@@ -54,6 +54,7 @@ enum Contracts {
         "watchlist-order": Contracts.watchlistOrder,
         "calendar-ics": Contracts.calendarICS,
         "language": Contracts.language,
+        "source-rank": Contracts.sourceRank,
         "track-selection": Contracts.trackSelection,
     ]
 }

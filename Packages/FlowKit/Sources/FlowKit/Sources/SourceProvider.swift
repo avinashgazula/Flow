@@ -261,11 +261,21 @@ public enum SourceRanker {
             if let min = f.minSizeGB, gb < min { return false }
             if let max = f.maxSizeGB, gb > max { return false }
         }
-        let text = (s.title + " " + (s.filename ?? "")).lowercased()
-        if f.excludedKeywords.contains(where: { !$0.isEmpty && text.contains($0.lowercased()) }) { return false }
-        if !f.requiredKeywords.isEmpty && !f.requiredKeywords.contains(where: { text.contains($0.lowercased()) }) { return false }
-        if let codec = t.videoCodec, f.excludedCodecs.contains(where: { $0.caseInsensitiveCompare(codec) == .orderedSame }) { return false }
+        // The release name, the file name and the add-on's own text, as the website matches them; blanks mean nothing.
+        let text = [s.title, s.detail, s.filename].compactMap { $0 }.joined(separator: " ").lowercased()
+        func words(_ list: [String]) -> [String] { list.map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty } }
+        if words(f.excludedKeywords).contains(where: { text.contains($0) }) { return false }
+        let required = words(f.requiredKeywords)
+        if !required.isEmpty && !required.contains(where: { text.contains($0) }) { return false }
+        if let codec = t.videoCodec, f.excludedCodecs.contains(where: { codecName($0) == codecName(codec) }) { return false }
         return true
+    }
+
+    /// "H.264", "x264", "AVC" and "h264" are one codec; "HEVC", "x265", "h.265" another. The parser says "H264" and "HEVC",
+    /// so a codec typed the way releases name it has to reach them.
+    static func codecName(_ codec: String) -> String {
+        let plain = String(codec.lowercased().filter { $0.isLetter || $0.isNumber })
+        return ["x264": "h264", "avc": "h264", "x265": "hevc", "h265": "hevc"][plain] ?? plain
     }
 
     /// nil when every rule ties.
@@ -289,7 +299,9 @@ public enum SourceRanker {
         case .language:
             guard !filters.preferredLanguages.isEmpty else { return 0 }
             let langs = Set(t.languages.map { $0.lowercased() })
-            for (i, lang) in filters.preferredLanguages.enumerated() where langs.contains(lang.lowercased()) {
+            // A code ("en") is read as its name ("English"), as on the website.
+            func name(_ l: String) -> String { (l.count <= 3 ? LanguageName.display(l) : l).trimmingCharacters(in: .whitespaces).lowercased() }
+            for (i, lang) in filters.preferredLanguages.enumerated() where langs.contains(name(lang)) {
                 return Double(filters.preferredLanguages.count - i)
             }
             return 0
