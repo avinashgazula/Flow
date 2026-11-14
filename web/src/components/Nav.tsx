@@ -74,7 +74,7 @@ export function Nav() {
             <Icon name="settings" size={20} strokeWidth={2} />
             <span className={s.wide}>Settings</span>
           </Link>
-          <button type="button" className={`${s.cell} ${s.theme}`} aria-pressed={dark} aria-label="Dark mode" onClick={() => setTheme(dark ? 'light' : 'dark')}>
+          <button type="button" className={`${s.cell} ${s.theme}`} aria-label={dark ? 'Light mode' : 'Dark mode'} onClick={() => setTheme(dark ? 'light' : 'dark')}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true" focusable="false">
               <circle cx="12" cy="12" r="9" />
               <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" />

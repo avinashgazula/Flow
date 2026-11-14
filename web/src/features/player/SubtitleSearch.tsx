@@ -129,7 +129,7 @@ export function SubtitleSearchPage({ controller, onDone }: { controller: PlayerC
       )}
 
       {groups.map((g) => (
-        <div key={g.name} role="group" aria-label={g.name}>
+        <div key={g.name} role="menu" aria-label={g.name}>
           <p className={c.groupTitle}>{g.name}</p>
           {g.items.map((r) => {
             const trackId = controller.trackForResult(r.id)
