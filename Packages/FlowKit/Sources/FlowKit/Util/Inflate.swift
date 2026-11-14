@@ -191,6 +191,7 @@ public enum ZipArchive {
             var compressedSize = u32(p + 18)
             let nameLength = u16(p + 26)
             let extraLength = u16(p + 28)
+            guard p + 30 + nameLength <= b.count else { throw Inflate.Failure.corrupt("zip entry name truncated") }
             let name = String(decoding: b[(p + 30)..<(p + 30 + nameLength)], as: UTF8.self)
             let start = p + 30 + nameLength + extraLength
             if flags & 0x08 != 0 && compressedSize == 0 {
