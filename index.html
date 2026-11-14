@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Marquee: your Jellyfin, Emby and Plex servers, stream add-ons and live TV in one place, in the browser. It hosts no content." />
+    <meta name="application-name" content="Marquee" />
+    <meta name="apple-mobile-web-app-title" content="Marquee" />
+    <meta property="og:site_name" content="Marquee" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Marquee" />
+    <meta property="og:description" content="Your Jellyfin, Emby and Plex servers, stream add-ons and live TV in one place. Marquee hosts no content: it plays what you already have." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Marquee" />
+    <meta name="twitter:description" content="Your Jellyfin, Emby and Plex servers, stream add-ons and live TV in one place." />
+    <title>Marquee</title>
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-180.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- The two hosts every first screen needs: open their connections while the script downloads. -->
+    <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
+    <link rel="preconnect" href="https://api.themoviedb.org" crossorigin />
+    <script>
+      // Light or dark, before first paint: the saved choice, else the system's. The Light/Dark cell in the top bar
+      // saves the same key (lib/theme.ts, keep the two in step). The faces the first paint is set in are preloaded
+      // by the build (vite.config.ts), which knows their hashed names.
+      try {
+        var t = localStorage.getItem('flow.theme')
+        if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        document.documentElement.dataset.theme = t
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#0a0a0a' : '#ffffff')
+      } catch (e) {}
+    </script>
+    <script>
+      // Home's lead still is its largest image. Its address from the last visit is known before any
+      // script loads, so the download starts now, alongside the app's code, not after it.
+      // `s` is the sizes string Home rendered it with (leadSizes in features/home/Featured.tsx).
+      try {
+        var h = JSON.parse(localStorage.getItem('flow.lcp') || 'null')
+        if (h && h.path === location.pathname && h.d && h.s) {
+          var l = document.createElement('link')
+          l.rel = 'preload'
+          l.as = 'image'
+          l.fetchPriority = 'high'
+          l.imageSrcset = h.d
+          l.imageSizes = h.s
+          document.head.appendChild(l)
+        } else h = null
+      } catch (e) {
+        h = null
+      }
+    </script>
+    <style>html{color:#0a0a0a;background:#fff}html[data-theme=dark]{color:#f2f2ee;background:#0a0a0a}body{background:inherit;color:inherit;margin:0}.shell-home{padding:calc(var(--nav-height,58px) + 24px) var(--page-inset,20px) 0;font-family:var(--font,ui-monospace, monospace)}.shell-wrap{max-width:1360px;margin:0 auto}.shell-head{text-transform:uppercase;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 16px;min-height:20px;margin-bottom:24px;font-size:13px;line-height:1.3;display:flex}.shell-title{letter-spacing:.12em;color:#c9120a;font-weight:600}html[data-theme=dark] .shell-title{color:#ff5a4e}.shell-date{letter-spacing:.08em;opacity:.7}.shell-still{aspect-ratio:16/9;border:var(--border-w,2px) solid currentColor;margin-top:260px;overflow:hidden}.shell-still img{object-fit:cover;width:100%;height:100%;display:block}@media (min-width:721px){.shell-still{margin-top:330px}}@media (min-width:1100px){.shell-top{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);column-gap:48px;display:grid}.shell-top>div{grid-column:2}.shell-still{margin-top:0}}</style>
+    <script type="module" crossorigin src="/assets/index-DrQO5BmC.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/compiler-runtime-BNvLG3sJ.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-C_gPCg3F.js">
+    <link rel="modulepreload" crossorigin href="/assets/queryClient-DaM1xkeh.js">
+    <link rel="modulepreload" crossorigin href="/assets/settings-jgfLPIY-.js">
+    <link rel="modulepreload" crossorigin href="/assets/preload-helper-BLdHbfdN.js">
+    <link rel="modulepreload" crossorigin href="/assets/types-DXKhMkUU.js">
+    <link rel="modulepreload" crossorigin href="/assets/client-to_uilr-.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-DZyUluR7.css">
+    <link rel="search" type="application/opensearchdescription+xml" title="Marquee" href="/opensearch.xml">
+    <link rel="preload" as="font" type="font/woff2" crossorigin="" href="/assets/archivo-latin-700-normal-D9cHMWGj.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin="" href="/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      if (window.h) {
+        var now = new Date(), hr = now.getHours()
+        document.getElementById('root').innerHTML =
+          '<div class="shell-home" aria-hidden="true"><div class="shell-wrap"><div class="shell-head"><div class="shell-title">' +
+          (hr >= 5 && hr < 12 ? 'This Morning' : hr >= 12 && hr < 17 ? 'This Afternoon' : 'Tonight') +
+          '</div><div class="shell-date">' +
+          now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) +
+          '</div></div><div class="shell-top"><div><div class="shell-still"><img alt="" sizes="' + h.s + '" fetchpriority="high" srcset="' + h.d + '"></div></div></div></div></div>'
+      }
+    </script>
+  </body>
+</html>

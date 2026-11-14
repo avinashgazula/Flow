@@ -1,0 +1,2 @@
+import{t as e}from"./session-Bv146wdD.js";import{startScrobbling as t}from"./scrobble-sTeR4kmq.js";function n(n,r,i){let a=e(n);return t(r,i,(e,t,n,r)=>a.scrobble(e,t,n,r),n===`simkl`)}export{n as startTrackerScrobbling};
+//# sourceMappingURL=scrobble-WUsU0dBa.js.map

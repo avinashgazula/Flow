@@ -1,0 +1,2 @@
+import{a as e,o as t}from"./client-to_uilr-.js";import{Q as n,Z as r,_t as i}from"./index-DrQO5BmC.js";function a(t){let n=e=>e.date??`9999`;return{id:t.id,name:t.name??``,overview:t.overview??``,poster:t.poster_path??void 0,backdrop:t.backdrop_path??void 0,parts:e(t.parts,`movie`).sort((e,t)=>n(e).localeCompare(n(t)))}}var o=e=>i({queryKey:[...n(),`collection`,e],queryFn:async()=>{let n=a(await t(`/collection/${e}`));return n.parts.forEach(r),n},staleTime:864e5});export{o as t};
+//# sourceMappingURL=collection-SZbBQxO5.js.map

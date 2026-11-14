@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Marquee Is Offline</title>
+    <style>
+      /* What opens when Marquee can't be reached and its saved copy is missing too. Plain on purpose: no script, no
+         fonts to download, the same paper and ink, 3px rules and one blue action as the app (it follows the
+         system's light or dark, as the app does before a choice is saved). */
+      :root { --bg: #fff; --fg: #0a0a0a; --blue: #1a3dff; --onblue: #fff; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #0a0a0a; --fg: #f2f2ee; --blue: #8fa2ff; --onblue: #0a0a0a; } }
+      html { background: var(--bg); color: var(--fg); }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        font: 400 15px / 1.5 ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+        -webkit-text-size-adjust: 100%;
+      }
+      header { padding: 0 clamp(20px, 4vw, 64px); min-height: 56px; display: flex; align-items: center; border-bottom: 3px solid var(--fg); font: 700 22px / 1 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif; }
+      main { padding: 48px clamp(20px, 4vw, 64px); max-width: calc(62ch + 2 * clamp(20px, 4vw, 64px)); }
+      h1 { margin: 0; font: 700 clamp(48px, 11vw, 120px) / 0.86 'Helvetica Neue', Helvetica, Arial, sans-serif; text-transform: uppercase; letter-spacing: -0.03em; }
+      p { margin: 24px 0 0; text-wrap: pretty; }
+      a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 48px;
+        margin-top: 32px;
+        padding: 0 18px;
+        border: 3px solid var(--fg);
+        background: var(--fg);
+        color: var(--bg);
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        text-decoration: none;
+      }
+      a:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); }
+      a:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+    </style>
+  </head>
+  <body>
+    <header>Marquee</header>
+    <main>
+      <h1>You’re offline</h1>
+      <p>Marquee needs a connection to reach your sources.</p>
+      <a href=".">Try Again</a>
+    </main>
+  </body>
+</html>
