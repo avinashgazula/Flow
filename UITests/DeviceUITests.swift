@@ -27,9 +27,9 @@ final class PhonePlayerUITests: FlowUITestCase {
         chooseBundledSample()
         waitForPlayback()
         showPlayerControls()
-        app.buttons["Pause"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["Play"].firstMatch.waitForExistence(timeout: 10), "Pause works in landscape")
-        app.buttons["Options"].firstMatch.tap()
+        btn("Pause").tap()
+        XCTAssertTrue(btn("Play").waitForExistence(timeout: 10), "Pause works in landscape")
+        btn("Options").tap()
         let speed = button(containing: "Speed")
         XCTAssertTrue(speed.waitForExistence(timeout: 10), "the options panel opens in landscape")
         // On a short screen the list scrolls: Advanced Options is the last row, and has to be reachable.
@@ -53,7 +53,7 @@ final class iPadLayoutUITests: FlowUITestCase {
     }
 
     func testHomesLeadSplitsIntoWordsBesideItsBackdrop() {
-        let resume = app.buttons["Resume"].firstMatch
+        let resume = btn("Resume")
         let backdrop = button(startingWith: "Breaking Bad, season 3")
         XCTAssertTrue(resume.waitForExistence(timeout: patience), "the lead offers Resume")
         XCTAssertTrue(backdrop.waitForExistence(timeout: patience), "and shows its backdrop")
@@ -75,9 +75,9 @@ final class iPadLayoutUITests: FlowUITestCase {
         XCUIDevice.shared.orientation = .portrait
         XCTAssertTrue(button(startingWith: "Upcoming").waitForExistence(timeout: patience), "Library is still the open tab in portrait")
         button(startingWith: "Upcoming").tap()
-        XCTAssertTrue(app.buttons["Add All to Calendar"].firstMatch.waitForExistence(timeout: patience), "its Upcoming page opens")
+        XCTAssertTrue(btn("Add All to Calendar").waitForExistence(timeout: patience), "its Upcoming page opens")
         XCUIDevice.shared.orientation = .landscapeLeft
-        XCTAssertTrue(app.buttons["Add All to Calendar"].firstMatch.waitForExistence(timeout: patience), "and stays open after turning back")
+        XCTAssertTrue(btn("Add All to Calendar").waitForExistence(timeout: patience), "and stays open after turning back")
         goBack(from: "Upcoming")
         XCTAssertTrue(button(startingWith: "Upcoming").waitForExistence(timeout: patience), "Back still leads to the Library")
     }
@@ -91,7 +91,7 @@ final class iPadLayoutUITests: FlowUITestCase {
     }
 
     func testSettingsOpensAsALargeSheet() {
-        app.buttons["Settings"].firstMatch.tap()
+        btn("Settings").tap()
         let row = element("settings-row-general")
         XCTAssertTrue(row.waitForExistence(timeout: patience), "Settings opens")
         // A page-size sheet, not a narrow card: its rows are wide enough to read a title and a chevron.

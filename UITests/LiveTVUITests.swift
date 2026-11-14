@@ -14,21 +14,21 @@ final class LiveTVUITests: XCTestCase {
     }
 
     private func openFirstChannel() {
-        let liveTV = app.buttons["Live TV"].firstMatch
+        let liveTV = btn("Live TV")
         XCTAssertTrue(liveTV.waitForExistence(timeout: 15))
         liveTV.tap()
         // iPad opens on the guide; the list is a tap away.
-        let list = app.buttons["Show List"].firstMatch
+        let list = btn("Show List")
         if list.waitForExistence(timeout: 3) { list.tap() }
         let channel = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Flow News'")).firstMatch
         XCTAssertTrue(channel.waitForExistence(timeout: 15), "the first channel is listed")
         channel.tap()
-        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 15), "the live player opens with its overlay")
+        XCTAssertTrue(btn("Close").waitForExistence(timeout: 15), "the live player opens with its overlay")
     }
 
     func testCloseLeavesThePlayer() {
         openFirstChannel()
-        app.buttons["Close"].tap()
+        btn("Close").tap()
         let list = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Flow News'")).firstMatch
         XCTAssertTrue(list.waitForExistence(timeout: 10), "Close returns to the channel list")
         if UIDevice.current.userInterfaceIdiom == .phone {
@@ -48,18 +48,18 @@ final class LiveTVUITests: XCTestCase {
 
     func testChannelButtonsTune() {
         openFirstChannel()
-        let next = app.buttons["Next Channel"]
+        let next = btn("Next Channel")
         XCTAssertTrue(next.waitForExistence(timeout: 5))
         next.tap()
         XCTAssertTrue(app.staticTexts["World 24"].waitForExistence(timeout: 10), "Next Channel tunes to channel 2")
-        app.buttons["Previous Channel"].tap()
+        btn("Previous Channel").tap()
         XCTAssertTrue(app.staticTexts["Flow News"].waitForExistence(timeout: 10), "Previous Channel tunes back")
     }
 
     func testTappingThePictureBringsTheOverlayBack() {
         openFirstChannel()
         // The overlay hides itself after five seconds of playing.
-        let close = app.buttons["Close"]
+        let close = btn("Close")
         let hidden = NSPredicate(format: "exists == false")
         expectation(for: hidden, evaluatedWith: close)
         waitForExpectations(timeout: 15)

@@ -17,7 +17,7 @@ final class SettingsUITests: FlowUITestCase {
     }
 
     private func openSettings(file: StaticString = #filePath, line: UInt = #line) {
-        let settings = app.buttons["Settings"].firstMatch
+        let settings = btn("Settings")
         XCTAssertTrue(settings.waitForExistence(timeout: patience), "Home has a Settings button", file: file, line: line)
         settings.tap()
         XCTAssertTrue(element("settings-row-general").waitForExistence(timeout: patience), "the Settings list opens", file: file, line: line)
@@ -26,8 +26,8 @@ final class SettingsUITests: FlowUITestCase {
     func testSettingsOpensAsASheetAndDoneClosesIt() {
         openSettings()
         XCTAssertTrue(text("You're exploring sample data").exists, "the sample data is named, with a way to leave it")
-        XCTAssertTrue(app.buttons["Leave Demo"].firstMatch.exists)
-        app.buttons["Done"].firstMatch.tap()
+        XCTAssertTrue(btn("Leave Demo").exists)
+        btn("Done").tap()
         XCTAssertTrue(waitUntilGone(element("settings-row-general"), timeout: 15), "Done closes the sheet")
         waitForHome()
     }
@@ -70,19 +70,19 @@ final class SettingsUITests: FlowUITestCase {
     }
 
     func testAChangedSettingTakesEffectOnHome() {
-        XCTAssertTrue(app.buttons["Resume"].firstMatch.waitForExistence(timeout: patience), "Home's lead resumes Breaking Bad")
+        XCTAssertTrue(btn("Resume").waitForExistence(timeout: patience), "Home's lead resumes Breaking Bad")
         openSettings()
         element("settings-row-general").tap()
-        let toggle = app.buttons["Show Continue Watching"].firstMatch
+        let toggle = btn("Show Continue Watching")
         XCTAssertTrue(reveal(toggle), "General has Show Continue Watching")
         XCTAssertEqual(toggle.value as? String, "On", "it starts on")
         toggle.tap()
         XCTAssertTrue(waitUntil(10) { (toggle.value as? String) == "Off" }, "a tap turns it off, and its spoken value says so")
         goBack(from: "General")
-        app.buttons["Done"].firstMatch.tap()
+        btn("Done").tap()
         waitForHome()
         // Without Continue Watching the lead is the top pick: it offers Play, not Resume.
-        XCTAssertTrue(waitUntilGone(app.buttons["Resume"].firstMatch, timeout: patience), "Home no longer resumes anything")
-        XCTAssertTrue(app.buttons["Play"].firstMatch.waitForExistence(timeout: patience), "the lead offers Play instead")
+        XCTAssertTrue(waitUntilGone(btn("Resume"), timeout: patience), "Home no longer resumes anything")
+        XCTAssertTrue(btn("Play").waitForExistence(timeout: patience), "the lead offers Play instead")
     }
 }

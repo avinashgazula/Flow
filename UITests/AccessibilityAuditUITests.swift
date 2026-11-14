@@ -63,7 +63,7 @@ final class AccessibilityAuditUITests: AuditingUITestCase {
     }
 
     func testHome() {
-        XCTAssertTrue(app.buttons["Resume"].firstMatch.waitForExistence(timeout: patience))
+        XCTAssertTrue(btn("Resume").waitForExistence(timeout: patience))
         audit("Home")
     }
 
@@ -81,7 +81,7 @@ final class AccessibilityAuditUITests: AuditingUITestCase {
 
     func testLiveTV() {
         openTab("Live TV")
-        let list = app.buttons["Show List"].firstMatch
+        let list = btn("Show List")
         if list.waitForExistence(timeout: 3) { list.tap() }
         XCTAssertTrue(button(containing: "Flow News").waitForExistence(timeout: patience))
         audit("Live TV")
@@ -101,7 +101,7 @@ final class AccessibilityAuditUITests: AuditingUITestCase {
 
     func testCalendar() {
         openLink("flow://upcoming")
-        XCTAssertTrue(app.buttons["Add All to Calendar"].firstMatch.waitForExistence(timeout: patience))
+        XCTAssertTrue(btn("Add All to Calendar").waitForExistence(timeout: patience))
         audit("Upcoming")
     }
 
@@ -124,13 +124,13 @@ final class AccessibilityAuditUITests: AuditingUITestCase {
     }
 
     func testSettingsList() {
-        app.buttons["Settings"].firstMatch.tap()
+        btn("Settings").tap()
         XCTAssertTrue(element("settings-row-general").waitForExistence(timeout: patience))
         audit("Settings")
     }
 
     func testSettingsGeneralPage() {
-        app.buttons["Settings"].firstMatch.tap()
+        btn("Settings").tap()
         let row = element("settings-row-general")
         XCTAssertTrue(row.waitForExistence(timeout: patience))
         row.tap()
@@ -145,7 +145,7 @@ final class AccessibilityAuditUITests: AuditingUITestCase {
 
     func testPlayerOptionsPanel() {
         playDuneAndPause()
-        app.buttons["Options"].firstMatch.tap()
+        btn("Options").tap()
         XCTAssertTrue(button(containing: "Speed").waitForExistence(timeout: 10))
         audit("Player options")
     }
@@ -176,16 +176,16 @@ final class LargeTextUITests: AuditingUITestCase {
     }
 
     func testHome() {
-        assertReachable(app.buttons["Resume"].firstMatch, "Home's Resume")
-        assertReachable(app.buttons["Details"].firstMatch, "Home's Details")
-        assertReachable(app.buttons["Settings"].firstMatch, "Settings")
+        assertReachable(btn("Resume"), "Home's Resume")
+        assertReachable(btn("Details"), "Home's Details")
+        assertReachable(btn("Settings"), "Settings")
         audit("Home, large text", for: largeTextAudit)
     }
 
     func testTabBar() {
         for title in ["Home", "Explore", "Library", "Live TV", "Search"] {
             let inBar = app.tabBars.buttons[title]
-            let tab = inBar.exists ? inBar : app.buttons[title].firstMatch
+            let tab = inBar.exists ? inBar : btn(title)
             XCTAssertTrue(tab.waitForExistence(timeout: patience), "the \(title) tab is in the tab bar")
             XCTAssertTrue(tab.isHittable, "and can be tapped")
         }
@@ -193,8 +193,8 @@ final class LargeTextUITests: AuditingUITestCase {
 
     func testExplore() {
         openTab("Explore")
-        assertReachable(app.buttons["Filters"].firstMatch, "Filters")
-        assertReachable(app.buttons["TV Shows"].firstMatch, "TV Shows")
+        assertReachable(btn("Filters"), "Filters")
+        assertReachable(btn("TV Shows"), "TV Shows")
         audit("Explore, large text", for: largeTextAudit)
     }
 
@@ -214,7 +214,7 @@ final class LargeTextUITests: AuditingUITestCase {
     func testMoviePage() {
         openDune()
         assertReachable(button(startingWith: "Resume"), "the Resume button")
-        assertReachable(app.buttons["Add to Watchlist"].firstMatch, "the Watchlist action")
+        assertReachable(btn("Add to Watchlist"), "the Watchlist action")
         audit("Movie page, large text", for: largeTextAudit)
     }
 
@@ -222,15 +222,15 @@ final class LargeTextUITests: AuditingUITestCase {
         openDune()
         button(startingWith: "Resume").tap()
         assertReachable(element("source-demo#0"), "the first source")
-        assertReachable(app.buttons["Close"].firstMatch, "Close")
+        assertReachable(btn("Close"), "Close")
         audit("Source list, large text", for: largeTextAudit)
     }
 
     func testSettings() {
-        assertReachable(app.buttons["Settings"].firstMatch, "Settings")
-        app.buttons["Settings"].firstMatch.tap()
+        assertReachable(btn("Settings"), "Settings")
+        btn("Settings").tap()
         assertReachable(element("settings-row-general"), "the General row")
-        assertReachable(app.buttons["Done"].firstMatch, "Done")
+        assertReachable(btn("Done"), "Done")
         audit("Settings, large text", for: largeTextAudit)
     }
 }

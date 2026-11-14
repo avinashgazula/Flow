@@ -45,7 +45,7 @@ class FlowUITestCase: XCTestCase {
 
     /// Home is ready when its lead has loaded: a Details button, and Resume (the sample library has things in progress).
     func waitForHome(file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertTrue(app.buttons["Details"].firstMatch.waitForExistence(timeout: patience),
+        XCTAssertTrue(btn("Details").waitForExistence(timeout: patience),
                       "Home shows its lead, with a Details button", file: file, line: line)
     }
 
@@ -56,13 +56,19 @@ class FlowUITestCase: XCTestCase {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
+    /// A button by its exact label, ignoring case. Button styles set their words in capitals, and the system hands that
+    /// capitalised text on as the spoken label ("DETAILS", "PREVIOUS TITLE").
+    func btn(_ label: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label ==[c] %@", label)).firstMatch
+    }
+
     /// A button whose spoken label starts with `prefix` ("Resume" matches "Resume · 1 h 44 min left").
     func button(startingWith prefix: String) -> XCUIElement {
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@", prefix)).firstMatch
     }
 
     func button(containing text: String) -> XCUIElement {
-        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+        app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch
     }
 
     /// A line of text, compared without regard to case: pages set their heads in capitals, and whether the spoken
@@ -73,7 +79,7 @@ class FlowUITestCase: XCTestCase {
 
     /// Anything whose spoken label starts with `prefix`, whatever it is (a pager's "Title 1 of 10" is neither button nor text to rely on).
     func anyElement(startingWith prefix: String) -> XCUIElement {
-        app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", prefix)).firstMatch
+        app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH[c] %@", prefix)).firstMatch
     }
 
     func text(startingWith prefix: String) -> XCUIElement {
@@ -102,7 +108,7 @@ class FlowUITestCase: XCTestCase {
     /// Opens a tab by its title. The tab bar is the system's: on iPhone at the foot, on iPad along the top.
     func openTab(_ title: String, file: StaticString = #filePath, line: UInt = #line) {
         let inBar = app.tabBars.buttons[title]
-        let tab = inBar.exists ? inBar : app.buttons[title].firstMatch
+        let tab = inBar.exists ? inBar : btn(title)
         XCTAssertTrue(tab.waitForExistence(timeout: patience), "the \(title) tab is in the tab bar", file: file, line: line)
         tab.tap()
     }
@@ -162,7 +168,7 @@ class FlowUITestCase: XCTestCase {
 
     /// "Pause" or "Play", whichever the centre button says right now.
     var transport: XCUIElement {
-        app.buttons.matching(NSPredicate(format: "label IN %@", ["Pause", "Play"])).firstMatch
+        app.buttons.matching(NSPredicate(format: "label ==[c] %@ OR label ==[c] %@", "Pause", "Play")).firstMatch
     }
 
     /// Where the player is, read from the scrubber's spoken value ("0:03 of 0:12"). Nil until the length is known.
@@ -203,7 +209,7 @@ class FlowUITestCase: XCTestCase {
     /// Closes the player and waits for the page underneath: the close saves the place and then tears the player down.
     func closePlayer(file: StaticString = #filePath, line: UInt = #line) {
         showPlayerControls(file: file, line: line)
-        let close = app.buttons["Close Player"].firstMatch
+        let close = btn("Close Player")
         XCTAssertTrue(close.waitForExistence(timeout: 10), "the player has a Close button", file: file, line: line)
         close.tap()
         XCTAssertTrue(waitUntilGone(transport, timeout: 30), "the player closes", file: file, line: line)
@@ -217,8 +223,8 @@ class FlowUITestCase: XCTestCase {
         chooseBundledSample(file: file, line: line)
         waitForPlayback(file: file, line: line)
         showPlayerControls(file: file, line: line)
-        app.buttons["Pause"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["Play"].firstMatch.waitForExistence(timeout: 10),
+        btn("Pause").tap()
+        XCTAssertTrue(btn("Play").waitForExistence(timeout: 10),
                       "Pause turns the centre button into Play", file: file, line: line)
     }
 }

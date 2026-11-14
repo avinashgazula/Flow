@@ -12,24 +12,24 @@ final class TitleAndPlayerUITests: FlowUITestCase {
 
     func testAMoviePageShowsItsListActionsAndTheyToggle() {
         openDune()
-        let add = app.buttons["Add to Watchlist"].firstMatch
+        let add = btn("Add to Watchlist")
         XCTAssertTrue(reveal(add), "Dune is not on the watchlist yet, so the action offers to add it")
         add.tap()
-        XCTAssertTrue(app.buttons["Remove from Watchlist"].firstMatch.waitForExistence(timeout: 10), "the action turns into its opposite")
-        app.buttons["Remove from Watchlist"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["Add to Watchlist"].firstMatch.waitForExistence(timeout: 10), "and back")
-        XCTAssertTrue(app.buttons["Mark Watched"].firstMatch.exists, "an unwatched film can be marked watched")
+        XCTAssertTrue(btn("Remove from Watchlist").waitForExistence(timeout: 10), "the action turns into its opposite")
+        btn("Remove from Watchlist").tap()
+        XCTAssertTrue(btn("Add to Watchlist").waitForExistence(timeout: 10), "and back")
+        XCTAssertTrue(btn("Mark Watched").exists, "an unwatched film can be marked watched")
     }
 
     func testAShowPageHasASeasonMenuAndItsResumeEpisode() {
         openLink("flow://title/show/1396")
         XCTAssertTrue(button(startingWith: "Resume").waitForExistence(timeout: patience), "Breaking Bad offers Resume")
-        XCTAssertTrue(reveal(app.buttons["Season"].firstMatch), "a show's page has a Season menu")
+        XCTAssertTrue(reveal(btn("Season")), "a show's page has a Season menu")
     }
 
     func testAWatchedFilmSaysSo() {
         openLink("flow://title/movie/872585")
-        let watched = app.buttons["Watched"].firstMatch
+        let watched = btn("Watched")
         XCTAssertTrue(watched.waitForExistence(timeout: patience) || reveal(watched),
                       "Oppenheimer is in the sample history, so its page shows Watched")
     }
@@ -39,11 +39,11 @@ final class TitleAndPlayerUITests: FlowUITestCase {
     func testPlayOpensTheSourceListAndCloseLeavesIt() {
         openDune()
         button(startingWith: "Resume").tap()
-        XCTAssertTrue(app.buttons["Search Again"].waitForExistence(timeout: patience), "the source list opens")
+        XCTAssertTrue(btn("Search Again").waitForExistence(timeout: patience), "the source list opens")
         XCTAssertTrue(element("source-demo#0").waitForExistence(timeout: patience), "the demo add-on lists its first source")
         XCTAssertTrue(element("source-demo#1").exists, "and its second")
-        app.buttons["Close"].firstMatch.tap()
-        XCTAssertTrue(waitUntilGone(app.buttons["Search Again"].firstMatch, timeout: 15), "Close dismisses the list")
+        btn("Close").tap()
+        XCTAssertTrue(waitUntilGone(btn("Search Again"), timeout: 15), "Close dismisses the list")
         XCTAssertTrue(button(startingWith: "Resume").exists, "back on the title page")
     }
 
@@ -52,12 +52,12 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         button(startingWith: "Resume").tap()
         XCTAssertTrue(element("source-demo#0").waitForExistence(timeout: patience), "sources are listed")
         // demo#0 is 1080p WEB-DL, demo#3 is 720p WEBRip.
-        let chip = app.buttons["720p"].firstMatch
+        let chip = btn("720p")
         XCTAssertTrue(chip.waitForExistence(timeout: patience), "a 720p chip is offered")
         chip.tap()
         XCTAssertTrue(waitUntilGone(element("source-demo#0"), timeout: 10), "the 1080p source is filtered out")
         XCTAssertTrue(element("source-demo#3").exists, "the 720p source stays")
-        app.buttons["All"].firstMatch.tap()
+        btn("All").tap()
         XCTAssertTrue(element("source-demo#0").waitForExistence(timeout: 10), "All brings the rest back")
     }
 
@@ -70,12 +70,12 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         waitForPlayback()
         showPlayerControls()
         for label in ["Close Player", "Options", "X-Ray", "Playback Info"] {
-            XCTAssertTrue(app.buttons[label].firstMatch.exists, "the player has \(label)")
+            XCTAssertTrue(btn(label).exists, "the player has \(label)")
         }
         XCTAssertTrue(button(startingWith: "Back").exists, "and a skip back button")
         XCTAssertTrue(button(startingWith: "Forward").exists, "and a skip forward button")
         XCTAssertTrue(transport.exists, "and a play or pause button")
-        XCTAssertFalse(app.buttons["Search Again"].exists, "the source list is gone")
+        XCTAssertFalse(btn("Search Again").exists, "the source list is gone")
     }
 
     func testPauseAndPlayChangeThePlayersState() {
@@ -85,11 +85,11 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         RunLoop.current.run(until: Date().addingTimeInterval(2))
         let later = playbackPosition()?.now ?? -1
         XCTAssertEqual(later, paused, accuracy: 0.6, "a paused player's clock does not run")
-        app.buttons["Play"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["Pause"].firstMatch.waitForExistence(timeout: 10), "Play turns the button back into Pause")
+        btn("Play").tap()
+        XCTAssertTrue(btn("Pause").waitForExistence(timeout: 10), "Play turns the button back into Pause")
         XCTAssertTrue(waitUntil(30) { (self.playbackPosition()?.now ?? 0) > paused + 0.9 }, "playback carries on from where it stopped")
         showPlayerControls()
-        app.buttons["Pause"].firstMatch.tap()
+        btn("Pause").tap()
     }
 
     func testTappingTheScrubberMovesThePlayhead() {
@@ -104,7 +104,7 @@ final class TitleAndPlayerUITests: FlowUITestCase {
 
     func testOptionsPanelOpensAndChangesTheSpeed() {
         playDuneAndPause()
-        app.buttons["Options"].firstMatch.tap()
+        btn("Options").tap()
         let speed = button(containing: "Speed")
         XCTAssertTrue(speed.waitForExistence(timeout: 10), "the options panel lists Speed")
         XCTAssertTrue(speed.label.contains("Normal"), "at normal speed to begin with, got \(speed.label)")
@@ -113,7 +113,7 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         XCTAssertTrue(faster.waitForExistence(timeout: 10), "the speed list offers 1.5x")
         faster.tap()
         XCTAssertTrue(waitUntil(10) { self.button(containing: "Speed").label.contains("1.5x") }, "the options panel now reads Speed 1.5x")
-        app.buttons["Options"].firstMatch.tap()
+        btn("Options").tap()
         XCTAssertTrue(waitUntilGone(button(containing: "Speed"), timeout: 10), "tapping Options again closes the panel")
     }
 
@@ -121,7 +121,7 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         playDuneAndPause()
         closePlayer()
         XCTAssertTrue(button(startingWith: "Resume").waitForExistence(timeout: patience), "back on Dune's page, which still offers Resume")
-        XCTAssertFalse(app.buttons["Options"].exists, "with the player gone")
+        XCTAssertFalse(btn("Options").exists, "with the player gone")
     }
 
     func testAPlaceSavedInThePlayerShowsOnHome() {
@@ -133,7 +133,7 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         goBack()
         waitForHome()
         XCTAssertTrue(text("Dune: Part Two").waitForExistence(timeout: patience), "Dune, played last, is Home's lead now")
-        XCTAssertTrue(app.buttons["Resume"].firstMatch.exists, "and it offers Resume")
+        XCTAssertTrue(btn("Resume").exists, "and it offers Resume")
         XCTAssertTrue(waitUntilGone(text("Breaking Bad"), timeout: 10), "in place of Breaking Bad")
     }
 }

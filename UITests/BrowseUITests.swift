@@ -19,7 +19,7 @@ final class BrowseUITests: FlowUITestCase {
         let result = button(startingWith: "Oppenheimer")
         XCTAssertTrue(result.waitForExistence(timeout: patience), "Oppenheimer is among the results")
         result.tap()
-        XCTAssertTrue(app.buttons["Watched"].firstMatch.waitForExistence(timeout: patience) || reveal(app.buttons["Watched"].firstMatch),
+        XCTAssertTrue(btn("Watched").waitForExistence(timeout: patience) || reveal(btn("Watched")),
                       "the title's page opens, and the sample history says it was watched")
     }
 
@@ -30,9 +30,9 @@ final class BrowseUITests: FlowUITestCase {
         field.tap()
         field.typeText("zzqqxx")
         XCTAssertTrue(text(startingWith: "No Results").waitForExistence(timeout: patience), "a query that matches nothing says so")
-        app.buttons["Clear Search"].firstMatch.tap()
+        btn("Clear Search").tap()
         XCTAssertTrue(waitUntilGone(text(startingWith: "No Results"), timeout: 10), "Clear Search returns to the suggestions")
-        XCTAssertFalse(app.buttons["Clear Search"].exists, "and the clear button goes with the text")
+        XCTAssertFalse(btn("Clear Search").exists, "and the clear button goes with the text")
     }
 
     func testPeopleAreFoundToo() {
@@ -49,31 +49,31 @@ final class BrowseUITests: FlowUITestCase {
     func testSwitchingToTVShowsChangesTheGrid() {
         openTab("Explore")
         XCTAssertTrue(button(startingWith: "Dune: Part Two").waitForExistence(timeout: patience), "Explore starts on trending films")
-        app.buttons["TV Shows"].firstMatch.tap()
+        btn("TV Shows").tap()
         XCTAssertTrue(button(startingWith: "Breaking Bad").waitForExistence(timeout: patience), "TV Shows lists series")
         XCTAssertTrue(waitUntilGone(button(startingWith: "Dune: Part Two"), timeout: 10), "and no films")
-        app.buttons["Movies"].firstMatch.tap()
+        btn("Movies").tap()
         XCTAssertTrue(button(startingWith: "Dune: Part Two").waitForExistence(timeout: patience), "Movies brings the films back")
     }
 
     func testAGenreChipFiltersTheGrid() {
         openTab("Explore")
         XCTAssertTrue(button(startingWith: "Dune: Part Two").waitForExistence(timeout: patience))
-        app.buttons["Action"].firstMatch.tap()
+        btn("Action").tap()
         // Of the sample films, The Dark Knight is an action film and Dune: Part Two is not.
         XCTAssertTrue(button(startingWith: "The Dark Knight").waitForExistence(timeout: patience), "Action lists The Dark Knight")
         XCTAssertTrue(waitUntilGone(button(startingWith: "Dune: Part Two"), timeout: 10), "and leaves Dune: Part Two out")
-        app.buttons["All"].firstMatch.tap()
+        btn("All").tap()
         XCTAssertTrue(button(startingWith: "Dune: Part Two").waitForExistence(timeout: patience), "All clears the filter")
     }
 
     func testTheFiltersSheetOpensAndCloses() {
         openTab("Explore")
-        app.buttons["Filters"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["Reset"].firstMatch.waitForExistence(timeout: patience), "the filters sheet opens with its Reset button")
-        app.buttons["Done"].firstMatch.tap()
-        XCTAssertTrue(waitUntilGone(app.buttons["Reset"].firstMatch, timeout: 10), "Done closes it")
-        XCTAssertTrue(app.buttons["Filters"].firstMatch.exists, "back on Explore")
+        btn("Filters").tap()
+        XCTAssertTrue(btn("Reset").waitForExistence(timeout: patience), "the filters sheet opens with its Reset button")
+        btn("Done").tap()
+        XCTAssertTrue(waitUntilGone(btn("Reset"), timeout: 10), "Done closes it")
+        XCTAssertTrue(btn("Filters").exists, "back on Explore")
     }
 
     // MARK: Library
@@ -117,7 +117,7 @@ final class BrowseUITests: FlowUITestCase {
         XCTAssertTrue(row.waitForExistence(timeout: patience))
         row.tap()
         XCTAssertTrue(text("Upcoming").waitForExistence(timeout: patience), "the page is headed Upcoming")
-        XCTAssertTrue(app.buttons["Add All to Calendar"].firstMatch.waitForExistence(timeout: patience),
+        XCTAssertTrue(btn("Add All to Calendar").waitForExistence(timeout: patience),
                       "with episodes to show, the page offers Add All to Calendar")
         XCTAssertFalse(text("Nothing Coming Up").exists, "so it is not the empty state")
     }

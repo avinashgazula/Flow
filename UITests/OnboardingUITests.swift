@@ -11,18 +11,18 @@ final class OnboardingUITests: FlowUITestCase {
     func testAFreshLaunchShowsTheWelcomeScreenWithItsWaysIn() {
         XCTAssertTrue(element("onboarding-key").waitForExistence(timeout: patience), "the welcome screen has the TMDB key field")
         XCTAssertTrue(text("Marquee").exists, "and the app's name")
-        XCTAssertTrue(app.buttons["Continue"].firstMatch.exists, "a Continue button")
-        XCTAssertTrue(app.buttons["Explore with Sample Data"].firstMatch.exists, "a way into the sample data")
+        XCTAssertTrue(btn("Continue").exists, "a Continue button")
+        XCTAssertTrue(btn("Explore with Sample Data").exists, "a way into the sample data")
         for way in ["Log In to Your Account", "Create an Account", "I Have a Setup From Another Device", "Join Marquee Sync"] {
             XCTAssertTrue(button(startingWith: way).exists, "and \(way)")
         }
-        XCTAssertFalse(app.buttons["Details"].firstMatch.exists, "no Home behind it")
+        XCTAssertFalse(btn("Details").exists, "no Home behind it")
     }
 
     func testTheKeyFieldAcceptsTextAndContinueFollowsIt() {
         let field = element("onboarding-key")
         XCTAssertTrue(field.waitForExistence(timeout: patience))
-        let continueButton = app.buttons["Continue"].firstMatch
+        let continueButton = btn("Continue")
         XCTAssertFalse(continueButton.isEnabled, "Continue waits for a key")
         field.tap()
         field.typeText("not-a-real-key")
@@ -35,7 +35,7 @@ final class OnboardingUITests: FlowUITestCase {
         XCTAssertTrue(field.waitForExistence(timeout: patience))
         field.tap()
         field.typeText("not-a-real-key")
-        app.buttons["Continue"].firstMatch.tap()
+        btn("Continue").tap()
         XCTAssertTrue(text(startingWith: "That key didn't work").waitForExistence(timeout: patience), "a key that fails the check is refused in words")
         XCTAssertTrue(element("onboarding-key").exists, "and the welcome screen stays")
     }
@@ -44,7 +44,7 @@ final class OnboardingUITests: FlowUITestCase {
         let row = button(startingWith: "I Have a Setup From Another Device")
         XCTAssertTrue(row.waitForExistence(timeout: patience), "the row is there")
         row.tap()
-        XCTAssertTrue(app.buttons["Read Setup"].firstMatch.waitForExistence(timeout: patience), "the import sheet opens with its Read Setup button")
-        XCTAssertFalse(app.buttons["Read Setup"].firstMatch.isEnabled, "which waits for a link or a file")
+        XCTAssertTrue(btn("Read Setup").waitForExistence(timeout: patience), "the import sheet opens with its Read Setup button")
+        XCTAssertFalse(btn("Read Setup").isEnabled, "which waits for a link or a file")
     }
 }

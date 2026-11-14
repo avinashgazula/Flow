@@ -15,7 +15,9 @@ final class TVFocusUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["-FlowDemo", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
-        XCTAssertTrue(app.buttons["Resume"].waitForExistence(timeout: patience), "Home shows its lead, with Resume")
+        XCTAssertTrue(btn("Resume").waitForExistence(timeout: patience), "Home shows its lead, with Resume")
+        // Focus lands a moment after the page does; the tests start from where it settles.
+        waitUntil(20) { self.btn("Resume").hasFocus }
     }
 
     // MARK: Helpers
@@ -28,6 +30,24 @@ final class TVFocusUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         }
         return condition()
+    }
+
+    /// A button by its exact label, ignoring case: button styles set their words in capitals, and the spoken label follows.
+    private func btn(_ label: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label ==[c] %@", label)).firstMatch
+    }
+
+    /// A wait for an element that, when it fails, prints the whole screen to the log: a remote test cannot be looked at.
+    private func expectExists(_ element: XCUIElement, _ message: String, timeout: TimeInterval = 60, file: StaticString = #filePath, line: UInt = #line) {
+        if !element.waitForExistence(timeout: timeout) { print("SCREEN at failure of '\(message)':\n" + app.debugDescription) }
+        XCTAssertTrue(element.exists, message, file: file, line: line)
+    }
+
+    /// Focus lands on a table cell around a row's button, so a row has focus when it, or what holds it, does.
+    private func hasFocusWithin(_ identifier: String) -> Bool {
+        let target = app.descendants(matching: .any).matching(identifier: identifier).firstMatch
+        if target.exists && target.hasFocus { return true }
+        return focusedElements.firstMatch.descendants(matching: .any).matching(identifier: identifier).firstMatch.exists
     }
 
     private var focusedElements: XCUIElementQuery {
@@ -52,7 +72,7 @@ final class TVFocusUITests: XCTestCase {
 
     private func tabItem(_ title: String) -> XCUIElement {
         let inBar = app.tabBars.buttons[title]
-        return inBar.exists ? inBar : app.buttons[title].firstMatch
+        return inBar.exists ? inBar : btn(title)
     }
 
     /// Whether the focused element is one of the tab bar's.
@@ -81,16 +101,17 @@ final class TVFocusUITests: XCTestCase {
         XCTAssertTrue(target.hasFocus, "the remote's left and right reach the \(title) tab", file: file, line: line)
         assertOneFocus("on the \(title) tab", file: file, line: line)
         press(.down, "Down from the \(title) tab into its page", file: file, line: line)
-        XCTAssertFalse(focusIsOnTheTabBar, "Down leaves the tab bar for the \(title) page, focus is on \(describeFocus())", file: file, line: line)
+        let entered = waitUntil(10) { !self.focusIsOnTheTabBar }
+        XCTAssertTrue(entered, "Down leaves the tab bar for the \(title) page, focus is on \(describeFocus())", file: file, line: line)
     }
 
     // MARK: Home
 
     func testLaunchFocusesResumeAndTheRemoteMovesAcrossHome() {
         assertOneFocus("on arrival at Home")
-        XCTAssertTrue(app.buttons["Resume"].hasFocus, "Resume has focus on arrival, so one press of Select carries on watching, focus is on \(describeFocus())")
+        XCTAssertTrue(waitUntil(20) { self.btn("Resume").hasFocus }, "Resume has focus on arrival, so one press of Select carries on watching, focus is on \(describeFocus())")
         press(.right, "Right from Resume")
-        XCTAssertTrue(app.buttons["Details"].firstMatch.hasFocus, "Right from Resume reaches Details, focus is on \(describeFocus())")
+        XCTAssertTrue(btn("Details").hasFocus, "Right from Resume reaches Details, focus is on \(describeFocus())")
         press(.down, "Down from Details")
         press(.down, "Down again")
         press(.up, "Up")
@@ -99,14 +120,14 @@ final class TVFocusUITests: XCTestCase {
     func testDetailsOpensAPageAndMenuReturnsToHome() {
         remote.press(.right)
         assertOneFocus("after Right to Details")
-        XCTAssertTrue(app.buttons["Details"].firstMatch.hasFocus, "Details has focus, focus is on \(describeFocus())")
+        XCTAssertTrue(btn("Details").hasFocus, "Details has focus, focus is on \(describeFocus())")
         remote.press(.select)
-        XCTAssertTrue(waitUntil(30) { !self.app.buttons["Details"].firstMatch.exists }, "Select on Details opens the title's page over Home")
+        XCTAssertTrue(waitUntil(30) { !self.btn("Details").exists }, "Select on Details opens the title's page over Home")
         assertOneFocus("on the title page")
         press(.down, "Down on the title page")
         press(.right, "Right on the title page")
         remote.press(.menu)
-        XCTAssertTrue(app.buttons["Details"].firstMatch.waitForExistence(timeout: 30), "Menu goes back to Home")
+        XCTAssertTrue(btn("Details").waitForExistence(timeout: 30), "Menu goes back to Home")
         assertOneFocus("back on Home")
         XCTAssertFalse(focusIsOnTheTabBar, "focus returns to Home's content, not the tab bar, focus is on \(describeFocus())")
     }
@@ -115,15 +136,15 @@ final class TVFocusUITests: XCTestCase {
 
     func testExploreTakesFocusAndOpensATitle() {
         openTab("Explore")
-        XCTAssertTrue(app.buttons["Filters"].firstMatch.waitForExistence(timeout: patience), "Explore shows its Filters button")
+        expectExists(btn("Filters"), "Explore shows its Filters button")
         press(.right, "Right on Explore")
         press(.down, "Down on Explore")
         press(.down, "Down again on Explore")
         remote.press(.select)
-        XCTAssertTrue(waitUntil(30) { !self.app.buttons["Filters"].firstMatch.exists }, "Select on a poster opens its page")
+        XCTAssertTrue(waitUntil(30) { !self.btn("Filters").exists }, "Select on a poster opens its page")
         assertOneFocus("on the title page from Explore")
         remote.press(.menu)
-        XCTAssertTrue(app.buttons["Filters"].firstMatch.waitForExistence(timeout: 30), "Menu returns to Explore")
+        XCTAssertTrue(btn("Filters").waitForExistence(timeout: 30), "Menu returns to Explore")
         assertOneFocus("back on Explore")
     }
 
@@ -142,7 +163,7 @@ final class TVFocusUITests: XCTestCase {
 
     func testLiveTVTakesFocus() {
         openTab("Live TV")
-        XCTAssertTrue(app.buttons["Guide"].firstMatch.waitForExistence(timeout: patience), "Live TV shows its List and Guide switch")
+        XCTAssertTrue(btn("Guide").waitForExistence(timeout: patience), "Live TV shows its List and Guide switch")
         press(.right, "Right on Live TV")
         press(.down, "Down on Live TV")
         press(.down, "Down again on Live TV")
@@ -158,13 +179,14 @@ final class TVFocusUITests: XCTestCase {
     func testSettingsOpensAPageAndMenuReturns() {
         openTab("Settings")
         let general = app.descendants(matching: .any).matching(identifier: "settings-row-general").firstMatch
-        XCTAssertTrue(general.waitForExistence(timeout: patience), "Settings lists its pages")
+        expectExists(general, "Settings lists its pages")
+        // Focus enters the list below its first rows: go up to General, which is the top of the list of pages.
         var presses = 0
-        while !general.hasFocus && presses < 8 {
-            press(.down, "Down through Settings")
+        while !hasFocusWithin("settings-row-general") && presses < 10 {
+            press(.up, "Up through Settings")
             presses += 1
         }
-        XCTAssertTrue(general.hasFocus, "Down reaches the General row, focus is on \(describeFocus())")
+        XCTAssertTrue(hasFocusWithin("settings-row-general"), "Up reaches the General row, focus is on \(describeFocus())")
         remote.press(.select)
         XCTAssertTrue(waitUntil(30) { !general.exists }, "Select opens the General page")
         assertOneFocus("on the General page")
