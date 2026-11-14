@@ -1,0 +1,2 @@
+# Minimum line coverage (percent) per folder of Sources/FlowKit, read by scripts/flowkit-coverage.sh.
+# Raise a floor when you add tests; never lower one to get green. A folder not listed has no floor.
