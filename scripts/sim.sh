@@ -13,7 +13,8 @@
 #   scripts/sim.sh tour [ios|ipad|tvos|macos] the full screenshot tour, as CI runs it, into shots/tour/<platform>
 #   scripts/sim.sh mac  [--real]              build and run the Mac app
 #
-# Platform defaults to ios. Set SIM_UDID to use a particular simulator.
+# Platform defaults to ios. Set SIM_UDID to use a particular simulator, FLOW_SIM_OS (a major version such as 26) to
+# pick from that runtime only, and SIM_NO_LAUNCH=1 to build and install without launching (scripts/player-check.sh).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -44,8 +45,9 @@ app_path() { echo "$DERIVED/Build/Products/$(products)/Flow.app"; }
 pick_device() {
   [ -n "${SIM_UDID:-}" ] && { echo "$SIM_UDID"; return; }
   xcrun simctl list devices available -j | python3 -c '
-import json, re, sys
+import json, os, re, sys
 platform = sys.argv[1]
+only = sys.argv[2] if len(sys.argv) > 2 else ""
 family = "tvOS" if platform == "tvos" else "iOS"
 names = {"ios": ["iPhone 17 Pro", "iPhone 18 Pro", "iPhone 16 Pro", "iPhone 1", "iPhone"],
          "ipad": ["iPad Pro 13", "iPad Pro", "iPad"],
@@ -53,14 +55,14 @@ names = {"ios": ["iPhone 17 Pro", "iPhone 18 Pro", "iPhone 16 Pro", "iPhone 1", 
 def version(rt):
     m = re.search(r"\.(?:iOS|tvOS)-(\d+)-(\d+)", rt)
     return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
-runtimes = sorted((rt for rt in json.load(sys.stdin)["devices"].items() if f".{family}-" in rt[0]), key=lambda r: version(r[0]), reverse=True)
+runtimes = sorted((rt for rt in json.load(sys.stdin)["devices"].items() if f".{family}-" in rt[0] and (not only or version(rt[0])[0] == int(only))), key=lambda r: version(r[0]), reverse=True)
 for _, devices in runtimes:
     for name in names:
         matches = [d for d in devices if d["name"].startswith(name) and (platform != "ios" or not d["name"].startswith("iPad"))]
         booted = [d for d in matches if d["state"] == "Booted"]
         if booted or matches:
             print((booted or matches)[0]["udid"]); sys.exit(0)
-' "$platform"
+' "$platform" "${FLOW_SIM_OS:-}"
 }
 
 boot() {
@@ -68,7 +70,8 @@ boot() {
   [ -z "$udid" ] && { echo "No $platform simulator found. Add one in Xcode → Window → Devices and Simulators." >&2; exit 1; }
   xcrun simctl boot "$udid" 2>/dev/null || true
   xcrun simctl bootstatus "$udid" -b >/dev/null
-  open -a Simulator --args -CurrentDeviceUDID "$udid" 2>/dev/null || true
+  # A CI runner has no one to look at the Simulator window.
+  [ -n "${CI:-}" ] || open -a Simulator --args -CurrentDeviceUDID "$udid" 2>/dev/null || true
   xcrun simctl ui "$udid" appearance dark 2>/dev/null || true
   if [ "$platform" != tvos ]; then
     xcrun simctl status_bar "$udid" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 2>/dev/null || true
@@ -106,6 +109,7 @@ bundle_id() {
 }
 
 launch() {
+  [ -n "${SIM_NO_LAUNCH:-}" ] && return 0
   local demo=YES
   $real && demo=NO
   xcrun simctl launch --terminate-running-process "$udid" "$(bundle_id)" -FlowDemo "$demo" ${extra[@]+"${extra[@]}"} >/dev/null
@@ -154,6 +158,7 @@ case "$command" in
       CODE_SIGNING_ALLOWED=NO > build/sim-build-macos.log 2>&1 \
       || { grep -E "error:" build/sim-build-macos.log | sed -E 's#^.*/Flow/##' | sort -u | head -60; exit 1; }
     pkill -x Flow 2>/dev/null || true
+    [ -n "${SIM_NO_LAUNCH:-}" ] && exit 0
     demo=YES; $real && demo=NO
     open "$DERIVED/Build/Products/Debug/Flow.app" --args -FlowDemo "$demo" ${extra[@]+"${extra[@]}"}
     echo "Launched the Mac app$($real || echo ' with sample data')." ;;

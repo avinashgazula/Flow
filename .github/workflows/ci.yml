@@ -130,6 +130,40 @@ jobs:
           path: shots
           if-no-files-found: ignore
 
+  # The in-app player scenarios (Flow/App/PlayerCheck.swift) on an iPhone and an Apple TV simulator and on the Mac:
+  # both engines, every sample, the places a player breaks. Fails on any FAIL line, a run that hangs, and an app that dies.
+  player-check:
+    name: Player check (${{ matrix.platform }}, Xcode 26.3)
+    runs-on: macos-15
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ios, tvos, macos]
+    env:
+      FLOW_SIM_OS: "26"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.app
+          xcodebuild -version
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Run the player check
+        run: scripts/player-check.sh ${{ matrix.platform }}
+      - name: Summary
+        if: always()
+        run: cat shots/player-check/${{ matrix.platform }}/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: player-check-${{ matrix.platform }}
+          path: shots/player-check/${{ matrix.platform }}
+          if-no-files-found: ignore
+
   publish-screenshots:
     name: Publish screenshots
     if: always() && github.event_name == 'push' && needs.screenshots.result != 'skipped'
