@@ -112,6 +112,27 @@ final class RemuxTests: XCTestCase {
         XCTAssertEqual(SubtitleText.fromASSEvent("0,0,Default,,0,0,0,,{\\i1}Hello{\\i0}\\Nthere, friend"), "<i>Hello</i>\nthere, friend")
     }
 
+    /// The keyframe that opens a segment can sit in the middle of a cluster, and the previous segment's bytes
+    /// run to the end of that cluster, so its audio used to appear in two segments: played twice, with
+    /// timestamps stepping backwards at the join. (Packet counts are what ffprobe reports for the source files.)
+    func testAudioFramesBelongToExactlyOneSegment() async throws {
+        for (fixture, track, packets, frameSamples) in [("hevc-eac3-ac3", 3, 125, 1536), ("avc-aac-srt", 2, 283, 1024)] {
+            let remuxer = try await MatroskaRemuxer.open(FileByteSource(url: MatroskaTests.fixture(fixture)), targetSegment: 2)
+            var total = 0
+            var expectedNext: UInt64?
+            for segment in remuxer.segments {
+                let media = try await remuxer.mediaSegment(track: track, index: segment.index)
+                let bytes = try XCTUnwrap(media)
+                let base = try XCTUnwrap(Self.baseDecodeTime(bytes))
+                if let expectedNext { XCTAssertEqual(Int64(base), Int64(expectedNext), accuracy: 24, "\(fixture): segment \(segment.index) starts where the last one ended") }
+                let count = Self.sampleCount(bytes)
+                total += count
+                expectedNext = base + UInt64(count * frameSamples)
+            }
+            XCTAssertEqual(total, packets, "\(fixture): every audio frame exactly once")
+        }
+    }
+
     /// trun sample_count of a fragment.
     static func sampleCount(_ b: [UInt8]) -> Int {
         guard let range = b.indices.dropLast(12).first(where: { b[$0] == 0x74 && b[$0 + 1] == 0x72 && b[$0 + 2] == 0x75 && b[$0 + 3] == 0x6E }) else { return 0 }
