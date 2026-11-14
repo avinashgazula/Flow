@@ -2,7 +2,7 @@ import XCTest
 
 /// Real taps (XCUITest's own touch injection) on the screens where simulator tools can't be trusted:
 /// the Live TV player, which turns to landscape in a cover UIKit presents, and its overlay buttons.
-/// Runs on demand with sample data: `scripts/ui-test.sh`. Not part of CI.
+/// Runs with sample data: `scripts/ui-test.sh`, and in CI on iPhone and iPad (.github/workflows/ui-tests.yml).
 final class LiveTVUITests: XCTestCase {
     private var app: XCUIApplication!
 

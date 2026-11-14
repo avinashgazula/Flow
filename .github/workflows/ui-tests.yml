@@ -1,0 +1,48 @@
+name: UI tests
+
+# Real taps on real screens: XCUITest drives Marquee on an iPhone and an iPad simulator, and the remote's presses on an
+# Apple TV simulator. Sample data throughout (-FlowDemo YES), so no test needs a key or a server. Its own workflow, so the
+# build and screenshot jobs in ci.yml stay as they are; both start on the same pushes.
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ui-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui-tests:
+    name: UI tests (${{ matrix.platform }})
+    runs-on: macos-15
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ios]
+    env:
+      FLOW_SIM_OS: "26"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.app
+          xcodebuild -version
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Run the UI tests
+        run: scripts/ui-test.sh ${{ matrix.platform }}
+      # The result bundle has every failure's screenshots and the accessibility audit's findings.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ui-results-${{ matrix.platform }}
+          path: |
+            build/ui-tests-${{ matrix.platform }}.xcresult
+            build/ui-tests-${{ matrix.platform }}.log
+          if-no-files-found: ignore
