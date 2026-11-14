@@ -258,7 +258,8 @@ public struct PlexClient: MediaServerClient {
             let container = (part.container ?? media.container ?? "").lowercased()
             let url: URL
             if ["mp4", "mov", "m4v"].contains(container) {
-                var c = URLComponents(url: config.baseURL.appendingPathComponent(part.key), resolvingAgainstBaseURL: false)!
+                // Part keys start with a slash, which appendingPathComponent turns into "//" on Apple platforms.
+                var c = URLComponents(url: config.baseURL.appendingPathComponent(String(part.key.drop { $0 == "/" })), resolvingAgainstBaseURL: false)!
                 c.queryItems = [URLQueryItem(name: "X-Plex-Token", value: token)]
                 url = c.url!
             } else {
