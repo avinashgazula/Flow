@@ -1,2 +1,30 @@
 # Minimum line coverage (percent) per folder of Sources/FlowKit, read by scripts/flowkit-coverage.sh.
-# Raise a floor when you add tests; never lower one to get green. A folder not listed has no floor.
+# Each floor is what the suite reached on Linux, rounded down. Raise a floor when you add tests; never lower one to get green.
+# A folder not listed has no floor. The aim is 85% or more wherever the code is logic.
+#
+# Folder        floor
+Demo            80
+LiveTV          90
+MediaServers    92
+Metadata        88
+Models          96
+Networking      88
+Notifications   92
+Persistence     95
+Playback        99
+Remux           88
+Requests        100
+Skip            94
+Sources         89
+Sports          92
+Subtitles       95
+Sync            95
+Tracking        87
+Util            89
+WebDAV          93
+XRay            98
+#
+# Demo is below 85 on purpose: it is the sample catalogue and canned server replies behind -FlowDemo, which the app's
+# screenshot tour and player check exercise end to end. Unit-testing the fixtures themselves would only restate them.
+# Remux stays under 90 because the audio decoders that need FFmpeg (DTS, TrueHD, Opus, Vorbis) only exist in the app
+# build (Packages/FlowDecoders), and their glue in MatroskaRemuxer can't run here.
