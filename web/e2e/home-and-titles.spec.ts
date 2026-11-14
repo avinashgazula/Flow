@@ -118,7 +118,7 @@ test.describe('a film’s page', () => {
     const seeAll = page.getByRole('link', { name: 'See every film in Dune Collection' })
     await expect(async () => {
       // In steps, as a person scrolls: a row only loads when it comes near the screen, and a jump past it never does.
-      await page.mouse.wheel(0, 500)
+      await page.evaluate(() => scrollBy(0, 500))
       await expect(seeAll).toBeVisible({ timeout: 700 })
     }).toPass()
     await seeAll.click()

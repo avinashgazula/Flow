@@ -1,5 +1,5 @@
 import { test, expect, type Page } from './fixtures'
-import { control, expectPlaying, playFirstSource, videoState, wake } from './helpers'
+import { control, expectPlaying, playFirstSource, settle, videoState, wake } from './helpers'
 
 /* The player, from the title page's Play button to Close, on the small local stream standing in for Apple's sample
    (fixtures/hls: 70 seconds, English and Spanish sound, English and Spanish subtitles). The full container and codec
@@ -169,13 +169,30 @@ test.describe('playing a film', () => {
 })
 
 test.describe('resuming', () => {
-  test('a title with a resume point starts where it stopped, without asking for a source', async ({ boot, page }) => {
+  test('Resume on the title page starts where playback stopped, without asking for a source', async ({ boot, page }) => {
+    await playInterstellar(page, boot)
+    await page.keyboard.press('Space')
+    await page.keyboard.press('5')
+    await expect.poll(async () => (await videoState(page))!.time).toBeGreaterThan(30)
+    await page.keyboard.press('Escape')
+    await expect(page).toHaveURL(/\/title\/movie\/157336/)
+    await expect(page.getByRole('button', { name: /^Resume/ })).toBeVisible()
+    await settle(page)
+    await page.getByRole('button', { name: /^Resume/ }).click()
+    await expect(page).toHaveURL(/\/watch\/movie\/157336/)
+    // Picked up where it was left (about 35 s in), not from the start and not at a source list. (Whether it then runs on
+    // is the browser's autoplay rule: mobile Safari wants a tap once the tap that opened the page is spent.)
+    await expect.poll(async () => (await videoState(page))?.ready ?? 0, { timeout: 20_000 }).toBeGreaterThanOrEqual(2)
+    expect((await videoState(page))!.time).toBeGreaterThan(30)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  })
+
+  test('a resume point beyond the end of the file is ignored: it starts from the beginning', async ({ boot, page }) => {
+    // Dune's saved point (an hour in) is past the end of the 70 s stand-in.
     await boot('/')
     await page.getByRole('region', { name: 'Continue Watching' }).getByRole('link', { name: /^Dune: Part Two/ }).click()
     await expect(page).toHaveURL(/\/watch\/movie\/693134/)
-    await expectPlaying(page)
-    // The stand-in is 70 seconds long, so a resume point deep into a film clamps to the file; what matters is that it
-    // did not restart from nothing and did not ask which source to use.
-    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect.poll(async () => (await videoState(page))?.ready ?? 0, { timeout: 20_000 }).toBeGreaterThanOrEqual(2)
+    expect((await videoState(page))!.time).toBeLessThan(10)
   })
 })
