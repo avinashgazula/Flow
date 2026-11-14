@@ -10,6 +10,7 @@ npm run dev          # http://localhost:5173  (add ?demo for sample data)
 npm run build        # type-check, then a production build in dist/
 npm run preview      # serve dist/ at http://localhost:4173
 npm test             # unit tests (Vitest)
+npm run build && npm run e2e   # browser tests (Playwright) against dist/, in Chromium; see e2e/
 ```
 
 ## How it's put together

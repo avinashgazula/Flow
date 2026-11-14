@@ -4,7 +4,7 @@ import { defineConfig, devices, type Project } from '@playwright/test'
    `npm run e2e` runs Chromium, the one browser every machine here has; CI runs each of the three in its own job with
    E2E_BROWSERS=chromium|firefox|webkit. Each browser is tried as a desktop window and as a phone. */
 
-const port = 4783
+const port = Number(process.env.E2E_PORT ?? 4783)
 const browsers = (process.env.E2E_BROWSERS ?? 'chromium').split(',').map((b) => b.trim())
 
 // The preinstalled Chromium here is found by Playwright itself; an odd machine can point at its own build.
