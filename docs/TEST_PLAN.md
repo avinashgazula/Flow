@@ -391,10 +391,11 @@ from a Linux machine and verified only by CI builds and tour screenshots, so che
 - Open on a device: HDR/Dolby Vision colours (tone mapped to SDR), real AVI/WMV/MPEG-2/VP9 files, background audio, tvOS
   remote feel (held left/right), IPA size change.
 - FlowDecoders no longer links its own FFmpeg: it uses MPVKit's headers and library (two copies clash).
-- CI now reads the tour log, not only the screenshots: the job fails unless the Xvid AVI reached playing in the built-in
-  player and all three tracks of `FlowSampleAudio.mkv` (Opus, Vorbis, PCM) carried playback on after a switch. Debug
-  simulator builds take 2 to 4 seconds to build the first decoded audio segment, so the player logs "No response for media
-  file in 2 s" there and retries; time a release build on a device before worrying about it.
+- CI runs `scripts/player-check.sh` on iPhone, Apple TV and Mac (job "Player check") and fails on any FAIL line, a run that
+  hangs (each scenario has a time limit inside the app) or an app that dies. It covers the Xvid AVI reaching playing in the
+  built-in player and every track of `FlowSampleAudio.mkv` carrying playback on after a switch. Debug simulator builds take
+  2 to 4 seconds to build the first decoded audio segment, so allow for that in timeouts. Scenarios that play Apple's sample
+  streams are marked [network] and get one retry; the job summary lists any retry.
 - Seen once on the Mac: the built-in player opened a file before mpv had reported its length, and a saved resume point
   past the end brought up the resume prompt. The length now travels with the "file loaded" event.
 
