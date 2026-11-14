@@ -93,7 +93,7 @@ build() {
   regenerate_if_needed
   local log=build/sim-build-$platform.log
   mkdir -p build
-  echo "Building $(scheme) for $udid…"
+  echo "Building $(scheme) for ${udid}…"
   if ! xcodebuild build -project Flow.xcodeproj -scheme "$(scheme)" -destination "id=$udid" -derivedDataPath "$DERIVED" \
        CODE_SIGNING_ALLOWED=NO > "$log" 2>&1; then
     grep -E "error:" "$log" | sed -E 's#^.*/Flow/##' | sort -u | head -60
