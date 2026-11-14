@@ -8,8 +8,8 @@ test.describe('offline', () => {
     workers: true,
     // A typeface no earlier page used was never saved, so with the network cut the browser can't fetch it and says so:
     // the page falls back to the system face, which is the design (README, "Installing and offline"). Nothing else may fail.
-    expectedFailedRequests: [/\.woff2 net::ERR_/],
-    expectedConsoleErrors: [/Failed to load resource: net::ERR_/],
+    expectedFailedRequests: [/\.woff2 /],
+    expectedConsoleErrors: [/Failed to load resource/, /downloadable font: download failed/],
   })
 
   /** Visits a page, waits for the worker to install, fill its cache and take the page over (it does on the first reload). */

@@ -10,15 +10,19 @@ const browsers = (process.env.E2E_BROWSERS ?? 'chromium').split(',').map((b) => 
 // The preinstalled Chromium here is found by Playwright itself; an odd machine can point at its own build.
 const executablePath = process.env.E2E_CHROMIUM_PATH
 
+// Firefox floats its own Picture-in-Picture toggle over a playing video, where the player's menus open, and takes the click
+// meant for a menu row. It is the browser's own control, not the site's.
+const firefoxPrefs = { 'media.videocontrols.picture-in-picture.video-toggle.enabled': false }
+
 const engines: Record<string, { desktop: Project['use']; phone: Project['use'] }> = {
   chromium: {
     desktop: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, launchOptions: { executablePath } },
     phone: { ...devices['Pixel 7'], viewport: { width: 390, height: 844 }, launchOptions: { executablePath } },
   },
   firefox: {
-    desktop: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 900 } },
+    desktop: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 900 }, launchOptions: { firefoxUserPrefs: firefoxPrefs } },
     // Firefox has no mobile emulation; a narrow viewport with touch is what the phone layout reads.
-    phone: { ...devices['Desktop Firefox'], viewport: { width: 390, height: 844 }, hasTouch: false },
+    phone: { ...devices['Desktop Firefox'], viewport: { width: 390, height: 844 }, hasTouch: false, launchOptions: { firefoxUserPrefs: firefoxPrefs } },
   },
   webkit: {
     desktop: { ...devices['Desktop Safari'], viewport: { width: 1440, height: 900 } },

@@ -22,6 +22,17 @@ arriveFromTrakt()
 // A setup or a sync pairing in the address (#setup=, #sync=) is read and taken out of it before the router sees it.
 arriveFromHashLink(hasCatalog(settingsStore.get()) && settingsStore.get().onboarded)
 
+// A page change that starts while another is still animating aborts the first, and Safari then rejects the first one's three
+// promises with nobody listening: an "unhandled rejection" for something that is only the animation giving way.
+const startViewTransition = document.startViewTransition?.bind(document)
+if (startViewTransition) {
+  document.startViewTransition = (...args: Parameters<typeof startViewTransition>) => {
+    const transition = startViewTransition(...args)
+    for (const settled of [transition.ready, transition.finished, transition.updateCallbackDone]) settled.catch(() => {})
+    return transition
+  }
+}
+
 export const router = createRouter({
   routeTree,
   context: { queryClient },

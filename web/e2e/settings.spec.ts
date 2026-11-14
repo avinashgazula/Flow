@@ -109,7 +109,8 @@ test.describe('changes stick', () => {
     await page.getByRole('combobox', { name: 'Opening Tab' }).selectOption({ label: 'Library' })
     await page.reload()
     await expect(page.getByRole('combobox', { name: 'Opening Tab' })).toHaveValue(/library/i)
-    await page.goto('/')
+    // The front address redirects to the opening tab as it loads, which Firefox reports as the first load aborted.
+    await page.goto('/', { waitUntil: 'commit' })
     await expect(page).toHaveURL(/\/library/)
   })
 

@@ -23,7 +23,13 @@ async function markControls(page: Page) {
 /** Presses Tab until every marked control has had focus, or gives up; returns the ones never reached. */
 async function tabThroughAll(page: Page, count: number, limit: number) {
   const seen = new Set<number>()
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  // Start from the top of the page: Firefox carries on from the last focused control (the search field starts focused) otherwise.
+  await page.evaluate(() => {
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    document.body.tabIndex = -1
+    document.body.focus()
+    document.body.removeAttribute('tabindex')
+  })
   for (let presses = 0; presses < limit && seen.size < count; presses++) {
     await page.keyboard.press('Tab')
     const index = await page.evaluate(() => document.activeElement?.getAttribute('data-e2e-control') ?? null)

@@ -18,6 +18,8 @@ const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 const allowed: { rule: string; selector: string; why: string }[] = []
 
 async function audit(page: Page, scope?: string) {
+  // Contrast is read from the colours on screen: let anything fading in or sliding finish first (a loop would never).
+  await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))))
   let builder = new AxeBuilder({ page }).withTags(tags)
   if (scope) builder = builder.include(scope)
   for (const { rule, selector } of allowed) builder = builder.disableRules([rule]).exclude(selector)

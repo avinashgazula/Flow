@@ -76,12 +76,23 @@ export const test = base.extend<{ report: Report; boot: (path: string) => Promis
         },
       )
 
+      // A page that is left while it is still loading has its requests cut off, and WebKit and Firefox report that as a
+      // failure ("internal error", NS_BINDING_ABORTED) where Chromium says it was cancelled. Anything within a moment of
+      // a navigation starting is that, not the site failing.
+      let navigating = 0
+      const leaving = () => Date.now() - navigating < 3000
+      const cutOff = /internal error|NS_BINDING_ABORTED|NS_ERROR_ABORT|cancel/i
+      page.on('request', (request) => {
+        if (request.isNavigationRequest()) navigating = Date.now()
+      })
+      page.on('framenavigated', () => (navigating = Date.now()))
+
+      // Errors only: browsers add warnings of their own about the page (WebKit on preload hints, for one) that are theirs to judge.
       page.on('console', (message) => {
-        if (message.type() !== 'error' && message.type() !== 'warning') return
+        if (message.type() !== 'error') return
         const text = message.text()
-        // The note Playwright itself prints when the worker is switched off for the test (the offline spec switches it on).
-        if (text === 'Service Worker registration blocked by Playwright') return
         if (expectedConsoleErrors.some((pattern) => pattern.test(text))) return
+        if (leaving() && /Failed to load resource/.test(text) && cutOff.test(text)) return
         report.console.push(`${message.type()}: ${text}`)
       })
       page.on('pageerror', (error) => report.pageErrors.push(error.message))
@@ -98,6 +109,7 @@ export const test = base.extend<{ report: Report; boot: (path: string) => Promis
         const why = request.failure()?.errorText ?? ''
         // A request the page itself gave up on (it left the page, or the player seeked past it) isn't a failure.
         if (/abort|cancel/i.test(why)) return
+        if (leaving() && cutOff.test(why)) return
         const line = `${request.method()} ${request.url()} ${why}`
         if (!expectedFailedRequests.some((pattern) => pattern.test(line))) report.failedRequests.push(line)
       })
@@ -110,7 +122,7 @@ export const test = base.extend<{ report: Report; boot: (path: string) => Promis
       // After the test body: whatever the page did on its own while the test was looking elsewhere counts too.
       expect.soft(report.unstubbed, 'requests that left the site with no stand-in').toEqual([])
       expect.soft(report.pageErrors, 'page errors and unhandled rejections').toEqual([])
-      expect.soft(report.console, 'console errors and warnings').toEqual([])
+      expect.soft(report.console, 'console errors').toEqual([])
       expect.soft(report.failedRequests, 'failed requests to the site itself').toEqual([])
     },
     { auto: true },

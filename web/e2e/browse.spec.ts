@@ -50,7 +50,7 @@ test.describe('search', () => {
     await page.getByRole('searchbox', { name: 'Search' }).fill('inception')
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/\/title\/movie\/27205/)
-    await page.goto('/search')
+    await page.goto('/search', { waitUntil: 'commit' })
     await expect(page.getByText('Recent')).toBeVisible()
     await expect(page.getByRole('button', { name: 'inception', exact: true })).toBeVisible()
   })
