@@ -58,7 +58,19 @@ public enum SubtitleParser {
         if data.starts(with: [0xEF, 0xBB, 0xBF]) { return String(decoding: data.dropFirst(3), as: UTF8.self) }
         if data.starts(with: [0xFF, 0xFE]) || data.starts(with: [0xFE, 0xFF]) { return String(data: data, encoding: .utf16) ?? "" }
         if let s = String(data: data, encoding: .utf8) { return s }
-        return String(data: data, encoding: .windowsCP1252) ?? String(decoding: data, as: UTF8.self)
+        return windows1252(data)
+    }
+
+    /// Foundation on Linux can't decode Windows-1252, so the table lives here: the same text on every platform.
+    static func windows1252(_ data: Data) -> String {
+        let high: [UInt32] = [0x20AC, 0x81, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0x8D, 0x017D, 0x8F,
+                              0x90, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x9D, 0x017E, 0x0178]
+        var out = String.UnicodeScalarView()
+        for byte in data {
+            let value = (0x80...0x9F).contains(byte) ? high[Int(byte) - 0x80] : UInt32(byte)
+            out.append(Unicode.Scalar(value) ?? "\u{FFFD}")
+        }
+        return String(out)
     }
 
     public static func parse(_ data: Data) -> SubtitleDocument { parse(decode(data)) }
