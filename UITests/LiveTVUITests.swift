@@ -20,7 +20,7 @@ final class LiveTVUITests: XCTestCase {
         // iPad opens on the guide; the list is a tap away.
         let list = app.buttons["Show List"].firstMatch
         if list.waitForExistence(timeout: 3) { list.tap() }
-        let channel = app.buttons.matching(NSPredicate(format: "label BEGINSWITH '1, Flow News'")).firstMatch
+        let channel = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Flow News'")).firstMatch
         XCTAssertTrue(channel.waitForExistence(timeout: 15), "the first channel is listed")
         channel.tap()
         XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 15), "the live player opens with its overlay")
@@ -29,7 +29,7 @@ final class LiveTVUITests: XCTestCase {
     func testCloseLeavesThePlayer() {
         openFirstChannel()
         app.buttons["Close"].tap()
-        let list = app.buttons.matching(NSPredicate(format: "label BEGINSWITH '1, Flow News'")).firstMatch
+        let list = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Flow News'")).firstMatch
         XCTAssertTrue(list.waitForExistence(timeout: 10), "Close returns to the channel list")
         if UIDevice.current.userInterfaceIdiom == .phone {
             let window = app.windows.firstMatch

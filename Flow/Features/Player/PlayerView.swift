@@ -1028,6 +1028,7 @@ struct Scrubber: View {
             .shadow(color: .black.opacity(0.5), radius: 4)
         }
         .accessibilityElement()
+        .accessibilityIdentifier("player-scrubber")
         .accessibilityLabel("Playback position")
         .accessibilityValue("\(TimeFormat.clock(current)) of \(TimeFormat.clock(duration))")
         .accessibilityAdjustableAction { direction in

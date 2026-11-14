@@ -136,6 +136,7 @@ struct SourcePickerView: View {
                     }
                     .buttonStyle(RuledCellStyle())
                     .disabled(!source.isActionable)
+                    .accessibilityIdentifier("source-\(source.id)")
                     .contextMenu { sourceMenu(source) }
                 }
             }

@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ios]
+        platform: [ios, ipad, tvos]
     env:
       FLOW_SIM_OS: "26"
     steps:
