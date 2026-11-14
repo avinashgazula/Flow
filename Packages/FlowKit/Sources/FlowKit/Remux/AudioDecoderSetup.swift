@@ -152,7 +152,11 @@ public struct AudioDecoderSetup: Equatable, Sendable {
         return setup
     }
 
-    static func nanosecondsToOpusSamples(_ ns: Int64) -> Int { Int(ns * Int64(opusRate) / 1_000_000_000) }
+    /// A corrupt CodecDelay can be up to 2^48 ns, which times 48,000 overflows; a day is far beyond any real delay.
+    static func nanosecondsToOpusSamples(_ ns: Int64) -> Int {
+        let clamped = max(0, min(ns, 86_400 * 1_000_000_000))
+        return Int(clamped * Int64(opusRate) / 1_000_000_000)
+    }
 }
 
 // MARK: PCM
