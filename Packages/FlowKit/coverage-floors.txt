@@ -11,7 +11,7 @@ Models          96
 Networking      88
 Notifications   92
 Persistence     95
-Playback        99
+Playback        100
 Remux           88
 Requests        100
 Skip            94

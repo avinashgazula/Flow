@@ -273,13 +273,10 @@ enum PlayerCheck {
 
         await rewind(session)
         session.playImmediately(rate: 2)
-        let s0 = session.playbackTime
-        let w0 = Date()
-        try? await Task.sleep(nanoseconds: 2_000_000_000)
-        let rate = (session.playbackTime - s0) / Date().timeIntervalSince(w0)
+        let rate = await measuredSpeed(session)
         let waiting = session.player.reasonForWaitingToPlay?.rawValue ?? "-"
         record(rate >= 1.5, "2× speed moves the picture twice as fast",
-               String(format: "%.1f× over 2 s", rate) + (rate >= 1.5 ? "" : ", player rate \(session.player.rate), \(session.player.timeControlStatus.rawValue), waiting: \(waiting)"))
+               String(format: "%.1f× once under way", rate) + (rate >= 1.5 ? "" : ", player rate \(session.player.rate), \(session.player.timeControlStatus.rawValue), waiting: \(waiting)"))
         session.setRateNow(1)
 
         await checkTracks(session)
@@ -323,11 +320,8 @@ enum PlayerCheck {
 
         await rewind(session)
         session.setPlaybackSpeed(2)
-        let s0 = session.playbackTime
-        let w0 = Date()
-        try? await Task.sleep(nanoseconds: 2_000_000_000)
-        let rate = (session.playbackTime - s0) / Date().timeIntervalSince(w0)
-        record(rate >= 1.5, "2× speed moves the picture twice as fast", String(format: "%.1f× over 2 s", rate))
+        let rate = await measuredSpeed(session)
+        record(rate >= 1.5, "2× speed moves the picture twice as fast", String(format: "%.1f× once under way", rate))
         session.setPlaybackSpeed(1)
 
         session.pausePlayback()
@@ -820,6 +814,18 @@ enum PlayerCheck {
         _ = await value(timeout: 8) { session.seekTarget == nil && abs(session.currentTime - seconds) < 1.5 && session.isPlaying ? true : nil }
         let at = session.playbackTime
         _ = await value(timeout: 5) { session.playbackTime > at + 0.3 ? true : nil }
+    }
+
+    /// How fast the playhead moves once a new speed has taken hold. Timing from the moment the speed is asked for counts
+    /// the player's pause to refill at the new rate, which on a busy simulator made 2× read as 0.9×. So this waits until
+    /// the picture is moving again, then times three seconds of film (or as much as plays in four seconds).
+    private static func measuredSpeed(_ session: PlaybackSession) async -> Double {
+        let asked = session.playbackTime
+        _ = await value(timeout: 5) { session.playbackTime > asked + 0.5 ? true : nil }
+        let from = session.playbackTime
+        let began = Date()
+        _ = await value(timeout: 4) { session.playbackTime >= from + 3 ? true : nil }
+        return (session.playbackTime - from) / max(0.001, Date().timeIntervalSince(began))
     }
 
     /// Polls `probe` until it returns a value or `timeout` seconds pass. A scenario that was given up on stops waiting at once.
