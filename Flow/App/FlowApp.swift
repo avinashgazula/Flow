@@ -183,8 +183,21 @@ extension AppModel {
         await play(item)
     }
 
+    private func wait(upTo seconds: Double, until ready: () -> Bool) async {
+        let deadline = Date().addingTimeInterval(seconds)
+        while !ready(), Date() < deadline { try? await Task.sleep(nanoseconds: 100_000_000) }
+    }
+
     /// Picks up the most recent thing in Continue Watching, exactly where it was left.
     func resumeLatest() async {
+        // A link can arrive as the app opens (a widget, a shortcut, the Mac menu at launch). Until the library has loaded,
+        // Continue Watching is empty and this would say there is nothing to continue; and a sheet asked for while the
+        // window is still coming forward never appears. So wait for both, briefly.
+        await wait(upTo: 8) { self.continueWatchingIsBuilt }
+        if !appIsActive {
+            await wait(upTo: 3) { self.appIsActive }
+            try? await Task.sleep(nanoseconds: 300_000_000)
+        }
         guard let entry = continueWatching.first, let item = await hydrate([entry.key]).first else {
             showToast("Nothing to continue")
             return
