@@ -78,9 +78,6 @@ ff "${V[@]}" "${A1[@]}" -c:v libx264 -preset veryfast -profile:v high10 -pix_fmt
 ff "${V[@]}" "${A1[@]}" -c:v libx264 -preset veryfast -profile:v high422 -pix_fmt yuv422p -b:v 150k "${KEY[@]}" -c:a aac -b:a 64k -shortest c-mkv-h264-422-aac.mkv
 ff "${V[@]}" "${A1[@]}" -c:v libx265 -preset ultrafast -x265-params "keyint=15:min-keyint=15:log-level=error" -b:v 120k -c:a aac -b:a 64k -shortest c-mkv-hevc-aac.mkv
 
-# What a browser can't convert: a picture above 1080p, and HDR.
+# What a browser can't convert: a picture above 1080p. (The HDR clip is committed, e2e/media/committed: ffmpeg 8 no longer writes the HDR tags into the Matroska file.)
 ff -f lavfi -i "testsrc2=size=3840x2160:rate=5:duration=1" -c:v libx265 -preset ultrafast -x265-params "keyint=5:min-keyint=5:log-level=error" -b:v 400k -an x-mkv-hevc-4k.mkv
-ff "${V[@]}" "${A1[@]}" -c:v libx265 -preset ultrafast -pix_fmt yuv420p10le \
-  -x265-params "keyint=15:min-keyint=15:log-level=error:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:hdr10=1:repeat-headers=1" \
-  -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc -b:v 150k -c:a aac -b:a 64k -shortest x-mkv-hevc-hdr10-aac.mkv
 du -sh . && ls

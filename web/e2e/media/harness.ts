@@ -11,7 +11,9 @@ import { expectPlaying, videoState, wake } from '../helpers'
 
 const here = dirname(fileURLToPath(import.meta.url))
 export const generated = join(here, 'generated')
-const hlsFolder = join(here, '..', 'fixtures', 'hls')
+/** Clips kept in git because ffmpeg's versions disagree on how to make them (HDR tags in the Matroska file: 6.1 writes them, 8 doesn't). */
+const committed = join(here, 'committed')
+const hlsFolder =join(here, '..', 'fixtures', 'hls')
 
 export const fileHost = 'https://files.example.test'
 const addonHost = 'https://addon.example.test'
@@ -43,8 +45,8 @@ export interface Offer {
 }
 
 async function bytesOf(name: string): Promise<Buffer | null> {
-  const file = name.startsWith('hls/') ? join(hlsFolder, name.slice(4)) : join(generated, name)
-  if (!file.startsWith(generated) && !file.startsWith(hlsFolder)) return null
+  const file = name.startsWith('hls/') ? join(hlsFolder, name.slice(4)) : name.startsWith('committed/') ? join(committed, name.slice(10)) : join(generated, name)
+  if (!file.startsWith(generated) && !file.startsWith(hlsFolder) && !file.startsWith(committed)) return null
   try {
     await stat(file)
     return await readFile(file)

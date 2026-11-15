@@ -41,7 +41,7 @@ test.describe('the picker says it when the release name shows the file can’t p
 
   test('HDR that would need converting is refused', async ({ boot, page }) => {
     test.skip(!(await needsConversion(page)), 'this browser decodes HEVC itself, so HDR plays as it is')
-    await offer(page, [{ release: 'Matrix.480p.BluRay.HDR10.x265.AAC.mkv', file: 'x-mkv-hevc-hdr10-aac.mkv' }])
+    await offer(page, [{ release: 'Matrix.480p.BluRay.HDR10.x265.AAC.mkv', file: 'committed/x-mkv-hevc-hdr10-aac.mkv' }])
     expect(await pickerReason(page, boot)).toContain('HEVC HDR video can’t be converted in a browser')
   })
 
@@ -68,7 +68,7 @@ test.describe('the player says it when the file is the one that shows it', () =>
 
   test('HDR is refused, because an 8-bit copy would come out washed out', async ({ boot, page }) => {
     test.skip(!(await needsConversion(page)), 'this browser decodes HEVC itself, so HDR plays as it is')
-    await offer(page, [{ release: 'Matrix.mkv', file: 'x-mkv-hevc-hdr10-aac.mkv' }])
+    await offer(page, [{ release: 'Matrix.mkv', file: 'committed/x-mkv-hevc-hdr10-aac.mkv' }])
     expect(await playerMessage(page, boot)).toBe('This browser can’t decode HEVC HDR video, and converting it would wash out its colours. Try an SDR source, or watch it in the Marquee app.')
   })
 
