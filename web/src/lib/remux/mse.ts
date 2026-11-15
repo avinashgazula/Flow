@@ -199,6 +199,8 @@ export class MseSink {
         try {
           await op.run()
         } catch (error) {
+          // The viewer gets a plain sentence; the browser's own reason is for whoever looks in the console.
+          console.warn('Marquee media: the browser refused the video data', error)
           if (!this.destroyed) this.events.onError(error instanceof Error && error.name === 'QuotaExceededError' ? 'This browser ran out of room for video. Close other tabs and try again.' : 'This browser couldn’t play the video. Try another source.')
           break
         }

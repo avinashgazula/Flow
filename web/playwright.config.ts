@@ -12,7 +12,8 @@ const executablePath = process.env.E2E_CHROMIUM_PATH
 
 // Firefox floats its own Picture-in-Picture toggle over a playing video, where the player's menus open, and takes the click
 // meant for a menu row. It is the browser's own control, not the site's.
-const firefoxPrefs = { 'media.videocontrols.picture-in-picture.video-toggle.enabled': false }
+// The playback matrix listens to the sound through Web Audio, which Firefox keeps suspended until it is allowed to autoplay.
+const firefoxPrefs = { 'media.videocontrols.picture-in-picture.video-toggle.enabled': false, 'media.autoplay.default': 0, 'media.autoplay.blocking_policy': 0 }
 
 const engines: Record<string, { desktop: Project['use']; phone: Project['use'] }> = {
   chromium: {

@@ -101,8 +101,14 @@ async function addon(page: Page, offers: Offer[]) {
 }
 
 /** Installs the pretend add-on and host before the page loads. `hits` collects what the host was asked for. */
+/** What the page said about its media (console warnings the site writes for whoever debugs), for failure messages. */
+const notes: string[] = []
+
 export async function offer(page: Page, offers: Offer[]): Promise<{ hits: string[] }> {
   const hits: string[] = []
+  page.on('console', (message) => {
+    if (message.text().startsWith('Marquee media:')) notes.push(message.text())
+  })
   await hostFiles(page, offers, hits)
   await addon(page, offers)
   await page.addInitScript((url) => {
@@ -149,7 +155,7 @@ export async function whatHappened(page: Page) {
     const v = document.querySelector('video')
     return v ? `time ${v.currentTime.toFixed(2)}, ready ${v.readyState}, network ${v.networkState}, error ${v.error?.code ?? 'none'} ${v.error?.message ?? ''}` : 'no video element'
   })
-  return `player: ${shown.replace(/\n+/g, ' | ')}; element: ${element}`
+  return `player: ${shown.replace(/\n+/g, ' | ')}; element: ${element}; page said: ${notes.join(' / ') || 'nothing'}`
 }
 
 export interface Info {
