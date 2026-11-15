@@ -122,6 +122,8 @@ final class AppModel {
     var showStates: [MediaKey: ShowWatchState] = [:]
     var progress: [PlaybackProgress] = []
     var continueWatching: [ContinueWatchingBuilder.Entry] = []
+    /// Continue Watching has been worked out at least once since launch; before that, empty means "not loaded yet".
+    @ObservationIgnored var continueWatchingIsBuilt = false
     var history: [HistoryEntry] = []
     /// Every watched title, newest first, for the History tile and list. Kept here, rebuilt when the
     /// watched state changes, so views never sort thousands of keys while they draw.
