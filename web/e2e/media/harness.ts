@@ -2,7 +2,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, type Page } from '../fixtures'
-import { expectPlaying, videoState } from '../helpers'
+import { expectPlaying, videoState, wake } from '../helpers'
 
 /* What the playback matrix needs on top of the site's browser tests: a pretend add-on that offers one file under a given
    release name, a pretend file host that serves the generated clips (e2e/media/generated, made by
@@ -209,6 +209,50 @@ export async function expectHeard(page: Page, hz: number, message = `${hz} Hz ca
       { message, timeout: 25_000, intervals: [100] },
     )
     .toBe('heard')
+}
+
+/** Opens Audio and Subtitles and returns the audio choices, by their visible text ("English · AAC Stereo", with "Converted" under it when it is). */
+export async function audioChoices(page: Page) {
+  const panel = page.getByRole('dialog', { name: 'Audio and Subtitles' })
+  if (!(await panel.isVisible())) {
+    await wake(page)
+    await page.getByRole('button', { name: 'Audio and Subtitles', exact: true }).click()
+  }
+  const items = panel.getByRole('menu', { name: 'Audio' }).getByRole('menuitemradio')
+  await expect(items.first()).toBeVisible()
+  return items
+}
+
+/** The picture is the clip's: the test pattern's colour bars are where they should be. A file can play with its clock running
+ *  and its sound on while the picture is black or missing (a codec the browser skips), so the clock alone proves nothing. */
+export async function expectPicture(page: Page) {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const video = document.querySelector('video')!
+          if (!video.videoWidth) return 'no picture (the video has no size)'
+          const canvas = document.createElement('canvas')
+          canvas.width = 100
+          canvas.height = 100
+          const draw = canvas.getContext('2d')!
+          draw.drawImage(video, 0, 0, 100, 100)
+          let data: Uint8ClampedArray
+          try {
+            data = draw.getImageData(0, 0, 100, 100).data
+          } catch {
+            // A picture the page may not read (a host without CORS): count the frames the browser says it showed.
+            return (video.getVideoPlaybackQuality?.().totalVideoFrames ?? 1) > 0 ? 'ok' : 'no frames shown'
+          }
+          const at = (x: number, y: number) => [0, 1, 2].map((i) => data[(y * 100 + x) * 4 + i]!)
+          // Red, green, yellow, blue, magenta, cyan, left to right, as [red, green, blue] high (1) or low (0).
+          const bars: [number, number, number[]][] = [[8, 40, [1, 0, 0]], [25, 40, [0, 1, 0]], [42, 35, [1, 1, 0]], [58, 35, [0, 0, 1]], [75, 35, [1, 0, 1]], [92, 35, [0, 1, 1]]]
+          const wrong = bars.filter(([x, y, want]) => at(x, y).some((value, i) => (want[i] ? value < 110 : value > 140)))
+          return wrong.length === 0 ? 'ok' : `colour bars not as drawn at ${wrong.map(([x, y]) => `${x},${y}=${at(x, y)}`).join(' ')}`
+        }),
+      { message: 'the picture shows the clip’s colour bars', timeout: 15_000 },
+    )
+    .toBe('ok')
 }
 
 /** The player's clock after a seek to a tenth of the way through: lands near it, and keeps running from there. */

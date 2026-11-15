@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fixedCapabilities } from '../../lib/sources/capabilities'
-import { audioVerdict, silentAudioNames } from './silence'
+import { audioVerdict, pictureMissing, silentAudioNames } from './silence'
 
 const chrome = fixedCapabilities({})
 const ready = { readyState: 4 }
@@ -39,5 +39,20 @@ describe('silentAudioNames', () => {
   it('names the listed format when it should have played, and nothing when the source doesn’t say', () => {
     expect(silentAudioNames(['AAC'], chrome)).toEqual(['AAC'])
     expect(silentAudioNames(undefined, chrome)).toEqual([])
+  })
+})
+
+describe("pictureMissing", () => {
+  const quality = (frames: number) => ({ getVideoPlaybackQuality: () => ({ totalVideoFrames: frames }) })
+  it("is true for a file that has played with no size and no frame", () => {
+    expect(pictureMissing({ readyState: 4, videoWidth: 0, ...quality(0) }, 3)).toBe(true)
+  })
+  it("waits for a few seconds of playing, and for data", () => {
+    expect(pictureMissing({ readyState: 4, videoWidth: 0, ...quality(0) }, 2)).toBe(false)
+    expect(pictureMissing({ readyState: 1, videoWidth: 0, ...quality(0) }, 9)).toBe(false)
+  })
+  it("is false once there is a picture size or a frame shown", () => {
+    expect(pictureMissing({ readyState: 4, videoWidth: 320, ...quality(0) }, 9)).toBe(false)
+    expect(pictureMissing({ readyState: 4, videoWidth: 0, ...quality(5) }, 9)).toBe(false)
   })
 })

@@ -18,6 +18,7 @@ import { Controls } from './Controls'
 import { PlayerController, usePlayer } from './controller'
 import { canUseMediaEngine } from '../../lib/media/support'
 import { isReadable } from '../../lib/sources/proxy'
+import { pictureMissing } from './silence'
 import { attachSource, playThroughProxy, warmEngines, type Engine } from './engine'
 import { mediaErrorMessage, PlaybackError } from './errors'
 import { episodeLine } from './format'
@@ -167,6 +168,8 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   const startAt = useRef<number | undefined>(undefined)
   const forcedUniversal = useRef(new Set<string>())
   const started = useRef(false)
+  /** Where the position was when the browser's own player began to play, so the seconds played can be counted. */
+  const playedFrom = useRef<number | undefined>(undefined)
   const offeredResume = useRef(false)
   const position = useRef(0)
   const length = useRef(Number.NaN)
@@ -476,6 +479,11 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
       if (!started.current) return
       position.current = el.currentTime
       length.current = controller.duration()
+      // The browser's own player running with sound and no picture (a codec it skips): the engine converts the picture.
+      if (controller.engine?.kind === 'native') {
+        const from = (playedFrom.current ??= el.currentTime)
+        if (pictureMissing(el, el.currentTime - from) && retryWithConversion(true)) playedFrom.current = undefined
+      }
     }
     const onError = () => {
       const code = el.error?.code
@@ -510,6 +518,7 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     let engine: Engine | null = null
     let stopChapters: (() => void) | undefined
     started.current = false
+    playedFrom.current = undefined
     setBlocked(false)
     setConvertFailed(false)
     const onAudioFailed = () => {
