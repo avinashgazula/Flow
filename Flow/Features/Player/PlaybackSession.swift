@@ -1123,24 +1123,26 @@ final class PlaybackSession: Identifiable {
     /// As a film's credits begin (from its credits segment, or its last six percent), says to stay
     /// when there's a scene during or after them.
     private func alertCreditsScenes(_ time: Double) {
-        guard !creditsAlertShown, let alert = creditsScenes?.alert, duration > 3600 * 0.5 else { return }
-        let creditsStart = segments.first { $0.kind == .credits }?.start ?? duration * 0.94
-        guard time >= creditsStart, time < duration - 10 else { return }
+        let alert = creditsScenes?.alert
+        guard UpNextTiming.creditsNoticeIsDue(alreadyShown: creditsAlertShown, hasNotice: alert != nil, duration: duration,
+                                              creditsSegmentStart: segments.first { $0.kind == .credits }?.start, time: time), let alert else { return }
         creditsAlertShown = true
         show(notice: alert)
     }
 
     /// Shows "Because You Watched" as a film's credits begin, unless there's a scene to stay for.
     private func offerSuggestions(_ time: Double) {
-        guard !suggestions.isEmpty, creditsScenes?.any != true, duration > 3600 * 0.5, phase == .playing else { return }
-        let creditsStart = segments.first { $0.kind == .credits }?.start ?? max(duration * 0.96, duration - 180)
-        if time < creditsStart {
+        switch UpNextTiming.suggestionsAction(hasSuggestions: !suggestions.isEmpty, hasCreditsScene: creditsScenes?.any == true, duration: duration, isPlaying: phase == .playing,
+                                              creditsSegmentStart: segments.first { $0.kind == .credits }?.start, time: time, alreadyOffered: suggestionsOffered) {
+        case .withdraw:
             // Seeking back out of the credits takes the card away, and lets it come back.
             showsSuggestions = false
             suggestionsOffered = false
-        } else if !suggestionsOffered, time < duration - 5 {
+        case .show:
             suggestionsOffered = true
             showsSuggestions = true
+        case .none:
+            break
         }
     }
 
@@ -1175,15 +1177,8 @@ final class PlaybackSession: Identifiable {
         let active = SkipSegmentResolver.active(segments, at: time)
         activeSegment = active
         guard let active, !skippedSegments.contains(active.start) else { return }
-        let behaviour: SkipBehaviour
-        switch active.kind {
-        case .intro: behaviour = model.settings.playback.skipIntro
-        case .recap: behaviour = model.settings.playback.skipRecap
-        // Credits hiding a scene are never skipped by themselves.
-        case .credits: behaviour = creditsScenes?.any == true && model.settings.playback.skipCredits == .automatic ? .button : model.settings.playback.skipCredits
-        case .preview, .commercial: behaviour = model.settings.playback.skipIntro
-        }
-        switch behaviour {
+        let playback = model.settings.playback
+        switch UpNextTiming.skipBehaviour(kind: active.kind, intro: playback.skipIntro, recap: playback.skipRecap, credits: playback.skipCredits, creditsHideAScene: creditsScenes?.any == true) {
         case .off: activeSegment = nil
         case .automatic: skip(active)
         case .button: break
@@ -1194,7 +1189,7 @@ final class PlaybackSession: Identifiable {
         skippedSegments.insert(segment.start)
         activeSegment = nil
         // "End of episode" means this one: let the credits run out instead of starting the next.
-        if segment.kind == .credits, upNext != nil, sleepTimer != .endOfItem, segment.end >= duration - 5 {
+        if UpNextTiming.skipStartsNextEpisode(kind: segment.kind, hasUpNext: upNext != nil, sleepEndsWithItem: sleepTimer == .endOfItem, segmentEnd: segment.end, duration: duration) {
             Task { await playUpNext() }
         } else if let universal {
             universal.seek(to: segment.end, exact: false)
@@ -1206,13 +1201,14 @@ final class PlaybackSession: Identifiable {
     // MARK: Up Next
 
     private func maybeStartUpNextCountdown() {
-        guard let model, model.settings.playback.autoPlayNextEpisode, upNext != nil, sleepTimer != .endOfItem, !switchingEpisode, countdownTask == nil, duration > 60 else { return }
+        guard let model else { return }
+        let playback = model.settings.playback
         // Count down as the credits start, or, when the viewer would rather see them, so it ends as the episode does.
-        let creditsStart = model.settings.playback.upNextWaitsForEnd ? nil : segments.first { $0.kind == .credits }?.start
-        let tail = model.settings.playback.upNextWaitsForEnd ? 1 : 20
-        let threshold = creditsStart ?? (duration - Double(model.settings.playback.nextEpisodeCountdownSeconds) - Double(tail))
-        guard currentTime >= threshold else { return }
-        let total = model.settings.playback.nextEpisodeCountdownSeconds
+        guard UpNextTiming.shouldStartCountdown(.init(autoPlayNext: playback.autoPlayNextEpisode, hasUpNext: upNext != nil, sleepEndsWithItem: sleepTimer == .endOfItem,
+                                                      switchingEpisode: switchingEpisode, countdownRunning: countdownTask != nil, duration: duration, currentTime: currentTime,
+                                                      creditsStart: segments.first { $0.kind == .credits }?.start, waitsForEnd: playback.upNextWaitsForEnd,
+                                                      countdownSeconds: playback.nextEpisodeCountdownSeconds)) else { return }
+        let total = playback.nextEpisodeCountdownSeconds
         countdownTask = Task { [weak self] in
             for remaining in stride(from: total, through: 1, by: -1) {
                 guard let self, !Task.isCancelled else { return }
