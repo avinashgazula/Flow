@@ -283,7 +283,7 @@ final class BitmapSampleTests: XCTestCase {
 final class FuzzTests: XCTestCase {
     func testCorruptFilesNeverCrash() async throws {
         let rounds = Int(ProcessInfo.processInfo.environment["FLOW_FUZZ"] ?? "") ?? 60
-        var generator = SystemRandomNumberGenerator()
+        var generator = SeededRandom(seed: 0x4D4B_5601)
         for name in ["avc-aac-srt", "hevc-eac3-ac3", "dts-commentary", "opus"] {
             let original = [UInt8](try Data(contentsOf: MatroskaTests.fixture(name)))
             for _ in 0..<rounds {
@@ -317,7 +317,7 @@ final class FuzzTests: XCTestCase {
 
     func testCorruptSubtitlesNeverCrash() {
         let rounds = (Int(ProcessInfo.processInfo.environment["FLOW_FUZZ"] ?? "") ?? 60) * 10
-        var generator = SystemRandomNumberGenerator()
+        var generator = SeededRandom(seed: 0x5352_5402)
         func mutate(_ packet: [UInt8]) -> [UInt8] {
             var bytes = packet
             if Bool.random(using: &generator), !bytes.isEmpty { bytes = Array(bytes.prefix(Int.random(in: 0..<bytes.count, using: &generator))) }
