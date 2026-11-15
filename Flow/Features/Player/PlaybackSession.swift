@@ -289,19 +289,15 @@ final class PlaybackSession: Identifiable {
         }
         guard !Task.isCancelled else { return }
         ScreenshotTour.log("prepare \(container) for \(url.lastPathComponent)")
-        if container == .matroska, model?.settings.playback.matroskaPlayback == .external, handOffToExternalPlayer(url) { return }
-        // Everything through the built-in decoder: the viewer's choice, or a stream Apple's player already let go of.
-        if universalRouted || model?.settings.playback.playerEngine == .builtIn || Self.debugForcesUniversal {
-            startUniversal(url: url, headers: headers, notice: nil)
-            return
-        }
-        switch container {
-        case .matroska:
+        if PlayerRouting.triesExternalPlayer(container: container, matroskaPlayback: model?.settings.playback.matroskaPlayback ?? .remux), handOffToExternalPlayer(url) { return }
+        // The built-in decoder takes what the viewer chose it for, what a stream Apple's player already let go of, and what nothing on the Apple path opens.
+        switch PlayerRouting.startPath(container: container, builtInAlready: universalRouted, engine: model?.settings.playback.playerEngine ?? .automatic,
+                                       debugForcesBuiltIn: Self.debugForcesUniversal) {
+        case .builtIn(let notice):
+            startUniversal(url: url, headers: headers, notice: notice)
+        case .remux:
             await startRemux(url: url, headers: headers, reader: probed)
-        case .unsupported:
-            // AVI, WMV, FLV, DVD and Ogg files: nothing on the Apple path opens them.
-            startUniversal(url: url, headers: headers, notice: Self.universalNotice)
-        case .native, .unknown:
+        case .apple:
             var options: [String: Any] = [:]
             if !headers.isEmpty { options["AVURLAssetHTTPHeaderFieldsKey"] = headers }
             attach(AVURLAsset(url: url, options: options))
@@ -341,14 +337,10 @@ final class PlaybackSession: Identifiable {
                     return
                 }
             }
-            // AV1 with no decoder in this device: the built-in decoder has one.
-            if remuxer.video?.source.codecID == "V_AV1", !Platform.decodesAV1 {
-                startUniversal(url: url, headers: headers, notice: Self.universalNotice)
-                return
-            }
             let skippedAudio = remuxer.skipped.filter { $0.track.kind == .audio }
-            // Only audio Apple's player can't decode: the built-in decoder plays it.
-            if !remuxer.hasPlayableSoundtrack, !skippedAudio.isEmpty {
+            // AV1 with no decoder in this device, or only audio Apple's player can't decode: the built-in decoder plays it.
+            if PlayerRouting.afterRemuxOpened(videoCodecID: remuxer.video?.source.codecID, deviceDecodesAV1: Platform.decodesAV1,
+                                              hasPlayableSoundtrack: remuxer.hasPlayableSoundtrack, skippedAudioCount: skippedAudio.count) == .builtIn {
                 startUniversal(url: url, headers: headers, notice: Self.universalNotice)
                 return
             }
@@ -367,23 +359,23 @@ final class PlaybackSession: Identifiable {
             chapterSegments = SkipSegmentResolver.fromChapters(chapters.map { ($0.title, $0.start) }, duration: remuxer.duration)
             if segments.isEmpty { segments = chapterSegments }
             if let first = skippedAudio.first(where: { !$0.track.isCommentary }), let playing = remuxer.audio.first {
-                show(notice: first.reason + (MatroskaRemuxer.audioDecoders == nil ? ": turn on Decode Audio Apple Can't Play in Settings. " : " can't play on Apple devices. ") + "Playing \(playing.label) instead.")
+                show(notice: PlayerNotices.skippedAudio(reason: first.reason, decodersAvailable: MatroskaRemuxer.audioDecoders != nil, playing: playing.label))
             }
             phase = .connecting(0.35)
             attach(AVURLAsset(url: hls))
         } catch let error as MatroskaError {
             // A load that was replaced while this one opened must not report its failure over the new one.
             guard !Task.isCancelled else { return }
-            switch error {
-            case .unsupported:
+            switch PlayerRouting.afterRemuxError(error) {
+            case .builtIn:
                 // MPEG-2, VC-1, Xvid, VP8, VP9 and the like: not video Apple's player decodes.
                 startUniversal(url: url, headers: headers, notice: Self.universalNotice)
-            default:
-                fail(error.localizedDescription)
+            case .fail(let message):
+                fail(message)
             }
         } catch {
             guard !Task.isCancelled else { return }
-            fail("Couldn't open this file. \(error.localizedDescription)")
+            fail(PlayerRouting.couldntOpen(error.localizedDescription))
         }
     }
 
@@ -423,7 +415,7 @@ final class PlaybackSession: Identifiable {
         beginNowPlaying()
         watchForStall(item)
         // With a saved position and "Ask Before Resuming", wait for the viewer's choice.
-        if !(resumeAt != nil && model?.settings.playback.askToResume == true) { player.play() }
+        if !ResumeDecision.holdsPlaybackForAnswer(saved: resumeAt, askToResume: model?.settings.playback.askToResume == true) { player.play() }
     }
 
     /// A remuxed file on this device (a download, a bundled sample) needs no network to start. If its item still isn't
@@ -432,16 +424,21 @@ final class PlaybackSession: Identifiable {
     /// alone: a slow server can honestly take longer than that, and loading again would throw away what has arrived.
     private func watchForStall(_ item: AVPlayerItem) {
         stallTask?.cancel()
-        guard usesRemux, remuxesLocalFile else { return }
+        guard PlayerRouting.watchesForStall(usesRemux: usesRemux, remuxesLocalFile: remuxesLocalFile) else { return }
         stallTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 20_000_000_000)
-            guard !Task.isCancelled, let self, !self.isClosed, self.player.currentItem === item, !self.didStart, self.resumePrompt == nil,
-                  case .connecting = self.phase else { return }
-            ScreenshotTour.log("stalled: item status \(item.status.rawValue), \(self.stallRetried ? "giving up" : "loading again")")
-            if self.stallRetried {
-                self.failureDetail = "No picture after 20 s twice (item status \(item.status.rawValue))"
-                self.fail("This file didn't start. Try again, or try another source.")
-            } else {
+            try? await Task.sleep(nanoseconds: UInt64(PlayerRouting.stallSeconds) * 1_000_000_000)
+            guard !Task.isCancelled, let self else { return }
+            var isConnecting = false
+            if case .connecting = self.phase { isConnecting = true }
+            guard PlayerRouting.isStillStalled(isClosed: self.isClosed, isCurrentItem: self.player.currentItem === item, didStart: self.didStart,
+                                               resumeQuestionShowing: self.resumePrompt != nil, isConnecting: isConnecting) else { return }
+            let action = PlayerRouting.afterStall(alreadyRetried: self.stallRetried)
+            ScreenshotTour.log("stalled: item status \(item.status.rawValue), \(action == .giveUp ? "giving up" : "loading again")")
+            switch action {
+            case .giveUp:
+                self.failureDetail = PlayerRouting.stallFailureDetail(itemStatus: item.status.rawValue)
+                self.fail(PlayerRouting.stallFailureMessage)
+            case .loadAgain:
                 self.stallRetried = true
                 self.retry()
             }
@@ -630,14 +627,25 @@ final class PlaybackSession: Identifiable {
     /// Reports a problem, or quietly moves to the next source when nothing has played yet.
     private func fail(_ message: String) {
         ScreenshotTour.log("fail: \(message)")
-        if !didStart, model?.settings.playback.tryNextSourceOnFailure == true, !alternatives.isEmpty {
-            tryNextSource(reason: message)
-            return
+        switch PlayerRouting.afterSourceFailure(didStart: didStart, tryNextEnabled: model?.settings.playback.tryNextSourceOnFailure == true, alternativesLeft: alternatives.count) {
+        case .tryNextSource: tryNextSource(reason: message)
+        case .showError: phase = .failed(message)
         }
-        phase = .failed(message)
     }
 
-    var canTryAnotherSource: Bool { !alternatives.isEmpty }
+    /// Tells the viewer the connection dropped, and reloads where it stopped after a short wait.
+    private func scheduleReconnect() {
+        show(notice: PlayerNotices.reconnecting)
+        recoveryTask?.cancel()
+        recoveryTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            // Closed, or the viewer switched source, in the meantime.
+            guard !Task.isCancelled else { return }
+            self?.retry()
+        }
+    }
+
+    var canTryAnotherSource: Bool { PlayerRouting.offersAnotherSource(alternativesLeft: alternatives.count) }
 
     /// An add-on that refuses a request can answer with a short video saying so instead of an error. A
     /// few seconds of video for a title that runs an hour or more is that, not the title.
@@ -655,10 +663,9 @@ final class PlaybackSession: Identifiable {
         ScreenshotTour.log("slate: \(source.providerName)")
         pausePlayback()
         activeSegment = nil
-        if model?.settings.playback.tryNextSourceOnFailure == true, !alternatives.isEmpty {
-            tryNextSource(notice: StreamSlate.triedNextMessage)
-        } else {
-            phase = .failed(StreamSlate.stoppedMessage)
+        switch PlayerRouting.afterSlate(tryNextEnabled: model?.settings.playback.tryNextSourceOnFailure == true, alternativesLeft: alternatives.count) {
+        case .tryNextSource: tryNextSource(notice: StreamSlate.triedNextMessage)
+        case .showError: phase = .failed(StreamSlate.stoppedMessage)
         }
     }
 
@@ -671,7 +678,7 @@ final class PlaybackSession: Identifiable {
         remuxCompatible = false
         universalRouted = false
         keptTracks = nil
-        show(notice: notice ?? "That source didn't work, so Marquee is trying \(next.providerName)\(next.traits.resolution == .unknown ? "" : " " + next.traits.resolution.label).")
+        show(notice: notice ?? PlayerNotices.tryingNextSource(provider: next.providerName, resolutionLabel: next.traits.resolution == .unknown ? nil : next.traits.resolution.label))
         load(next)
     }
 
@@ -681,7 +688,7 @@ final class PlaybackSession: Identifiable {
         guard let model, let stream = url ?? source.location.playableURL else { return false }
         let player = model.settings.playback.externalPlayer
         guard player != .none, Platform.externalPlayers.contains(player),
-              let launch = player.launchURL(for: stream, position: currentTime > 30 ? currentTime : resumeAt, filename: source.filename) else { return false }
+              let launch = player.launchURL(for: stream, position: ResumeDecision.externalStart(currentTime: currentTime, saved: resumeAt), filename: source.filename) else { return false }
         model.openExternally(launch)
         close()
         return true
@@ -785,7 +792,7 @@ final class PlaybackSession: Identifiable {
     /// `exact` is for chapters and resume points, where the frame matters.
     func seek(to seconds: Double, exact: Bool = false) {
         noteInteraction()
-        let target = max(0, duration > 0 ? min(seconds, duration) : seconds)
+        let target = PlayerProgress.clampedSeekTarget(seconds, duration: duration)
         seekTarget = target
         if let universal {
             universal.seek(to: target, exact: exact)
@@ -1004,50 +1011,45 @@ final class PlaybackSession: Identifiable {
                 self.resumeAt = nil
                 // A resume point from another cut or source can lie beyond this stream's end;
                 // seeking there would "finish" instantly. Only resume when it's comfortably inside.
-                if Self.shouldResume(at: resumeAt, duration: seconds) {
-                    if model?.settings.playback.askToResume == true {
-                        resumePrompt = resumeAt
-                    } else {
-                        player.seek(to: CMTime(seconds: resumeAt, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
-                    }
-                } else {
+                switch ResumeDecision.decide(saved: resumeAt, duration: seconds, askToResume: model?.settings.playback.askToResume == true) {
+                case .ask(let position):
+                    resumePrompt = position
+                case .seek(let position):
+                    player.seek(to: CMTime(seconds: position, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
+                case .playFromStart:
                     player.play()
                 }
             }
         case .failed:
             failureDetail = Self.detail(item.error)
             ScreenshotTour.log("item failed: \(failureDetail ?? "")")
-            // Some devices turn down a stream's Dolby Vision or Atmos signalling; the HDR10 picture and
-            // 5.1 bed underneath still play, so try that once before giving up.
-            if !didStart, usesRemux, !remuxCompatible, let remuxer,
-               remuxer.video?.source.dolbyVision != nil || remuxer.audio.contains(where: \.isAtmos) {
+            let nsError = item.error as NSError?
+            let url = source.location.playableURL
+            let decision = PlayerRouting.onItemFailure(.init(
+                didStart: didStart, usesRemux: usesRemux, remuxIsCompatible: remuxCompatible,
+                remuxHasDolbyVisionOrAtmos: remuxer.map { $0.video?.source.dolbyVision != nil || $0.audio.contains(where: \.isAtmos) } ?? false,
+                builtInAlreadyRunning: universal != nil,
+                appleErrorCode: nsError?.domain == AVFoundationErrorDomain ? nsError?.code : nil,
+                canStartBuiltIn: url != nil, recoveries: recoveries,
+                secondsSinceLastRecovery: lastRecovery.map { Date().timeIntervalSince($0) }))
+            recoveries = decision.recoveries
+            switch decision.action {
+            case .reloadCompatibleRemux:
+                // Some devices turn down a stream's Dolby Vision or Atmos signalling; the HDR10 picture and
+                // 5.1 bed underneath still play, so try that once before giving up.
                 remuxCompatible = true
                 load(source)
-                return
-            }
-            // Apple's player can't open or decode this file: the built-in decoder gets it, where it stopped.
-            if !didStart, universal == nil, shouldRetryInBuiltInDecoder(item.error), let url = source.location.playableURL {
+            case .switchToBuiltIn:
+                // Apple's player can't open or decode this file: the built-in decoder gets it, where it stopped.
                 ScreenshotTour.log("Apple's player failed (\(failureDetail ?? "?")): trying the built-in decoder")
-                startUniversal(url: url, headers: source.location.headers, notice: Self.universalNotice)
-                return
-            }
-            // A dropped connection mid-film: reconnect where it stopped, a couple of times, before giving up.
-            // Drops far apart in a long film are separate bad moments, not a dead stream: each gets its own tries.
-            if let lastRecovery, Date().timeIntervalSince(lastRecovery) > 600 { recoveries = 0 }
-            if didStart, recoveries < 2 {
-                recoveries += 1
+                if let url { startUniversal(url: url, headers: source.location.headers, notice: Self.universalNotice) }
+            case .reconnect:
+                // A dropped connection mid-film: reconnect where it stopped, a couple of times, before giving up.
                 lastRecovery = Date()
-                show(notice: "Connection lost. Reconnecting…")
-                recoveryTask?.cancel()
-                recoveryTask = Task { [weak self] in
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    // Closed, or the viewer switched source, in the meantime.
-                    guard !Task.isCancelled else { return }
-                    self?.retry()
-                }
-                return
+                scheduleReconnect()
+            case .showError:
+                fail(Self.describe(item.error))
             }
-            fail(Self.describe(item.error))
         default: break
         }
     }
@@ -1099,18 +1101,18 @@ final class PlaybackSession: Identifiable {
         }
     }
 
-    private var percent: Double { duration > 0 ? currentTime / duration * 100 : 0 }
+    private var percent: Double { PlayerProgress.percent(position: currentTime, duration: duration) }
 
     private func tick(_ seconds: Double) {
         guard seconds.isFinite else { return }
         currentTime = seconds
-        if !playedLongEnough, seconds >= 60 { playedLongEnough = true }
+        if !playedLongEnough, PlayerProgress.hasPlayedLongEnough(seconds) { playedLongEnough = true }
         if duration <= 0, let d = player.currentItem?.duration.seconds, d.isFinite { duration = d }
         if duration <= 0, let d = universal?.duration, d > 0 { duration = d }
         updateSegment(seconds)
         alertCreditsScenes(seconds)
         offerSuggestions(seconds)
-        if Date().timeIntervalSince(lastReport) > 10 {
+        if PlayerProgress.reportIsDue(secondsSinceLastReport: Date().timeIntervalSince(lastReport)) {
             lastReport = Date()
             Task { await report(.progress) }
             nowPlaying.update(elapsed: seconds, duration: duration, rate: playbackRate)
@@ -1121,24 +1123,26 @@ final class PlaybackSession: Identifiable {
     /// As a film's credits begin (from its credits segment, or its last six percent), says to stay
     /// when there's a scene during or after them.
     private func alertCreditsScenes(_ time: Double) {
-        guard !creditsAlertShown, let alert = creditsScenes?.alert, duration > 3600 * 0.5 else { return }
-        let creditsStart = segments.first { $0.kind == .credits }?.start ?? duration * 0.94
-        guard time >= creditsStart, time < duration - 10 else { return }
+        let scenesNotice = creditsScenes?.alert
+        guard UpNextTiming.creditsNoticeIsDue(alreadyShown: creditsAlertShown, hasNotice: scenesNotice != nil, duration: duration,
+                                              creditsSegmentStart: segments.first { $0.kind == .credits }?.start, time: time), let alert = scenesNotice else { return }
         creditsAlertShown = true
         show(notice: alert)
     }
 
     /// Shows "Because You Watched" as a film's credits begin, unless there's a scene to stay for.
     private func offerSuggestions(_ time: Double) {
-        guard !suggestions.isEmpty, creditsScenes?.any != true, duration > 3600 * 0.5, phase == .playing else { return }
-        let creditsStart = segments.first { $0.kind == .credits }?.start ?? max(duration * 0.96, duration - 180)
-        if time < creditsStart {
+        switch UpNextTiming.suggestionsAction(hasSuggestions: !suggestions.isEmpty, hasCreditsScene: creditsScenes?.any == true, duration: duration, isPlaying: phase == .playing,
+                                              creditsSegmentStart: segments.first { $0.kind == .credits }?.start, time: time, alreadyOffered: suggestionsOffered) {
+        case .withdraw:
             // Seeking back out of the credits takes the card away, and lets it come back.
             showsSuggestions = false
             suggestionsOffered = false
-        } else if !suggestionsOffered, time < duration - 5 {
+        case .show:
             suggestionsOffered = true
             showsSuggestions = true
+        case .none:
+            break
         }
     }
 
@@ -1173,15 +1177,8 @@ final class PlaybackSession: Identifiable {
         let active = SkipSegmentResolver.active(segments, at: time)
         activeSegment = active
         guard let active, !skippedSegments.contains(active.start) else { return }
-        let behaviour: SkipBehaviour
-        switch active.kind {
-        case .intro: behaviour = model.settings.playback.skipIntro
-        case .recap: behaviour = model.settings.playback.skipRecap
-        // Credits hiding a scene are never skipped by themselves.
-        case .credits: behaviour = creditsScenes?.any == true && model.settings.playback.skipCredits == .automatic ? .button : model.settings.playback.skipCredits
-        case .preview, .commercial: behaviour = model.settings.playback.skipIntro
-        }
-        switch behaviour {
+        let playback = model.settings.playback
+        switch UpNextTiming.skipBehaviour(kind: active.kind, intro: playback.skipIntro, recap: playback.skipRecap, credits: playback.skipCredits, creditsHideAScene: creditsScenes?.any == true) {
         case .off: activeSegment = nil
         case .automatic: skip(active)
         case .button: break
@@ -1192,7 +1189,7 @@ final class PlaybackSession: Identifiable {
         skippedSegments.insert(segment.start)
         activeSegment = nil
         // "End of episode" means this one: let the credits run out instead of starting the next.
-        if segment.kind == .credits, upNext != nil, sleepTimer != .endOfItem, segment.end >= duration - 5 {
+        if UpNextTiming.skipStartsNextEpisode(kind: segment.kind, hasUpNext: upNext != nil, sleepEndsWithItem: sleepTimer == .endOfItem, segmentEnd: segment.end, duration: duration) {
             Task { await playUpNext() }
         } else if let universal {
             universal.seek(to: segment.end, exact: false)
@@ -1204,13 +1201,14 @@ final class PlaybackSession: Identifiable {
     // MARK: Up Next
 
     private func maybeStartUpNextCountdown() {
-        guard let model, model.settings.playback.autoPlayNextEpisode, upNext != nil, sleepTimer != .endOfItem, !switchingEpisode, countdownTask == nil, duration > 60 else { return }
+        guard let model else { return }
+        let playback = model.settings.playback
         // Count down as the credits start, or, when the viewer would rather see them, so it ends as the episode does.
-        let creditsStart = model.settings.playback.upNextWaitsForEnd ? nil : segments.first { $0.kind == .credits }?.start
-        let tail = model.settings.playback.upNextWaitsForEnd ? 1 : 20
-        let threshold = creditsStart ?? (duration - Double(model.settings.playback.nextEpisodeCountdownSeconds) - Double(tail))
-        guard currentTime >= threshold else { return }
-        let total = model.settings.playback.nextEpisodeCountdownSeconds
+        guard UpNextTiming.shouldStartCountdown(.init(autoPlayNext: playback.autoPlayNextEpisode, hasUpNext: upNext != nil, sleepEndsWithItem: sleepTimer == .endOfItem,
+                                                      switchingEpisode: switchingEpisode, countdownRunning: countdownTask != nil, duration: duration, currentTime: currentTime,
+                                                      creditsStart: segments.first { $0.kind == .credits }?.start, waitsForEnd: playback.upNextWaitsForEnd,
+                                                      countdownSeconds: playback.nextEpisodeCountdownSeconds)) else { return }
+        let total = playback.nextEpisodeCountdownSeconds
         countdownTask = Task { [weak self] in
             for remaining in stride(from: total, through: 1, by: -1) {
                 guard let self, !Task.isCancelled else { return }
@@ -1393,9 +1391,9 @@ final class PlaybackSession: Identifiable {
         recoveries = 0
         keptTracks = nil
         // "1080p BluRay" tells one AIOStreams source from another; the provider's name alone doesn't.
-        let release = [next.traits.resolution == .unknown ? nil : next.traits.resolution.label,
-                       next.traits.quality == .unknown ? nil : next.traits.quality.rawValue].compactMap { $0 }.joined(separator: " ")
-        show(notice: "Switching to \(release.isEmpty ? next.providerName : release)…")
+        show(notice: PlayerNotices.switchingSource(provider: next.providerName,
+                                                   resolutionLabel: next.traits.resolution == .unknown ? nil : next.traits.resolution.label,
+                                                   qualityLabel: next.traits.quality == .unknown ? nil : next.traits.quality.rawValue))
         load(next)
     }
 
@@ -1611,37 +1609,28 @@ final class PlaybackSession: Identifiable {
         await server.report(PlaybackReport(state: state, source: source, positionSeconds: currentTime, durationSeconds: duration > 0 ? duration : nil, sessionID: sessionID))
     }
 
-    /// Resume only when the position is known to be well before the end of this stream.
-    nonisolated static func shouldResume(at position: Double, duration: Double) -> Bool {
-        guard position > 0 else { return false }
-        guard duration.isFinite, duration > 0 else { return true }
-        return position < duration - 30
-    }
-
     private func didFinish() async {
         // The countdown or a skipped credits segment is already moving on to the next episode (the stream
         // can end while it looks for a source); a second switch would record this episode twice.
         guard !isClosed, !switchingEpisode else { return }
         // An item that ends without ever really playing (bad seek, broken stream) is an error,
         // not a finished viewing — never mark it watched.
-        guard didStart, currentTime > 5 else {
+        let end = PlayerProgress.endOfStream(didStart: didStart, currentTime: currentTime, sleepEndsWithItem: sleepTimer == .endOfItem, hasUpNext: upNext != nil,
+                                             autoPlayNext: model?.settings.playback.autoPlayNextEpisode == true, hasSuggestions: !suggestions.isEmpty)
+        if end == .unexpected {
             ScreenshotTour.log("didFinish ignored: started=\(didStart) time=\(currentTime)")
             fail("This stream ended unexpectedly.")
             return
         }
         phase = .finished
-        if sleepTimer == .endOfItem {
-            await finishCurrent(completed: true)
-            close()
-            return
-        }
-        if upNext != nil, model?.settings.playback.autoPlayNextEpisode == true {
+        switch end {
+        case .advance:
             await advanceAutomatically()
-        } else if upNext == nil, !suggestions.isEmpty {
+        case .showSuggestions:
             // End on "Because You Watched" rather than dropping back to where the film was started.
             await finishCurrent(completed: true)
             showsSuggestions = true
-        } else {
+        case .finishAndClose, .unexpected:
             await finishCurrent(completed: true)
             close()
         }
@@ -1649,8 +1638,8 @@ final class PlaybackSession: Identifiable {
 
     private func finishCurrent(completed: Bool) async {
         guard let model, didStart else { return }
-        let position = completed ? max(currentTime, duration) : currentTime
-        let pct = duration > 0 ? min(100, position / duration * 100) : 0
+        let position = PlayerProgress.stopPosition(completed: completed, currentTime: currentTime, duration: duration)
+        let pct = PlayerProgress.stopPercent(position: position, duration: duration)
         try? await model.tracker.scrobble(.stop, request: request, percent: pct)
         await report(.stopped)
         await model.recordPlayback(request: request, position: position, duration: duration, finished: completed)
@@ -1868,7 +1857,7 @@ extension AVMediaSelectionOption {
 /// play lands here. The rest of the session (progress, skips, Up Next, tracking, Now Playing) doesn't
 /// care which engine runs; it reads and drives it through these calls.
 extension PlaybackSession {
-    static let universalNotice = "Playing with Marquee's built-in decoder"
+    static let universalNotice = PlayerRouting.builtInNotice
 
     // MARK: Engine-neutral transport
 
@@ -1954,16 +1943,6 @@ extension PlaybackSession {
 
     // MARK: Routing
 
-    /// Apple's player turned a stream down because of its format, or the stream is Flow's own repackaging
-    /// that Apple's player won't take (a 10-bit H.264 an iPhone's decoder refuses): the built-in decoder tries it.
-    func shouldRetryInBuiltInDecoder(_ error: Error?) -> Bool {
-        guard universal == nil else { return false }
-        if usesRemux { return true }
-        guard let error = error as NSError?, error.domain == AVFoundationErrorDomain else { return false }
-        // fileFormatNotRecognized, decoderNotFound, decoderTemporarilyUnavailable, decodeFailed, fileFailedToParse, failedToParse.
-        return [-11828, -11833, -11834, -11821, -11829, -11853].contains(error.code)
-    }
-
     /// An MP4 or TS that loads but whose every soundtrack is in a codec Apple's player has no decoder for.
     func hasOnlyUndecodableAudio(_ asset: AVAsset) async -> Bool {
         guard let tracks = try? await asset.loadTracks(withMediaType: .audio), !tracks.isEmpty else { return false }
@@ -2037,13 +2016,14 @@ extension PlaybackSession {
         var startsPlaying = true
         if let resumeAt, !didStart {
             self.resumeAt = nil
-            if Self.shouldResume(at: resumeAt, duration: seconds > 0 ? seconds : .infinity) {
-                if model?.settings.playback.askToResume == true {
-                    resumePrompt = resumeAt
-                    startsPlaying = false
-                } else {
-                    universal.seek(to: resumeAt, exact: true)
-                }
+            switch ResumeDecision.decide(saved: resumeAt, duration: seconds, askToResume: model?.settings.playback.askToResume == true) {
+            case .ask(let position):
+                resumePrompt = position
+                startsPlaying = false
+            case .seek(let position):
+                universal.seek(to: position, exact: true)
+            case .playFromStart:
+                break
             }
         }
         if startsPlaying { universal.play() }
@@ -2082,20 +2062,16 @@ extension PlaybackSession {
         failureDetail = "libmpv · \(message)"
         ScreenshotTour.log("built-in decoder failed: \(message)")
         // A dropped connection mid-film: reconnect where it stopped, as the Apple path does.
-        if didStart, recoveries < 2 {
-            recoveries += 1
+        let decision = PlayerRouting.onBuiltInFailure(didStart: didStart, recoveries: recoveries)
+        switch decision.action {
+        case .reconnect:
+            recoveries = decision.recoveries
             lastRecovery = Date()
             if currentTime > 1 { recoverAt = currentTime }
-            show(notice: "Connection lost. Reconnecting…")
-            recoveryTask?.cancel()
-            recoveryTask = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                guard !Task.isCancelled else { return }
-                self?.retry()
-            }
-            return
+            scheduleReconnect()
+        default:
+            fail(Self.describeBuiltIn(message))
         }
-        fail(Self.describeBuiltIn(message))
     }
 
     /// mpv's error strings, in words that say what to do.
