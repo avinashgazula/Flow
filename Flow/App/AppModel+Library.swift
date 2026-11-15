@@ -123,6 +123,7 @@ extension AppModel {
         // Aired counts learned here feed the "3/10" poster capsule and "6 Remaining" pill without opening each show.
         for (key, count) in airedCounts where count > 0 { completedShowThresholds[key] = count }
         continueWatching = ContinueWatchingBuilder.build(progress: progress, nextUp: nextUp, finishedPercent: settings.playback.watchedThresholdPercent)
+        continueWatchingIsBuilt = true
     }
 
     /// Every aired regular episode, from season episode counts bounded by the last aired episode.
