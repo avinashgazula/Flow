@@ -27,6 +27,15 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         XCTAssertTrue(reveal(btn("Season")), "a show's page has a Season menu")
     }
 
+    func testAShowsResumeButtonOpensTheSourceListForItsEpisode() {
+        openLink("flow://title/show/1396")
+        let resume = button(startingWith: "Resume")
+        XCTAssertTrue(resume.waitForExistence(timeout: patience), "Breaking Bad offers Resume")
+        resume.tap()
+        XCTAssertTrue(btn("Search Again").waitForExistence(timeout: patience), "Resume opens the source list")
+        XCTAssertTrue(text(startingWith: "S03E").waitForExistence(timeout: patience), "for the episode the sample library left off at, season 3")
+    }
+
     func testAWatchedFilmSaysSo() {
         openLink("flow://title/movie/872585")
         let watched = btn("Watched")

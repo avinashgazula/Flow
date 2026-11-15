@@ -23,7 +23,8 @@ class FlowUITestCase: XCTestCase {
 
     /// The first failure of a test prints what was really on screen, so a failed run can be read without a screenshot.
     override func record(_ issue: XCTIssue) {
-        if !screenDumped, app != nil {
+        // Only a failed check counts: the runtime also reports warnings (a thread waiting on a slower one) as issues.
+        if !screenDumped, app != nil, issue.type == .assertionFailure || issue.type == .thrownError {
             screenDumped = true
             print("SCREEN at the first failure (\(issue.compactDescription)):\n" + app.debugDescription)
         }
