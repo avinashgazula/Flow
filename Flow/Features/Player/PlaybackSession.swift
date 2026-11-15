@@ -144,6 +144,8 @@ final class PlaybackSession: Identifiable {
     /// Watches a remuxed start that never becomes ready, and whether it was already tried again.
     @ObservationIgnored private var stallTask: Task<Void, Never>?
     @ObservationIgnored private var stallRetried = false
+    /// The remuxer is reading a file on this device, not a link: only then is a slow start certainly a stuck one.
+    @ObservationIgnored private var remuxesLocalFile = false
     #if DEBUG
     /// `-FlowPlayerEngine universal` (and the screenshot tour) send every stream to the built-in player.
     static var forcesUniversal: Bool { forcedUniversal || UserDefaults.standard.string(forKey: "FlowPlayerEngine") == "universal" }
@@ -319,6 +321,7 @@ final class PlaybackSession: Identifiable {
     }
 
     private func startRemux(url: URL, headers: [String: String], reader: ByteSource? = nil) async {
+        remuxesLocalFile = url.isFileURL
         phase = .connecting(0.2)
         do {
             let languages = audioLanguages
@@ -423,12 +426,13 @@ final class PlaybackSession: Identifiable {
         if !(resumeAt != nil && model?.settings.playback.askToResume == true) { player.play() }
     }
 
-    /// A remuxed file is served from this device, so it needs no network to start. If its item still isn't playing after
-    /// 20 seconds, AVPlayer or the remuxer is stuck: load it again once (finished segments are kept, so that is quick), and
-    /// if that stalls too, show the error screen instead of "connecting" for ever.
+    /// A remuxed file on this device (a download, a bundled sample) needs no network to start. If its item still isn't
+    /// playing after 20 seconds, AVPlayer or the remuxer is stuck: load it again once (finished segments are kept, so that
+    /// is quick), and if that stalls too, show the error screen instead of "connecting" for ever. A remuxed link is left
+    /// alone: a slow server can honestly take longer than that, and loading again would throw away what has arrived.
     private func watchForStall(_ item: AVPlayerItem) {
         stallTask?.cancel()
-        guard usesRemux else { return }
+        guard usesRemux, remuxesLocalFile else { return }
         stallTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 20_000_000_000)
             guard !Task.isCancelled, let self, !self.isClosed, self.player.currentItem === item, !self.didStart, self.resumePrompt == nil,
