@@ -423,7 +423,7 @@ final class PlaybackSession: Identifiable {
         beginNowPlaying()
         watchForStall(item)
         // With a saved position and "Ask Before Resuming", wait for the viewer's choice.
-        if !(resumeAt != nil && model?.settings.playback.askToResume == true) { player.play() }
+        if !ResumeDecision.holdsPlaybackForAnswer(saved: resumeAt, askToResume: model?.settings.playback.askToResume == true) { player.play() }
     }
 
     /// A remuxed file on this device (a download, a bundled sample) needs no network to start. If its item still isn't
@@ -681,7 +681,7 @@ final class PlaybackSession: Identifiable {
         guard let model, let stream = url ?? source.location.playableURL else { return false }
         let player = model.settings.playback.externalPlayer
         guard player != .none, Platform.externalPlayers.contains(player),
-              let launch = player.launchURL(for: stream, position: currentTime > 30 ? currentTime : resumeAt, filename: source.filename) else { return false }
+              let launch = player.launchURL(for: stream, position: ResumeDecision.externalStart(currentTime: currentTime, saved: resumeAt), filename: source.filename) else { return false }
         model.openExternally(launch)
         close()
         return true
@@ -1004,13 +1004,12 @@ final class PlaybackSession: Identifiable {
                 self.resumeAt = nil
                 // A resume point from another cut or source can lie beyond this stream's end;
                 // seeking there would "finish" instantly. Only resume when it's comfortably inside.
-                if Self.shouldResume(at: resumeAt, duration: seconds) {
-                    if model?.settings.playback.askToResume == true {
-                        resumePrompt = resumeAt
-                    } else {
-                        player.seek(to: CMTime(seconds: resumeAt, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
-                    }
-                } else {
+                switch ResumeDecision.decide(saved: resumeAt, duration: seconds, askToResume: model?.settings.playback.askToResume == true) {
+                case .ask(let position):
+                    resumePrompt = position
+                case .seek(let position):
+                    player.seek(to: CMTime(seconds: position, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: CMTime(seconds: 1, preferredTimescale: 600))
+                case .playFromStart:
                     player.play()
                 }
             }
@@ -1611,13 +1610,6 @@ final class PlaybackSession: Identifiable {
         await server.report(PlaybackReport(state: state, source: source, positionSeconds: currentTime, durationSeconds: duration > 0 ? duration : nil, sessionID: sessionID))
     }
 
-    /// Resume only when the position is known to be well before the end of this stream.
-    nonisolated static func shouldResume(at position: Double, duration: Double) -> Bool {
-        guard position > 0 else { return false }
-        guard duration.isFinite, duration > 0 else { return true }
-        return position < duration - 30
-    }
-
     private func didFinish() async {
         // The countdown or a skipped credits segment is already moving on to the next episode (the stream
         // can end while it looks for a source); a second switch would record this episode twice.
@@ -2037,13 +2029,14 @@ extension PlaybackSession {
         var startsPlaying = true
         if let resumeAt, !didStart {
             self.resumeAt = nil
-            if Self.shouldResume(at: resumeAt, duration: seconds > 0 ? seconds : .infinity) {
-                if model?.settings.playback.askToResume == true {
-                    resumePrompt = resumeAt
-                    startsPlaying = false
-                } else {
-                    universal.seek(to: resumeAt, exact: true)
-                }
+            switch ResumeDecision.decide(saved: resumeAt, duration: seconds, askToResume: model?.settings.playback.askToResume == true) {
+            case .ask(let position):
+                resumePrompt = position
+                startsPlaying = false
+            case .seek(let position):
+                universal.seek(to: position, exact: true)
+            case .playFromStart:
+                break
             }
         }
         if startsPlaying { universal.play() }
