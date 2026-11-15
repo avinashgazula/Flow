@@ -1,0 +1,385 @@
+{
+ "area": "source-slate",
+ "description": "Spotting the short clip an add-on serves in place of a title (FlowKit StreamSlate, web/src/lib/sources/slate.ts). Message wording is not compared: the app writes straight apostrophes and the site curly ones.",
+ "cases": [
+  {
+   "name": "https://slate.example.com/video.mp4 is a slate address",
+   "op": "isSlateURL",
+   "input": "https://slate.example.com/video.mp4",
+   "expected": true
+  },
+  {
+   "name": "https://cdn.example.com/slates/wrong-ip.mp4 is a slate address",
+   "op": "isSlateURL",
+   "input": "https://cdn.example.com/slates/wrong-ip.mp4",
+   "expected": true
+  },
+  {
+   "name": "https://cdn.example.com/a/slate.mp4 is a slate address",
+   "op": "isSlateURL",
+   "input": "https://cdn.example.com/a/slate.mp4",
+   "expected": true
+  },
+  {
+   "name": "https://slate-cdn.example.com/x is a slate address",
+   "op": "isSlateURL",
+   "input": "https://slate-cdn.example.com/x",
+   "expected": true
+  },
+  {
+   "name": "https://CDN.EXAMPLE.com/SLATES/x.mp4 is a slate address",
+   "op": "isSlateURL",
+   "input": "https://CDN.EXAMPLE.com/SLATES/x.mp4",
+   "expected": true
+  },
+  {
+   "name": "https://example.com/translate/movie.mkv is not a slate address",
+   "op": "isSlateURL",
+   "input": "https://example.com/translate/movie.mkv",
+   "expected": false
+  },
+  {
+   "name": "https://example.com/slated/movie.mkv is not a slate address",
+   "op": "isSlateURL",
+   "input": "https://example.com/slated/movie.mkv",
+   "expected": false
+  },
+  {
+   "name": "https://example.com/movie.mkv is not a slate address",
+   "op": "isSlateURL",
+   "input": "https://example.com/movie.mkv",
+   "expected": false
+  },
+  {
+   "name": "https://example.com/slate_1/movie.mkv is a slate address",
+   "op": "isSlateURL",
+   "input": "https://example.com/slate_1/movie.mkv",
+   "expected": true
+  },
+  {
+   "name": "https://example.com:8443/x is not a slate address",
+   "op": "isSlateURL",
+   "input": "https://example.com:8443/x",
+   "expected": false
+  },
+  {
+   "name": "https://slate.example.com:8443/x is a slate address",
+   "op": "isSlateURL",
+   "input": "https://slate.example.com:8443/x",
+   "expected": true
+  },
+  {
+   "name": "179 s for a 120 minute title: too short",
+   "op": "isTooShort",
+   "input": {
+    "duration": 179,
+    "runtime": 120
+   },
+   "expected": true
+  },
+  {
+   "name": "180 s for a 120 minute title: fine",
+   "op": "isTooShort",
+   "input": {
+    "duration": 180,
+    "runtime": 120
+   },
+   "expected": false
+  },
+  {
+   "name": "60 s for a 120 minute title: too short",
+   "op": "isTooShort",
+   "input": {
+    "duration": 60,
+    "runtime": 120
+   },
+   "expected": true
+  },
+  {
+   "name": "149 s for a 25 minute title: too short",
+   "op": "isTooShort",
+   "input": {
+    "duration": 149,
+    "runtime": 25
+   },
+   "expected": true
+  },
+  {
+   "name": "150 s for a 25 minute title: fine",
+   "op": "isTooShort",
+   "input": {
+    "duration": 150,
+    "runtime": 25
+   },
+   "expected": false
+  },
+  {
+   "name": "120 s for a 20 minute title: fine",
+   "op": "isTooShort",
+   "input": {
+    "duration": 120,
+    "runtime": 20
+   },
+   "expected": false
+  },
+  {
+   "name": "119 s for a 20 minute title: too short",
+   "op": "isTooShort",
+   "input": {
+    "duration": 119,
+    "runtime": 20
+   },
+   "expected": true
+  },
+  {
+   "name": "30 s for a 19 minute title: fine",
+   "op": "isTooShort",
+   "input": {
+    "duration": 30,
+    "runtime": 19
+   },
+   "expected": false
+  },
+  {
+   "name": "5 s for a None minute title: fine",
+   "op": "isTooShort",
+   "input": {
+    "duration": 5,
+    "runtime": null
+   },
+   "expected": false
+  },
+  {
+   "name": "5 s for a 0 minute title: fine",
+   "op": "isTooShort",
+   "input": {
+    "duration": 5,
+    "runtime": 0
+   },
+   "expected": false
+  },
+  {
+   "name": "0 s for a 120 minute title: fine",
+   "op": "isTooShort",
+   "input": {
+    "duration": 0,
+    "runtime": 120
+   },
+   "expected": false
+  },
+  {
+   "name": "-1 s for a 120 minute title: fine",
+   "op": "isTooShort",
+   "input": {
+    "duration": -1,
+    "runtime": 120
+   },
+   "expected": false
+  },
+  {
+   "name": "3600 s for a 120 minute title: fine",
+   "op": "isTooShort",
+   "input": {
+    "duration": 3600,
+    "runtime": 120
+   },
+   "expected": false
+  },
+  {
+   "name": "719 s for a 200 minute title: fine",
+   "op": "isTooShort",
+   "input": {
+    "duration": 719,
+    "runtime": 200
+   },
+   "expected": false
+  },
+  {
+   "name": "100 s for a 30 minute title: too short",
+   "op": "isTooShort",
+   "input": {
+    "duration": 100,
+    "runtime": 30
+   },
+   "expected": true
+  },
+  {
+   "name": "181 s for a 30 minute title: fine",
+   "op": "isTooShort",
+   "input": {
+    "duration": 181,
+    "runtime": 30
+   },
+   "expected": false
+  },
+  {
+   "name": "41943040 bytes of a listed 209715200: a slate",
+   "op": "isTooSmall",
+   "input": {
+    "bytes": 41943040,
+    "listed": 209715200
+   },
+   "expected": true
+  },
+  {
+   "name": "41943041 bytes of a listed 209715200: fine",
+   "op": "isTooSmall",
+   "input": {
+    "bytes": 41943041,
+    "listed": 209715200
+   },
+   "expected": false
+  },
+  {
+   "name": "41943040 bytes of a listed 209715199: fine",
+   "op": "isTooSmall",
+   "input": {
+    "bytes": 41943040,
+    "listed": 209715199
+   },
+   "expected": false
+  },
+  {
+   "name": "1000 bytes of a listed 3145728000: a slate",
+   "op": "isTooSmall",
+   "input": {
+    "bytes": 1000,
+    "listed": 3145728000
+   },
+   "expected": true
+  },
+  {
+   "name": "0 bytes of a listed 3145728000: fine",
+   "op": "isTooSmall",
+   "input": {
+    "bytes": 0,
+    "listed": 3145728000
+   },
+   "expected": false
+  },
+  {
+   "name": "None bytes of a listed 3145728000: fine",
+   "op": "isTooSmall",
+   "input": {
+    "bytes": null,
+    "listed": 3145728000
+   },
+   "expected": false
+  },
+  {
+   "name": "1000 bytes of a listed None: fine",
+   "op": "isTooSmall",
+   "input": {
+    "bytes": 1000,
+    "listed": null
+   },
+   "expected": false
+  },
+  {
+   "name": "524288000 bytes of a listed 3145728000: fine",
+   "op": "isTooSmall",
+   "input": {
+    "bytes": 524288000,
+    "listed": 3145728000
+   },
+   "expected": false
+  },
+  {
+   "name": "10485760 bytes of a listed 104857600: fine",
+   "op": "isTooSmall",
+   "input": {
+    "bytes": 10485760,
+    "listed": 104857600
+   },
+   "expected": false
+  },
+  {
+   "name": "no signs is not a slate",
+   "op": "detect",
+   "input": {},
+   "expected": false
+  },
+  {
+   "name": "a slate address alone is enough",
+   "op": "detect",
+   "input": {
+    "finalURL": "https://slate.example.com/x.mp4"
+   },
+   "expected": true
+  },
+  {
+   "name": "a short duration alone is enough when the runtime is known",
+   "op": "detect",
+   "input": {
+    "duration": 30,
+    "runtime": 100
+   },
+   "expected": true
+  },
+  {
+   "name": "a short duration with no runtime is not enough",
+   "op": "detect",
+   "input": {
+    "duration": 30
+   },
+   "expected": false
+  },
+  {
+   "name": "a tiny file against a big listing is enough",
+   "op": "detect",
+   "input": {
+    "bytes": 1000,
+    "listed": 2097152000
+   },
+   "expected": true
+  },
+  {
+   "name": "a real-looking file with a real address is not a slate",
+   "op": "detect",
+   "input": {
+    "finalURL": "https://cdn.example.com/movie.mkv",
+    "duration": 7200,
+    "runtime": 120,
+    "bytes": 2097152000,
+    "listed": 2097152000
+   },
+   "expected": false
+  },
+  {
+   "name": "https://elfhosted.com/x: tied to the connection",
+   "op": "bindsLinks",
+   "input": "https://elfhosted.com/x",
+   "expected": true
+  },
+  {
+   "name": "https://stremio.elfhosted.com/x: tied to the connection",
+   "op": "bindsLinks",
+   "input": "https://stremio.elfhosted.com/x",
+   "expected": true
+  },
+  {
+   "name": "https://ELFHOSTED.COM/x: tied to the connection",
+   "op": "bindsLinks",
+   "input": "https://ELFHOSTED.COM/x",
+   "expected": true
+  },
+  {
+   "name": "https://notelfhosted.com/x: not tied",
+   "op": "bindsLinks",
+   "input": "https://notelfhosted.com/x",
+   "expected": false
+  },
+  {
+   "name": "https://elfhosted.com.evil.example/x: not tied",
+   "op": "bindsLinks",
+   "input": "https://elfhosted.com.evil.example/x",
+   "expected": false
+  },
+  {
+   "name": "https://example.com/elfhosted.com: not tied",
+   "op": "bindsLinks",
+   "input": "https://example.com/elfhosted.com",
+   "expected": false
+  }
+ ]
+}

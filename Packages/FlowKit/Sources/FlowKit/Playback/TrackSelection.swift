@@ -181,8 +181,12 @@ public enum TrackSelection {
         // The language subtag alone: "eng-US" has no entry in `LanguageName`, "eng" does.
         let head = String(tag.replacingOccurrences(of: "_", with: "-").split(separator: "-").first ?? "")
         let language = LanguageName.bcp47(head).lowercased()
+        // Tags that say the language isn't known (or is several) name no language, so they never match anything.
+        if undetermined.contains(language) { return "und" }
         return aliases[language] ?? language
     }
+
+    private static let undetermined: Set<String> = ["und", "unk", "mis", "zxx", "mul"]
 
     /// Codes that name the same language as a Settings entry: Apple and most releases tag Norwegian
     /// as Bokmål ("nb", "nob"), where Settings says "no"; "tl" and "fil" are Tagalog and Filipino.

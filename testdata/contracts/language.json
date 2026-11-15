@@ -1,0 +1,894 @@
+{
+ "area": "language",
+ "description": "Language tags compared and named (FlowKit TrackSelection.matches and LanguageName.display, web/src/lib/language.ts): ISO 639-1, 639-2 and BCP 47 tags that name one language are the same language; undetermined tags name none.",
+ "cases": [
+  {
+   "name": "en and eng are one language",
+   "op": "same",
+   "input": [
+    "en",
+    "eng"
+   ],
+   "expected": true
+  },
+  {
+   "name": "en and en-US are one language",
+   "op": "same",
+   "input": [
+    "en",
+    "en-US"
+   ],
+   "expected": true
+  },
+  {
+   "name": "EN and eng are one language",
+   "op": "same",
+   "input": [
+    "EN",
+    "eng"
+   ],
+   "expected": true
+  },
+  {
+   "name": "en_GB and en are one language",
+   "op": "same",
+   "input": [
+    "en_GB",
+    "en"
+   ],
+   "expected": true
+  },
+  {
+   "name": "pt and por are one language",
+   "op": "same",
+   "input": [
+    "pt",
+    "por"
+   ],
+   "expected": true
+  },
+  {
+   "name": "pt-BR and pt are one language",
+   "op": "same",
+   "input": [
+    "pt-BR",
+    "pt"
+   ],
+   "expected": true
+  },
+  {
+   "name": "fr and fre are one language",
+   "op": "same",
+   "input": [
+    "fr",
+    "fre"
+   ],
+   "expected": true
+  },
+  {
+   "name": "fr and fra are one language",
+   "op": "same",
+   "input": [
+    "fr",
+    "fra"
+   ],
+   "expected": true
+  },
+  {
+   "name": "de and ger are one language",
+   "op": "same",
+   "input": [
+    "de",
+    "ger"
+   ],
+   "expected": true
+  },
+  {
+   "name": "de and deu are one language",
+   "op": "same",
+   "input": [
+    "de",
+    "deu"
+   ],
+   "expected": true
+  },
+  {
+   "name": "zh and chi are one language",
+   "op": "same",
+   "input": [
+    "zh",
+    "chi"
+   ],
+   "expected": true
+  },
+  {
+   "name": "zh and zho are one language",
+   "op": "same",
+   "input": [
+    "zh",
+    "zho"
+   ],
+   "expected": true
+  },
+  {
+   "name": "zh and cmn are one language",
+   "op": "same",
+   "input": [
+    "zh",
+    "cmn"
+   ],
+   "expected": true
+  },
+  {
+   "name": "zh and yue are one language",
+   "op": "same",
+   "input": [
+    "zh",
+    "yue"
+   ],
+   "expected": true
+  },
+  {
+   "name": "zh-Hans and zh are one language",
+   "op": "same",
+   "input": [
+    "zh-Hans",
+    "zh"
+   ],
+   "expected": true
+  },
+  {
+   "name": "ja and jpn are one language",
+   "op": "same",
+   "input": [
+    "ja",
+    "jpn"
+   ],
+   "expected": true
+  },
+  {
+   "name": "no and nor are one language",
+   "op": "same",
+   "input": [
+    "no",
+    "nor"
+   ],
+   "expected": true
+  },
+  {
+   "name": "no and nob are one language",
+   "op": "same",
+   "input": [
+    "no",
+    "nob"
+   ],
+   "expected": true
+  },
+  {
+   "name": "no and nb are one language",
+   "op": "same",
+   "input": [
+    "no",
+    "nb"
+   ],
+   "expected": true
+  },
+  {
+   "name": "no and nn are one language",
+   "op": "same",
+   "input": [
+    "no",
+    "nn"
+   ],
+   "expected": true
+  },
+  {
+   "name": "no and nno are one language",
+   "op": "same",
+   "input": [
+    "no",
+    "nno"
+   ],
+   "expected": true
+  },
+  {
+   "name": "he and iw are one language",
+   "op": "same",
+   "input": [
+    "he",
+    "iw"
+   ],
+   "expected": true
+  },
+  {
+   "name": "id and in are one language",
+   "op": "same",
+   "input": [
+    "id",
+    "in"
+   ],
+   "expected": true
+  },
+  {
+   "name": "tl and fil are one language",
+   "op": "same",
+   "input": [
+    "tl",
+    "fil"
+   ],
+   "expected": true
+  },
+  {
+   "name": "tl and tgl are one language",
+   "op": "same",
+   "input": [
+    "tl",
+    "tgl"
+   ],
+   "expected": true
+  },
+  {
+   "name": "fil and tgl are one language",
+   "op": "same",
+   "input": [
+    "fil",
+    "tgl"
+   ],
+   "expected": true
+  },
+  {
+   "name": "sl and slv are one language",
+   "op": "same",
+   "input": [
+    "sl",
+    "slv"
+   ],
+   "expected": true
+  },
+  {
+   "name": "lt and lit are one language",
+   "op": "same",
+   "input": [
+    "lt",
+    "lit"
+   ],
+   "expected": true
+  },
+  {
+   "name": "is and ice are one language",
+   "op": "same",
+   "input": [
+    "is",
+    "ice"
+   ],
+   "expected": true
+  },
+  {
+   "name": "is and isl are one language",
+   "op": "same",
+   "input": [
+    "is",
+    "isl"
+   ],
+   "expected": true
+  },
+  {
+   "name": "eu and baq are one language",
+   "op": "same",
+   "input": [
+    "eu",
+    "baq"
+   ],
+   "expected": true
+  },
+  {
+   "name": "ca and cat are one language",
+   "op": "same",
+   "input": [
+    "ca",
+    "cat"
+   ],
+   "expected": true
+  },
+  {
+   "name": "gl and glg are one language",
+   "op": "same",
+   "input": [
+    "gl",
+    "glg"
+   ],
+   "expected": true
+  },
+  {
+   "name": "nl and dut are one language",
+   "op": "same",
+   "input": [
+    "nl",
+    "dut"
+   ],
+   "expected": true
+  },
+  {
+   "name": "nl and nld are one language",
+   "op": "same",
+   "input": [
+    "nl",
+    "nld"
+   ],
+   "expected": true
+  },
+  {
+   "name": "sv and swe are one language",
+   "op": "same",
+   "input": [
+    "sv",
+    "swe"
+   ],
+   "expected": true
+  },
+  {
+   "name": "ro and rum are one language",
+   "op": "same",
+   "input": [
+    "ro",
+    "rum"
+   ],
+   "expected": true
+  },
+  {
+   "name": "ro and ron are one language",
+   "op": "same",
+   "input": [
+    "ro",
+    "ron"
+   ],
+   "expected": true
+  },
+  {
+   "name": "cs and cze are one language",
+   "op": "same",
+   "input": [
+    "cs",
+    "cze"
+   ],
+   "expected": true
+  },
+  {
+   "name": "cs and ces are one language",
+   "op": "same",
+   "input": [
+    "cs",
+    "ces"
+   ],
+   "expected": true
+  },
+  {
+   "name": "el and gre are one language",
+   "op": "same",
+   "input": [
+    "el",
+    "gre"
+   ],
+   "expected": true
+  },
+  {
+   "name": "el and ell are one language",
+   "op": "same",
+   "input": [
+    "el",
+    "ell"
+   ],
+   "expected": true
+  },
+  {
+   "name": "fa and per are one language",
+   "op": "same",
+   "input": [
+    "fa",
+    "per"
+   ],
+   "expected": true
+  },
+  {
+   "name": "fa and fas are one language",
+   "op": "same",
+   "input": [
+    "fa",
+    "fas"
+   ],
+   "expected": true
+  },
+  {
+   "name": "ms and may are one language",
+   "op": "same",
+   "input": [
+    "ms",
+    "may"
+   ],
+   "expected": true
+  },
+  {
+   "name": "ms and msa are one language",
+   "op": "same",
+   "input": [
+    "ms",
+    "msa"
+   ],
+   "expected": true
+  },
+  {
+   "name": "sk and slo are one language",
+   "op": "same",
+   "input": [
+    "sk",
+    "slo"
+   ],
+   "expected": true
+  },
+  {
+   "name": "sk and slk are one language",
+   "op": "same",
+   "input": [
+    "sk",
+    "slk"
+   ],
+   "expected": true
+  },
+  {
+   "name": "pa and pan are one language",
+   "op": "same",
+   "input": [
+    "pa",
+    "pan"
+   ],
+   "expected": true
+  },
+  {
+   "name": "ko and kor are one language",
+   "op": "same",
+   "input": [
+    "ko",
+    "kor"
+   ],
+   "expected": true
+  },
+  {
+   "name": "ar and ara are one language",
+   "op": "same",
+   "input": [
+    "ar",
+    "ara"
+   ],
+   "expected": true
+  },
+  {
+   "name": "hi and hin are one language",
+   "op": "same",
+   "input": [
+    "hi",
+    "hin"
+   ],
+   "expected": true
+  },
+  {
+   "name": "en and fr are not the same language",
+   "op": "same",
+   "input": [
+    "en",
+    "fr"
+   ],
+   "expected": false
+  },
+  {
+   "name": "en and und are not the same language",
+   "op": "same",
+   "input": [
+    "en",
+    "und"
+   ],
+   "expected": false
+  },
+  {
+   "name": "und and und are not the same language",
+   "op": "same",
+   "input": [
+    "und",
+    "und"
+   ],
+   "expected": false
+  },
+  {
+   "name": "en and empty are not the same language",
+   "op": "same",
+   "input": [
+    "en",
+    ""
+   ],
+   "expected": false
+  },
+  {
+   "name": "empty and empty are not the same language",
+   "op": "same",
+   "input": [
+    "",
+    ""
+   ],
+   "expected": false
+  },
+  {
+   "name": "pt and es are not the same language",
+   "op": "same",
+   "input": [
+    "pt",
+    "es"
+   ],
+   "expected": false
+  },
+  {
+   "name": "zh and ja are not the same language",
+   "op": "same",
+   "input": [
+    "zh",
+    "ja"
+   ],
+   "expected": false
+  },
+  {
+   "name": "no and da are not the same language",
+   "op": "same",
+   "input": [
+    "no",
+    "da"
+   ],
+   "expected": false
+  },
+  {
+   "name": "sr and hr are not the same language",
+   "op": "same",
+   "input": [
+    "sr",
+    "hr"
+   ],
+   "expected": false
+  },
+  {
+   "name": "mul and mul are not the same language",
+   "op": "same",
+   "input": [
+    "mul",
+    "mul"
+   ],
+   "expected": false
+  },
+  {
+   "name": "zxx and zxx are not the same language",
+   "op": "same",
+   "input": [
+    "zxx",
+    "zxx"
+   ],
+   "expected": false
+  },
+  {
+   "name": "en and enm are not the same language",
+   "op": "same",
+   "input": [
+    "en",
+    "enm"
+   ],
+   "expected": false
+  },
+  {
+   "name": "the name of en is English",
+   "op": "name",
+   "input": "en",
+   "expected": "English"
+  },
+  {
+   "name": "the name of eng is English",
+   "op": "name",
+   "input": "eng",
+   "expected": "English"
+  },
+  {
+   "name": "the name of es is Spanish",
+   "op": "name",
+   "input": "es",
+   "expected": "Spanish"
+  },
+  {
+   "name": "the name of spa is Spanish",
+   "op": "name",
+   "input": "spa",
+   "expected": "Spanish"
+  },
+  {
+   "name": "the name of fr is French",
+   "op": "name",
+   "input": "fr",
+   "expected": "French"
+  },
+  {
+   "name": "the name of fre is French",
+   "op": "name",
+   "input": "fre",
+   "expected": "French"
+  },
+  {
+   "name": "the name of de is German",
+   "op": "name",
+   "input": "de",
+   "expected": "German"
+  },
+  {
+   "name": "the name of it is Italian",
+   "op": "name",
+   "input": "it",
+   "expected": "Italian"
+  },
+  {
+   "name": "the name of pt is Portuguese",
+   "op": "name",
+   "input": "pt",
+   "expected": "Portuguese"
+  },
+  {
+   "name": "the name of ja is Japanese",
+   "op": "name",
+   "input": "ja",
+   "expected": "Japanese"
+  },
+  {
+   "name": "the name of jpn is Japanese",
+   "op": "name",
+   "input": "jpn",
+   "expected": "Japanese"
+  },
+  {
+   "name": "the name of ko is Korean",
+   "op": "name",
+   "input": "ko",
+   "expected": "Korean"
+  },
+  {
+   "name": "the name of zh is Chinese",
+   "op": "name",
+   "input": "zh",
+   "expected": "Chinese"
+  },
+  {
+   "name": "the name of chi is Chinese",
+   "op": "name",
+   "input": "chi",
+   "expected": "Chinese"
+  },
+  {
+   "name": "the name of ru is Russian",
+   "op": "name",
+   "input": "ru",
+   "expected": "Russian"
+  },
+  {
+   "name": "the name of ar is Arabic",
+   "op": "name",
+   "input": "ar",
+   "expected": "Arabic"
+  },
+  {
+   "name": "the name of hi is Hindi",
+   "op": "name",
+   "input": "hi",
+   "expected": "Hindi"
+  },
+  {
+   "name": "the name of ta is Tamil",
+   "op": "name",
+   "input": "ta",
+   "expected": "Tamil"
+  },
+  {
+   "name": "the name of te is Telugu",
+   "op": "name",
+   "input": "te",
+   "expected": "Telugu"
+  },
+  {
+   "name": "the name of nl is Dutch",
+   "op": "name",
+   "input": "nl",
+   "expected": "Dutch"
+  },
+  {
+   "name": "the name of sv is Swedish",
+   "op": "name",
+   "input": "sv",
+   "expected": "Swedish"
+  },
+  {
+   "name": "the name of da is Danish",
+   "op": "name",
+   "input": "da",
+   "expected": "Danish"
+  },
+  {
+   "name": "the name of fi is Finnish",
+   "op": "name",
+   "input": "fi",
+   "expected": "Finnish"
+  },
+  {
+   "name": "the name of pl is Polish",
+   "op": "name",
+   "input": "pl",
+   "expected": "Polish"
+  },
+  {
+   "name": "the name of tr is Turkish",
+   "op": "name",
+   "input": "tr",
+   "expected": "Turkish"
+  },
+  {
+   "name": "the name of el is Greek",
+   "op": "name",
+   "input": "el",
+   "expected": "Greek"
+  },
+  {
+   "name": "the name of he is Hebrew",
+   "op": "name",
+   "input": "he",
+   "expected": "Hebrew"
+  },
+  {
+   "name": "the name of th is Thai",
+   "op": "name",
+   "input": "th",
+   "expected": "Thai"
+  },
+  {
+   "name": "the name of vi is Vietnamese",
+   "op": "name",
+   "input": "vi",
+   "expected": "Vietnamese"
+  },
+  {
+   "name": "the name of id is Indonesian",
+   "op": "name",
+   "input": "id",
+   "expected": "Indonesian"
+  },
+  {
+   "name": "the name of cs is Czech",
+   "op": "name",
+   "input": "cs",
+   "expected": "Czech"
+  },
+  {
+   "name": "the name of hu is Hungarian",
+   "op": "name",
+   "input": "hu",
+   "expected": "Hungarian"
+  },
+  {
+   "name": "the name of ro is Romanian",
+   "op": "name",
+   "input": "ro",
+   "expected": "Romanian"
+  },
+  {
+   "name": "the name of uk is Ukrainian",
+   "op": "name",
+   "input": "uk",
+   "expected": "Ukrainian"
+  },
+  {
+   "name": "the name of bn is Bengali",
+   "op": "name",
+   "input": "bn",
+   "expected": "Bengali"
+  },
+  {
+   "name": "the name of ml is Malayalam",
+   "op": "name",
+   "input": "ml",
+   "expected": "Malayalam"
+  },
+  {
+   "name": "the name of kn is Kannada",
+   "op": "name",
+   "input": "kn",
+   "expected": "Kannada"
+  },
+  {
+   "name": "the name of mr is Marathi",
+   "op": "name",
+   "input": "mr",
+   "expected": "Marathi"
+  },
+  {
+   "name": "the name of ur is Urdu",
+   "op": "name",
+   "input": "ur",
+   "expected": "Urdu"
+  },
+  {
+   "name": "the name of bg is Bulgarian",
+   "op": "name",
+   "input": "bg",
+   "expected": "Bulgarian"
+  },
+  {
+   "name": "the name of hr is Croatian",
+   "op": "name",
+   "input": "hr",
+   "expected": "Croatian"
+  },
+  {
+   "name": "the name of sr is Serbian",
+   "op": "name",
+   "input": "sr",
+   "expected": "Serbian"
+  },
+  {
+   "name": "the name of sl is Slovenian",
+   "op": "name",
+   "input": "sl",
+   "expected": "Slovenian"
+  },
+  {
+   "name": "the name of slv is Slovenian",
+   "op": "name",
+   "input": "slv",
+   "expected": "Slovenian"
+  },
+  {
+   "name": "the name of sk is Slovak",
+   "op": "name",
+   "input": "sk",
+   "expected": "Slovak"
+  },
+  {
+   "name": "the name of lt is Lithuanian",
+   "op": "name",
+   "input": "lt",
+   "expected": "Lithuanian"
+  },
+  {
+   "name": "the name of lv is Latvian",
+   "op": "name",
+   "input": "lv",
+   "expected": "Latvian"
+  },
+  {
+   "name": "the name of et is Estonian",
+   "op": "name",
+   "input": "et",
+   "expected": "Estonian"
+  },
+  {
+   "name": "the name of is is Icelandic",
+   "op": "name",
+   "input": "is",
+   "expected": "Icelandic"
+  },
+  {
+   "name": "the name of ca is Catalan",
+   "op": "name",
+   "input": "ca",
+   "expected": "Catalan"
+  },
+  {
+   "name": "the name of eu is Basque",
+   "op": "name",
+   "input": "eu",
+   "expected": "Basque"
+  },
+  {
+   "name": "the name of gl is Galician",
+   "op": "name",
+   "input": "gl",
+   "expected": "Galician"
+  }
+ ]
+}

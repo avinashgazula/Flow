@@ -1,0 +1,18 @@
+{
+ "description": "Which readers consume which area. A vector file that is not listed, or a listed area that one of its readers doesn't run, fails a test.",
+ "areas": {
+  "account-number": { "swift": true, "web": true },
+  "account-crypto": { "swift": true, "web": true },
+  "account-wire": { "swift": true, "web": true },
+  "sync-key": { "swift": true, "web": true },
+  "sync-link": { "swift": true, "web": true },
+  "source-parser": { "swift": true, "web": true },
+  "source-slate": { "swift": true, "web": true },
+  "playback-still-watching": { "swift": true, "web": true },
+  "watchlist-order": { "swift": true, "web": true },
+  "calendar-ics": { "swift": true, "web": true },
+  "language": { "swift": true, "web": true },
+  "source-rank": { "swift": true, "web": true },
+  "track-selection": { "swift": true, "web": true }
+ }
+}

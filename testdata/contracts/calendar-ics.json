@@ -1,0 +1,328 @@
+{
+ "area": "calendar-ics",
+ "description": "Add to Calendar files (RFC 5545) and the bare-day rule (FlowKit ICalendar and AirDateFormatting.isBareDay, web/src/lib/ics.ts and airDates.ts). Expected text for build is filled in from the RFC by hand in the file, see the cases.",
+ "cases": [
+  {
+   "name": "a day with no time is bare",
+   "op": "isBareDay",
+   "input": "2026-10-21",
+   "expected": true
+  },
+  {
+   "name": "midnight UTC is bare",
+   "op": "isBareDay",
+   "input": "2026-10-21T00:00:00Z",
+   "expected": true
+  },
+  {
+   "name": "midnight UTC with milliseconds is bare",
+   "op": "isBareDay",
+   "input": "2026-10-21T00:00:00.000Z",
+   "expected": true
+  },
+  {
+   "name": "a moment with a time is not bare",
+   "op": "isBareDay",
+   "input": "2026-10-21T19:00:00Z",
+   "expected": false
+  },
+  {
+   "name": "one second past midnight is not bare",
+   "op": "isBareDay",
+   "input": "2026-10-21T00:00:01Z",
+   "expected": false
+  },
+  {
+   "name": "midnight in another zone is not midnight UTC",
+   "op": "isBareDay",
+   "input": "2026-10-21T00:00:00+02:00",
+   "expected": false
+  },
+  {
+   "name": "two in the morning at +02:00 is midnight UTC",
+   "op": "isBareDay",
+   "input": "2026-10-21T02:00:00+02:00",
+   "expected": true
+  },
+  {
+   "name": "a Trakt first_aired evening is not bare",
+   "op": "isBareDay",
+   "input": "2026-10-22T01:00:00.000Z",
+   "expected": false
+  },
+  {
+   "name": "an empty calendar",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": []
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "an all-day event for a bare air day",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "show-1396-s01e02@flow-app",
+      "title": "Breaking Bad S01E02",
+      "day": "2026-10-27"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:show-1396-s01e02@flow-app\r\nDTSTAMP:20261101T120000Z\r\nDTSTART;VALUE=DATE:20261027\r\nDTEND;VALUE=DATE:20261028\r\nTRANSP:TRANSPARENT\r\nSUMMARY:Breaking Bad S01E02\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "an event with a moment lasts an hour unless it says otherwise",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "Premiere",
+      "start": "2026-10-27T19:30:00Z"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART:20261027T193000Z\r\nDTEND:20261027T203000Z\r\nSUMMARY:Premiere\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "an event with an end after its start keeps it",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "Premiere",
+      "start": "2026-10-27T19:30:00Z",
+      "end": "2026-10-27T21:45:10Z"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART:20261027T193000Z\r\nDTEND:20261027T214510Z\r\nSUMMARY:Premiere\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "an end before the start is replaced by an hour",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "Premiere",
+      "start": "2026-10-27T19:30:00Z",
+      "end": "2026-10-27T19:00:00Z"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART:20261027T193000Z\r\nDTEND:20261027T203000Z\r\nSUMMARY:Premiere\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "notes and a link are added",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "Film",
+      "day": "2026-12-25",
+      "notes": "Streaming on a service",
+      "url": "https://example.com/title/1"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART;VALUE=DATE:20261225\r\nDTEND;VALUE=DATE:20261226\r\nTRANSP:TRANSPARENT\r\nSUMMARY:Film\r\nDESCRIPTION:Streaming on a service\r\nURL:https://example.com/title/1\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "commas, semicolons, backslashes and line breaks are escaped",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "One, two; three\\four\nfive\r\nsix\rseven",
+      "day": "2026-12-25",
+      "notes": "a,b;c\\d\ne"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART;VALUE=DATE:20261225\r\nDTEND;VALUE=DATE:20261226\r\nTRANSP:TRANSPARENT\r\nSUMMARY:One\\, two\\; three\\\\four\\nfive\\nsix\\nseven\r\nDESCRIPTION:a\\,b\\;c\\\\d\\ne\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "a leap day ends on the first of March",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "Leap",
+      "day": "2024-02-29"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART;VALUE=DATE:20240229\r\nDTEND;VALUE=DATE:20240301\r\nTRANSP:TRANSPARENT\r\nSUMMARY:Leap\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "the last day of the year ends on the first of January",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "Eve",
+      "day": "2026-12-31"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART;VALUE=DATE:20261231\r\nDTEND;VALUE=DATE:20270101\r\nTRANSP:TRANSPARENT\r\nSUMMARY:Eve\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "2100 is not a leap year",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "Century",
+      "day": "2100-02-28"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART;VALUE=DATE:21000228\r\nDTEND;VALUE=DATE:21000301\r\nTRANSP:TRANSPARENT\r\nSUMMARY:Century\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "an event with no usable date is left out",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "No date"
+     },
+     {
+      "uid": "b@x",
+      "title": "Bad day",
+      "day": "soon"
+     },
+     {
+      "uid": "c@x",
+      "title": "Short day",
+      "day": "2026-1-5"
+     },
+     {
+      "uid": "d@x",
+      "title": "Fine",
+      "day": "2026-10-27"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:d@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART;VALUE=DATE:20261027\r\nDTEND;VALUE=DATE:20261028\r\nTRANSP:TRANSPARENT\r\nSUMMARY:Fine\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "a day wins over a moment",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "Both",
+      "day": "2026-10-27",
+      "start": "2026-10-27T19:30:00Z"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART;VALUE=DATE:20261027\r\nDTEND;VALUE=DATE:20261028\r\nTRANSP:TRANSPARENT\r\nSUMMARY:Both\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "a long title folds at 75 octets",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "A very long title that goes on and on well past the seventy-five octet limit of one line in an iCalendar file",
+      "day": "2026-10-27"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART;VALUE=DATE:20261027\r\nDTEND;VALUE=DATE:20261028\r\nTRANSP:TRANSPARENT\r\nSUMMARY:A very long title that goes on and on well past the seventy-five oc\r\n tet limit of one line in an iCalendar file\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "folding never splits a multi-byte character",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "日本語のとても長いタイトルがここにあります。日本語のとても長いタイトルがここにあります。日本語のとても長いタイトル",
+      "day": "2026-10-27"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART;VALUE=DATE:20261027\r\nDTEND;VALUE=DATE:20261028\r\nTRANSP:TRANSPARENT\r\nSUMMARY:日本語のとても長いタイトルがここにあります。\r\n 日本語のとても長いタイトルがここにあります。日本\r\n 語のとても長いタイトル\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "an emoji title folds on whole characters",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬",
+      "day": "2026-10-27"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART;VALUE=DATE:20261027\r\nDTEND;VALUE=DATE:20261028\r\nTRANSP:TRANSPARENT\r\nSUMMARY:🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬\r\n 🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬🎬\r\n 🎬🎬🎬🎬🎬🎬\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "two events are two blocks",
+   "op": "build",
+   "input": {
+    "now": "2026-11-01T12:00:00Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "One",
+      "day": "2026-10-27"
+     },
+     {
+      "uid": "b@x",
+      "title": "Two",
+      "start": "2026-10-28T20:00:00Z"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART;VALUE=DATE:20261027\r\nDTEND;VALUE=DATE:20261028\r\nTRANSP:TRANSPARENT\r\nSUMMARY:One\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nUID:b@x\r\nDTSTAMP:20261101T120000Z\r\nDTSTART:20261028T200000Z\r\nDTEND:20261028T210000Z\r\nSUMMARY:Two\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  },
+  {
+   "name": "the stamp is the time the file was made",
+   "op": "build",
+   "input": {
+    "now": "2027-01-02T03:04:05Z",
+    "events": [
+     {
+      "uid": "a@x",
+      "title": "One",
+      "day": "2026-10-27"
+     }
+    ]
+   },
+   "expected": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marquee//Upcoming//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:a@x\r\nDTSTAMP:20270102T030405Z\r\nDTSTART;VALUE=DATE:20261027\r\nDTEND;VALUE=DATE:20261028\r\nTRANSP:TRANSPARENT\r\nSUMMARY:One\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+  }
+ ]
+}

@@ -1,0 +1,2983 @@
+{
+ "area": "source-rank",
+ "description": "Which sources the filters let through and the order they are shown in (FlowKit SourceRanker.passes and rank, web/src/lib/sources/order.ts passes and arrangeSources). The website scores sources for the browser before this step; here that score is the order given. Providers are all named in the provider order or listed alphabetically: the apps order unnamed providers by name and the website by Settings order (see the report).",
+ "cases": [
+  {
+   "name": "an ordinary source passes the default filters",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "a CAM release is left out by default",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "CAM"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "a CAM release passes when captures are allowed",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "CAM"
+    },
+    "filters": {
+     "excludeCinemaCaptures": false,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "a TS release is left out by default",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "TS"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "a TS release passes when captures are allowed",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "TS"
+    },
+    "filters": {
+     "excludeCinemaCaptures": false,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "a TC release is left out by default",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "TC"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "a TC release passes when captures are allowed",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "TC"
+    },
+    "filters": {
+     "excludeCinemaCaptures": false,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "a SCR release is left out by default",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "SCR"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "a SCR release passes when captures are allowed",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "SCR"
+    },
+    "filters": {
+     "excludeCinemaCaptures": false,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "a HDTV release is not a cinema capture",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "HDTV"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "uncached is left out when asked",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "cached": false
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": true,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "a source that doesn't say passes when uncached is excluded",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": true,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "cached passes when uncached is excluded",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "cached": true
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": true,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "uncached passes when not asked",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "cached": false
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "below the minimum resolution is left out",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 720,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 1080,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "the minimum resolution itself passes",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 1080,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "above the minimum passes",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 2160,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 1080,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "an unknown resolution passes any minimum",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 0,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 2160,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "SD is below 720p",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 480,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 720,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "under the minimum size is left out",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "sizeBytes": 1610612736
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": 2,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "exactly the minimum size passes",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "sizeBytes": 2147483648
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": 2,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "over the maximum size is left out",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "sizeBytes": 12884901888
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": 10,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "exactly the maximum size passes",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "sizeBytes": 10737418240
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": 10,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "a source with no size passes any size bounds",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": 2,
+     "maxSizeGB": 10,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "a size inside the bounds passes",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "sizeBytes": 5368709120
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": 2,
+     "maxSizeGB": 10,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "an excluded word in the title leaves it out",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune Part Two HINDI 1080p",
+     "resolution": 1080,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [
+      "hindi"
+     ],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "an excluded word in the file name leaves it out",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "filename": "Dune.2024.Hindi.mkv"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [
+      "hindi"
+     ],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "excluded words ignore case in the list too",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune hindi",
+     "resolution": 1080,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [
+      "HINDI"
+     ],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "an excluded word in the add-on's own text leaves it out",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "detail": "Audio: Hindi, English"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [
+      "hindi"
+     ],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "a blank excluded keyword excludes nothing",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [
+      "",
+      "   "
+     ],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "an excluded keyword with spaces around it still matches",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune Hindi",
+     "resolution": 1080,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [
+      " hindi "
+     ],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "any one required word is enough",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune 1080p REMUX",
+     "resolution": 1080,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [
+      "bluray",
+      "remux"
+     ],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "none of the required words leaves it out",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune 1080p WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [
+      "bluray",
+      "remux"
+     ],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "a blank required keyword asks for nothing",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [
+      "   "
+     ],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "a required word in the file name counts",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "filename": "dune.remux.mkv"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [
+      "remux"
+     ],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "an excluded codec leaves it out",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "videoCodec": "HEVC"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": [
+      "HEVC"
+     ]
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "codec names ignore case",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "videoCodec": "HEVC"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": [
+      "hevc"
+     ]
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "x265 names HEVC",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "videoCodec": "HEVC"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": [
+      "x265"
+     ]
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "h.265 names HEVC",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "videoCodec": "HEVC"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": [
+      "H.265"
+     ]
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "x264 names H.264",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "videoCodec": "H264"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": [
+      "x264"
+     ]
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "H.264 with a dot names H.264",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "videoCodec": "H264"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": [
+      "H.264"
+     ]
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "AVC names H.264",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "videoCodec": "H264"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": [
+      "avc"
+     ]
+    }
+   },
+   "expected": false
+  },
+  {
+   "name": "another codec passes",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL",
+     "videoCodec": "H264"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": [
+      "av1",
+      "hevc"
+     ]
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "a source with no codec passes",
+   "op": "passes",
+   "input": {
+    "source": {
+     "title": "Dune.Part.Two.2024.1080p.WEB-DL",
+     "resolution": 1080,
+     "quality": "WEB-DL"
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": [
+      "hevc"
+     ]
+    }
+   },
+   "expected": true
+  },
+  {
+   "name": "without custom ordering the sources keep their order within a provider",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 2160,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": false,
+    "rules": [
+     {
+      "key": "cached",
+      "descending": true
+     },
+     {
+      "key": "resolution",
+      "descending": true
+     },
+     {
+      "key": "quality",
+      "descending": true
+     },
+     {
+      "key": "size",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "1",
+    "2",
+    "3"
+   ]
+  },
+  {
+   "name": "the default category order puts servers before share before add-ons",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "a",
+      "category": "addons",
+      "provider": "x",
+      "title": "a",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "w",
+      "category": "webDAV",
+      "provider": "y",
+      "title": "w",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "m",
+      "category": "mediaServers",
+      "provider": "z",
+      "title": "m",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": false,
+    "rules": [
+     {
+      "key": "cached",
+      "descending": true
+     },
+     {
+      "key": "resolution",
+      "descending": true
+     },
+     {
+      "key": "quality",
+      "descending": true
+     },
+     {
+      "key": "size",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "x",
+      "category": "addons"
+     },
+     {
+      "id": "y",
+      "category": "webDAV"
+     },
+     {
+      "id": "z",
+      "category": "mediaServers"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "m",
+    "w",
+    "a"
+   ]
+  },
+  {
+   "name": "a changed category order is followed",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "a",
+      "category": "addons",
+      "provider": "x",
+      "title": "a",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "w",
+      "category": "webDAV",
+      "provider": "y",
+      "title": "w",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "m",
+      "category": "mediaServers",
+      "provider": "z",
+      "title": "m",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": false,
+    "rules": [
+     {
+      "key": "cached",
+      "descending": true
+     },
+     {
+      "key": "resolution",
+      "descending": true
+     },
+     {
+      "key": "quality",
+      "descending": true
+     },
+     {
+      "key": "size",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "addons",
+     "mediaServers",
+     "webDAV",
+     "iptv"
+    ],
+    "providers": [
+     {
+      "id": "x",
+      "category": "addons"
+     },
+     {
+      "id": "y",
+      "category": "webDAV"
+     },
+     {
+      "id": "z",
+      "category": "mediaServers"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "a",
+    "m",
+    "w"
+   ]
+  },
+  {
+   "name": "a provider order within a category is followed",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "b",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "c",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": false,
+    "rules": [
+     {
+      "key": "cached",
+      "descending": true
+     },
+     {
+      "key": "resolution",
+      "descending": true
+     },
+     {
+      "key": "quality",
+      "descending": true
+     },
+     {
+      "key": "size",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     },
+     {
+      "id": "b",
+      "category": "addons"
+     },
+     {
+      "id": "c",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {
+     "addons": [
+      "c",
+      "a",
+      "b"
+     ]
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "3",
+    "1",
+    "2"
+   ]
+  },
+  {
+   "name": "sources of one provider stay together",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "b",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "4",
+      "category": "addons",
+      "provider": "b",
+      "title": "4",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": false,
+    "rules": [
+     {
+      "key": "cached",
+      "descending": true
+     },
+     {
+      "key": "resolution",
+      "descending": true
+     },
+     {
+      "key": "quality",
+      "descending": true
+     },
+     {
+      "key": "size",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     },
+     {
+      "id": "b",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {
+     "addons": [
+      "b",
+      "a"
+     ]
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "2",
+    "4",
+    "1",
+    "3"
+   ]
+  },
+  {
+   "name": "custom rules: higher resolution first",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 720,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 2160,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "resolution",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "2",
+    "3",
+    "1"
+   ]
+  },
+  {
+   "name": "custom rules: ascending flips the order",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 720,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 2160,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "resolution",
+      "descending": false
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "1",
+    "3",
+    "2"
+   ]
+  },
+  {
+   "name": "custom rules: a tie falls to the next rule",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "size": 1073741824
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "size": 5368709120
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 2160,
+      "quality": "WEB-DL",
+      "size": 1073741824
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "resolution",
+      "descending": true
+     },
+     {
+      "key": "size",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "3",
+    "2",
+    "1"
+   ]
+  },
+  {
+   "name": "custom rules: a full tie keeps the original order",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "resolution",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "1",
+    "2",
+    "3"
+   ]
+  },
+  {
+   "name": "custom rules: release quality ranks REMUX over BluRay over WEB-DL over HDTV",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "HDTV"
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "REMUX"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "4",
+      "category": "addons",
+      "provider": "a",
+      "title": "4",
+      "resolution": 1080,
+      "quality": "BluRay"
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "quality",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "2",
+    "4",
+    "3",
+    "1"
+   ]
+  },
+  {
+   "name": "custom rules: cached first, then unknown, then uncached",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "cached": false
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "cached": true
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "cached",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "3",
+    "2",
+    "1"
+   ]
+  },
+  {
+   "name": "custom rules: more seeders first",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "seeders": 5
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "seeders": 50
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "seeders",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "2",
+    "1",
+    "3"
+   ]
+  },
+  {
+   "name": "custom rules: Dolby Vision over HDR10+ over HDR over none",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "hdr": [
+       "HDR"
+      ]
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "hdr": [
+       "DV",
+       "HDR"
+      ]
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "4",
+      "category": "addons",
+      "provider": "a",
+      "title": "4",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "hdr": [
+       "HDR10+"
+      ]
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "hdr",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "2",
+    "4",
+    "1",
+    "3"
+   ]
+  },
+  {
+   "name": "custom rules: preferred languages in order",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "languages": [
+       "French"
+      ]
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "languages": [
+       "English"
+      ]
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "languages": [
+       "German"
+      ]
+     },
+     {
+      "id": "4",
+      "category": "addons",
+      "provider": "a",
+      "title": "4",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "languages": [
+       "French",
+       "English"
+      ]
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "language",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [
+      "English",
+      "French"
+     ],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "2",
+    "4",
+    "1",
+    "3"
+   ]
+  },
+  {
+   "name": "custom rules: a language given as a code is read as its name",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "languages": [
+       "French"
+      ]
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "languages": [
+       "English"
+      ]
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "language",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [
+      "en"
+     ],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "2",
+    "1"
+   ]
+  },
+  {
+   "name": "custom rules apply inside a provider, not across providers",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 720,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "b",
+      "title": "2",
+      "resolution": 2160,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "resolution",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     },
+     {
+      "id": "b",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {
+     "addons": [
+      "a",
+      "b"
+     ]
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "3",
+    "1",
+    "2"
+   ]
+  },
+  {
+   "name": "custom ordering drops what the filters exclude",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "CAM"
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 480,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": true,
+    "rules": [],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 720,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "2"
+   ]
+  },
+  {
+   "name": "filters do nothing without custom ordering",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "CAM"
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": false,
+    "rules": [
+     {
+      "key": "cached",
+      "descending": true
+     },
+     {
+      "key": "resolution",
+      "descending": true
+     },
+     {
+      "key": "quality",
+      "descending": true
+     },
+     {
+      "key": "size",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "1",
+    "2"
+   ]
+  },
+  {
+   "name": "the result cap keeps the first sources after ordering",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 720,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 2160,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "resolution",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": 2,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "2",
+    "3"
+   ]
+  },
+  {
+   "name": "the result cap does nothing without custom ordering",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": false,
+    "rules": [
+     {
+      "key": "cached",
+      "descending": true
+     },
+     {
+      "key": "resolution",
+      "descending": true
+     },
+     {
+      "key": "quality",
+      "descending": true
+     },
+     {
+      "key": "size",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": 2,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "1",
+    "2",
+    "3"
+   ]
+  },
+  {
+   "name": "a screen without HDR puts a provider's SDR before HDR at the same resolution",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "hdr": [
+       "HDR"
+      ]
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 2160,
+      "quality": "WEB-DL",
+      "hdr": [
+       "DV"
+      ]
+     },
+     {
+      "id": "4",
+      "category": "addons",
+      "provider": "a",
+      "title": "4",
+      "resolution": 2160,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": true,
+    "rules": [],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": false,
+    "audioLanguage": null
+   },
+   "expected": [
+    "2",
+    "1",
+    "4",
+    "3"
+   ]
+  },
+  {
+   "name": "a screen with HDR leaves them",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "hdr": [
+       "HDR"
+      ]
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": true,
+    "rules": [],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "1",
+    "2"
+   ]
+  },
+  {
+   "name": "a preferred audio language moves its releases ahead within a provider",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "languages": [
+       "French"
+      ]
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "languages": [
+       "English"
+      ]
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "languages": [
+       "Multi"
+      ]
+     },
+     {
+      "id": "4",
+      "category": "addons",
+      "provider": "a",
+      "title": "4",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": true,
+    "rules": [],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": "en"
+   },
+   "expected": [
+    "2",
+    "3",
+    "1",
+    "4"
+   ]
+  },
+  {
+   "name": "a preferred audio language never crosses providers",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "languages": [
+       "French"
+      ]
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "b",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "languages": [
+       "English"
+      ]
+     }
+    ],
+    "custom": true,
+    "rules": [],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     },
+     {
+      "id": "b",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {
+     "addons": [
+      "a",
+      "b"
+     ]
+    },
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": "en"
+   },
+   "expected": [
+    "1",
+    "2"
+   ]
+  }
+ ]
+}

@@ -30,7 +30,7 @@ public enum ICalendar {
     /// One calendar with these events, as the text of a `.ics` file. Events without a usable date are left out.
     /// `now` stamps when the file was made.
     public static func build(_ events: [ICalendarEvent], now: Date = Date()) -> String {
-        var lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Flow//Upcoming//EN", "CALSCALE:GREGORIAN"]
+        var lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Marquee//Upcoming//EN", "CALSCALE:GREGORIAN"]
         for event in events {
             var body: [String] = []
             if let day = event.day {

@@ -1,0 +1,309 @@
+{
+ "area": "playback-still-watching",
+ "description": "Are You Still Watching? (FlowKit StillWatching, web/src/features/player/stillWatching.ts): events are interaction, pause(time, duration) and advance.",
+ "cases": [
+  {
+   "name": "a new session has counted nothing",
+   "op": "run",
+   "input": {
+    "limit": 3,
+    "events": []
+   },
+   "expected": {
+    "count": 0,
+    "ask": false
+   }
+  },
+  {
+   "name": "each automatic advance adds one",
+   "op": "run",
+   "input": {
+    "limit": 3,
+    "events": [
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ]
+    ]
+   },
+   "expected": {
+    "count": 2,
+    "ask": false
+   }
+  },
+  {
+   "name": "the limit is reached on the third advance",
+   "op": "run",
+   "input": {
+    "limit": 3,
+    "events": [
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ]
+    ]
+   },
+   "expected": {
+    "count": 3,
+    "ask": true
+   }
+  },
+  {
+   "name": "a limit of zero never asks",
+   "op": "run",
+   "input": {
+    "limit": 0,
+    "events": [
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ]
+    ]
+   },
+   "expected": {
+    "count": 10,
+    "ask": false
+   }
+  },
+  {
+   "name": "an interaction starts the count again",
+   "op": "run",
+   "input": {
+    "limit": 3,
+    "events": [
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "interaction"
+     ]
+    ]
+   },
+   "expected": {
+    "count": 0,
+    "ask": false
+   }
+  },
+  {
+   "name": "a pause in the middle starts the count again",
+   "op": "run",
+   "input": {
+    "limit": 3,
+    "events": [
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "pause",
+      600,
+      1800
+     ]
+    ]
+   },
+   "expected": {
+    "count": 0,
+    "ask": false
+   }
+  },
+  {
+   "name": "a pause within three seconds of the end is the episode ending and does not count",
+   "op": "run",
+   "input": {
+    "limit": 3,
+    "events": [
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "pause",
+      1797,
+      1800
+     ]
+    ]
+   },
+   "expected": {
+    "count": 2,
+    "ask": false
+   }
+  },
+  {
+   "name": "a pause exactly three seconds from the end does not count",
+   "op": "run",
+   "input": {
+    "limit": 3,
+    "events": [
+     [
+      "advance"
+     ],
+     [
+      "pause",
+      1797,
+      1800
+     ]
+    ]
+   },
+   "expected": {
+    "count": 1,
+    "ask": false
+   }
+  },
+  {
+   "name": "a pause just over three seconds from the end counts",
+   "op": "run",
+   "input": {
+    "limit": 3,
+    "events": [
+     [
+      "advance"
+     ],
+     [
+      "pause",
+      1796.9,
+      1800
+     ]
+    ]
+   },
+   "expected": {
+    "count": 0,
+    "ask": false
+   }
+  },
+  {
+   "name": "a pause before the length is known counts",
+   "op": "run",
+   "input": {
+    "limit": 3,
+    "events": [
+     [
+      "advance"
+     ],
+     [
+      "pause",
+      10,
+      0
+     ]
+    ]
+   },
+   "expected": {
+    "count": 0,
+    "ask": false
+   }
+  },
+  {
+   "name": "a pause past the end does not count",
+   "op": "run",
+   "input": {
+    "limit": 3,
+    "events": [
+     [
+      "advance"
+     ],
+     [
+      "pause",
+      1900,
+      1800
+     ]
+    ]
+   },
+   "expected": {
+    "count": 1,
+    "ask": false
+   }
+  },
+  {
+   "name": "after answering, the count can build again",
+   "op": "run",
+   "input": {
+    "limit": 2,
+    "events": [
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "interaction"
+     ],
+     [
+      "advance"
+     ]
+    ]
+   },
+   "expected": {
+    "count": 1,
+    "ask": false
+   }
+  },
+  {
+   "name": "one more past the limit still asks",
+   "op": "run",
+   "input": {
+    "limit": 2,
+    "events": [
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ],
+     [
+      "advance"
+     ]
+    ]
+   },
+   "expected": {
+    "count": 5,
+    "ask": true
+   }
+  }
+ ]
+}
