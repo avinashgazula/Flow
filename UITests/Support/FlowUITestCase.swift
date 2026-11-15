@@ -16,6 +16,18 @@ class FlowUITestCase: XCTestCase {
         continueAfterFailure = false
         // A previous test may have left the device turned (the player turns an iPhone to landscape).
         XCUIDevice.shared.orientation = .portrait
+        screenDumped = false
+    }
+
+    private var screenDumped = false
+
+    /// The first failure of a test prints what was really on screen, so a failed run can be read without a screenshot.
+    override func record(_ issue: XCTIssue) {
+        if !screenDumped, app != nil {
+            screenDumped = true
+            print("SCREEN at the first failure (\(issue.compactDescription)):\n" + app.debugDescription)
+        }
+        super.record(issue)
     }
 
     // MARK: Launching
@@ -109,7 +121,8 @@ class FlowUITestCase: XCTestCase {
     /// of some tabs (Search), and the bar may sit along the top (iPad) or at the foot (iPhone).
     func tabButton(_ title: String) -> XCUIElement? {
         let label = NSPredicate(format: "label ==[c] %@", title)
-        for query in [app.tabBars.buttons.matching(label), app.buttons.matching(label)] {
+        for query in [app.tabBars.buttons.matching(label), app.buttons.matching(label),
+                      app.descendants(matching: .any).matching(label)] {
             if let found = query.allElementsBoundByIndex.first(where: { $0.frame.width > 0 && $0.isHittable }) { return found }
         }
         return nil
@@ -209,8 +222,18 @@ class FlowUITestCase: XCTestCase {
     /// seconds long, and a saved point far past its end must be ignored.
     func waitForPlayback(seconds: Double = 1, timeout: TimeInterval = 120, file: StaticString = #filePath, line: UInt = #line) {
         var prompted = false
+        var lastTap = Date.distantPast
         let played = waitUntil(timeout) {
             if self.button(startingWith: "Resume from").exists { prompted = true; return true }
+            // The controls (and the scrubber that tells the time) hide four seconds after playback starts: a tap on the
+            // picture brings them back, at most once in a while so one tap does not hide what the last one showed.
+            if !self.scrubber.exists {
+                if Date().timeIntervalSince(lastTap) > 3 {
+                    lastTap = Date()
+                    self.app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                }
+                return false
+            }
             guard let position = self.playbackPosition() else { return false }
             return position.now >= seconds
         }
