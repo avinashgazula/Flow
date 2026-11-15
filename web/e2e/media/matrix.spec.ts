@@ -143,8 +143,8 @@ for (const [group, clips] of groups) {
           for (let i = 0; i < c.audio.length; i++) {
             await test.step(`sound track ${i + 1} (${c.audio[i]}) can be chosen and plays at ${tones[i]} Hz`, async () => {
               // The clip is twenty seconds and the seek above went past the middle: go back so there is film left to hear. (Only
-              // once: a seek to just before an audio switch's start point is a known gap, noted in the report.)
-              if (i === 0) {
+              // (A seek back to before a switch is safe now: the remuxer no longer counts the new sound as covering the film before it.)
+              {
                 await page.keyboard.press('2')
                 await expectPlaying(page)
               }
@@ -152,6 +152,15 @@ for (const [group, clips] of groups) {
               await expect(items).toHaveCount(c.audio.length)
               await items.nth(i).click()
               await expectHeard(page, tones[i]!, `track ${i + 1} is heard at ${tones[i]} Hz`)
+              await expectPlaying(page)
+            })
+          }
+          if (want.engine === 'remux') {
+            await test.step('a seek back to just before where the new sound begins still plays', async () => {
+              // After a switch the new sound begins at the switch; the film before it has none buffered, and a seek there (0.2 s
+              // short of it) must fetch it again, not wait for sound that is never coming.
+              const start = await page.evaluate(() => document.querySelector('video')!.buffered.start(0))
+              await page.evaluate((to) => void (document.querySelector('video')!.currentTime = to), Math.max(0, start - 0.2))
               await expectPlaying(page)
             })
           }

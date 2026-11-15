@@ -235,7 +235,7 @@ export async function listen(page: Page): Promise<Heard> {
 export async function expectHeard(page: Page, hz: number, message = `${hz} Hz can be heard`) {
   const deadline = Date.now() + 25_000
   let last = ''
-  let suspended = 0
+  let suspended = (await page.evaluate(() => !!(window as unknown as { __noSoundDevice?: boolean }).__noSoundDevice)) ? 3 : 0
   while (Date.now() < deadline) {
     const h = await listen(page)
     if (h.peak > 0.02 && Math.abs(h.hz - hz) <= 12) return
@@ -243,6 +243,7 @@ export async function expectHeard(page: Page, hz: number, message = `${hz} Hz ca
     // A machine with no sound device (Firefox on a CI runner) keeps Web Audio suspended for good: the tone can't be measured
     // there, so the track must at least be decoded and the clock running (Firefox says whether a file has sound: mozHasAudio).
     if (h.state !== 'running' && ++suspended >= 3) {
+      await page.evaluate(() => void ((window as unknown as { __noSoundDevice?: boolean }).__noSoundDevice = true))
       const element = await page.evaluate(() => {
         const v = document.querySelector('video') as HTMLVideoElement & { mozHasAudio?: boolean; webkitAudioDecodedByteCount?: number }
         return { has: v.mozHasAudio, decoded: v.webkitAudioDecodedByteCount, muted: v.muted, volume: v.volume }

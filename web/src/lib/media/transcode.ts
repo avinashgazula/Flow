@@ -117,6 +117,13 @@ export function colourOf(matrix: number, width: number, height: number): { prima
   return { primaries: name, transfer: name, matrix: name, fullRange: false }
 }
 
+/** An encoder that has been given pictures and has produced none after this long is not working, whatever it said when asked. */
+export const ENCODER_STALL_MS = 10_000
+
+/** An encoder that holds more frames than it should and has been quiet this long is asked to hand over what it has. Firefox's keeps frames back until
+ *  it has plenty or is flushed, which with a queue limit is a deadlock: no frames wait to be sent because none come out. */
+export const ENCODER_NUDGE_MS = 700
+
 /** Frames wait for the encoder when this many are still being worked on. */
 const MAX_QUEUE = 2
 const MAX_IN_FLIGHT = 12
@@ -135,6 +142,13 @@ export interface PictureSink {
   videoPacket(size: number, fill: (into: Uint8Array) => void, timestamp: number, duration: number, key: boolean): void
 }
 
+/** An encoder that throws or reports an error says it in its own words ("EncodingError"); the viewer is told what to do next. */
+function explainEncoder(error: unknown): Error {
+  if (error instanceof Error && /^This browser’s video encoder|^Marquee /.test(error.message)) return error
+  const name = error instanceof Error && error.name ? error.name : 'unknown error'
+  return new Error(`This browser’s video encoder failed (${name}). Try another source, or open Marquee in Chrome, Edge or Safari.`)
+}
+
 /** One run's encoder: frames in, packets out into the muxer. A seek makes a new one. */
 export class PictureConverter {
   failure: Error | null = null
@@ -146,6 +160,9 @@ export class PictureConverter {
   private durations = new Map<number, number>()
   private waiters: (() => void)[] = []
   private first: PictureFrame | null = null
+  private submittedAt = 0
+  private heardAt = 0
+  private nudging = false
   frames = 0
   packets = 0
 
@@ -167,13 +184,20 @@ export class PictureConverter {
     if (this.closed || this.failure) return
     if (!this.encoder) {
       this.first = frame
-      const encoder = this.api.create({ output: (chunk, meta) => this.output(chunk, meta), error: (e) => this.fail(e) })
+      this.submittedAt = Date.now()
+      const encoder = this.api.create({ output: (chunk, meta) => this.output(chunk, meta), error: (e) => this.fail(explainEncoder(e)) })
       encoder.addEventListener?.('dequeue', () => this.wake())
       // The encoder is configured for the picture the module actually makes: its even size, which can differ from the stream's by a pixel.
-      encoder.configure({ ...this.config, width: frame.width, height: frame.height })
+      try {
+        encoder.configure({ ...this.config, width: frame.width, height: frame.height })
+      } catch (error) {
+        this.fail(explainEncoder(error))
+        return
+      }
       console.debug(`Marquee media: picture encoder configured ${JSON.stringify({ ...this.config, width: frame.width, height: frame.height })}`)
       this.encoder = encoder
     }
+    if (this.failure) return
     const key = frame.timestamp - this.lastKey >= KEY_EVERY_US - 1
     if (key) this.lastKey = frame.timestamp
     const picture = this.api.frame(frame.data, { format: 'I420', codedWidth: frame.width, codedHeight: frame.height, timestamp: frame.timestamp, duration: frame.duration, colorSpace: colourOf(frame.matrix, frame.width, frame.height) })
@@ -182,6 +206,8 @@ export class PictureConverter {
       this.encoder.encode(picture, { keyFrame: key })
       this.inFlight++
       this.frames++
+    } catch (error) {
+      this.fail(explainEncoder(error))
     } finally {
       picture.close()
     }
@@ -189,6 +215,7 @@ export class PictureConverter {
 
   private output(chunk: EncodedChunkLike, meta?: { decoderConfig?: { description?: ArrayBuffer | ArrayBufferView } }) {
     if (this.closed) return
+    this.heardAt = Date.now()
     if (this.packets === 0) console.debug(`Marquee media: first encoded picture out after ${this.frames} frames in`)
     try {
       if (!this.opened) {
@@ -222,7 +249,22 @@ export class PictureConverter {
   async ready(signal: AbortSignal) {
     while (!signal.aborted && !this.closed) {
       if (this.failure) throw this.failure
+      // Some browsers say they take H.264 and then never hand a picture back: end that with a message, not a spinner.
+      if (this.encoder && this.packets === 0 && this.frames > 0 && Date.now() - this.submittedAt > ENCODER_STALL_MS) {
+        this.fail(new Error('This browser’s video encoder didn’t produce any picture to play. Try another source, or open Marquee in Chrome, Edge or Safari.'))
+        throw this.failure!
+      }
       if (!this.encoder || (this.encoder.encodeQueueSize <= MAX_QUEUE && this.inFlight <= MAX_IN_FLIGHT)) return
+      if (!this.nudging && Date.now() - Math.max(this.heardAt, this.submittedAt) > ENCODER_NUDGE_MS) {
+        this.nudging = true
+        this.encoder
+          .flush()
+          .catch(() => {})
+          .finally(() => {
+            this.nudging = false
+            this.heardAt = Date.now()
+          })
+      }
       await new Promise<void>((resolve) => {
         this.waiters.push(resolve)
         signal.addEventListener('abort', () => resolve(), { once: true })

@@ -80,3 +80,41 @@ test.describe('the player says it when the file is the one that shows it', () =>
     expect(await playerMessage(page, boot)).toMatch(/no video encoder to convert it with\. Try another source, or open Marquee in Chrome, Edge or Safari\.$/)
   })
 })
+
+/* A browser can say it encodes H.264 and then not do it. The engine runs in a worker, which a page script can't reach, so the
+   test puts a stand-in VideoEncoder at the top of the worker's own script as it is served. */
+type Breakage = 'never answers' | 'throws when configured' | 'reports an error after the first picture'
+
+const standIn = (how: Breakage) => `
+globalThis.VideoEncoder = class {
+  static async isConfigSupported(config) { return { supported: true, config } }
+  constructor(init) { this.init = init; this.encodeQueueSize = 0; this.state = 'unconfigured' }
+  configure() { ${how === 'throws when configured' ? "throw new DOMException('This configuration is not supported.', 'NotSupportedError')" : "this.state = 'configured'"} }
+  encode() { this.encodeQueueSize++; ${how === 'reports an error after the first picture' ? "setTimeout(() => this.init.error(new DOMException('Encoding failed.', 'EncodingError')), 50)" : ''} }
+  flush() { return new Promise(() => {}) }
+  addEventListener() {}
+  close() {}
+}
+`
+
+async function breakEncoder(page: Page, how: Breakage) {
+  await page.route(/\/assets\/worker-[^/]+\.js$/, async (route) => {
+    const response = await route.fetch()
+    const body = await response.text()
+    await route.fulfill({ response, body: body.includes('Marquee media: picture encoder') ? standIn(how) + body : body })
+  })
+}
+
+test.describe('an encoder that claims H.264 and then fails ends in the message, not a spinner', () => {
+  const promised = /Try another source/
+  for (const how of ['never answers', 'throws when configured', 'reports an error after the first picture'] as const) {
+    test(`a VideoEncoder that ${how}`, async ({ boot, page }) => {
+      test.setTimeout(90_000)
+      await breakEncoder(page, how)
+      await offer(page, [{ release: 'Matrix.avi', file: 'c-avi-xvid-mp3.avi' }])
+      const text = await playerMessage(page, boot)
+      console.log('MESSAGE', how, JSON.stringify(text))
+      expect(text).toMatch(promised)
+    })
+  }
+})

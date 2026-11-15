@@ -46,6 +46,22 @@ export async function probeBrowser(page: Page): Promise<Probe> {
         } catch (error) {
           out['VideoEncoder did'] = `threw ${(error as Error).name}: ${(error as Error).message}`
         }
+        // The engine never flushes while it streams: does a run of pictures come out on its own?
+        try {
+          let chunks = 0
+          const encoder = new w.VideoEncoder({ output: () => void chunks++, error: () => {} })
+          encoder.configure(config)
+          for (let i = 0; i < 12; i++) {
+            const frame = new VideoFrame(new Uint8Array(320 * 180 * 1.5), { format: 'I420', codedWidth: 320, codedHeight: 180, timestamp: i * 66_000, duration: 66_000 })
+            encoder.encode(frame, { keyFrame: i === 0 })
+            frame.close()
+          }
+          await new Promise((resolve) => setTimeout(resolve, 2000))
+          out['VideoEncoder without flush'] = `${chunks} of 12 pictures out after 2 s, queue ${encoder.encodeQueueSize}`
+          encoder.close()
+        } catch (error) {
+          out['VideoEncoder without flush'] = `threw ${(error as Error).name}`
+        }
       }
 
       // The audio encoder the Matroska path converts sound with.
