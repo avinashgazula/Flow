@@ -339,7 +339,7 @@ class Session implements RemuxSession {
     for (const [event, handler] of [
       ['timeupdate', () => this.tick()],
       ['seeking', () => this.ensure(video.currentTime)],
-      ['waiting', () => this.tick()],
+      ['waiting', () => (this.stepOverGap(), this.tick())],
     ] as const) {
       video.addEventListener(event, handler)
       this.cleanups.push(() => video.removeEventListener(event, handler))
@@ -528,12 +528,17 @@ class Session implements RemuxSession {
     })
   }
 
-  private changed() {
+  /** Data begins a little after the playhead (the first frame sits a few frames after zero; the new sound after an audio switch begins at the
+   *  switch): step over that gap rather than wait for the browser to, which it may not do when nothing more is coming. */
+  private stepOverGap() {
     const video = this.element
-    // The first frame sits a few frames after zero; step over that gap rather than waiting for the browser to.
     if (video.readyState < 2 && video.buffered.length && video.buffered.start(0) > video.currentTime && video.buffered.start(0) - video.currentTime < 0.5) {
       video.currentTime = video.buffered.start(0)
     }
+  }
+
+  private changed() {
+    this.stepOverGap()
     if (this.initialised && this.waiters.length) {
       this.waiters = this.waiters.filter((w) => {
         if (!this.covered(w.time, w.margin)) return true
