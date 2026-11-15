@@ -11,3 +11,4 @@ proxy/wrangler.toml
 test-results
 playwright-report
 e2e/media/generated
+coverage

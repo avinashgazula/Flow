@@ -76,5 +76,16 @@ export default defineConfig({
   },
   worker: { format: 'es' },
   server: { port: 5173 },
-  test: { environment: 'node', include: ['src/**/*.test.ts', 'proxy/**/*.test.js'] },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts', 'proxy/**/*.test.js'],
+    // `npm run coverage` measures the logic modules (.ts: the React components are covered by the browser tests, not here) and
+    // scripts/coverage-floors.mjs holds each folder to its floor in coverage-floors.json.
+    coverage: {
+      provider: 'v8',
+      include: ['src/lib/**/*.ts', 'src/features/**/*.ts'],
+      exclude: ['**/*.test.ts', '**/*.d.ts', '**/__fixtures__/**', 'src/lib/**/pkg/**'],
+      reporter: ['json-summary', 'text-summary'],
+    },
+  },
 })

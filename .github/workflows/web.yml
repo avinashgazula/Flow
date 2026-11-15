@@ -39,6 +39,9 @@ jobs:
         run: npx tsc
       - name: Unit tests
         run: npm test
+      - name: Unit test coverage floors
+        # Line coverage of src/lib and src/features by folder (v8); a folder under its floor in web/coverage-floors.json fails.
+        run: npm run coverage
       - name: Rust tests
         if: hashFiles('web/crates/*/Cargo.toml') != ''
         run: for crate in crates/*/; do (cd "$crate" && cargo test --release); done
