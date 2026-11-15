@@ -10,6 +10,24 @@ const KEEP_BEHIND = 60
 const TRIM_TO = 30
 /** A gap this small between a range and a time counts as contiguous (the first frame sits a few frames after zero). */
 const TOLERANCE = 0.3
+/** Past the first seconds of the film a range holds a time only if it begins within this much of it. After an audio switch the new
+ *  sound begins at the switch, and the picture before it must not count as covered by it. */
+const EDGE = 0.1
+
+interface RangesLike {
+  readonly length: number
+  start(index: number): number
+  end(index: number): number
+}
+
+/** The end of the range holding `time`, or null when none does. */
+export function rangeEndAt(ranges: RangesLike, time: number): number | null {
+  for (let i = 0; i < ranges.length; i++) {
+    const slack = ranges.start(i) < 1 ? TOLERANCE : EDGE
+    if (ranges.start(i) - slack <= time && time <= ranges.end(i) + 0.05) return ranges.end(i)
+  }
+  return null
+}
 
 interface Op {
   epoch: number
@@ -35,8 +53,15 @@ export function isMediaSourceSupported(): boolean {
   return typeof window !== 'undefined' && ('MediaSource' in window || 'ManagedMediaSource' in window)
 }
 
+/** Firefox says it plays MP3 in MP4 through MediaSource and then fails with "Media resource could not be decoded" (seen in the browser
+ *  tests, Firefox on Linux). Its yes is not trusted for that one format, so the sound is converted like any other it can't play. */
+export function claimTrusted(mime: string, userAgent: string): boolean {
+  return !(/Firefox\//.test(userAgent) && /audio\/mp4;\s*codecs="?(mp3|mp4a\.6[9bB])/i.test(mime))
+}
+
 /** MediaSource.isTypeSupported on whichever implementation will be used. */
 export function typeSupported(mime: string): boolean {
+  if (typeof navigator !== 'undefined' && !claimTrusted(mime, navigator.userAgent)) return false
   const Source = (managed() ?? (globalThis as { MediaSource?: typeof MediaSource }).MediaSource) as typeof MediaSource | undefined
   try {
     return !!Source?.isTypeSupported(mime)
@@ -107,6 +132,7 @@ export class MseSink {
   /** Creates the SourceBuffer for a track. */
   add(kind: BufferKind, mime: string) {
     if (this.destroyed) return
+    console.debug(`Marquee media: adding a source buffer for ${mime}`)
     const sb = this.source.addSourceBuffer(mime)
     // Fragments carry absolute decode times, so they land where they belong whatever order they come in.
     sb.mode = 'segments'
@@ -199,6 +225,8 @@ export class MseSink {
         try {
           await op.run()
         } catch (error) {
+          // The viewer gets a plain sentence; the browser's own reason is for whoever looks in the console.
+          console.warn(`Marquee media: the browser refused the video data (${error instanceof Error ? `${error.name}: ${error.message}` : String(error)})`)
           if (!this.destroyed) this.events.onError(error instanceof Error && error.name === 'QuotaExceededError' ? 'This browser ran out of room for video. Close other tabs and try again.' : 'This browser couldn’t play the video. Try another source.')
           break
         }
@@ -310,10 +338,7 @@ export class MseSink {
     const slot = this.slots[kind]
     if (!slot) return null
     try {
-      const ranges = slot.sb.buffered
-      for (let i = 0; i < ranges.length; i++) {
-        if (ranges.start(i) - TOLERANCE <= time && time <= ranges.end(i) + 0.05) return ranges.end(i)
-      }
+      return rangeEndAt(slot.sb.buffered, time)
     } catch {
       // The buffer was removed under us.
     }

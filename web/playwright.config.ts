@@ -12,7 +12,8 @@ const executablePath = process.env.E2E_CHROMIUM_PATH
 
 // Firefox floats its own Picture-in-Picture toggle over a playing video, where the player's menus open, and takes the click
 // meant for a menu row. It is the browser's own control, not the site's.
-const firefoxPrefs = { 'media.videocontrols.picture-in-picture.video-toggle.enabled': false }
+// The playback matrix listens to the sound through Web Audio, which Firefox keeps suspended until it is allowed to autoplay.
+const firefoxPrefs = { 'media.videocontrols.picture-in-picture.video-toggle.enabled': false, 'media.autoplay.default': 0, 'media.autoplay.blocking_policy': 0 }
 
 const engines: Record<string, { desktop: Project['use']; phone: Project['use'] }> = {
   chromium: {
@@ -35,13 +36,15 @@ const projects: Project[] = browsers.flatMap((browser) => {
   if (!use) throw new Error(`E2E_BROWSERS names an unknown browser: ${browser}`)
   return [
     { name: `${browser}-desktop`, use: use.desktop, metadata: { phone: false } },
-    { name: `${browser}-phone`, use: use.phone, metadata: { phone: true } },
+    { name: `${browser}-phone`, use: use.phone, metadata: { phone: true }, testIgnore: '**/media/**' },
   ]
 })
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: '**/*.spec.ts',
+  // E2E_SUITE=site runs the site's tests, media the playback matrix (e2e/media, which needs the clips from npm run e2e-media-fixtures); unset runs both.
+  testMatch: process.env.E2E_SUITE === 'media' ? '**/media/*.spec.ts' : '**/*.spec.ts',
+  testIgnore: process.env.E2E_SUITE === 'site' ? '**/media/**' : undefined,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   // No blanket retries: a test that needs one is a flake, and CI lists it in the job summary.

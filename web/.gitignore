@@ -10,3 +10,5 @@ proxy/wrangler.toml
 .impeccable/review/
 test-results
 playwright-report
+e2e/media/generated
+coverage

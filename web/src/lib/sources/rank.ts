@@ -41,7 +41,7 @@ const resolutionNames: Record<ResolutionClass, Source['resolution']> = { 0: unde
 const videoNames: Record<string, Source['videoCodec']> = { H264: 'H.264', HEVC: 'HEVC', AV1: 'AV1', VP9: 'VP9' }
 const hdrNames = new Set(['DV', 'HDR10+', 'HDR10', 'HDR', 'HLG'])
 /** Containers the browser can't open and the Matroska remuxer doesn't read: the FFmpeg engine (src/lib/media) plays them. */
-const universalContainers = new Set(['avi', 'wmv', 'asf', 'flv', 'ts', 'm2ts', 'mts', 'mpg', 'mpeg', 'vob', 'divx', 'rmvb', 'rm', '3gp', '3g2', 'ogm'])
+const universalContainers = new Set(['ogv', 'ogg', 'ogx', 'avi', 'wmv', 'asf', 'flv', 'ts', 'm2ts', 'mts', 'mpg', 'mpeg', 'vob', 'divx', 'rmvb', 'rm', '3gp', '3g2', 'ogm'])
 /** Files a browser opens by itself (and Marquee hands to it) when their sound plays. */
 const nativeContainers = new Set(['mp4', 'm4v', 'mov', 'webm'])
 /** Disc images hold a whole disc, not one film: there's nothing to play until it's unpacked. */
