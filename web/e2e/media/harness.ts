@@ -227,7 +227,16 @@ export async function audioChoices(page: Page) {
 
 /** The picture is the clip's: the test pattern's colour bars are where they should be. A file can play with its clock running
  *  and its sound on while the picture is black or missing (a codec the browser skips), so the clock alone proves nothing. */
-export async function expectPicture(page: Page) {
+export async function expectPicture(page: Page, how: 'pixels' | 'frames' = 'pixels') {
+  if (how === 'frames') {
+    // Where a browser's canvas won't hand over a frame of a video that has just seeked (Playwright's WebKit build), count what
+    // it says it showed: the video has a size and the frames shown keep growing.
+    const shown = () => page.evaluate(() => ({ w: document.querySelector('video')!.videoWidth, n: document.querySelector('video')!.getVideoPlaybackQuality?.().totalVideoFrames ?? 0 }))
+    const first = await shown()
+    expect(first.w, 'the video has a picture size').toBeGreaterThan(0)
+    await expect.poll(async () => (await shown()).n, { message: 'the browser keeps showing frames', timeout: 10_000 }).toBeGreaterThan(first.n)
+    return
+  }
   await expect
     .poll(
       () =>

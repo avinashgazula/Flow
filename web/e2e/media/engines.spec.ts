@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures'
+import { readFacts } from './facts'
 import { expectHeard, expectSeek, offer, pickAndPlay, playbackInfo } from './harness'
 
 /* One file for each way the site plays something, opened through the real player (add-on → picker → player) and checked
@@ -24,10 +25,13 @@ for (const p of paths) {
   })
 }
 
-test('an HLS stream plays in hls.js, or in the browser itself where it plays HLS (Safari)', async ({ boot, page, browserName }) => {
+test('an HLS stream plays in hls.js, or in the browser itself where it plays HLS (Safari)', async ({ boot, page }) => {
+  await page.goto('/?demo')
+  const { nativeHls } = await readFacts(page)
+  await page.waitForLoadState('networkidle')
   await offer(page, [{ release: 'Matrix.480p.WEB-DL.AAC.H264.m3u8', file: 'hls/master.m3u8' }])
   await pickAndPlay(page, boot)
   const info = await playbackInfo(page)
-  expect(info.Engine).toBe(browserName === 'webkit' ? 'Browser’s own player' : 'HLS in hls.js')
+  expect(info.Engine).toBe(nativeHls ? 'Browser’s own player' : 'HLS in hls.js')
   await expectHeard(page, 440)
 })

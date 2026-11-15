@@ -32,8 +32,10 @@ const names = { engine: { native: /^Browser’s own player$/, remux: /^Matroska 
 /** What the README promises for this clip in a browser with these facts. */
 export function outcomeFor(c: Clip, f: Facts): Outcome {
   const first = c.audio[0]!
-  const asIs = (a: string) => a === 'AAC' || (a === 'Opus' && f.mseOpus) || (a === 'FLAC' && f.mseFlac) || (a === 'Dolby Digital' && f.mseAc3) || (a === 'Dolby Digital Plus' && f.mseEac3)
-  // Sound only the engines can decode: no browser has these.
+  // Sound the browser decodes plays as it is. (Some builds decode more than Chrome does: WebKit with GStreamer's decoders plays DTS.)
+  const asIs = (a: string) =>
+    a === 'AAC' || (a === 'Opus' && f.mseOpus) || (a === 'FLAC' && f.mseFlac) || (a === 'MP3' && f.mseMp3) || (a === 'DTS' && f.mseDts) || (a === 'TrueHD' && f.mseTruehd) || (a === 'Dolby Digital' && f.mseAc3) || (a === 'Dolby Digital Plus' && f.mseEac3)
+  // Sound the engines convert when the browser doesn't decode it.
   const never = (a: string) => ['DTS', 'TrueHD', 'Vorbis', 'PCM', 'MP2', 'WMA'].includes(a)
   const audio: Outcome['audio'] = asIs(first) ? 'as is' : never(first) || first.startsWith('Dolby') ? 'converted' : 'unknown'
   const noEncoder = { fails: /encoder/i }
@@ -85,11 +87,13 @@ const groups: [string, Clip[]][] = [
 for (const [group, clips] of groups) {
   test.describe(group, () => {
     for (const c of clips) {
-      test(c.id, async ({ boot, page }) => {
+      test(c.id, async ({ boot, page, browserName }) => {
         test.setTimeout(120_000)
         // The facts need a page on the site's origin (WebCodecs wants a secure context), so the app is opened first.
         await page.goto('/?demo')
         const facts = await readFacts(page)
+        // The first page settles (it tidies its own address) before the player is opened, or WebKit cuts the second navigation short.
+        await page.waitForLoadState('networkidle')
         const want = outcomeFor(c, facts)
         test.info().annotations.push({ type: 'expected', description: `${want.engine}${want.videoConverted ? ', picture converted' : ''}, audio ${want.audio}${want.fails ? `, fails (${want.fails})` : ''}` })
         if (!(await play(page, boot, c, want))) return
@@ -116,7 +120,7 @@ for (const [group, clips] of groups) {
         })
         await test.step('the first sound track is audible', () => expectHeard(page, tones[0]))
         await test.step('a seek lands and playback goes on', () => expectSeek(page))
-        await test.step('the picture is still right after the seek', () => expectPicture(page))
+        await test.step('the picture is still right after the seek', () => expectPicture(page, browserName === 'webkit' ? 'frames' : 'pixels'))
 
         if (c.audio.length > 1) {
           for (let i = 0; i < c.audio.length; i++) {

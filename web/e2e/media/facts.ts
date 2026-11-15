@@ -18,6 +18,9 @@ export interface Facts {
   mseEac3: boolean
   mseOpus: boolean
   mseFlac: boolean
+  mseMp3: boolean
+  mseDts: boolean
+  mseTruehd: boolean
   /** A plain <video src> plays Dolby Digital (Plus). */
   playsAc3: boolean
   playsEac3: boolean
@@ -55,6 +58,9 @@ export const readFacts = (page: Page): Promise<Facts> =>
       mseEac3: mse('audio/mp4; codecs="ec-3"'),
       mseOpus: mse('audio/mp4; codecs="opus"'),
       mseFlac: mse('audio/mp4; codecs="flac"'),
+      mseMp3: mse('audio/mp4; codecs="mp3"') || mse('audio/mp4; codecs="mp4a.6b"') || mse('audio/mp4; codecs="mp4a.69"'),
+      mseDts: mse('audio/mp4; codecs="dtsc"') || mse('audio/mp4; codecs="dtse"'),
+      mseTruehd: mse('audio/mp4; codecs="mlpa"'),
       playsAc3: plays('video/mp4; codecs="ac-3"'),
       playsEac3: plays('video/mp4; codecs="ec-3"'),
       opusEncoder,
