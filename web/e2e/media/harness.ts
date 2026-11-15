@@ -134,7 +134,22 @@ export async function startPlaying(page: Page, boot: (path: string) => Promise<v
 export async function pickAndPlay(page: Page, boot: (path: string) => Promise<void>) {
   const rows = await startPlaying(page, boot)
   await rows.first().click()
-  await expectPlaying(page)
+  try {
+    await expectPlaying(page)
+  } catch (error) {
+    throw new Error(`${(error as Error).message}\n${await whatHappened(page)}`)
+  }
+}
+
+/** For a failure message: the player's error if it shows one, and where the element stands. */
+export async function whatHappened(page: Page) {
+  const alert = page.getByRole('alertdialog')
+  const shown = (await alert.isVisible().catch(() => false)) ? await alert.innerText().catch(() => '') : 'no error shown'
+  const element = await page.evaluate(() => {
+    const v = document.querySelector('video')
+    return v ? `time ${v.currentTime.toFixed(2)}, ready ${v.readyState}, network ${v.networkState}, error ${v.error?.code ?? 'none'} ${v.error?.message ?? ''}` : 'no video element'
+  })
+  return `player: ${shown.replace(/\n+/g, ' | ')}; element: ${element}`
 }
 
 export interface Info {
@@ -176,7 +191,7 @@ export async function listen(page: Page): Promise<Heard> {
     const video = document.querySelector('video')!
     if (!w.__meter || w.__meter.element !== video) {
       const context = new AudioContext()
-      await context.resume().catch(() => undefined)
+      await Promise.race([context.resume().catch(() => undefined), new Promise((r) => setTimeout(r, 2000))])
       const analyser = context.createAnalyser()
       analyser.fftSize = 16384
       analyser.smoothingTimeConstant = 0
@@ -185,7 +200,7 @@ export async function listen(page: Page): Promise<Heard> {
       w.__meter = { context, analyser, element: video }
     }
     const { context, analyser } = w.__meter
-    await context.resume().catch(() => undefined)
+    await Promise.race([context.resume().catch(() => undefined), new Promise((r) => setTimeout(r, 2000))])
     // Let half a second of what is playing go through.
     await new Promise((resolve) => setTimeout(resolve, 600))
     const wave = new Float32Array(analyser.fftSize)
@@ -214,7 +229,8 @@ export async function expectHeard(page: Page, hz: number, message = `${hz} Hz ca
     const v = document.querySelector('video')!
     return `time ${v.currentTime.toFixed(2)}, paused ${v.paused}, muted ${v.muted}, volume ${v.volume}, ready ${v.readyState}, error ${v.error?.code ?? 'none'}`
   })
-  throw new Error(`${message}: last heard ${last} (${element})`)
+  const info = JSON.stringify(await rows(page).catch(() => ({})))
+  throw new Error(`${message}: last heard ${last} (${element}) Playback Info ${info}`)
 }
 
 /** Opens Audio and Subtitles and returns the audio choices, by their visible text ("English · AAC Stereo", with "Converted" under it when it is). */

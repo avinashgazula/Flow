@@ -2,7 +2,7 @@ import { test, expect } from '../fixtures'
 import { expectPlaying, videoState } from '../helpers'
 import { converted, matroska, native, universal, type Clip, tones } from './clips'
 import { readFacts, type Facts } from './facts'
-import { audioChoices, expectHeard, expectPicture, expectSeek, offer, playbackInfo, startPlaying } from './harness'
+import { audioChoices, expectHeard, expectPicture, expectSeek, offer, playbackInfo, startPlaying, whatHappened } from './harness'
 
 /* The matrix: every clip (container × picture codec × sound codec) through the real player, in each browser. What each
    browser should do is written from the README's promises and what the browser itself says it decodes (facts.ts):
@@ -72,7 +72,7 @@ async function play(page: import('../fixtures').Page, boot: (path: string) => Pr
     await expect(alert.locator('#player-error-message')).toHaveText(want.fails)
     return false
   }
-  await expect.poll(async () => (await videoState(page))?.ready ?? 0, { message: 'the video has data to show', timeout: 40_000 }).toBeGreaterThanOrEqual(3)
+  await expect.poll(async () => (await videoState(page))?.ready ?? 0, { message: `the video has data to show (${await whatHappened(page).catch(() => '')})`, timeout: 40_000 }).toBeGreaterThanOrEqual(3)
   const before = (await videoState(page))!.time
   await expect.poll(async () => (await videoState(page))!.time, { message: 'the clock advances', timeout: 30_000 }).toBeGreaterThan(before + 0.4)
   return true
