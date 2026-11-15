@@ -8,3 +8,5 @@ crates/*/target
 proxy/wrangler.toml
 .wrangler
 .impeccable/review/
+test-results
+playwright-report

@@ -1,0 +1,1513 @@
+{
+ "area": "track-selection",
+ "description": "Which audio track and subtitle a stream starts with (FlowKit TrackSelection.decide, web/src/features/player/languages.ts). The website's Off mode and a forced track in the audio's own language when no setting asks for one are not compared: see the report.",
+ "cases": [
+  {
+   "name": "the first preferred language the file has plays",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "fr"
+     },
+     {
+      "id": 2,
+      "language": "en"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 2,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "the fallback language is tried when the first is missing",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     },
+     {
+      "id": 2,
+      "language": "fr"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "ja",
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "the preferred language beats the fallback even when the fallback comes first in the file",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     },
+     {
+      "id": 2,
+      "language": "ja"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "ja",
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 2,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "a three-letter tag matches a two-letter setting",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "fra"
+     },
+     {
+      "id": 2,
+      "language": "eng"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 2,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "a regional tag matches",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "fr-CA"
+     },
+     {
+      "id": 2,
+      "language": "en-GB"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 2,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "a commentary track is never chosen when the language has another",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en",
+      "commentary": true
+     },
+     {
+      "id": 2,
+      "language": "en"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 2,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "an undetermined track is not a match",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "und"
+     },
+     {
+      "id": 2,
+      "language": "en"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 2,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "two tracks in the language: the first plays",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     },
+     {
+      "id": 2,
+      "language": "en"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "what the viewer picked for this show comes before the settings",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     },
+     {
+      "id": 2,
+      "language": "fr"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {
+     "audio": "fr"
+    }
+   },
+   "expected": {
+    "audio": 2,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "a show's audio choice that the file lacks falls back to the settings",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     },
+     {
+      "id": 2,
+      "language": "ja"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {
+     "audio": "fr"
+    }
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "anime with Sub puts Japanese first",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     },
+     {
+      "id": 2,
+      "language": "ja"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": "sub",
+    "choice": {}
+   },
+   "expected": {
+    "audio": 2,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "anime with Sub and no Japanese track uses the settings",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "fr"
+     },
+     {
+      "id": 2,
+      "language": "en"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": "sub",
+    "choice": {}
+   },
+   "expected": {
+    "audio": 2,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "anime with Dub keeps the viewer's language",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "ja"
+     },
+     {
+      "id": 2,
+      "language": "en"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [],
+    "mode": "never",
+    "type": "standard",
+    "anime": "dub",
+    "choice": {}
+   },
+   "expected": {
+    "audio": 2,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "always: a subtitle in the first language is chosen",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "fr"
+     },
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "always: the first subtitle language before the second",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "fr"
+     },
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "fr",
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "always: the file's own subtitle beats one from a search",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en",
+      "online": true
+     },
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "always: a second language in the file beats the first online",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "fr",
+      "online": true
+     },
+     {
+      "id": 11,
+      "language": "de"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "fr",
+     "de"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "always: an online subtitle is taken when the file has none",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en",
+      "online": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "always: nothing in the languages means a search, languages in order",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "de"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en",
+     "fr"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "search",
+     "languages": [
+      "en",
+      "fr"
+     ]
+    }
+   }
+  },
+  {
+   "name": "always: no subtitles at all means a search",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "search",
+     "languages": [
+      "en"
+     ]
+    }
+   }
+  },
+  {
+   "name": "always: forced subtitles are not full subtitles",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en",
+      "forced": true
+     },
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "always: only a forced track in the language means a search",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "search",
+     "languages": [
+      "en"
+     ]
+    }
+   }
+  },
+  {
+   "name": "always: the standard kind is chosen over SDH by default",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en",
+      "sdh": true
+     },
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "always: SDH is chosen when the viewer prefers it",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "sdh": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "sdh",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "always: the other kind is taken when the preferred one is missing",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "sdh",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "always: a regional subtitle tag matches",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "pt-BR"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "pt"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "forced only: a forced track in the viewer's language plays",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en",
+      "forced": true
+     },
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "forced",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "forced only: no forced track means none",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "forced",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "forced only: the first language's forced track before the second's",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "fr",
+      "forced": true
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en",
+     "fr"
+    ],
+    "mode": "forced",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "forced only: a forced track from a search is not used",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en",
+      "forced": true,
+      "online": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "forced",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "foreign: audio in the viewer's language plays only forced subtitles",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en",
+      "forced": true
+     },
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "foreign: audio in the viewer's language and no forced track means none",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "foreign: audio in another language gets full subtitles",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "fr"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en",
+      "forced": true
+     },
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "fr"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "foreign: audio in another language and none in the file means a search",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "fr"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "de"
+     }
+    ],
+    "audioLanguages": [
+     "fr"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "search",
+     "languages": [
+      "en"
+     ]
+    }
+   }
+  },
+  {
+   "name": "foreign: a regional audio tag still counts as the viewer's language",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en-GB"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "off: no subtitles, none in the file",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "a show with subtitles turned off stays off",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {
+     "subtitle": "off"
+    }
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "a show's subtitle language beats every setting, even Off",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "fr"
+     },
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {
+     "subtitle": "fr"
+    }
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "a show's subtitle language beats the first setting language",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "fr"
+     },
+     {
+      "id": 11,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {
+     "subtitle": "fr"
+    }
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "anime Sub always shows subtitles, whatever the mode",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     },
+     {
+      "id": 2,
+      "language": "ja"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "never",
+    "type": "standard",
+    "anime": "sub",
+    "choice": {}
+   },
+   "expected": {
+    "audio": 2,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "anime Dub shows none, not even always",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": "dub",
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "anime Dub shows no forced subtitles either",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "forced",
+    "type": "standard",
+    "anime": "dub",
+    "choice": {}
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  }
+ ]
+}

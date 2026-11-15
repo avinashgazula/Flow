@@ -141,6 +141,11 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private var legibleGroup: AVMediaSelectionGroup?
     /// This stream plays in the built-in player and stays there, also when it reloads after a drop.
     @ObservationIgnored private var universalRouted = false
+    /// Watches a remuxed start that never becomes ready, and whether it was already tried again.
+    @ObservationIgnored private var stallTask: Task<Void, Never>?
+    @ObservationIgnored private var stallRetried = false
+    /// The remuxer is reading a file on this device, not a link: only then is a slow start certainly a stuck one.
+    @ObservationIgnored private var remuxesLocalFile = false
     #if DEBUG
     /// `-FlowPlayerEngine universal` (and the screenshot tour) send every stream to the built-in player.
     static var forcesUniversal: Bool { forcedUniversal || UserDefaults.standard.string(forKey: "FlowPlayerEngine") == "universal" }
@@ -241,6 +246,7 @@ final class PlaybackSession: Identifiable {
             return
         }
         loadTask?.cancel()
+        stallTask?.cancel()
         recoveryTask?.cancel()
         // An analysis of the old stream's soundtrack says nothing about the new one's.
         autoSyncTask?.cancel()
@@ -267,6 +273,9 @@ final class PlaybackSession: Identifiable {
 
     /// Picks the path for this stream: straight to AVPlayer, through the remuxer, or out to another app.
     private func prepare(_ source: StreamSource, url: URL) async {
+        // A built-in player that was just closed is still being destroyed in the background, sharing FFmpeg and the audio
+        // output with what starts now.
+        await UniversalPlayer.waitForTeardown()
         await resolveAnime()
         let headers = source.location.headers
         var container = ContainerDetector.container(url: url, filename: source.filename)
@@ -312,6 +321,7 @@ final class PlaybackSession: Identifiable {
     }
 
     private func startRemux(url: URL, headers: [String: String], reader: ByteSource? = nil) async {
+        remuxesLocalFile = url.isFileURL
         phase = .connecting(0.2)
         do {
             let languages = audioLanguages
@@ -411,8 +421,31 @@ final class PlaybackSession: Identifiable {
             Task { @MainActor in await self?.didFinish() }
         }
         beginNowPlaying()
+        watchForStall(item)
         // With a saved position and "Ask Before Resuming", wait for the viewer's choice.
         if !(resumeAt != nil && model?.settings.playback.askToResume == true) { player.play() }
+    }
+
+    /// A remuxed file on this device (a download, a bundled sample) needs no network to start. If its item still isn't
+    /// playing after 20 seconds, AVPlayer or the remuxer is stuck: load it again once (finished segments are kept, so that
+    /// is quick), and if that stalls too, show the error screen instead of "connecting" for ever. A remuxed link is left
+    /// alone: a slow server can honestly take longer than that, and loading again would throw away what has arrived.
+    private func watchForStall(_ item: AVPlayerItem) {
+        stallTask?.cancel()
+        guard usesRemux, remuxesLocalFile else { return }
+        stallTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 20_000_000_000)
+            guard !Task.isCancelled, let self, !self.isClosed, self.player.currentItem === item, !self.didStart, self.resumePrompt == nil,
+                  case .connecting = self.phase else { return }
+            ScreenshotTour.log("stalled: item status \(item.status.rawValue), \(self.stallRetried ? "giving up" : "loading again")")
+            if self.stallRetried {
+                self.failureDetail = "No picture after 20 s twice (item status \(item.status.rawValue))"
+                self.fail("This file didn't start. Try again, or try another source.")
+            } else {
+                self.stallRetried = true
+                self.retry()
+            }
+        }
     }
 
     /// The viewer's audio languages, for streams that carry several (HLS renditions, multi-track MP4s and
@@ -634,6 +667,7 @@ final class PlaybackSession: Identifiable {
         guard !alternatives.isEmpty else { return }
         let next = alternatives.removeFirst()
         source = next
+        stallRetried = false
         remuxCompatible = false
         universalRouted = false
         keptTracks = nil
@@ -1353,6 +1387,7 @@ final class PlaybackSession: Identifiable {
         if didStart, currentTime > 1 { recoverAt = currentTime }
         alternatives = sources.filter { $0.id != next.id }
         source = next
+        stallRetried = false
         remuxCompatible = false
         universalRouted = false
         recoveries = 0
@@ -1385,6 +1420,7 @@ final class PlaybackSession: Identifiable {
             self.source = source
             alternatives = []
             sources = [source]
+            stallRetried = false
             remuxCompatible = false
             universalRouted = false
             upNext = nil
@@ -1639,6 +1675,7 @@ final class PlaybackSession: Identifiable {
         isClosed = true
         countdownTask?.cancel()
         loadTask?.cancel()
+        stallTask?.cancel()
         recoveryTask?.cancel()
         extrasTask?.cancel()
         trackTask?.cancel()

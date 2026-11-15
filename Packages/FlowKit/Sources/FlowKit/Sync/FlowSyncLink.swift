@@ -38,8 +38,11 @@ public struct FlowSyncPairing: Codable, Equatable, Sendable {
         if !text.contains("://") { text = "https://" + text }
         guard let components = URLComponents(string: text), let scheme = components.scheme?.lowercased(), scheme == "https" || scheme == "http",
               let host = components.host?.lowercased(), !host.isEmpty else { throw FlowSyncError.invalidServer }
-        var origin = "\(scheme)://" + (host.contains(":") ? "[\(host)]" : host)
-        if let port = components.port { origin += ":\(port)" }
+        // Foundation on Apple platforms hands back an IPv6 host without its brackets and swift-corelibs-foundation with them.
+        let bare = host.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        var origin = "\(scheme)://" + (bare.contains(":") ? "[\(bare)]" : bare)
+        // The default port is part of the scheme, and an origin leaves it out (as the website's does).
+        if let port = components.port, !(scheme == "https" && port == 443), !(scheme == "http" && port == 80) { origin += ":\(port)" }
         return origin
     }
 }
@@ -50,8 +53,8 @@ public enum FlowSyncLink {
     public static let scheme = "flow"
     public static let host = "sync"
 
-    /// ASCII letters, digits and `-._~`, as `encodeURIComponent` would leave them (plus a few it would too).
-    private static let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+    /// Exactly what `encodeURIComponent` leaves alone, so a link made here is the same text as one made on the website.
+    private static let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~!'()*")
 
     private static func parameters(_ pairing: FlowSyncPairing) -> String {
         func encode(_ value: String) -> String { value.addingPercentEncoding(withAllowedCharacters: unreserved) ?? value }
@@ -90,7 +93,8 @@ public enum FlowSyncLink {
         for pair in query.split(separator: "&") {
             let parts = pair.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
             guard parts.count == 2 else { continue }
-            values[String(parts[0])] = String(parts[1]).removingPercentEncoding ?? String(parts[1])
+            // The first of a repeated parameter counts, as on the website.
+            if values[String(parts[0])] == nil { values[String(parts[0])] = String(parts[1]).removingPercentEncoding ?? String(parts[1]) }
         }
         guard let key = values["k"], let server = values["s"] else { throw FlowSyncError.invalidLink }
         return try FlowSyncPairing(key: key, server: server, token: values["t"] ?? "")

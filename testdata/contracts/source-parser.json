@@ -1,0 +1,2100 @@
+{
+ "area": "source-parser",
+ "description": "Quality traits read from free-form stream text, season and episode from a file name, titles and sizes (docs/SOURCE_LINKS.md, web/README.md): FlowKit's StreamParser and web/src/lib/sources/parser.ts. A parse case checks only the fields it names.",
+ "cases": [
+  {
+   "name": "a UHD remux with Dolby Vision, HDR, HEVC and TrueHD Atmos",
+   "op": "parse",
+   "input": [
+    "Dune.Part.Two.2024.2160p.UHD.BluRay.REMUX.HDR.DV.HEVC.TrueHD.Atmos.7.1-FraMeSToR.mkv"
+   ],
+   "expected": {
+    "resolution": 2160,
+    "quality": "REMUX",
+    "videoCodec": "HEVC",
+    "hdr": [
+     "DV",
+     "HDR"
+    ],
+    "audioCodec": "TrueHD Atmos",
+    "audioChannels": "7.1",
+    "releaseGroup": "framestor"
+   }
+  },
+  {
+   "name": "a web release with DDP, Atmos and H.264",
+   "op": "parse",
+   "input": [
+    "Movie.2020.1080p.WEB-DL.DDP5.1.Atmos.H.264-NTb.mkv"
+   ],
+   "expected": {
+    "resolution": 1080,
+    "quality": "WEB-DL",
+    "videoCodec": "H264",
+    "hdr": [],
+    "audioCodec": "Atmos",
+    "audioChannels": "5.1",
+    "releaseGroup": "ntb"
+   }
+  },
+  {
+   "name": "an add-on's three-line description: resolution, HDR, size and seeders",
+   "op": "parse",
+   "input": [
+    "Torrentio\n4k DV | HDR\nDune Part Two (2024) 2160p WEB-DL DDP5.1 Atmos HEVC\n👤 123 💾 18.5 GB ⚙️ ThePirateBay"
+   ],
+   "expected": {
+    "resolution": 2160,
+    "quality": "WEB-DL",
+    "hdr": [
+     "DV",
+     "HDR"
+    ],
+    "audioCodec": "Atmos",
+    "seeders": 123,
+    "sizeBytes": 19864223744,
+    "videoCodec": "HEVC"
+   }
+  },
+  {
+   "name": "pieces are joined and a missing piece is skipped",
+   "op": "parse",
+   "input": [
+    "Show S01E02",
+    null,
+    "Show.S01E02.720p.HDTV.x264-LOL.mkv"
+   ],
+   "expected": {
+    "resolution": 720,
+    "quality": "HDTV",
+    "videoCodec": "H264",
+    "releaseGroup": "lol"
+   }
+  },
+  {
+   "name": "nothing recognisable gives nothing",
+   "op": "parse",
+   "input": [
+    "Some Random Title"
+   ],
+   "expected": {
+    "resolution": 0,
+    "quality": "Unknown",
+    "videoCodec": null,
+    "hdr": [],
+    "audioCodec": null,
+    "audioChannels": null,
+    "sizeBytes": null,
+    "languages": [],
+    "isCached": null,
+    "seeders": null,
+    "bitDepth": null,
+    "releaseGroup": null
+   }
+  },
+  {
+   "name": "empty text gives nothing",
+   "op": "parse",
+   "input": [
+    ""
+   ],
+   "expected": {
+    "resolution": 0,
+    "quality": "Unknown",
+    "hdr": [],
+    "languages": [],
+    "sizeBytes": null
+   }
+  },
+  {
+   "name": "resolution of 'Movie 2160p' is 2160",
+   "op": "parse",
+   "input": [
+    "Movie 2160p"
+   ],
+   "expected": {
+    "resolution": 2160
+   }
+  },
+  {
+   "name": "resolution of 'Movie 4K' is 2160",
+   "op": "parse",
+   "input": [
+    "Movie 4K"
+   ],
+   "expected": {
+    "resolution": 2160
+   }
+  },
+  {
+   "name": "resolution of 'Movie UHD' is 2160",
+   "op": "parse",
+   "input": [
+    "Movie UHD"
+   ],
+   "expected": {
+    "resolution": 2160
+   }
+  },
+  {
+   "name": "resolution of 'Movie ✨ 4K' is 2160",
+   "op": "parse",
+   "input": [
+    "Movie ✨ 4K"
+   ],
+   "expected": {
+    "resolution": 2160
+   }
+  },
+  {
+   "name": "resolution of 'Movie 1440p' is 1440",
+   "op": "parse",
+   "input": [
+    "Movie 1440p"
+   ],
+   "expected": {
+    "resolution": 1440
+   }
+  },
+  {
+   "name": "resolution of 'Movie 1080p' is 1080",
+   "op": "parse",
+   "input": [
+    "Movie 1080p"
+   ],
+   "expected": {
+    "resolution": 1080
+   }
+  },
+  {
+   "name": "resolution of 'Movie 1080i' is 1080",
+   "op": "parse",
+   "input": [
+    "Movie 1080i"
+   ],
+   "expected": {
+    "resolution": 1080
+   }
+  },
+  {
+   "name": "resolution of 'Movie FHD' is 1080",
+   "op": "parse",
+   "input": [
+    "Movie FHD"
+   ],
+   "expected": {
+    "resolution": 1080
+   }
+  },
+  {
+   "name": "resolution of 'Movie 720P' is 720",
+   "op": "parse",
+   "input": [
+    "Movie 720P"
+   ],
+   "expected": {
+    "resolution": 720
+   }
+  },
+  {
+   "name": "resolution of 'Movie 576p' is 480",
+   "op": "parse",
+   "input": [
+    "Movie 576p"
+   ],
+   "expected": {
+    "resolution": 480
+   }
+  },
+  {
+   "name": "resolution of 'Movie 480p' is 480",
+   "op": "parse",
+   "input": [
+    "Movie 480p"
+   ],
+   "expected": {
+    "resolution": 480
+   }
+  },
+  {
+   "name": "resolution of 'Movie SD' is 480",
+   "op": "parse",
+   "input": [
+    "Movie SD"
+   ],
+   "expected": {
+    "resolution": 480
+   }
+  },
+  {
+   "name": "resolution of 'Movie DVDRip' is 480",
+   "op": "parse",
+   "input": [
+    "Movie DVDRip"
+   ],
+   "expected": {
+    "resolution": 480
+   }
+  },
+  {
+   "name": "resolution of 'Movie x1080p' is 0",
+   "op": "parse",
+   "input": [
+    "Movie x1080p"
+   ],
+   "expected": {
+    "resolution": 0
+   }
+  },
+  {
+   "name": "resolution of 'Movie 1080' is 0",
+   "op": "parse",
+   "input": [
+    "Movie 1080"
+   ],
+   "expected": {
+    "resolution": 0
+   }
+  },
+  {
+   "name": "quality of 'Movie 1080p BluRay REMUX' is REMUX",
+   "op": "parse",
+   "input": [
+    "Movie 1080p BluRay REMUX"
+   ],
+   "expected": {
+    "quality": "REMUX"
+   }
+  },
+  {
+   "name": "quality of 'Movie BDRip' is BluRay",
+   "op": "parse",
+   "input": [
+    "Movie BDRip"
+   ],
+   "expected": {
+    "quality": "BluRay"
+   }
+  },
+  {
+   "name": "quality of 'Movie Blu-Ray' is BluRay",
+   "op": "parse",
+   "input": [
+    "Movie Blu-Ray"
+   ],
+   "expected": {
+    "quality": "BluRay"
+   }
+  },
+  {
+   "name": "quality of 'Movie BRRip' is BluRay",
+   "op": "parse",
+   "input": [
+    "Movie BRRip"
+   ],
+   "expected": {
+    "quality": "BluRay"
+   }
+  },
+  {
+   "name": "quality of 'Movie WEB-DL' is WEB-DL",
+   "op": "parse",
+   "input": [
+    "Movie WEB-DL"
+   ],
+   "expected": {
+    "quality": "WEB-DL"
+   }
+  },
+  {
+   "name": "quality of 'Movie WEBDL' is WEB-DL",
+   "op": "parse",
+   "input": [
+    "Movie WEBDL"
+   ],
+   "expected": {
+    "quality": "WEB-DL"
+   }
+  },
+  {
+   "name": "quality of 'Movie AMZN 1080p' is WEB-DL",
+   "op": "parse",
+   "input": [
+    "Movie AMZN 1080p"
+   ],
+   "expected": {
+    "quality": "WEB-DL"
+   }
+  },
+  {
+   "name": "quality of 'Movie NF' is WEB-DL",
+   "op": "parse",
+   "input": [
+    "Movie NF"
+   ],
+   "expected": {
+    "quality": "WEB-DL"
+   }
+  },
+  {
+   "name": "quality of 'Movie WEBRip' is WEBRip",
+   "op": "parse",
+   "input": [
+    "Movie WEBRip"
+   ],
+   "expected": {
+    "quality": "WEBRip"
+   }
+  },
+  {
+   "name": "quality of 'Movie WEB-Rip' is WEBRip",
+   "op": "parse",
+   "input": [
+    "Movie WEB-Rip"
+   ],
+   "expected": {
+    "quality": "WEBRip"
+   }
+  },
+  {
+   "name": "quality of 'Movie WEB' is WEB-DL",
+   "op": "parse",
+   "input": [
+    "Movie WEB"
+   ],
+   "expected": {
+    "quality": "WEB-DL"
+   }
+  },
+  {
+   "name": "quality of 'Movie HDTV' is HDTV",
+   "op": "parse",
+   "input": [
+    "Movie HDTV"
+   ],
+   "expected": {
+    "quality": "HDTV"
+   }
+  },
+  {
+   "name": "quality of 'Movie HDCAM' is CAM",
+   "op": "parse",
+   "input": [
+    "Movie HDCAM"
+   ],
+   "expected": {
+    "quality": "CAM"
+   }
+  },
+  {
+   "name": "quality of 'Movie CAMRip' is CAM",
+   "op": "parse",
+   "input": [
+    "Movie CAMRip"
+   ],
+   "expected": {
+    "quality": "CAM"
+   }
+  },
+  {
+   "name": "quality of 'Movie CAM' is CAM",
+   "op": "parse",
+   "input": [
+    "Movie CAM"
+   ],
+   "expected": {
+    "quality": "CAM"
+   }
+  },
+  {
+   "name": "quality of 'Movie HDTS' is TS",
+   "op": "parse",
+   "input": [
+    "Movie HDTS"
+   ],
+   "expected": {
+    "quality": "TS"
+   }
+  },
+  {
+   "name": "quality of 'Movie Telesync' is TS",
+   "op": "parse",
+   "input": [
+    "Movie Telesync"
+   ],
+   "expected": {
+    "quality": "TS"
+   }
+  },
+  {
+   "name": "quality of 'Movie HDTC' is TC",
+   "op": "parse",
+   "input": [
+    "Movie HDTC"
+   ],
+   "expected": {
+    "quality": "TC"
+   }
+  },
+  {
+   "name": "quality of 'Movie TELECINE' is TC",
+   "op": "parse",
+   "input": [
+    "Movie TELECINE"
+   ],
+   "expected": {
+    "quality": "TC"
+   }
+  },
+  {
+   "name": "quality of 'Movie DVDScr' is SCR",
+   "op": "parse",
+   "input": [
+    "Movie DVDScr"
+   ],
+   "expected": {
+    "quality": "SCR"
+   }
+  },
+  {
+   "name": "quality of 'Movie Screener' is SCR",
+   "op": "parse",
+   "input": [
+    "Movie Screener"
+   ],
+   "expected": {
+    "quality": "SCR"
+   }
+  },
+  {
+   "name": "quality of 'Movie 1080p' is Unknown",
+   "op": "parse",
+   "input": [
+    "Movie 1080p"
+   ],
+   "expected": {
+    "quality": "Unknown"
+   }
+  },
+  {
+   "name": "quality of 'Movie Webcam' is Unknown",
+   "op": "parse",
+   "input": [
+    "Movie Webcam"
+   ],
+   "expected": {
+    "quality": "Unknown"
+   }
+  },
+  {
+   "name": "video codec of 'Movie x265' is HEVC",
+   "op": "parse",
+   "input": [
+    "Movie x265"
+   ],
+   "expected": {
+    "videoCodec": "HEVC"
+   }
+  },
+  {
+   "name": "video codec of 'Movie H265' is HEVC",
+   "op": "parse",
+   "input": [
+    "Movie H265"
+   ],
+   "expected": {
+    "videoCodec": "HEVC"
+   }
+  },
+  {
+   "name": "video codec of 'Movie H.265' is HEVC",
+   "op": "parse",
+   "input": [
+    "Movie H.265"
+   ],
+   "expected": {
+    "videoCodec": "HEVC"
+   }
+  },
+  {
+   "name": "video codec of 'Movie HEVC' is HEVC",
+   "op": "parse",
+   "input": [
+    "Movie HEVC"
+   ],
+   "expected": {
+    "videoCodec": "HEVC"
+   }
+  },
+  {
+   "name": "video codec of 'Movie x264' is H264",
+   "op": "parse",
+   "input": [
+    "Movie x264"
+   ],
+   "expected": {
+    "videoCodec": "H264"
+   }
+  },
+  {
+   "name": "video codec of 'Movie h.264' is H264",
+   "op": "parse",
+   "input": [
+    "Movie h.264"
+   ],
+   "expected": {
+    "videoCodec": "H264"
+   }
+  },
+  {
+   "name": "video codec of 'Movie AVC' is H264",
+   "op": "parse",
+   "input": [
+    "Movie AVC"
+   ],
+   "expected": {
+    "videoCodec": "H264"
+   }
+  },
+  {
+   "name": "video codec of 'Movie AV1' is AV1",
+   "op": "parse",
+   "input": [
+    "Movie AV1"
+   ],
+   "expected": {
+    "videoCodec": "AV1"
+   }
+  },
+  {
+   "name": "video codec of 'Movie VP9' is VP9",
+   "op": "parse",
+   "input": [
+    "Movie VP9"
+   ],
+   "expected": {
+    "videoCodec": "VP9"
+   }
+  },
+  {
+   "name": "video codec of 'Movie XviD' is XviD",
+   "op": "parse",
+   "input": [
+    "Movie XviD"
+   ],
+   "expected": {
+    "videoCodec": "XviD"
+   }
+  },
+  {
+   "name": "video codec of 'Movie DivX' is XviD",
+   "op": "parse",
+   "input": [
+    "Movie DivX"
+   ],
+   "expected": {
+    "videoCodec": "XviD"
+   }
+  },
+  {
+   "name": "video codec of 'Movie x265 x264' is HEVC",
+   "op": "parse",
+   "input": [
+    "Movie x265 x264"
+   ],
+   "expected": {
+    "videoCodec": "HEVC"
+   }
+  },
+  {
+   "name": "video codec of 'Movie 1080p' is None",
+   "op": "parse",
+   "input": [
+    "Movie 1080p"
+   ],
+   "expected": {
+    "videoCodec": null
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie HDR' are ['HDR']",
+   "op": "parse",
+   "input": [
+    "Movie HDR"
+   ],
+   "expected": {
+    "hdr": [
+     "HDR"
+    ]
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie HDR10+' are ['HDR10+']",
+   "op": "parse",
+   "input": [
+    "Movie HDR10+"
+   ],
+   "expected": {
+    "hdr": [
+     "HDR10+"
+    ]
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie HDR10Plus' are ['HDR10+']",
+   "op": "parse",
+   "input": [
+    "Movie HDR10Plus"
+   ],
+   "expected": {
+    "hdr": [
+     "HDR10+"
+    ]
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie DV' are ['DV']",
+   "op": "parse",
+   "input": [
+    "Movie DV"
+   ],
+   "expected": {
+    "hdr": [
+     "DV"
+    ]
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie Dolby Vision' are ['DV']",
+   "op": "parse",
+   "input": [
+    "Movie Dolby Vision"
+   ],
+   "expected": {
+    "hdr": [
+     "DV"
+    ]
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie DoVi' are ['DV']",
+   "op": "parse",
+   "input": [
+    "Movie DoVi"
+   ],
+   "expected": {
+    "hdr": [
+     "DV"
+    ]
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie DV HDR' are ['DV', 'HDR']",
+   "op": "parse",
+   "input": [
+    "Movie DV HDR"
+   ],
+   "expected": {
+    "hdr": [
+     "DV",
+     "HDR"
+    ]
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie HLG' are ['HLG']",
+   "op": "parse",
+   "input": [
+    "Movie HLG"
+   ],
+   "expected": {
+    "hdr": [
+     "HLG"
+    ]
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie DV HDR10+ HLG' are ['DV', 'HDR10+', 'HLG']",
+   "op": "parse",
+   "input": [
+    "Movie DV HDR10+ HLG"
+   ],
+   "expected": {
+    "hdr": [
+     "DV",
+     "HDR10+",
+     "HLG"
+    ]
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie SDR' are []",
+   "op": "parse",
+   "input": [
+    "Movie SDR"
+   ],
+   "expected": {
+    "hdr": []
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie DVD' are []",
+   "op": "parse",
+   "input": [
+    "Movie DVD"
+   ],
+   "expected": {
+    "hdr": []
+   }
+  },
+  {
+   "name": "audio format of 'Movie TrueHD Atmos' is TrueHD Atmos",
+   "op": "parse",
+   "input": [
+    "Movie TrueHD Atmos"
+   ],
+   "expected": {
+    "audioCodec": "TrueHD Atmos"
+   }
+  },
+  {
+   "name": "audio format of 'Movie Atmos' is Atmos",
+   "op": "parse",
+   "input": [
+    "Movie Atmos"
+   ],
+   "expected": {
+    "audioCodec": "Atmos"
+   }
+  },
+  {
+   "name": "audio format of 'Movie TrueHD' is TrueHD",
+   "op": "parse",
+   "input": [
+    "Movie TrueHD"
+   ],
+   "expected": {
+    "audioCodec": "TrueHD"
+   }
+  },
+  {
+   "name": "audio format of 'Movie DTS-HD.MA' is DTS-HD MA",
+   "op": "parse",
+   "input": [
+    "Movie DTS-HD.MA"
+   ],
+   "expected": {
+    "audioCodec": "DTS-HD MA"
+   }
+  },
+  {
+   "name": "audio format of 'Movie DTS-HD MA 5.1' is DTS-HD MA",
+   "op": "parse",
+   "input": [
+    "Movie DTS-HD MA 5.1"
+   ],
+   "expected": {
+    "audioCodec": "DTS-HD MA"
+   }
+  },
+  {
+   "name": "audio format of 'Movie DTS-X' is DTS:X",
+   "op": "parse",
+   "input": [
+    "Movie DTS-X"
+   ],
+   "expected": {
+    "audioCodec": "DTS:X"
+   }
+  },
+  {
+   "name": "audio format of 'Movie DTS' is DTS",
+   "op": "parse",
+   "input": [
+    "Movie DTS"
+   ],
+   "expected": {
+    "audioCodec": "DTS"
+   }
+  },
+  {
+   "name": "audio format of 'Movie DDP' is DD+",
+   "op": "parse",
+   "input": [
+    "Movie DDP"
+   ],
+   "expected": {
+    "audioCodec": "DD+"
+   }
+  },
+  {
+   "name": "audio format of 'Movie DD+' is DD+",
+   "op": "parse",
+   "input": [
+    "Movie DD+"
+   ],
+   "expected": {
+    "audioCodec": "DD+"
+   }
+  },
+  {
+   "name": "audio format of 'Movie DDP5.1' is DD+",
+   "op": "parse",
+   "input": [
+    "Movie DDP5.1"
+   ],
+   "expected": {
+    "audioCodec": "DD+"
+   }
+  },
+  {
+   "name": "audio format of 'Movie E-AC-3' is DD+",
+   "op": "parse",
+   "input": [
+    "Movie E-AC-3"
+   ],
+   "expected": {
+    "audioCodec": "DD+"
+   }
+  },
+  {
+   "name": "audio format of 'Movie EAC3' is DD+",
+   "op": "parse",
+   "input": [
+    "Movie EAC3"
+   ],
+   "expected": {
+    "audioCodec": "DD+"
+   }
+  },
+  {
+   "name": "audio format of 'Movie Dolby Digital Plus' is DD+",
+   "op": "parse",
+   "input": [
+    "Movie Dolby Digital Plus"
+   ],
+   "expected": {
+    "audioCodec": "DD+"
+   }
+  },
+  {
+   "name": "audio format of 'Movie DD' is DD",
+   "op": "parse",
+   "input": [
+    "Movie DD"
+   ],
+   "expected": {
+    "audioCodec": "DD"
+   }
+  },
+  {
+   "name": "audio format of 'Movie DD5.1' is DD",
+   "op": "parse",
+   "input": [
+    "Movie DD5.1"
+   ],
+   "expected": {
+    "audioCodec": "DD"
+   }
+  },
+  {
+   "name": "audio format of 'Movie AC3' is DD",
+   "op": "parse",
+   "input": [
+    "Movie AC3"
+   ],
+   "expected": {
+    "audioCodec": "DD"
+   }
+  },
+  {
+   "name": "audio format of 'Movie AC-3' is DD",
+   "op": "parse",
+   "input": [
+    "Movie AC-3"
+   ],
+   "expected": {
+    "audioCodec": "DD"
+   }
+  },
+  {
+   "name": "audio format of 'Movie Dolby Digital' is DD",
+   "op": "parse",
+   "input": [
+    "Movie Dolby Digital"
+   ],
+   "expected": {
+    "audioCodec": "DD"
+   }
+  },
+  {
+   "name": "audio format of 'Movie AAC' is AAC",
+   "op": "parse",
+   "input": [
+    "Movie AAC"
+   ],
+   "expected": {
+    "audioCodec": "AAC"
+   }
+  },
+  {
+   "name": "audio format of 'Movie FLAC' is FLAC",
+   "op": "parse",
+   "input": [
+    "Movie FLAC"
+   ],
+   "expected": {
+    "audioCodec": "FLAC"
+   }
+  },
+  {
+   "name": "audio format of 'Movie Opus' is Opus",
+   "op": "parse",
+   "input": [
+    "Movie Opus"
+   ],
+   "expected": {
+    "audioCodec": "Opus"
+   }
+  },
+  {
+   "name": "audio format of 'Movie MP3' is MP3",
+   "op": "parse",
+   "input": [
+    "Movie MP3"
+   ],
+   "expected": {
+    "audioCodec": "MP3"
+   }
+  },
+  {
+   "name": "audio format of 'Movie DTS AAC' is DTS",
+   "op": "parse",
+   "input": [
+    "Movie DTS AAC"
+   ],
+   "expected": {
+    "audioCodec": "DTS"
+   }
+  },
+  {
+   "name": "audio format of 'Movie AAC DD5.1' is DD",
+   "op": "parse",
+   "input": [
+    "Movie AAC DD5.1"
+   ],
+   "expected": {
+    "audioCodec": "DD"
+   }
+  },
+  {
+   "name": "audio format of 'Movie 1080p' is None",
+   "op": "parse",
+   "input": [
+    "Movie 1080p"
+   ],
+   "expected": {
+    "audioCodec": null
+   }
+  },
+  {
+   "name": "audio channels of 'Movie 5.1' are 5.1",
+   "op": "parse",
+   "input": [
+    "Movie 5.1"
+   ],
+   "expected": {
+    "audioChannels": "5.1"
+   }
+  },
+  {
+   "name": "audio channels of 'Movie 7.1' are 7.1",
+   "op": "parse",
+   "input": [
+    "Movie 7.1"
+   ],
+   "expected": {
+    "audioChannels": "7.1"
+   }
+  },
+  {
+   "name": "audio channels of 'Movie 2.0' are 2.0",
+   "op": "parse",
+   "input": [
+    "Movie 2.0"
+   ],
+   "expected": {
+    "audioChannels": "2.0"
+   }
+  },
+  {
+   "name": "audio channels of 'Movie DDP5.1' are 5.1",
+   "op": "parse",
+   "input": [
+    "Movie DDP5.1"
+   ],
+   "expected": {
+    "audioChannels": "5.1"
+   }
+  },
+  {
+   "name": "audio channels of 'Movie 1.0' are None",
+   "op": "parse",
+   "input": [
+    "Movie 1.0"
+   ],
+   "expected": {
+    "audioChannels": null
+   }
+  },
+  {
+   "name": "audio channels of 'Movie 15.1' are None",
+   "op": "parse",
+   "input": [
+    "Movie 15.1"
+   ],
+   "expected": {
+    "audioChannels": null
+   }
+  },
+  {
+   "name": "audio channels of 'Movie 5.12' are None",
+   "op": "parse",
+   "input": [
+    "Movie 5.12"
+   ],
+   "expected": {
+    "audioChannels": null
+   }
+  },
+  {
+   "name": "audio channels of 'Movie' are None",
+   "op": "parse",
+   "input": [
+    "Movie"
+   ],
+   "expected": {
+    "audioChannels": null
+   }
+  },
+  {
+   "name": "size of 'Movie 18.5 GB' is 19864223744",
+   "op": "parse",
+   "input": [
+    "Movie 18.5 GB"
+   ],
+   "expected": {
+    "sizeBytes": 19864223744
+   }
+  },
+  {
+   "name": "size of 'Movie 700 MB' is 734003200",
+   "op": "parse",
+   "input": [
+    "Movie 700 MB"
+   ],
+   "expected": {
+    "sizeBytes": 734003200
+   }
+  },
+  {
+   "name": "size of 'Movie 1,5 GB' is 1610612736",
+   "op": "parse",
+   "input": [
+    "Movie 1,5 GB"
+   ],
+   "expected": {
+    "sizeBytes": 1610612736
+   }
+  },
+  {
+   "name": "size of 'Movie 700 MB and 2.1 GiB' is 2254857830",
+   "op": "parse",
+   "input": [
+    "Movie 700 MB and 2.1 GiB"
+   ],
+   "expected": {
+    "sizeBytes": 2254857830
+   }
+  },
+  {
+   "name": "size of 'Movie 1 TB' is 1099511627776",
+   "op": "parse",
+   "input": [
+    "Movie 1 TB"
+   ],
+   "expected": {
+    "sizeBytes": 1099511627776
+   }
+  },
+  {
+   "name": "size of 'Movie 12.5GB' is 13421772800",
+   "op": "parse",
+   "input": [
+    "Movie 12.5GB"
+   ],
+   "expected": {
+    "sizeBytes": 13421772800
+   }
+  },
+  {
+   "name": "size of 'Movie 3 gb' is 3221225472",
+   "op": "parse",
+   "input": [
+    "Movie 3 gb"
+   ],
+   "expected": {
+    "sizeBytes": 3221225472
+   }
+  },
+  {
+   "name": "size of 'Movie 5 KB' is None",
+   "op": "parse",
+   "input": [
+    "Movie 5 KB"
+   ],
+   "expected": {
+    "sizeBytes": null
+   }
+  },
+  {
+   "name": "size of 'Movie 4 GBs' is None",
+   "op": "parse",
+   "input": [
+    "Movie 4 GBs"
+   ],
+   "expected": {
+    "sizeBytes": null
+   }
+  },
+  {
+   "name": "size of 'Movie 10 TiB' is 10995116277760",
+   "op": "parse",
+   "input": [
+    "Movie 10 TiB"
+   ],
+   "expected": {
+    "sizeBytes": 10995116277760
+   }
+  },
+  {
+   "name": "cache marker of 'Movie [RD+]' is True",
+   "op": "parse",
+   "input": [
+    "Movie [RD+]"
+   ],
+   "expected": {
+    "isCached": true
+   }
+  },
+  {
+   "name": "cache marker of 'Movie [AD+]' is True",
+   "op": "parse",
+   "input": [
+    "Movie [AD+]"
+   ],
+   "expected": {
+    "isCached": true
+   }
+  },
+  {
+   "name": "cache marker of 'Movie [TB+]' is True",
+   "op": "parse",
+   "input": [
+    "Movie [TB+]"
+   ],
+   "expected": {
+    "isCached": true
+   }
+  },
+  {
+   "name": "cache marker of '⚡ Movie' is True",
+   "op": "parse",
+   "input": [
+    "⚡ Movie"
+   ],
+   "expected": {
+    "isCached": true
+   }
+  },
+  {
+   "name": "cache marker of 'Movie instant' is True",
+   "op": "parse",
+   "input": [
+    "Movie instant"
+   ],
+   "expected": {
+    "isCached": true
+   }
+  },
+  {
+   "name": "cache marker of 'Movie cached' is True",
+   "op": "parse",
+   "input": [
+    "Movie cached"
+   ],
+   "expected": {
+    "isCached": true
+   }
+  },
+  {
+   "name": "cache marker of 'Movie [RD download]' is False",
+   "op": "parse",
+   "input": [
+    "Movie [RD download]"
+   ],
+   "expected": {
+    "isCached": false
+   }
+  },
+  {
+   "name": "cache marker of 'Movie [RD]' is False",
+   "op": "parse",
+   "input": [
+    "Movie [RD]"
+   ],
+   "expected": {
+    "isCached": false
+   }
+  },
+  {
+   "name": "cache marker of 'Movie ⏳' is False",
+   "op": "parse",
+   "input": [
+    "Movie ⏳"
+   ],
+   "expected": {
+    "isCached": false
+   }
+  },
+  {
+   "name": "cache marker of 'Movie uncached' is False",
+   "op": "parse",
+   "input": [
+    "Movie uncached"
+   ],
+   "expected": {
+    "isCached": false
+   }
+  },
+  {
+   "name": "cache marker of 'Movie [XX+]' is None",
+   "op": "parse",
+   "input": [
+    "Movie [XX+]"
+   ],
+   "expected": {
+    "isCached": null
+   }
+  },
+  {
+   "name": "cache marker of 'Movie' is None",
+   "op": "parse",
+   "input": [
+    "Movie"
+   ],
+   "expected": {
+    "isCached": null
+   }
+  },
+  {
+   "name": "seeders of 'Movie 👤 123' are 123",
+   "op": "parse",
+   "input": [
+    "Movie 👤 123"
+   ],
+   "expected": {
+    "seeders": 123
+   }
+  },
+  {
+   "name": "seeders of 'Movie Seeders: 45' are 45",
+   "op": "parse",
+   "input": [
+    "Movie Seeders: 45"
+   ],
+   "expected": {
+    "seeders": 45
+   }
+  },
+  {
+   "name": "seeders of 'Movie seeds 7' are 7",
+   "op": "parse",
+   "input": [
+    "Movie seeds 7"
+   ],
+   "expected": {
+    "seeders": 7
+   }
+  },
+  {
+   "name": "seeders of 'Movie seeder 8' are 8",
+   "op": "parse",
+   "input": [
+    "Movie seeder 8"
+   ],
+   "expected": {
+    "seeders": 8
+   }
+  },
+  {
+   "name": "seeders of 'Movie 123 seeders' are None",
+   "op": "parse",
+   "input": [
+    "Movie 123 seeders"
+   ],
+   "expected": {
+    "seeders": null
+   }
+  },
+  {
+   "name": "seeders of 'Movie 👤' are None",
+   "op": "parse",
+   "input": [
+    "Movie 👤"
+   ],
+   "expected": {
+    "seeders": null
+   }
+  },
+  {
+   "name": "bit depth of 'Movie 10bit' is 10",
+   "op": "parse",
+   "input": [
+    "Movie 10bit"
+   ],
+   "expected": {
+    "bitDepth": 10
+   }
+  },
+  {
+   "name": "bit depth of 'Movie 10-bit' is 10",
+   "op": "parse",
+   "input": [
+    "Movie 10-bit"
+   ],
+   "expected": {
+    "bitDepth": 10
+   }
+  },
+  {
+   "name": "bit depth of 'Movie 10 bit' is 10",
+   "op": "parse",
+   "input": [
+    "Movie 10 bit"
+   ],
+   "expected": {
+    "bitDepth": 10
+   }
+  },
+  {
+   "name": "bit depth of 'Movie 8bit' is None",
+   "op": "parse",
+   "input": [
+    "Movie 8bit"
+   ],
+   "expected": {
+    "bitDepth": null
+   }
+  },
+  {
+   "name": "bit depth of 'Movie 10bits' is None",
+   "op": "parse",
+   "input": [
+    "Movie 10bits"
+   ],
+   "expected": {
+    "bitDepth": null
+   }
+  },
+  {
+   "name": "release group of 'Movie.1080p-GRP.mkv' is grp",
+   "op": "parse",
+   "input": [
+    "Movie.1080p-GRP.mkv"
+   ],
+   "expected": {
+    "releaseGroup": "grp"
+   }
+  },
+  {
+   "name": "release group of 'Movie.1080p-GRP.mp4' is grp",
+   "op": "parse",
+   "input": [
+    "Movie.1080p-GRP.mp4"
+   ],
+   "expected": {
+    "releaseGroup": "grp"
+   }
+  },
+  {
+   "name": "release group of 'Movie.1080p-GRP.avi' is None",
+   "op": "parse",
+   "input": [
+    "Movie.1080p-GRP.avi"
+   ],
+   "expected": {
+    "releaseGroup": null
+   }
+  },
+  {
+   "name": "release group of 'Movie.1080p-abcdefghijklm.mkv' is None",
+   "op": "parse",
+   "input": [
+    "Movie.1080p-abcdefghijklm.mkv"
+   ],
+   "expected": {
+    "releaseGroup": null
+   }
+  },
+  {
+   "name": "release group of 'Movie.1080p-a.mkv' is None",
+   "op": "parse",
+   "input": [
+    "Movie.1080p-a.mkv"
+   ],
+   "expected": {
+    "releaseGroup": null
+   }
+  },
+  {
+   "name": "release group of 'Movie.1080p-GRP' is None",
+   "op": "parse",
+   "input": [
+    "Movie.1080p-GRP"
+   ],
+   "expected": {
+    "releaseGroup": null
+   }
+  },
+  {
+   "name": "release group of 'Info\nMovie.1080p-GRP.mkv' is grp",
+   "op": "parse",
+   "input": [
+    "Info\nMovie.1080p-GRP.mkv"
+   ],
+   "expected": {
+    "releaseGroup": "grp"
+   }
+  },
+  {
+   "name": "release group of 'Movie.1080p.mkv' is None",
+   "op": "parse",
+   "input": [
+    "Movie.1080p.mkv"
+   ],
+   "expected": {
+    "releaseGroup": null
+   }
+  },
+  {
+   "name": "release group of 'Movie.1080p-Tigole.mkv  ' is tigole",
+   "op": "parse",
+   "input": [
+    "Movie.1080p-Tigole.mkv  "
+   ],
+   "expected": {
+    "releaseGroup": "tigole"
+   }
+  },
+  {
+   "name": "languages of 'Movie English' are ['English']",
+   "op": "parse",
+   "input": [
+    "Movie English"
+   ],
+   "expected": {
+    "languages": [
+     "English"
+    ]
+   }
+  },
+  {
+   "name": "languages of 'Movie 🇬🇧' are ['English']",
+   "op": "parse",
+   "input": [
+    "Movie 🇬🇧"
+   ],
+   "expected": {
+    "languages": [
+     "English"
+    ]
+   }
+  },
+  {
+   "name": "languages of 'Movie ENG' are ['English']",
+   "op": "parse",
+   "input": [
+    "Movie ENG"
+   ],
+   "expected": {
+    "languages": [
+     "English"
+    ]
+   }
+  },
+  {
+   "name": "languages of 'Movie MULTI VFF' are ['French', 'Multi']",
+   "op": "parse",
+   "input": [
+    "Movie MULTI VFF"
+   ],
+   "expected": {
+    "languages": [
+     "French",
+     "Multi"
+    ]
+   }
+  },
+  {
+   "name": "languages of 'Movie Dual Audio' are ['Multi']",
+   "op": "parse",
+   "input": [
+    "Movie Dual Audio"
+   ],
+   "expected": {
+    "languages": [
+     "Multi"
+    ]
+   }
+  },
+  {
+   "name": "languages of 'Movie Spanish Latino' are ['Spanish']",
+   "op": "parse",
+   "input": [
+    "Movie Spanish Latino"
+   ],
+   "expected": {
+    "languages": [
+     "Spanish"
+    ]
+   }
+  },
+  {
+   "name": "languages of 'Movie Español' are ['Spanish']",
+   "op": "parse",
+   "input": [
+    "Movie Español"
+   ],
+   "expected": {
+    "languages": [
+     "Spanish"
+    ]
+   }
+  },
+  {
+   "name": "languages of 'Movie German Deutsch' are ['German']",
+   "op": "parse",
+   "input": [
+    "Movie German Deutsch"
+   ],
+   "expected": {
+    "languages": [
+     "German"
+    ]
+   }
+  },
+  {
+   "name": "languages of 'Movie 🇯🇵 Japanese' are ['Japanese']",
+   "op": "parse",
+   "input": [
+    "Movie 🇯🇵 Japanese"
+   ],
+   "expected": {
+    "languages": [
+     "Japanese"
+    ]
+   }
+  },
+  {
+   "name": "languages of 'Movie Hindi Tamil Telugu' are ['Hindi', 'Tamil', 'Telugu']",
+   "op": "parse",
+   "input": [
+    "Movie Hindi Tamil Telugu"
+   ],
+   "expected": {
+    "languages": [
+     "Hindi",
+     "Tamil",
+     "Telugu"
+    ]
+   }
+  },
+  {
+   "name": "languages of 'Movie Portuguese 🇧🇷' are ['Portuguese']",
+   "op": "parse",
+   "input": [
+    "Movie Portuguese 🇧🇷"
+   ],
+   "expected": {
+    "languages": [
+     "Portuguese"
+    ]
+   }
+  },
+  {
+   "name": "languages of 'Movie Cantonese' are ['Chinese']",
+   "op": "parse",
+   "input": [
+    "Movie Cantonese"
+   ],
+   "expected": {
+    "languages": [
+     "Chinese"
+    ]
+   }
+  },
+  {
+   "name": "languages of 'Movie engine' are []",
+   "op": "parse",
+   "input": [
+    "Movie engine"
+   ],
+   "expected": {
+    "languages": []
+   }
+  },
+  {
+   "name": "languages of 'Movie' are []",
+   "op": "parse",
+   "input": [
+    "Movie"
+   ],
+   "expected": {
+    "languages": []
+   }
+  },
+  {
+   "name": "episode of 'Show.S01E02.mkv' is (1, 2)",
+   "op": "episodeRef",
+   "input": "Show.S01E02.mkv",
+   "expected": {
+    "season": 1,
+    "episode": 2
+   }
+  },
+  {
+   "name": "episode of 'show.s1e2.mkv' is (1, 2)",
+   "op": "episodeRef",
+   "input": "show.s1e2.mkv",
+   "expected": {
+    "season": 1,
+    "episode": 2
+   }
+  },
+  {
+   "name": "episode of 'Show.S01.E02.mkv' is (1, 2)",
+   "op": "episodeRef",
+   "input": "Show.S01.E02.mkv",
+   "expected": {
+    "season": 1,
+    "episode": 2
+   }
+  },
+  {
+   "name": "episode of 'Show S01 E02' is (1, 2)",
+   "op": "episodeRef",
+   "input": "Show S01 E02",
+   "expected": {
+    "season": 1,
+    "episode": 2
+   }
+  },
+  {
+   "name": "episode of 'Show.S03E07' is (3, 7)",
+   "op": "episodeRef",
+   "input": "Show.S03E07",
+   "expected": {
+    "season": 3,
+    "episode": 7
+   }
+  },
+  {
+   "name": "episode of 'Show 1x02' is (1, 2)",
+   "op": "episodeRef",
+   "input": "Show 1x02",
+   "expected": {
+    "season": 1,
+    "episode": 2
+   }
+  },
+  {
+   "name": "episode of 'Show.12x103' is (12, 103)",
+   "op": "episodeRef",
+   "input": "Show.12x103",
+   "expected": {
+    "season": 12,
+    "episode": 103
+   }
+  },
+  {
+   "name": "episode of 'Season 2 Episode 10' is (2, 10)",
+   "op": "episodeRef",
+   "input": "Season 2 Episode 10",
+   "expected": {
+    "season": 2,
+    "episode": 10
+   }
+  },
+  {
+   "name": "episode of 'season.2.episode.10' is (2, 10)",
+   "op": "episodeRef",
+   "input": "season.2.episode.10",
+   "expected": {
+    "season": 2,
+    "episode": 10
+   }
+  },
+  {
+   "name": "episode of 'Show.S01E1234' is (1, 123)",
+   "op": "episodeRef",
+   "input": "Show.S01E1234",
+   "expected": {
+    "season": 1,
+    "episode": 123
+   }
+  },
+  {
+   "name": "episode of 'Show.2160p.mkv' is None",
+   "op": "episodeRef",
+   "input": "Show.2160p.mkv",
+   "expected": null
+  },
+  {
+   "name": "episode of 'Movie.1920x1080.mkv' is None",
+   "op": "episodeRef",
+   "input": "Movie.1920x1080.mkv",
+   "expected": null
+  },
+  {
+   "name": "episode of 'Show.S100E01' is None",
+   "op": "episodeRef",
+   "input": "Show.S100E01",
+   "expected": null
+  },
+  {
+   "name": "episode of 'Movie.2020.mkv' is None",
+   "op": "episodeRef",
+   "input": "Movie.2020.mkv",
+   "expected": null
+  },
+  {
+   "name": "episode of '' is None",
+   "op": "episodeRef",
+   "input": "",
+   "expected": null
+  },
+  {
+   "name": "title and year of 'The.Matrix.1999.1080p.BluRay.x264.mkv'",
+   "op": "titleAndYear",
+   "input": "The.Matrix.1999.1080p.BluRay.x264.mkv",
+   "expected": {
+    "title": "the matrix",
+    "year": 1999
+   }
+  },
+  {
+   "name": "title and year of 'Blade.Runner.2049.2017.2160p.mkv'",
+   "op": "titleAndYear",
+   "input": "Blade.Runner.2049.2017.2160p.mkv",
+   "expected": {
+    "title": "blade runner 2049",
+    "year": 2017
+   }
+  },
+  {
+   "name": "title and year of 'Show.Name.S01E02.720p.mkv'",
+   "op": "titleAndYear",
+   "input": "Show.Name.S01E02.720p.mkv",
+   "expected": {
+    "title": "show name",
+    "year": null
+   }
+  },
+  {
+   "name": "title and year of '2001.A.Space.Odyssey.1968.mkv'",
+   "op": "titleAndYear",
+   "input": "2001.A.Space.Odyssey.1968.mkv",
+   "expected": {
+    "title": "2001 a space odyssey",
+    "year": 1968
+   }
+  },
+  {
+   "name": "title and year of 'Movie (2020) [1080p].mkv'",
+   "op": "titleAndYear",
+   "input": "Movie (2020) [1080p].mkv",
+   "expected": {
+    "title": "movie",
+    "year": 2020
+   }
+  },
+  {
+   "name": "title and year of 'No.Year.Movie.mkv'",
+   "op": "titleAndYear",
+   "input": "No.Year.Movie.mkv",
+   "expected": {
+    "title": "no year movie",
+    "year": null
+   }
+  },
+  {
+   "name": "title and year of 'Movie.Name.Without.Extension'",
+   "op": "titleAndYear",
+   "input": "Movie.Name.Without.Extension",
+   "expected": {
+    "title": "movie name without extension",
+    "year": null
+   }
+  },
+  {
+   "name": "title and year of 'Amélie.2001.1080p.mkv'",
+   "op": "titleAndYear",
+   "input": "Amélie.2001.1080p.mkv",
+   "expected": {
+    "title": "amelie",
+    "year": 2001
+   }
+  },
+  {
+   "name": "title and year of 'Spider-Man.No.Way.Home.2021.mkv'",
+   "op": "titleAndYear",
+   "input": "Spider-Man.No.Way.Home.2021.mkv",
+   "expected": {
+    "title": "spider man no way home",
+    "year": 2021
+   }
+  },
+  {
+   "name": "title and year of 'Tom_and_Jerry_1992_720p.mp4'",
+   "op": "titleAndYear",
+   "input": "Tom_and_Jerry_1992_720p.mp4",
+   "expected": {
+    "title": "tom and jerry",
+    "year": 1992
+   }
+  },
+  {
+   "name": "title and year of 'Movie.1080p.BluRay.mkv'",
+   "op": "titleAndYear",
+   "input": "Movie.1080p.BluRay.mkv",
+   "expected": {
+    "title": "movie",
+    "year": null
+   }
+  },
+  {
+   "name": "title and year of ''",
+   "op": "titleAndYear",
+   "input": "",
+   "expected": {
+    "title": "",
+    "year": null
+   }
+  },
+  {
+   "name": "normalised title of 'The Matrix'",
+   "op": "normalizeTitle",
+   "input": "The Matrix",
+   "expected": "the matrix"
+  },
+  {
+   "name": "normalised title of 'Tom & Jerry'",
+   "op": "normalizeTitle",
+   "input": "Tom & Jerry",
+   "expected": "tom and jerry"
+  },
+  {
+   "name": "normalised title of 'AC/DC'",
+   "op": "normalizeTitle",
+   "input": "AC/DC",
+   "expected": "ac dc"
+  },
+  {
+   "name": "normalised title of 'Amélie'",
+   "op": "normalizeTitle",
+   "input": "Amélie",
+   "expected": "amelie"
+  },
+  {
+   "name": "normalised title of 'Pokémon: The Movie'",
+   "op": "normalizeTitle",
+   "input": "Pokémon: The Movie",
+   "expected": "pokemon the movie"
+  },
+  {
+   "name": "normalised title of '  Spaced   Out  '",
+   "op": "normalizeTitle",
+   "input": "  Spaced   Out  ",
+   "expected": "spaced out"
+  },
+  {
+   "name": "normalised title of 'Señor Ñandú'",
+   "op": "normalizeTitle",
+   "input": "Señor Ñandú",
+   "expected": "senor nandu"
+  },
+  {
+   "name": "normalised title of 'Über'",
+   "op": "normalizeTitle",
+   "input": "Über",
+   "expected": "uber"
+  },
+  {
+   "name": "normalised title of 'Mr. Robot (2015)'",
+   "op": "normalizeTitle",
+   "input": "Mr. Robot (2015)",
+   "expected": "mr robot 2015"
+  },
+  {
+   "name": "normalised title of 'Se7en'",
+   "op": "normalizeTitle",
+   "input": "Se7en",
+   "expected": "se7en"
+  },
+  {
+   "name": "normalised title of '千と千尋の神隠し'",
+   "op": "normalizeTitle",
+   "input": "千と千尋の神隠し",
+   "expected": "千と千尋の神隠し"
+  },
+  {
+   "name": "normalised title of ''",
+   "op": "normalizeTitle",
+   "input": "",
+   "expected": ""
+  },
+  {
+   "name": "19864223744 bytes is shown as 18.50 GB",
+   "op": "formatBytes",
+   "input": 19864223744,
+   "expected": "18.50 GB"
+  },
+  {
+   "name": "536870912 bytes is shown as 512.0 MB",
+   "op": "formatBytes",
+   "input": 536870912,
+   "expected": "512.0 MB"
+  },
+  {
+   "name": "0 bytes is shown as 0.0 MB",
+   "op": "formatBytes",
+   "input": 0,
+   "expected": "0.0 MB"
+  },
+  {
+   "name": "1073741824 bytes is shown as 1.00 GB",
+   "op": "formatBytes",
+   "input": 1073741824,
+   "expected": "1.00 GB"
+  },
+  {
+   "name": "1073741823 bytes is shown as 1024.0 MB",
+   "op": "formatBytes",
+   "input": 1073741823,
+   "expected": "1024.0 MB"
+  },
+  {
+   "name": "1500000000 bytes is shown as 1.40 GB",
+   "op": "formatBytes",
+   "input": 1500000000,
+   "expected": "1.40 GB"
+  },
+  {
+   "name": "2621440 bytes is shown as 2.5 MB",
+   "op": "formatBytes",
+   "input": 2621440,
+   "expected": "2.5 MB"
+  },
+  {
+   "name": "'Movie.2026.1080p.mkv.exe' is unsafe",
+   "op": "unsafeFile",
+   "input": "Movie.2026.1080p.mkv.exe",
+   "expected": true
+  },
+  {
+   "name": "'movie.mkv' is fine",
+   "op": "unsafeFile",
+   "input": "movie.mkv",
+   "expected": false
+  },
+  {
+   "name": "'Setup.MSI' is unsafe",
+   "op": "unsafeFile",
+   "input": "Setup.MSI",
+   "expected": true
+  },
+  {
+   "name": "'archive.rar' is unsafe",
+   "op": "unsafeFile",
+   "input": "archive.rar",
+   "expected": true
+  },
+  {
+   "name": "'archive.7z' is unsafe",
+   "op": "unsafeFile",
+   "input": "archive.7z",
+   "expected": true
+  },
+  {
+   "name": "'Movie.lnk' is unsafe",
+   "op": "unsafeFile",
+   "input": "Movie.lnk",
+   "expected": true
+  },
+  {
+   "name": "'Movie.url' is unsafe",
+   "op": "unsafeFile",
+   "input": "Movie.url",
+   "expected": true
+  },
+  {
+   "name": "'  trailing.zip  ' is unsafe",
+   "op": "unsafeFile",
+   "input": "  trailing.zip  ",
+   "expected": true
+  },
+  {
+   "name": "'noextension' is fine",
+   "op": "unsafeFile",
+   "input": "noextension",
+   "expected": false
+  },
+  {
+   "name": "'movie.iso' is fine",
+   "op": "unsafeFile",
+   "input": "movie.iso",
+   "expected": false
+  },
+  {
+   "name": "'script.js' is unsafe",
+   "op": "unsafeFile",
+   "input": "script.js",
+   "expected": true
+  },
+  {
+   "name": "'movie.mp4' is fine",
+   "op": "unsafeFile",
+   "input": "movie.mp4",
+   "expected": false
+  },
+  {
+   "name": "'movie.iso.exe' is unsafe",
+   "op": "unsafeFile",
+   "input": "movie.iso.exe",
+   "expected": true
+  },
+  {
+   "name": "'' is fine",
+   "op": "unsafeFile",
+   "input": "",
+   "expected": false
+  },
+  {
+   "name": "'.exe' is unsafe",
+   "op": "unsafeFile",
+   "input": ".exe",
+   "expected": true
+  }
+ ]
+}

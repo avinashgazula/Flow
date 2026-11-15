@@ -1,0 +1,284 @@
+{
+ "area": "watchlist-order",
+ "description": "The watchlist's saved order laid over a tracker's list, and moving titles within it (FlowKit WatchlistOrder, web/src/lib/watchlistOrder.ts).",
+ "cases": [
+  {
+   "name": "the saved order comes first",
+   "op": "applying",
+   "input": {
+    "saved": [
+     "movie:2",
+     "movie:1"
+    ],
+    "keys": [
+     "movie:1",
+     "movie:2",
+     "movie:3"
+    ]
+   },
+   "expected": [
+    "movie:2",
+    "movie:1",
+    "movie:3"
+   ]
+  },
+  {
+   "name": "keys that left the list are dropped from the saved order",
+   "op": "applying",
+   "input": {
+    "saved": [
+     "movie:9",
+     "movie:2"
+    ],
+    "keys": [
+     "movie:1",
+     "movie:2"
+    ]
+   },
+   "expected": [
+    "movie:2",
+    "movie:1"
+   ]
+  },
+  {
+   "name": "newer keys follow in the list's own order",
+   "op": "applying",
+   "input": {
+    "saved": [
+     "movie:1"
+    ],
+    "keys": [
+     "movie:4",
+     "movie:1",
+     "movie:3"
+    ]
+   },
+   "expected": [
+    "movie:1",
+    "movie:4",
+    "movie:3"
+   ]
+  },
+  {
+   "name": "a key saved twice counts once",
+   "op": "applying",
+   "input": {
+    "saved": [
+     "movie:1",
+     "movie:1",
+     "movie:2"
+    ],
+    "keys": [
+     "movie:1",
+     "movie:2"
+    ]
+   },
+   "expected": [
+    "movie:1",
+    "movie:2"
+   ]
+  },
+  {
+   "name": "a key listed twice counts once",
+   "op": "applying",
+   "input": {
+    "saved": [],
+    "keys": [
+     "movie:1",
+     "movie:2",
+     "movie:1"
+    ]
+   },
+   "expected": [
+    "movie:1",
+    "movie:2"
+   ]
+  },
+  {
+   "name": "nothing saved leaves the list as it is",
+   "op": "applying",
+   "input": {
+    "saved": [],
+    "keys": [
+     "movie:3",
+     "show:1",
+     "movie:1"
+    ]
+   },
+   "expected": [
+    "movie:3",
+    "show:1",
+    "movie:1"
+   ]
+  },
+  {
+   "name": "an empty list is empty",
+   "op": "applying",
+   "input": {
+    "saved": [
+     "movie:1"
+    ],
+    "keys": []
+   },
+   "expected": []
+  },
+  {
+   "name": "a movie and a show with the same number are different keys",
+   "op": "applying",
+   "input": {
+    "saved": [
+     "show:5",
+     "movie:5"
+    ],
+    "keys": [
+     "movie:5",
+     "show:5"
+    ]
+   },
+   "expected": [
+    "show:5",
+    "movie:5"
+   ]
+  },
+  {
+   "name": "one key moves before its target",
+   "op": "moving",
+   "input": {
+    "moving": [
+     "movie:3"
+    ],
+    "target": "movie:1",
+    "keys": [
+     "movie:1",
+     "movie:2",
+     "movie:3"
+    ]
+   },
+   "expected": [
+    "movie:3",
+    "movie:1",
+    "movie:2"
+   ]
+  },
+  {
+   "name": "several keys move together, in the order given",
+   "op": "moving",
+   "input": {
+    "moving": [
+     "movie:3",
+     "movie:2"
+    ],
+    "target": "movie:1",
+    "keys": [
+     "movie:1",
+     "movie:2",
+     "movie:3",
+     "movie:4"
+    ]
+   },
+   "expected": [
+    "movie:3",
+    "movie:2",
+    "movie:1",
+    "movie:4"
+   ]
+  },
+  {
+   "name": "no target puts them at the end",
+   "op": "moving",
+   "input": {
+    "moving": [
+     "movie:1"
+    ],
+    "target": null,
+    "keys": [
+     "movie:1",
+     "movie:2",
+     "movie:3"
+    ]
+   },
+   "expected": [
+    "movie:2",
+    "movie:3",
+    "movie:1"
+   ]
+  },
+  {
+   "name": "a target that is itself moving puts them at the end",
+   "op": "moving",
+   "input": {
+    "moving": [
+     "movie:1",
+     "movie:2"
+    ],
+    "target": "movie:2",
+    "keys": [
+     "movie:1",
+     "movie:2",
+     "movie:3"
+    ]
+   },
+   "expected": [
+    "movie:3",
+    "movie:1",
+    "movie:2"
+   ]
+  },
+  {
+   "name": "a target that is not on the list puts them at the end",
+   "op": "moving",
+   "input": {
+    "moving": [
+     "movie:1"
+    ],
+    "target": "movie:9",
+    "keys": [
+     "movie:1",
+     "movie:2"
+    ]
+   },
+   "expected": [
+    "movie:2",
+    "movie:1"
+   ]
+  },
+  {
+   "name": "a key that is not on the list is ignored",
+   "op": "moving",
+   "input": {
+    "moving": [
+     "movie:9"
+    ],
+    "target": "movie:1",
+    "keys": [
+     "movie:1",
+     "movie:2"
+    ]
+   },
+   "expected": [
+    "movie:1",
+    "movie:2"
+   ]
+  },
+  {
+   "name": "moving to just before the next one changes nothing",
+   "op": "moving",
+   "input": {
+    "moving": [
+     "movie:1"
+    ],
+    "target": "movie:2",
+    "keys": [
+     "movie:1",
+     "movie:2",
+     "movie:3"
+    ]
+   },
+   "expected": [
+    "movie:1",
+    "movie:2",
+    "movie:3"
+   ]
+  }
+ ]
+}

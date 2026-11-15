@@ -7,7 +7,13 @@ const threeLetter: Record<string, string> = {
   gre: 'el', ell: 'el', cze: 'cs', ces: 'cs', hun: 'hu', rum: 'ro', ron: 'ro', tha: 'th', vie: 'vi', ind: 'id', ukr: 'uk', cmn: 'zh', yue: 'zh',
   tam: 'ta', tel: 'te', ben: 'bn', mal: 'ml', kan: 'kn', mar: 'mr', pan: 'pa', urd: 'ur', fas: 'fa', per: 'fa', cat: 'ca', hrv: 'hr', srp: 'sr',
   bul: 'bg', slk: 'sk', slo: 'sk', msa: 'ms', may: 'ms', fil: 'tl', tgl: 'tl',
+  slv: 'sl', lit: 'lt', lav: 'lv', est: 'et', ice: 'is', isl: 'is', baq: 'eu', eus: 'eu', glg: 'gl',
+  // Two-letter codes that older software still writes (Java and Android), and Norwegian's two written forms.
+  nb: 'no', nn: 'no', iw: 'he', in: 'id',
 }
+
+/** Names the apps use where the browser's own list differs ("Bangla" for Bengali). */
+const nameOverrides: Record<string, string> = { bn: 'Bengali' }
 
 const undetermined = new Set(['und', 'unk', 'mis', 'zxx', 'mul'])
 
@@ -31,6 +37,8 @@ let names: Intl.DisplayNames | undefined
 export function languageName(code?: string): string | undefined {
   if (!code || !baseLanguage(code)) return undefined
   const base = code.split(/[-_]/)[0]!.toLowerCase()
+  const override = nameOverrides[baseLanguage(code) ?? '']
+  if (override) return override
   const tag = threeLetter[base] ? code.replace(/^[a-z]{3}/i, threeLetter[base]!) : code
   try {
     names ??= new Intl.DisplayNames(['en'], { type: 'language' })

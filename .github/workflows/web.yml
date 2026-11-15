@@ -52,9 +52,51 @@ jobs:
           name: web-dist
           path: web/dist
 
+  # The site in a real browser: the production build with sample data, every page, the main flows, settings, keyboard,
+  # accessibility and offline, each browser in its own job. Nothing here touches the network (web/e2e/fixtures.ts).
+  browser-tests:
+    name: Browser tests (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Install the browser
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Build
+        run: npm run build
+      - name: Type-check the tests
+        run: npm run e2e:types
+      - name: Run the browser tests
+        env:
+          E2E_BROWSERS: ${{ matrix.browser }}
+        run: npm run e2e
+      - name: Summarise
+        if: always()
+        run: node e2e/summary.mjs
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: |
+            web/playwright-report
+            web/test-results
+          if-no-files-found: ignore
+
   publish:
     name: Publish to GitHub Pages
-    needs: build
+    needs: [build, browser-tests]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     concurrency:

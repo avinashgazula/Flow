@@ -1,0 +1,49 @@
+{
+ "area": "account-number",
+ "description": "The 16-digit account number (docs/SYNC.md, The account number): reading what a person typed or pasted, formatting as they type, grouping, and drawing digits from random bytes without modulo bias.",
+ "cases": [
+  { "name": "a number as shown parses to its digits", "op": "parse", "input": "1234 5678 9012 3456", "expected": "1234567890123456" },
+  { "name": "leading zeros are kept", "op": "parse", "input": "0000 0000 0000 0001", "expected": "0000000000000001" },
+  { "name": "hyphens are separators", "op": "parse", "input": "1234-5678-9012-3456", "expected": "1234567890123456" },
+  { "name": "en and em dashes and dots are separators", "op": "parse", "input": "1234–5678—9012.3456", "expected": "1234567890123456" },
+  { "name": "surrounding line breaks and tabs are ignored", "op": "parse", "input": "\n\t1234567890123456\r\n", "expected": "1234567890123456" },
+  { "name": "a no-break space between groups is a separator", "op": "parse", "input": "1234 5678 9012 3456", "expected": "1234567890123456" },
+  { "name": "a thin space between groups is a separator", "op": "parse", "input": "1234 5678 9012 3456", "expected": "1234567890123456" },
+  { "name": "empty input is refused", "op": "parse", "input": "", "expected": null },
+  { "name": "fifteen digits are refused", "op": "parse", "input": "1234 5678 9012 345", "expected": null },
+  { "name": "seventeen digits are refused", "op": "parse", "input": "1234 5678 9012 34567", "expected": null },
+  { "name": "a letter among the digits is refused", "op": "parse", "input": "1234 5678 9012 345a", "expected": null },
+  { "name": "full-width digits are refused", "op": "parse", "input": "１２３４５６７８９０１２３４５６", "expected": null },
+  { "name": "Arabic-Indic digits are refused", "op": "parse", "input": "١٢٣٤٥٦٧٨٩٠١٢٣٤٥٦", "expected": null },
+  { "name": "only separators are refused", "op": "parse", "input": " - - . ", "expected": null },
+
+  { "name": "typing one digit shows it alone", "op": "formatTyped", "input": "1", "expected": "1" },
+  { "name": "five digits regroup by four", "op": "formatTyped", "input": "12345", "expected": "1234 5" },
+  { "name": "a pasted hyphenated number is regrouped", "op": "formatTyped", "input": "1234-5678-9012-3456", "expected": "1234 5678 9012 3456" },
+  { "name": "letters are dropped and digits past sixteen are cut", "op": "formatTyped", "input": "abc 1234 5678 9012 3456 789", "expected": "1234 5678 9012 3456" },
+  { "name": "an empty field stays empty", "op": "formatTyped", "input": "", "expected": "" },
+  { "name": "non-ASCII digits are dropped while typing", "op": "formatTyped", "input": "１２3４5", "expected": "35" },
+
+  { "name": "sixteen digits group in fours", "op": "group", "input": "1234567890123456", "expected": "1234 5678 9012 3456" },
+  { "name": "a partial number groups as far as it goes", "op": "group", "input": "123456", "expected": "1234 56" },
+  { "name": "an empty number groups to nothing", "op": "group", "input": "", "expected": "" },
+  { "name": "exactly four digits have no space", "op": "group", "input": "1234", "expected": "1234" },
+
+  { "name": "bytes that map to zero give leading zeros", "op": "generate", "input": { "blocks": [{ "fill": 10 }] }, "expected": "0000000000000000" },
+  { "name": "bytes of 250 and above are thrown away, not folded into low digits", "op": "generate", "input": { "blocks": [{ "fill": 255 }, { "fill": 7 }] }, "expected": "7777777777777777" },
+  { "name": "249 is the last byte kept and maps to 9", "op": "generate", "input": { "blocks": [{ "fill": 249 }] }, "expected": "9999999999999999" },
+  { "name": "250 is the first byte rejected", "op": "generate", "input": { "blocks": [{ "fill": 250 }, { "fill": 3 }] }, "expected": "3333333333333333" },
+  {
+    "name": "a block mixing kept and rejected bytes keeps the kept ones in order",
+    "op": "generate",
+    "input": { "blocks": [{ "bytes": [1, 250, 2, 251, 3, 252, 4, 253, 5, 254, 6, 255, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26] }] },
+    "expected": "1234567890123456"
+  },
+  {
+    "name": "a second block is drawn only when the first is not enough",
+    "op": "generate",
+    "input": { "blocks": [{ "bytes": [1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255] }, { "fill": 5 }] },
+    "expected": "1234567890555555"
+  }
+]
+}

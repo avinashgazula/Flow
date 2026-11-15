@@ -210,6 +210,9 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
   const save = () => {
     const { item: it, epRef: ep, current: cur } = latest.current
     if (!started.current || !it) return
+    // The element knows where it is now; the last time update can be a moment behind a seek that was just made.
+    const now = controller.video?.currentTime
+    if (now !== undefined && Number.isFinite(now)) position.current = now
     library.saveProgress(it, position.current, length.current, ep && { ...ep, name: cur?.name, still: cur?.still })
   }
 

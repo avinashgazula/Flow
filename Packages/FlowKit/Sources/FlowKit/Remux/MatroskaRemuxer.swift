@@ -1197,6 +1197,10 @@ public enum LanguageName {
         "srp": ("sr", "Serbian"), "slv": ("sl", "Slovenian"), "slo": ("sk", "Slovak"), "slk": ("sk", "Slovak"), "lit": ("lt", "Lithuanian"),
         "lav": ("lv", "Latvian"), "est": ("et", "Estonian"), "ice": ("is", "Icelandic"), "isl": ("is", "Icelandic"), "cat": ("ca", "Catalan"),
         "baq": ("eu", "Basque"), "eus": ("eu", "Basque"), "glg": ("gl", "Galician"), "und": ("und", "Unknown"),
+        // Mandarin and Cantonese are tagged as languages of their own in streams; the settings say Chinese.
+        "cmn": ("zh", "Chinese"), "yue": ("zh", "Chinese"), "pan": ("pa", "Punjabi"),
+        // The two-letter form of Bengali, which the system's own list calls Bangla.
+        "bn": ("bn", "Bengali"),
     ]
 
     public static func bcp47(_ code: String) -> String {
