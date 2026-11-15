@@ -80,4 +80,13 @@ ff "${V[@]}" "${A1[@]}" -c:v libx265 -preset ultrafast -x265-params "keyint=15:m
 
 # What a browser can't convert: a picture above 1080p. (The HDR clip is committed, e2e/media/committed: ffmpeg 8 no longer writes the HDR tags into the Matroska file.)
 ff -f lavfi -i "testsrc2=size=3840x2160:rate=5:duration=1" -c:v libx265 -preset ultrafast -x265-params "keyint=5:min-keyint=5:log-level=error" -b:v 400k -an x-mkv-hevc-4k.mkv
+
+# One second of each kind of fragmented MP4 the engine feeds to MediaSource, for the harness's probe (e2e/media/probe.ts): it appends
+# them to a real SourceBuffer to learn what the browser does, not only what it says.
+FRAG=(-movflags frag_keyframe+empty_moov+default_base_moof -t 1)
+ff "${V[@]}" -an -c:v libx264 -profile:v high -level 3.0 -pix_fmt yuv420p -g 15 "${FRAG[@]}" probe-h264.mp4
+ff "${A1[@]}" -c:a aac -b:a 64k "${FRAG[@]}" probe-aac.mp4
+ff "${A1[@]}" -c:a flac "${FRAG[@]}" probe-flac.mp4
+ff "${A1[@]}" -c:a libmp3lame -b:a 64k "${FRAG[@]}" probe-mp3.mp4
+ff "${A1[@]}" -c:a libopus -b:a 48k "${FRAG[@]}" probe-opus.mp4
 du -sh . && ls

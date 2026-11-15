@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type Page } from '../fixtures'
 import { expectPlaying, videoState, wake } from '../helpers'
+import { probeText } from './probe'
 
 /* What the playback matrix needs on top of the site's browser tests: a pretend add-on that offers one file under a given
    release name, a pretend file host that serves the generated clips (e2e/media/generated, made by
@@ -106,9 +107,12 @@ const notes: string[] = []
 
 export async function offer(page: Page, offers: Offer[]): Promise<{ hits: string[] }> {
   const hits: string[] = []
-  page.on('console', (message) => {
-    if (['warning', 'error'].includes(message.type()) && notes.length < 12) notes.push(`${message.type()}: ${message.text().slice(0, 200)}`)
-  })
+  // Everything the page and its workers (the engine runs in one) say about their media, for a failure's log.
+  const note = (where: string) => (message: { type(): string; text(): string }) => {
+    if ((['warning', 'error'].includes(message.type()) || message.text().startsWith('Marquee media')) && notes.length < 60) notes.push(`${where} ${message.type()}: ${message.text().slice(0, 240)}`)
+  }
+  page.on('console', note('page'))
+  page.on('worker', (worker) => worker.on('console', note('worker')))
   await hostFiles(page, offers, hits)
   await addon(page, offers)
   await page.addInitScript((url) => {
@@ -153,9 +157,15 @@ export async function whatHappened(page: Page) {
   const shown = (await alert.isVisible().catch(() => false)) ? await alert.innerText().catch(() => '') : 'no error shown'
   const element = await page.evaluate(() => {
     const v = document.querySelector('video')
-    return v ? `time ${v.currentTime.toFixed(2)}, ready ${v.readyState}, network ${v.networkState}, error ${v.error?.code ?? 'none'} ${v.error?.message ?? ''}` : 'no video element'
+    const buffered = v ? Array.from({ length: v.buffered.length }, (_, i) => `${v.buffered.start(i).toFixed(2)}-${v.buffered.end(i).toFixed(2)}`).join(',') : ''
+    return v ? `time ${v.currentTime.toFixed(2)}, ready ${v.readyState}, network ${v.networkState}, buffered [${buffered}], error ${v.error?.code ?? 'none'} ${v.error?.message ?? ''}` : 'no video element'
   })
-  return `player: ${shown.replace(/\n+/g, ' | ')}; element: ${element}; page said: ${notes.join(' / ') || 'nothing'}`
+  return `player: ${shown.replace(/\n+/g, ' | ')}; element: ${element}\n  page and workers said:\n    ${notes.join('\n    ') || 'nothing'}`
+}
+
+/** Everything worth reading when a cell fails: the player, the element, what the page and workers logged, and what the browser really does against what it claims. */
+export async function diagnostics(page: Page) {
+  return `${await whatHappened(page)}\n  the browser, claims against what happened:\n  ${await probeText(page)}`
 }
 
 export interface Info {

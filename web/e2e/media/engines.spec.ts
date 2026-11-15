@@ -1,10 +1,15 @@
 import { test, expect } from '../fixtures'
 import { readFacts } from './facts'
-import { expectHeard, expectSeek, offer, pickAndPlay, playbackInfo } from './harness'
+import { diagnostics, expectHeard, expectSeek, offer, pickAndPlay, playbackInfo } from './harness'
 
 /* One file for each way the site plays something, opened through the real player (add-on → picker → player) and checked
    in the page: the engine Playback Info names, a clock that runs, sound that is the clip's tone, and a seek that lands. The
    whole container and codec matrix is matrix.spec.ts; this is the short list that says each path is alive. */
+
+test.afterEach(async ({ page }, info) => {
+  if (info.status === info.expectedStatus || page.isClosed()) return
+  console.log(`DIAGNOSTICS for ${info.title}\n  ${await diagnostics(page)}`)
+})
 
 const paths = [
   { path: 'the browser’s own player', release: 'Matrix.480p.WEB-DL.AAC.H264.mp4', file: 'n-mp4-h264-aac.mp4', engine: /^Browser’s own player$/ },

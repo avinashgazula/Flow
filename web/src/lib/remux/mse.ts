@@ -107,6 +107,7 @@ export class MseSink {
   /** Creates the SourceBuffer for a track. */
   add(kind: BufferKind, mime: string) {
     if (this.destroyed) return
+    console.debug(`Marquee media: adding a source buffer for ${mime}`)
     const sb = this.source.addSourceBuffer(mime)
     // Fragments carry absolute decode times, so they land where they belong whatever order they come in.
     sb.mode = 'segments'

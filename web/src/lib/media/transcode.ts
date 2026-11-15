@@ -171,6 +171,7 @@ export class PictureConverter {
       encoder.addEventListener?.('dequeue', () => this.wake())
       // The encoder is configured for the picture the module actually makes: its even size, which can differ from the stream's by a pixel.
       encoder.configure({ ...this.config, width: frame.width, height: frame.height })
+      console.debug(`Marquee media: picture encoder configured ${JSON.stringify({ ...this.config, width: frame.width, height: frame.height })}`)
       this.encoder = encoder
     }
     const key = frame.timestamp - this.lastKey >= KEY_EVERY_US - 1
@@ -188,6 +189,7 @@ export class PictureConverter {
 
   private output(chunk: EncodedChunkLike, meta?: { decoderConfig?: { description?: ArrayBuffer | ArrayBufferView } }) {
     if (this.closed) return
+    if (this.packets === 0) console.debug(`Marquee media: first encoded picture out after ${this.frames} frames in`)
     try {
       if (!this.opened) {
         const d = meta?.decoderConfig?.description
@@ -211,6 +213,7 @@ export class PictureConverter {
   }
 
   private fail(error: Error) {
+    console.debug(`Marquee media: picture encoder failed (${error.name}: ${error.message})`)
     this.failure ??= error
     this.wake()
   }
