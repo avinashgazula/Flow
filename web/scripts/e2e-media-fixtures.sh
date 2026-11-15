@@ -1,8 +1,8 @@
 #!/bin/bash
-# Makes the clips the playback matrix plays in real browsers (e2e/media): eight seconds of a 320x180 test pattern, one
+# Makes the clips the playback matrix plays in real browsers (e2e/media): twenty seconds of a 320x180 test pattern, one
 # clip for each container, picture codec and sound codec the site says it plays. Every clip is a plain tone, so a test can
 # listen to it: 440 Hz on the first sound track, 660 Hz on the second, 880 Hz on the third. The clips are generated
-# (not committed: about 16 MB) by `npm run e2e-media-fixtures`; CI runs it before the matrix. Needs ffmpeg with libx264,
+# (not committed: about 38 MB) by `npm run e2e-media-fixtures`; CI runs it before the matrix. Needs ffmpeg with libx264,
 # libx265, libvpx, libvpx-vp9, libsvtav1, libtheora, libxvid, libopus, libvorbis and libmp3lame, as Ubuntu's has.
 # Nothing here is copyrighted: it is all generated.
 set -euo pipefail
@@ -12,7 +12,7 @@ rm -rf "$out" && mkdir -p "$out"
 cd "$out"
 ff() { ffmpeg -hide_banner -loglevel error -y "$@"; }
 
-D=8
+D=20
 V=(-f lavfi -i "testsrc2=size=320x180:rate=15:duration=$D")
 A1=(-f lavfi -i "sine=frequency=440:sample_rate=48000:duration=$D,aformat=channel_layouts=stereo")
 A2=(-f lavfi -i "sine=frequency=660:sample_rate=48000:duration=$D,aformat=channel_layouts=stereo")
