@@ -22,15 +22,26 @@ class AuditingUITestCase: FlowUITestCase {
         RunLoop.current.run(until: Date().addingTimeInterval(1.5))
         // One audit type per call: a screen the audit takes too long over (the iPad's are large) still reports the rest.
         for type in types {
-            do {
-                try app.performAccessibilityAudit(for: type) { issue in
-                    if Self.deliberateChoice(issue, overVideo: overVideo) != nil { return true }
-                    self.findings.append(Self.describe(issue, on: screen))
-                    // True means "handled": the audit goes on to the rest of the screen.
-                    return true
+            // The system gives an audit a fixed time, which a large iPad screen on a shared runner can overrun. That is the one
+            // thing run again, once, and said so in the log; a finding is never run again.
+            for attempt in 1...2 {
+                var found: [String] = []
+                do {
+                    try app.performAccessibilityAudit(for: type) { issue in
+                        if Self.deliberateChoice(issue, overVideo: overVideo) != nil { return true }
+                        found.append(Self.describe(issue, on: screen))
+                        // True means "handled": the audit goes on to the rest of the screen.
+                        return true
+                    }
+                    findings += found
+                    break
+                } catch {
+                    if attempt == 1 {
+                        print("AUDIT TIMED OUT, running it once more: \(Self.typeName(type)) of \(screen)")
+                    } else {
+                        XCTFail("the \(Self.typeName(type)) audit of \(screen) did not run: \(error)")
+                    }
                 }
-            } catch {
-                XCTFail("the \(Self.typeName(type)) audit of \(screen) did not run: \(error)")
             }
         }
     }

@@ -206,7 +206,8 @@ class FlowUITestCase: XCTestCase {
 
     /// Where the player is, read from the scrubber's spoken value ("0:03 of 0:12"). Nil until the length is known.
     func playbackPosition() -> (now: Double, total: Double)? {
-        guard scrubber.exists, let value = scrubber.value as? String else { return nil }
+        // A snapshot throws when the controls hide between the look and the read, where `.value` would fail the test.
+        guard let snapshot = try? scrubber.snapshot(), let value = snapshot.value as? String else { return nil }
         let halves = value.components(separatedBy: " of ")
         guard halves.count == 2, let now = Self.seconds(halves[0]), let total = Self.seconds(halves[1]), total > 0 else { return nil }
         return (now, total)
@@ -265,9 +266,23 @@ class FlowUITestCase: XCTestCase {
         button(startingWith: "Resume").tap()
         chooseBundledSample(file: file, line: line)
         waitForPlayback(file: file, line: line)
-        showPlayerControls(file: file, line: line)
-        btn("Pause").tap()
-        XCTAssertTrue(btn("Play").waitForExistence(timeout: 10),
-                      "Pause turns the centre button into Play", file: file, line: line)
+        pausePlayback(file: file, line: line)
+    }
+
+    /// Pauses the player. The controls hide themselves while it plays, so a press can find them gone: each try brings them
+    /// back first, and what is asserted is the outcome, the centre button saying Play.
+    func pausePlayback(file: StaticString = #filePath, line: UInt = #line) {
+        var paused = false
+        var tries = 0
+        while !paused && tries < 4 {
+            tries += 1
+            if !(transport.exists && transport.isHittable) {
+                app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+            let pause = btn("Pause")
+            if pause.waitForExistence(timeout: 3) && pause.isHittable { pause.tap() }
+            paused = btn("Play").waitForExistence(timeout: 4)
+        }
+        XCTAssertTrue(paused, "Pause turns the centre button into Play", file: file, line: line)
     }
 }
