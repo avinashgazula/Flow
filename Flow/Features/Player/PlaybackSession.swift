@@ -1123,9 +1123,9 @@ final class PlaybackSession: Identifiable {
     /// As a film's credits begin (from its credits segment, or its last six percent), says to stay
     /// when there's a scene during or after them.
     private func alertCreditsScenes(_ time: Double) {
-        let alert = creditsScenes?.alert
-        guard UpNextTiming.creditsNoticeIsDue(alreadyShown: creditsAlertShown, hasNotice: alert != nil, duration: duration,
-                                              creditsSegmentStart: segments.first { $0.kind == .credits }?.start, time: time), let alert else { return }
+        let scenesNotice = creditsScenes?.alert
+        guard UpNextTiming.creditsNoticeIsDue(alreadyShown: creditsAlertShown, hasNotice: scenesNotice != nil, duration: duration,
+                                              creditsSegmentStart: segments.first { $0.kind == .credits }?.start, time: time), let alert = scenesNotice else { return }
         creditsAlertShown = true
         show(notice: alert)
     }
