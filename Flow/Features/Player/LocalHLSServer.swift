@@ -22,6 +22,20 @@ final class LocalHLSServer: @unchecked Sendable {
     private let acceptQueue = DispatchQueue(label: "app.flow.hls.accept")
     private let workQueue = DispatchQueue(label: "app.flow.hls.work", attributes: .concurrent)
 
+    #if DEBUG
+    /// The last requests AVPlayer made and how long each took, for the player check to print when a start stalls.
+    private let debugLock = NSLock()
+    private var debugEntries: [String] = []
+    private let debugOrigin = Date()
+    func debugNote(_ text: String) {
+        debugLock.withLock {
+            debugEntries.append(String(format: "%7.2f s  ", Date().timeIntervalSince(debugOrigin)) + text)
+            if debugEntries.count > 80 { debugEntries.removeFirst(debugEntries.count - 80) }
+        }
+    }
+    func debugSnapshot() -> [String] { debugLock.withLock { debugEntries } }
+    #endif
+
     enum ServerError: LocalizedError {
         case couldNotStart(String)
         var errorDescription: String? {
@@ -156,6 +170,9 @@ final class LocalHLSServer: @unchecked Sendable {
 
         // The remuxer is async; this worker thread waits for it.
         let started = Date()
+        #if DEBUG
+        debugNote("-> \(method) \(pathParts[1])")
+        #endif
         let semaphore = DispatchSemaphore(value: 0)
         let box = ResponseBox()
         Task.detached {
@@ -163,6 +180,9 @@ final class LocalHLSServer: @unchecked Sendable {
             semaphore.signal()
         }
         semaphore.wait()
+        #if DEBUG
+        debugNote("<- \(pathParts[1]) \(box.response == nil ? (box.failed ? "failed" : "none") : "ok") after \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+        #endif
 
         guard let response = box.response else {
             let line = "hls \(method) \(pathParts[1]) -> \(box.failed ? 502 : 404)"

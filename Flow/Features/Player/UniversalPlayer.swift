@@ -116,9 +116,29 @@ private final class MPVHandle: @unchecked Sendable {
     }
 }
 
+/// How many libmpv handles are still being destroyed on a background queue. They share FFmpeg, the audio output and the
+/// audio session with whatever starts next, so a new playback waits for them (`UniversalPlayer.waitForTeardown`).
+final class UniversalTeardowns: @unchecked Sendable {
+    static let shared = UniversalTeardowns()
+    private let lock = NSLock()
+    private var count = 0
+    func began() { lock.withLock { count += 1 } }
+    func ended() { lock.withLock { count -= 1 } }
+    var pending: Int { lock.withLock { count } }
+}
+
 @MainActor
 @Observable
 final class UniversalPlayer {
+    /// Returns once no earlier player is still being torn down, or after `timeout` seconds.
+    static func waitForTeardown(timeout: Double = 5) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        while UniversalTeardowns.shared.pending > 0, Date() < deadline {
+            if Task.isCancelled { return }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+    }
+
     /// The playhead, in seconds; updated with every frame, so views read it on their own clock instead of observing it.
     @ObservationIgnored private(set) var timePosition: Double = 0
     private(set) var duration: Double = 0
@@ -276,7 +296,8 @@ final class UniversalPlayer {
         let handle = self.handle
         if let raw = handle.take() {
             mpv_set_wakeup_callback(raw, nil, nil)
-            DispatchQueue.global(qos: .utility).async { handle.destroy(raw) }
+            UniversalTeardowns.shared.began()
+            DispatchQueue.global(qos: .utility).async { handle.destroy(raw); UniversalTeardowns.shared.ended() }
         }
     }
 
@@ -600,8 +621,10 @@ final class UniversalPlayer {
         guard let raw = handle.take() else { return }
         mpv_set_wakeup_callback(raw, nil, nil)
         let keepAlive = layer
+        UniversalTeardowns.shared.began()
         DispatchQueue.global(qos: .utility).async {
             handle.destroy(raw)
+            UniversalTeardowns.shared.ended()
             // The layer and the wakeup context outlive the handle they were given to.
             withExtendedLifetime((handle, keepAlive)) {}
         }

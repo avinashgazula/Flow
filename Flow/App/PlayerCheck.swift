@@ -58,6 +58,7 @@ enum PlayerCheck {
         if wants("engines") { await scenario("engines", timeout: 180) { await checkEngineSwitch(sources, request: movie, model: model) } }
         if wants("staleresume") { await scenario("staleresume", timeout: 120) { await checkStaleResume(sources, request: movie, model: model) } }
         if wants("close") { await scenario("close", timeout: 120) { await checkCloseMidLoad(sources, request: movie, model: model) } }
+        if wants("reopen") { await scenario("reopen", timeout: 300) { await checkReopenAfterBuiltIn(sources, request: movie, model: model) } }
         if wants("missing") { await scenario("missing", timeout: 150) { await checkMissingFile(sources, request: movie, model: model) } }
         if wants("switch") { await scenario("switch", network: true, timeout: 120) { await checkSwitchingSource(sources, request: movie, model: model) } }
         if wants("intro") { await scenario("intro", network: true, timeout: 90) { await checkSkipIntro(sources[0], request: movie, model: model) } }
@@ -443,6 +444,7 @@ enum PlayerCheck {
             let t0 = session.playbackTime
             let moved = await value(timeout: 10) { session.playbackTime > t0 + 1 ? true : nil }
             let builtIn = session.universal != nil
+            if ready != true { diagnose(session) }
             record(ready == true && moved != nil && builtIn == wantsBuiltIn, what,
                    "builtIn=\(builtIn) (wanted \(wantsBuiltIn)), phase \(session.phase), at \(String(format: "%.1f", session.playbackTime))")
         }
@@ -749,9 +751,59 @@ enum PlayerCheck {
             return session
         }
         record(false, "starts playing", "phase \(session.phase) after \(Int(seconds)) s")
+        diagnose(session)
         await screen("failed-\(source.id)")
         session.stop()
         return nil
+    }
+
+    /// What the session and everything under it knew when a start stalled, so a log alone can say why.
+    private static func diagnose(_ session: PlaybackSession) {
+        line("  DIAG   phase \(session.phase), notice \(session.notice ?? "-"), failureDetail \(session.failureDetail ?? "-")")
+        line("  DIAG   engine: usesRemux=\(session.usesRemux), builtIn=\(session.universal != nil), built-in players still being destroyed=\(UniversalTeardowns.shared.pending)")
+        let player = session.player
+        line("  DIAG   AVPlayer: timeControl=\(player.timeControlStatus.rawValue) rate=\(player.rate) waiting=\(player.reasonForWaitingToPlay?.rawValue ?? "-") time=\(String(format: "%.2f", player.currentTime().seconds))")
+        if let item = player.currentItem {
+            line("  DIAG   item: status=\(item.status.rawValue) error=\(item.error.map { "\($0)" } ?? "-") likelyToKeepUp=\(item.isPlaybackLikelyToKeepUp) bufferEmpty=\(item.isPlaybackBufferEmpty)")
+            line("  DIAG   loaded: " + item.loadedTimeRanges.map { String(format: "%.1f+%.1f", $0.timeRangeValue.start.seconds, $0.timeRangeValue.duration.seconds) }.joined(separator: ", "))
+            for event in item.errorLog()?.events ?? [] { line("  DIAG   error log: \(event.errorStatusCode) \(event.errorComment ?? "-") \(event.uri ?? "-")") }
+            for event in item.accessLog()?.events ?? [] { line("  DIAG   access log: \(event.uri ?? "-") requests=\(event.numberOfMediaRequests) stalls=\(event.numberOfStalls)") }
+        } else {
+            line("  DIAG   no AVPlayerItem")
+        }
+        for entry in LocalHLSServer.shared.debugSnapshot().suffix(40) { line("  DIAG   hls " + entry) }
+    }
+
+    /// Opening the Opus, Vorbis and PCM file straight after a built-in player closed, which once left the start
+    /// "connecting" for ever. The built-in player is closed at different moments, and the next start must not wait for it.
+    private static func checkReopenAfterBuiltIn(_ sources: [StreamSource], request: PlaybackRequest, model: AppModel) async {
+        section("Opening the audio file straight after closing the built-in player")
+        guard let audio = sources.first(where: { $0.id == DemoSourceProvider.audioSampleID }),
+              let builtIn = sources.first(where: { $0.id == DemoSourceProvider.matroskaSampleID }) else { record(false, "setup", "a bundled sample is missing"); return }
+        defer { PlaybackSession.forcedUniversal = false }
+        for delay in [0.0, 0.3, 1.0, 2.0, 3.5, 5.0] {
+            PlaybackSession.forcedUniversal = true
+            model.startPlayback(builtIn, request: request)
+            guard let first = await value(timeout: 3, { model.activePlayback }) else { record(false, "the built-in player opened", ""); continue }
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            let wasBuiltIn = first.universal != nil
+            // No waiting for the old player to be gone: the viewer doesn't wait either.
+            first.stop()
+            PlaybackSession.forcedUniversal = false
+            let label = "closed \(Int(delay * 1000)) ms into the built-in player (built-in: \(wasBuiltIn))"
+            model.startPlayback(audio, request: request)
+            guard let session = await value(timeout: 3, { model.activePlayback }), session.id != first.id else { record(false, "\(label): the audio file opened", ""); continue }
+            let playing = await value(timeout: 40) { () -> Bool? in
+                if session.resumePrompt != nil { session.answerResume(false) }
+                if case .failed = session.phase { return false }
+                return session.phase == .playing && session.isPlaying ? true : nil
+            }
+            if playing != true { diagnose(session) }
+            let t0 = session.playbackTime
+            let moved = await value(timeout: 8) { session.playbackTime > t0 + 1 ? true : nil }
+            record(playing == true && moved != nil, "\(label): the audio file starts and plays", "phase \(session.phase), at \(String(format: "%.1f", session.playbackTime))")
+            await closePlayer(session, model)
+        }
     }
 
     /// Closes the player the way the viewer does and waits for it to be gone.
