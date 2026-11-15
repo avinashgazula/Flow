@@ -19,6 +19,9 @@ export interface Facts {
   mseOpus: boolean
   mseFlac: boolean
   mseMp3: boolean
+  /** H.264 High 10 and High 4:2:2, which many browsers decode only in some builds. */
+  mseHigh10: boolean
+  mseHigh422: boolean
   mseDts: boolean
   mseTruehd: boolean
   /** A plain <video src> plays Dolby Digital (Plus). */
@@ -58,7 +61,10 @@ export const readFacts = (page: Page): Promise<Facts> =>
       mseEac3: mse('audio/mp4; codecs="ec-3"'),
       mseOpus: mse('audio/mp4; codecs="opus"'),
       mseFlac: mse('audio/mp4; codecs="flac"'),
-      mseMp3: mse('audio/mp4; codecs="mp3"') || mse('audio/mp4; codecs="mp4a.6b"') || mse('audio/mp4; codecs="mp4a.69"'),
+      // Firefox says yes to MP3 in MP4 and then fails to decode it ("Media resource could not be decoded", CI): its yes is not a fact.
+      mseMp3: !/Firefox\//.test(navigator.userAgent) && (mse('audio/mp4; codecs="mp3"') || mse('audio/mp4; codecs="mp4a.6b"') || mse('audio/mp4; codecs="mp4a.69"')),
+      mseHigh10: mse('video/mp4; codecs="avc1.6E001E"'),
+      mseHigh422: mse('video/mp4; codecs="avc1.7A001E"'),
       mseDts: mse('audio/mp4; codecs="dtsc"') || mse('audio/mp4; codecs="dtse"'),
       mseTruehd: mse('audio/mp4; codecs="mlpa"'),
       playsAc3: plays('video/mp4; codecs="ac-3"'),

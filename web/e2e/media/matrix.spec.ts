@@ -40,7 +40,7 @@ export function outcomeFor(c: Clip, f: Facts): Outcome {
   const never = (a: string) => ['Vorbis', 'PCM', 'MP2', 'WMA'].includes(a)
   const audio: Outcome['audio'] = asIs(first) ? 'as is' : never(first) || first.startsWith('Dolby') ? 'converted' : 'unknown'
   const noEncoder = { fails: /encoder/i }
-  const videoNeedsConversion = ['HEVC', 'MPEG-1', 'MPEG-2', 'Xvid', 'WMV 8', 'MS MPEG-4', 'Sorenson H.263', 'Motion JPEG', 'Theora', 'VP8'].includes(c.video)
+  const videoNeedsConversion = (c.video === 'H.264 10-bit' && !f.mseHigh10) || (c.video === 'H.264 4:2:2' && !f.mseHigh422) || ['HEVC', 'MPEG-1', 'MPEG-2', 'Xvid', 'WMV 8', 'MS MPEG-4', 'Sorenson H.263', 'Motion JPEG', 'Theora', 'VP8'].includes(c.video)
 
   if (c.container === 'm3u8') return { engine: 'native', videoConverted: false, audio: 'as is' }
   if (['mp4', 'mov', 'webm'].includes(c.container)) {
@@ -52,7 +52,7 @@ export function outcomeFor(c: Clip, f: Facts): Outcome {
   }
   if (c.container === 'mkv') {
     const remuxable = asIs(first) || ['DTS', 'TrueHD', 'Dolby Digital', 'Dolby Digital Plus'].includes(first)
-    const videoPlaysInRemux = !(c.video === 'HEVC' && !f.mseHevc) && c.video !== 'VP8'
+    const videoPlaysInRemux = !(c.video === 'HEVC' && !f.mseHevc) && c.video !== 'VP8' && !(c.video === 'H.264 10-bit' && !f.mseHigh10) && !(c.video === 'H.264 4:2:2' && !f.mseHigh422)
     if (videoNeedsConversion && !videoPlaysInRemux) return f.h264Encoder ? { engine: 'universal', videoConverted: true, audio } : { engine: 'universal', videoConverted: true, audio, ...noEncoder }
     if (remuxable && (asIs(first) || f.opusEncoder)) return { engine: 'remux', videoConverted: false, audio }
     return { engine: 'universal', videoConverted: false, audio }
