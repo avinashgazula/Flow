@@ -185,16 +185,18 @@ class FlowUITestCase: XCTestCase {
                       "Dune: Part Two's page offers Resume", file: file, line: line)
     }
 
-    /// Chooses the bundled MKV from the source list: it plays offline, through the app's own remuxer, so no test depends
-    /// on a stream somewhere on the network.
+    /// Chooses the first sample source: one of Apple's public sample streams, which runs for many minutes, so a test can
+    /// work in the middle of a film without the film ending. NETWORK-DEPENDENT, as the sample data's artwork already is.
+    /// (The bundled MKV, `demo#mkv`, is only 12 seconds: a test acts a few seconds late and meets the end of the film.)
     func chooseBundledSample(file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(btn("Search Again").waitForExistence(timeout: patience), "the source list opens", file: file, line: line)
         XCTAssertTrue(element("source-demo#0").waitForExistence(timeout: patience), "the first source is listed", file: file, line: line)
-        let row = element("source-\(Self.bundledSampleID)")
-        XCTAssertTrue(reveal(row), "the bundled sample is in the list", file: file, line: line)
+        let row = element("source-\(Self.longSampleID)")
+        XCTAssertTrue(reveal(row), "the long sample stream is in the list", file: file, line: line)
         row.tap()
     }
 
+    static let longSampleID = "demo#0"
     static let bundledSampleID = "demo#mkv"
 
     var scrubber: XCUIElement { element("player-scrubber") }

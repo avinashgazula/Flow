@@ -1,7 +1,8 @@
 import XCTest
 
 /// From a title's page to the picture and back: the page's actions, the source list, and the player with real taps on
-/// its controls. The player runs the bundled MKV, which Marquee remuxes on the device, so nothing here needs the network.
+/// its controls. The player tests play Apple's first public sample stream (long, so nothing ends while a test works), which
+/// needs the network, as the sample data's artwork does; they are marked by `chooseBundledSample`.
 final class TitleAndPlayerUITests: FlowUITestCase {
     override func setUp() {
         super.setUp()
@@ -17,7 +18,7 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         add.tap()
         XCTAssertTrue(btn("Remove from Watchlist").waitForExistence(timeout: 10), "the action turns into its opposite")
         btn("Remove from Watchlist").tap()
-        XCTAssertTrue(btn("Add to Watchlist").waitForExistence(timeout: 10), "and back")
+        XCTAssertTrue(btn("Add to Watchlist").waitForExistence(timeout: patience), "and back")
         XCTAssertTrue(btn("Mark Watched").exists, "an unwatched film can be marked watched")
     }
 
