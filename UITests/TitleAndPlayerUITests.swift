@@ -97,8 +97,7 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         btn("Play").tap()
         XCTAssertTrue(btn("Pause").waitForExistence(timeout: 10), "Play turns the button back into Pause")
         XCTAssertTrue(waitUntil(30) { (self.playbackPosition()?.now ?? 0) > paused + 0.9 }, "playback carries on from where it stopped")
-        showPlayerControls()
-        btn("Pause").tap()
+        pausePlayback()
     }
 
     func testTappingTheScrubberMovesThePlayhead() {

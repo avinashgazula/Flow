@@ -222,7 +222,10 @@ class FlowUITestCase: XCTestCase {
 
     /// Waits until the picture has really played for `seconds`. A resume prompt here is a failure: the sample is 12
     /// seconds long, and a saved point far past its end must be ignored.
-    func waitForPlayback(seconds: Double = 1, timeout: TimeInterval = 120, file: StaticString = #filePath, line: UInt = #line) {
+    /// The bundled clips are 6 to 12 seconds long, so by default the player is paused the moment its clock has run: a test
+    /// that acts a few seconds later would meet the end of the film, its suggestions screen and a closing player.
+    func waitForPlayback(seconds: Double = 0.5, pauseOnArrival: Bool = true, timeout: TimeInterval = 120,
+                         file: StaticString = #filePath, line: UInt = #line) {
         var prompted = false
         var lastTap = Date.distantPast
         let played = waitUntil(timeout) {
@@ -237,7 +240,10 @@ class FlowUITestCase: XCTestCase {
                 return false
             }
             guard let position = self.playbackPosition() else { return false }
-            return position.now >= seconds
+            guard position.now >= seconds else { return false }
+            // The controls are up (the scrubber is there), so Pause can be pressed now, before they hide again.
+            if pauseOnArrival, (try? self.btn("Pause").snapshot()) != nil { self.btn("Pause").tap() }
+            return true
         }
         XCTAssertFalse(prompted, "a resume point past the end of the file is ignored, not offered", file: file, line: line)
         XCTAssertTrue(played, "the player is playing and its clock is running", file: file, line: line)
@@ -280,7 +286,7 @@ class FlowUITestCase: XCTestCase {
                 app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
             }
             let pause = btn("Pause")
-            if pause.waitForExistence(timeout: 3) && pause.isHittable { pause.tap() }
+            if pause.waitForExistence(timeout: 3), (try? pause.snapshot()) != nil { pause.tap() }
             paused = btn("Play").waitForExistence(timeout: 4)
         }
         XCTAssertTrue(paused, "Pause turns the centre button into Play", file: file, line: line)

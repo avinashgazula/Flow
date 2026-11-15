@@ -35,10 +35,15 @@ final class DeepLinkUITests: FlowUITestCase {
 
     func testAContinueLinkOpensTheSourceListForTheLatestResume() {
         openLink("flow://continue")
-        let opened = btn("Search Again").waitForExistence(timeout: patience)
-        // If it did not, the screen says why (a toast such as "Nothing to continue" or "No episodes available yet.").
-        if !opened { print("SCREEN after flow://continue:\n" + app.debugDescription) }
-        XCTAssertTrue(opened, "the source list for Breaking Bad's episode opens")
+        // A toast says why when nothing opens ("Nothing to continue", "No episodes available yet."), and it is gone in
+        // seconds: so what is on screen is read while the wait goes on, and named in the failure.
+        var seen: [String] = []
+        let opened = waitUntil(patience) {
+            if self.btn("Search Again").exists { return true }
+            for toast in ["Nothing to continue", "No episodes", "Couldn't open"] where self.text(startingWith: toast).exists { seen.append(toast) }
+            return false
+        }
+        XCTAssertTrue(opened, "the source list for Breaking Bad's episode opens; messages seen: \(Set(seen))")
         XCTAssertTrue(text(startingWith: "S03E").waitForExistence(timeout: patience), "and it is for season 3, where the sample library left off")
     }
 
