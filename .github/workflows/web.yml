@@ -131,7 +131,7 @@ jobs:
         env:
           E2E_BROWSERS: ${{ matrix.browser }}
           E2E_SUITE: media
-        run: npm run e2e -- --workers 1
+        run: npm run e2e -- --workers 1 --max-failures 6
       - name: Summarise
         if: always()
         run: node e2e/summary.mjs

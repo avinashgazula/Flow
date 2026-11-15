@@ -202,15 +202,19 @@ export async function listen(page: Page): Promise<Heard> {
 
 /** Waits until the sound out is the tone `hz` (within one bin plus a little: the clip's tone, whatever it was resampled to). */
 export async function expectHeard(page: Page, hz: number, message = `${hz} Hz can be heard`) {
-  await expect
-    .poll(
-      async () => {
-        const h = await listen(page)
-        return h.peak > 0.02 && Math.abs(h.hz - hz) <= 12 ? 'heard' : `${h.hz} Hz, peak ${h.peak.toFixed(3)}, audio context ${h.state}`
-      },
-      { message, timeout: 25_000, intervals: [100] },
-    )
-    .toBe('heard')
+  const deadline = Date.now() + 25_000
+  let last = ''
+  while (Date.now() < deadline) {
+    const h = await listen(page)
+    if (h.peak > 0.02 && Math.abs(h.hz - hz) <= 12) return
+    last = `${h.hz} Hz, peak ${h.peak.toFixed(3)}, audio context ${h.state}`
+  }
+  // What the element itself says, so a silent clip can be told from a clip that never started.
+  const element = await page.evaluate(() => {
+    const v = document.querySelector('video')!
+    return `time ${v.currentTime.toFixed(2)}, paused ${v.paused}, muted ${v.muted}, volume ${v.volume}, ready ${v.readyState}, error ${v.error?.code ?? 'none'}`
+  })
+  throw new Error(`${message}: last heard ${last} (${element})`)
 }
 
 /** Opens Audio and Subtitles and returns the audio choices, by their visible text ("English · AAC Stereo", with "Converted" under it when it is). */
