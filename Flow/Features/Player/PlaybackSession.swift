@@ -792,7 +792,7 @@ final class PlaybackSession: Identifiable {
     /// `exact` is for chapters and resume points, where the frame matters.
     func seek(to seconds: Double, exact: Bool = false) {
         noteInteraction()
-        let target = max(0, duration > 0 ? min(seconds, duration) : seconds)
+        let target = PlayerProgress.clampedSeekTarget(seconds, duration: duration)
         seekTarget = target
         if let universal {
             universal.seek(to: target, exact: exact)
@@ -1101,18 +1101,18 @@ final class PlaybackSession: Identifiable {
         }
     }
 
-    private var percent: Double { duration > 0 ? currentTime / duration * 100 : 0 }
+    private var percent: Double { PlayerProgress.percent(position: currentTime, duration: duration) }
 
     private func tick(_ seconds: Double) {
         guard seconds.isFinite else { return }
         currentTime = seconds
-        if !playedLongEnough, seconds >= 60 { playedLongEnough = true }
+        if !playedLongEnough, PlayerProgress.hasPlayedLongEnough(seconds) { playedLongEnough = true }
         if duration <= 0, let d = player.currentItem?.duration.seconds, d.isFinite { duration = d }
         if duration <= 0, let d = universal?.duration, d > 0 { duration = d }
         updateSegment(seconds)
         alertCreditsScenes(seconds)
         offerSuggestions(seconds)
-        if Date().timeIntervalSince(lastReport) > 10 {
+        if PlayerProgress.reportIsDue(secondsSinceLastReport: Date().timeIntervalSince(lastReport)) {
             lastReport = Date()
             Task { await report(.progress) }
             nowPlaying.update(elapsed: seconds, duration: duration, rate: playbackRate)
@@ -1619,24 +1619,22 @@ final class PlaybackSession: Identifiable {
         guard !isClosed, !switchingEpisode else { return }
         // An item that ends without ever really playing (bad seek, broken stream) is an error,
         // not a finished viewing — never mark it watched.
-        guard didStart, currentTime > 5 else {
+        let end = PlayerProgress.endOfStream(didStart: didStart, currentTime: currentTime, sleepEndsWithItem: sleepTimer == .endOfItem, hasUpNext: upNext != nil,
+                                             autoPlayNext: model?.settings.playback.autoPlayNextEpisode == true, hasSuggestions: !suggestions.isEmpty)
+        if end == .unexpected {
             ScreenshotTour.log("didFinish ignored: started=\(didStart) time=\(currentTime)")
             fail("This stream ended unexpectedly.")
             return
         }
         phase = .finished
-        if sleepTimer == .endOfItem {
-            await finishCurrent(completed: true)
-            close()
-            return
-        }
-        if upNext != nil, model?.settings.playback.autoPlayNextEpisode == true {
+        switch end {
+        case .advance:
             await advanceAutomatically()
-        } else if upNext == nil, !suggestions.isEmpty {
+        case .showSuggestions:
             // End on "Because You Watched" rather than dropping back to where the film was started.
             await finishCurrent(completed: true)
             showsSuggestions = true
-        } else {
+        case .finishAndClose, .unexpected:
             await finishCurrent(completed: true)
             close()
         }
@@ -1644,8 +1642,8 @@ final class PlaybackSession: Identifiable {
 
     private func finishCurrent(completed: Bool) async {
         guard let model, didStart else { return }
-        let position = completed ? max(currentTime, duration) : currentTime
-        let pct = duration > 0 ? min(100, position / duration * 100) : 0
+        let position = PlayerProgress.stopPosition(completed: completed, currentTime: currentTime, duration: duration)
+        let pct = PlayerProgress.stopPercent(position: position, duration: duration)
         try? await model.tracker.scrobble(.stop, request: request, percent: pct)
         await report(.stopped)
         await model.recordPlayback(request: request, position: position, duration: duration, finished: completed)

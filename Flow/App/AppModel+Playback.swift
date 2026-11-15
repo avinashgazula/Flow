@@ -294,16 +294,18 @@ extension AppModel {
     /// Called by the player as playback progresses or stops.
     func recordPlayback(request: PlaybackRequest, position: Double, duration: Double, finished: Bool) async {
         guard let key = request.item.key, duration > 0 else { return }
-        let percent = min(100, position / duration * 100)
-        if finished || percent >= settings.playback.watchedThresholdPercent {
+        switch PlayerProgress.saveOutcome(position: position, duration: duration, finished: finished, watchedThresholdPercent: settings.playback.watchedThresholdPercent) {
+        case .watched:
             await setWatched(request.item, episodes: request.episodeRef.map { [$0] }, watched: true)
             if let ref = request.episodeRef { await local.advanceRewatch(key, episode: ref) }
             progress.removeAll { $0.key == key && $0.episode == request.episodeRef }
-        } else if percent > 1 {
+        case .progress(let percent):
             let entry = PlaybackProgress(key: key, episode: request.episodeRef, percent: percent, positionSeconds: position, durationSeconds: duration)
             await local.recordProgress(entry, item: request.item)
             progress.removeAll { $0.key == key }
             progress.insert(entry, at: 0)
+        case .ignore:
+            break
         }
         await rebuildContinueWatching()
         contentVersion += 1
