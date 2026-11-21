@@ -381,7 +381,7 @@ final class SyncTests: XCTestCase {
         let old = #"{"general":{"accent":"red"}}"#
         var settings = try SettingsCodec.decode(AppSettings.self, from: Data(old.utf8), defaults: AppSettings())
         XCTAssertEqual(settings.general.font, .system)
-        XCTAssertEqual(FontChoice.allCases.map(\.rawValue), ["system", "inter", "geist", "manrope", "ioskeley"])
+        XCTAssertEqual(FontChoice.allCases.map(\.rawValue), ["system", "inter", "geist", "manrope", "mono"])
         XCTAssertEqual(FontChoice.allCases.map(\.title), ["System", "Inter", "Geist", "Manrope", "Mono"])
         for choice in FontChoice.allCases {
             XCTAssertEqual(choice.id, choice.rawValue)
@@ -390,6 +390,9 @@ final class SyncTests: XCTestCase {
             let back = try SettingsCodec.decode(AppSettings.self, from: data, defaults: AppSettings())
             XCTAssertEqual(back.general.font, choice)
         }
+        // What the website's older builds saved for Mono.
+        let legacy = #"{"general":{"font":"ioskeley"}}"#
+        XCTAssertEqual(try SettingsCodec.decode(AppSettings.self, from: Data(legacy.utf8), defaults: AppSettings()).general.font, .mono)
         // An id from a newer build, or a typo, reads as System and leaves the rest of the file intact.
         let unknown = #"{"general":{"accent":"red","font":"comic-sans"}}"#
         let decoded = try SettingsCodec.decode(AppSettings.self, from: Data(unknown.utf8), defaults: AppSettings())

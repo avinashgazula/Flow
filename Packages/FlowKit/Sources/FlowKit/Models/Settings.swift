@@ -63,11 +63,10 @@ public enum AccentColorChoice: String, Codable, Hashable, Sendable, CaseIterable
 }
 
 /// The face the interface and body text are set in. The raw values are the website's `FontChoice` ids, so a setup
-/// moved between the apps and the site keeps its meaning (the site's id for IBM Plex Mono is still `ioskeley`).
-/// An id this build doesn't know decodes as System rather than failing the whole settings file.
+/// moved between the apps and the site keeps its meaning. An older site build saved Mono as `ioskeley`, which still
+/// reads as Mono. An id this build doesn't know decodes as System rather than failing the whole settings file.
 public enum FontChoice: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
-    case system, inter, geist, manrope
-    case mono = "ioskeley"
+    case system, inter, geist, manrope, mono
 
     public var id: String { rawValue }
 
@@ -83,7 +82,7 @@ public enum FontChoice: String, Codable, Hashable, Sendable, CaseIterable, Ident
 
     public init(from decoder: Decoder) throws {
         let raw = try decoder.singleValueContainer().decode(String.self)
-        self = FontChoice(rawValue: raw) ?? .system
+        self = raw == "ioskeley" ? .mono : (FontChoice(rawValue: raw) ?? .system)
     }
 }
 
