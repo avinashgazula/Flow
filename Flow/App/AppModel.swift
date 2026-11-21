@@ -116,6 +116,8 @@ final class AppModel {
     // MARK: Library state
 
     var localLibrary = LocalLibrary()
+    @ObservationIgnored private let librarySaveOrder = SaveOrder()
+    @ObservationIgnored private var appliedLibrarySave = 0
     var watchlistKeys: [MediaKey] = []
     var favouriteKeys: [MediaKey] = []
     var watchedMovies: Set<Int> = []
@@ -396,8 +398,17 @@ final class AppModel {
     // MARK: Service construction
 
     func rebuildServices() {
+        // Each change hops to the main actor in a task of its own, and two such tasks aren't promised to run in the order
+        // they were made: a quick Add then Remove could land as Remove then Add and leave the title on the list. The
+        // tracker numbers its saves in order, and an older one that arrives late is dropped.
+        let order = librarySaveOrder
         let saveLibrary: @Sendable (LocalLibrary) -> Void = { [weak self] library in
-            Task { @MainActor in self?.localLibraryDidChange(library) }
+            let number = order.next()
+            Task { @MainActor in
+                guard let self, number > self.appliedLibrarySave else { return }
+                self.appliedLibrarySave = number
+                self.localLibraryDidChange(library)
+            }
         }
         if local == nil {
             local = LocalTracker(library: localLibrary, save: saveLibrary)
@@ -612,3 +623,11 @@ extension String {
         return t.isEmpty ? nil : t
     }
 }
+
+/// Numbers saves in the order they are made, from whichever thread makes them.
+final class SaveOrder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var last = 0
+    func next() -> Int { lock.withLock { last += 1; return last } }
+}
+
