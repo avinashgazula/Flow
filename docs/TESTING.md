@@ -15,6 +15,7 @@ them on every push to `main` or a `claude/**` branch.
 | Website unit tests | The website's logic is right | `web/src/**/*.test.ts`, `web/proxy/*.test.js` | `cd web && npm run coverage` (or `npm test`) | Web: Build and test |
 | Website browser tests | Every page and the main flows work in a real browser, with a keyboard, on a phone, offline, and pass an accessibility audit | `web/e2e` | `cd web && npm run build && E2E_SUITE=site npm run e2e` | Web: Browser tests (chromium, firefox, webkit) |
 | Website playback matrix | Each container, picture codec and sound codec really plays through the engine the README promises, in each browser | `web/e2e/media` | See below | Web: Playback matrix (chromium, firefox, webkit) |
+| App UI tests | Real taps reach real screens on iPhone and iPad; every main screen passes an accessibility audit and works at the largest text size; Apple TV always has exactly one thing focused | `UITests`, `UITestsTV` | `scripts/ui-test.sh ios` (also `ipad`, `tvos`) | UI tests (ios, ipad, tvos) |
 | Player check | Both player engines play, seek, switch tracks, resume and fail properly on a real simulator and the Mac | `Flow/App/PlayerCheck.swift` | `scripts/player-check.sh ios` (also `tvos`, `macos`, `ipad`) | Player check (ios, tvos, macos) |
 | Screenshot tour | Every main screen still draws; the screenshots are published for a person to look at | `Flow/App/ScreenshotTour.swift` | `scripts/sim.sh tour ios` | Screenshots |
 
@@ -98,3 +99,24 @@ runner has no audio device, so its cells assert that sound is present and the cl
 - When a start fails, the log gets `DIAG` lines: what Apple's player was doing, its error log, and the last requests
   the local server answered.
 - A new player feature gets a scenario here, on both engines where it applies.
+
+## App UI tests
+
+- XCUITest on sample data (`-FlowDemo YES`), started fresh per test class. `UITests/Support/FlowUITestCase.swift` has
+  the shared steps: launching, tabs, deep links, opening Dune's page, choosing a source, pausing, reading the
+  player's clock from the scrubber's spoken value.
+- Debug builds take `-FlowKeepPlayerControls YES`, which the tests pass: the player's controls stay up, so a press never
+  races their four-second hide timer.
+- Tests that need the player to stay mid-film use the first sample source, one of Apple's public streams that runs for
+  minutes (it needs the network, as the sample artwork does). The bundled clips are 6 to 12 seconds long and would end
+  while a test works.
+- Accessibility audits (`AccessibilityAuditUITests`) run on each main screen. Exclusions are one audit type on one kind
+  of element, each with its reason in `AuditingUITestCase.deliberateChoice`; clipped text is not audited, because single
+  line labels are a design choice. A timed-out audit runs once more.
+- Apple TV (`UITestsTV`) drives the remote and checks that exactly one element has focus after every press and that
+  Menu returns where it came from.
+- A failing test prints the screen (`app.debugDescription`) at its first failure, so the CI log shows what was there.
+- New stable hooks are accessibility identifiers (`settings-row-<page>`, `source-<id>`, `player-scrubber`,
+  `search-field`, `onboarding-key`), never visible changes.
+- `xcodegen generate` picks up the UI test targets from `project.yml`; regenerate and commit `Flow.xcodeproj` on a Mac.
+

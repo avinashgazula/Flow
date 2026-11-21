@@ -27,7 +27,7 @@ if [ "$quick" != "--quick" ]; then
   fi
   if command -v xcodebuild > /dev/null 2>&1; then
     for platform in ios tvos macos; do step "Player check ($platform)" scripts/player-check.sh "$platform"; done
-    step "UI tests (iPhone)" scripts/ui-test.sh
+    for platform in ios ipad tvos; do step "UI tests ($platform)" scripts/ui-test.sh "$platform"; done
   else
     echo
     echo "No Xcode here: the player check and the UI tests run in CI (.github/workflows)."
