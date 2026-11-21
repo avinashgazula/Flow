@@ -62,8 +62,35 @@ public enum AccentColorChoice: String, Codable, Hashable, Sendable, CaseIterable
     public var id: String { rawValue }
 }
 
+/// The face the interface and body text are set in. The raw values are the website's `FontChoice` ids, so a setup
+/// moved between the apps and the site keeps its meaning (the site's id for IBM Plex Mono is still `ioskeley`).
+/// An id this build doesn't know decodes as System rather than failing the whole settings file.
+public enum FontChoice: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    case system, inter, geist, manrope
+    case mono = "ioskeley"
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .system: return "System"
+        case .inter: return "Inter"
+        case .geist: return "Geist"
+        case .manrope: return "Manrope"
+        case .mono: return "Mono"
+        }
+    }
+
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = FontChoice(rawValue: raw) ?? .system
+    }
+}
+
 public struct GeneralSettings: Codable, Hashable, Sendable {
     public var accent: AccentColorChoice = .white
+    /// Interface and body text; headings, titles and reading text keep their own faces.
+    public var font: FontChoice = .system
     /// Light or dark paper; System follows the device (Apple TV always does).
     public var appearance: AppearanceChoice = .system
     public var startTab: AppTab = .home

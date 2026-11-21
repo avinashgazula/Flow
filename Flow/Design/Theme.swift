@@ -7,8 +7,8 @@ import AppKit
 #endif
 
 /// Marquee's design tokens: the Index, as on the website (web/DESIGN.md). Paper and ink ruled with 2px lines, a giant
-/// grotesque for titles, monospaced type for everything you press, one red that marks and one blue that acts. Both
-/// themes are first-class and follow the system unless Settings → Appearance says otherwise; the player is always
+/// grotesque for titles, the viewer's own typeface (System unless Settings says otherwise) for everything you press,
+/// one red that marks and one blue that acts. Both themes are first-class and follow the system unless Settings → Appearance says otherwise; the player is always
 /// dark (`darkScope()`). Nothing is rounded, shadowed or glassy outside the player: structure is rules, and a hover,
 /// a press or the tvOS focus is shown by inversion (blue fill, on-blue text).
 enum Theme {
@@ -147,7 +147,7 @@ enum Theme {
         static let fade = state
     }
 
-    /// The four faces, by PostScript name (bundled in Resources/Fonts and registered via UIAppFonts and
+    /// The faces, by PostScript name (bundled in Resources/Fonts and registered via UIAppFonts and
     /// ATSApplicationFontsPath; a missing one falls back to the system font rather than failing).
     enum Face {
         static let archivo = "Archivo-Bold"
@@ -158,18 +158,57 @@ enum Theme {
         static let serif = "IBMPlexSerif-Regular"
         static let serifSemiBold = "IBMPlexSerif-SemiBold"
         static let serifItalic = "IBMPlexSerif-Italic"
+        // The choices in Settings → General → Typeface besides System and Mono, regular and semibold each.
+        static let inter = "Inter-Regular"
+        static let interSemiBold = "Inter-SemiBold"
+        static let geist = "Geist-Regular"
+        static let geistSemiBold = "Geist-SemiBold"
+        static let manrope = "Manrope-Regular"
+        static let manropeSemiBold = "Manrope-SemiBold"
     }
 
-    /// Archivo is the giant title alone; Plex Sans Condensed sets headings and big numbers; Plex Mono is the
-    /// interface (anything you press, every label and number); Plex Serif is for sentences people read. Every size
-    /// scales with Dynamic Type through its text style, and by `Theme.scale` on Apple TV.
+    /// Typefaces. Archivo is the giant page title alone; Plex Sans Condensed sets headings and big numbers; Plex Serif
+    /// is for sentences people read; none of those three changes. Everything else is the *interface face*, which
+    /// is the viewer's choice (System by default): buttons, rows, settings, notes, body copy. Plex Mono stays, whatever
+    /// the choice, for small uppercase print (`label`, `micro`, `edgePrint`, `detailKey`) and for lines of figures that
+    /// should line up (`facts`, `time`: the meta line under artwork, runtimes, sizes, clock times).
+    ///
+    /// The choice is read through `InterfaceFace`, which is `@Observable`: every view body that evaluates one of the
+    /// interface tokens below is tracked by SwiftUI, so changing the setting redraws exactly those views at once, with
+    /// no `.id` on the root (which would throw away navigation, scroll position and the player). Every size scales with
+    /// Dynamic Type through its text style, and by `Theme.scale` on Apple TV.
     enum Typeface {
         static func custom(_ name: String, _ size: CGFloat, _ style: Font.TextStyle) -> Font {
             .custom(name, size: size * Theme.scale, relativeTo: style)
         }
 
-        /// The page title's size: phones 56, iPad 88, Mac 80, Apple TV 106.
-        static var giantSize: CGFloat { Platform.isPad ? 88 : Platform.isMac ? 80 : 56 }
+        enum Weight { case regular, semibold }
+
+        /// The interface face at a size. System on iPhone and iPad is the system text style whose default size is
+        /// `systemStyle` (the sizes below are chosen to equal their style's), so it follows Dynamic Type, its caps and
+        /// overrides exactly as the system's own controls do; the Mac and Apple TV have no Dynamic Type, so there it
+        /// is a fixed size. The bundled faces scale relative to `style`, as Plex always has.
+        static func interface(_ weight: Weight, _ size: CGFloat, _ style: Font.TextStyle, system systemStyle: Font.TextStyle? = nil,
+                              choice: FontChoice = InterfaceFace.shared.choice) -> Font {
+            let semibold = weight == .semibold
+            let systemWeight: Font.Weight = semibold ? .semibold : .regular
+            switch choice {
+            case .system:
+                #if os(iOS)
+                return .system(systemStyle ?? style, design: .default, weight: systemWeight)
+                #else
+                return .system(size: size * Theme.scale, weight: systemWeight, design: .default)
+                #endif
+            case .inter: return custom(semibold ? Face.interSemiBold : Face.inter, size, style)
+            case .geist: return custom(semibold ? Face.geistSemiBold : Face.geist, size, style)
+            case .manrope: return custom(semibold ? Face.manropeSemiBold : Face.manrope, size, style)
+            case .mono: return custom(semibold ? Face.monoSemiBold : Face.mono, size, style)
+            }
+        }
+
+        /// The page title's size: phones 52, iPad 72, Mac 64, Apple TV 91 (48 scaled). The same as Home's lead title
+        /// (`HomeView`'s `titleSize`), so every page starts at one scale instead of Explore and Settings shouting over Home.
+        static var giantSize: CGFloat { Platform.isPad ? 72 : Platform.isMac ? 64 : Platform.isTV ? 48 : 52 }
         /// The giant uppercase page title.
         static var giant: Font { custom(Face.archivo, giantSize, .largeTitle) }
         static var display: Font { custom(Face.archivo, 36, .largeTitle) }
@@ -178,15 +217,19 @@ enum Theme {
         /// A section's or a row's name.
         static var heading: Font { custom(Face.condensed, 22, .title3) }
         static var sectionTitle: Font { heading }
-        /// Buttons and anything you press: mono semibold. Uppercase and track with `.controlText()`.
-        static var headline: Font { custom(Face.monoSemiBold, 15, .headline) }
-        static var control: Font { custom(Face.monoSemiBold, 13, .subheadline) }
-        /// The name of a section above its list; red, uppercase, tracked: `SectionLabel`.
+        /// Buttons and anything you press: semibold. Uppercase and track with `.controlText()`.
+        static var headline: Font { interface(.semibold, 15, .headline, system: .subheadline) }
+        static var control: Font { interface(.semibold, 13, .subheadline, system: .footnote) }
+        /// A small control (a compact pill) where `control` would dominate.
+        static var controlSmall: Font { interface(.semibold, 11, .caption2) }
+        /// The name of a section above its list; red, uppercase, tracked: `SectionLabel`. Mono, as small print.
         static var label: Font { custom(Face.monoSemiBold, 13, .footnote) }
         /// Interface text.
-        static var body: Font { custom(Face.mono, 15, .subheadline) }
-        /// A line of facts under a title.
-        static var caption: Font { custom(Face.mono, 12, .caption) }
+        static var body: Font { interface(.regular, 15, .subheadline) }
+        /// Small ordinary text: notes, footers, errors, a row's second line.
+        static var caption: Font { interface(.regular, 12, .caption) }
+        /// A line of facts under a title or artwork ("S3 E7 · 18M LEFT · 2160P", sizes, dates): mono so it lines up.
+        static var facts: Font { custom(Face.mono, 12, .caption) }
         static var micro: Font { custom(Face.monoSemiBold, 11, .caption2) }
         /// Prose: overviews, reviews, biographies.
         static var reading: Font { custom(Face.serif, 17, .body) }
@@ -201,6 +244,15 @@ enum Theme {
         /// A title set as text when a film has no logo art.
         static func artworkTitle(_ size: CGFloat) -> Font { .custom(Face.condensed, size: size, relativeTo: .title) }
     }
+}
+
+/// The viewer's typeface choice, set by `AppModel` when settings load and change. It is `@Observable` so that reading
+/// it inside a view body (through `Theme.Typeface`) registers the dependency: a change redraws those views and
+/// nothing else.
+@Observable
+final class InterfaceFace {
+    static let shared = InterfaceFace()
+    var choice: FontChoice = .system
 }
 
 extension Color {
@@ -414,7 +466,7 @@ struct QuietButtonStyle: ButtonStyle {
     }
 }
 
-/// A filter chip or one cell of segmented tabs: a bordered mono cell; the current one is inverted ink, never blue.
+/// A filter chip or one cell of segmented tabs: a bordered cell; the current one is inverted ink, never blue.
 struct FilterChipStyle: ButtonStyle {
     var current = false
 
@@ -525,7 +577,7 @@ struct RuleLine: View {
     }
 }
 
-/// A page's head: the giant uppercase Archivo title with the 2px rule under it, and an optional mono note at its right.
+/// A page's head: the giant uppercase Archivo title with the 2px rule under it, and an optional note at its right.
 struct PageTitle: View {
     let title: String
     var note: String?
@@ -552,7 +604,7 @@ struct PageTitle: View {
                 Spacer(minLength: 0)
                 if let note {
                     Text(note)
-                        .font(Theme.Typeface.caption)
+                        .font(Theme.Typeface.facts)
                         .textCase(.uppercase)
                         .tracking(0.06 * 12 * Theme.scale)
                         .foregroundStyle(Theme.Palette.muted)

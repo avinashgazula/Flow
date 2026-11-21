@@ -22,7 +22,9 @@ enum ScreenshotTour {
             Step(name: "home") { m in m.previewOnboarding = false; m.selectedTab = .home; m.paths[.home] = [] },
             // The same page in light (Apple TV follows the system and ignores the setting); the next step puts it back.
             Step(name: "home-light") { m in m.settings.general.appearance = .light },
-            Step(name: "detail-movie") { m in m.settings.general.appearance = .system; m.paths[.home] = [.detail(duneItem)] },
+            // Home in Plex Mono, the face the interface was set in before System became the default; the next step puts it back.
+            Step(name: "home-mono") { m in m.settings.general.font = .mono },
+            Step(name: "detail-movie") { m in m.settings.general.font = .system; m.settings.general.appearance = .system; m.paths[.home] = [.detail(duneItem)] },
             // The title page in light too: its ruled cells, ratings and list actions are all colour-dependent.
             Step(name: "detail-movie-light") { m in m.settings.general.appearance = .light },
             Step(name: "detail-show") { m in m.settings.general.appearance = .system; m.paths[.home] = [.detail(bbItem)] },
@@ -274,6 +276,8 @@ enum ScreenshotTour {
             Step(name: "settings-metadata") { m in m.settingsPath = [.settings(.metadata)] },
             Step(name: "settings-sources") { m in m.settingsPath = [.settings(.sources)] },
             Step(name: "settings-general") { m in m.settingsPath = [.settings(.general)] },
+            // The Typeface choices, scrolled into view; each name is set in its own face.
+            Step(name: "settings-typeface") { m in m.settingsScrollTarget = "typeface-geist" },
             Step(name: "settings-playback") { m in m.settingsPath = [.settings(.playback)] },
             Step(name: "settings-data") { m in m.settingsPath = [.settings(.dataStorage)] },
             Step(name: "settings-subtitles") { m in m.settingsPath = [.settings(.subtitles)] },
@@ -296,6 +300,8 @@ enum ScreenshotTour {
         steps += [
             Step(name: "settings") { m in m.settingsWindowRequest += 1 },
             Step(name: "settings-general") { m in m.settingsPath = [.settings(.general)] },
+            // The Typeface choices, scrolled into view; each name is set in its own face.
+            Step(name: "settings-typeface") { m in m.settingsScrollTarget = "typeface-geist" },
             Step(name: "settings-account") { m in m.settingsPath = [.settings(.account)] },
             Step(name: "settings-shelves") { m in m.settingsPath = [.settings(.shelves)] },
             Step(name: "settings-servers") { m in m.settingsPath = [.settings(.mediaServers)] },

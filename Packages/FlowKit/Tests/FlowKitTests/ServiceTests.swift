@@ -376,6 +376,27 @@ final class SyncTests: XCTestCase {
         XCTAssertEqual(settings.shelves, ShelfConfig.defaults)
     }
 
+    func testFontChoiceDefaultsToSystemAndRoundTrips() throws {
+        // Settings saved before the Typeface setting existed.
+        let old = #"{"general":{"accent":"red"}}"#
+        var settings = try SettingsCodec.decode(AppSettings.self, from: Data(old.utf8), defaults: AppSettings())
+        XCTAssertEqual(settings.general.font, .system)
+        XCTAssertEqual(FontChoice.allCases.map(\.rawValue), ["system", "inter", "geist", "manrope", "ioskeley"])
+        XCTAssertEqual(FontChoice.allCases.map(\.title), ["System", "Inter", "Geist", "Manrope", "Mono"])
+        for choice in FontChoice.allCases {
+            XCTAssertEqual(choice.id, choice.rawValue)
+            settings.general.font = choice
+            let data = try SettingsCodec.encode(settings)
+            let back = try SettingsCodec.decode(AppSettings.self, from: data, defaults: AppSettings())
+            XCTAssertEqual(back.general.font, choice)
+        }
+        // An id from a newer build, or a typo, reads as System and leaves the rest of the file intact.
+        let unknown = #"{"general":{"accent":"red","font":"comic-sans"}}"#
+        let decoded = try SettingsCodec.decode(AppSettings.self, from: Data(unknown.utf8), defaults: AppSettings())
+        XCTAssertEqual(decoded.general.font, .system)
+        XCTAssertEqual(decoded.general.accent, .red)
+    }
+
     func testSettingsRoundTrip() throws {
         var s = AppSettings()
         s.shelves.append(ShelfConfig(title: "Anime", source: .discover({ var q = DiscoverQuery(type: .show); q.genres = [16]; return q }())))

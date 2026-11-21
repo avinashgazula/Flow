@@ -315,7 +315,7 @@ struct ChannelRow: View {
                                 Text(now.title).font(Theme.Typeface.body).lineLimit(1)
                                 Spacer(minLength: Theme.Space.s)
                                 Text(TimeFormat.remaining(max(0, now.end.timeIntervalSince(context.date))))
-                                    .font(Theme.Typeface.caption).rowInk(Theme.Palette.muted)
+                                    .font(Theme.Typeface.facts).rowInk(Theme.Palette.muted)
                             }
                             RedBar(value: now.progress(at: context.date), height: 3 * Theme.scale)
                         }
@@ -532,7 +532,7 @@ struct LiveInfoCard: View {
                                 .frame(width: 140)
                             Text(now.end, style: .time)
                         }
-                        .font(Theme.Typeface.caption)
+                        .font(Theme.Typeface.facts)
                         .foregroundStyle(Theme.Palette.muted)
                     }
                     if let upcoming {

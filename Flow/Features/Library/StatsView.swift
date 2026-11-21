@@ -301,7 +301,7 @@ private struct StatTile: View {
                 .minimumScaleFactor(0.5)
                 .contentTransition(.numericText())
             Text(label)
-                .font(Theme.Typeface.caption)
+                .font(Theme.Typeface.facts)
                 .textCase(.uppercase)
                 .tracking(0.06 * 12 * Theme.scale)
                 .foregroundStyle(Theme.Palette.fg)

@@ -80,6 +80,37 @@ struct AppIconSection: View {
 }
 #endif
 
+/// The typeface of buttons, rows, settings and body text. A menu can't show each name in its own face, so the choices
+/// are rows; a change applies at once because the design tokens read the choice (`InterfaceFace`).
+struct TypefaceSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Section {
+            ForEach(FontChoice.allCases) { row($0) }
+        } header: {
+            FilmSectionHeader("Typeface")
+        } footer: { FilmFooter {
+            Text("Sets the type of buttons, lists, settings and notes. Page titles, headings and reading text keep their own faces; small capitals and figures stay in Mono.")
+        } }
+    }
+
+    private func row(_ choice: FontChoice) -> some View {
+        let selected = model.settings.general.font == choice
+        return Button { model.settings.general.font = choice } label: {
+            HStack {
+                Text(choice.title).font(Theme.Typeface.interface(.regular, 15, .subheadline, choice: choice))
+                Spacer()
+                if selected { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .id("typeface-\(choice.rawValue)")
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
 /// Where the app opens and how its tabs are arranged.
 struct NavigationSettingsSection: View {
     @Environment(AppModel.self) private var model

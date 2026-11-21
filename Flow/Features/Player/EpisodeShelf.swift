@@ -96,7 +96,7 @@ struct EpisodeShelf: View {
                         .lineLimit(1)
                     if let minutes = episode.runtimeMinutes, minutes > 0 {
                         Text(TimeFormat.runtime(minutes))
-                            .font(Theme.Typeface.caption)
+                            .font(Theme.Typeface.facts)
                             .foregroundStyle(Theme.Palette.muted)
                     }
                 }

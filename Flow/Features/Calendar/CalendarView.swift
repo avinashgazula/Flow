@@ -272,14 +272,14 @@ private struct CalendarRow: View {
                 }
                 Text(entry.item.title).font(Theme.Typeface.heading).textCase(.uppercase).lineLimit(1)
                 Text(entry.meta)
-                    .font(Theme.Typeface.caption)
+                    .font(Theme.Typeface.facts)
                     .rowInk(Theme.Palette.muted)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
             }
             Spacer(minLength: 0)
             if let dayLabel {
-                Text(dayLabel).font(Theme.Typeface.caption).textCase(.uppercase).rowInk(Theme.Palette.muted).lineLimit(1)
+                Text(dayLabel).font(Theme.Typeface.facts).textCase(.uppercase).rowInk(Theme.Palette.muted).lineLimit(1)
             }
             RowChevron()
         }

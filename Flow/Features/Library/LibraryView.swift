@@ -289,14 +289,14 @@ private struct HistoryRow: View {
         NavigationLink(value: Route.detail(item)) {
             HStack(spacing: Theme.Space.m) {
                 Text(entry.watchedAt.formatted(date: .omitted, time: .shortened))
-                    .font(Theme.Typeface.caption)
+                    .font(Theme.Typeface.facts)
                     .rowInk(Theme.Palette.muted)
                     .lineLimit(1)
                     .frame(width: 70 * Theme.scale, alignment: .leading)
                 RowThumb(url: item.smallBackdropURL ?? item.tmdbPosterURL, title: item.title, width: 96 * Theme.scale, height: 54 * Theme.scale)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.title).font(Theme.Typeface.heading).textCase(.uppercase).lineLimit(1)
-                    Text(meta).font(Theme.Typeface.caption).rowInk(Theme.Palette.muted).lineLimit(1)
+                    Text(meta).font(Theme.Typeface.facts).rowInk(Theme.Palette.muted).lineLimit(1)
                 }
                 Spacer(minLength: 0)
                 RowChevron()

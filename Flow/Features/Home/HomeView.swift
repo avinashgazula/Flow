@@ -218,7 +218,7 @@ private struct LeadHeader: View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
             SectionLabel(dayTitle)
             Text(dateLine)
-                .font(Theme.Typeface.caption)
+                .font(Theme.Typeface.facts)
                 .textCase(.uppercase)
                 .tracking(0.06 * 12 * Theme.scale)
                 .foregroundStyle(Theme.Palette.muted)
@@ -315,8 +315,8 @@ struct LeadBlock: View {
                                 endsAt: minutes.map { Reel.endDate(from: Date(), minutesLeft: $0) }, extra: model.lastEdgeFormat(for: item))
     }
 
-    /// Phones 52, iPad 72, Mac 64, Apple TV 91 (48 scaled): about three-quarters of a page title, so a long name still
-    /// sits in two or three lines beside its backdrop.
+    /// Phones 52, iPad 72, Mac 64, Apple TV 91 (48 scaled): the page title's size too (`Theme.Typeface.giantSize`), so a
+    /// long name still sits in two or three lines beside its backdrop and every page starts at one scale.
     private var titleSize: CGFloat {
         let base: CGFloat = wide ? (Platform.isPad ? 72 : Platform.isMac ? 64 : 48) : 52
         return base * Theme.scale

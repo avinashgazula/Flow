@@ -320,6 +320,16 @@ recent options (Volume Boost, Dolby Vision, X-Ray, Still Watching, Smart Downloa
   - Reduce Motion. Increase Contrast.
   - Touch targets ≥ 44 pt.
   - On tvOS, focus is always visible.
+- **Typography:** Settings → General → Typeface (System, Inter, Geist, Manrope, Mono; System is the default).
+  - Choosing one restyles buttons, rows, settings, notes and body copy at once, without leaving the page, and
+    survives a relaunch. Each name in the list is set in its own face. The iPhone tab bar labels follow it too.
+  - Whatever the choice, page titles stay Archivo, headings and big numbers Plex Sans Condensed, reading text
+    (overviews, biographies, reviews) Plex Serif, and Plex Mono stays for small uppercase labels and for lines of
+    figures (the meta line under artwork, runtimes, sizes, clock times).
+  - System follows Dynamic Type like the system's own text, including at the largest sizes. Look for loose pills,
+    chips and columns after a switch (Mono is the widest face), and for clipping in Mono at large sizes.
+  - Page titles (Explore, Settings, title pages) start at the same scale as Home's lead title.
+  - The tour has `home-mono` (Home in Mono) and `settings-typeface`.
 - **Layout:**
   - iPhone SE size to Pro Max; portrait and landscape (Dynamic Island on the leading edge in landscape).
   - iPad split view and Stage Manager sizes.

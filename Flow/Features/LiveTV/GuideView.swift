@@ -300,7 +300,7 @@ private struct ProgrammeSheet: View {
                             }
                         }
                         Text(timing(at: context.date))
-                            .font(Theme.Typeface.caption)
+                            .font(Theme.Typeface.facts)
                             .foregroundStyle(Theme.Palette.muted)
                         if live {
                             RedBar(value: programme.progress(at: context.date))

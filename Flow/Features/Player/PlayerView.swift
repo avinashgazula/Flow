@@ -855,7 +855,7 @@ struct PlayerActionStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         let label = configuration.label
-            .font(compact ? Theme.Typeface.micro : Theme.Typeface.control)
+            .font(compact ? Theme.Typeface.controlSmall : Theme.Typeface.control)
             .padding(.horizontal, (compact ? 14 : 22) * Theme.scale)
             .padding(.vertical, (compact ? 7 : 12) * Theme.scale)
         if prominent {

@@ -220,7 +220,7 @@ private struct EpisodeRow: View {
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)
                     Text(fact)
-                        .font(Theme.Typeface.caption)
+                        .font(Theme.Typeface.facts)
                         .detailCaps()
                         .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted)
                         .lineLimit(1)

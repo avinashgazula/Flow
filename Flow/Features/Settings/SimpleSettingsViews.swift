@@ -13,7 +13,7 @@ struct LicencesView: View {
     var body: some View {
         FilmList {
             Section(film: "Typefaces") {
-                Text("Archivo (Omnibus-Type), IBM Plex Mono, IBM Plex Sans Condensed and IBM Plex Serif (IBM) are set in Marquee under the SIL Open Font License 1.1. The fonts are free to use, study, modify and share; they may not be sold on their own. Archivo: Copyright 2020 The Archivo Project Authors (github.com/Omnibus-Type/Archivo). IBM Plex: Copyright 2017 IBM Corp., with Reserved Font Name \"Plex\" (github.com/IBM/plex). The full licence is bundled with the fonts.")
+                Text("Archivo (Omnibus-Type), IBM Plex Mono, IBM Plex Sans Condensed and IBM Plex Serif (IBM), and Inter, Geist (Vercel) and Manrope for the Typeface setting, are set in Marquee under the SIL Open Font License 1.1. The fonts are free to use, study, modify and share; they may not be sold on their own. Archivo: Copyright 2020 The Archivo Project Authors (github.com/Omnibus-Type/Archivo). IBM Plex: Copyright 2017 IBM Corp., with Reserved Font Name \"Plex\" (github.com/IBM/plex). Inter: Copyright 2016 The Inter Project Authors (github.com/rsms/inter). Geist: Copyright 2023 Vercel, in collaboration with basement.studio (github.com/vercel/geist-font). Manrope: Copyright 2019 The Manrope Project Authors (github.com/sharanda/manrope). The full licence is bundled with the fonts.")
                     .font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
             }
             Section(film: "Built-in Player") {
@@ -41,8 +41,20 @@ struct GeneralSettingsView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        ScrollViewReader { proxy in
+            form
+                // The screenshot tour scrolls to a row by id; nothing else sets this.
+                .onChange(of: model.settingsScrollTarget) { _, target in
+                    guard let target else { return }
+                    proxy.scrollTo(target, anchor: .center)
+                    model.settingsScrollTarget = nil
+                }
+        }
+    }
+
+    private var form: some View {
         @Bindable var model = model
-        FilmForm {
+        return FilmForm {
             #if os(iOS)
             AppIconSection()
             #endif
@@ -63,6 +75,7 @@ struct GeneralSettingsView: View {
                 }
                 Toggle("Show Watched Check Marks", isOn: $model.settings.general.showWatchedBadges)
             }
+            TypefaceSection()
             Section(film: "Home") {
                 FilmPicker("Top Pick From", selection: $model.settings.general.heroSource) {
                     ForEach(HeroSource.allCases) { Text($0.title).tag($0) }

@@ -119,7 +119,7 @@ struct SourcePickerView: View {
                 Spacer(minLength: 0)
                 if let note {
                     Text(note)
-                        .font(Theme.Typeface.caption)
+                        .font(Theme.Typeface.facts)
                         .detailCaps()
                         .foregroundStyle(Theme.Palette.muted)
                 }
@@ -238,12 +238,12 @@ struct SourcePickerView: View {
                 ProgressView().controlSize(.mini)
                 Text("Searching \(ListFormatter.localizedString(byJoining: searching))…").lineLimit(1)
             }
-            .font(Theme.Typeface.caption)
+            .font(Theme.Typeface.facts)
             .detailCaps()
             .foregroundStyle(Theme.Palette.muted)
         } else {
             Text(finished ? "\(count) source\(count == 1 ? "" : "s")" + (hidden > 0 ? ", \(hidden) hidden by your settings" : "") : "Finding sources…")
-                .font(Theme.Typeface.caption)
+                .font(Theme.Typeface.facts)
                 .detailCaps()
                 .foregroundStyle(Theme.Palette.muted)
                 .contentTransition(.numericText())
@@ -437,14 +437,14 @@ struct SourceRow: View {
                     let lines = summary.rawLines
                     if !lines.isEmpty {
                         Text(lines.joined(separator: "\n"))
-                            .font(Theme.Typeface.caption)
+                            .font(Theme.Typeface.facts)
                             .foregroundStyle(secondary)
                             .lineLimit(appearance.compact ? 3 : 8)
                             .multilineTextAlignment(.leading)
                     }
                 } else if let size = summary.size, !typeSize.isAccessibilitySize {
                     Text(size)
-                        .font(Theme.Typeface.caption)
+                        .font(Theme.Typeface.facts)
                         .foregroundStyle(secondary)
                 }
                 if let words = summary.detail, !appearance.showRawText {

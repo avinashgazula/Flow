@@ -281,7 +281,7 @@ struct EventRow: View {
                     .textCase(.uppercase)
                 Text(date.formatted(date: .omitted, time: .shortened))
             }
-            .font(Theme.Typeface.caption)
+            .font(Theme.Typeface.facts)
             .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted)
         } else {
             Color.clear.frame(width: 0, height: 0)

@@ -68,6 +68,12 @@
 		<string>Fonts/IBMPlexSerif-Regular.ttf</string>
 		<string>Fonts/IBMPlexSerif-SemiBold.ttf</string>
 		<string>Fonts/IBMPlexSerif-Italic.ttf</string>
+		<string>Fonts/Inter-Regular.ttf</string>
+		<string>Fonts/Inter-SemiBold.ttf</string>
+		<string>Fonts/Geist-Regular.ttf</string>
+		<string>Fonts/Geist-SemiBold.ttf</string>
+		<string>Fonts/Manrope-Regular.ttf</string>
+		<string>Fonts/Manrope-SemiBold.ttf</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
