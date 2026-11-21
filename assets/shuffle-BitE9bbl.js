@@ -1,0 +1,2 @@
+import{Z as e,at as t,st as n}from"./index-7KVzr3Qy.js";import{o as r,s as i}from"./watching-CZOvhn_t.js";import{t as a}from"./titleLibrary-DHCIUxwB.js";import{_ as o,n as s}from"./logic-Cbq-VApO.js";import{t as c}from"./shows-BjpNzaCN.js";async function l(l,u){let d=await l.fetchQuery(e.detail(`show`,u.id)),f=s(await c(d),o(Date.now())),p=n(u.type,u.id),m=t.get(),h=r(f,m.shuffled?.[p]??[],i(m,u.id));if(h)return a.rememberShuffled(u,h.played),h.pick}export{l as shuffleEpisode};
+//# sourceMappingURL=shuffle-BitE9bbl.js.map

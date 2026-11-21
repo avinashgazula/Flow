@@ -1,0 +1,2 @@
+import{t as e}from"./compiler-runtime-BNvLG3sJ.js";import{wt as t}from"./index-7KVzr3Qy.js";var n=e(),r=t(),i=`https://github.com/avinashgazula/Flow/blob/claude/apps-typeface/web/README.md`;function a(e){let t=(0,n.c)(2),{section:a}=e,o=`${i}#${a}`,s;return t[0]===o?s=t[1]:(s=(0,r.jsxs)(r.Fragment,{children:[` `,(0,r.jsx)(`a`,{href:o,target:`_blank`,rel:`noreferrer`,children:`Learn more`}),`.`]}),t[0]=o,t[1]=s),s}export{a as t};
+//# sourceMappingURL=LearnMore-Dkcc1nPR.js.map
