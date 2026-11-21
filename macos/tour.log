@@ -1,0 +1,131 @@
+2026-11-21T09:57:00Z step welcome active=false picker=false tab=home
+2026-11-21T09:57:05Z step home active=false picker=false tab=home
+2026-11-21T09:57:11Z step home-light active=false picker=false tab=home
+2026-11-21T09:57:16Z step home-mono active=false picker=false tab=home
+2026-11-21T09:57:21Z step detail-movie active=false picker=false tab=home
+2026-11-21T09:57:26Z step detail-movie-light active=false picker=false tab=home
+2026-11-21T09:57:32Z step detail-show active=false picker=false tab=home
+2026-11-21T09:57:37Z step sources active=false picker=true tab=home
+2026-11-21T09:57:42Z startPlayback demo#0 url=https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8
+2026-11-21T09:57:42Z activePlayback set: true
+2026-11-21T09:57:42Z step player active=true picker=false tab=home
+2026-11-21T09:57:43Z prepare native for master.m3u8
+2026-11-21T09:57:44Z item status 1 error=-
+2026-11-21T09:57:48Z PlaybackSession.close from stop() phase=playing
+2026-11-21T09:57:49Z startPlayback demo#mkv url=file:///Users/runner/work/Flow/Flow/dd/Build/Products/Debug/Flow.app/Contents/Resources/FlowSample.mkv
+2026-11-21T09:57:49Z activePlayback set: true
+2026-11-21T09:57:49Z step player-mkv active=true picker=false tab=home
+2026-11-21T09:57:49Z prepare matroska for FlowSample.mkv
+2026-11-21T09:57:51Z hls GET 2/init.mp4 -> 611 bytes in 0 ms
+2026-11-21T09:57:51Z hls GET 1/init.mp4 -> 669 bytes in 0 ms
+2026-11-21T09:57:51Z hls GET 2/0.m4s -> 250918 bytes in 1 ms
+2026-11-21T09:57:51Z hls GET 1/0.m4s -> 116623 bytes in 1 ms
+2026-11-21T09:57:51Z hls GET 2/1.m4s -> 134175 bytes in 0 ms
+2026-11-21T09:57:51Z hls GET 1/1.m4s -> 124928 bytes in 0 ms
+2026-11-21T09:57:51Z item status 1 error=-
+2026-11-21T09:57:51Z info: Source=AIOStreams; File=Flow.Sample.720p.DTS.AAC.AC3.mkv; Playback=MKV, remuxed on this device; Video=H.264 · 1280×720 · 24 fps · SDR; Audio=English – DTS 5.1; Decoded=DTS (English) → lossless FLAC, on this device; Bitrate=3.3 Mb/s; Buffered=3 s ahead
+2026-11-21T09:57:53Z hls GET 2/2.m4s -> 398317 bytes in 2015 ms
+2026-11-21T09:57:53Z hls GET 1/2.m4s -> 361538 bytes in 2026 ms
+2026-11-21T09:57:53Z hls GET 2/3.m4s -> 3597 bytes in 26 ms
+2026-11-21T09:57:53Z hls GET 1/3.m4s -> 100219 bytes in 11 ms
+2026-11-21T09:57:54Z step player-skip-intro active=true picker=false tab=home
+2026-11-21T09:57:59Z PlaybackSession.close from stop() phase=playing
+2026-11-21T09:58:00Z startPlayback demo#mkv url=file:///Users/runner/work/Flow/Flow/dd/Build/Products/Debug/Flow.app/Contents/Resources/FlowSample.mkv
+2026-11-21T09:58:00Z activePlayback set: true
+2026-11-21T09:58:00Z prepare matroska for FlowSample.mkv
+2026-11-21T09:58:00Z built-in decoder for FlowSample.mkv
+2026-11-21T09:58:00Z mpv surface 1024x681 @1.0x, layer (1024.0, 681.0) drawable (1024.0, 681.0)
+2026-11-21T09:58:04Z universal: true info: Source=AIOStreams; File=Flow.Sample.720p.DTS.AAC.AC3.mkv; Playback=Built-in decoder; Why=Chosen in Settings; Container=mkv; Video=1280×720 · H264 · hardware decoded; Audio=English · DTS Mono; Renderer=gpu-next, drawing, 24.0 fps, 1.0 dropped, window 1024x681; Buffered=11 s ahead
+2026-11-21T09:58:04Z step player-universal active=true picker=false tab=home
+2026-11-21T09:58:09Z PlaybackSession.close from stop() phase=playing
+2026-11-21T09:58:10Z startPlayback demo#avi url=file:///Users/runner/work/Flow/Flow/dd/Build/Products/Debug/Flow.app/Contents/Resources/FlowSampleXvid.avi
+2026-11-21T09:58:10Z activePlayback set: true
+2026-11-21T09:58:11Z prepare unsupported("AVI") for FlowSampleXvid.avi
+2026-11-21T09:58:11Z built-in decoder for FlowSampleXvid.avi
+2026-11-21T09:58:11Z mpv surface 1024x681 @1.0x, layer (1024.0, 681.0) drawable (1024.0, 681.0)
+2026-11-21T09:58:13Z avi: universal=true phase=Optional(Flow.PlaybackSession.Phase.playing)
+2026-11-21T09:58:13Z step player-avi active=true picker=false tab=home
+2026-11-21T09:58:18Z step player-universal-done active=true picker=false tab=home
+2026-11-21T09:58:23Z step player-still-watching active=true picker=false tab=home
+2026-11-21T09:58:29Z suggestions: 8 phase=Optional(Flow.PlaybackSession.Phase.playing)
+2026-11-21T09:58:29Z step player-suggestions active=true picker=false tab=home
+2026-11-21T09:58:34Z PlaybackSession.close from stop() phase=finished
+2026-11-21T09:58:35Z startPlayback demo#audio url=file:///Users/runner/work/Flow/Flow/dd/Build/Products/Debug/Flow.app/Contents/Resources/FlowSampleAudio.mkv
+2026-11-21T09:58:35Z activePlayback set: true
+2026-11-21T09:58:35Z prepare matroska for FlowSampleAudio.mkv
+2026-11-21T09:58:38Z hls GET 1/init.mp4 -> 675 bytes in 0 ms
+2026-11-21T09:58:38Z hls GET 2/init.mp4 -> 611 bytes in 0 ms
+2026-11-21T09:58:38Z hls GET 1/0.m4s -> 2874 bytes in 0 ms
+2026-11-21T09:58:38Z hls GET 2/0.m4s -> 254864 bytes in 0 ms
+2026-11-21T09:58:38Z hls GET 1/1.m4s -> 2243 bytes in 0 ms
+2026-11-21T09:58:38Z hls GET 2/1.m4s -> 116520 bytes in 0 ms
+2026-11-21T09:58:38Z hls GET 1/2.m4s -> 4387 bytes in 2 ms
+2026-11-21T09:58:38Z item status 1 error=-
+2026-11-21T09:58:39Z audio sample: remux=true phase=playing time=0.0
+2026-11-21T09:58:39Z info: Source=AIOStreams; File=Flow.Sample.360p.Opus.Vorbis.PCM.mkv; Playback=MKV, remuxed on this device; Video=H.264 · 320×180 · 24 fps · SDR; Audio=English (Opus Stereo); Decoded=Opus (English), Vorbis (Spanish), Uncompressed PCM (French) → lossless FLAC, on this device; Bitrate=2.6 Mb/s; Buffered=6 s ahead
+2026-11-21T09:58:40Z hls GET 2/2.m4s -> 126549 bytes in 1382 ms
+2026-11-21T09:58:41Z audio track English: moved 2.5 s from 0.0 within 1.8 s waiting=- PLAYING
+2026-11-21T09:58:41Z hls GET 3/init.mp4 -> 611 bytes in 0 ms
+2026-11-21T09:58:41Z hls GET 1/0.m4s -> 2874 bytes in 0 ms
+2026-11-21T09:58:41Z hls GET 3/init.mp4 -> 611 bytes in 0 ms
+2026-11-21T09:58:43Z hls GET 3/0.m4s -> 295210 bytes in 1929 ms
+2026-11-21T09:58:43Z hls GET 1/1.m4s -> 2243 bytes in 1928 ms
+2026-11-21T09:58:44Z hls GET 3/1.m4s -> 155006 bytes in 1072 ms
+2026-11-21T09:58:44Z hls GET 1/2.m4s -> 4387 bytes in 1071 ms
+2026-11-21T09:58:45Z hls GET 3/2.m4s -> 157439 bytes in 1313 ms
+2026-11-21T09:58:47Z audio track Spanish: moved 2.0 s from 1.0 within 5.2 s waiting=- PLAYING
+2026-11-21T09:58:47Z hls GET 4/init.mp4 -> 611 bytes in 0 ms
+2026-11-21T09:58:47Z hls GET 1/0.m4s -> 2874 bytes in 3 ms
+2026-11-21T09:58:47Z hls GET 4/init.mp4 -> 611 bytes in 3 ms
+2026-11-21T09:58:47Z hls GET 1/1.m4s -> 2243 bytes in 2 ms
+2026-11-21T09:58:47Z hls GET 4/0.m4s -> 64383 bytes in 247 ms
+2026-11-21T09:58:47Z hls GET 1/2.m4s -> 4387 bytes in 244 ms
+2026-11-21T09:58:48Z hls GET 4/1.m4s -> 36832 bytes in 142 ms
+2026-11-21T09:58:48Z hls GET 4/2.m4s -> 42584 bytes in 165 ms
+2026-11-21T09:58:51Z audio track French: moved 2.0 s from 1.0 within 3.5 s waiting=- PLAYING
+2026-11-21T09:58:51Z access: http://127.0.0.1:49176/f84d95a2-bf27-46e7-8388-de2133cd9af4/1.m3u8 segments=0 stalls=0 bitrate=2803519
+2026-11-21T09:58:51Z access: http://127.0.0.1:49176/f84d95a2-bf27-46e7-8388-de2133cd9af4/1.m3u8 segments=0 stalls=0 bitrate=1229964
+2026-11-21T09:58:51Z access: http://127.0.0.1:49176/f84d95a2-bf27-46e7-8388-de2133cd9af4/1.m3u8 segments=0 stalls=0 bitrate=1264497
+2026-11-21T09:58:51Z step player-mkv-audio active=true picker=false tab=home
+2026-11-21T09:58:51Z hls GET 2/1.m4s -> 116520 bytes in 2 ms
+2026-11-21T09:58:51Z hls GET 1/0.m4s -> 2874 bytes in 2 ms
+2026-11-21T09:58:53Z hls GET 2/0.m4s -> 255543 bytes in 2582 ms
+2026-11-21T09:58:53Z hls GET 1/1.m4s -> 2243 bytes in 2558 ms
+2026-11-21T09:58:53Z hls GET 1/1.m4s -> 2243 bytes in 0 ms
+2026-11-21T09:58:53Z hls GET 2/0.m4s -> 255543 bytes in 1 ms
+2026-11-21T09:58:54Z hls GET 1/2.m4s -> 4387 bytes in 1 ms
+2026-11-21T09:58:55Z hls GET 2/1.m4s -> 116540 bytes in 1244 ms
+2026-11-21T09:58:56Z hls GET 2/2.m4s -> 127147 bytes in 1331 ms
+2026-11-21T09:58:56Z step person active=true picker=false tab=home
+2026-11-21T09:58:56Z PlaybackSession.close from stop() phase=playing
+2026-11-21T09:59:01Z step home-after-playback active=false picker=false tab=home
+2026-11-21T09:59:06Z step explore active=false picker=false tab=explore
+2026-11-21T09:59:12Z step library active=false picker=false tab=library
+2026-11-21T09:59:17Z step library-watchlist active=false picker=false tab=library
+2026-11-21T09:59:22Z step calendar active=false picker=false tab=library
+2026-11-21T09:59:27Z step library-history active=false picker=false tab=library
+2026-11-21T09:59:32Z step stats active=false picker=false tab=library
+2026-11-21T09:59:37Z step sports active=false picker=false tab=library
+2026-11-21T09:59:43Z step search active=false picker=false tab=search
+2026-11-21T09:59:48Z step search-top active=false picker=false tab=search
+2026-11-21T09:59:53Z step livetv active=false picker=false tab=liveTV
+2026-11-21T09:59:58Z step settings active=false picker=false tab=liveTV
+2026-11-21T10:00:03Z step settings-general active=false picker=false tab=liveTV
+2026-11-21T10:00:08Z step settings-typeface active=false picker=false tab=liveTV
+2026-11-21T10:00:13Z step settings-account active=false picker=false tab=liveTV
+2026-11-21T10:00:19Z step settings-shelves active=false picker=false tab=liveTV
+2026-11-21T10:00:24Z step settings-servers active=false picker=false tab=liveTV
+2026-11-21T10:00:29Z step settings-webdav active=false picker=false tab=liveTV
+2026-11-21T10:00:34Z step settings-livetv active=false picker=false tab=liveTV
+2026-11-21T10:00:39Z step settings-sources active=false picker=false tab=liveTV
+2026-11-21T10:00:45Z step settings-data active=false picker=false tab=liveTV
+2026-11-21T10:00:50Z step settings-playback active=false picker=false tab=liveTV
+2026-11-21T10:00:55Z step settings-subtitles active=false picker=false tab=liveTV
+2026-11-21T10:01:00Z step settings-metadata active=false picker=false tab=liveTV
+2026-11-21T10:01:05Z step settings-sync active=false picker=false tab=liveTV
+2026-11-21T10:01:11Z step settings-sync-pairing active=false picker=false tab=liveTV
+2026-11-21T10:01:16Z step settings-sync-off active=false picker=false tab=liveTV
+2026-11-21T10:01:21Z step settings-sync-join active=false picker=false tab=liveTV
+2026-11-21T10:01:26Z step settings-account-number active=false picker=false tab=liveTV
+2026-11-21T10:01:31Z step settings-account-on active=false picker=false tab=liveTV
+2026-11-21T10:01:37Z step settings-account-login active=false picker=false tab=liveTV
