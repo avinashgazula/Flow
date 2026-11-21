@@ -30,6 +30,7 @@ class AuditingUITestCase: FlowUITestCase {
                     try app.performAccessibilityAudit(for: type) { issue in
                         if Self.deliberateChoice(issue, overVideo: overVideo) != nil { return true }
                         found.append(Self.describe(issue, on: screen))
+                        if issue.auditType == .contrast, let element = issue.element { Self.logPicture(of: element, on: screen) }
                         // True means "handled": the audit goes on to the rest of the screen.
                         return true
                     }
@@ -77,6 +78,19 @@ class AuditingUITestCase: FlowUITestCase {
     private static func describe(_ issue: XCUIAccessibilityAuditIssue, on screen: String) -> String {
         let element = issue.element?.debugDescription.replacingOccurrences(of: "\n", with: " ") ?? "no element"
         return "[\(screen)] \(typeName(issue.auditType)): \(issue.compactDescription) | \(issue.detailedDescription) | \(element)"
+    }
+
+    /// Prints the element as the screen draws it right after the audit, as base64 PNG in the log, and attaches it to the result.
+    /// A contrast finding names an element but not the colours it measured; the picture shows what the audit was looking at.
+    private static func logPicture(of element: XCUIElement, on screen: String) {
+        let shot = element.screenshot()
+        let attachment = XCTAttachment(screenshot: shot)
+        attachment.name = "contrast finding on \(screen): \(element.label)"
+        attachment.lifetime = .keepAlways
+        XCTContext.runActivity(named: attachment.name ?? "contrast finding") { $0.add(attachment) }
+        print("CONTRAST PICTURE \(screen) '\(element.label)' \(element.frame) begin")
+        print(shot.pngRepresentation.base64EncodedString())
+        print("CONTRAST PICTURE end")
     }
 
     private static func typeName(_ type: XCUIAccessibilityAuditType) -> String {
