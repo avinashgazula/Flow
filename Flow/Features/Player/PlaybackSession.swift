@@ -345,6 +345,9 @@ final class PlaybackSession: Identifiable {
                 return
             }
             if let boost = model?.settings.playback.volumeBoostDB, boost > 0 { await remuxer.setLoudnessBoost(boost) }
+            // Sound decoded on this device: have its first segments ready before Apple's player asks (see prepareStart).
+            await remuxer.prepareStart()
+            guard !Task.isCancelled else { return }
             let (hls, token) = try LocalHLSServer.shared.register(remuxer)
             guard !Task.isCancelled else { LocalHLSServer.shared.unregister(token); return }
             hlsToken = token

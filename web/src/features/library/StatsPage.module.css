@@ -3,7 +3,7 @@
 
 /* The lead: how long, as the page's biggest number, and what it was in serif beneath. */
 .lead { padding: var(--space-l) 0 var(--space-xs); }
-.leadIntro { display: block; font: 600 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+.leadIntro { display: block; font: 600 var(--fs-small) / 1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
 .lead strong { display: block; margin: var(--space-xs) 0 var(--space-m); font: 700 clamp(64px, 11vw, 152px) / 0.9 var(--font-cond); letter-spacing: -0.01em; color: var(--red); }
 .leadRest { display: block; max-width: 34em; font: 400 clamp(20px, 2.2vw, 26px) / 1.4 var(--font-serif); text-wrap: balance; }
 .lead { margin-bottom: var(--space-l); }
@@ -14,12 +14,12 @@
 .column { display: grid; grid-template-rows: minmax(0, 1fr) 22px; min-width: 0; text-align: center; }
 /* The plot leaves 18px above the tallest bar for its value; each value rides on top of its own bar. */
 .plot { position: relative; margin-top: 18px; }
-.value { position: absolute; left: 0; right: 0; bottom: calc(var(--h) * 100% + 4px); font: 600 var(--fs-caption) / 1 var(--font); color: var(--muted); white-space: nowrap; }
+.value { position: absolute; left: 0; right: 0; bottom: calc(var(--h) * 100% + 4px); font: 600 var(--fs-caption) / 1 var(--font-mono); color: var(--muted); white-space: nowrap; }
 .bar { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--h) * 100%); min-height: 3px; background: var(--fg); }
 .bar[data-empty] { background: var(--faint); }
 .column[data-current] .bar { background: var(--red); }
 .column[data-current] .value { color: var(--red); }
-.axis { align-self: end; padding-top: 6px; border-top: var(--rule); font: 400 var(--fs-caption) / 1 var(--font); color: var(--muted); white-space: nowrap; overflow: visible; }
+.axis { align-self: end; padding-top: 6px; border-top: var(--rule); font: 400 var(--fs-caption) / 1 var(--font-mono); color: var(--muted); white-space: nowrap; overflow: visible; }
 .column:has(.axis:empty) .axis { visibility: hidden; }
 /* Past twelve bars (a long history by week or year) the labels skip, so each one has room; they sit centred on their bar. */
 .bars[data-crowded] { gap: 3px; }
@@ -49,7 +49,7 @@
 .habits { margin: 0; padding: 0 var(--space-m); border: var(--rule); max-width: 640px; }
 .habit { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-m); padding: var(--space-s) 0; }
 .habit + .habit { border-top: 1px solid var(--fg); }
-.habit dt { font: 600 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.habit dt { font: 600 var(--fs-small) / 1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .habit dd { margin: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font: 700 24px / 1.1 var(--font-cond); text-align: right; }
 .habitDetail { font: 400 var(--fs-footnote) / 1.3 var(--font); color: var(--muted); }
 

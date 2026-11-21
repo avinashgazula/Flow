@@ -22,7 +22,7 @@
 .thumb[data-veiled] img { filter: blur(14px); transform: scale(1.15); }
 .text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .name { font: 700 22px / 1.1 var(--font-cond); text-transform: uppercase; text-wrap: balance; }
-.fact { font: 400 var(--fs-caption) / 1.4 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.fact { font: 400 var(--fs-caption) / 1.4 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .fresh { font-weight: 600; color: var(--red); }
 .overview {
   display: -webkit-box;

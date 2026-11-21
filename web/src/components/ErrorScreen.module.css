@@ -17,7 +17,7 @@
   padding: var(--space-xl) var(--page-inset) var(--space-m);
   align-self: stretch;
   border-bottom: var(--rule);
-  font: 700 clamp(40px, 8vw, 112px) / 0.86 var(--font-title);
+  font: 700 var(--fs-head) / 0.86 var(--font-title);
   text-transform: uppercase;
   letter-spacing: -0.03em;
 }

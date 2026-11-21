@@ -33,6 +33,13 @@
         document.documentElement.dataset.theme = t
         document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#0a0a0a' : '#ffffff')
       } catch (e) {}
+      // The typeface of the interface, before first paint too: the saved setting (lib/typeface.ts, keep the ids in step;
+      // an older build's 'ioskeley' is Mono). System is the device's own font and needs no download.
+      try {
+        var f = (JSON.parse(localStorage.getItem('flow.settings.v1') || 'null') || {}).font
+        if (f === 'ioskeley') f = 'mono'
+        document.documentElement.dataset.font = f === 'inter' || f === 'geist' || f === 'manrope' || f === 'mono' ? f : 'system'
+      } catch (e) {}
     </script>
     <script>
       // Home's lead still is its largest image. Its address from the last visit is known before any
@@ -62,9 +69,10 @@
       /* A shell of Home from the HTML alone on a repeat visit: the greeting and the lead's framed still in the boxes the
          real page uses (HomeScreen.module.css, Lead.module.css). The real page replaces it without a visible change,
          so keep these measurements in step with those. */
-      .shell-home { padding: calc(var(--nav-height, 58px) + 24px) var(--page-inset, 20px) 0; font-family: var(--font, ui-monospace, monospace); }
+      .shell-home { padding: calc(var(--nav-height, 58px) + 24px) var(--page-inset, 20px) 0; font-family: var(--font, system-ui, sans-serif); }
       .shell-wrap { max-width: 1360px; margin: 0 auto; }
       .shell-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; min-height: 20px; margin-bottom: 24px; font-size: 13px; line-height: 1.3; text-transform: uppercase; }
+      .shell-title, .shell-date { font-family: var(--font-mono, ui-monospace, monospace); }
       .shell-title { font-weight: 600; letter-spacing: 0.12em; color: #c9120a; }
       html[data-theme='dark'] .shell-title { color: #ff5a4e; }
       .shell-date { letter-spacing: 0.08em; opacity: 0.7; }

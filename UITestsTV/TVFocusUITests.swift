@@ -65,6 +65,21 @@ final class TVFocusUITests: XCTestCase {
         XCTAssertTrue(settled, "\(context): exactly one element has focus, but focus is on \(describeFocus())", file: file, line: line)
     }
 
+    /// Returns once the focused element has stayed the same for half a second (at most ten seconds).
+    private func waitForFocusToSettle() {
+        func focused() -> String {
+            let element = app.descendants(matching: .any).matching(NSPredicate(format: "hasFocus == true")).firstMatch
+            return element.exists ? "\(element.elementType.rawValue) \(element.label) \(element.frame)" : ""
+        }
+        var last = focused()
+        _ = waitUntil(10) {
+            Thread.sleep(forTimeInterval: 0.5)
+            let now = focused()
+            defer { last = now }
+            return !now.isEmpty && now == last
+        }
+    }
+
     private func press(_ button: XCUIRemote.Button, _ context: String, file: StaticString = #filePath, line: UInt = #line) {
         remote.press(button)
         assertOneFocus("after \(context)", file: file, line: line)
@@ -165,6 +180,8 @@ final class TVFocusUITests: XCTestCase {
         XCTAssertTrue(waitUntil(30) { !self.app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Upcoming")).firstMatch.exists },
                       "Select on the first row opens its page")
         assertOneFocus("on the page opened from Library")
+        // A Menu press while the page is still sliding in is dropped by the system: wait until focus has settled.
+        waitForFocusToSettle()
         remote.press(.menu)
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Upcoming")).firstMatch.waitForExistence(timeout: 30), "Menu returns to the Library")
         assertOneFocus("back on the Library")

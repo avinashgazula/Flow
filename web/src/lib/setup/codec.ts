@@ -8,6 +8,7 @@ import { parseShelves, shelvesToJSON } from '../shelves'
 import { defaultTabOrder } from '../tabs'
 import { defaultSettings, type AddonConfig, type ServerConfig, type Settings, type TraktToken, type WebDAVConfig } from '../store/settings'
 import { normaliseSubtitleStyle } from '../store/subtitleStyle'
+import { resolveTypeface } from '../typeface'
 import type { SetupExtras } from './extras'
 
 /* The setup file the apps share (FlowKit's SetupShare and SetupBundle, in Sync/SettingsCodec.swift): `flow-setup`,
@@ -586,7 +587,7 @@ export function settingsFromSetup(bundle: SetupBundle, current: Settings): Parti
   // What only the website has. The apps drop it, so it is there only when the website wrote the file.
   const web = src.web
   if (isObject(web)) {
-    if (web.font !== undefined) patch.font = web.font
+    if (isString(web.font)) patch.font = resolveTypeface(web.font)
     if (strings(web.audioLanguages)?.length) patch.audioLanguages = web.audioLanguages
     if (web.preferredQuality !== undefined) patch.preferredQuality = web.preferredQuality
     if (isString(web.streamProxy)) patch.streamProxy = web.streamProxy

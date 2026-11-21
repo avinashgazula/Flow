@@ -10,6 +10,7 @@ import { defaultSettings, settingsStore, type ExternalPlayerId, type Settings } 
 import { externalPlayerIds } from '../player/externalPlayers'
 import { libraryStore, type Library } from '../../lib/store/library'
 import { isTabOrder } from '../../lib/tabs'
+import { resolveTypeface } from '../../lib/typeface'
 import { isShelfList } from '../../lib/shelves'
 import { isSubtitleStyle, normaliseSubtitleStyle } from '../../lib/store/subtitleStyle'
 import { noExtras, setupExtrasStore } from '../../lib/setup/extras'
@@ -122,8 +123,8 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   rememberLastSource: (v) => typeof v === 'boolean',
   // Fields a backup lacks take their defaults, so a file from before this setting (or from the apps) still imports.
   sources: isSourceOrdering,
-  // Retired setting (the typeface picker): still accepted, so a backup from before it went imports clean.
-  font: (v) => ['system', 'inter', 'geist', 'manrope', 'ioskeley'].includes(v as string),
+  // 'ioskeley' is what an older build saved for Ioskeley Mono; it reads as Mono.
+  font: (v) => ['system', 'inter', 'geist', 'manrope', 'mono', 'ioskeley'].includes(v as string),
   tabOrder: isTabOrder,
   // Empty clears the proxy; anything else has to be an address Marquee can call.
   streamProxy: (v) => typeof v === 'string' && proxyProblem(v) === undefined,
@@ -178,7 +179,7 @@ export function readSettings(raw: Record<string, unknown>): { settings: Partial<
     if (!(key in raw)) continue
     if (!valid(raw[key])) skipped.push(key)
     // A style missing some fields takes their defaults, and the apps' older "shadow" background reads as none.
-    else settings[key] = key === 'subtitleStyle' ? normaliseSubtitleStyle(raw[key]) : key === 'sources' ? normaliseSourceOrdering(raw[key]) : key === 'subtitleOptions' ? normaliseSubtitleOptions(raw[key]) : raw[key]
+    else settings[key] = key === 'subtitleStyle' ? normaliseSubtitleStyle(raw[key]) : key === 'font' ? resolveTypeface(raw[key]) : key === 'sources' ? normaliseSourceOrdering(raw[key]) : key === 'subtitleOptions' ? normaliseSubtitleOptions(raw[key]) : raw[key]
   }
   return { settings: settings as Partial<Settings>, skipped }
 }

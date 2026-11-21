@@ -17,6 +17,9 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         XCTAssertTrue(reveal(add), "Dune is not on the watchlist yet, so the action offers to add it")
         add.tap()
         XCTAssertTrue(btn("Remove from Watchlist").waitForExistence(timeout: 10), "the action turns into its opposite")
+        // The button turns at once; the save behind it finishes a moment later and says so. Pressing again only then is
+        // what a person does, and the page has stopped reloading its shelves by then, so the press can't land mid-redraw.
+        _ = text(startingWith: "Added to Watchlist").waitForExistence(timeout: 10)
         btn("Remove from Watchlist").tap()
         XCTAssertTrue(btn("Add to Watchlist").waitForExistence(timeout: patience), "and back")
         XCTAssertTrue(btn("Mark Watched").exists, "an unwatched film can be marked watched")

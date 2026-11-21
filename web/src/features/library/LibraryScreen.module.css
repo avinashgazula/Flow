@@ -64,7 +64,7 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
   height: 48px;
   padding: 0 var(--page-inset);
   border-top: var(--rule);
-  font: 600 var(--fs-small) / 1 var(--font);
+  font: 600 var(--fs-small) / 1 var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--red);

@@ -1,6 +1,6 @@
 ---
 name: Marquee
-description: Index. Paper and ink ruled with 2px lines, a giant grotesque for titles, monospaced type for everything you press, one red for markers and one blue for action.
+description: Index. Paper and ink ruled with 2px lines, a grotesque for titles, the viewer's own typeface for everything you press, monospaced type for small labels and figures, one red for markers and one blue for action.
 colors:
   bg: "#ffffff"
   fg: "#0a0a0a"
@@ -24,7 +24,7 @@ colors:
 typography:
   display:
     fontFamily: "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif"
-    fontSize: "clamp(56px, 12vw, 168px)"
+    fontSize: "clamp(44px, 13.5vw, 72px) at the top of a title page and the Home lead; 0.82 of it for a section page"
     fontWeight: 700
     lineHeight: 0.84
     letterSpacing: "-0.03em"
@@ -44,12 +44,12 @@ typography:
     fontWeight: 400
     lineHeight: 1.6
   body:
-    fontFamily: "'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace"
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif (the viewer's choice: System, Inter, Geist, Manrope or IBM Plex Mono)"
     fontSize: "15px"
     fontWeight: 400
     lineHeight: 1.5
   control:
-    fontFamily: "'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace"
+    fontFamily: "the viewer's typeface, as body"
     fontSize: "13px"
     fontWeight: 600
     lineHeight: 1.1
@@ -146,7 +146,7 @@ It is explicitly not: a glass or blur UI, a gradient or shadow UI, a rounded-car
 **Key Characteristics:**
 - Paper `#ffffff` and ink `#0a0a0a` (dark: ink `#0a0a0a` and paper `#f2f2ee`); everything else is one of three accents or a quiet tint.
 - 2px ink rules divide the page: under the nav, under page heads, around toolbars and grids of cells (cells share borders), at the top of a list; 1px ink lines divide the rows inside.
-- Four open-source faces: Archivo for the giant title, Plex Sans Condensed for headings, Plex Mono for the interface, Plex Serif for reading.
+- Open-source faces: Archivo for the giant title, Plex Sans Condensed for headings, Plex Serif for reading, Plex Mono for small labels and figures, and the viewer's own typeface (System, Inter, Geist, Manrope or Mono) for the interface and body text.
 - Red marks, blue acts. Nothing else is coloured.
 - Square: every radius is 0 outside the player.
 - Interaction is inversion: hover fills blue, the current place is inverted ink, focus is a blue ring.
@@ -177,24 +177,25 @@ The tokens are semantic: `--bg --fg --red --blue --onblue --muted --faint --rule
 
 ## Typography
 
-**Display:** Archivo 700 (self-hosted). Page titles and the Home lead: uppercase, `clamp(56px, 12vw, 168px)`, line-height .84, letter-spacing -.03em. Long words use `.page-title.long`.
+**Display:** Archivo 700 (self-hosted). Page titles and the Home lead: uppercase, line-height .84, letter-spacing -.03em, and one scale. `--fs-display` (`clamp(44px, 13.5vw, 72px)`, stepping up at 721 and 1100px) is what a short Home lead name gets; a lead name of nine to sixteen letters, the usual, takes 0.82 of it, and a section page's title (`--fs-head`, `.page-title`) is that same size, so Search, Library and Settings read at the scale of "Breaking Bad" on Home. A title page's name, a person's and a collection's step down by length exactly as the lead does. Long words use `.page-title.long`.
 **Headings:** IBM Plex Sans Condensed 600/700. Section and row titles, big numbers, empty-state headlines, the search bar's input. Uppercase for category names.
-**Interface:** IBM Plex Mono 400/600. The body face: nav, buttons, labels, metadata, footers. Labels are uppercase with .06 to .12em tracking.
+**Interface:** the viewer's typeface, 400/600: System (the default: the device's own font, SF Pro, Segoe UI or Roboto), Inter, Geist, Manrope or Mono (IBM Plex Mono). The body face: nav, buttons, rows, settings, form fields, body copy that isn't reading text, footers. Chosen in Settings → Appearance; it is `<html data-font>`, set before first paint, and `--font` follows it (`styles/tokens.css`). Control text is uppercase with .06em tracking.
+**Labels and figures:** IBM Plex Mono 400/600, whatever the choice (`--font-mono`). The small uppercase labels (the red section labels, the page note, the names above a fact, `Browse by Genre`) and the lines of figures that should line up (the fact and meta lines under artwork, runtimes, sizes, times, ratings' names, the guide's clock, the shortcuts' keys, code and raw filenames).
 **Reading:** IBM Plex Serif 400/600 and 400 italic. Overviews, reviews, biographies, episode synopses. `.reading` sets it at 17px/1.6 within the measure.
 
-All four are SIL OFL, from the `@fontsource` packages, through Vite (`styles/fonts.css`): latin and latin-ext only, `font-display: swap`, only the weights above. Archivo 700 and Plex Mono 400 are preloaded by the build; the rest load when text uses them. The licences are in `public/fonts/` and Settings → About → Open Source Licences.
+All are SIL OFL, from the `@fontsource` and `@fontsource-variable` packages, through Vite (`styles/fonts.css`): latin and latin-ext only, `font-display: swap`, only the weights above (Inter, Geist and Manrope are variable). Archivo 700 and Plex Mono 400 are preloaded by the build; the rest load when text uses them, so Inter, Geist and Manrope are downloaded only when chosen (or previewed on Settings → Appearance) and System downloads nothing. Each web font has a metric-matched Arial stand-in ahead of the system stack so the swap barely moves anything. The licences are in `public/fonts/` and Settings → About → Open Source Licences.
 
 ### Hierarchy
-- **Display** (700, `--fs-display`, .84): the page title. A 2px rule runs under it, edge to edge.
+- **Display** (700, `--fs-head`, .84): the page title. A 2px rule runs under it, edge to edge.
 - **Title** (700, 40/34px, 1.1, Condensed): a title page's name, a person's name.
 - **Heading** (700, 22px, 1.1, Condensed): a section's name, a row's title.
 - **Label** (600, 13px, uppercase, .12em, red): the name of a section above its list, `Browse by Genre`.
-- **Body** (400, 15px, 1.5, Mono): interface text. Control text is 600 13px uppercase .06em.
+- **Body** (400, 15px, 1.5, the viewer's typeface): interface text. Control text is 600 13px uppercase .06em. The steps are the same in every face, sized so Plex Mono, the widest, still fits.
 - **Reading** (400, 17px, 1.6, Serif): anything a person reads as prose, 62ch at most.
-- **Meta** (400, 12px, Mono, muted): `2H 47 · 8.4`-style lines under artwork.
+- **Meta** (400, 12px, Plex Mono, muted): `2H 47 · 8.4`-style lines under artwork.
 
 ### Named Rules
-**The Mono Is the Interface Rule.** Anything you press, and every label and number, is mono. Anything you read as sentences is serif. Headings are condensed. The giant title is the only Archivo.
+**The Mono Is the Label Rule.** Anything you press, and the interface's own sentences, take the viewer's typeface. Plex Mono is fixed for the small uppercase labels and for lines of figures that should line up, whatever the choice, so the index's printed look survives in System or Inter. Anything you read as prose is serif. Headings are condensed. The giant title is the only Archivo. Each place says which it is (`var(--font)` or `var(--font-mono)`); nothing is mono only because it inherits.
 **The Tabular Rule.** Times, durations, sizes, ratings and counts use tabular figures (`.num`, set globally on `time`, `td`, `th`).
 
 ## Layout
@@ -244,25 +245,25 @@ There are no radius tokens: new code writes no radius. The one round thing on th
 ## Components
 
 ### Buttons
-Square, 2px ink border, min-height 48px, Mono 600 13px uppercase .06em. **Primary** (`.btn-primary`): solid ink, paper text; the one next action on a screen (Resume, Play). **Secondary** (default `.btn`, `.btn-secondary`): paper with the ink border. **Quiet** (`.btn-quiet`): no border, for icons and small actions. Hover fills blue with white text (blue border). `.btn-danger` hovers red. Icon buttons (`.btn-circle`, named for what it was) are 52px square. Compact is 40px (44px on touch). Disabled goes faint.
+Square, 2px ink border, min-height 48px, 600 13px uppercase .06em in the viewer's typeface. **Primary** (`.btn-primary`): solid ink, paper text; the one next action on a screen (Resume, Play). **Secondary** (default `.btn`, `.btn-secondary`): paper with the ink border. **Quiet** (`.btn-quiet`): no border, for icons and small actions. Hover fills blue with white text (blue border). `.btn-danger` hovers red. Icon buttons (`.btn-circle`, named for what it was) are 52px square. Compact is 40px (44px on touch). Disabled goes faint.
 
 ### Chips and Segmented Controls
 Bordered mono uppercase cells. Current is inverted (ink fill, paper text), never blue. Hover is blue. Segmented controls share borders (cells touch).
 
 ### Fields
-Square, 2px ink border, 48px, Mono. Focus is the blue ring. Search is the exception in scale: a giant Plex Sans Condensed input in a ruled bar with a solid ink "go" block.
+Square, 2px ink border, 48px, the viewer's typeface. Focus is the blue ring. Search is the exception in scale: a giant Plex Sans Condensed input in a ruled bar with a solid ink "go" block.
 
 ### Links
 In running text: blue, underlined; hover turns ink. A `.quiet-link` (footers, emphasised phrases) is ink, 600, with a 2px dotted red underline at 4px offset. Focus is always the 3px blue ring, 2px offset (`:focus-visible`).
 
 ### Navigation
-The top bar is bordered cells on a 2px bottom rule. The **logo cell** (left) is blue with the Marquee wordmark in Plex Sans Condensed 700 (`components/Logo.tsx`) over a row of seven red bulbs, each rimmed in the cell text colour so they read on the dark theme pale blue too. The compact mark (favicon and app icons: `public/icon.svg`, PNGs from `scripts/icons.mjs`) is a blue square, a white condensed M and one bulb. The sections, **Sample Data** (only while sample data is on, in red), **Settings** and the **Light/Dark** toggle follow as cells with 2px left borders: uppercase Mono 600 14px, 56px high. Current is inverted; hover is blue; focus is blue with an inset ring. The toggle is a button with `aria-pressed` (true when dark); its label names the theme it switches to. Between 721 and 1100px Settings and the toggle show icons only (spoken labels stay). The bar slides away on scroll down and returns on scroll up or when it takes keyboard focus; with reduced motion it just appears and disappears. On phones the sections are the bottom bar: five equal cells, icon over a 12px label, 2px top rule, current inverted.
+The top bar is bordered cells on a 2px bottom rule. The **logo cell** (left) is blue with the Marquee wordmark in Plex Sans Condensed 700 (`components/Logo.tsx`) over a row of seven red bulbs, each rimmed in the cell text colour so they read on the dark theme pale blue too. The compact mark (favicon and app icons: `public/icon.svg`, PNGs from `scripts/icons.mjs`) is a blue square, a white condensed M and one bulb. The sections, **Sample Data** (only while sample data is on, in red), **Settings** and the **Light/Dark** toggle follow as cells with 2px left borders: uppercase 600 14px in the viewer's typeface, 56px high. Current is inverted; hover is blue; focus is blue with an inset ring. The toggle is a button with `aria-pressed` (true when dark); its label names the theme it switches to. Between 721 and 1100px Settings and the toggle show icons only (spoken labels stay). The bar slides away on scroll down and returns on scroll up or when it takes keyboard focus; with reduced motion it just appears and disappears. On phones the sections are the bottom bar: five equal cells, icon over a 12px label, 2px top rule, current inverted.
 
 ### Rows and Lists
 A `.row` is full width; on hover and focus it inverts to blue. A list (`.rows`) has a 2px rule above and 1px ink lines between rows. Numbered lists use red condensed numerals (`01`) in a fixed column; titles are Condensed (uppercase for categories) or Serif; metadata is mono and muted, and turns white on the blue hover.
 
 ### Page Head
-`.page-title`: the giant Archivo title, uppercase, with the 2px rule under it running edge to edge. A short uppercase mono note or a count (`.page-note`) can sit at its right.
+`.page-title`: the Archivo title (`--fs-head`, the size of Home's lead), uppercase, with the 2px rule under it running edge to edge. A short uppercase mono note or a count (`.page-note`) can sit at its right.
 
 ### Loading, Empty and Error States
 Loading is the ring (`.spinner`: ink with a red quarter) or a bordered bar with a red fill (`.pbar`). Empty and error states (`StateView`, `ErrorScreen`) are a condensed headline, one serif sentence on what to do next, and an action, left-aligned with the page. App notes (offline, updated) are ruled boxes bottom left, above the tab bar on phones.
@@ -271,13 +272,13 @@ Loading is the ring (`.spinner`: ink with a red quarter) or a bordered bar with 
 Posters and stills are square, inside a ruled cell or row, with their metadata as mono text underneath. Progress is a thin red bar with a 1px ink border, or a plain red line. Loading ghosts are the same box: a 2px frame with a tint fill, then flat bars for the printed line, title and year.
 
 ### Player Chrome and Scrubber (the exception)
-The video player is a conventional streaming player: its layout and controls are unchanged and it sits on true black. It is always dark: its root carries `data-theme="dark"` so every token resolves to the dark set whatever the page's theme. It takes the system's faces (Plex Mono and Sans Condensed), square panels and buttons, red for the played part of the scrubber and blue for focus. It uses `--radius-player` for any rounding. It has no 2px page rules on the picture itself. The panels beside or over it (options, X-Ray, episodes) are ink panels with 2px paper rules.
+The video player is a conventional streaming player: its layout and controls are unchanged and it sits on true black. It is always dark: its root carries `data-theme="dark"` so every token resolves to the dark set whatever the page's theme. It follows the viewer's typeface for its words (the panels, rows and notices), keeps Plex Mono for times and small labels and Plex Sans Condensed for the title, square panels and buttons, red for the played part of the scrubber and blue for focus. It uses `--radius-player` for any rounding. It has no 2px page rules on the picture itself. The panels beside or over it (options, X-Ray, episodes) are ink panels with 2px paper rules.
 
 ### Facts Lines and Rating Cells
 A line of facts under a title (`2024 | 2 H 47 MIN | PG-13 | SCIENCE FICTION`) is mono uppercase with a 1px rule between parts, never a leading dot: it wraps only between parts and the rule a wrapped line would start with is clipped. Ratings are a ruled row of cells: the source's mark (a Simple Icons glyph in `--fg`, 18px, 16px on phones, drawn as one flat shape and `aria-hidden`; Popcornmeter has none there, so a generic bucket stands in), then a big red condensed numeral, then the source's name in mono. The name stays because some marks are not widely known. Each cell is as wide as its label, the row wraps when they do not fit, and a long name wraps inside its cell instead of running into the next. Where a dotted list must wrap (the version line of "How This Plays"), the dot trails its part.
 
 ### Settings Rows
-Ruled sections, rows with Mono labels, square switches (ink off, blue on), square selects; footers in Mono, muted, sentence case.
+Ruled sections, rows with labels in the viewer's typeface, group titles in mono capitals, square switches (ink off, blue on), square selects; footers in the viewer's typeface, muted, sentence case. **Typeface** (Appearance) is a ruled list of rows, each set in its own face with a sentence and a line about it; the chosen row is inverted and carries a check, like the current place everywhere else.
 
 ## Do's and Don'ts
 
@@ -286,9 +287,9 @@ Ruled sections, rows with Mono labels, square switches (ink off, blue on), squar
 - **Do** divide with rules: 2px to open a section or a block, 1px between rows.
 - **Do** show hover and the current place by inversion: blue on hover, ink on paper for current.
 - **Do** keep both themes AA, and check red and blue on both grounds.
-- **Do** set sentences in Plex Serif and everything you press in Plex Mono.
+- **Do** set prose in Plex Serif, everything you press in the viewer's typeface (`--font`) and small labels and lines of figures in Plex Mono (`--font-mono`).
 - **Do** keep targets at 44px or more, and a 3px blue focus ring on everything focusable.
-- **Do** keep artwork square and framed, with its facts as mono text beneath.
+- **Do** keep artwork square and framed, with its facts as mono text beneath (Plex Mono whatever the typeface).
 - **Do** use the tokens (`--bg --fg --red --blue --onblue --muted --faint --rule`) and let `data-theme` do the rest.
 
 ### Don't:

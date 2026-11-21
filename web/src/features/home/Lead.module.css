@@ -32,7 +32,7 @@
    title page) and breaks between words, so it takes the lines it needs instead of ending in an ellipsis. --base is the
    size a short name gets at this width. */
 .name {
-  --base: clamp(44px, 13.5vw, 72px);
+  --base: var(--fs-display);
   --step: 1;
   padding-bottom: 0.04em;
   font: 700 1em / 0.9 var(--font-title);
@@ -60,7 +60,6 @@
 .count { padding: 0 var(--space-m); font: 700 24px / 1 var(--font-cond); letter-spacing: 0.02em; color: var(--red); white-space: nowrap; }
 
 @media (min-width: 721px) {
-  .name { --base: clamp(64px, 9vw, 96px); }
   .meta { font-size: 20px; }
   .actions > * { flex: 0 0 auto; }
   .actions > :first-child { min-width: 168px; }
@@ -74,7 +73,6 @@
   .text[data-current] { position: relative; }
   .pager { align-self: start; }
   .plate { margin-top: 0; }
-  .name { --base: clamp(56px, 4.9vw, 84px); }
 }
 
 /* Placeholder: the same box, a flat frame. */
