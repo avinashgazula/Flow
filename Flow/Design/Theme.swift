@@ -191,7 +191,9 @@ enum Theme {
         static func interface(_ weight: Weight, _ size: CGFloat, _ style: Font.TextStyle, system systemStyle: Font.TextStyle? = nil,
                               choice: FontChoice = InterfaceFace.shared.choice) -> Font {
             let semibold = weight == .semibold
-            let systemWeight: Font.Weight = semibold ? .semibold : .regular
+            // Light type on the dark paper at 13 points is thin in the system face: the contrast audit measured some chips
+            // below its limit at semibold, so System's emphasis is bold.
+            let systemWeight: Font.Weight = semibold ? .bold : .regular
             switch choice {
             case .system:
                 #if os(iOS)
