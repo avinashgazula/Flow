@@ -272,6 +272,20 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Flow-iOS
 
+  # Apple TV's focus engine, driven with the remote's own presses. Lives in its own folder: tvOS has no touch tests to share.
+  FlowTVUITests:
+    type: bundle.ui-testing
+    platform: tvOS
+    sources: [UITestsTV]
+    dependencies:
+      - target: Flow-tvOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(FLOW_BUNDLE_ID).tvuitests
+        PRODUCT_NAME: FlowTVUITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Flow-tvOS
+
 schemes:
   Flow-iOS:
     build:
@@ -290,3 +304,6 @@ schemes:
     build:
       targets:
         Flow-tvOS: all
+    test:
+      config: Debug
+      targets: [FlowTVUITests]

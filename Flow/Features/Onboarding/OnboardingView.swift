@@ -98,6 +98,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             SectionLabel("TMDB API Key")
             SecureField("API key or read-access token", text: $key)
+                .accessibilityIdentifier("onboarding-key")
                 #if os(macOS)
                 // The Mac's own bezel would draw a second box inside the ruled one.
                 .textFieldStyle(.plain)

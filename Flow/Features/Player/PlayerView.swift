@@ -1028,6 +1028,7 @@ struct Scrubber: View {
             .shadow(color: .black.opacity(0.5), radius: 4)
         }
         .accessibilityElement()
+        .accessibilityIdentifier("player-scrubber")
         .accessibilityLabel("Playback position")
         .accessibilityValue("\(TimeFormat.clock(current)) of \(TimeFormat.clock(duration))")
         .accessibilityAdjustableAction { direction in
@@ -1455,6 +1456,11 @@ struct IOSPlayerControls: View {
 
     private func scheduleHide() {
         hideTask?.cancel()
+        #if DEBUG
+        // UI tests (`-FlowKeepPlayerControls YES`) press buttons a few seconds apart; controls that hide in between make
+        // every press a race with the timer.
+        if UserDefaults.standard.bool(forKey: "FlowKeepPlayerControls") { return }
+        #endif
         hideTask = Task {
             try? await Task.sleep(nanoseconds: 4_000_000_000)
             if !Task.isCancelled, isPlaying, scrubbing == nil, !overlayOpen { visible = false }

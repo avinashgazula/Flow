@@ -84,6 +84,7 @@ struct SearchView: View {
                 .font(Theme.Typeface.custom(Theme.Face.condensedSemiBold, Platform.isPhone ? 28 : 40, .title))
                 .textFieldStyle(.plain)
                 .focused($fieldFocused)
+                .accessibilityIdentifier("search-field")
                 .submitLabel(.search)
                 .autocorrectionDisabled()
                 #if os(iOS)

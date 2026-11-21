@@ -215,6 +215,7 @@ struct SettingsRootView: View {
             }
             #endif
         }
+        .accessibilityIdentifier("settings-row-\(page.rawValue)")
     }
 }
 

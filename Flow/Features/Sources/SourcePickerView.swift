@@ -136,6 +136,7 @@ struct SourcePickerView: View {
                     }
                     .buttonStyle(RuledCellStyle())
                     .disabled(!source.isActionable)
+                    .accessibilityIdentifier("source-\(source.id)")
                     .contextMenu { sourceMenu(source) }
                 }
             }
@@ -588,7 +589,14 @@ private struct SourceSummary {
         parts += (traits.hdr + [traits.audioCodec].compactMap { $0 }).compactMap { PremiumBadge.spoken($0) }
         if traits.isCached == true && source.category == .addons { parts.append("Cached") }
         if !source.isPlayable, case .torrent = source.location { parts.append("Needs a debrid-enabled add-on") }
-        if parts.isEmpty { parts.append(title ?? source.providerName) }
+        if parts.isEmpty {
+            // Nothing in the release was recognised: speak the add-on's own words ("240p, AVI · Xvid and MP2") before a
+            // file name, which reads as noise. Its emoji markers are dropped, being pictures rather than words.
+            let words = rawLines.prefix(2).map { line in
+                String(String.UnicodeScalarView(line.unicodeScalars.filter { $0.value < 0x2000 })).trimmingCharacters(in: .whitespaces)
+            }.filter { !$0.isEmpty }
+            parts.append(words.isEmpty ? (title ?? source.providerName) : words.joined(separator: ", "))
+        }
         return parts.joined(separator: ", ")
     }
 }
