@@ -10,6 +10,8 @@ final class LiveTVUITests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments = ["-FlowDemo", "YES"]
+        // The overlay stays up so a found button is still there to press, except in the test of the overlay hiding.
+        if !name.contains("testTappingThePictureBringsTheOverlayBack") { app.launchArguments += ["-FlowKeepPlayerControls", "YES"] }
         app.launch()
     }
 
