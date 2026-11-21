@@ -17,6 +17,9 @@ extension AppModel {
         defer { isSyncing = false }
         lastSyncError = nil
         let tracker = self.tracker
+        // The lists are fetched now but assigned at the end, after slower lookups. A watchlist or favourite change made
+        // meanwhile must not be undone by that older answer.
+        let listChangesAtStart = listChanges
 
         async let progressResult = resultOf { try await tracker.playbackProgress() }
         async let moviesResult = resultOf { try await tracker.watchedMovies() }
@@ -52,13 +55,15 @@ extension AppModel {
         refreshWatchedKeys()
         profile = (try? await profileResult.get()) ?? nil
         if settings.account.watchlistDestination == .mediaServer {
-            watchlistKeys = await mediaServerFavouriteKeys()
-        } else if let w = take(await watchlistResult) {
+            let keys = await mediaServerFavouriteKeys()
+            if listChanges == listChangesAtStart { watchlistKeys = keys }
+        } else if let w = take(await watchlistResult), listChanges == listChangesAtStart {
             watchlistKeys = w.map(\.key)
         }
         if settings.account.favouritesDestination == .mediaServer {
-            favouriteKeys = await mediaServerFavouriteKeys()
-        } else if let f = try? await favouritesResult.get() {
+            let keys = await mediaServerFavouriteKeys()
+            if listChanges == listChangesAtStart { favouriteKeys = keys }
+        } else if let f = try? await favouritesResult.get(), listChanges == listChangesAtStart {
             favouriteKeys = f.map(\.key)
         }
 
@@ -191,6 +196,7 @@ extension AppModel {
     func toggleWatchlist(_ item: MediaItem) async {
         guard let key = item.key else { return }
         let listed = !watchlistKeys.contains(key)
+        listChanges += 1
         if listed { watchlistKeys.insert(key, at: 0) } else { watchlistKeys.removeAll { $0 == key } }
         Platform.haptic()
         do {
@@ -212,6 +218,7 @@ extension AppModel {
     func toggleFavourite(_ item: MediaItem) async {
         guard let key = item.key else { return }
         let favourite = !favouriteKeys.contains(key)
+        listChanges += 1
         if favourite { favouriteKeys.insert(key, at: 0) } else { favouriteKeys.removeAll { $0 == key } }
         Platform.haptic()
         do {

@@ -126,6 +126,8 @@ final class AppModel {
     var continueWatching: [ContinueWatchingBuilder.Entry] = []
     /// Continue Watching has been worked out at least once since launch; before that, empty means "not loaded yet".
     @ObservationIgnored var continueWatchingIsBuilt = false
+    /// Counts the viewer's own watchlist and favourite changes, so a library refresh that began before one doesn't undo it.
+    @ObservationIgnored var listChanges = 0
     var history: [HistoryEntry] = []
     /// Every watched title, newest first, for the History tile and list. Kept here, rebuilt when the
     /// watched state changes, so views never sort thousands of keys while they draw.
