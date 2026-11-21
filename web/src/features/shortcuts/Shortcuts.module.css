@@ -24,14 +24,14 @@
 
 .body { overflow-y: auto; padding: 0 var(--space-l) var(--space-m); display: grid; gap: var(--space-l); overscroll-behavior: contain; }
 .group { padding-top: var(--space-m); }
-.groupTitle { margin: 0 0 var(--space-xs); font: 600 var(--fs-small) / 1.3 var(--font); letter-spacing: 0.12em; text-transform: uppercase; color: var(--red); }
+.groupTitle { margin: 0 0 var(--space-xs); font: 600 var(--fs-small) / 1.3 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--red); }
 .rows { margin: 0; border-top: var(--rule); }
 .row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-m); min-height: 48px; padding: 8px 0; }
 .row + .row { border-top: 1px solid var(--fg); }
 .label { margin: 0; font: 400 var(--fs-small) / 1.3 var(--font); text-wrap: pretty; }
 .keys { margin: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px var(--space-xs); flex: none; max-width: 52%; }
 .alt, .combo, .part { display: inline-flex; align-items: center; gap: 6px; }
-.then, .or { font: 400 var(--fs-caption) / 1 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.then, .or { font: 400 var(--fs-caption) / 1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .key {
   display: inline-grid;
   place-items: center;
@@ -41,7 +41,7 @@
   border: var(--rule-thin);
   background: var(--bg);
   color: var(--fg);
-  font: 600 var(--fs-footnote) / 1 var(--font);
+  font: 600 var(--fs-footnote) / 1 var(--font-mono);
   white-space: nowrap;
 }
 .foot { margin: 0; padding: var(--space-s) var(--space-l); border-top: var(--rule); font: 400 var(--fs-footnote) / 1.4 var(--font); color: var(--muted); }

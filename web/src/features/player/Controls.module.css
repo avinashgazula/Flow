@@ -167,7 +167,7 @@
 .timeEnd { min-width: 4.2em; padding: 12px 0 12px 6px; margin: -12px 0; text-align: right; cursor: pointer; }
 @media (hover: hover) { .timeEnd:hover { text-decoration: underline; text-underline-offset: 3px; } }
 /* When it would end, quietly, where there is the room for it. */
-.ends { display: none; flex: none; font: 400 var(--fs-footnote) / 1 var(--font); font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+.ends { display: none; flex: none; font: 400 var(--fs-footnote) / 1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
 @media (min-width: 1100px) {
   .ends { display: block; }
 }
@@ -282,7 +282,7 @@
 /* A group's name: a red mono label. */
 .groupTitle {
   padding: 12px 16px 4px;
-  font: 600 var(--fs-footnote) / 1.2 var(--font);
+  font: 600 var(--fs-footnote) / 1.2 var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--red);
@@ -390,7 +390,7 @@
 .episodeStill { display: block; transition: opacity var(--dur-hover) ease; }
 @media (hover: hover) { .episodeCard:not(:disabled):hover .episodeStill { opacity: 0.88; } }
 .episodeName { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.episodeMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.episodeMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Up Next: bottom right, above the control row while the controls show. A plain thumbnail with a thin line along its
    foot that runs down with the countdown, the name, and "Starts in 9s" in words. */
@@ -441,7 +441,7 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.upNextMeta { font: 400 var(--fs-caption) / 1.25 var(--font); font-variant-numeric: tabular-nums; color: var(--muted); }
+.upNextMeta { font: 400 var(--fs-caption) / 1.25 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--muted); }
 .upNextActions { display: flex; align-items: center; gap: 4px; margin: 6px 0 0 -2px; }
 .upNextCancel {
   height: 36px;
@@ -722,7 +722,7 @@
 .suggestionStill { display: block; transition: opacity var(--dur-hover) ease; }
 @media (hover: hover) { .suggestion:hover .suggestionStill { opacity: 0.88; } }
 .suggestionTitle { font: 600 var(--fs-footnote) / 1.25 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.suggestionMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suggestionMeta { margin-top: -4px; font: 400 var(--fs-caption) / 1.25 var(--font-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* A phone held upright has room for two frames in a card as wide as its screen, not three: the rest wait out of sight
    rather than run past the card's edge, and the two share the width. */
 @media (max-width: 420px) {

@@ -47,9 +47,10 @@ export interface WebDAVConfig {
   enabled: boolean
 }
 
-/** The typeface choice of the old design. Marquee is set in Index's four faces now and nothing reads this; the
- *  ids stay valid so a backup or a synced setting from before still loads. */
-export type FontChoice = 'system' | 'inter' | 'geist' | 'manrope' | 'ioskeley'
+/** The typefaces Settings offers for the interface and body text. The ids are also the keys in index.html's pre-paint
+ *  script and the `[data-font]` rules in styles/tokens.css. An older build saved Ioskeley Mono as 'ioskeley'; it reads
+ *  as Mono (lib/typeface.ts). */
+export type FontChoice = 'system' | 'inter' | 'geist' | 'manrope' | 'mono'
 
 /** When subtitles turn on by themselves: never, only when the audio isn't in the viewer's own
  *  language (the first subtitle language), for every title, or only the forced ones the file carries.
@@ -244,7 +245,8 @@ export interface Settings {
    *  Absent until the viewer changes something; read it through `normaliseSourceOrdering`, which supplies the
    *  defaults. That keeps the defaults out of the code that loads first. */
   sources?: SourceOrdering
-  /** Retired (see FontChoice): kept so saved settings, backups and syncs that carry it stay valid. */
+  /** The typeface the interface and body text are set in; System is the device's own and downloads nothing. The titles,
+   *  headings, reading text and small labels keep Index's own faces. */
   font: FontChoice
   /** The order of the sections in the top bar and the phone's tab bar, by id (lib/tabs.ts). A section this
    *  list doesn't name yet takes its default place. */

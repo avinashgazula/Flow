@@ -14,7 +14,10 @@ async function markControls(page: Page) {
       const box = el.getBoundingClientRect()
       const disabled = (el as HTMLButtonElement).disabled
       const inert = el.closest('[inert], [aria-hidden="true"], [hidden]')
-      if (el.tabIndex < 0 || disabled || inert || style.visibility === 'hidden' || style.display === 'none' || box.width === 0 || box.height === 0) continue
+      // A group of radios is one stop in the Tab order: Tab lands on the chosen one and the arrow keys move within the group
+      // (typeface.spec.ts). The others are not meant to be reached by Tab.
+      const otherRadio = el instanceof HTMLInputElement && el.type === 'radio' && !el.checked && !!document.querySelector(`input[type="radio"][name="${el.name}"]:checked`)
+      if (el.tabIndex < 0 || disabled || otherRadio || inert || style.visibility === 'hidden' || style.display === 'none' || box.width === 0 || box.height === 0) continue
       el.dataset.e2eControl = String(n++)
     }
     return n

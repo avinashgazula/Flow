@@ -27,8 +27,11 @@ npm run build && npm run e2e   # browser tests (Playwright) against dist/, in Ch
 - **Rust → WebAssembly** (`crates/`) for the work that's actually heavy in a browser: demuxing
   Matroska and remuxing it to fragmented MP4 for Media Source Extensions, in a Web Worker.
 - **CSS Modules + tokens** (`src/styles/tokens.css`: Index: paper and ink in light and dark, 3px rules, one red and one blue; see
-  `DESIGN.md`). No CSS-in-JS runtime. Four self-hosted open-source faces from `@fontsource` (Archivo, IBM Plex Mono,
-  Sans Condensed and Serif; `src/styles/fonts.css`), latin and latin-ext only, with the two first-paint faces preloaded.
+  `DESIGN.md`). No CSS-in-JS runtime. Self-hosted open-source faces from `@fontsource` (Archivo, IBM Plex Mono,
+  Sans Condensed and Serif, and Inter, Geist and Manrope as the typeface choices in Settings → Appearance, which load
+  only when chosen; `src/styles/fonts.css`), latin and latin-ext only, with the two first-paint faces preloaded. The
+  interface and body text follow the chosen typeface (System, the device's own font, by default; `<html data-font>`,
+  `src/lib/typeface.ts`); the titles, headings, reading text and the small labels keep Index's own faces.
   Light or dark follows the system until the Light/Dark cell in the top bar is used; the choice is saved per browser
   (`src/lib/theme.ts`, and an inline script in `index.html` that sets it before first paint).
 

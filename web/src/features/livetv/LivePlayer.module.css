@@ -113,7 +113,7 @@
 /* What is on: the channel, the programme, how far through it is, and what is next. Plain text on the gradient. */
 .info { display: flex; flex-direction: column; gap: 4px; width: min(560px, 100%); }
 .cardHead { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; }
-.number { font: 600 var(--fs-footnote) / 1 var(--font); color: var(--muted); }
+.number { font: 600 var(--fs-footnote) / 1 var(--font-mono); color: var(--muted); }
 .channelName { font: 600 var(--fs-footnote) / 1.2 var(--font); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .programme { font: 700 var(--fs-title3) / 1.15 var(--font-cond); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .times { display: flex; align-items: center; gap: var(--space-s); font-size: var(--fs-footnote); color: var(--fg); }
@@ -126,7 +126,7 @@
 .left { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .right { display: flex; align-items: center; gap: 2px; flex: none; }
 /* Live, as a red dot and the word: there is no time to show. */
-.livePill { display: inline-flex; align-items: center; gap: 8px; margin-left: 12px; font: 600 var(--fs-footnote) / 1 var(--font); text-transform: uppercase; letter-spacing: 0.12em; }
+.livePill { display: inline-flex; align-items: center; gap: 8px; margin-left: 12px; font: 600 var(--fs-footnote) / 1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.12em; }
 .liveDot { width: 8px; height: 8px; background: var(--red); }
 
 /* The channel list: right side on a wide window, the bottom of a phone's. */

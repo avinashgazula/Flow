@@ -29,9 +29,12 @@ export const libraries: Licence[] = [
   { package: 'idb-keyval', name: 'idb-keyval', version: '6.3.0', licence: 'Apache-2.0', url: 'https://github.com/jakearchibald/idb-keyval', use: 'Storing the cache and the guide' },
   { package: 'qrcode-generator', name: 'qrcode-generator', version: '2.0.4', licence: 'MIT', url: 'https://github.com/kazuhikoarase/qrcode-generator', use: 'The pairing code for Sync' },
   { package: '@fontsource/archivo', name: 'Archivo (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'The page titles' },
-  { package: '@fontsource/ibm-plex-mono', name: 'IBM Plex Mono (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Interface text and labels' },
+  { package: '@fontsource/ibm-plex-mono', name: 'IBM Plex Mono (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Small labels, lines of figures and the Mono typeface choice' },
   { package: '@fontsource/ibm-plex-sans-condensed', name: 'IBM Plex Sans Condensed (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Headings and titles in lists' },
   { package: '@fontsource/ibm-plex-serif', name: 'IBM Plex Serif (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Reading text' },
+  { package: '@fontsource-variable/inter', name: 'Inter (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'A typeface choice, loaded only when chosen' },
+  { package: '@fontsource-variable/geist', name: 'Geist (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'A typeface choice, loaded only when chosen' },
+  { package: '@fontsource-variable/manrope', name: 'Manrope (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'A typeface choice, loaded only when chosen' },
   { package: 'onnxruntime-web', name: 'ONNX Runtime Web', version: '1.31.1', licence: 'MIT', url: 'https://github.com/microsoft/onnxruntime', use: 'Running the face models in X-Ray, as WebAssembly' },
   { package: 'simple-icons', name: 'Simple Icons', version: '16.37.0', licence: 'CC0-1.0', url: 'https://github.com/simple-icons/simple-icons', use: 'The marks beside each rating on a title page' },
   { package: 'lucide-react', name: 'Lucide', version: '1.72.0', licence: 'ISC', url: 'https://github.com/lucide-icons/lucide', use: 'The icons in the player' },
@@ -73,12 +76,15 @@ export const models: Model[] = [
   },
 ]
 
-/** The typefaces Marquee is set in, each with the licence file served beside it (public/fonts). */
+/** The typefaces Marquee is set in or offers in Settings, each with the licence file served beside it (public/fonts). */
 export const typefaces: { name: string; file: string }[] = [
   { name: 'Archivo', file: 'OFL-Archivo.txt' },
   { name: 'IBM Plex Mono', file: 'OFL-Plex-Mono.txt' },
   { name: 'IBM Plex Sans Condensed', file: 'OFL-Plex-Sans-Condensed.txt' },
   { name: 'IBM Plex Serif', file: 'OFL-Plex-Serif.txt' },
+  { name: 'Inter', file: 'OFL-Inter.txt' },
+  { name: 'Geist', file: 'OFL-Geist.txt' },
+  { name: 'Manrope', file: 'OFL-Manrope.txt' },
 ]
 
 /** The commit this build came from, so the links below show the exact build script and notice that made it; a local

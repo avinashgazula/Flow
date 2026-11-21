@@ -50,7 +50,7 @@ export function Licences() {
           {link(`${base}licences/MIT-ONNX-Runtime.txt`, 'Licence')} {link(`${base}licences/ONNX-Runtime-ThirdPartyNotices.txt`, 'Notices')}
         </Row>
       </Group>
-      <Group title="Typefaces" footer="All under the SIL Open Font License 1.1, self-hosted: Marquee asks no font service for anything.">
+      <Group title="Typefaces" footer="All under the SIL Open Font License 1.1, self-hosted: Marquee asks no font service for anything. System, the default, is your device’s own font and ships nothing.">
         {typefaces.map((face) => (
           <Row key={face.name} label={face.name} detail="SIL OFL 1.1">
             {link(`${fonts}${face.file}`, 'Licence')}

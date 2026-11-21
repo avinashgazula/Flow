@@ -10,6 +10,7 @@ import { listenForInstall } from './lib/pwa/install'
 import { registerServiceWorker } from './lib/pwa/update'
 import { hasCatalog, settingsStore } from './lib/store/settings'
 import { watchTheme } from './lib/theme'
+import { watchTypeface } from './lib/typeface'
 import { trailMoved } from './lib/playerTrail'
 import { libraryStore } from './lib/store/library'
 import { arriveFromHashLink } from './lib/hashLink'
@@ -63,6 +64,9 @@ declare module '@tanstack/react-router' {
 
 // The page follows the system's light or dark until the viewer picks one in the top bar.
 watchTheme()
+// The interface typeface is an attribute on <html> too: index.html sets it before first paint, and a change in Settings
+// (here or in another tab) follows at once.
+watchTypeface()
 
 // A page opened before a deploy asks for code chunks that no longer exist: load the new build once
 // rather than showing an error.
