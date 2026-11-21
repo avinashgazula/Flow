@@ -138,14 +138,16 @@ final class PlayerRoutingTests: XCTestCase {
         XCTAssertFalse(PlayerRouting.shouldRetryInBuiltIn(builtInAlreadyRunning: false, usesRemux: false, appleErrorCode: nil))
     }
 
-    func testBuiltInFailureReconnectsTwiceAndNeverForgetsOldDrops() {
+    func testBuiltInFailureReconnectsTwiceAndForgetsDropsAfterAQuietSpell() {
         XCTAssertEqual(PlayerRouting.onBuiltInFailure(didStart: true, recoveries: 0), .init(action: .reconnect, recoveries: 1))
         XCTAssertEqual(PlayerRouting.onBuiltInFailure(didStart: true, recoveries: 1), .init(action: .reconnect, recoveries: 2))
         XCTAssertEqual(PlayerRouting.onBuiltInFailure(didStart: true, recoveries: 2), .init(action: .showError, recoveries: 2))
         XCTAssertEqual(PlayerRouting.onBuiltInFailure(didStart: false, recoveries: 0), .init(action: .showError, recoveries: 0))
-        // Unlike Apple's player (which forgets drops after ten quiet minutes), the built-in decoder has no such reset,
-        // so a third drop in a long film ends in the error screen however far apart they were. Pinned as it is today.
-        XCTAssertEqual(PlayerRouting.onBuiltInFailure(didStart: true, recoveries: 2).action, .showError)
+        // Drops close together use up the tries; a third drop long after the last starts them again, as on Apple's player.
+        let quiet = PlayerRouting.reconnectForgetAfter
+        XCTAssertEqual(PlayerRouting.onBuiltInFailure(didStart: true, recoveries: 2, secondsSinceLastRecovery: quiet - 1).action, .showError)
+        XCTAssertEqual(PlayerRouting.onBuiltInFailure(didStart: true, recoveries: 2, secondsSinceLastRecovery: quiet + 1), .init(action: .reconnect, recoveries: 1))
+        XCTAssertEqual(PlayerRouting.onBuiltInFailure(didStart: false, recoveries: 2, secondsSinceLastRecovery: quiet + 1), .init(action: .showError, recoveries: 0))
     }
 
     // MARK: Stalled starts

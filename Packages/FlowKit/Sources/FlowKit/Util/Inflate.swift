@@ -80,11 +80,15 @@ public enum Inflate {
     }()
     private static let fixedDistance = Huffman(lengths: [Int](repeating: 5, count: 30))
 
-    /// Decodes a raw DEFLATE stream starting at `offset`.
-    public static func raw(_ data: Data, offset: Int = 0) throws -> Data {
+    /// The most a stream may expand to. A few hundred bytes of DEFLATE can claim gigabytes (a "zip bomb"); a TV guide
+    /// or subtitle file that big would take the app's memory with it. The largest real guides are well under this.
+    public static let maxOutput = 256 * 1024 * 1024
+
+    /// Decodes a raw DEFLATE stream starting at `offset`, refusing to produce more than `limit` bytes.
+    public static func raw(_ data: Data, offset: Int = 0, limit: Int = maxOutput) throws -> Data {
         var reader = BitReader([UInt8](data), start: offset)
         var out: [UInt8] = []
-        out.reserveCapacity(data.count * 4)
+        out.reserveCapacity(min(data.count * 4, limit))
         var final = false
         while !final {
             final = try reader.bits(1) == 1
@@ -95,13 +99,14 @@ public enum Inflate {
                 guard p + 4 <= reader.bytes.count else { throw Failure.corrupt("stored header") }
                 let len = Int(reader.bytes[p]) | Int(reader.bytes[p + 1]) << 8
                 guard p + 4 + len <= reader.bytes.count else { throw Failure.corrupt("stored length") }
+                guard out.count + len <= limit else { throw Failure.corrupt("larger than \(limit) bytes") }
                 out.append(contentsOf: reader.bytes[(p + 4)..<(p + 4 + len)])
                 reader.position = p + 4 + len
             case 1:
-                try inflateBlock(&reader, &out, literal: fixedLiteral, distance: fixedDistance)
+                try inflateBlock(&reader, &out, literal: fixedLiteral, distance: fixedDistance, limit: limit)
             case 2:
                 let (lit, dist) = try dynamicTables(&reader)
-                try inflateBlock(&reader, &out, literal: lit, distance: dist)
+                try inflateBlock(&reader, &out, literal: lit, distance: dist, limit: limit)
             default:
                 throw Failure.corrupt("invalid block type")
             }
@@ -132,10 +137,11 @@ public enum Inflate {
         return (Huffman(lengths: Array(lengths[0..<hlit])), Huffman(lengths: Array(lengths[hlit..<(hlit + hdist)])))
     }
 
-    private static func inflateBlock(_ reader: inout BitReader, _ out: inout [UInt8], literal: Huffman, distance: Huffman) throws {
+    private static func inflateBlock(_ reader: inout BitReader, _ out: inout [UInt8], literal: Huffman, distance: Huffman, limit: Int) throws {
         while true {
             let sym = try literal.decode(&reader)
             if sym < 256 {
+                guard out.count < limit else { throw Failure.corrupt("larger than \(limit) bytes") }
                 out.append(UInt8(sym))
             } else if sym == 256 {
                 return
@@ -147,6 +153,7 @@ public enum Inflate {
                 guard di < distBase.count else { throw Failure.corrupt("distance symbol") }
                 let dist = distBase[di] + (try reader.bits(distExtra[di]))
                 guard dist <= out.count else { throw Failure.corrupt("distance too far") }
+                guard out.count + length <= limit else { throw Failure.corrupt("larger than \(limit) bytes") }
                 let start = out.count - dist
                 for i in 0..<length { out.append(out[start + i]) }
             }
@@ -159,7 +166,7 @@ public enum Gzip {
         data.count > 10 && data[data.startIndex] == 0x1f && data[data.startIndex + 1] == 0x8b
     }
 
-    public static func decompress(_ data: Data) throws -> Data {
+    public static func decompress(_ data: Data, limit: Int = Inflate.maxOutput) throws -> Data {
         let bytes = [UInt8](data)
         guard bytes.count > 18, bytes[0] == 0x1f, bytes[1] == 0x8b, bytes[2] == 8 else { throw Inflate.Failure.corrupt("not gzip") }
         let flags = bytes[3]
@@ -168,7 +175,7 @@ public enum Gzip {
         if flags & 0x08 != 0 { while p < bytes.count && bytes[p] != 0 { p += 1 }; p += 1 }
         if flags & 0x10 != 0 { while p < bytes.count && bytes[p] != 0 { p += 1 }; p += 1 }
         if flags & 0x02 != 0 { p += 2 }
-        return try Inflate.raw(Data(bytes), offset: p)
+        return try Inflate.raw(Data(bytes), offset: p, limit: limit)
     }
 }
 

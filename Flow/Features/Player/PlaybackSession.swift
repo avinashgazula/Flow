@@ -2062,7 +2062,8 @@ extension PlaybackSession {
         failureDetail = "libmpv · \(message)"
         ScreenshotTour.log("built-in decoder failed: \(message)")
         // A dropped connection mid-film: reconnect where it stopped, as the Apple path does.
-        let decision = PlayerRouting.onBuiltInFailure(didStart: didStart, recoveries: recoveries)
+        let decision = PlayerRouting.onBuiltInFailure(didStart: didStart, recoveries: recoveries,
+                                                      secondsSinceLastRecovery: lastRecovery.map { Date().timeIntervalSince($0) })
         switch decision.action {
         case .reconnect:
             recoveries = decision.recoveries

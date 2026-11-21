@@ -150,9 +150,11 @@ public enum PlayerRouting {
         return ItemFailureDecision(action: .showError, recoveries: recoveries)
     }
 
-    /// The built-in decoder's own failure: the same couple of reconnects mid-film, but, unlike Apple's player,
-    /// the count is never reset after a quiet spell.
-    public static func onBuiltInFailure(didStart: Bool, recoveries: Int) -> ItemFailureDecision {
+    /// The built-in decoder's own failure: the same couple of reconnects mid-film as Apple's player, and the same
+    /// fresh tries for a drop that comes long after the last one.
+    public static func onBuiltInFailure(didStart: Bool, recoveries: Int, secondsSinceLastRecovery: Double? = nil) -> ItemFailureDecision {
+        var recoveries = recoveries
+        if let since = secondsSinceLastRecovery, since > reconnectForgetAfter { recoveries = 0 }
         if didStart, recoveries < maxReconnects {
             return ItemFailureDecision(action: .reconnect, recoveries: recoveries + 1)
         }

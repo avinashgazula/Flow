@@ -207,6 +207,32 @@ final class ParserFuzzTests: XCTestCase {
         _ = try? Gzip.decompress(Data([0x1f, 0x8b, 8, 0, 0, 0, 0, 0, 0, 0xff] + bomb))
     }
 
+    /// A real bomb: about 100 KB of gzip that expands to 100 MB. Under a limit it stops with an error well before the end,
+    /// instead of filling memory; with room it expands in full, so the limit is what stopped it.
+    func testACompressionBombStopsAtTheLimit() throws {
+        let deflated = try XCTUnwrap(Self.gzipOfZeros(megabytes: 100))
+        XCTAssertLessThan(deflated.count, 200_000)
+        XCTAssertThrowsError(try Gzip.decompress(deflated, limit: 10 * 1024 * 1024))
+        XCTAssertEqual(try Gzip.decompress(deflated, limit: 200 * 1024 * 1024).count, 100 * 1024 * 1024)
+        XCTAssertGreaterThanOrEqual(Inflate.maxOutput, 128 * 1024 * 1024, "room for the largest real TV guides")
+    }
+
+    /// gzip -9 of that many megabytes of zeros, made by the system's gzip so the stream is an independent encoder's.
+    static func gzipOfZeros(megabytes: Int) throws -> Data? {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("flowkit-bomb-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let file = dir.appendingPathComponent("zeros")
+        try Data(count: megabytes * 1024 * 1024).write(to: file)
+        let gzip = Process()
+        gzip.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        gzip.arguments = ["gzip", "-9", "-n", file.path]
+        try gzip.run()
+        gzip.waitUntilExit()
+        guard gzip.terminationStatus == 0 else { return nil }
+        return try Data(contentsOf: dir.appendingPathComponent("zeros.gz"))
+    }
+
     func testContainerSniffingNeverCrashes() {
         for head in [[0x1A, 0x45, 0xDF, 0xA3], Array("RIFF....AVI LIST".utf8), [0, 0, 0, 0x18] + Array("ftypisom".utf8), Array("#EXTM3U\n".utf8), [0x47] + [UInt8](repeating: 0, count: 187) + [0x47]] as [[UInt8]] {
             mutate(head, "sniff", seedValue: 25) { _ = ContainerDetector.sniff($0) }
