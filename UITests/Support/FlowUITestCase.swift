@@ -38,7 +38,8 @@ class FlowUITestCase: XCTestCase {
     @discardableResult
     func launchDemo(extra: [String] = []) -> XCUIApplication {
         app = XCUIApplication()
-        app.launchArguments = ["-FlowDemo", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + extra
+        // The player's controls stay up (debug builds only), so a press never races their four-second hide timer.
+        app.launchArguments = ["-FlowDemo", "YES", "-FlowKeepPlayerControls", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + extra
         app.launch()
         waitForHome()
         return app
@@ -151,11 +152,18 @@ class FlowUITestCase: XCTestCase {
     @discardableResult
     func reveal(_ element: XCUIElement, maxSwipes: Int = 12) -> Bool {
         var swipes = 0
-        while !(element.exists && element.isHittable) && swipes < maxSwipes {
+        while !(element.exists && element.isHittable && clearOfTheBottomEdge(element)) && swipes < maxSwipes {
             app.swipeUp()
             swipes += 1
         }
         return element.exists && element.isHittable
+    }
+
+    /// A row in the bottom fifth of the screen can sit under the iPhone's floating tab bar, which then takes the tap.
+    private func clearOfTheBottomEdge(_ element: XCUIElement) -> Bool {
+        let window = app.windows.firstMatch.frame
+        guard window.height > 0 else { return true }
+        return element.frame.maxY < window.maxY - window.height * 0.2
     }
 
     /// Back from a pushed page: its navigation bar's leading button. Pass the page's title when something else (a sheet's
