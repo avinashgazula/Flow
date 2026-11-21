@@ -106,18 +106,18 @@ mark { background: var(--blue); color: var(--onblue); padding: 0 3px; }
   margin: calc(-1 * var(--space-l)) calc(-1 * var(--page-inset)) var(--space-l);
   padding: var(--space-xl) var(--page-inset) var(--space-m);
   border-bottom: var(--rule);
-  font: 700 var(--fs-display) / 0.84 var(--font-title);
+  font: 700 var(--fs-head) / 0.84 var(--font-title);
   text-transform: uppercase;
   letter-spacing: -0.03em;
   overflow-wrap: anywhere;
 }
 /* For a long word or a name, where the full size would run off a phone. */
-.page-title.long { font-size: clamp(40px, 10.5vw, 168px); }
-.page-note { font: 400 var(--fs-small) / 1.5 var(--font); text-transform: uppercase; letter-spacing: 0.08em; max-width: 38ch; }
+.page-title.long { font-size: calc(var(--fs-head) * 0.82); }
+.page-note { font: 400 var(--fs-small) / 1.5 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; max-width: 38ch; }
 
 /* A section's label: red mono capitals, tracked wide. */
 .section-label {
-  font: 600 var(--fs-small) / 1.3 var(--font);
+  font: 600 var(--fs-small) / 1.3 var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--red);

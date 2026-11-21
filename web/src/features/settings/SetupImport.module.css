@@ -3,7 +3,7 @@
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-s); }
 .paste { display: flex; gap: var(--space-s); }
 .paste :global(.field) { flex: 1; min-width: 0; height: 44px; }
-.heading { font: 600 var(--fs-small) / 1.2 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg); }
+.heading { font: 600 var(--fs-small) / 1.2 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg); }
 .summary { margin: 0; display: flex; flex-direction: column; }
 .line { display: flex; justify-content: space-between; gap: var(--space-m); padding: var(--space-xs) 0; font-size: var(--fs-small); }
 .line + .line { border-top: 1px solid var(--fg); }

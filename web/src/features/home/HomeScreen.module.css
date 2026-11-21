@@ -6,8 +6,8 @@
 
 /* The greeting is a red label with the date beside it, above the lead. */
 .head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-xxs) var(--space-m); min-height: 20px; margin-bottom: var(--space-l); }
-.title { font: 600 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); }
-.date { font: 400 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.title { font: 600 var(--fs-small) / 1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); }
+.date { font: 400 var(--fs-small) / 1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 
 /* Fullscreen top pick: it bleeds out to the window's edges, and Continue Watching goes under it, full width. */
 .bleed { margin: 0 calc(var(--page-inset) * -1) var(--space-l); }

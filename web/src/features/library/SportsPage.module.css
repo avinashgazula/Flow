@@ -7,7 +7,7 @@
 .team { margin: 0 calc(-1 * var(--page-inset)); padding: 0 var(--page-inset); border-bottom: var(--rule); }
 .teamHead { display: flex; align-items: center; gap: var(--space-s); min-height: 72px; }
 .teamName { font: 700 28px / 1.1 var(--font-cond); text-transform: uppercase; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.league { min-width: 0; font: 400 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.league { min-width: 0; font: 400 var(--fs-small) / 1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .unfollow { margin-left: auto; margin-right: -14px; flex: none; }
 
 /* A badge in a square cell, or the club's initials in the interface face. */
@@ -24,7 +24,7 @@
 @media (hover: hover) { .gameMain:not(:disabled):hover { background: var(--blue); color: var(--onblue); } .gameMain:not(:disabled):hover .gameMeta { color: var(--onblue); } }
 .gameMain:focus-visible { outline-offset: -6px; }
 .gameTitle { font: 700 20px / 1.15 var(--font-cond); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gameMeta { font: 400 var(--fs-footnote) / 1.35 var(--font); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gameMeta { font: 400 var(--fs-footnote) / 1.35 var(--font-mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .score { flex: none; font: 700 26px / 1 var(--font-cond); color: var(--red); }
 .other { flex: none; margin-right: -14px; }
 
@@ -34,7 +34,7 @@
 .show { font: 600 var(--fs-caption) / 1 var(--font); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 @media (hover: hover) { .cover:hover .show { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; } }
 
-.results { margin: 0 calc(-1 * var(--page-inset)); padding: var(--space-m) var(--page-inset) var(--space-s); border-top: var(--rule); font: 600 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); }
+.results { margin: 0 calc(-1 * var(--page-inset)); padding: var(--space-m) var(--page-inset) var(--space-s); border-top: var(--rule); font: 600 var(--fs-small) / 1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); }
 
 .ghosts { display: grid; gap: var(--space-xs); padding-bottom: var(--space-m); }
 .ghost { height: 56px; background: var(--tint-1); }

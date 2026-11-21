@@ -24,7 +24,7 @@
 .cell[data-marked] { color: var(--fg); cursor: pointer; transition: background-color var(--dur-hover) ease, color var(--dur-hover) ease; }
 @media (hover: hover) { .cell[data-marked]:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); } }
 .cell[data-today] { background: var(--fg); color: var(--bg); }
-.cellWeekday { font: 600 var(--fs-caption) / 1 var(--font); letter-spacing: 0.08em; text-transform: uppercase; }
+.cellWeekday { font: 600 var(--fs-caption) / 1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
 .cellNumber { font: 700 22px / 1.1 var(--font-cond); }
 .cellDot { width: 6px; height: 6px; background: var(--red); opacity: 0; }
 .cell[data-marked] .cellDot { opacity: 1; }
@@ -41,8 +41,8 @@
 .day:focus-visible { outline: none; }
 .day:focus-visible .dayTitle { outline: 3px solid var(--blue); outline-offset: 4px; }
 .dayHead { display: flex; align-items: baseline; gap: var(--space-s); padding: var(--space-m) 0 var(--space-s); }
-.dayTitle { font: 600 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); }
-.dayDate { font: 400 var(--fs-small) / 1.3 var(--font); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.dayTitle { font: 600 var(--fs-small) / 1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); }
+.dayDate { font: 400 var(--fs-small) / 1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .arrows { display: none; margin-left: auto; gap: var(--space-xs); align-self: center; }
 @media (hover: hover) and (pointer: fine) and (min-width: 721px) { .arrows { display: inline-flex; } }
 

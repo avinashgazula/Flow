@@ -21,7 +21,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font: 600 var(--fs-caption) / 1 var(--font);
+  font: 600 var(--fs-caption) / 1 var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--red);

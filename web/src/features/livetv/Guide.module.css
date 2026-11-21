@@ -34,7 +34,7 @@
   align-items: center;
   padding-left: 8px;
   border-left: 1px solid var(--fg);
-  font: 600 var(--fs-caption) / 1 var(--font);
+  font: 600 var(--fs-caption) / 1 var(--font-mono);
   letter-spacing: 0.06em;
   color: var(--muted);
   white-space: nowrap;
@@ -128,7 +128,7 @@
 }
 .detailsBody { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .detailsHead { display: flex; align-items: center; gap: var(--space-s); }
-.detailsChannel { font: 600 var(--fs-footnote) / 1.2 var(--font); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.detailsChannel { font: 600 var(--fs-footnote) / 1.2 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .detailsTitle { font: 700 clamp(24px, 3vw, 32px) / 1.1 var(--font-cond); text-transform: uppercase; text-wrap: balance; }
 .detailsSubtitle { font: 400 17px / 1.4 var(--font-serif); }
 .detailsTiming { font-size: var(--fs-footnote); color: var(--muted); }
