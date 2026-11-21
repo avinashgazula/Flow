@@ -221,7 +221,9 @@ enum Theme {
         static var sectionTitle: Font { heading }
         /// Buttons and anything you press: semibold. Uppercase and track with `.controlText()`.
         static var headline: Font { interface(.semibold, 15, .headline, system: .subheadline) }
-        static var control: Font { interface(.semibold, 13, .subheadline, system: .footnote) }
+        // On iPhone and iPad System sets a control at 15, not 13: the thin strokes of small light-on-dark capitals failed
+        // the UI tests' contrast audit (the List chip while hovered), and 15 is the size of the system's own buttons.
+        static var control: Font { interface(.semibold, 13, .subheadline, system: .subheadline) }
         /// A small control (a compact pill) where `control` would dominate.
         static var controlSmall: Font { interface(.semibold, 11, .caption2) }
         /// The name of a section above its list; red, uppercase, tracked: `SectionLabel`. Mono, as small print.
