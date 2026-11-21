@@ -456,6 +456,11 @@ struct LivePlayerView: View {
 
     private func scheduleHide() {
         hideTask?.cancel()
+        #if DEBUG
+        // UI tests (`-FlowKeepPlayerControls YES`) find a button and then press it; an overlay that hides in between
+        // makes the press a race with the timer.
+        if UserDefaults.standard.bool(forKey: "FlowKeepPlayerControls") { return }
+        #endif
         hideTask = Task {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             if !Task.isCancelled, state == .playing { showsInfo = false }
