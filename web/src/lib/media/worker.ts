@@ -229,6 +229,7 @@ class Feeder {
 async function stream(epoch: number, signal: AbortSignal) {
   const f = file!
   streaming = true
+  console.debug(`Marquee media: streaming from ${epoch}, convertVideo ${convertVideo}`)
   const feeder = new Feeder(signal)
   try {
     for (;;) {

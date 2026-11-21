@@ -39,6 +39,9 @@ jobs:
         run: npx tsc
       - name: Unit tests
         run: npm test
+      - name: Unit test coverage floors
+        # Line coverage of src/lib and src/features by folder (v8); a folder under its floor in web/coverage-floors.json fails.
+        run: npm run coverage
       - name: Rust tests
         if: hashFiles('web/crates/*/Cargo.toml') != ''
         run: for crate in crates/*/; do (cd "$crate" && cargo test --release); done
@@ -81,6 +84,7 @@ jobs:
       - name: Run the browser tests
         env:
           E2E_BROWSERS: ${{ matrix.browser }}
+          E2E_SUITE: site
         run: npm run e2e
       - name: Summarise
         if: always()
@@ -94,9 +98,55 @@ jobs:
             web/test-results
           if-no-files-found: ignore
 
+  # Every container, picture codec and sound codec the site says it plays, played through the real player in each browser
+  # (web/e2e/media): the engine that opened it, a running clock, sound you can measure, a seek, each sound track.
+  playback-matrix:
+    name: Playback matrix (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Install ffmpeg and the browser
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Make the clips
+        run: npm run e2e-media-fixtures
+      - name: Build
+        run: npm run build
+      - name: Run the matrix
+        env:
+          E2E_BROWSERS: ${{ matrix.browser }}
+          E2E_SUITE: media
+        run: npm run e2e -- --workers 1
+      - name: Summarise
+        if: always()
+        run: node e2e/summary.mjs
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playback-matrix-report-${{ matrix.browser }}
+          path: |
+            web/playwright-report
+            web/test-results
+          if-no-files-found: ignore
+
   publish:
     name: Publish to GitHub Pages
-    needs: [build, browser-tests]
+    needs: [build, browser-tests, playback-matrix]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     concurrency:

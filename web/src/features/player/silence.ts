@@ -31,6 +31,16 @@ export function audioVerdict(video: AudioProbe, played: number): 'silent' | 'sou
   return undefined
 }
 
+type PictureProbe = Pick<HTMLVideoElement, 'readyState' | 'videoWidth'> & { getVideoPlaybackQuality?: () => { totalVideoFrames: number } }
+
+/** True when the element has played for a while and shows no picture at all: no size, no frame. Chrome plays the sound of an
+ *  HEVC MP4 it has no decoder for (or of Theora in Ogg) and says nothing; the engine that converts the picture can play it.
+ *  `played` is the seconds actually played, not the position. */
+export function pictureMissing(video: PictureProbe, played: number): boolean {
+  if (video.readyState < 2 || played < silenceAfter) return false
+  return video.videoWidth === 0 && (video.getVideoPlaybackQuality?.().totalVideoFrames ?? 0) === 0
+}
+
 /** The audio formats to name when telling the viewer there's no sound: the ones this browser can't
  *  decode, else everything the source names (the name said a format that works, yet nothing
  *  played). Empty when the source doesn't say. */

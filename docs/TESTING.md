@@ -12,8 +12,9 @@ them on every push to `main` or a `claude/**` branch.
 |---|---|---|---|---|
 | FlowKit unit tests | The logic is right: parsing, ranking, sync, the remuxer, the player's decisions | `Packages/FlowKit/Tests` | `scripts/flowkit-coverage.sh` (or `cd Packages/FlowKit && swift test`) | FlowKit tests (Linux, macOS) |
 | Contract vectors | The apps and the website give the same answer to the same input | `testdata/contracts`, read by `ContractTests.swift` and `web/src/contracts` | Runs with both unit suites | FlowKit tests; Web: Build and test |
-| Website unit tests | The website's logic is right | `web/src/**/*.test.ts`, `web/proxy/*.test.js` | `cd web && npm test` | Web: Build and test |
-| Website browser tests | Every page and the main flows work in a real browser, with a keyboard, on a phone, offline, and pass an accessibility audit | `web/e2e` | `cd web && npm run build && npm run e2e` | Web: Browser tests (chromium, firefox, webkit) |
+| Website unit tests | The website's logic is right | `web/src/**/*.test.ts`, `web/proxy/*.test.js` | `cd web && npm run coverage` (or `npm test`) | Web: Build and test |
+| Website browser tests | Every page and the main flows work in a real browser, with a keyboard, on a phone, offline, and pass an accessibility audit | `web/e2e` | `cd web && npm run build && E2E_SUITE=site npm run e2e` | Web: Browser tests (chromium, firefox, webkit) |
+| Website playback matrix | Each container, picture codec and sound codec really plays through the engine the README promises, in each browser | `web/e2e/media` | See below | Web: Playback matrix (chromium, firefox, webkit) |
 | Player check | Both player engines play, seek, switch tracks, resume and fail properly on a real simulator and the Mac | `Flow/App/PlayerCheck.swift` | `scripts/player-check.sh ios` (also `tvos`, `macos`, `ipad`) | Player check (ios, tvos, macos) |
 | Screenshot tour | Every main screen still draws; the screenshots are published for a person to look at | `Flow/App/ScreenshotTour.swift` | `scripts/sim.sh tour ios` | Screenshots |
 
@@ -60,6 +61,34 @@ purpose, leave the case out rather than writing two expectations, and say why wh
 - Every test also fails on a console error, a page error, an unhandled rejection or a failed request to the site.
 - `E2E_BROWSERS=chromium,firefox,webkit` picks browsers (CI runs all three, each as a desktop window and a phone).
 - Prefer role and name selectors: they check accessibility as they go.
+
+## Website unit coverage
+
+`npm run coverage` runs vitest with coverage and fails when a folder of `web/src` is under its floor in
+`web/coverage-floors.json`. The floors are what the suite reached, rounded down. The player, the remuxer and the
+engines are low there on purpose: they are browser and worker code, and the browser tests and the playback matrix are
+what exercise them. Raise a floor when you add tests; never lower one.
+
+## Website playback matrix
+
+The playback matrix (`web/e2e/media`, CI job "Playback matrix") plays 43 generated clips, each a different container,
+picture codec and sound codec, through the real player in Chromium, Firefox and WebKit. For each it checks the engine
+named in Playback Info, a running clock, the picture's colour bars, a measured tone, a seek, every sound track, and
+the messages the README promises for 4K, HDR, a broken or missing video encoder and disc images.
+
+```bash
+cd web && npm run build && npm run e2e-media-fixtures
+E2E_SUITE=media npx playwright test --project chromium-desktop --workers 1
+```
+
+It needs ffmpeg and Playwright's Chromium, and one worker: the machine runs out of resources with more. Each
+browser's expectation is computed from what that browser itself says it can decode or encode, so a browser that
+lacks a decoder is expected to convert, and one that can't convert is expected to show the promised message. A
+failing cell prints what the page, the engine's worker and a real encode-and-append probe say.
+
+Known gaps, written into the specs as open findings rather than skipped silently: in Playwright's WebKit a second
+sound track and DTS or TrueHD in Matroska play silent, so those steps don't assert the tone there; Firefox on the CI
+runner has no audio device, so its cells assert that sound is present and the clock runs, not the tone.
 
 ## Player check
 

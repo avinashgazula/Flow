@@ -20,7 +20,7 @@ const universal = fixedCapabilities({ universal: true })
 
 describe('the FFmpeg engine', () => {
   it('opens every container the browser and the Matroska remuxer don’t', () => {
-    for (const ext of ['avi', 'wmv', 'asf', 'flv', 'ts', 'm2ts', 'mts', 'mpg', 'mpeg', 'vob', 'divx', 'rm', 'rmvb', '3gp']) {
+    for (const ext of ['avi', 'wmv', 'asf', 'flv', 'ts', 'm2ts', 'mts', 'mpg', 'mpeg', 'vob', 'divx', 'rm', 'rmvb', '3gp', 'ogv', 'ogg', 'ogx', 'ogm']) {
       expect(engineFor(ext, universal)).toBe('universal')
       expect(source(ext, '1080p x264 AAC', `https://x.test/a.${ext}`, {}, universal).unsupported).toBeUndefined()
     }

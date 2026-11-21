@@ -15,11 +15,16 @@ step() { # $1 = name, rest = command
 
 step "FlowKit unit tests, fuzzing and coverage floors" scripts/flowkit-coverage.sh
 step "Website types" bash -c 'cd web && npx tsc -b --noEmit'
-step "Website unit tests and contract vectors" bash -c 'cd web && npm test -- --run'
+step "Website unit tests, contract vectors and coverage floors" bash -c 'cd web && npm run coverage'
 
 if [ "$quick" != "--quick" ]; then
   step "Website build and first-load budget" bash -c 'cd web && npm run build && npm run budget'
-  step "Website browser tests (Chromium)" bash -c 'cd web && npm run e2e'
+  step "Website browser tests (Chromium)" bash -c 'cd web && E2E_SUITE=site npm run e2e'
+  if command -v ffmpeg > /dev/null 2>&1; then
+    step "Website playback matrix (Chromium)" bash -c 'cd web && npm run e2e-media-fixtures && E2E_SUITE=media npx playwright test --project chromium-desktop --workers 1'
+  else
+    echo "No ffmpeg here: the playback matrix needs it to make its clips."
+  fi
   if command -v xcodebuild > /dev/null 2>&1; then
     for platform in ios tvos macos; do step "Player check ($platform)" scripts/player-check.sh "$platform"; done
     step "UI tests (iPhone)" scripts/ui-test.sh
