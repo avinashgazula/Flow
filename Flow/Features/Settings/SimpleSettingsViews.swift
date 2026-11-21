@@ -75,7 +75,6 @@ struct GeneralSettingsView: View {
                 }
                 Toggle("Show Watched Check Marks", isOn: $model.settings.general.showWatchedBadges)
             }
-            TypefaceSection()
             Section(film: "Home") {
                 FilmPicker("Top Pick From", selection: $model.settings.general.heroSource) {
                     ForEach(HeroSource.allCases) { Text($0.title).tag($0) }
@@ -144,6 +143,8 @@ struct GeneralSettingsView: View {
             } footer: { FilmFooter {
                 Text("Adjusts the size of titles, synopsis and other text on detail screens.")
             } }
+            // Next to Display, which sets the size of the same text; five rows beside Appearance pushed the shelf toggles out of reach of the UI tests.
+            TypefaceSection()
             #if os(iOS)
             Section {
                 Toggle("Haptics", isOn: $model.settings.general.haptics)

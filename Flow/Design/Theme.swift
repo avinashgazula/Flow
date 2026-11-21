@@ -226,6 +226,9 @@ enum Theme {
         static var label: Font { custom(Face.monoSemiBold, 13, .footnote) }
         /// Interface text.
         static var body: Font { interface(.regular, 15, .subheadline) }
+        /// What a person types into a field: 17 on a phone, as the system sets it, which also gives the field a line tall
+        /// enough to be a proper touch target.
+        static var input: Font { interface(.regular, 17, .body) }
         /// Small ordinary text: notes, footers, errors, a row's second line.
         static var caption: Font { interface(.regular, 12, .caption) }
         /// A line of facts under a title or artwork ("S3 E7 · 18M LEFT · 2160P", sizes, dates): mono so it lines up.
