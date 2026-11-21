@@ -346,6 +346,38 @@ private final class RecordingProvider: AudioDecoderProvider, @unchecked Sendable
 final class DecodedAudioTrackTests: XCTestCase {
     override func tearDown() { MatroskaRemuxer.audioDecoders = nil }
 
+    /// The first segments of a soundtrack decoded on the device are built before the player asks, so its first requests
+    /// are answered from what is ready instead of waiting on a decoder (Apple's player gives up on a request after ~2 s).
+    func testTheStartOfADecodedSoundtrackIsReadyBeforeThePlayerAsks() async throws {
+        MatroskaRemuxer.audioDecoders = RecordingProvider()
+        let file = FileByteSource(url: MatroskaTests.fixture("audio-any"))
+        let fresh = try await MatroskaRemuxer.open(file, targetSegment: 2)
+        let decoded = try XCTUnwrap(fresh.audio.first, "the sample's first soundtrack is decoded on the device")
+        XCTAssertEqual(decoded.codec, .decoded)
+        let expected0 = try await fresh.mediaSegment(track: decoded.id, index: 0)
+        let expected1 = try await fresh.mediaSegment(track: decoded.id, index: 1)
+
+        // The same file, prepared; then every read of the film hangs, as on a link that has stalled.
+        let stalling = StallingByteSource(base: file)
+        let remuxer = try await MatroskaRemuxer.open(stalling, targetSegment: 2)
+        await remuxer.prepareStart()
+        let segments = remuxer.segments
+        XCTAssertGreaterThan(segments.count, 2)
+        stalling.stallReadsStartingAfter(segments[0].byteStart - 1)
+        let answers = try await withThrowingTaskGroup(of: [[UInt8]?].self) { group -> [[UInt8]?] in
+            group.addTask {
+                [try await remuxer.mediaSegment(track: decoded.id, index: 0), try await remuxer.mediaSegment(track: decoded.id, index: 1)]
+            }
+            group.addTask { try await Task.sleep(nanoseconds: 3_000_000_000); throw CancellationError() }
+            let value = try await group.next()!
+            group.cancelAll()
+            return value
+        }
+        XCTAssertEqual(answers[0], expected0, "the player's first request is answered from what was prepared")
+        XCTAssertEqual(answers[1], expected1, "and so is its second")
+    }
+
+
     /// Samples in a fragment, from its track run's durations.
     static func duration(_ b: [UInt8]) -> Int {
         guard let at = b.indices.dropLast(16).first(where: { b[$0] == 0x74 && b[$0 + 1] == 0x72 && b[$0 + 2] == 0x75 && b[$0 + 3] == 0x6E }) else { return 0 }

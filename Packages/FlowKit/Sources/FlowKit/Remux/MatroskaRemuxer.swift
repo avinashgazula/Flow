@@ -756,6 +756,17 @@ public actor MatroskaRemuxer {
         return MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: base, samples: samples, isVideo: t.role == .video)
     }
 
+    /// Builds the first segments of the soundtrack the player starts with, when it is decoded on the device, so they are
+    /// ready before the player asks. Apple's player gives a local request about two seconds before it calls it lost, and
+    /// on a slow device the first decoded segment can take that long: requests that keep timing out at the start can leave
+    /// the player waiting for ever. Kept with the other finished segments, so the player's own request returns at once.
+    public func prepareStart(segments count: Int = 2) async {
+        guard let first = audio.first, first.codec == .decoded else { return }
+        for index in 0..<min(count, segments.count) {
+            _ = try? await mediaSegment(track: first.id, index: index)
+        }
+    }
+
     /// A stretch of soundtrack from `seconds` on, as a fragmented MP4 (the audio track's init segment and
     /// `count` media segments), for song recognition. DTS and TrueHD come out as FLAC, like the stream itself.
     public func audioClip(at seconds: Double, track: Int? = nil, count: Int = 2) async throws -> [UInt8]? {
