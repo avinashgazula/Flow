@@ -152,9 +152,14 @@ class FlowUITestCase: XCTestCase {
     @discardableResult
     func reveal(_ element: XCUIElement, maxSwipes: Int = 12) -> Bool {
         var swipes = 0
-        while !(element.exists && element.isHittable && clearOfTheBottomEdge(element)) && swipes < maxSwipes {
+        while !(element.exists && element.isHittable) && swipes < maxSwipes {
             app.swipeUp()
             swipes += 1
+        }
+        // On screen but low: nudge it up a little. A full swipe would throw it past the top.
+        if element.exists && element.isHittable && !clearOfTheBottomEdge(element) {
+            let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -app.windows.firstMatch.frame.height * 0.3)))
         }
         return element.exists && element.isHittable
     }
