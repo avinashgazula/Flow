@@ -87,6 +87,9 @@ class AuditingUITestCase: FlowUITestCase {
             // The secondary button face (Trailer, Details) is paper with an ink border, and the audit takes the border for
             // the background, so it measures ink against ink. Those buttons are measured here instead, inside the border,
             // and pass only if their own two colours reach the 4.5:1 the audit asks of text.
+            // A button scrolled under the floating tab bar is judged through the bar's glass; it is read once it is
+            // scrolled into view, where it is measured like any other.
+            if kind == .button, let element = issue.element, isUnderTabBar(element) { return "button under the tab bar" }
             if kind == .button, let element = issue.element, let ratio = measuredContrast(of: element), ratio >= 4.5 {
                 return String(format: "bordered button measured at %.1f:1", ratio)
             }
@@ -96,6 +99,14 @@ class AuditingUITestCase: FlowUITestCase {
         // A progress bar or a facts line is read out as it is; nothing is pressed there, so it has no hit region to size.
         if issue.auditType == .hitRegion && kind == .other { return "information, not a control" }
         return nil
+    }
+
+    /// True when the tab bar covers most of the element's height, so the audit sees the bar and not the element.
+    private static func isUnderTabBar(_ element: XCUIElement) -> Bool {
+        let bar = XCUIApplication().tabBars.firstMatch
+        guard bar.exists else { return false }
+        let covered = element.frame.intersection(bar.frame)
+        return !covered.isNull && covered.height >= element.frame.height / 2
     }
 
     /// The contrast between the two colours that cover most of the element, with its edges (where a border is) left out.

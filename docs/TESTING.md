@@ -114,7 +114,8 @@ runner has no audio device, so its cells assert that sound is present and the cl
   of element, each with its reason in `AuditingUITestCase.deliberateChoice`; clipped text is not audited, because single
   line labels are a design choice. A timed-out audit runs once more. The audit reads a bordered button's ink border as
   its background, so a contrast finding on a button is measured from its own pixels inside the border and stands unless
-  those reach 4.5:1. A contrast finding prints the element's picture to the log as base64 PNG.
+  those reach 4.5:1; a button the floating tab bar covers is judged once scrolled into view, not through the bar. A
+  contrast finding prints the element's picture to the log as base64 PNG.
 - Apple TV (`UITestsTV`) drives the remote and checks that exactly one element has focus after every press and that
   Menu returns where it came from.
 - A failing test prints the screen (`app.debugDescription`) at its first failure, so the CI log shows what was there.
