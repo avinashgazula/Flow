@@ -25,7 +25,7 @@
    fetched by the first attachMatroska call. */
 
 import type { FromWorker, HeaderInfo, ToWorker } from './protocol'
-import { type BufferKind, isMediaSourceSupported, MseSink, typeSupported } from './mse'
+import { type BufferKind, isMediaSourceSupported, MseSink, stepTarget, typeSupported } from './mse'
 import { canConvertAudio } from '../audio/support'
 import { convertedSoundFormat } from '../media/support'
 import { type PictureCue, PictureTrack, parsePictureCues } from './pictures'
@@ -412,6 +412,7 @@ class Session implements RemuxSession {
         if (message.kind === 1 && this.audioId === null) return
         if (message.kind === 0 && message.key) this.sink.noteKeyframe(message.start)
         if (message.kind === this.primary) {
+          if (this.began === null) this.startWhereDataBegins(message.start)
           this.began ??= message.start
           this.front = Math.max(this.front ?? 0, message.end)
         }
@@ -532,9 +533,16 @@ class Session implements RemuxSession {
    *  switch): step over that gap rather than wait for the browser to, which it may not do when nothing more is coming. */
   private stepOverGap() {
     const video = this.element
-    if (video.readyState < 2 && video.buffered.length && video.buffered.start(0) > video.currentTime && video.buffered.start(0) - video.currentTime < 0.5) {
-      video.currentTime = video.buffered.start(0)
-    }
+    const target = video.buffered.length ? stepTarget(video.buffered.start(0), video.currentTime, video.readyState, 1) : null
+    if (target !== null) video.currentTime = target
+  }
+
+  /** The first picture sits a few frames after zero. The playhead is moved there when the first fragment arrives, before it is appended,
+   *  so the seek is waiting for data like any other seek. Left to `stepOverGap`, the seek comes at the moment the first data lands, and
+   *  in WebKit that seek (with `play()` called inside it) can hang for good: `seeking` stays true, `seeked` never fires, the clock never runs. */
+  private startWhereDataBegins(first: number) {
+    const target = stepTarget(first, this.element.currentTime, this.element.readyState, 1)
+    if (target !== null) this.element.currentTime = target
   }
 
   private changed() {
@@ -599,6 +607,8 @@ class Session implements RemuxSession {
     const arriving = this.front === null ? Math.abs(time - this.restartAt) < 2 : this.began !== null && time >= this.began - 0.3 && time <= this.front + 4
     if (arriving && !this.eof) return
     if (this.eof && this.covered(time, 0)) return
+    // The whole stretch was read before the buffers took it (a short file, or the start of one): it is queued, and will cover this.
+    if (this.eof && (this.held.length > 0 || !this.sink.idle) && this.began !== null && this.front !== null && time >= this.began - 0.3 && time <= this.front) return
     this.restart(time)
   }
 

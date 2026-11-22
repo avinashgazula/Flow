@@ -437,6 +437,13 @@ export function PlayerScreen({ type, id, season, episode, sourceId, root, binge 
     const canplay = () => {
       bump(0.9)()
       if (started.current || latest.current.resumeAt !== null || !el.paused) return
+      // A stream's first seek (to where the picture begins, or to the resume point) can still be settling: WebKit says it can play
+      // in the middle of it, and a play() that lands then can leave the seek unfinished for good (`seeking` stays true, the clock stays
+      // still). The seek's end is the moment to start.
+      if (el.seeking) {
+        el.addEventListener('seeked', canplay, { once: true })
+        return
+      }
       el.play().catch((err: Error) => {
         // The browser wants a tap before sound: show the paused player rather than spin forever.
         if (err.name === 'NotAllowedError') setPhase('playing')

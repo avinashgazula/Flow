@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { claimTrusted, rangeEndAt } from './mse'
+import { claimTrusted, rangeEndAt, stepTarget } from './mse'
 
 describe('which MediaSource answers are believed', () => {
   const firefox = 'Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0'
@@ -36,5 +36,21 @@ describe('which buffered range holds a time', () => {
 
   it('still forgives the small gaps between fragments', () => {
     expect(rangeEndAt(ranges([30.05, 40]), 30)).toBe(40)
+  })
+})
+
+describe('stepping over the gap before the first picture', () => {
+  it('moves to where data begins when it is a few frames after the playhead and nothing is showing yet', () => {
+    expect(stepTarget(0.2, 0, 0, 0)).toBe(0.2)
+    expect(stepTarget(0.2, 0, 1, 1)).toBe(0.2)
+  })
+  it('stays put once the element has data to show, so a playing film is never seeked', () => {
+    expect(stepTarget(0.2, 0, 2, 1)).toBeNull()
+    expect(stepTarget(0.2, 0, 1, 0)).toBeNull()
+  })
+  it('stays put when data begins at or before the playhead, or a long way after it', () => {
+    expect(stepTarget(0, 0, 0, 0)).toBeNull()
+    expect(stepTarget(10, 20, 0, 0)).toBeNull()
+    expect(stepTarget(0.9, 0, 0, 1)).toBeNull()
   })
 })

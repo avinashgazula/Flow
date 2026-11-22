@@ -74,7 +74,17 @@ export default defineConfig({
     cssMinify: true,
     reportCompressedSize: true,
   },
-  worker: { format: 'es' },
+  worker: {
+    format: 'es',
+    rolldownOptions: {
+      output: {
+        // Code that a worker's entry and one of its lazily loaded chunks both use (the remuxer's WebAssembly glue, which the audio
+        // converter shares) gets a chunk of its own. Left in the entry, the lazy chunk imports the entry by its address, and WebKit
+        // evaluates a module worker's entry again for that import: a second copy of the worker, with no state, takes over its messages.
+        codeSplitting: { groups: [{ name: 'remux-glue', test: /src\/lib\/remux\/pkg\// }] },
+      },
+    },
+  },
   server: { port: 5173 },
   test: {
     environment: 'node',

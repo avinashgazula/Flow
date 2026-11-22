@@ -29,6 +29,12 @@ export function rangeEndAt(ranges: RangesLike, time: number): number | null {
   return null
 }
 
+/** Where to step the playhead when data begins a little after it (the first frame sits a few frames after zero), or null when it
+ *  should stay: only while the element has no picture to show yet (`readyState` up to `until`) and the gap is under half a second. */
+export function stepTarget(first: number, time: number, readyState: number, until: number): number | null {
+  return readyState <= until && first > time && first - time < 0.5 ? first : null
+}
+
 interface Op {
   epoch: number
   /** Only appends of a replaced stream are dropped; removals still run. */

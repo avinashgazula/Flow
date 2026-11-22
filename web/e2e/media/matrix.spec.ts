@@ -72,7 +72,13 @@ async function play(page: import('../fixtures').Page, boot: (path: string) => Pr
     await expect(alert.locator('#player-error-message')).toHaveText(want.fails)
     return false
   }
-  await expect.poll(async () => (await videoState(page))?.ready ?? 0, { message: `the video has data to show (${await whatHappened(page).catch(() => '')})`, timeout: 40_000 }).toBeGreaterThanOrEqual(3)
+  // The explanation is read when the wait ends, not when it starts (a message built up front always describes the page as it was
+  // a moment after the click, before anything had happened).
+  try {
+    await expect.poll(async () => (await videoState(page))?.ready ?? 0, { timeout: 40_000 }).toBeGreaterThanOrEqual(3)
+  } catch (error) {
+    throw new Error(`the video has data to show: ${(error as Error).message.split('\n')[0]}\n${await whatHappened(page).catch((e: Error) => `the page can't be asked (${e.message})`)}`)
+  }
   const before = (await videoState(page))!.time
   await expect.poll(async () => (await videoState(page))!.time, { message: 'the clock advances', timeout: 30_000 }).toBeGreaterThan(before + 0.4)
   return true

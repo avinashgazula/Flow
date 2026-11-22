@@ -121,6 +121,8 @@ async function readDetail(res: Response): Promise<string | undefined> {
  *  one the browser won't let this page read (its ALLOWED_ORIGINS), and neither is `blocked`:
  *  the proxy is what blocked would send the page to. */
 async function report(error: unknown) {
+  // The viewer gets a sentence; whoever opens the console gets the real reason (a TypeError can be a failed fetch or a plain bug).
+  console.warn(`Marquee media: the reader stopped (${error instanceof Error ? `${error.name}: ${error.message}` : String(error)})`)
   if (error instanceof NotMatroskaError) {
     const sniff = sniffContainer(head)
     post({ type: 'error', message: error.message, notMatroska: true, sniff, sound: sniff === 'mp4' ? (mp4SoundCodecs(head) ?? undefined) : undefined })

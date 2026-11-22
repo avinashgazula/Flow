@@ -107,14 +107,33 @@ const notes: string[] = []
 
 export async function offer(page: Page, offers: Offer[]): Promise<{ hits: string[] }> {
   const hits: string[] = []
+  // Each test's log starts empty: what an earlier test said is not this one's story, and it used up the room for it.
+  notes.length = 0
   // Everything the page and its workers (the engine runs in one) say about their media, for a failure's log.
   const note = (where: string) => (message: { type(): string; text(): string }) => {
     if ((['warning', 'error'].includes(message.type()) || message.text().startsWith('Marquee media')) && notes.length < 60) notes.push(`${where} ${message.type()}: ${message.text().slice(0, 240)}`)
   }
   page.on('console', note('page'))
-  page.on('worker', (worker) => worker.on('console', note('worker')))
+  // A request that failed on its way (a worker's included, where the browser reports them) says why the file never arrived.
+  page.on('requestfailed', (request) => notes.push(`request failed: ${request.method()} ${request.url().slice(0, 120)} ${request.failure()?.errorText ?? ''}`))
+  page.on('worker', (worker) => {
+    notes.push(`worker started: ${worker.url().split('/').pop()}`)
+    worker.on('console', note('worker'))
+    worker.on('close', () => notes.push(`worker closed: ${worker.url().split('/').pop()}`))
+  })
   await hostFiles(page, offers, hits)
   await addon(page, offers)
+  // The <video>'s own events with their times, kept in the page for a failure's log (media events don't bubble, so this listens while they travel down).
+  await page.addInitScript(() => {
+    const log: string[] = []
+    ;(window as unknown as { __mediaEvents: string[] }).__mediaEvents = log
+    const names = ['loadstart', 'loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough', 'play', 'playing', 'pause', 'waiting', 'stalled', 'suspend', 'seeking', 'seeked', 'ended', 'error', 'emptied', 'abort']
+    for (const name of names) document.addEventListener(name, (event) => {
+      if (!(event.target instanceof HTMLVideoElement) || log.length > 80) return
+      const v = event.target
+      log.push(`${Math.round(performance.now())}ms ${name} (time ${v.currentTime.toFixed(2)}, ready ${v.readyState}, paused ${v.paused})`)
+    }, true)
+  })
   await page.addInitScript((url) => {
     // The add-on the viewer has "installed": one entry in Settings, with no manifest saved, which is asked for every title.
     const key = 'flow.settings.v1'
@@ -155,11 +174,16 @@ export async function pickAndPlay(page: Page, boot: (path: string) => Promise<vo
 export async function whatHappened(page: Page) {
   const alert = page.getByRole('alertdialog')
   const shown = (await alert.isVisible().catch(() => false)) ? await alert.innerText().catch(() => '') : 'no error shown'
-  const element = await page.evaluate(() => {
-    const v = document.querySelector('video')
-    const buffered = v ? Array.from({ length: v.buffered.length }, (_, i) => `${v.buffered.start(i).toFixed(2)}-${v.buffered.end(i).toFixed(2)}`).join(',') : ''
-    return v ? `time ${v.currentTime.toFixed(2)}, ready ${v.readyState}, network ${v.networkState}, buffered [${buffered}], error ${v.error?.code ?? 'none'} ${v.error?.message ?? ''}` : 'no video element'
-  })
+  // A page whose main thread is stuck never answers: say so, rather than waiting for the test to be killed with nothing said.
+  const element = await Promise.race([
+    page.evaluate(() => {
+      const v = document.querySelector('video')
+      const buffered = v ? Array.from({ length: v.buffered.length }, (_, i) => `${v.buffered.start(i).toFixed(2)}-${v.buffered.end(i).toFixed(2)}`).join(',') : ''
+      const events = (window as unknown as { __mediaEvents?: string[] }).__mediaEvents ?? []
+      return v ? `time ${v.currentTime.toFixed(2)}, paused ${v.paused}, seeking ${v.seeking}, ended ${v.ended}, rate ${v.playbackRate}, ready ${v.readyState}, network ${v.networkState}, buffered [${buffered}], frames shown ${v.getVideoPlaybackQuality?.().totalVideoFrames ?? '?'}, error ${v.error?.code ?? 'none'} ${v.error?.message ?? ''}\n  the video's events (page time, ms): ${events.join('; ')} (now ${Math.round(performance.now())}ms)` : 'no video element'
+    }),
+    new Promise<string>((resolve) => setTimeout(() => resolve('THE PAGE DID NOT ANSWER for 8 s (its main thread is stuck or its process is gone)'), 8000)),
+  ])
   return `player: ${shown.replace(/\n+/g, ' | ')}; element: ${element}\n  page and workers said:\n    ${notes.join('\n    ') || 'nothing'}`
 }
 
