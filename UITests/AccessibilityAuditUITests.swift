@@ -1,4 +1,7 @@
 import XCTest
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Runs Apple's accessibility audit (`performAccessibilityAudit`: missing labels, hit regions too small, contrast, text
 /// that does not scale or is clipped) and collects every finding, so one run lists them all instead of stopping at the first.
@@ -81,14 +84,58 @@ class AuditingUITestCase: FlowUITestCase {
             // Captions, dates and counts are set in the Index palette's muted ink, and some sit on artwork whose brightness
             // changes with every title. Those ratios are the design's (web/DESIGN.md); lightening them is a visible redesign.
             if kind == .staticText { return "muted caption ink over paper and artwork" }
-            // The secondary button face is paper with an ink border, drawn by the same system.
-            if kind == .button && label.caseInsensitiveCompare("Trailer") == .orderedSame { return "secondary button face" }
+            // The secondary button face (Trailer, Details) is paper with an ink border, and the audit takes the border for
+            // the background, so it measures ink against ink. Those buttons are measured here instead, inside the border,
+            // and pass only if their own two colours reach the 4.5:1 the audit asks of text.
+            if kind == .button, let element = issue.element, let ratio = measuredContrast(of: element), ratio >= 4.5 {
+                return String(format: "bordered button measured at %.1f:1", ratio)
+            }
             // A surface the system draws (a sheet's grabber, a bar background) has no label of ours to name.
             if label.isEmpty { return "system-drawn surface" }
         }
         // A progress bar or a facts line is read out as it is; nothing is pressed there, so it has no hit region to size.
         if issue.auditType == .hitRegion && kind == .other { return "information, not a control" }
         return nil
+    }
+
+    /// The contrast between the two colours that cover most of the element, with its edges (where a border is) left out.
+    /// Nil when the picture cannot be read or holds one colour only.
+    private static func measuredContrast(of element: XCUIElement) -> Double? {
+        #if canImport(UIKit)
+        guard let cg = UIImage(data: element.screenshot().pngRepresentation)?.cgImage else { return nil }
+        let width = cg.width, height = cg.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                          bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                          bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return false }
+            context.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn else { return nil }
+        // A sixth of the shorter side clears a border of any width the design uses without reaching the label.
+        let inset = min(width, height) / 6
+        var counts: [UInt32: Int] = [:]
+        for y in inset..<(height - inset) {
+            for x in inset..<(width - inset) {
+                let i = (y * width + x) * 4
+                counts[UInt32(pixels[i]) << 16 | UInt32(pixels[i + 1]) << 8 | UInt32(pixels[i + 2]), default: 0] += 1
+            }
+        }
+        let top = counts.sorted { $0.value > $1.value }.prefix(2).map(\.key)
+        guard top.count == 2 else { return nil }
+        func luminance(_ rgb: UInt32) -> Double {
+            func channel(_ shift: UInt32) -> Double {
+                let c = Double((rgb >> shift) & 0xFF) / 255
+                return c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * channel(16) + 0.7152 * channel(8) + 0.0722 * channel(0)
+        }
+        let a = luminance(top[0]), b = luminance(top[1])
+        return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+        #else
+        return nil
+        #endif
     }
 
     private static func describe(_ issue: XCUIAccessibilityAuditIssue, on screen: String) -> String {
