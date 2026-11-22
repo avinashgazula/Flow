@@ -18,8 +18,10 @@ class AuditingUITestCase: FlowUITestCase {
 
     /// Audits what is on screen now. `screen` names it in the findings.
     func audit(_ screen: String, overVideo: Bool = false, for types: [XCUIAccessibilityAuditType] = AuditingUITestCase.standardTypes) {
-        // Pictures arrive over the network and fade in; let them settle so contrast is judged on the finished screen.
-        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
+        // Pictures arrive over the network and fade in, and Home's lead cross-fades when the library finishes loading.
+        // Contrast judged mid-fade fails on text that is ink on paper, so the audit waits for the screen to be still.
+        // Video never stops, and contrast over it is excused, so those screens only get a moment.
+        if overVideo { RunLoop.current.run(until: Date().addingTimeInterval(1.5)) } else { waitForStillScreen() }
         // One audit type per call: a screen the audit takes too long over (the iPad's are large) still reports the rest.
         for type in types {
             // The system gives an audit a fixed time, which a large iPad screen on a shared runner can overrun. That is the one
@@ -44,6 +46,20 @@ class AuditingUITestCase: FlowUITestCase {
                 }
             }
         }
+    }
+
+    /// Waits until two screenshots half a second apart are the same. A screen that never stops (a blinking caret, a clock)
+    /// is audited as it is after the timeout, and the log says so.
+    private func waitForStillScreen(timeout: TimeInterval = 15) {
+        let deadline = Date().addingTimeInterval(timeout)
+        var last = app.screenshot().pngRepresentation
+        while Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+            let now = app.screenshot().pngRepresentation
+            if now == last { return }
+            last = now
+        }
+        print("SCREEN STILL CHANGING after \(Int(timeout)) s; auditing it as it is")
     }
 
     /// Every audit type that judges a screen at the size the person has chosen. Text that does not scale or is cut off

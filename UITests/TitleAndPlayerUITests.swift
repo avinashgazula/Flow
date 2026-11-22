@@ -21,7 +21,10 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         // what a person does, and the page has stopped reloading its shelves by then, so the press can't land mid-redraw.
         _ = text(startingWith: "Added to Watchlist").waitForExistence(timeout: 10)
         btn("Remove from Watchlist").tap()
-        XCTAssertTrue(btn("Add to Watchlist").waitForExistence(timeout: patience), "and back")
+        // The toast tells a lost press apart from a removal that something undid, which look the same on the button.
+        let removed = text(startingWith: "Removed from Watchlist").waitForExistence(timeout: 10)
+        XCTAssertTrue(btn("Add to Watchlist").waitForExistence(timeout: patience),
+                      removed ? "and back: the removal was saved, then undone" : "and back: the press never reached the button")
         XCTAssertTrue(btn("Mark Watched").exists, "an unwatched film can be marked watched")
     }
 
