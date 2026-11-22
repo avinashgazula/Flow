@@ -97,17 +97,39 @@ struct TypefaceSection: View {
 
     private func row(_ choice: FontChoice) -> some View {
         let selected = model.settings.general.font == choice
-        return Button { model.settings.general.font = choice } label: {
-            HStack {
-                Text(choice.title).font(Theme.Typeface.interface(.regular, 15, .subheadline, choice: choice))
-                Spacer()
-                if selected { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
-            }
-            .contentShape(Rectangle())
-        }
+        return Button { model.settings.general.font = choice } label: { TypefaceRow(choice: choice, selected: selected) }
+        #if !os(tvOS)
         .buttonStyle(.plain)
+        #endif
         .id("typeface-\(choice.rawValue)")
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// One typeface, its name set in that face. Apple TV draws a button's label in the app's tint, so the row sets ink itself
+/// and flips to on-blue when focused, as `FilmToggleStyle` does: blue stays for the focus.
+private struct TypefaceRow: View {
+    let choice: FontChoice
+    let selected: Bool
+    @Environment(\.isFocused) private var focused
+
+    var body: some View {
+        HStack {
+            Text(choice.title)
+                .font(Theme.Typeface.interface(.regular, 15, .subheadline, choice: choice))
+                #if os(tvOS)
+                .foregroundStyle(focused ? Theme.Palette.onBlue : Theme.Palette.fg)
+                #endif
+            Spacer()
+            if selected {
+                #if os(tvOS)
+                Image(systemName: "checkmark").foregroundStyle(focused ? Theme.Palette.onBlue : Color.accentColor)
+                #else
+                Image(systemName: "checkmark").foregroundStyle(Color.accentColor)
+                #endif
+            }
+        }
+        .contentShape(Rectangle())
     }
 }
 
