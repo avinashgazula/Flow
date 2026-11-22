@@ -192,7 +192,7 @@ struct FactsLine: View {
 
     private func text(now: Date, dropping count: Int) -> some View {
         factsText(print.segments(droppingLeast: count, now: now))
-            .font(Theme.Typeface.caption)
+            .font(Theme.Typeface.facts)
             .textCase(.uppercase)
             .tracking(0.06 * 12 * Theme.scale)
             .lineLimit(1)
@@ -287,7 +287,7 @@ struct FilmCard: View {
                     }
                     if let meta, !meta.isEmpty {
                         Text(meta)
-                            .font(Theme.Typeface.caption)
+                            .font(Theme.Typeface.facts)
                             .foregroundStyle(Theme.Palette.muted)
                             .lineLimit(1)
                     }
@@ -472,13 +472,13 @@ private struct ProgrammeRowContent: View {
                     .lineLimit(2)
                 if let meta = metaText(now: now, roomy: roomy) {
                     Text(meta)
-                        .font(Theme.Typeface.caption)
+                        .font(Theme.Typeface.facts)
                         .foregroundStyle(secondary)
                         .lineLimit(2)
                 }
                 if let version = row.version, !version.isEmpty {
                     Text(version)
-                        .font(Theme.Typeface.caption)
+                        .font(Theme.Typeface.facts)
                         .foregroundStyle(tertiary)
                         .lineLimit(2)
                 }

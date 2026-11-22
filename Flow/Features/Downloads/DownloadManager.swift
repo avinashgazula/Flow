@@ -241,10 +241,10 @@ struct DownloadsView: View {
                         case .downloading, .queued:
                             RedBar(value: item.progress)
                             Text("\(Int(item.progress * 100))%" + (item.bytes.map { " of " + StreamParser.formatBytes($0) } ?? ""))
-                                .font(Theme.Typeface.caption).rowInk(Theme.Palette.muted)
+                                .font(Theme.Typeface.facts).rowInk(Theme.Palette.muted)
                         case .finished:
                             Text(item.bytes.map(StreamParser.formatBytes) ?? "Ready")
-                                .font(Theme.Typeface.caption).rowInk(Theme.Palette.muted)
+                                .font(Theme.Typeface.facts).rowInk(Theme.Palette.muted)
                         case .failed:
                             Text(item.error ?? "Failed. Tap to retry.")
                                 .font(Theme.Typeface.caption).rowInk(Theme.Palette.warn).lineLimit(2)

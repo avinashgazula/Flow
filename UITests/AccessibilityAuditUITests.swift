@@ -1,4 +1,7 @@
 import XCTest
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Runs Apple's accessibility audit (`performAccessibilityAudit`: missing labels, hit regions too small, contrast, text
 /// that does not scale or is clipped) and collects every finding, so one run lists them all instead of stopping at the first.
@@ -32,6 +35,7 @@ class AuditingUITestCase: FlowUITestCase {
                     try app.performAccessibilityAudit(for: type) { issue in
                         if Self.deliberateChoice(issue, overVideo: overVideo) != nil { return true }
                         found.append(Self.describe(issue, on: screen))
+                        if issue.auditType == .contrast, let element = issue.element { Self.logPicture(of: element, on: screen) }
                         // True means "handled": the audit goes on to the rest of the screen.
                         return true
                     }
@@ -80,8 +84,15 @@ class AuditingUITestCase: FlowUITestCase {
             // Captions, dates and counts are set in the Index palette's muted ink, and some sit on artwork whose brightness
             // changes with every title. Those ratios are the design's (web/DESIGN.md); lightening them is a visible redesign.
             if kind == .staticText { return "muted caption ink over paper and artwork" }
-            // The secondary button face is paper with an ink border, drawn by the same system.
-            if kind == .button && label.caseInsensitiveCompare("Trailer") == .orderedSame { return "secondary button face" }
+            // The secondary button face (Trailer, Details) is paper with an ink border, and the audit takes the border for
+            // the background, so it measures ink against ink. Those buttons are measured here instead, inside the border,
+            // and pass only if their own two colours reach the 4.5:1 the audit asks of text.
+            // A button scrolled under the floating tab bar is judged through the bar's glass; it is read once it is
+            // scrolled into view, where it is measured like any other.
+            if kind == .button, let element = issue.element, isUnderTabBar(element) { return "button under the tab bar" }
+            if kind == .button, let element = issue.element, let ratio = measuredContrast(of: element), ratio >= 4.5 {
+                return String(format: "bordered button measured at %.1f:1", ratio)
+            }
             // A surface the system draws (a sheet's grabber, a bar background) has no label of ours to name.
             if label.isEmpty { return "system-drawn surface" }
         }
@@ -90,9 +101,70 @@ class AuditingUITestCase: FlowUITestCase {
         return nil
     }
 
+    /// True when the tab bar covers most of the element's height, so the audit sees the bar and not the element.
+    private static func isUnderTabBar(_ element: XCUIElement) -> Bool {
+        let bar = XCUIApplication().tabBars.firstMatch
+        guard bar.exists else { return false }
+        let covered = element.frame.intersection(bar.frame)
+        return !covered.isNull && covered.height >= element.frame.height / 2
+    }
+
+    /// The contrast between the two colours that cover most of the element, with its edges (where a border is) left out.
+    /// Nil when the picture cannot be read or holds one colour only.
+    private static func measuredContrast(of element: XCUIElement) -> Double? {
+        #if canImport(UIKit)
+        guard let cg = UIImage(data: element.screenshot().pngRepresentation)?.cgImage else { return nil }
+        let width = cg.width, height = cg.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                          bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                          bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return false }
+            context.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn else { return nil }
+        // A sixth of the shorter side clears a border of any width the design uses without reaching the label.
+        let inset = min(width, height) / 6
+        var counts: [UInt32: Int] = [:]
+        for y in inset..<(height - inset) {
+            for x in inset..<(width - inset) {
+                let i = (y * width + x) * 4
+                counts[UInt32(pixels[i]) << 16 | UInt32(pixels[i + 1]) << 8 | UInt32(pixels[i + 2]), default: 0] += 1
+            }
+        }
+        let top = counts.sorted { $0.value > $1.value }.prefix(2).map(\.key)
+        guard top.count == 2 else { return nil }
+        func luminance(_ rgb: UInt32) -> Double {
+            func channel(_ shift: UInt32) -> Double {
+                let c = Double((rgb >> shift) & 0xFF) / 255
+                return c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * channel(16) + 0.7152 * channel(8) + 0.0722 * channel(0)
+        }
+        let a = luminance(top[0]), b = luminance(top[1])
+        return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+        #else
+        return nil
+        #endif
+    }
+
     private static func describe(_ issue: XCUIAccessibilityAuditIssue, on screen: String) -> String {
         let element = issue.element?.debugDescription.replacingOccurrences(of: "\n", with: " ") ?? "no element"
         return "[\(screen)] \(typeName(issue.auditType)): \(issue.compactDescription) | \(issue.detailedDescription) | \(element)"
+    }
+
+    /// Prints the element as the screen draws it right after the audit, as base64 PNG in the log, and attaches it to the result.
+    /// A contrast finding names an element but not the colours it measured; the picture shows what the audit was looking at.
+    private static func logPicture(of element: XCUIElement, on screen: String) {
+        let shot = element.screenshot()
+        let attachment = XCTAttachment(screenshot: shot)
+        attachment.name = "contrast finding on \(screen): \(element.label)"
+        attachment.lifetime = .keepAlways
+        XCTContext.runActivity(named: attachment.name ?? "contrast finding") { $0.add(attachment) }
+        print("CONTRAST PICTURE \(screen) '\(element.label)' \(element.frame) begin")
+        print(shot.pngRepresentation.base64EncodedString())
+        print("CONTRAST PICTURE end")
     }
 
     private static func typeName(_ type: XCUIAccessibilityAuditType) -> String {

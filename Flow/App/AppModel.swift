@@ -190,6 +190,8 @@ final class AppModel {
     /// Navigation stacks per tab, so the app (and the screenshot tour) can drive navigation.
     var paths: [AppTab: [Route]] = [:]
     var settingsPath: [Route] = []
+    /// Set by the screenshot tour: the General page scrolls to this row id.
+    var settingsScrollTarget: String?
     /// Bumped by the screenshot tour on the Mac, whose Settings is a window that only a view can open.
     var settingsWindowRequest = 0
     var searchText = ""
@@ -270,6 +272,16 @@ final class AppModel {
         rebuildServices()
         configureImageCache()
         applyAudioDecoding()
+        applyTypeface()
+    }
+
+    /// Hands the typeface choice to `InterfaceFace`, which the design tokens read (and which redraws what uses them).
+    /// The iPhone tab bar's labels are UIKit's, so they are told too.
+    private func applyTypeface() {
+        InterfaceFace.shared.choice = settings.general.font
+        #if os(iOS)
+        TabBarStyle.install()
+        #endif
     }
 
     /// Audio Apple's player can't play in MKVs (DTS, TrueHD, Opus, Vorbis, PCM…): decoded and handed to AVPlayer as FLAC, unless turned off.
@@ -356,6 +368,7 @@ final class AppModel {
 
     private func settingsDidChange(from old: AppSettings) {
         if old.playback.decodeLosslessAudio != settings.playback.decodeLosslessAudio { applyAudioDecoding() }
+        if old.general.font != settings.general.font { applyTypeface() }
         let servicesChanged = old.metadata != settings.metadata
             || old.account != settings.account
             || old.mediaServers.servers != settings.mediaServers.servers

@@ -412,7 +412,7 @@ struct TopResultCard: View {
                 .lineLimit(2).multilineTextAlignment(.leading)
             if !subtitle.isEmpty {
                 Text(subtitle)
-                    .font(Theme.Typeface.caption)
+                    .font(Theme.Typeface.facts)
                     .textCase(.uppercase)
                     .tracking(0.06 * 12 * Theme.scale)
                     .foregroundStyle(Theme.Palette.muted)

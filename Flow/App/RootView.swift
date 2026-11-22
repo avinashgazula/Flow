@@ -308,13 +308,33 @@ private struct MacSidebarRow: View {
 
 #if os(iOS)
 /// The iPhone and iPad tab bar stays the system's (Liquid Glass on iOS 26 is a control, never content) and takes the
-/// blue tint from the app; only its labels change, to Plex Mono.
+/// blue tint from the app; only its labels change, to the typeface chosen in Settings.
 enum TabBarStyle {
-    static func install() {
-        let font = UIFont(name: Theme.Face.monoSemiBold, size: 10) ?? UIFont.systemFont(ofSize: 10, weight: .semibold)
+    @MainActor static func install() {
+        let name: String? = switch InterfaceFace.shared.choice {
+        case .system: nil
+        case .inter: Theme.Face.interSemiBold
+        case .geist: Theme.Face.geistSemiBold
+        case .manrope: Theme.Face.manropeSemiBold
+        case .mono: Theme.Face.monoSemiBold
+        }
+        let font = name.flatMap { UIFont(name: $0, size: 10) } ?? UIFont.systemFont(ofSize: 10, weight: .semibold)
         for state in [UIControl.State.normal, .selected] {
             UITabBarItem.appearance().setTitleTextAttributes([.font: font], for: state)
         }
+        // The appearance proxy only reaches tab bars made afterwards, so the one on screen is told directly.
+        for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+            for window in scene.windows { restyle(window, font: font) }
+        }
+    }
+
+    @MainActor private static func restyle(_ view: UIView, font: UIFont) {
+        if let bar = view as? UITabBar {
+            for item in bar.items ?? [] {
+                for state in [UIControl.State.normal, .selected] { item.setTitleTextAttributes([.font: font], for: state) }
+            }
+        }
+        for sub in view.subviews { restyle(sub, font: font) }
     }
 }
 #endif

@@ -103,7 +103,7 @@ struct OnboardingView: View {
                 // The Mac's own bezel would draw a second box inside the ruled one.
                 .textFieldStyle(.plain)
                 #endif
-                .font(Theme.Typeface.body)
+                .font(Theme.Typeface.input)
                 .foregroundStyle(Theme.Palette.fg)
                 .padding(.horizontal, Theme.Space.m)
                 .frame(height: 48 * Theme.scale)

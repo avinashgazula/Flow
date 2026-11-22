@@ -215,7 +215,7 @@ struct DetailView: View {
             if !edge.segments().isEmpty {
                 TimelineView(.everyMinute) { context in
                     Text(edge.segments(now: context.date).map(\.text).joined(separator: " · "))
-                        .font(Theme.Typeface.caption)
+                        .font(Theme.Typeface.facts)
                         .detailCaps()
                         .foregroundStyle(Theme.Palette.muted)
                         .lineLimit(2)
@@ -267,7 +267,7 @@ struct DetailView: View {
                 if let scenes = detail?.creditsScenes, scenes.any {
                     Label(scenes.afterCredits ? (scenes.duringCredits ? "Scenes during and after the credits" : "Scene after the credits")
                                               : "Scene during the credits", systemImage: "sparkles")
-                        .font(Theme.Typeface.caption)
+                        .font(Theme.Typeface.facts)
                         .detailCaps()
                         .foregroundStyle(Theme.Palette.muted)
                         .padding(.top, 6)
@@ -504,7 +504,7 @@ struct DetailView: View {
     @ViewBuilder
     private func airsLine(_ next: Episode, date: Date) -> some View {
         let line = Label("\(next.code) airs \(AirDateFormatting.string(for: date, localTimeZone: model.settings.metadata.airDatesInLocalTimeZone))", systemImage: "calendar")
-            .font(Theme.Typeface.caption)
+            .font(Theme.Typeface.facts)
             .detailCaps()
             .foregroundStyle(Theme.Palette.muted)
         #if os(tvOS)
@@ -802,7 +802,7 @@ private struct CollectionCell: View {
                     .textCase(.uppercase)
                     .multilineTextAlignment(.leading)
                 Text("Every film in the collection")
-                    .font(Theme.Typeface.caption)
+                    .font(Theme.Typeface.facts)
                     .detailCaps()
                     .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted)
             }

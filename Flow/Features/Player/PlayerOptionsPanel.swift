@@ -143,7 +143,7 @@ struct ChapterStrip: View {
             }
             .font(Theme.Typeface.control)
             Text(TimeFormat.clock(chapter.start))
-                .font(Theme.Typeface.caption)
+                .font(Theme.Typeface.facts)
                 .foregroundStyle(Theme.Palette.muted)
         }
         .frame(width: cardWidth, alignment: .leading)

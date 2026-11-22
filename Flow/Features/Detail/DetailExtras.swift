@@ -334,7 +334,7 @@ struct RuledSection<Content: View>: View {
                     Spacer(minLength: 0)
                     if let note {
                         Text(note)
-                            .font(Theme.Typeface.caption)
+                            .font(Theme.Typeface.facts)
                             .detailCaps()
                             .foregroundStyle(Theme.Palette.muted)
                             .lineLimit(1)
@@ -544,7 +544,7 @@ private struct ReviewByline: View {
                     .textCase(.uppercase)
                     .lineLimit(1)
                 Text(meta)
-                    .font(Theme.Typeface.caption)
+                    .font(Theme.Typeface.facts)
                     .detailCaps()
                     .foregroundStyle(Theme.Palette.muted)
                     .lineLimit(1)

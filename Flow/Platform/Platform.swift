@@ -601,9 +601,12 @@ extension View {
         #if os(tvOS)
         toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) {
+                // The page scrolls under the title as focus moves down, so the title sits on paper that reaches the top.
                 PageTitle(title)
                     .padding(.horizontal, inset)
                     .padding(.top, Theme.Space.s)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.Palette.bg.ignoresSafeArea(edges: .top))
             }
         #else
         navigationTitle(title)
