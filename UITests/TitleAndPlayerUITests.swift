@@ -20,11 +20,16 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         // The button turns at once; the save behind it finishes a moment later and says so. Pressing again only then is
         // what a person does, and the page has stopped reloading its shelves by then, so the press can't land mid-redraw.
         _ = text(startingWith: "Added to Watchlist").waitForExistence(timeout: 10)
+        func row(_ when: String) {
+            let cells = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Watch' OR label CONTAINS[c] 'Favourites' OR label ==[c] 'More'")).allElementsBoundByIndex
+            print("DIAG \(when): " + cells.map { "\($0.label) \($0.frame)" }.joined(separator: " | ") + " toasts: \(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'Watchlist' AND NOT label ==[c] 'Watchlist'")).allElementsBoundByIndex.map { "\($0.label) \($0.frame)" })")
+        }
+        row("before second press")
         let off = btn("Remove from Watchlist")
-        let toastNow = text(startingWith: "Added to Watchlist")
-        print("DIAG window \(app.windows.firstMatch.frame) button \(off.frame) hittable \(off.isHittable) toast \(toastNow.exists ? "\(toastNow.frame)" : "none")")
         off.tap()
-        print("DIAG after tap: buttons \(app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Watchlist'")).allElementsBoundByIndex.map { "\($0.label) \($0.frame)" }) toasts \(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'Watchlist'")).allElementsBoundByIndex.map { "\($0.label) \($0.frame)" })")
+        row("right after second press")
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        row("one second after")
         // The toast tells a lost press apart from a removal that something undid, which look the same on the button.
         let removed = text(startingWith: "Removed from Watchlist").waitForExistence(timeout: 10)
         XCTAssertTrue(btn("Add to Watchlist").waitForExistence(timeout: patience),
