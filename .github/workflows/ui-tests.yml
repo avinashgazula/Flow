@@ -39,7 +39,7 @@ jobs:
         run: scripts/ui-test.sh ${{ matrix.platform }} -only-testing:FlowUITests/TitleAndPlayerUITests/testAMoviePageShowsItsListActionsAndTheyToggle -test-iterations 15
       # The result bundle has every failure's screenshots and the accessibility audit's findings.
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
           name: ui-results-${{ matrix.platform }}
           path: |

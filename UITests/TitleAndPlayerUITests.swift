@@ -20,21 +20,31 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         // The button turns at once; the save behind it finishes a moment later and says so. Pressing again only then is
         // what a person does, and the page has stopped reloading its shelves by then, so the press can't land mid-redraw.
         _ = text(startingWith: "Added to Watchlist").waitForExistence(timeout: 10)
-        func row(_ when: String) {
+        // TEMPORARY diagnosis: what is drawn where the accessibility frames say the row is, and what the press hit.
+        func frames(_ when: String) {
             let cells = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Watch' OR label CONTAINS[c] 'Favourites' OR label ==[c] 'More'")).allElementsBoundByIndex
-            print("DIAG \(when): " + cells.map { "\($0.label) \($0.frame)" }.joined(separator: " | ") + " toasts: \(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'Watchlist' AND NOT label ==[c] 'Watchlist'")).allElementsBoundByIndex.map { "\($0.label) \($0.frame)" })")
+            print("DIAG \(when): " + cells.map { "\($0.label) \($0.frame)" }.joined(separator: " | "))
+            let lists = app.otherElements.matching(identifier: "Your List").allElementsBoundByIndex.map { "\($0.frame)" }
+            print("DIAG \(when) Your List containers: \(lists)")
         }
-        row("before second press")
-        let off = btn("Remove from Watchlist")
-        row("before second press")
-        for dx in [0.5, 0.15, 0.3, 0.7, 0.85, 0.5] as [CGFloat] {
-            let spot = off.coordinate(withNormalizedOffset: CGVector(dx: dx, dy: 0.5))
-            let watchedBefore = btn("Watched").exists
-            print("DIAG press at dx \(dx) = \(spot.screenPoint)")
-            spot.tap()
-            RunLoop.current.run(until: Date().addingTimeInterval(1.5))
-            print("DIAG dx \(dx): watchlist now \(btn("Remove from Watchlist").exists ? "on" : "off"), watched flipped \(btn("Watched").exists != watchedBefore)")
-            if btn("Add to Watchlist").exists { break }
+        func picture(_ name: String, _ shot: XCUIScreenshot) {
+            print("DIAG PICTURE \(name) begin")
+            print(shot.pngRepresentation.base64EncodedString())
+            print("DIAG PICTURE end")
+        }
+        frames("before second press")
+        let before = app.windows.firstMatch.screenshot()
+        let watchedBefore = btn("Watched").exists
+        let target = btn("Remove from Watchlist")
+        print("DIAG pressing at \(target.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).screenPoint)")
+        target.tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(1.0))
+        let misfired = btn("Watched").exists != watchedBefore
+        print("DIAG after press: watched flipped \(misfired)")
+        frames("after press")
+        if misfired {
+            picture("before", before)
+            picture("after-misfire", app.windows.firstMatch.screenshot())
         }
         // The toast tells a lost press apart from a removal that something undid, which look the same on the button.
         let removed = text(startingWith: "Removed from Watchlist").waitForExistence(timeout: 10)
