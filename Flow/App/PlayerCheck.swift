@@ -438,7 +438,8 @@ enum PlayerCheck {
             let t0 = session.playbackTime
             let moved = await value(timeout: 10) { session.playbackTime > t0 + 1 ? true : nil }
             let builtIn = session.universal != nil
-            if ready != true { diagnose(session) }
+            // A playhead that stands still explains itself the same way a start that never came does.
+            if ready != true || moved == nil { await diagnose(session) }
             record(ready == true && moved != nil && builtIn == wantsBuiltIn, what,
                    "builtIn=\(builtIn) (wanted \(wantsBuiltIn)), phase \(session.phase), at \(String(format: "%.1f", session.playbackTime))")
         }
@@ -745,14 +746,14 @@ enum PlayerCheck {
             return session
         }
         record(false, "starts playing", "phase \(session.phase) after \(Int(seconds)) s")
-        diagnose(session)
+        await diagnose(session)
         await screen("failed-\(source.id)")
         session.stop()
         return nil
     }
 
     /// What the session and everything under it knew when a start stalled, so a log alone can say why.
-    private static func diagnose(_ session: PlaybackSession) {
+    private static func diagnose(_ session: PlaybackSession) async {
         line("  DIAG   phase \(session.phase), notice \(session.notice ?? "-"), failureDetail \(session.failureDetail ?? "-")")
         line("  DIAG   engine: usesRemux=\(session.usesRemux), builtIn=\(session.universal != nil), built-in players still being destroyed=\(UniversalTeardowns.shared.pending)")
         let player = session.player
@@ -765,6 +766,8 @@ enum PlayerCheck {
         } else {
             line("  DIAG   no AVPlayerItem")
         }
+        line("  DIAG   session: time \(String(format: "%.2f", session.currentTime)), playbackTime \(String(format: "%.2f", session.playbackTime)), isPlaying \(session.isPlaying), buffering \(session.isBuffering), seekTarget \(session.seekTarget.map { String(format: "%.2f", $0) } ?? "-"), resume question \(session.resumePrompt != nil)")
+        for entry in await session.builtInDiagnostics() ?? [] { line("  DIAG   builtin " + entry) }
         for entry in LocalHLSServer.shared.debugSnapshot().suffix(40) { line("  DIAG   hls " + entry) }
     }
 
@@ -792,7 +795,7 @@ enum PlayerCheck {
                 if case .failed = session.phase { return false }
                 return session.phase == .playing && session.isPlaying ? true : nil
             }
-            if playing != true { diagnose(session) }
+            if playing != true { await diagnose(session) }
             let t0 = session.playbackTime
             let moved = await value(timeout: 8) { session.playbackTime > t0 + 1 ? true : nil }
             record(playing == true && moved != nil, "\(label): the audio file starts and plays", "phase \(session.phase), at \(String(format: "%.1f", session.playbackTime))")

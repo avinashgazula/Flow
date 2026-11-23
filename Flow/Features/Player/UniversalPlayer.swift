@@ -67,6 +67,64 @@ enum UniversalEvent: Sendable {
     case restarted
     case ended(failure: String?)
     case log(String)
+    /// mpv's chatter below warnings: kept in the trace for diagnosis, never sent to the main thread.
+    case verbose(String)
+}
+
+/// What the event thread has seen and mpv has said, kept on the event thread's side so it can still be read when the main
+/// thread is behind or mpv has gone quiet: a start that stalls is explained by what mpv did last.
+private final class MPVTrace: @unchecked Sendable {
+    private let lock = NSLock()
+    private let began = Date()
+    private var lines: [String] = []
+    private var events = 0
+    private var lastEvent = "none"
+    private var lastEventAt: Date?
+
+    func note(_ event: UniversalEvent) {
+        let label: String
+        switch event {
+        case .number(let name, _), .flag(let name, _), .text(let name, _), .unset(let name): label = "property \(name)"
+        case .tracks: label = "track list"
+        case .chapters: label = "chapter list"
+        case .loaded: label = "file loaded"
+        case .restarted: label = "playback restart"
+        case .ended(let failure): label = "end of file" + (failure.map { " (\($0))" } ?? "")
+        case .log(let line), .verbose(let line): add(line); return
+        case .idle, .ignored: return
+        }
+        lock.withLock {
+            events += 1
+            lastEvent = label
+            lastEventAt = Date()
+        }
+    }
+
+    func add(_ line: String) {
+        let stamp = String(format: "%7.2f ", Date().timeIntervalSince(began))
+        lock.withLock {
+            lines.append(stamp + line.trimmingCharacters(in: .whitespacesAndNewlines))
+            if lines.count > 150 { lines.removeFirst(lines.count - 150) }
+        }
+    }
+
+    func snapshot() -> (lines: [String], events: Int, last: String, lastAt: Date?) {
+        lock.withLock { (lines, events, lastEvent, lastEventAt) }
+    }
+}
+
+/// Hands a result to exactly one of two callers: the answer, or the timeout that gave up waiting for it.
+private final class OneShot: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<[String], Never>?
+    init(_ continuation: CheckedContinuation<[String], Never>) { self.continuation = continuation }
+    func finish(_ value: [String]) {
+        let taken = lock.withLock { () -> CheckedContinuation<[String], Never>? in
+            defer { continuation = nil }
+            return continuation
+        }
+        taken?.resume(returning: value)
+    }
 }
 
 /// The mpv handle and the lock that keeps it alive while a thread uses it. mpv's client API is thread
@@ -76,6 +134,7 @@ private final class MPVHandle: @unchecked Sendable {
     private var raw: OpaquePointer?
     private var users = 0
     let queue = DispatchQueue(label: "app.flow.mpv.events", qos: .userInitiated)
+    let trace = MPVTrace()
     var onWake: (@Sendable () -> Void)?
 
     init(_ raw: OpaquePointer) { self.raw = raw }
@@ -180,6 +239,15 @@ final class UniversalPlayer {
     @ObservationIgnored private var logTail: [String] = []
     @ObservationIgnored private var lifecycleObservers: [NSObjectProtocol] = []
     @ObservationIgnored private var pendingURL: URL?
+    // What a diagnosis needs to say where a start stopped (`diagnostics()`).
+    @ObservationIgnored private let createdAt = Date()
+    @ObservationIgnored private let fileName: String
+    @ObservationIgnored private var loadRequestedAt: Date?
+    @ObservationIgnored private var loadTrigger = "not yet"
+    @ObservationIgnored private var loadedAt: Date?
+    @ObservationIgnored private var firstTimeAt: Date?
+    @ObservationIgnored private var surfaceLayouts = 0
+    @ObservationIgnored private var lastSurface = "never laid out"
 
     /// Creates the player and starts opening `url`, paused. Nil if libmpv can't be created.
     init?(url: URL, headers: [String: String], startAt: Double?, audioLanguages: [String], subtitleLanguages: [String],
@@ -187,6 +255,7 @@ final class UniversalPlayer {
         guard let created = mpv_create() else { return nil }
         handle = MPVHandle(created)
         self.boostDB = boostDB
+        fileName = url.lastPathComponent
         layer.backgroundColor = CGColor(gray: 0, alpha: 1)
         layer.framebufferOnly = true
         // A non-empty frame before the view lays it out, so the video output starts with a real size.
@@ -248,8 +317,8 @@ final class UniversalPlayer {
         if !headers.isEmpty, !url.isFileURL { option("http-header-fields", MPVOptions.headerFields(headers)) }
         if let startAt, startAt > 1 { option("start", String(format: "%.3f", startAt)) }
         option("pause", "yes")
-        // Only errors and warnings, for the error screen and the tour's log.
-        mpv_request_log_messages(created, "warn")
+        // Warnings and errors go to the error screen and the tour's log; the rest only into the trace a diagnosis reads.
+        mpv_request_log_messages(created, "v")
 
         guard mpv_initialize(created) >= 0 else {
             let failed = handle
@@ -287,7 +356,7 @@ final class UniversalPlayer {
         pendingURL = url
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: 4_000_000_000)
-            self?.beginLoading()
+            self?.beginLoading(because: "the four second fallback")
         }
     }
 
@@ -307,8 +376,10 @@ final class UniversalPlayer {
     private nonisolated func drain() {
         while true {
             guard let event = handle.with({ Self.read($0) }) else { return }
+            handle.trace.note(event)
             if case .idle = event { return }
             if case .ignored = event { continue }
+            if case .verbose = event { continue }
             DispatchQueue.main.async { [weak self] in
                 MainActor.assumeIsolated { self?.receive(event) }
             }
@@ -354,7 +425,9 @@ final class UniversalPlayer {
         case MPV_EVENT_LOG_MESSAGE:
             guard let raw = event.pointee.data else { return .ignored }
             let message = raw.assumingMemoryBound(to: mpv_event_log_message.self).pointee
-            return .log("[\(String(cString: message.prefix))] \(String(cString: message.level)): \(String(cString: message.text))")
+            let level = String(cString: message.level)
+            let line = "[\(String(cString: message.prefix))] \(level): \(String(cString: message.text))"
+            return ["warn", "error", "fatal"].contains(level) ? .log(line) : .verbose(line)
         default:
             return .ignored
         }
@@ -443,6 +516,7 @@ final class UniversalPlayer {
         guard !isShutDown else { return }
         switch event {
         case .number("time-pos", let seconds):
+            if firstTimeAt == nil { firstTimeAt = Date() }
             timePosition = seconds
             if Date().timeIntervalSince(lastTick) >= 0.25 {
                 lastTick = Date()
@@ -476,6 +550,7 @@ final class UniversalPlayer {
             onTracks?()
         case .chapters(let list): chapters = list
         case .loaded(let seconds):
+            if loadedAt == nil { loadedAt = Date() }
             if seconds > 0 { duration = seconds }
             onLoaded?()
         case .restarted:
@@ -501,14 +576,18 @@ final class UniversalPlayer {
 
     /// The view holding the layer has been laid out at its real size; the file can open.
     func surfaceLaidOut(size: CGSize, scale: CGFloat) {
+        surfaceLayouts += 1
+        lastSurface = "\(Int(size.width))x\(Int(size.height)) @\(scale)x"
         ScreenshotTour.log("mpv surface \(Int(size.width))x\(Int(size.height)) @\(scale)x, layer \(layer.frame.size) drawable \(layer.drawableSize)")
         guard size.width > 1, size.height > 1 else { return }
-        beginLoading()
+        beginLoading(because: "the surface was laid out")
     }
 
-    private func beginLoading() {
+    private func beginLoading(because reason: String) {
         guard let url = pendingURL, !isShutDown else { return }
         pendingURL = nil
+        loadRequestedAt = Date()
+        loadTrigger = reason
         command(["loadfile", url.absoluteString, "replace"])
     }
 
@@ -593,6 +672,54 @@ final class UniversalPlayer {
 
     /// Fills the screen, cropping the picture, instead of fitting it.
     func setFill(_ fill: Bool) { set("panscan", fill ? 1 : 0) }
+
+    // MARK: Diagnosis
+
+    /// What this player knew when a start stalled or playback stood still, for the player check's log: the app's side,
+    /// the surface, the last things mpv said and did, and mpv's own answer to what it is doing. Asking mpv can itself
+    /// block when its core is stuck, so that part gives up after a few seconds and says so, which is also a finding.
+    func diagnostics() async -> [String] {
+        let now = Date()
+        func ago(_ date: Date?) -> String { date.map { String(format: "%.1f s ago", now.timeIntervalSince($0)) } ?? "never" }
+        var out: [String] = []
+        out.append("built-in player for \(fileName): created \(ago(createdAt)), load requested \(ago(loadRequestedAt)) (\(loadTrigger)), file loaded \(ago(loadedAt)), first time-pos \(ago(firstTimeAt)), shut down \(isShutDown)")
+        var surface = "surface: laid out \(surfaceLayouts) time(s), last \(lastSurface), layer frame \(layer.frame.size), drawable \(layer.drawableSize), hidden \(layer.isHidden)"
+        #if os(iOS) || os(tvOS)
+        surface += ", attached to a view \(layer.superlayer != nil)"
+        #endif
+        out.append(surface)
+        out.append("app side: paused \(isPaused), core idle \(isCoreIdle), buffering \(isBuffering), time \(String(format: "%.2f", timePosition)), duration \(String(format: "%.2f", duration)), problem \(lastProblem ?? "-")")
+        let trace = handle.trace.snapshot()
+        out.append("event thread: \(trace.events) event(s) read, last \"\(trace.last)\" \(ago(trace.lastAt))")
+        out.append(contentsOf: await queryMPV(timeout: 3))
+        out.append("last of mpv's log (\(trace.lines.count) kept):")
+        out.append(contentsOf: trace.lines.suffix(40).map { "  " + $0 })
+        return out
+    }
+
+    private func queryMPV(timeout: Double) async -> [String] {
+        let handle = self.handle
+        return await withCheckedContinuation { continuation in
+            let shot = OneShot(continuation)
+            DispatchQueue.global(qos: .userInitiated).async {
+                let answer = handle.with { h -> [String] in
+                    let names = ["path", "time-pos", "core-idle", "pause", "paused-for-cache", "seeking", "idle-active", "eof-reached",
+                                 "current-vo", "vo-configured", "hwdec-current", "video-format", "file-format", "audio-codec-name",
+                                 "estimated-vf-fps", "frame-drop-count", "vo-delayed-frame-count", "demuxer-cache-duration"]
+                    let pairs = names.map { name -> String in
+                        var value = Self.string(h, name) ?? "n/a"
+                        if name == "path" { value = (value as NSString).lastPathComponent }
+                        return "\(name)=\(value)"
+                    }
+                    return ["mpv says: " + pairs.joined(separator: ", ")]
+                }
+                shot.finish(answer ?? ["mpv handle already released"])
+            }
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + timeout) {
+                shot.finish(["mpv did not answer within \(Int(timeout)) s: its core is blocked, most likely opening the video output"])
+            }
+        }
+    }
 
     // MARK: Lifecycle
 

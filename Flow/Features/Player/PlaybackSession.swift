@@ -1996,6 +1996,9 @@ extension PlaybackSession {
         ScreenshotTour.log("built-in decoder for \(url.lastPathComponent)")
     }
 
+    /// The built-in player's own account of itself, for the player check; nil on Apple's player.
+    func builtInDiagnostics() async -> [String]? { await universal?.diagnostics() }
+
     func releaseUniversal() {
         guard let engine = universal else { return }
         engine.shutdown()
