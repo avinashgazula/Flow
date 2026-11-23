@@ -155,7 +155,7 @@ describe('an OAuth 2.0 app’s sign-in', () => {
     const { seen, api } = client(({ url }) => (url.pathname === '/oauth/pin' ? json(oauth2Only, 400) : json(device)), null)
     expect(await api.startPin()).toEqual({ code: 'ZZ9Z-0AB1', deviceCode: 'd'.repeat(64), url: 'https://simkl.com/pin?user_code=ZZ9Z-0AB1', expiresIn: 900, interval: 5 })
     expect(seen.map((s) => `${s.init.method} ${s.url.pathname}`)).toEqual(['GET /oauth/pin', 'POST /oauth2/device'])
-    expect(body(seen[1]!)).toEqual({ client_id: 'cid' })
+    expect(body(seen[1]!)).toEqual({ client_id: 'cid', scope: 'media:read media:write' })
     expect((seen[1]!.init.headers as Record<string, string>).Authorization).toBeUndefined()
   })
 

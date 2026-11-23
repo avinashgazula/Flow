@@ -82,7 +82,8 @@ public actor SimklClient: TrackingService, ListService {
 
     private func startOAuth2Device() async throws -> DeviceCode {
         var r = try await request(.post, "/oauth2/device", auth: false)
-        try r.setJSONBody(["client_id": clientID])
+        // Without a scope Simkl grants reading only, and every watch, rating and list change sent back is refused.
+        try r.setJSONBody(["client_id": clientID, "scope": "media:read media:write"])
         let data: Data
         do {
             (data, _) = try await http.data(r)

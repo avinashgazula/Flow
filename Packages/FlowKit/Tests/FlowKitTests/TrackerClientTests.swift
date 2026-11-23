@@ -97,7 +97,7 @@ final class SimklClientTests: XCTestCase {
         XCTAssertEqual(code.interval, 5)
         XCTAssertTrue(SimklClient.usesDeviceFlow(code))
         XCTAssertEqual(stub.requests.map { "\($0.httpMethod ?? "") \($0.url?.path ?? "")" }, ["GET /oauth/pin", "POST /oauth2/device"])
-        XCTAssertEqual(try body(stub.requests[1]), ["client_id": "CID"])
+        XCTAssertEqual(try body(stub.requests[1]), ["client_id": "CID", "scope": "media:read media:write"])
         XCTAssertNil(stub.requests[1].value(forHTTPHeaderField: "Authorization"))
     }
 

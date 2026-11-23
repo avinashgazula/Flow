@@ -26,6 +26,9 @@ export interface SimklAuth {
   accessToken(): string | null | Promise<string | null>
 }
 
+/** What Marquee asks to do: read the lists and history, and write watches, ratings and list changes back. */
+export const simklScope = 'media:read media:write'
+
 /** The device flow's grant type, as RFC 8628 names it. */
 const deviceGrant = 'urn:ietf:params:oauth:grant-type:device_code'
 
@@ -186,7 +189,8 @@ export function createSimklClient(auth: SimklAuth, fetcher: typeof fetch, now: (
 
   /** The device flow's start (RFC 8628): a code to type, and the device code that polling is done with. */
   async function startDevice() {
-    const res = await send('POST', '/oauth2/device', { anonymous: true, body: { client_id: auth.clientID() } })
+    // Without a scope Simkl grants reading only, and every watch, rating and list change sent back is refused.
+    const res = await send('POST', '/oauth2/device', { anonymous: true, body: { client_id: auth.clientID(), scope: simklScope } })
     // Here a refusal can only be about the app, since nobody is signed in yet.
     if (!res.ok) throw res.status >= 500 || res.status === 429 ? fail(res.status) : new TrackerError(clientIDWords, 'client-id', res.status)
     const b = (await readBody(res)) as Json
