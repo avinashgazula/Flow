@@ -26,19 +26,15 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         }
         row("before second press")
         let off = btn("Remove from Watchlist")
-        let centre = off.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        print("DIAG press at \(centre.screenPoint) hittable \(off.isHittable) window \(app.windows.firstMatch.frame)")
-        off.tap()
-        row("right after second press")
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
-        row("one second after")
-        if !btn("Add to Watchlist").exists {
-            print(app.debugDescription)
-            let left = off.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5))
-            print("DIAG second try at \(left.screenPoint)")
-            left.tap()
-            RunLoop.current.run(until: Date().addingTimeInterval(1))
-            row("after the second try")
+        row("before second press")
+        for dx in [0.5, 0.15, 0.3, 0.7, 0.85, 0.5] as [CGFloat] {
+            let spot = off.coordinate(withNormalizedOffset: CGVector(dx: dx, dy: 0.5))
+            let watchedBefore = btn("Watched").exists
+            print("DIAG press at dx \(dx) = \(spot.screenPoint)")
+            spot.tap()
+            RunLoop.current.run(until: Date().addingTimeInterval(1.5))
+            print("DIAG dx \(dx): watchlist now \(btn("Remove from Watchlist").exists ? "on" : "off"), watched flipped \(btn("Watched").exists != watchedBefore)")
+            if btn("Add to Watchlist").exists { break }
         }
         // The toast tells a lost press apart from a removal that something undid, which look the same on the button.
         let removed = text(startingWith: "Removed from Watchlist").waitForExistence(timeout: 10)
