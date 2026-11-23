@@ -37,6 +37,13 @@ final class TitleAndPlayerUITests: FlowUITestCase {
         let watchedBefore = btn("Watched").exists
         let target = btn("Remove from Watchlist")
         print("DIAG pressing at \(target.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).screenPoint)")
+        let hitSel = NSSelectorFromString("hitPointCoordinate")
+        if target.responds(to: hitSel), let hit = target.value(forKey: "hitPointCoordinate") as? XCUICoordinate {
+            print("DIAG XCUITest hit point \(hit.screenPoint)")
+        } else {
+            print("DIAG XCUITest hit point not available")
+        }
+        NSLog("LISTDIAG test presses now")
         target.tap()
         RunLoop.current.run(until: Date().addingTimeInterval(1.0))
         let misfired = btn("Watched").exists != watchedBefore

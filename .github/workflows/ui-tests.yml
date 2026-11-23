@@ -37,6 +37,9 @@ jobs:
           xcodegen generate
       - name: Run the UI tests
         run: scripts/ui-test.sh ${{ matrix.platform }} -only-testing:FlowUITests/TitleAndPlayerUITests/testAMoviePageShowsItsListActionsAndTheyToggle -test-iterations 15
+      - name: TEMPORARY list diagnosis log
+        if: always()
+        run: xcrun simctl spawn booted log show --style compact --last 3h --predicate 'eventMessage CONTAINS "LISTDIAG"' > build/ui-tests-${{ matrix.platform }}-listdiag.log 2>&1 || true
       # The result bundle has every failure's screenshots and the accessibility audit's findings.
       - uses: actions/upload-artifact@v4
         if: always()
@@ -45,4 +48,5 @@ jobs:
           path: |
             build/ui-tests-${{ matrix.platform }}.xcresult
             build/ui-tests-${{ matrix.platform }}.log
+            build/ui-tests-${{ matrix.platform }}-listdiag.log
           if-no-files-found: ignore

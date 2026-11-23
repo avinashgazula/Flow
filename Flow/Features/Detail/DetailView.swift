@@ -432,15 +432,32 @@ struct DetailView: View {
 
     @ViewBuilder
     private func listCell(_ action: ListAction) -> some View {
+        #if DEBUG
+        // TEMPORARY diagnosis of a press on iPad landing on the wrong cell: every frame each cell takes, in the system log.
+        listCellBody(action)
+            .background(GeometryReader { g in
+                Color.clear.onChange(of: g.frame(in: .global), initial: true) { _, frame in
+                    NSLog("LISTDIAG frame \(action) \(frame)")
+                }
+            })
+        #else
+        listCellBody(action)
+        #endif
+    }
+
+    @ViewBuilder
+    private func listCellBody(_ action: ListAction) -> some View {
         switch action {
         case .watched:
             let watched = model.isWatched(current)
             toggleCell("Watched", symbol: "checkmark.circle", onSymbol: "checkmark.circle.fill", on: watched, accessibility: watched ? "Watched" : "Mark Watched") {
+                NSLog("LISTDIAG action watched")
                 Task { await model.setWatched(current, episodes: nil, watched: !watched) }
             }
         case .watchlist:
             let listed = model.isWatchlisted(current)
             toggleCell("Watchlist", symbol: "bookmark", onSymbol: "bookmark.fill", on: listed, accessibility: listed ? "Remove from Watchlist" : "Add to Watchlist") {
+                NSLog("LISTDIAG action watchlist")
                 Task { await model.toggleWatchlist(current) }
             }
         case .favourite:
