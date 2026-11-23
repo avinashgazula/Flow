@@ -363,6 +363,8 @@ struct LivePlayerView: View {
     @State private var tuned: Channel?
     @State private var showsInfo = true
     @State private var hideTask: Task<Void, Never>?
+    /// Only read by the debug switch `-FlowHideControlsOnce` (see `scheduleHide`).
+    @State private var hasAutoHidden = false
 
     enum LoadState: Equatable {
         case connecting, playing
@@ -460,10 +462,17 @@ struct LivePlayerView: View {
         // UI tests (`-FlowKeepPlayerControls YES`) find a button and then press it; an overlay that hides in between
         // makes the press a race with the timer.
         if UserDefaults.standard.bool(forKey: "FlowKeepPlayerControls") { return }
+        // The test of the overlay coming back needs it to hide once, on its own, and then to stay once a tap has
+        // brought it back: XCUITest waits for the app to go idle before it looks, and a live picture keeps the app
+        // busy, so on a slow runner the look can come after the five seconds are up and find it hidden again.
+        if UserDefaults.standard.bool(forKey: "FlowHideControlsOnce"), hasAutoHidden { return }
         #endif
         hideTask = Task {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
-            if !Task.isCancelled, state == .playing { showsInfo = false }
+            if !Task.isCancelled, state == .playing {
+                showsInfo = false
+                hasAutoHidden = true
+            }
         }
     }
 

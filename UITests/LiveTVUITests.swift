@@ -11,7 +11,13 @@ final class LiveTVUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["-FlowDemo", "YES"]
         // The overlay stays up so a found button is still there to press, except in the test of the overlay hiding.
-        if !name.contains("testTappingThePictureBringsTheOverlayBack") { app.launchArguments += ["-FlowKeepPlayerControls", "YES"] }
+        // That test lets it hide once on its own, then keeps it up once a tap has brought it back (the app's debug switch
+        // says why: a look that comes late must not find it hidden again).
+        if name.contains("testTappingThePictureBringsTheOverlayBack") {
+            app.launchArguments += ["-FlowHideControlsOnce", "YES"]
+        } else {
+            app.launchArguments += ["-FlowKeepPlayerControls", "YES"]
+        }
         app.launch()
     }
 
@@ -71,6 +77,16 @@ final class LiveTVUITests: XCTestCase {
         expectation(for: hidden, evaluatedWith: close)
         waitForExpectations(timeout: 15)
         app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)).tap()
-        XCTAssertTrue(close.waitForExistence(timeout: 5), "a tap on the picture shows the overlay again")
+        let shown = close.waitForExistence(timeout: 10)
+        if !shown {
+            // What the app showed and what it could see, for the next person to read.
+            let screenshot = XCTAttachment(screenshot: app.screenshot())
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            let tree = XCTAttachment(string: app.debugDescription)
+            tree.lifetime = .keepAlways
+            add(tree)
+        }
+        XCTAssertTrue(shown, "a tap on the picture shows the overlay again")
     }
 }
