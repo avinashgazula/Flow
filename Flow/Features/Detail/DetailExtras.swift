@@ -105,6 +105,7 @@ private struct ListActionBody: View {
     let on: Bool
     @Environment(\.isFocused) private var focused
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.layoutDirection) private var direction
     @State private var hovering = false
 
     var body: some View {
@@ -121,7 +122,7 @@ private struct ListActionBody: View {
             .frame(maxWidth: .infinity, minHeight: 44 * Theme.scale)
             .background(fill)
             .overlay(Rectangle().strokeBorder(lit ? Theme.Palette.blue : Theme.Palette.fg, lineWidth: Theme.Rule.heavy))
-            .contentShape(OwnShare(rule: Theme.Rule.heavy))
+            .contentShape(OwnShare(rule: Theme.Rule.heavy, leadingOnRight: direction == .rightToLeft))
             .opacity(configuration.isPressed ? 0.7 : 1)
             .animation(Theme.Motion.hover, value: lit)
             .modifier(FocusLift(scale: 1.04))
@@ -137,9 +138,11 @@ private struct ListActionBody: View {
 /// is left to the cell it ends instead; the border looks the same.
 private struct OwnShare: Shape {
     let rule: CGFloat
+    let leadingOnRight: Bool
 
     func path(in rect: CGRect) -> Path {
-        Path(CGRect(x: rect.minX + rule, y: rect.minY, width: max(rect.width - rule, 0), height: rect.height))
+        let width = max(rect.width - rule, 0)
+        return Path(CGRect(x: leadingOnRight ? rect.minX : rect.minX + rule, y: rect.minY, width: width, height: rect.height))
     }
 }
 
