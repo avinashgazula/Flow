@@ -317,8 +317,13 @@ final class UniversalPlayer {
         if !headers.isEmpty, !url.isFileURL { option("http-header-fields", MPVOptions.headerFields(headers)) }
         if let startAt, startAt > 1 { option("start", String(format: "%.3f", startAt)) }
         option("pause", "yes")
-        // Warnings and errors go to the error screen and the tour's log; the rest only into the trace a diagnosis reads.
+        // Warnings and errors go to the error screen and the tour's log. Debug builds also keep mpv's verbose lines in the
+        // trace the player check's diagnosis reads; a shipped app has no reader for them, so it doesn't pay to format them.
+        #if DEBUG
         mpv_request_log_messages(created, "v")
+        #else
+        mpv_request_log_messages(created, "warn")
+        #endif
 
         guard mpv_initialize(created) >= 0 else {
             let failed = handle
