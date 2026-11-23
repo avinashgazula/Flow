@@ -137,3 +137,90 @@ describe('signing out', () => {
     expect(m.settingsStore.get().tracker).toBe('mdblist')
   })
 })
+
+describe('an OAuth 2.0 app’s sign-in and refresh', () => {
+  const calls: { path: string; body: any }[] = []
+  let token: () => { status: number; json: unknown }
+
+  beforeEach(() => {
+    calls.length = 0
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      const path = new URL(url).pathname
+      calls.push({ path, body: init?.body ? JSON.parse(String(init.body)) : undefined })
+      if (path === '/oauth/pin') return new Response(JSON.stringify({ error: 'unauthorized_client', message: 'use POST /oauth2/device' }), { status: 400 })
+      if (path === '/oauth2/device') return new Response(JSON.stringify({ device_code: 'dc', user_code: 'AB12-CD34', verification_uri: 'https://simkl.com/pin', expires_in: 60, interval: 5 }), { status: 200 })
+      if (path === '/oauth2/token') {
+        const t = token()
+        return new Response(JSON.stringify(t.json), { status: t.status })
+      }
+      if (path === '/users/settings') return new Response(JSON.stringify({ user: { name: 'avi' } }), { status: 200 })
+      return new Response('[]', { status: 200 })
+    })
+  })
+
+  it('signs in, waiting out pending and slow_down, and keeps the refresh token and expiry', async () => {
+    const answers = [{ status: 400, json: { error: 'authorization_pending' } }, { status: 400, json: { error: 'slow_down' } }, { status: 200, json: { access_token: 'at', refresh_token: 'rt', expires_in: 3600 } }]
+    token = () => answers.shift()!
+    const pin = await m.startPin()
+    expect(pin.deviceCode).toBe('dc')
+    const done = m.finishPin(pin, new AbortController().signal)
+    await vi.advanceTimersByTimeAsync(5000 * 2)
+    // slow_down was answered at the second look, so the third is ten seconds after it.
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(calls.filter((c) => c.path === '/oauth2/token')).toHaveLength(2)
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(await done).toEqual({ ok: true })
+    const account = m.settingsStore.get().simklAccount!
+    expect(account).toMatchObject({ accessToken: 'at', refreshToken: 'rt', redirectURI: null })
+    expect(Date.parse(account.expiresAt!)).toBeGreaterThan(Date.now() + 3500_000)
+    expect(m.settingsStore.get().tracker).toBe('simkl')
+  })
+
+  it('gives up with a sentence when the code expires on Simkl’s side', async () => {
+    token = () => ({ status: 400, json: { error: 'expired_token' } })
+    const done = m.finishPin(await m.startPin(), new AbortController().signal)
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(await done).toEqual({ ok: false, error: 'That code expired before it was approved. Start again from Settings → Account.' })
+  })
+
+  it('accepts an OAuth 2.0 Client ID when it checks one', async () => {
+    expect(await m.checkSimklClientID('oauth2-id')).toBeUndefined()
+  })
+
+  const signedIn = (expiresAt: string | null, refreshToken: string | null = 'rt') => m.settingsStore.set({ tracker: 'simkl', simklAccount: { accessToken: 'old', refreshToken, expiresAt, redirectURI: null } })
+  const lookup = () => m.backendFor('simkl').username()
+
+  it('refreshes an expired token before the request, saves the new one and tells the other devices', async () => {
+    syncOn()
+    signedIn(new Date(Date.now() - 1000).toISOString())
+    token = () => ({ status: 200, json: { access_token: 'new', refresh_token: 'rt2', expires_in: 3600 } })
+    expect(await lookup()).toBe('avi')
+    expect(calls.map((c) => c.path)).toEqual(['/oauth2/token', '/users/settings'])
+    expect(m.settingsStore.get().simklAccount).toMatchObject({ accessToken: 'new', refreshToken: 'rt2' })
+    expect(sync.pushNow).toHaveBeenCalled()
+  })
+
+  it('shares one refresh between requests made together', async () => {
+    signedIn(new Date(Date.now() + 10_000).toISOString())
+    token = () => ({ status: 200, json: { access_token: 'new' } })
+    await Promise.all([lookup(), lookup()])
+    expect(calls.filter((c) => c.path === '/oauth2/token')).toHaveLength(1)
+  })
+
+  it('does not refresh a token that is still good, or one with no refresh token', async () => {
+    signedIn(new Date(Date.now() + 3600_000).toISOString())
+    await lookup()
+    signedIn(new Date(Date.now() - 1000).toISOString(), null)
+    await lookup()
+    signedIn(null)
+    await lookup()
+    expect(calls.map((c) => c.path)).toEqual(['/users/settings', '/users/settings', '/users/settings'])
+  })
+
+  it('says the person is signed out when the refresh is refused', async () => {
+    signedIn(new Date(Date.now() - 1000).toISOString())
+    token = () => ({ status: 400, json: { error: 'invalid_grant' } })
+    await expect(lookup()).rejects.toMatchObject({ kind: 'signed-out', message: 'Simkl ended this sign-in. Sign in again.' })
+    expect(calls.map((c) => c.path)).toEqual(['/oauth2/token'])
+  })
+})

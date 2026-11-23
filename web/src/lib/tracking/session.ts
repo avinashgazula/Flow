@@ -1,14 +1,17 @@
 /* Being signed in to Simkl, and the clients for the trackers that aren't Trakt. Simkl signs in with a code: the page
    asks for one, the person types it at simkl.com/pin, and the page polls until Simkl hands over a token. That needs
-   no redirect and no secret, so it works from any address. The token has no refresh token and no expiry, so there is
-   no rotating to coordinate as there is for Trakt; it is a setting (`simklAccount`) in the shape the apps keep it
-   (docs/SYNC.md, accounts), so Marquee Sync carries it to every device and one from the apps works here.
+   no redirect and no secret, so it works from any address. Simkl apps registered more recently are OAuth 2.0 apps and
+   use the standard device flow for the same thing (simkl.ts picks the one the Client ID needs). The token of an older
+   app has no refresh token and no expiry. One from an OAuth 2.0 app may have both, and is refreshed here when it has
+   run out. It is a setting (`simklAccount`) in the shape the apps keep it (docs/SYNC.md, accounts), so Marquee Sync
+   carries it to every device and one from the apps works here.
 
    Sync is touched only when this browser has it on, and loaded then, not before. */
 
 import { settingsStore } from '../store/settings'
 import { loadConfig } from '../sync/config'
 import { TraktError } from '../trakt/client'
+import { isExpired } from '../trakt/oauth'
 import type { Backend } from './backend'
 import { createMDBListClient, mdblistBackend } from './mdblist'
 import { activeTracker, type OtherTracker } from './service'
@@ -24,7 +27,25 @@ async function pushToSync(): Promise<void> {
 const simklClientID = () => settingsStore.get().simklClientID.trim()
 const mdblistKey = () => settingsStore.get().mdblistKey?.trim() ?? ''
 
-const simkl = (): SimklClient => createSimklClient({ clientID: simklClientID, accessToken: () => settingsStore.get().simklAccount?.accessToken ?? null }, (...args) => fetch(...args))
+let refreshing: Promise<string> | undefined
+
+/** The token for a request, renewed first when it has a refresh token and has run out. Concurrent callers share one
+ *  refresh. If Simkl refuses it the sign-in has ended, and the request fails with the signed-out sentence. */
+async function usableToken(): Promise<string | null> {
+  const held = settingsStore.get().simklAccount
+  if (!held) return null
+  if (!held.refreshToken || !isExpired(held)) return held.accessToken
+  refreshing ??= (async () => {
+    const fresh = await createSimklClient({ clientID: simklClientID, accessToken: () => null }, (...args) => fetch(...args)).refresh(held.refreshToken!)
+    settingsStore.set({ simklAccount: fresh })
+    // Out at once so another device doesn't spend the old refresh token.
+    await pushToSync().catch(() => undefined)
+    return fresh.accessToken
+  })().finally(() => void (refreshing = undefined))
+  return refreshing
+}
+
+const simkl = (): SimklClient => createSimklClient({ clientID: simklClientID, accessToken: usableToken }, (...args) => fetch(...args))
 
 /** The client for one service, as the engine and the scrobbler use it. */
 export function backendFor(kind: OtherTracker): Backend {
@@ -39,6 +60,8 @@ export interface Pin {
   url: string
   expiresIn: number
   interval: number
+  /** Set when the code came from the OAuth 2.0 device flow, which polls with this and not with the code. */
+  deviceCode?: string
 }
 
 /** Asks Simkl for a code to type. Fails with a sentence when the Client ID isn't accepted. */
@@ -57,13 +80,16 @@ const sleep = (ms: number, signal: AbortSignal) =>
 export async function finishPin(pin: Pin, signal: AbortSignal, now: () => number = Date.now): Promise<{ ok: true } | { ok: false; error: string; cancelled?: boolean }> {
   const client = simkl()
   const until = now() + pin.expiresIn * 1000
+  let interval = pin.interval
   while (now() < until) {
-    await sleep(pin.interval * 1000, signal)
+    await sleep(interval * 1000, signal)
     if (signal.aborted) return { ok: false, error: '', cancelled: true }
     try {
-      const token = await client.pollPin(pin.code)
+      const { token, slowDown } = await client.pollPin(pin.code, pin.deviceCode)
+      // Simkl asked for more time between looks (RFC 8628: five seconds more).
+      if (slowDown) interval += 5
       if (token) {
-        settingsStore.set({ simklAccount: { accessToken: token, refreshToken: null, expiresAt: null, redirectURI: null }, tracker: 'simkl', watchlistDestination: 'simkl' })
+        settingsStore.set({ simklAccount: token, tracker: 'simkl', watchlistDestination: 'simkl' })
         setService('simkl', { ...emptyService })
         await pushToSync().catch(() => undefined)
         void rememberProfile('simkl')

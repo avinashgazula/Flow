@@ -92,7 +92,7 @@ export interface Settings {
   simklClientID: string
   /** Who the website is signed in to Trakt as. Travels through Marquee Sync, so any device's sign-in arrives here. */
   traktAccount: TraktToken | null
-  /** The same for Simkl: its token has no refresh token or expiry, and travels through Marquee Sync like Trakt's. */
+  /** The same for Simkl: an older app's token has no refresh token or expiry (an OAuth 2.0 app's may), and travels through Marquee Sync like Trakt's. */
   simklAccount: TraktToken | null
   /** The one service that tracks (Settings → Account → Tracking With). Absent means never chosen: the first sign-in
    *  (Trakt, then Simkl) tracks, as when the apps adopt a sign-in that arrives through Sync. */

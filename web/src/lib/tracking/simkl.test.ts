@@ -108,10 +108,16 @@ describe('requests', () => {
   it('asks for a PIN and polls it, with no token', async () => {
     const { seen, api } = client(({ url }) => (url.pathname === '/oauth/pin' ? json({ result: 'OK', user_code: 'AB12C', verification_url: 'https://simkl.com/pin', expires_in: 900, interval: 5 }) : json(seen.length > 2 ? { result: 'OK', access_token: 'secret' } : { result: 'KO', message: 'Authorization pending' })), null)
     expect(await api.startPin()).toEqual({ code: 'AB12C', url: 'https://simkl.com/pin', expiresIn: 900, interval: 5 })
-    expect(await api.pollPin('AB12C')).toBeUndefined()
-    expect(await api.pollPin('AB12C')).toBe('secret')
+    expect(await api.pollPin('AB12C')).toEqual({})
+    expect(await api.pollPin('AB12C')).toEqual({ token: { accessToken: 'secret', refreshToken: null, expiresAt: null, redirectURI: null } })
     expect(seen.map((s) => s.url.pathname)).toEqual(['/oauth/pin', '/oauth/pin/AB12C', '/oauth/pin/AB12C'])
     expect((seen[0]!.init.headers as Record<string, string>).Authorization).toBeUndefined()
+  })
+
+  it('keeps the PIN flow for a Client ID that has one, never touching the device endpoints', async () => {
+    const { seen, api } = client(() => json({ user_code: 'AB12C', expires_in: 900 }), null)
+    await api.startPin()
+    expect(seen.map((s) => s.url.pathname)).toEqual(['/oauth/pin'])
   })
 
   it('does not follow a verification address that is not https', async () => {
@@ -137,5 +143,88 @@ describe('requests', () => {
     expect(await say('offline')).toBe('network: Couldn’t reach Simkl. Check your connection.')
     expect(await say(200, null)).toBe('signed-out: Simkl ended this sign-in. Sign in again.')
     expect(await say(200, 'tok', '')).toBe('client-id: Add a Simkl Client ID in Settings → Account first.')
+  })
+})
+
+const oauth2Only = { error: 'unauthorized_client', code: 400, message: 'This client_id is an OAuth 2.0 app: use POST /oauth2/device instead of /oauth/pin' }
+const device = { device_code: 'd'.repeat(64), user_code: 'ZZ9Z-0AB1', verification_uri: 'https://simkl.com/pin', verification_uri_complete: 'https://simkl.com/pin?user_code=ZZ9Z-0AB1', expires_in: 900, interval: 5 }
+const body = (s: Seen) => JSON.parse(String(s.init.body))
+
+describe('an OAuth 2.0 app’s sign-in', () => {
+  it('switches to the device flow when /oauth/pin turns the app away, and remembers the device code', async () => {
+    const { seen, api } = client(({ url }) => (url.pathname === '/oauth/pin' ? json(oauth2Only, 400) : json(device)), null)
+    expect(await api.startPin()).toEqual({ code: 'ZZ9Z-0AB1', deviceCode: 'd'.repeat(64), url: 'https://simkl.com/pin?user_code=ZZ9Z-0AB1', expiresIn: 900, interval: 5 })
+    expect(seen.map((s) => `${s.init.method} ${s.url.pathname}`)).toEqual(['GET /oauth/pin', 'POST /oauth2/device'])
+    expect(body(seen[1]!)).toEqual({ client_id: 'cid' })
+    expect((seen[1]!.init.headers as Record<string, string>).Authorization).toBeUndefined()
+  })
+
+  it('switches on the message alone, and falls back to the PIN page when no address is given', async () => {
+    const { api } = client(({ url }) => (url.pathname === '/oauth/pin' ? json({ message: 'use POST /oauth2/device' }, 400) : json({ device_code: 'dc', user_code: 'U' })), null)
+    expect(await api.startPin()).toEqual({ code: 'U', deviceCode: 'dc', url: 'https://simkl.com/pin', expiresIn: 900, interval: 5 })
+  })
+
+  it('does not call another 400 an OAuth 2.0 app, and does not blame the Client ID for it', async () => {
+    const { seen, api } = client(() => json({ error: 'invalid_request' }, 400), null)
+    await expect(api.startPin()).rejects.toMatchObject({ kind: 'rejected', message: 'Simkl didn’t accept that update (400).' })
+    expect(seen).toHaveLength(1)
+  })
+
+  it('says the Client ID is refused when the device start turns it down', async () => {
+    const { api } = client(({ url }) => (url.pathname === '/oauth/pin' ? json(oauth2Only, 400) : json({ error: 'invalid_client' }, 401)), null)
+    await expect(api.startPin()).rejects.toMatchObject({ kind: 'client-id' })
+  })
+
+  it('polls with the device code until Simkl hands over a token, which may carry a refresh token and an expiry', async () => {
+    let n = 0
+    const { seen, api } = client(() => (++n < 3 ? json({ error: 'authorization_pending', error_description: 'The user has not yet approved this device' }, 400) : json({ access_token: 'at', refresh_token: 'rt', expires_in: 3600, token_type: 'bearer' })), null)
+    expect(await api.pollPin('U', 'dc')).toEqual({})
+    expect(await api.pollPin('U', 'dc')).toEqual({})
+    const done = await api.pollPin('U', 'dc')
+    expect(done.token).toMatchObject({ accessToken: 'at', refreshToken: 'rt', redirectURI: null })
+    expect(Date.parse(done.token!.expiresAt!) - Date.now()).toBeGreaterThan(3590_000)
+    expect(seen[0]!.url.pathname).toBe('/oauth2/token')
+    expect(body(seen[0]!)).toEqual({ client_id: 'cid', device_code: 'dc', grant_type: 'urn:ietf:params:oauth:grant-type:device_code' })
+  })
+
+  it('takes a token with nothing but the access token', async () => {
+    const { api } = client(() => json({ access_token: 'only' }), null)
+    expect((await api.pollPin('U', 'dc')).token).toEqual({ accessToken: 'only', refreshToken: null, expiresAt: null, redirectURI: null })
+  })
+
+  it('reads expires_in sent as text, and ignores one that is not a number', async () => {
+    const a = client(() => json({ access_token: 'x', expires_in: '120' }), null)
+    expect(Date.parse((await a.api.pollPin('U', 'dc')).token!.expiresAt!) - Date.now()).toBeGreaterThan(110_000)
+    const b = client(() => json({ access_token: 'x', expires_in: 'soon' }), null)
+    expect((await b.api.pollPin('U', 'dc')).token!.expiresAt).toBeNull()
+  })
+
+  it('reports slow_down so the caller waits longer', async () => {
+    const { api } = client(() => json({ error: 'slow_down' }, 400), null)
+    expect(await api.pollPin('U', 'dc')).toEqual({ slowDown: true })
+  })
+
+  it('stops with a sentence for an expired code and for a declined sign-in', async () => {
+    const expired = client(() => json({ error: 'expired_token' }, 400), null)
+    await expect(expired.api.pollPin('U', 'dc')).rejects.toMatchObject({ kind: 'rejected', message: 'That code expired before it was approved. Start again from Settings → Account.' })
+    const denied = client(() => json({ error: 'access_denied' }, 400), null)
+    await expect(denied.api.pollPin('U', 'dc')).rejects.toMatchObject({ kind: 'rejected', message: expect.stringContaining('declined') })
+  })
+
+  it('refreshes with the refresh token, keeping the old one when Simkl sends no new one', async () => {
+    const { seen, api } = client(() => json({ access_token: 'new', expires_in: 7200 }))
+    const fresh = await api.refresh('rt')
+    expect(fresh).toMatchObject({ accessToken: 'new', refreshToken: 'rt' })
+    expect(body(seen[0]!)).toEqual({ client_id: 'cid', grant_type: 'refresh_token', refresh_token: 'rt' })
+    expect((seen[0]!.init.headers as Record<string, string>).Authorization).toBeUndefined()
+  })
+
+  it('treats a refused refresh (400 or 401) as signed out', async () => {
+    for (const status of [400, 401]) {
+      const { api } = client(() => json({ error: 'invalid_grant' }, status))
+      await expect(api.refresh('rt')).rejects.toMatchObject({ kind: 'signed-out', message: 'Simkl ended this sign-in. Sign in again.' })
+    }
+    const busy = client(() => json({}, 503))
+    await expect(busy.api.refresh('rt')).rejects.toMatchObject({ kind: 'server' })
   })
 })

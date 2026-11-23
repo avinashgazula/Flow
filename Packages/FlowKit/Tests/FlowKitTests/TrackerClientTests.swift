@@ -1,5 +1,8 @@
 import XCTest
 @testable import FlowKit
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Simkl, MDBList and PublicMetaDB through a scripted transport.
 final class SimklClientTests: XCTestCase {
@@ -60,6 +63,166 @@ final class SimklClientTests: XCTestCase {
             XCTAssertEqual(error as? FlowError, .timedOut)
         }
         XCTAssertTrue(stub.requests.isEmpty)
+    }
+
+    // MARK: OAuth 2.0 apps (device flow)
+
+    private let oauth2Only = #"{"error":"unauthorized_client","code":400,"message":"This client_id is an OAuth 2.0 app: use POST \/oauth2\/device instead of \/oauth\/pin"}"#
+    private let deviceStart = #"{"device_code":"dev-code-0123","user_code":"ZZ9Z-0AB1","verification_uri":"https://simkl.com/pin","verification_uri_complete":"https://simkl.com/pin?user_code=ZZ9Z-0AB1","expires_in":900,"interval":5}"#
+
+    /// A client that never really waits, recording how long it was asked to.
+    private func quick(_ stub: StubTransport, token: OAuthToken? = nil, waits: WaitLog = WaitLog(), onToken: @escaping @Sendable (OAuthToken?) -> Void = { _ in }) -> SimklClient {
+        SimklClient(clientID: "CID", token: token, http: HTTPClient(transport: stub), onTokenChange: onToken, pause: { waits.add($0) })
+    }
+
+    final class WaitLog: @unchecked Sendable {
+        private let lock = NSLock()
+        private var values: [TimeInterval] = []
+        func add(_ v: TimeInterval) { lock.lock(); values.append(v); lock.unlock() }
+        var all: [TimeInterval] { lock.lock(); defer { lock.unlock() }; return values }
+    }
+
+    private func body(_ r: URLRequest) throws -> [String: String] {
+        try JSONDecoder().decode([String: String].self, from: try XCTUnwrap(r.httpBody))
+    }
+
+    func testAnOAuth2AppIsSentToTheDeviceFlow() async throws {
+        let stub = StubTransport()
+        stub.on("GET", "/oauth/pin", status: 400, json: oauth2Only)
+        stub.on("POST", "/oauth2/device", json: deviceStart)
+        let code = try await quick(stub).startDeviceAuth()
+        XCTAssertEqual(code.deviceCode, "dev-code-0123")
+        XCTAssertEqual(code.userCode, "ZZ9Z-0AB1")
+        XCTAssertEqual(code.verificationURL.absoluteString, "https://simkl.com/pin?user_code=ZZ9Z-0AB1")
+        XCTAssertEqual(code.interval, 5)
+        XCTAssertTrue(SimklClient.usesDeviceFlow(code))
+        XCTAssertEqual(stub.requests.map { "\($0.httpMethod ?? "") \($0.url?.path ?? "")" }, ["GET /oauth/pin", "POST /oauth2/device"])
+        XCTAssertEqual(try body(stub.requests[1]), ["client_id": "CID"])
+        XCTAssertNil(stub.requests[1].value(forHTTPHeaderField: "Authorization"))
+    }
+
+    func testAPinCodeIsNotMistakenForADeviceCode() {
+        let pin = DeviceCode(deviceCode: "AB12C", userCode: "AB12C", verificationURL: URL(string: "https://simkl.com/pin")!, expiresIn: 900, interval: 5)
+        XCTAssertFalse(SimklClient.usesDeviceFlow(pin))
+    }
+
+    func testTheSwitchAlsoWorksOnTheMessageAlone() async throws {
+        let stub = StubTransport()
+        stub.on("GET", "/oauth/pin", status: 400, json: #"{"message":"use POST /oauth2/device"}"#)
+        stub.on("POST", "/oauth2/device", json: #"{"device_code":"dc","user_code":"U"}"#)
+        let code = try await quick(stub).startDeviceAuth()
+        XCTAssertEqual(code.verificationURL.absoluteString, "https://simkl.com/pin")
+        XCTAssertEqual(code.expiresIn, 900)
+    }
+
+    func testAnotherPinErrorIsNotTakenForAnOAuth2App() async {
+        let stub = StubTransport().on("GET", "/oauth/pin", status: 400, json: #"{"error":"invalid_request"}"#)
+        do { _ = try await quick(stub).startDeviceAuth(); XCTFail("expected an error") } catch {
+            XCTAssertEqual(error as? FlowError, .http(status: 400, body: #"{"error":"invalid_request"}"#))
+        }
+        XCTAssertEqual(stub.requests.count, 1)
+    }
+
+    func testARefusedClientIDSaysSo() async {
+        let stub = StubTransport()
+        stub.on("GET", "/oauth/pin", status: 400, json: oauth2Only)
+        stub.on("POST", "/oauth2/device", status: 401, json: #"{"error":"invalid_client"}"#)
+        do { _ = try await quick(stub).startDeviceAuth(); XCTFail("expected an error") } catch {
+            XCTAssertEqual(error as? FlowError, .unsupported(SimklOAuth.clientIDRefused))
+        }
+    }
+
+    func testDeviceFlowPollsUntilApprovedAndKeepsTheRefreshTokenAndExpiry() async throws {
+        let stub = StubTransport()
+        stub.on("GET", "/oauth/pin", status: 400, json: oauth2Only)
+        stub.on("POST", "/oauth2/device", json: deviceStart)
+        final class Count: @unchecked Sendable { var n = 0 }
+        let count = Count()
+        stub.on("POST", "/oauth2/token") { _ in
+            count.n += 1
+            if count.n < 3 { return (400, Data(#"{"error":"authorization_pending","error_description":"The user has not yet approved this device"}"#.utf8), [:]) }
+            return (200, Data(#"{"access_token":"at","refresh_token":"rt","expires_in":3600,"token_type":"bearer"}"#.utf8), [:])
+        }
+        final class Box: @unchecked Sendable { var token: OAuthToken? }
+        let box = Box(), waits = WaitLog()
+        let simkl = quick(stub, waits: waits) { box.token = $0 }
+        let code = try await simkl.startDeviceAuth()
+        let token = try await simkl.pollDeviceToken(code)
+        XCTAssertEqual(token.accessToken, "at")
+        XCTAssertEqual(token.refreshToken, "rt")
+        let expires = try XCTUnwrap(token.expiresAt)
+        XCTAssertEqual(expires.timeIntervalSinceNow, 3600, accuracy: 30)
+        XCTAssertEqual(box.token, token)
+        XCTAssertEqual(waits.all, [5, 5])
+        let poll = try XCTUnwrap(stub.requests.last)
+        XCTAssertEqual(try body(poll), ["client_id": "CID", "device_code": "dev-code-0123", "grant_type": "urn:ietf:params:oauth:grant-type:device_code"])
+    }
+
+    func testDeviceFlowTokenNeedsOnlyAnAccessToken() async throws {
+        let stub = StubTransport().on("POST", "/oauth2/token", json: #"{"access_token":"only"}"#)
+        let code = DeviceCode(deviceCode: "dc", userCode: "U", verificationURL: URL(string: "https://simkl.com/pin")!, expiresIn: 60, interval: 5)
+        let token = try await quick(stub).pollDeviceToken(code)
+        XCTAssertEqual(token, OAuthToken(accessToken: "only"))
+        XCTAssertEqual(SimklOAuth.token(from: Data(#"{"access_token":"x","expires_in":"120"}"#.utf8))?.expiresAt?.timeIntervalSinceNow ?? 0, 120, accuracy: 5)
+        XCTAssertNil(SimklOAuth.token(from: Data(#"{"nothing":1}"#.utf8)))
+    }
+
+    func testSlowDownAddsFiveSeconds() async throws {
+        let stub = StubTransport()
+        final class Count: @unchecked Sendable { var n = 0 }
+        let count = Count()
+        stub.on("POST", "/oauth2/token") { _ in
+            count.n += 1
+            return count.n == 1 ? (400, Data(#"{"error":"slow_down"}"#.utf8), [:]) : (200, Data(#"{"access_token":"at"}"#.utf8), [:])
+        }
+        let waits = WaitLog()
+        let code = DeviceCode(deviceCode: "dc", userCode: "U", verificationURL: URL(string: "https://simkl.com/pin")!, expiresIn: 60, interval: 5)
+        _ = try await quick(stub, waits: waits).pollDeviceToken(code)
+        XCTAssertEqual(waits.all, [10])
+    }
+
+    func testExpiredAndDeclinedCodesStopWithASentence() async {
+        let code = DeviceCode(deviceCode: "dc", userCode: "U", verificationURL: URL(string: "https://simkl.com/pin")!, expiresIn: 60, interval: 5)
+        for (error, words) in [("expired_token", SimklOAuth.codeExpired), ("access_denied", SimklOAuth.codeDeclined)] {
+            let stub = StubTransport().on("POST", "/oauth2/token", status: 400, json: #"{"error":"\#(error)"}"#)
+            do { _ = try await quick(stub).pollDeviceToken(code); XCTFail("expected an error") } catch let e {
+                XCTAssertEqual(e as? FlowError, .unsupported(words))
+            }
+            XCTAssertEqual(stub.requests.count, 1)
+        }
+    }
+
+    func testAnExpiredTokenIsRefreshedBeforeTheRequest() async throws {
+        let stub = StubTransport()
+        stub.on("POST", "/oauth2/token", json: #"{"access_token":"new","expires_in":3600}"#)
+        stub.on("GET", "/users/settings", json: #"{"user":{"name":"alex"}}"#)
+        final class Box: @unchecked Sendable { var token: OAuthToken? }
+        let box = Box()
+        let old = OAuthToken(accessToken: "old", refreshToken: "rt", expiresAt: Date().addingTimeInterval(-10))
+        let profile = try await quick(stub, token: old) { box.token = $0 }.profile()
+        XCTAssertEqual(profile?.username, "alex")
+        XCTAssertEqual(try body(stub.requests[0]), ["client_id": "CID", "grant_type": "refresh_token", "refresh_token": "rt"])
+        XCTAssertEqual(stub.requests[1].value(forHTTPHeaderField: "Authorization"), "Bearer new")
+        XCTAssertEqual(box.token?.accessToken, "new")
+        XCTAssertEqual(box.token?.refreshToken, "rt", "an answer with no refresh token leaves the old one good")
+    }
+
+    func testATokenThatIsStillGoodOrCannotBeRefreshedIsLeftAlone() async throws {
+        let stub = StubTransport().on("GET", "/users/settings", json: #"{"user":{"name":"alex"}}"#)
+        _ = try await quick(stub, token: OAuthToken(accessToken: "a", refreshToken: "rt", expiresAt: Date().addingTimeInterval(3600))).profile()
+        _ = try await quick(stub, token: OAuthToken(accessToken: "b", refreshToken: nil, expiresAt: Date().addingTimeInterval(-10))).profile()
+        XCTAssertEqual(stub.requests.map { $0.url?.path }, ["/users/settings", "/users/settings"])
+    }
+
+    func testARefusedRefreshMeansSignedOut() async {
+        for status in [400, 401] {
+            let stub = StubTransport().on("POST", "/oauth2/token", status: status, json: #"{"error":"invalid_grant"}"#)
+            let old = OAuthToken(accessToken: "old", refreshToken: "rt", expiresAt: Date().addingTimeInterval(-10))
+            do { _ = try await quick(stub, token: old).profile(); XCTFail("expected an error") } catch {
+                XCTAssertEqual(error as? FlowError, .unauthorized)
+            }
+            XCTAssertEqual(stub.requests.count, 1)
+        }
     }
 
     func testPlaybackProgressSortsNewestFirstAndSkipsEntriesWithoutTMDb() async throws {
