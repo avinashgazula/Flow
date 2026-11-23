@@ -36,7 +36,7 @@ jobs:
           brew install xcodegen
           xcodegen generate
       - name: Run the UI tests
-        run: scripts/ui-test.sh ${{ matrix.platform }} -only-testing:FlowUITests/TitleAndPlayerUITests/testAMoviePageShowsItsListActionsAndTheyToggle -test-iterations 15
+        run: scripts/ui-test.sh ${{ matrix.platform }} -only-testing:FlowUITests/TitleAndPlayerUITests/testAMoviePageShowsItsListActionsAndTheyToggle -test-iterations 25
       - name: TEMPORARY list diagnosis log
         if: always()
         run: xcrun simctl spawn booted log show --style compact --last 3h --predicate 'eventMessage CONTAINS "LISTDIAG"' > build/ui-tests-${{ matrix.platform }}-listdiag.log 2>&1 || true

@@ -121,13 +121,24 @@ private struct ListActionBody: View {
             .frame(maxWidth: .infinity, minHeight: 44 * Theme.scale)
             .background(fill)
             .overlay(Rectangle().strokeBorder(lit ? Theme.Palette.blue : Theme.Palette.fg, lineWidth: Theme.Rule.heavy))
-            .contentShape(Rectangle())
+            .contentShape(OwnShare(rule: Theme.Rule.heavy))
             .opacity(configuration.isPressed ? 0.7 : 1)
             .animation(Theme.Motion.hover, value: lit)
             .modifier(FocusLift(scale: 1.04))
             #if !os(tvOS)
             .onHover { hovering = $0 }
             #endif
+    }
+}
+
+/// What a grid cell answers presses for. The grid pulls its cells together by a rule's width so neighbours share one
+/// border, which lays each cell's leading and top edge over the cell before it; that strip is left to the cell
+/// underneath, so a press on a shared border never lands on two buttons at once and goes to the one it looks part of.
+private struct OwnShare: Shape {
+    let rule: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        Path(CGRect(x: rect.minX + rule, y: rect.minY + rule, width: max(rect.width - rule, 0), height: max(rect.height - rule, 0)))
     }
 }
 
