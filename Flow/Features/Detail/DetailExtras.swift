@@ -131,14 +131,15 @@ private struct ListActionBody: View {
     }
 }
 
-/// What a grid cell answers presses for. The grid pulls its cells together by a rule's width so neighbours share one
-/// border, which lays each cell's leading and top edge over the cell before it; that strip is left to the cell
-/// underneath, so a press on a shared border never lands on two buttons at once and goes to the one it looks part of.
+/// What a grid cell answers presses for. A line pulls its cells together by a rule's width so neighbours share one
+/// border, which lays each cell's leading edge over the end of the cell before it. Left alone, that strip answers for
+/// the later cell, so a press at the very end of one cell, which is still inside it, works the next one along. The strip
+/// is left to the cell it ends instead; the border looks the same.
 private struct OwnShare: Shape {
     let rule: CGFloat
 
     func path(in rect: CGRect) -> Path {
-        Path(CGRect(x: rect.minX + rule, y: rect.minY + rule, width: max(rect.width - rule, 0), height: max(rect.height - rule, 0)))
+        Path(CGRect(x: rect.minX + rule, y: rect.minY, width: max(rect.width - rule, 0), height: rect.height))
     }
 }
 
