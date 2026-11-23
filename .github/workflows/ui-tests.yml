@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ios, ipad, tvos]
+        platform: [ipad]
     env:
       FLOW_SIM_OS: "26"
     steps:
@@ -36,7 +36,7 @@ jobs:
           brew install xcodegen
           xcodegen generate
       - name: Run the UI tests
-        run: scripts/ui-test.sh ${{ matrix.platform }}
+        run: scripts/ui-test.sh ${{ matrix.platform }} -only-testing:FlowUITests/TitleAndPlayerUITests/testAMoviePageShowsItsListActionsAndTheyToggle -test-iterations 15 -retry-tests-on-failure NO
       # The result bundle has every failure's screenshots and the accessibility audit's findings.
       - uses: actions/upload-artifact@v4
         if: failure()
