@@ -182,6 +182,7 @@ final class TVFocusUITests: XCTestCase {
         assertOneFocus("on the page opened from Library")
         // A Menu press while the page is still sliding in is dropped by the system: wait until focus has settled.
         waitForFocusToSettle()
+        XCTAssertFalse(focusIsOnTheTabBar, "Focus is inside the opened page, not the tab bar, focus is on \(describeFocus())")
         remote.press(.menu)
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Upcoming")).firstMatch.waitForExistence(timeout: 30), "Menu returns to the Library")
         assertOneFocus("back on the Library")

@@ -48,9 +48,12 @@ public struct LastSource: Codable, Hashable, Sendable {
         guard let releaseGroup else { return nil }
         return candidates.first {
             $0.traits.releaseGroup?.caseInsensitiveCompare(releaseGroup) == .orderedSame
-                && $0.traits.resolution == resolution && $0.traits.quality == quality && $0.traits.hdr == hdr
+                && $0.traits.resolution == resolution && $0.traits.quality == quality && Self.ranges($0.traits.hdr) == Self.ranges(hdr)
         }
     }
+
+    /// A release stored before HDR10 had its own badge says "HDR": the two name the same picture.
+    private static func ranges(_ hdr: [String]) -> [String] { hdr.map { $0 == "HDR10" ? "HDR" : $0 } }
 
     /// Keeps the most recent `limit` titles, so the list never grows without end.
     public static func pruned(_ all: [String: LastSource], limit: Int = 300) -> [String: LastSource] {

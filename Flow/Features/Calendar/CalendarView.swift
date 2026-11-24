@@ -57,6 +57,7 @@ struct CalendarView: View {
             .scrollIndicators(.hidden)
         }
         .browsePage("Upcoming")
+        .holdsFocusWhileLoading(entries == nil)
         .task(id: model.contentVersion) {
             let loaded = await model.calendar()
             withAnimation(Theme.Motion.state) { entries = loaded }

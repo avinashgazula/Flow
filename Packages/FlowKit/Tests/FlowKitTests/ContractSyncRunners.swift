@@ -27,6 +27,9 @@ extension Contracts {
         case "parse":
             guard let pairing = try? FlowSyncLink.parse(input.string ?? ""), let key = pairing.key else { return .null }
             return .object(["key": .string(hexString(key.bytes)), "server": .string(pairing.server), "token": .string(pairing.token)])
+        case "parseWithDefault":
+            guard let pairing = try? FlowSyncLink.parse(input["link"]?.string ?? "", defaultServer: input["defaultServer"]?.string), let key = pairing.key else { return .null }
+            return .object(["key": .string(hexString(key.bytes)), "server": .string(pairing.server), "token": .string(pairing.token)])
         case "normalizeServer":
             return (try? FlowSyncPairing.normalizedServer(input.string ?? "")).map { .string($0) } ?? .null
         default: throw ContractUnavailable(reason: "unknown op \(c.op ?? "nil")")

@@ -37,6 +37,12 @@ final class StreamParserTests: XCTestCase {
         XCTAssertNotNil(t.sizeBytes)
     }
 
+    func testHDR10KeepsItsNameAndPlainHDRStaysHDR() {
+        XCTAssertEqual(StreamParser.parse("Movie.2023.2160p.WEB-DL.DV.HDR10.HEVC.mkv").hdr, ["DV", "HDR10"])
+        XCTAssertEqual(StreamParser.parse("Movie.2023.2160p.WEB-DL.HDR.HEVC.mkv").hdr, ["HDR"])
+        XCTAssertEqual(StreamParser.parse("Movie.2023.2160p.WEB-DL.HDR10Plus.HEVC.mkv").hdr, ["HDR10+"])
+    }
+
     func testUncachedAndWebDL() {
         let t = StreamParser.parse("[RD download] Show.S01E02.720p.WEB-DL.DDP5.1.H.264")
         XCTAssertEqual(t.resolution, .hd720)

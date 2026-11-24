@@ -1,6 +1,6 @@
 {
  "area": "sync-link",
- "description": "Marquee Sync's pairing link and server address (docs/SYNC.md, Pairing): the apps' flow://sync link and the website's #sync= fragment, built and read, and a Worker address tidied to its origin. Keys are lower-case hex bytes; a refused link is null.",
+ "description": "Marquee Sync's pairing link and server address (docs/SYNC.md, Pairing): the apps' flow://sync link and the website's #sync= fragment, built and read, and a Worker address tidied to its origin. Keys are lower-case hex bytes; a refused link is null. A key with no server in it (a link without one, or the key alone) joins the build's own server (parseWithDefault); with none of its own it is refused.",
  "cases": [
   { "name": "the app link carries the key, the server and the token", "op": "appLink", "input": { "key": "8f3a1c5de2b7460971a4c0de5b2f9e63", "server": "https://flow-stream-proxy.example.workers.dev", "token": "tok123" }, "expected": "flow://sync?k=HWX1RQF2PX30JWD4R3F5PBWYCC&s=https%3A%2F%2Fflow-stream-proxy.example.workers.dev&t=tok123" },
   { "name": "a token is percent-encoded as encodeURIComponent writes it", "op": "appLink", "input": { "key": "8f3a1c5de2b7460971a4c0de5b2f9e63", "server": "https://x.dev", "token": "a b&c=d/é+!'()*~" }, "expected": "flow://sync?k=HWX1RQF2PX30JWD4R3F5PBWYCC&s=https%3A%2F%2Fx.dev&t=a%20b%26c%3Dd%2F%C3%A9%2B!'()*~" },
@@ -25,6 +25,20 @@
   { "name": "text that is not a link is refused", "op": "parse", "input": "hello", "expected": null },
   { "name": "another flow link is not a sync link", "op": "parse", "input": "flow://setup?k=HWX1RQF2PX30JWD4R3F5PBWYCC&s=https%3A%2F%2Fx.dev&t=tok", "expected": null },
   { "name": "an empty paste is refused", "op": "parse", "input": "", "expected": null },
+
+  { "name": "an app link with no server joins this build's own server", "op": "parseWithDefault", "input": {"link": "flow://sync?k=HWX1RQF2PX30JWD4R3F5PBWYCC", "defaultServer": "https://own.example.dev"}, "expected": {"key": "8f3a1c5de2b7460971a4c0de5b2f9e63", "server": "https://own.example.dev", "token": ""} },
+  { "name": "a web link with no server joins this build's own server", "op": "parseWithDefault", "input": {"link": "https://marquee.example/settings#sync=k=HWX1RQF2PX30JWD4R3F5PBWYCC", "defaultServer": "https://own.example.dev"}, "expected": {"key": "8f3a1c5de2b7460971a4c0de5b2f9e63", "server": "https://own.example.dev", "token": ""} },
+  { "name": "an empty server field counts as no server", "op": "parseWithDefault", "input": {"link": "flow://sync?k=HWX1RQF2PX30JWD4R3F5PBWYCC&s=&t=tok", "defaultServer": "https://own.example.dev"}, "expected": {"key": "8f3a1c5de2b7460971a4c0de5b2f9e63", "server": "https://own.example.dev", "token": "tok"} },
+  { "name": "a link with a token and no server keeps its token", "op": "parseWithDefault", "input": {"link": "flow://sync?k=HWX1RQF2PX30JWD4R3F5PBWYCC&t=a%20b", "defaultServer": "https://own.example.dev"}, "expected": {"key": "8f3a1c5de2b7460971a4c0de5b2f9e63", "server": "https://own.example.dev", "token": "a b"} },
+  { "name": "a bare key joins this build's own server", "op": "parseWithDefault", "input": {"link": "hwx1-rqf2-px30-jwd4-r3f5-pbwy-cc", "defaultServer": "https://own.example.dev"}, "expected": {"key": "8f3a1c5de2b7460971a4c0de5b2f9e63", "server": "https://own.example.dev", "token": ""} },
+  { "name": "this build's own server is tidied to its origin", "op": "parseWithDefault", "input": {"link": "flow://sync?k=HWX1RQF2PX30JWD4R3F5PBWYCC", "defaultServer": "Own.Example.dev/path"}, "expected": {"key": "8f3a1c5de2b7460971a4c0de5b2f9e63", "server": "https://own.example.dev", "token": ""} },
+  { "name": "a server in the link beats this build's own", "op": "parseWithDefault", "input": {"link": "flow://sync?k=HWX1RQF2PX30JWD4R3F5PBWYCC&s=https%3A%2F%2Fx.dev&t=tok", "defaultServer": "https://own.example.dev"}, "expected": {"key": "8f3a1c5de2b7460971a4c0de5b2f9e63", "server": "https://x.dev", "token": "tok"} },
+  { "name": "a link with no server is refused when this build has none", "op": "parseWithDefault", "input": {"link": "flow://sync?k=HWX1RQF2PX30JWD4R3F5PBWYCC&t=tok"}, "expected": null },
+  { "name": "a link with no server is refused when this build's server is blank", "op": "parseWithDefault", "input": {"link": "flow://sync?k=HWX1RQF2PX30JWD4R3F5PBWYCC", "defaultServer": "  "}, "expected": null },
+  { "name": "a bare key is refused when this build has no server", "op": "parseWithDefault", "input": {"link": "HWX1RQF2PX30JWD4R3F5PBWYCC"}, "expected": null },
+  { "name": "a server that can't be read is refused, not replaced by this build's own", "op": "parseWithDefault", "input": {"link": "flow://sync?k=HWX1RQF2PX30JWD4R3F5PBWYCC&s=ftp%3A%2F%2Fx.dev", "defaultServer": "https://own.example.dev"}, "expected": null },
+  { "name": "a key that is too short is refused even with a server to fall back on", "op": "parseWithDefault", "input": {"link": "flow://sync?k=HWX1RQF2PX30", "defaultServer": "https://own.example.dev"}, "expected": null },
+  { "name": "text that is not a key or a link is refused even with a server to fall back on", "op": "parseWithDefault", "input": {"link": "hello", "defaultServer": "https://own.example.dev"}, "expected": null },
 
   { "name": "a bare host becomes an https origin", "op": "normalizeServer", "input": "example.com", "expected": "https://example.com" },
   { "name": "the path, query and trailing slash are dropped and the host is lower-cased", "op": "normalizeServer", "input": "https://Example.COM/some/path/?x=1", "expected": "https://example.com" },

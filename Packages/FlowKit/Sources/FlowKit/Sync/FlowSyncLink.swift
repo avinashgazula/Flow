@@ -72,9 +72,10 @@ public enum FlowSyncLink {
         return origin + "/settings#sync=" + parameters(pairing)
     }
 
-    /// Reads either form. Throws `invalidLink` for anything that isn't one, and `incompleteKey` or
-    /// `invalidServer` when the link is the right shape but a value in it is wrong.
-    public static func parse(_ input: String) throws -> FlowSyncPairing {
+    /// Reads either form, or just the key. Throws `invalidLink` for anything that isn't one, and `incompleteKey` or
+    /// `invalidServer` when the link is the right shape but a value in it is wrong. A key with no server in it joins
+    /// `defaultServer` (this build's own account server); only when there is none either does it throw `noServer`.
+    public static func parse(_ input: String, defaultServer: String? = nil) throws -> FlowSyncPairing {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         let query: Substring
         if let marker = text.range(of: "#sync=") {
@@ -86,6 +87,9 @@ public enum FlowSyncLink {
             }
             let rest = text[text.index(after: mark)...]
             query = rest.firstIndex(of: "#").map { rest[..<$0] } ?? rest
+        } else if let key = try? FlowSyncKey.parse(text) {
+            // Just the key, as the website takes it.
+            return try FlowSyncPairing(key: key, server: fallbackServer(defaultServer), token: "")
         } else {
             throw FlowSyncError.invalidLink
         }
@@ -96,7 +100,14 @@ public enum FlowSyncLink {
             // The first of a repeated parameter counts, as on the website.
             if values[String(parts[0])] == nil { values[String(parts[0])] = String(parts[1]).removingPercentEncoding ?? String(parts[1]) }
         }
-        guard let key = values["k"], let server = values["s"] else { throw FlowSyncError.invalidLink }
+        guard let key = values["k"] else { throw FlowSyncError.invalidLink }
+        let server: String
+        if let given = values["s"], !given.isEmpty { server = given } else { server = try fallbackServer(defaultServer) }
         return try FlowSyncPairing(key: key, server: server, token: values["t"] ?? "")
+    }
+
+    private static func fallbackServer(_ defaultServer: String?) throws -> String {
+        guard let defaultServer, !defaultServer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw FlowSyncError.noServer }
+        return defaultServer
     }
 }
