@@ -8,6 +8,7 @@ import { parseShelves, shelvesToJSON } from '../shelves'
 import { defaultTabOrder } from '../tabs'
 import { defaultSettings, type AddonConfig, type ServerConfig, type Settings, type TraktToken, type WebDAVConfig } from '../store/settings'
 import { normaliseSubtitleStyle } from '../store/subtitleStyle'
+import { resolvePalette } from '../palette'
 import { resolveTypeface } from '../typeface'
 import type { SetupExtras } from './extras'
 
@@ -87,6 +88,8 @@ const same = (web: keyof Settings, path: string, absent?: unknown): Field => ({ 
 const fields: Field[] = [
   // general
   { web: 'startTab', path: 'general.startTab', absent: 'home', write: appTab, read: (v) => (knownTab(webTab(v)) ? webTab(v) : undefined) },
+  // An unknown theme reads as Admit One, as the apps' ThemeChoice does.
+  { web: 'palette', path: 'general.theme', absent: 'admitOne', read: resolvePalette },
   same('showPosterTitles', 'general.showPosterTitles', true),
   same('heroAutoAdvance', 'general.heroAutoAdvance'),
   same('heroSource', 'general.heroSource'),

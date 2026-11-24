@@ -1,25 +1,30 @@
 ---
 name: Marquee
-description: Index. Paper and ink ruled with 2px lines, a grotesque for titles, the viewer's own typeface for everything you press, monospaced type for small labels and figures, one red for markers and one blue for action.
+description: Admit One. Warm paper and ink ruled with 2px lines, a grotesque for titles, the viewer's own typeface for everything you press, monospaced type for small labels and figures, one red that marks and acts, as on the app's ticket icon. Index and Opening Night are the other themes.
 colors:
-  bg: "#ffffff"
+  bg: "#f4f1ea"
   fg: "#0a0a0a"
   red: "#c9120a"
-  blue: "#1a3dff"
+  blue: "#c9120a"
+  blue-pressed: "#a50e08"
   onblue: "#ffffff"
-  muted: "#555555"
-  faint: "#636363"
-  tint-1: "#f3f3f0"
-  tint-2: "#e7e7e3"
-  tint-3: "#d4d4ce"
+  muted: "#57534c"
+  faint: "#625d55"
+  tint-1: "#ebe7dd"
+  tint-2: "#dfdacd"
+  tint-3: "#ccc6b6"
   warn: "#a64b00"
-  dark-bg: "#0a0a0a"
-  dark-fg: "#f2f2ee"
+  dark-bg: "#0d0b0a"
+  dark-fg: "#f4f1ea"
   dark-red: "#ff5a4e"
-  dark-blue: "#8fa2ff"
+  dark-blue: "#ff5a4e"
+  dark-blue-pressed: "#ff8a80"
   dark-onblue: "#0a0a0a"
-  dark-muted: "#b0b0ac"
-  dark-faint: "#8f8f8b"
+  dark-muted: "#b6b0a7"
+  dark-faint: "#948e85"
+  dark-tint-1: "#181513"
+  dark-tint-2: "#24201d"
+  dark-tint-3: "#37322e"
   overlay: "rgb(10 10 10 / 0.94)"
 typography:
   display:
@@ -139,41 +144,53 @@ components:
 
 Marquee for the web is an index of what the viewer owns: titles, episodes, channels, people. The design is that of a printed index set by a Swiss typographer and then made brutal: a sheet of paper, ruled in ink, with one huge word at the top of each page and everything below it in rows, cells and plain lines. The language comes from reference material the owner chose (an index site with giant uppercase titles, bordered nav cells and ruled lists); nothing of its content, name or wording is used. The Apple apps keep their own design; this system is the website's.
 
-The page is white paper and black ink, or the reverse: both themes are first-class. The system's theme is followed until the viewer chooses, in the top bar, and the choice is kept in that browser. Structure is made by **2px ink rules** and shared cell borders, not by space and not by fills. Artwork is the only colour on most screens, and it sits inside rules: posters and stills are square, framed, never rounded, never shadowed.
+The page is warm paper and black ink, or the reverse: both sides are first-class. The system's side is followed until the viewer chooses, in the top bar, and the choice is kept in that browser. The colours come from the chosen theme (Settings → Appearance → Theme; see Themes below), Admit One unless chosen. Structure is made by **2px ink rules** and shared cell borders, not by space and not by fills. Artwork is the only colour on most screens, and it sits inside rules: posters and stills are square, framed, never rounded, never shadowed.
 
 It is explicitly not: a glass or blur UI, a gradient or shadow UI, a rounded-card dashboard, a streaming service's dark carousel wall, a badge-and-pill interface, or a decorative film motif. Nothing is soft. The video player is the one exception (see Player Chrome).
 
 **Key Characteristics:**
-- Paper `#ffffff` and ink `#0a0a0a` (dark: ink `#0a0a0a` and paper `#f2f2ee`); everything else is one of three accents or a quiet tint.
+- Paper `#f4f1ea` and ink `#0a0a0a` (dark: ink `#0d0b0a` and paper `#f4f1ea`) in the default theme; everything else is the mark, the action or a quiet tint.
 - 2px ink rules divide the page: under the nav, under page heads, around toolbars and grids of cells (cells share borders), at the top of a list; 1px ink lines divide the rows inside.
 - Open-source faces: Archivo for the giant title, Plex Sans Condensed for headings, Plex Serif for reading, Plex Mono for small labels and figures, and the viewer's own typeface (System, Inter, Geist, Manrope or Mono) for the interface and body text.
-- Red marks, blue acts. Nothing else is coloured.
+- One colour marks and one acts (the theme's; in Admit One they are the same red). Nothing else is coloured.
 - Square: every radius is 0 outside the player.
-- Interaction is inversion: hover fills blue, the current place is inverted ink, focus is a blue ring.
+- Interaction is inversion: hover fills with the action colour, the current place is inverted ink, focus is a ring in the action colour.
 
 ## Colors
 
-Two themes, defined as tokens on `:root` (light) and `:root[data-theme="dark"]` (dark) in `styles/tokens.css`. A pre-paint script in `index.html` sets `data-theme` from the saved choice or `prefers-color-scheme`, so no first frame is the wrong theme. A subtree can force dark with `data-theme="dark"` (the player does), and the derived tokens follow.
+Every theme has a light and a dark side, defined as tokens in `styles/tokens.css`: Admit One on `:root` (light) and `:root[data-theme="dark"]` (dark), the other themes under `[data-palette]`. A pre-paint script in `index.html` sets `data-theme` (light or dark) from the saved choice or `prefers-color-scheme`, and `data-palette` (the theme) from the saved setting, so no first frame is the wrong one. A subtree can force dark with `data-theme="dark"` (the player does), and the derived tokens follow. The values below are Admit One's; the other themes' are in Themes.
 
 ### Primary
-- **Ink / Paper** (`--fg` / `--bg`): `#0a0a0a` on `#ffffff`, and in dark `#f2f2ee` on `#0a0a0a`. Text, rules, borders, the solid button, the current nav cell. 19:1.
+- **Ink / Paper** (`--fg` / `--bg`): `#0a0a0a` on `#f4f1ea`, and in dark `#f4f1ea` on `#0d0b0a`. Text, rules, borders, the solid button, the current nav cell. 17.5:1.
 
 ### Secondary
-- **Index Red** (`--red`): `#c9120a` light, `#ff5a4e` dark. Section labels, row numerals, the second line of a title pair, progress fills, markers, "live", the dotted underline of a quiet link, destructive hover. 5.9:1 on paper (4.7:1 on the darkest tint), 6.4:1 on ink. Never for body text.
-- **Action Blue** (`--blue`, text on it `--onblue`): `#1a3dff` with white, in dark `#8fa2ff` with ink. Links, hover fills, selection, the focus ring, the Marquee logo cell, switch tracks. 7:1 on paper, 8:1 on ink.
+- **Mark** (`--red`): `#c9120a` light, `#ff5a4e` dark. Section labels, row numerals, the second line of a title pair, progress fills, markers, "live", the dotted underline of a quiet link, destructive hover. 5.2:1 on paper (4.8:1 on the first tint), 6.4:1 on ink. Never for body text.
+- **Action** (`--blue`, text on it `--onblue`): in Admit One the same red, `#c9120a` with white, in dark `#ff5a4e` with ink. Links, hover fills, selection, the focus ring, the Marquee logo cell, switch tracks. In Index it is blue (`#1a3dff`, dark `#8fa2ff`) and in Opening Night gold. `--blue-pressed` is the fill while pressed. The names are from when the action was always blue: `--red` is the theme's mark, `--blue` its action.
 
 ### Neutral
-- **Muted** (`--muted`): `#555555` / `#b0b0ac`. Secondary text, metadata. 7:1 or better.
-- **Faint** (`--faint`): `#636363` / `#8f8f8b`. Captions, placeholders, disabled. 6:1 on paper, 4.9:1 on the darkest tint; never body copy.
-- **Tints** (`--tint-1..3`): quiet fills for what is not there yet or is only a track: skeletons (always inside a 2px frame), slider and progress tracks, a hovered menu item. Nothing that holds content is tint-filled; that is a rule and the blue inversion.
+- **Muted** (`--muted`): `#57534c` / `#b6b0a7`. Secondary text, metadata. 6.8:1 or better on paper.
+- **Faint** (`--faint`): `#625d55` / `#948e85`. Captions, placeholders, disabled. 5.8:1 on paper, 5.3:1 on the first tint; never body copy.
+- **Tints** (`--tint-1..3`): quiet fills for what is not there yet or is only a track: skeletons (always inside a 2px frame), slider and progress tracks, a hovered menu item. Nothing that holds content is tint-filled; that is a rule and the inversion.
 - **Warn** (`--warn`): degraded states ("may stutter"). Rare.
 
-The tokens are semantic: `--bg --fg --red --blue --onblue --muted --faint --rule`, with `--tint-1..3` for tracks and skeletons. The previous system's names are gone.
+The tokens are semantic: `--bg --fg --red --blue --blue-pressed --onblue --muted --faint --rule`, with `--tint-1..3` for tracks and skeletons. The previous system's names are gone.
+
+### Themes
+
+Three, chosen in Settings → Appearance → Theme (the apps' Settings → General → Theme, the same ids: `admitOne`, `index`, `openingNight`), saved as `palette` and carried in a setup file or link as the apps' `general.theme`. Admit One is the default. Light or dark is separate: the Light and Dark cell in the top bar, kept per browser.
+
+| Theme | Marks | Acts | Paper, light / dark |
+|---|---|---|---|
+| **Admit One** | red `#c9120a` / `#ff5a4e` | the same red, `#c9120a` / `#ff5a4e` | `#f4f1ea` / `#0d0b0a` |
+| **Index** | red `#c9120a` / `#ff5a4e` | blue `#1a3dff` / `#8fa2ff` | `#ffffff` / `#0a0a0a` |
+| **Opening Night** | red `#c9120a` / `#ff5a4e` | bulb gold `#8a5a00` / `#ffb21a` | `#fbf7ee` / `#0a0a0a` |
+
+Every value, both sides, is in `testdata/contracts/themes.json`, which the apps' FlowKit and the website's tests both read: `tokens.css` and `index.html` are checked against it, and every pair the design uses (ink on paper; muted and faint on paper and on the first tint; the mark and the action on paper and tints; on-action on the action and its pressed fill; warn on paper) is checked for AA on both sides of all three. Change a colour in the file and in `tokens.css` together.
 
 ### Named Rules
-**The Two Accents Rule.** Red is for marking, blue is for doing. A screen has no third colour besides artwork. If something is both, it is blue.
-**The Inversion Rule.** The current place and every hover are shown by swapping colours (ink on paper becomes paper on ink, or ink on paper becomes white on blue), never by tint, glow, shadow or underline thickness.
-**The Contrast Rule.** Every text pair is AA in both themes. Red and blue are checked on paper and on ink, and on each other's fills.
+**The Two Accents Rule.** One colour marks and one acts; a screen has no third colour besides artwork. If something is both, it acts. In Admit One the two are the same red, so a mark that sits inside an action fill (a row's numeral under the pointer) takes `--onblue`, as muted text does.
+**The Inversion Rule.** The current place and every hover are shown by swapping colours (ink on paper becomes paper on ink, or ink on paper becomes on-action text on the action fill), never by tint, glow, shadow or underline thickness.
+**The Contrast Rule.** Every text pair is AA in both sides of every theme. The mark and the action are checked on paper and on the tints, and on-action text on the action fill; a mark is never left on an action fill.
 
 ## Typography
 

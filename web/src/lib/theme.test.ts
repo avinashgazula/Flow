@@ -14,6 +14,6 @@ describe('resolveTheme', () => {
   })
 
   it('has a browser colour for both, matching the page background', () => {
-    expect(themeColour).toEqual({ light: '#ffffff', dark: '#0a0a0a' })
+    expect(themeColour).toEqual({ light: '#f4f1ea', dark: '#0d0b0a' })
   })
 })

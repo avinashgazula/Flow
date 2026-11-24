@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#f4f1ea" />
     <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Marquee: your Jellyfin, Emby and Plex servers, stream add-ons and live TV in one place, in the browser. It hosts no content." />
     <meta name="application-name" content="Marquee" />
@@ -27,11 +27,20 @@
       // Light or dark, before first paint: the saved choice, else the system's. The Light/Dark cell in the top bar
       // saves the same key (lib/theme.ts, keep the two in step). The faces the first paint is set in are preloaded
       // by the build (vite.config.ts), which knows their hashed names.
+      var t = 'light'
       try {
-        var t = localStorage.getItem('flow.theme')
+        t = localStorage.getItem('flow.theme')
         if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
         document.documentElement.dataset.theme = t
-        document.querySelector('meta[name="theme-color"]').setAttribute('content', t === 'dark' ? '#0a0a0a' : '#ffffff')
+      } catch (e) {}
+      // The colour theme, before first paint too: the saved setting (lib/palette.ts, keep the ids in step; an id this build
+      // doesn't know is Admit One, the default). The address bar takes the theme's paper (testdata/contracts/themes.json).
+      try {
+        var q = (JSON.parse(localStorage.getItem('flow.settings.v1') || 'null') || {}).palette
+        if (q !== 'index' && q !== 'openingNight') q = 'admitOne'
+        document.documentElement.dataset.palette = q
+        var paper = { admitOne: ['#f4f1ea', '#0d0b0a'], index: ['#ffffff', '#0a0a0a'], openingNight: ['#fbf7ee', '#0a0a0a'] }[q]
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', paper[t === 'dark' ? 1 : 0])
       } catch (e) {}
       // The typeface of the interface, before first paint too: the saved setting (lib/typeface.ts, keep the ids in step;
       // an older build's 'ioskeley' is Mono). System is the device's own font and needs no download.
@@ -61,10 +70,14 @@
       }
     </script>
     <style>
-      /* Painted before any CSS file arrives, so the first frame is already paper (or ink). The tokens are the
-         light and dark palettes of styles/tokens.css. */
-      html { background: #fff; color: #0a0a0a; }
-      html[data-theme='dark'] { background: #0a0a0a; color: #f2f2ee; }
+      /* Painted before any CSS file arrives, so the first frame is already paper (or ink), in the chosen theme. The values are
+         the --bg and --fg of each theme in styles/tokens.css (a test keeps them in step). */
+      html { background: #f4f1ea; color: #0a0a0a; }
+      html[data-theme='dark'] { background: #0d0b0a; color: #f4f1ea; }
+      html[data-palette='index'] { background: #ffffff; color: #0a0a0a; }
+      html[data-palette='index'][data-theme='dark'] { background: #0a0a0a; color: #f2f2ee; }
+      html[data-palette='openingNight'] { background: #fbf7ee; color: #0a0a0a; }
+      html[data-palette='openingNight'][data-theme='dark'] { background: #0a0a0a; color: #fff4d6; }
       body { background: inherit; color: inherit; margin: 0; }
       /* A shell of Home from the HTML alone on a repeat visit: the greeting and the lead's framed still in the boxes the
          real page uses (HomeScreen.module.css, Lead.module.css). The real page replaces it without a visible change,
