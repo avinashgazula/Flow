@@ -372,6 +372,9 @@ struct ToastView: View {
             .foregroundStyle(Theme.Palette.fg)
             .background(Theme.Palette.bg)
             .ruleFrame()
+            // A toast only reports; it has nothing to press. Lying over the top of the page for a few seconds, it would
+            // otherwise swallow a press meant for whatever is under it, such as the list buttons it is reporting on.
+            .allowsHitTesting(false)
             .transition(.move(edge: .top).combined(with: .opacity))
     }
 }

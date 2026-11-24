@@ -72,6 +72,16 @@ iCloud sync uses the iCloud key-value store entitlement, which needs a paid deve
 | IntroDB / PublicMetaDB | Skip segments, tracking | Settings → Account → API Keys |
 | OpenSubtitles / SubDL / SubSource | Subtitle search (Wyzie needs a free key from store.wyzie.io/redeem) | Settings → Account → API Keys |
 
+## Install with AltStore
+
+Each release's `Flow-iOS.ipa` is unsigned, so install it with a tool that signs it with your own Apple ID. In AltStore or SideStore, open Sources, tap the plus and add this source once:
+
+```
+https://raw.githubusercontent.com/avinashgazula/Flow/altstore/source.json
+```
+
+Every new release then shows up under Updates. AltStore installs iPhone and iPad apps only: the Apple TV and Mac builds are on the [releases page](https://github.com/avinashgazula/Flow/releases). The release workflow keeps the source current (`scripts/altstore-source.py`, on the `altstore` branch), and `python3 scripts/test_altstore_source.py` tests it.
+
 ## Testing in the simulators
 
 `scripts/sim.sh run ios` builds Marquee and launches it in an iPhone simulator with sample data (`ipad`, `tvos` and `mac` work too; `--real` uses your own keys). `scripts/sim.sh shot`, `open` and `logs` take screenshots, follow `flow://` links and stream the log. `CLAUDE.md` is the guide for working on Marquee with Claude Code, and `docs/TEST_PLAN.md` is the full test-and-improve checklist.

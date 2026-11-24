@@ -36,6 +36,15 @@ export function normaliseServer(input: string): string | null {
   }
 }
 
+/** Where joining goes: the link's own server, else the one this site already has (`own`, with its token). A key with
+ *  no server in it is accepted, and null comes back only when there is no server of this site's own either. A link
+ *  without a token takes the token of this site's server when it is the same one. The apps do the same
+ *  (FlowKit's `FlowSyncLink.parse` with `defaultServer`). */
+export function joinTarget(pairing: Pairing, own: { server: string; token: string } | null): { server: string; token: string } | null {
+  if (pairing.server) return { server: pairing.server, token: pairing.token || (own?.server === pairing.server ? own.token : '') }
+  return own ? { server: own.server, token: pairing.token || own.token } : null
+}
+
 /** The link another device opens: `<site>/settings#sync=k=…&s=…&t=…`. The fragment never reaches a
  *  server log. `siteBase` is the site's address up to and including the trailing slash. */
 export function webLink(keyBytes: Uint8Array, server: string, token: string, siteBase: string): string {

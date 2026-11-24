@@ -920,7 +920,8 @@ final class PlaybackSession: Identifiable {
                                                                isForced: track.source.isForced, isSDH: track.source.isHearingImpaired))
         }
         let decision = TrackSelection.decide(audio: audioTracks, subtitles: subtitleTracks, playback: model.settings.playback, subtitleSettings: model.settings.subtitles,
-                                             isAnime: isAnime, showChoice: showChoice, deviceLanguage: Locale.current.language.languageCode?.identifier)
+                                             isAnime: isAnime, showChoice: showChoice, deviceLanguage: Locale.current.language.languageCode?.identifier,
+                                             originalLanguage: request.item.originalLanguage)
 
         // The same stream reloading after a drop: the viewer's own picks stand, not the rules' choice.
         if let kept = keptTracks {
@@ -2114,6 +2115,16 @@ extension PlaybackSession {
         try? await Task.sleep(nanoseconds: 500_000_000)
         guard universal === engine, !Task.isCancelled else { return }
 
+        // Choosing a track while the file is still starting makes mpv seek to before its beginning and stall, so the choice
+        // waits for playback to run (a file that never gets going is the start check's to report; after 20 s it goes out anyway).
+        var held = 0
+        while !engine.canTakeStartingTracks, held < 80 {
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            held += 1
+            guard universal === engine, !Task.isCancelled else { return }
+            switch phase { case .failed, .finished: return; default: break }
+        }
+
         let audioTracks = engine.audioTracks.map {
             TrackSelection.AudioTrack(id: $0.id, language: LanguageName.bcp47($0.language),
                                       isCommentary: $0.title.localizedCaseInsensitiveContains("comment"), isDefault: $0.isDefault)
@@ -2122,7 +2133,8 @@ extension PlaybackSession {
             TrackSelection.SubtitleTrack(id: $0.id, language: LanguageName.bcp47($0.language), isForced: $0.isForced, isSDH: $0.isSDH)
         }
         let decision = TrackSelection.decide(audio: audioTracks, subtitles: subtitleTracks, playback: model.settings.playback, subtitleSettings: model.settings.subtitles,
-                                             isAnime: isAnime, showChoice: showChoice, deviceLanguage: Locale.current.language.languageCode?.identifier)
+                                             isAnime: isAnime, showChoice: showChoice, deviceLanguage: Locale.current.language.languageCode?.identifier,
+                                             originalLanguage: request.item.originalLanguage)
         if let id = decision.audio, engine.selectedAudio != id { engine.selectAudio(id) }
         tracksApplied = true
         // A downloaded subtitle stays through a source switch.

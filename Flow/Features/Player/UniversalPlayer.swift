@@ -220,6 +220,8 @@ final class UniversalPlayer {
     private(set) var speed: Double = 1
     /// The reason a start failed or playback broke, in words for the error screen.
     private(set) var lastProblem: String?
+    /// True once mpv has reported a playback restart since the file loaded: its first frame is up.
+    private(set) var hasRestarted = false
 
     let layer = MPVMetalLayer()
 
@@ -556,9 +558,11 @@ final class UniversalPlayer {
         case .chapters(let list): chapters = list
         case .loaded(let seconds):
             if loadedAt == nil { loadedAt = Date() }
+            hasRestarted = false
             if seconds > 0 { duration = seconds }
             onLoaded?()
         case .restarted:
+            hasRestarted = true
             onSeekFinished?()
         case .ended(let failure):
             if let failure {
@@ -658,12 +662,20 @@ final class UniversalPlayer {
     }
 
     func selectAudio(_ id: Int) {
+        guard id != selectedAudio else { return }
         selectedAudio = id
         set("aid", String(id))
     }
 
+    /// Whether the session's starting audio and subtitle choice can go out without making mpv seek mid-start.
+    var canTakeStartingTracks: Bool {
+        TrackSwitchGate.canApplyStartingChoice(restarted: hasRestarted, paused: isPaused, coreIdle: isCoreIdle, playhead: timePosition)
+    }
+
     /// Nil turns the file's own subtitles off.
     func selectSubtitle(_ id: Int?) {
+        // mpv answers every sid write, even to the same value, with a refresh seek; there is nothing to show by repeating it.
+        guard id != selectedSubtitle else { return }
         selectedSubtitle = id
         set("sid", id.map(String.init) ?? "no")
     }

@@ -324,7 +324,9 @@ struct SyncJoinView: View {
         self.isSheet = isSheet
     }
 
-    private var canJoin: Bool { FlowSyncKey.isValid(keyText) && server.nonEmpty != nil && token.nonEmpty != nil && !working }
+    /// This build's own account server stands in for a server the key doesn't come with, and a Worker may have no token.
+    private var ownServer: String? { model.accountServerURL?.absoluteString }
+    private var canJoin: Bool { FlowSyncKey.isValid(keyText) && (server.nonEmpty != nil || ownServer != nil) && !working }
 
     var body: some View {
         FilmForm {
@@ -398,7 +400,7 @@ struct SyncJoinView: View {
         let text = link.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { linkProblem = nil; return }
         do {
-            let pairing = try FlowSyncLink.parse(text)
+            let pairing = try FlowSyncLink.parse(text, defaultServer: ownServer)
             keyText = pairing.key?.grouped ?? pairing.keyText
             server = pairing.server
             token = pairing.token
@@ -412,7 +414,8 @@ struct SyncJoinView: View {
         failure = nil
         let pairing: FlowSyncPairing
         do {
-            pairing = try FlowSyncPairing(key: keyText, server: server, token: token)
+            guard let address = server.nonEmpty ?? ownServer else { throw FlowSyncError.noServer }
+            pairing = try FlowSyncPairing(key: keyText, server: address, token: token)
         } catch {
             failure = Self.describe(error)
             return
