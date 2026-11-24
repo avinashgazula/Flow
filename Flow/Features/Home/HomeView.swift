@@ -21,13 +21,25 @@ struct HomeLead: Equatable, Identifiable {
 /// Home, as the website's lead: the day in a red label with the date in mono, the title of what to watch in giant Archivo
 /// capitals, one italic line of facts, a solid Resume (or Play) and a bordered Details, and the backdrop in its 2px frame
 /// with a thin red bar for how far you are. A numbered pager (`01 / 10`) turns through what's in progress and the top
-/// picks. Then Up Next and the shelves, each a ruled section under a red label. Wide screens and Apple TV put the words
+/// picks, and turns by itself every few seconds (`HomeRotation`) unless the viewer is touching, pointing at or focused
+/// on it. Then Up Next and the shelves, each a ruled section under a red label. Wide screens and Apple TV put the words
 /// beside the backdrop.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     /// What the lead turns through: what is in progress first, then the top picks, ten at most.
     @State private var leads: [HomeLead] = []
     @State private var leadIndex = 0
+    /// A press on the pager decides where to stop: the lead stays put until Home is next opened fresh.
+    @State private var rotationStopped = false
+    /// What keeps the lead still while the viewer is at it: a scroll under the finger, the pointer over it, focus in it.
+    @State private var scrolling = false
+    @State private var pointerOver = false
+    @State private var focusInside = false
+    /// Whether Home is the page on screen; a pushed page or another tab holds the turn.
+    @State private var onScreen = false
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     /// The greeting follows the hour, so it is refreshed each minute.
     @State private var now = Date()
 
@@ -66,6 +78,35 @@ struct HomeView: View {
         model.mediaServers.map(\.config).filter { model.settings.mediaServers.showsHomeRow(for: $0.id) }
     }
 
+    /// Whether the lead can turn by itself at all. The screenshot tour and the UI tests need a lead that holds still, and
+    /// VoiceOver users a lead that doesn't change under them.
+    private var rotates: Bool {
+        HomeRotation.advancesByItself(setting: general.heroAutoAdvance, titles: leads.count, reduceMotion: reduceMotion)
+            && !voiceOver && !Self.automated
+    }
+
+    private static let automated: Bool = {
+        let defaults = UserDefaults.standard
+        // The UI tests keep the player's controls up, so that key tells them apart.
+        return ScreenshotTour.isRequested || defaults.bool(forKey: "FlowNoRotation") || defaults.bool(forKey: "FlowKeepPlayerControls")
+    }()
+
+    private var leadHeld: Bool { scrolling || pointerOver || focusInside }
+
+    /// Changes whenever the turn should start over: a new set of titles, a press on the pager, or the viewer letting go,
+    /// so a title always gets its whole dwell.
+    private struct RotationKey: Hashable {
+        var ids: [String]
+        var running: Bool
+        var held: Bool
+    }
+
+    private var rotationKey: RotationKey {
+        RotationKey(ids: leads.map(\.id),
+                    running: rotates && !rotationStopped && onScreen && scenePhase == .active,
+                    held: leadHeld)
+    }
+
     /// What decides the lead: the top Continue Watching entry, or the top pick when nothing is in progress.
     private var leadKey: String {
         "\(model.contentVersion)-\(general.showContinueWatching)-\(model.continueWatching.first?.id ?? "none")-\(general.heroSource.rawValue)-\(general.heroSecondarySource?.rawValue ?? "")"
@@ -81,12 +122,16 @@ struct HomeView: View {
                         page(wide: Self.splits(width: proxy.size.width), width: proxy.size.width)
                     }
                     .scrollIndicators(.hidden)
+                    .onScrollPhaseChangeIfAvailable { scrolling = $0 }
                     .refreshable { await model.refreshLibrary(force: true) }
                 }
             }
         }
         .background(Theme.Palette.ground.ignoresSafeArea())
         .task(id: leadKey) { await loadLeads() }
+        .task(id: rotationKey) { await rotate() }
+        .onAppear { onScreen = true }
+        .onDisappear { onScreen = false }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 60_000_000_000)
@@ -159,7 +204,12 @@ struct HomeView: View {
             Group {
                 if let lead {
                     LeadBlock(lead: lead, index: leadIndex, count: leads.count, wide: wide, backdropWidth: backdropWidth(in: width),
-                              dayTitle: dayPart.title, dateLine: Reel.dateLine(now), step: step)
+                              dayTitle: dayPart.title, dateLine: Reel.dateLine(now), step: { step($0); rotationStopped = true },
+                              rotation: rotates ? Rotation(stopped: rotationStopped, toggle: { rotationStopped.toggle() }) : nil,
+                              engaged: { focusInside = $0 })
+                        #if !os(tvOS)
+                        .onHover { pointerOver = $0 }
+                        #endif
                         // Each title is its own block, so what was fetched for one never shows on the next.
                         .id(lead.id)
                         .transition(.opacity)
@@ -189,6 +239,17 @@ struct HomeView: View {
     private func step(_ delta: Int) {
         guard leads.count > 1 else { return }
         withAnimation(Theme.Motion.enter) { leadIndex = (leadIndex + delta + leads.count) % leads.count }
+    }
+
+    /// Turns to the next title each dwell, for as long as its task lives; `rotationKey` ends it when anything holds the lead.
+    private func rotate() async {
+        let key = rotationKey
+        guard key.running, !key.held else { return }
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: UInt64(HomeRotation.dwell * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            step(1)
+        }
     }
 
     // MARK: Loading
@@ -227,18 +288,32 @@ private struct LeadHeader: View {
     }
 }
 
+/// The lead's buttons that can hold focus.
+enum LeadFocus: Hashable { case resume, details, previous, next, rotation }
+
+/// The pager's pause and play button: whether the turn is stopped, and how to flip it.
+extension HomeView {
+    struct Rotation {
+        var stopped: Bool
+        var toggle: () -> Void
+    }
+}
+
 /// Which title of the turn you are on: `01 / 10` in red condensed figures between two square arrows. On Apple TV the
 /// arrows take focus, so the remote can turn through the picks.
 private struct LeadPager: View {
     let index: Int
     let count: Int
     let step: (Int) -> Void
+    var rotation: HomeView.Rotation?
+    var focus: FocusState<LeadFocus?>.Binding
 
     var body: some View {
         HStack(spacing: -Theme.Rule.heavy) {
             Button { step(-1) } label: { Image(systemName: "chevron.left") }
                 .buttonStyle(GlassButtonStyle(circle: true, compact: true))
                 .accessibilityLabel("Previous Title")
+                .focused(focus, equals: .previous)
             Text(String(format: "%02d / %02d", index + 1, count))
                 .font(.custom(Theme.Face.condensed, size: 22 * Theme.scale).monospacedDigit())
                 .foregroundStyle(Theme.Palette.red)
@@ -251,6 +326,13 @@ private struct LeadPager: View {
             Button { step(1) } label: { Image(systemName: "chevron.right") }
                 .buttonStyle(GlassButtonStyle(circle: true, compact: true))
                 .accessibilityLabel("Next Title")
+                .focused(focus, equals: .next)
+            if let rotation {
+                Button { rotation.toggle() } label: { Image(systemName: rotation.stopped ? "play.fill" : "pause.fill") }
+                    .buttonStyle(GlassButtonStyle(circle: true, compact: true))
+                    .accessibilityLabel(rotation.stopped ? "Turn Automatic Rotation Back On" : "Stop Automatic Rotation")
+                    .focused(focus, equals: .rotation)
+            }
         }
     }
 }
@@ -267,13 +349,15 @@ struct LeadBlock: View {
     let dayTitle: String
     let dateLine: String
     let step: (Int) -> Void
+    /// The pause and play button in the pager, when the lead turns by itself.
+    var rotation: HomeView.Rotation?
+    /// Tells Home whether focus is inside the lead (Apple TV), so the title isn't turned out from under a focused button.
+    var engaged: (Bool) -> Void = { _ in }
     @Environment(AppModel.self) private var model
     /// A runtime fetched when the lead has none, which is the case for most picks.
     @State private var fetchedMinutes: Int?
-    #if os(tvOS)
-    /// Focus starts on Resume, so one press of Select carries on watching.
-    @FocusState private var resumeFocused: Bool
-    #endif
+    /// Where focus is inside the lead. Apple TV starts it on Resume, so one press of Select carries on watching.
+    @FocusState private var focus: LeadFocus?
 
     private var item: MediaItem { lead.item }
     private var minutes: Int? { lead.minutes ?? fetchedMinutes }
@@ -329,7 +413,7 @@ struct LeadBlock: View {
                     VStack(alignment: .leading, spacing: Theme.Space.m) {
                         words
                         actions
-                        if count > 1 { LeadPager(index: index, count: count, step: step) }
+                        if count > 1 { LeadPager(index: index, count: count, step: step, rotation: rotation, focus: $focus) }
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     backdrop.frame(width: backdropWidth)
@@ -339,12 +423,14 @@ struct LeadBlock: View {
                     words
                     actions
                     backdrop
-                    if count > 1 { LeadPager(index: index, count: count, step: step) }
+                    if count > 1 { LeadPager(index: index, count: count, step: step, rotation: rotation, focus: $focus) }
                 }
             }
         }
         #if os(tvOS)
-        .defaultFocus($resumeFocused, true)
+        .defaultFocus($focus, LeadFocus?.some(.resume))
+        .onChange(of: focus) { _, now in engaged(now != nil) }
+        .onDisappear { engaged(false) }
         #endif
         .task(id: item.id) { await fetchMinutes() }
     }
@@ -385,11 +471,10 @@ struct LeadBlock: View {
                     .frame(minWidth: primaryMinWidth)
             }
             .buttonStyle(PrimaryButtonStyle())
-            #if os(tvOS)
-            .focused($resumeFocused)
-            #endif
+            .focused($focus, equals: .resume)
             Button { model.navigate(to: .detail(item)) } label: { Text("Details") }
                 .buttonStyle(GlassButtonStyle())
+                .focused($focus, equals: .details)
         }
     }
 

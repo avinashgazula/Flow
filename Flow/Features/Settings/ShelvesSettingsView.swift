@@ -58,10 +58,11 @@ struct ShelvesSettingsView: View {
                     Text("None").tag(HeroSource?.none)
                     ForEach(HeroSource.allCases) { Text($0.title).tag(HeroSource?.some($0)) }
                 }
+                Toggle("Rotate Top Picks", isOn: $model.settings.general.heroAutoAdvance)
             } header: {
                 FilmSectionHeader("Top Pick")
             } footer: { FilmFooter {
-                Text("When nothing is in progress, Home leads with the first title from these sources.")
+                Text("Home leads with what is in progress, then the first titles from these sources, and turns through up to ten of them. Rotation pauses while you scroll, point at or focus on the top of Home, and never runs with Reduce Motion or VoiceOver on.")
             } }
 
             Section {
