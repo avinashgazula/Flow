@@ -6,6 +6,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Mac runners are few, so a side branch gets what catches a broken change: the builds on the Xcode versions that count,
+# FlowKit's tests and the player check (and ui-tests.yml). The Xcode 27 legs and the screenshot tour, half the Mac time,
+# run where the work lands (main and claude/build-flow-app) and on a branch when the workflow is started by hand: a full
+# run. The jobs that only a full run has say so in their `if`.
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -39,9 +44,7 @@ jobs:
 
   apple:
     name: Build ${{ matrix.scheme }} (Xcode ${{ matrix.xcode }})
-    runs-on: ${{ matrix.runner || 'macos-15' }}
-    # The Xcode 27 legs are new: they report, and don't hold the older legs' result hostage.
-    continue-on-error: ${{ matrix.experimental == true }}
+    runs-on: macos-15
     strategy:
       fail-fast: false
       matrix:
@@ -50,9 +53,48 @@ jobs:
           - { scheme: Flow-macOS, destination: "generic/platform=macOS", xcode: "26.3" }
           - { scheme: Flow-tvOS, destination: "generic/platform=tvOS Simulator", xcode: "26.3" }
           - { scheme: Flow-iOS, destination: "generic/platform=iOS Simulator", xcode: "16.4" }
-          - { scheme: Flow-iOS, destination: "generic/platform=iOS Simulator", xcode: "27", runner: xcode-27, experimental: true }
-          - { scheme: Flow-macOS, destination: "generic/platform=macOS", xcode: "27", runner: xcode-27, experimental: true }
-          - { scheme: Flow-tvOS, destination: "generic/platform=tvOS Simulator", xcode: "27", runner: xcode-27, experimental: true }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          if [ "${{ matrix.xcode }}" != "27" ]; then sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app; fi
+          xcodebuild -version
+          swift --version
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project Flow.xcodeproj \
+            -scheme "${{ matrix.scheme }}" \
+            -destination "${{ matrix.destination }}" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            -IDEBuildingContinueBuildingAfterErrors=YES \
+            > build.log 2>&1 || {
+              echo "::group::Errors"
+              grep -E "^/.*: error: " build.log | sed 's#^.*/Flow/Flow/##' | sort -u | head -120
+              echo "::endgroup::"
+              grep -E "^/.*: error: " build.log | sed 's#^.*/Flow/Flow/##' | sort -u | head -120 >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            }
+          echo "warnings: $(grep -c 'warning:' build.log || true)"
+
+  # The next Xcode: it reports, and doesn't hold the older legs' result hostage. Full runs only (see the note at the top).
+  apple-next:
+    name: Build ${{ matrix.scheme }} (Xcode 27)
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/build-flow-app'
+    runs-on: xcode-27
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { scheme: Flow-iOS, destination: "generic/platform=iOS Simulator", xcode: "27" }
+          - { scheme: Flow-macOS, destination: "generic/platform=macOS", xcode: "27" }
+          - { scheme: Flow-tvOS, destination: "generic/platform=tvOS Simulator", xcode: "27" }
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
@@ -84,7 +126,8 @@ jobs:
 
   screenshots:
     name: Screenshots (${{ matrix.platform }}, Xcode ${{ matrix.xcode }})
-    if: github.event_name == 'push'
+    # The tour on every platform and both Xcodes is the heaviest job here, so it runs on full runs only (see the note at the top).
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/build-flow-app'))
     needs: apple
     runs-on: ${{ matrix.runner || 'macos-15' }}
     continue-on-error: ${{ matrix.experimental == true }}
