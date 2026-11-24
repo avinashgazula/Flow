@@ -38,7 +38,9 @@ extension AppModel {
                                      link: SystemIntegration.url(for: key), playLink: SystemIntegration.playURL(for: key))
         }
 
-        FlowSnapshot(continueWatching: continuing, watchlist: watchlist, updatedAt: Date()).save()
+        let ink = ThemePalette.tokens(settings.general.theme, dark: true)
+        let colors = FlowSnapshot.Colors(ground: ink.bg, paper: ink.fg, muted: ink.muted, mark: ink.mark, track: ink.tint3)
+        FlowSnapshot(continueWatching: continuing, watchlist: watchlist, updatedAt: Date(), colors: colors).save()
         #if os(iOS)
         WidgetCenter.shared.reloadAllTimelines()
         #endif

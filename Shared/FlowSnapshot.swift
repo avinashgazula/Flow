@@ -18,9 +18,23 @@ struct FlowSnapshot: Codable {
         var playLink: URL?
     }
 
+    /// The dark side of the colour theme chosen in the app (a widget is always dark, over artwork), as 0xRRGGBB. The
+    /// extensions don't link FlowKit, so the app writes the colours itself. Absent in a file an older build wrote.
+    struct Colors: Codable, Hashable {
+        var ground: UInt32
+        var paper: UInt32
+        var muted: UInt32
+        var mark: UInt32
+        var track: UInt32
+
+        /// Admit One, the default theme.
+        static let admitOne = Colors(ground: 0x0D0B0A, paper: 0xF4F1EA, muted: 0xB6B0A7, mark: 0xFF5A4E, track: 0x37322E)
+    }
+
     var continueWatching: [Item]
     var watchlist: [Item]
     var updatedAt: Date
+    var colors: Colors?
 
     /// `group.<bundle id>`, set in each target's Info.plist so the app and extensions agree.
     static var appGroup: String? { Bundle.main.object(forInfoDictionaryKey: "FlowAppGroup") as? String }

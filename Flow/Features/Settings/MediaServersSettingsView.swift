@@ -12,7 +12,7 @@ struct MediaServersSettingsView: View {
             Section {
                 ForEach($model.settings.mediaServers.servers) { $server in
                     HStack(spacing: 12) {
-                        Circle().fill(reachable[server.id] == false ? Theme.Palette.red : reachable[server.id] == true ? Theme.Palette.blue : Theme.Palette.faint)
+                        Circle().fill(reachable[server.id] == false ? Theme.Palette.mark : reachable[server.id] == true ? Theme.Palette.fg : Theme.Palette.faint)
                             .frame(width: 9, height: 9)
                         Image(systemName: "server.rack").foregroundStyle(Theme.Palette.muted)
                         VStack(alignment: .leading, spacing: 3) {
