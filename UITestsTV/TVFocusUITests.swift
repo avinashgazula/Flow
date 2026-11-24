@@ -13,7 +13,7 @@ final class TVFocusUITests: XCTestCase {
         super.setUp()
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-FlowDemo", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launchArguments = ["-FlowDemo", "YES", "-FlowNoRotation", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         XCTAssertTrue(btn("Resume").waitForExistence(timeout: patience), "Home shows its lead, with Resume")
         // Focus lands a moment after the page does; the tests start from where it settles.

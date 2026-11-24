@@ -87,7 +87,7 @@ struct HomeView: View {
 
     private static let automated: Bool = {
         let defaults = UserDefaults.standard
-        // The UI tests keep the player's controls up, so that key tells them apart.
+        // The iPhone and iPad UI tests keep the player's controls up, so that key tells them apart; Apple TV's pass the other.
         return ScreenshotTour.isRequested || defaults.bool(forKey: "FlowNoRotation") || defaults.bool(forKey: "FlowKeepPlayerControls")
     }()
 
