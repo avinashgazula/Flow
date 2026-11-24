@@ -46,6 +46,7 @@ enum Contracts {
         "account-number": accountNumber,
         "account-crypto": accountCrypto,
         "account-wire": accountWire,
+        "account-link": accountLink,
         "sync-key": Contracts.syncKey,
         "sync-link": Contracts.syncLink,
         "source-parser": Contracts.sourceParser,
@@ -125,6 +126,20 @@ func dataFromHex(_ text: String) -> Data {
         index = next
     }
     return out
+}
+
+// MARK: - Account link
+
+private func accountLink(_ c: ContractCase) throws -> JSONValue {
+    switch c.op {
+    case "appLink":
+        guard let link = try? AccountLink(number: c.input["number"]?.string ?? "", server: c.input["server"]?.string ?? "") else { return .null }
+        return .string(link.url)
+    case "parse":
+        guard let link = try? AccountLink.parse(c.input.string ?? "") else { return .null }
+        return .object(["number": .string(link.number), "server": .string(link.server)])
+    default: throw ContractUnavailable(reason: "unknown op \(c.op ?? "nil")")
+    }
 }
 
 // MARK: - Account number

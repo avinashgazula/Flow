@@ -203,6 +203,14 @@ extension AppModel {
     }
 }
 
+/// A flow://account link waiting on its confirmation sheet. The plan is made when the link arrives, so what the sheet says
+/// doesn't change underneath it once the login starts.
+enum PendingAccountLink {
+    case open(AccountLink, AccountLinkPlan)
+    /// The link couldn't be read; the sentence says what to do next.
+    case unreadable(String)
+}
+
 // MARK: - Marquee Accounts
 
 /// Marquee Accounts in the app: when to talk to the account server, and how a pull lands in settings and the library
@@ -435,11 +443,12 @@ extension AppModel {
         }
     }
 
-    /// Logs in with a typed number. What this device holds is kept and merged with the account's, never dropped.
-    func logInToAccount(_ input: String) async -> String? {
+    /// Logs in with a typed number. What this device holds is kept and merged with the account's, never dropped. A link names
+    /// its server; a typed number uses the build's or the typed Account Server.
+    func logInToAccount(_ input: String, server named: URL? = nil) async -> String? {
         if isDemo { return "Leave the sample data to log in. It would have nothing of yours to sync." }
         if account != nil { return "This device is already logged in to an account." }
-        guard let server = accountServerURL else { return AccountError.noServer.errorDescription }
+        guard let server = named ?? accountServerURL else { return AccountError.noServer.errorDescription }
         while let running = accountInFlight { await running.value }
         do {
             let found = try await AccountLifecycle.login(number: input, server: server, http: http)
@@ -448,6 +457,31 @@ extension AppModel {
         } catch {
             return Self.accountMessage(error)
         }
+    }
+
+    /// The build's own account server, as an origin; nil for a build that names none.
+    var builtInAccountServer: String? { AccountServer.url(BundleKeys.accountServerHost)?.absoluteString }
+
+    /// What opening this account link should do here (see `AccountLinkPlan`).
+    func accountLinkPlan(for link: AccountLink) -> AccountLinkPlan {
+        AccountLinkPlan(link: link, current: account, builtInServer: builtInAccountServer)
+    }
+
+    /// Logs in with an account link from the website, on the server the person chose. A device that is logged in to another
+    /// account is switched the way Log Out and Log In would do it by hand: the account is checked first, so a wrong link can't
+    /// leave the device logged out, then `logOutOfAccount` (keeping or clearing this device's data as asked) and the usual
+    /// login. A build without a server of its own remembers the link's, as if it had been typed. Returns what went wrong, in
+    /// words, or nil.
+    func logIn(with link: AccountLink, plan: AccountLinkPlan, server: String, clearingData: Bool) async -> String? {
+        guard let url = URL(string: server) else { return AccountLinkError.invalidServer.errorDescription }
+        if account != nil, !isDemo {
+            while let running = accountInFlight { await running.value }
+            do { _ = try await AccountLifecycle.login(number: link.number, server: url, http: http) } catch { return Self.accountMessage(error) }
+            await logOutOfAccount(clearingData: clearingData)
+        }
+        let failure = await logInToAccount(link.number, server: url)
+        if failure == nil, let save = plan.serverToSave, save == server { accountServerText = save }
+        return failure
     }
 
     /// Runs the first sync. If it fails, this device stays as it was, and the problem comes back in words.

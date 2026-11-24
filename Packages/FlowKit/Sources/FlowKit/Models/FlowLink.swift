@@ -16,6 +16,9 @@ public enum FlowLink: Equatable, Sendable {
     case setup(String)
     /// `flow://sync?k=…&s=…&t=…`, a Flow Sync pairing link. Carries the whole link, which the Sync page reads.
     case sync(String)
+    /// `flow://account?n=…&s=…`, a link from the website that logs the app in to its Marquee Account. Carries the whole
+    /// link, which `AccountLink.parse` reads.
+    case account(String)
 
     /// Nil for anything Flow doesn't recognise, which is better ignored than answered with an error.
     public init?(url: URL) {
@@ -38,6 +41,7 @@ public enum FlowLink: Equatable, Sendable {
             self = .search(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "q" }?.value ?? "")
         case "setup": self = .setup(url.absoluteString)
         case "sync": self = .sync(url.absoluteString)
+        case "account": self = .account(url.absoluteString)
         default: return nil
         }
     }

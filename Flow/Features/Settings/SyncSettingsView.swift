@@ -526,6 +526,8 @@ struct MarqueeAccountSections: View {
                 model.showToast("Account number copied")
             }
             #endif
+            // What Apple TV's Account Server field needs, read off another device's screen.
+            LabeledContent("Account Server") { Text(URL(string: account.server)?.host ?? account.server) }
             LabeledContent("Last Synced") {
                 if let last = model.accountLastSynced {
                     Text(last, format: .relative(presentation: .numeric, unitsStyle: .wide))
@@ -612,7 +614,8 @@ private struct AccountServerSection: View {
             } header: {
                 FilmSectionHeader("Account Server")
             } footer: { FilmFooter {
-                Text("This build has no account server set. Enter the address of your Worker, the one from web/proxy, to create an account or log in.")
+                Text("This build has no account server set. Enter the address of your Worker, the one from web/proxy, to create an account or log in."
+                     + (Platform.isTV ? " Already logged in on another device? Settings → Account there shows the address to type here." : ""))
             } }
         }
     }
@@ -827,5 +830,149 @@ struct AccountNumberCard: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Account number")
             .accessibilityValue(number.map(String.init).joined(separator: " "))
+    }
+}
+
+// MARK: - Account links
+
+/// What opening a flow://account link from the website shows: which account on which server, then the login. A device that
+/// is logged in to another account is asked before it is switched, in the words of Log Out; a build with an account server
+/// of its own that the link doesn't name is asked which one to use.
+struct AccountLinkView: View {
+    let pending: PendingAccountLink
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    /// The server chosen when the build's and the link's differ; empty until then, which means the link's.
+    @State private var server = ""
+    @State private var working = false
+    @State private var failure: String?
+
+    var body: some View {
+        FilmForm {
+            switch pending {
+            case .unreadable(let message):
+                Section {
+                    Text(message)
+                    Button("Done") { close() }
+                } header: {
+                    FilmSectionHeader("Account Link")
+                }
+            case .open(let link, let plan):
+                content(link, plan)
+            }
+        }
+        .flowPageTitle("Marquee Account")
+        .inlineNavigationTitle()
+        .sheetDismissButton { if !working { close() } }
+    }
+
+    @ViewBuilder
+    private func content(_ link: AccountLink, _ plan: AccountLinkPlan) -> some View {
+        let chosen = server.isEmpty ? link.server : server
+        let host = URL(string: chosen)?.host ?? chosen
+        switch plan.relation {
+        case .sameAccount:
+            Section {
+                Text("This device is already logged in to Marquee account ending \(link.lastFour).")
+                Button("Done") { close() }
+            } header: {
+                FilmSectionHeader("Already Logged In")
+            } footer: { FilmFooter {
+                Text("Nothing was changed.")
+            } }
+        case .loggedOut:
+            Section {
+                Text("Log in to Marquee account ending \(link.lastFour) on \(host)?")
+            } header: {
+                FilmSectionHeader("Log In")
+            }
+            serverChoice(link, chosen: chosen)
+            Section {
+                actionButton("Log In", prominent: true) { run(link, plan, chosen, clearing: false) }
+                failureText
+            } footer: { FilmFooter {
+                Text("This device's settings and library are kept and merged with the account's. Nothing on it is dropped.")
+            } }
+        case .otherAccount:
+            Section {
+                Text(switchQuestion(link, host: host))
+            } header: {
+                FilmSectionHeader("Switch Account")
+            }
+            serverChoice(link, chosen: chosen)
+            Section {
+                actionButton("Switch and Keep This Device's Data", prominent: true) { run(link, plan, chosen, clearing: false) }
+                actionButton("Switch and Clear This Device", prominent: false, destructive: true) { run(link, plan, chosen, clearing: true) }
+                failureText
+            } footer: { FilmFooter {
+                Text("The account you leave keeps its data, and you can log back in with its number. Keeping this device's data adds it to the new account too. Clearing sets this device back to a fresh install.")
+            } }
+        }
+    }
+
+    private func switchQuestion(_ link: AccountLink, host: String) -> String {
+        let current = model.account.map { "ending \($0.number.suffix(4))" } ?? "that you were using"
+        return "This device is logged in to a Marquee account \(current). Switch to account ending \(link.lastFour) on \(host)?"
+    }
+
+    /// Only when the build names a server of its own that the link doesn't.
+    @ViewBuilder
+    private func serverChoice(_ link: AccountLink, chosen: String) -> some View {
+        if let builtIn = model.builtInAccountServer, builtIn != link.server {
+            Section {
+                ForEach([(link.server, "From the link"), (builtIn, "Built into this version of Marquee")], id: \.0) { option in
+                    Button { server = option.0 } label: {
+                        HStack(spacing: 14) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(URL(string: option.0)?.host ?? option.0).font(Theme.Typeface.headline).foregroundStyle(Theme.Palette.fg)
+                                Text(option.1).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted)
+                            }
+                            Spacer()
+                            if chosen == option.0 { Image(systemName: "checkmark").foregroundStyle(Theme.Palette.blue) }
+                        }
+                    }
+                    .disabled(working)
+                }
+            } header: {
+                FilmSectionHeader("Account Server")
+            } footer: { FilmFooter {
+                Text("This link is for \(URL(string: link.server)?.host ?? link.server), but this version of Marquee uses \(URL(string: builtIn)?.host ?? builtIn). Choose where your account is. If you're not sure, use the one from the link.")
+            } }
+        }
+    }
+
+    private func actionButton(_ title: String, prominent: Bool, destructive: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(role: destructive ? .destructive : nil, action: action) {
+            HStack {
+                Text(title)
+                if working, prominent { Spacer(); ProgressView() }
+            }
+        }
+        .disabled(working)
+    }
+
+    @ViewBuilder
+    private var failureText: some View {
+        if let failure { Text(failure).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.red) }
+    }
+
+    private func run(_ link: AccountLink, _ plan: AccountLinkPlan, _ chosen: String, clearing: Bool) {
+        failure = nil
+        working = true
+        Task {
+            let problem = await model.logIn(with: link, plan: plan, server: chosen, clearingData: clearing)
+            working = false
+            if let problem {
+                failure = problem
+            } else {
+                model.showToast("Logged in to account ending \(link.lastFour)")
+                close()
+            }
+        }
+    }
+
+    private func close() {
+        model.pendingAccountLink = nil
+        dismiss()
     }
 }

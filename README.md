@@ -33,6 +33,7 @@ See **[PLAN.md](PLAN.md)** for the full feature list and architecture.
   - Scrubbing previews on Apple TV, iPhone and iPad.
   - Each file's index is cached, so reopening it is quick.
 - **Sync**: Trakt sign-in (PKCE on iPhone, iPad and Mac, a device code on Apple TV; no client secret needed) or Simkl device sign-in, iCloud key-value sync (removals sync too, so something taken off a list stays off on every device), and Share/Import Setup by file, link or QR code.
+- **Marquee Accounts**: one 16-digit number keeps settings and library the same on the website and every app (see docs/SYNC.md). On the website, Settings → Account → Use This Account in the App shows a link and QR code that log an iPhone, iPad or Mac in without typing the number or the server.
 - **System**: a Continue Watching widget on iPhone and iPad, an Apple TV Top Shelf (Continue Watching with progress, and your Watchlist), Spotlight indexing, Handoff, `flow://` deep links, and Shortcuts/Siri actions for Continue Watching, Upcoming and Search. The widget and Top Shelf read a snapshot shared through the `group.<bundle id>` App Group, so enable App Groups for your team when you sign the app.
 - **Demo mode**: "Explore with Sample Data" fills every screen with real TMDb artwork and Apple's sample streams, no keys required.
 

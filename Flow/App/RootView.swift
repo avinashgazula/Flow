@@ -49,6 +49,13 @@ struct RootView: View {
                 .switchTint()
                 .environment(model)
         }
+        .flowModal(isPresented: Binding(get: { model.pendingAccountLink != nil }, set: { if !$0 { model.pendingAccountLink = nil } })) {
+            if let pending = model.pendingAccountLink {
+                NavigationStack { AccountLinkView(pending: pending) }
+                    .switchTint(model.settings.general.accent)
+                    .environment(model)
+            }
+        }
         .flowModal(item: $model.sourcePickerRequest) { request in
             SourcePickerView(request: request)
                 .environment(model)
