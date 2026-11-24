@@ -197,7 +197,8 @@ extension AppModel {
         if Platform.externalPlayers.contains(settings.playback.externalPlayer),
            let launch = settings.playback.externalPlayer.launchURL(for: url, position: resume, filename: source.filename) {
             openExternally(launch)
-            Task { try? await tracker.scrobble(.start, request: request, percent: 0) }
+            // An external player can't say how far you got, so this is the only word the service hears from it.
+            if settings.account.scrobble { Task { try? await tracker.scrobble(.start, request: request, percent: 0) } }
             return
         }
         // A new title (from Siri, a link, or Handoff) replaces one already playing: save its place and let it go.

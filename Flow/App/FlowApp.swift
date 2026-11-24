@@ -45,7 +45,10 @@ struct FlowApp: App {
                         model.scheduleNotificationRefresh()
                         model.syncNow()
                     }
+                    // Leaving mid-film must tell Trakt and Simkl where it stopped; coming back says it plays again.
+                    if phase == .active { model.activePlayback?.appReturned() }
                     if phase == .background {
+                        model.activePlayback?.appLeft()
                         model.flushSettings(waits: true)
                         model.flushAccount()
                     }
@@ -53,6 +56,7 @@ struct FlowApp: App {
                 #if os(macOS)
                 .opensSettingsOnRequest(model)
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                    model.activePlayback?.appWillTerminate()
                     model.flushSettings(waits: true)
                 }
                 #endif
