@@ -81,9 +81,19 @@ describe('pickSubtitle', () => {
     expect(pickSubtitle(subs, { audioLanguage: 'ja', preferences: prefs('foreign', ['fr']) })).toBeNull()
   })
 
-  it('Foreign Audio Only: audio nobody can name doesn’t count as foreign', () => {
-    expect(pickSubtitle([subs[0]!], { preferences: prefs('foreign') })).toBeNull()
-    expect(pickSubtitle([subs[0]!], { audioLanguage: 'und', preferences: prefs('foreign') })).toBeNull()
+  it('Foreign Audio Only: audio nobody can name is taken to be in the title’s original language', () => {
+    expect(pickSubtitle([subs[0]!], { originalLanguage: 'en', preferences: prefs('foreign') })).toBeNull()
+    expect(pickSubtitle([subs[0]!], { audioLanguage: 'und', originalLanguage: 'en-US', preferences: prefs('foreign') })).toBeNull()
+    expect(pickSubtitle(subs, { audioLanguage: 'und', originalLanguage: 'ko', preferences: prefs('foreign') })?.id).toBe('s0')
+  })
+
+  it('Foreign Audio Only: audio and original language both unknown counts as foreign', () => {
+    expect(pickSubtitle([subs[0]!], { preferences: prefs('foreign') })?.id).toBe('s0')
+    expect(pickSubtitle([subs[0]!], { audioLanguage: 'und', preferences: prefs('foreign') })?.id).toBe('s0')
+  })
+
+  it('a labelled track beats the original language', () => {
+    expect(pickSubtitle([subs[0]!], { audioLanguage: 'en', originalLanguage: 'ko', preferences: prefs('foreign') })).toBeNull()
   })
 
   it('Foreign Audio Only: needs a language of my own to compare with', () => {
@@ -97,9 +107,10 @@ describe('pickSubtitle', () => {
     expect(pickSubtitle(subs, { audioLanguage: 'en', preferences: prefs('always', ['de']) })).toBeNull()
   })
 
-  it('Off: none, but the forced track for the audio’s own language stays on', () => {
+  it('Off: nothing shows, forced tracks included', () => {
     expect(pickSubtitle(subs, { audioLanguage: 'ko', preferences: prefs('off') })).toBeNull()
-    expect(pickSubtitle(subs, { audioLanguage: 'en', preferences: prefs('off') })?.id).toBe('s1')
+    expect(pickSubtitle(subs, { audioLanguage: 'en', preferences: prefs('off') })).toBeNull()
+    expect(pickSubtitle(subs, { audioLanguage: 'und', originalLanguage: 'en', preferences: prefs('off') })).toBeNull()
     expect(pickSubtitle(subs, { audioLanguage: 'en', preferences: prefs('foreign') })?.id).toBe('s1')
     expect(pickSubtitle(subs, { preferences: prefs('off') })).toBeNull()
   })

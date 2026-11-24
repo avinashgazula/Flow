@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { incompleteKey } from './crypto'
-import { appLink, normaliseServer, parsePairing, serverFromProxy, webLink } from './pairing'
+import { appLink, joinTarget, normaliseServer, parsePairing, serverFromProxy, webLink } from './pairing'
 
 const key = Uint8Array.from({ length: 16 }, (_, i) => i)
 const text = '000G40R40M30E209185GR38E1W'
@@ -67,5 +67,22 @@ describe('the pairing link', () => {
     expect(parsePairing('#sync=s=x')).toEqual({ ok: false, error: incompleteKey })
     expect(parsePairing('hello')).toEqual({ ok: false, error: incompleteKey })
     expect(parsePairing(`#sync=k=${text}&s=ftp%3A%2F%2Fx`)).toMatchObject({ ok: false })
+  })
+})
+
+describe('joinTarget', () => {
+  const key = new Uint8Array(16) as Uint8Array<ArrayBuffer>
+  const own = { server: 'https://own.example', token: 'own-token' }
+
+  it('takes the link’s server, and this site’s token when it is the same server and the link has none', () => {
+    expect(joinTarget({ key, server: 'https://a.example', token: 't' }, own)).toEqual({ server: 'https://a.example', token: 't' })
+    expect(joinTarget({ key, server: 'https://a.example' }, own)).toEqual({ server: 'https://a.example', token: '' })
+    expect(joinTarget({ key, server: own.server }, own)).toEqual(own)
+  })
+
+  it('gives a key with no server this site’s own, and nothing when there is none', () => {
+    expect(joinTarget({ key }, own)).toEqual(own)
+    expect(joinTarget({ key, token: 'mine' }, own)).toEqual({ server: own.server, token: 'mine' })
+    expect(joinTarget({ key }, null)).toBeNull()
   })
 })

@@ -290,6 +290,7 @@ This document is the contract between the Worker, the web app and the Apple apps
 - **The server.** The Worker's origin, e.g. `https://flow-stream-proxy.example.workers.dev`, plus its `TOKEN`.
   - On the web, both come from the stream proxy setting: the origin of the template URL and its `token=` value.
   - In the apps they are typed or come from the link.
+  - A key with no server in it (a link without `s`, or the key alone) is accepted and joins this build's own server: the apps use the account server (the `FLOW_ACCOUNT_SERVER_HOST` build setting, or the one typed under Account Server), the website its stream proxy's Worker or the address typed. Only a build with no server of its own refuses, with "This build has no account server set. Enter the address of your Worker under Account Server." (the website asks for the address instead).
 - **The pairing link.** It carries all three:
   - `flow://sync?k=<key without dashes>&s=<server origin, URL-encoded>&t=<token, URL-encoded>`
   - Web form: `<site origin>/settings#sync=k=<key>&s=<server>&t=<token>`. The fragment never reaches a server log.

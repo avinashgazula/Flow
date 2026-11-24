@@ -451,8 +451,11 @@ What a web page can do, checked against the live services:
 **Selection** (`player/languages.ts`, with the apps' `TrackSelection` rules): Show Subtitles has Forced Only beside Foreign Audio
 Only, Always and Off; Subtitle Type (Standard or SDH) decides between two tracks of one language, in the file and in search
 results; Anime Audio (No Preference, Sub, Dub) applies to Japanese animation (TMDB's Animation genre with Japanese as the original
-language): Sub plays Japanese audio and always shows subtitles, Dub shows none, not even forced ones. A subtitle in the file is
-taken before one from a search.
+language): Sub plays Japanese audio and always shows subtitles, Dub shows none, not even forced ones. Off shows nothing, forced
+tracks included (Forced Only is the setting for just those). An audio track with no language label is taken to be in the title's
+original language (TMDB's `original_language`), so an English film with an unlabelled soundtrack gets no full subtitles for an
+English viewer and a Korean one gets them; when the original language is unknown too the soundtrack counts as foreign. A subtitle in
+the file is taken before one from a search.
 
 **ASS styling.** Settings → Playback → Keep Original ASS Styling (off, as in the apps) draws ASS and SSA files the way their author
 styled them, with libass through JASSUB 2.5.18 (`player/ass.ts`). A renderer of our own would be a partial libass, so JASSUB it is;

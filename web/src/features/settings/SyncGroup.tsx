@@ -5,7 +5,7 @@ import { useSettings } from '../../lib/store/settings'
 import { loadConfig } from '../../lib/sync/config'
 import { groupKey } from '../../lib/sync/crypto'
 import { joinSync, pairingLink, syncNow, syncStatus, turnOff, turnOffAndErase, turnOn } from '../../lib/sync/engine'
-import { normaliseServer, parsePairing, serverFromProxy, type Pairing } from '../../lib/sync/pairing'
+import { joinTarget, normaliseServer, parsePairing, serverFromProxy, type Pairing } from '../../lib/sync/pairing'
 import { accountIsOn } from '../../lib/account/config'
 import { WriteItDown } from './AccountGroup'
 import { ago } from './ago'
@@ -191,10 +191,10 @@ export function SyncGroup() {
   }
 
   async function join(pairing: Pairing) {
-    let target = pairing.server ? { server: pairing.server, token: pairing.token ?? '' } : server()
-    if (typeof target === 'string') return setNote({ tone: 'error', text: `That link doesn’t say where your Worker is. ${target}` })
-    // A link with a server but no token: the Worker may have none, or the token comes from the stream proxy.
-    if (pairing.server && !pairing.token && fromProxy?.server === pairing.server) target = { server: pairing.server, token: fromProxy.token }
+    // A link with no server uses this site's own; with a server but no token, the Worker may have none, or the token comes from the stream proxy.
+    const own = server()
+    const target = joinTarget(pairing, typeof own === 'string' ? null : own)
+    if (!target) return setNote({ tone: 'error', text: `That link doesn’t say where your Worker is. ${own as string}` })
     setNote(undefined)
     setBusy('join')
     const result = await joinSync({ ...pairing, ...target })

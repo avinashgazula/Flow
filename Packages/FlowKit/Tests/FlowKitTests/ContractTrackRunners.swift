@@ -45,7 +45,7 @@ extension Contracts {
             if picked["subtitle"]?.string == "off" { value.subtitlesOff = true } else { value.subtitleLanguage = picked["subtitle"]?.string }
             choice = value
         }
-        let decision = TrackSelection.decide(audio: audio, subtitles: subtitles, playback: playback, subtitleSettings: settings, isAnime: anime != nil, showChoice: choice)
+        let decision = TrackSelection.decide(audio: audio, subtitles: subtitles, playback: playback, subtitleSettings: settings, isAnime: anime != nil, showChoice: choice, originalLanguage: input["originalLanguage"]?.string)
         let subtitle: JSONValue
         switch decision.subtitle {
         case .off: subtitle = .object(["kind": .string("off")])

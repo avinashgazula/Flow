@@ -2146,6 +2146,96 @@
    ]
   },
   {
+   "name": "custom rules: Dolby Vision over HDR10+ over HDR10, and HDR10 counts as HDR",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "hdr": [
+       "HDR10"
+      ]
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "hdr": [
+       "DV",
+       "HDR10"
+      ]
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "4",
+      "category": "addons",
+      "provider": "a",
+      "title": "4",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "hdr": [
+       "HDR10+"
+      ]
+     }
+    ],
+    "custom": true,
+    "rules": [
+     {
+      "key": "hdr",
+      "descending": true
+     }
+    ],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": true,
+    "audioLanguage": null
+   },
+   "expected": [
+    "2",
+    "4",
+    "1",
+    "3"
+   ]
+  },
+  {
    "name": "custom rules: preferred languages in order",
    "op": "arrange",
    "input": {
@@ -2696,6 +2786,87 @@
       "quality": "WEB-DL",
       "hdr": [
        "HDR"
+      ]
+     },
+     {
+      "id": "2",
+      "category": "addons",
+      "provider": "a",
+      "title": "2",
+      "resolution": 1080,
+      "quality": "WEB-DL"
+     },
+     {
+      "id": "3",
+      "category": "addons",
+      "provider": "a",
+      "title": "3",
+      "resolution": 2160,
+      "quality": "WEB-DL",
+      "hdr": [
+       "DV"
+      ]
+     },
+     {
+      "id": "4",
+      "category": "addons",
+      "provider": "a",
+      "title": "4",
+      "resolution": 2160,
+      "quality": "WEB-DL"
+     }
+    ],
+    "custom": true,
+    "rules": [],
+    "categoryOrder": [
+     "mediaServers",
+     "webDAV",
+     "iptv",
+     "addons"
+    ],
+    "providers": [
+     {
+      "id": "a",
+      "category": "addons"
+     }
+    ],
+    "providerOrder": {},
+    "filters": {
+     "excludeCinemaCaptures": true,
+     "excludeUncached": false,
+     "minSizeGB": null,
+     "maxSizeGB": null,
+     "minResolution": 0,
+     "requiredKeywords": [],
+     "excludedKeywords": [],
+     "preferredLanguages": [],
+     "excludedCodecs": []
+    },
+    "cap": null,
+    "hdrScreen": false,
+    "audioLanguage": null
+   },
+   "expected": [
+    "2",
+    "1",
+    "4",
+    "3"
+   ]
+  },
+  {
+   "name": "a screen without HDR puts a provider's SDR before HDR10 at the same resolution",
+   "op": "arrange",
+   "input": {
+    "sources": [
+     {
+      "id": "1",
+      "category": "addons",
+      "provider": "a",
+      "title": "1",
+      "resolution": 1080,
+      "quality": "WEB-DL",
+      "hdr": [
+       "HDR10"
       ]
      },
      {
