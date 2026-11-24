@@ -137,6 +137,7 @@ and 26.3, so code must compile on both: wrap iOS 26-only symbols in `#if compile
 - Don't disable or skip tests to get green.
 - **Commit messages** describe what changed for the person using the app, in plain sentences.
   Look at `git log` for the house style.
-- **Pushing** to `main` or a `claude/**` branch runs CI. CI builds all schemes, runs FlowKit tests on
-  macOS and Linux, and runs the screenshot tour on every platform. It publishes the screenshots to
-  the `ci-screenshots` branch.
+- **Pushing** to `main` or a `claude/**` branch runs CI: it builds all schemes (Xcode 26.3, and 16.4 for iOS), runs
+  FlowKit tests on macOS and Linux, the player check and the UI tests. Mac runners are few, so the Xcode 27 builds and
+  the screenshot tour on every platform run only on `main` and `claude/build-flow-app`, or on any branch when CI is
+  started by hand (workflow_dispatch). The tour's screenshots go to the `ci-screenshots` branch.
