@@ -57,8 +57,10 @@ final class iPadLayoutUITests: FlowUITestCase {
         XCTAssertTrue(backdrop.waitForExistence(timeout: patience), "and shows its backdrop")
         // On a phone the plate sits under the picture; on a wide screen the picture spans the page and the plate lies over
         // its lower-left corner.
+        // A landscape iPad may show the sidebar, so the page is narrower than the window: the picture only has to take most
+        // of it. What tells the layouts apart is where Resume is: on the picture now, in a column beside it before.
         let window = app.windows.firstMatch.frame
-        XCTAssertGreaterThan(backdrop.frame.width, window.width * 0.8, "the picture spans the page")
+        XCTAssertGreaterThan(backdrop.frame.width, window.width * 0.6, "the picture spans the page")
         XCTAssertTrue(backdrop.frame.insetBy(dx: -1, dy: -1).contains(resume.frame), "Resume sits on the picture, not beside or under it")
         XCTAssertLessThan(resume.frame.midX, backdrop.frame.midX, "in its left half")
         XCTAssertGreaterThan(resume.frame.midY, backdrop.frame.midY, "and its lower half")
