@@ -91,10 +91,9 @@
   --fs-title2: 28px;
   --fs-title1: 36px;
   --fs-page-title: 34px; /* a screen's own heading (a title page, a person); the giant page head is --fs-display */
-  /* The title at the top of every screen is set at the scale of Home's lead, so the top of each page reads the same.
-     --fs-display is what a short lead name gets (Lead.module.css reads it as its --base) and a title page's name; it
-     steps up with the width. A lead name of nine to sixteen letters, the usual, takes 0.82 of it, and --fs-head, the
-     section pages' title (Search, Library, Settings), is that size, so the two match. */
+  /* The title at the top of a page is set at one scale, so the top of each page reads the same. --fs-display is what a
+     title page's name gets; it steps up with the width. --fs-head, the section pages' title (Search, Library,
+     Settings), is 0.82 of it. Home's lead name sits on a plate and has its own smaller size (Lead.module.css). */
   --fs-display: clamp(44px, 13.5vw, 72px);
   --fs-head: calc(var(--fs-display) * 0.82);
   --measure: 62ch;

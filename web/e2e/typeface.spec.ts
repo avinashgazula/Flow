@@ -3,7 +3,7 @@ import { go, reload } from './helpers'
 import { routes } from './sitemap'
 
 /* The typeface: Appearance's choice sets the interface and body text at once and is kept, the labels stay Plex Mono
-   whatever is chosen, only the chosen web font is downloaded, and every page's title is no bigger than Home's lead. */
+   whatever is chosen, only the chosen web font is downloaded, and every page's title is no bigger than the display scale. */
 
 const family = (page: Page, selector: string) => page.locator(selector).first().evaluate((el) => getComputedStyle(el).fontFamily)
 const bodyFace = (page: Page) => page.evaluate(() => getComputedStyle(document.body).fontFamily)
@@ -94,16 +94,17 @@ test.describe('typeface', () => {
 })
 
 test.describe('page titles', () => {
-  test('are no bigger than the title of Home’s lead, so the top of every page reads at one scale', async ({ boot, page }) => {
+  test('are no bigger than the display scale, and Home’s lead, set on its plate, is smaller than any of them', async ({ boot, page }) => {
     await boot('/')
     await expect(page.getByRole('heading', { name: 'Continue Watching' })).toBeVisible()
-    // The lead's title is the largest Archivo heading on Home.
+    // The lead's title is the largest Archivo heading on Home. It sits on a paper plate over the picture, so it is set
+    // smaller than a page's title, which takes the display scale (--fs-display).
     const lead = await page.evaluate(() => {
       const sizes = [...document.querySelectorAll('h1, h2')].filter((el) => getComputedStyle(el).fontFamily.includes('Archivo')).map((el) => parseFloat(getComputedStyle(el).fontSize))
       return Math.max(0, ...sizes)
     })
-    expect(lead).toBeGreaterThan(40)
-    expect(lead).toBeLessThan(110)
+    expect(lead).toBeGreaterThan(30)
+    expect(lead).toBeLessThan(60)
 
     const places = [...routes.filter((r) => ['Explore', 'Search', 'Library', 'Live TV', 'Settings', 'A film', 'A person', 'A collection', 'An address the site doesn’t have'].includes(r.name)), { name: 'Upcoming', path: '/library?list=upcoming' }, { name: 'History', path: '/library?list=history' }, { name: 'Stats', path: '/library?list=stats' }, { name: 'Sports', path: '/library?list=sports' }]
     for (const r of places) {
@@ -111,7 +112,15 @@ test.describe('page titles', () => {
       const h1 = page.getByRole('heading', { level: 1 }).first()
       await expect(h1, r.name).toBeVisible()
       const px = await h1.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
-      expect(px, `${r.name}: the page title (${px}px) against Home's lead (${lead}px)`).toBeLessThanOrEqual(lead + 0.5)
+      const display = await h1.evaluate((el) => {
+        const probe = document.createElement('div')
+        probe.style.fontSize = 'var(--fs-display)'
+        el.appendChild(probe)
+        const size = parseFloat(getComputedStyle(probe).fontSize)
+        probe.remove()
+        return size
+      })
+      expect(px, `${r.name}: the page title (${px}px) against the display scale (${display}px)`).toBeLessThanOrEqual(display + 0.5)
       expect(await h1.evaluate((el) => getComputedStyle(el).fontFamily), r.name).toContain('Archivo')
     }
   })
