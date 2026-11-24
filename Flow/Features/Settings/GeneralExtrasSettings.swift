@@ -80,6 +80,73 @@ struct AppIconSection: View {
 }
 #endif
 
+/// The colour theme, as rows that each show their own four colours: a menu can't draw swatches. The change applies at
+/// once because every colour token reads the choice (`ThemeState`). Appearance still chooses between a theme's light and
+/// dark sides.
+struct ThemeSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Section {
+            ForEach(ThemeChoice.allCases) { row($0) }
+        } header: {
+            FilmSectionHeader("Theme")
+        } footer: { FilmFooter {
+            Text("Admit One marks and acts in the red of the ticket icon. Index marks in red and acts in blue. Opening Night marks in red and acts in gold. Each has a light and a dark side; Appearance picks between them.")
+        } }
+    }
+
+    private func row(_ choice: ThemeChoice) -> some View {
+        let selected = model.settings.general.theme == choice
+        return Button { model.settings.general.theme = choice } label: { ThemeRow(choice: choice, selected: selected) }
+        #if !os(tvOS)
+        .buttonStyle(.plain)
+        #endif
+        .id("theme-\(choice.rawValue)")
+        .accessibilityLabel(choice.title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// One theme: its paper, ink, mark and action colours in a ruled strip, then its name. Apple TV draws a button's label in
+/// the app's tint, so the row sets ink itself and flips to on-spot when focused, as `TypefaceRow` does.
+private struct ThemeRow: View {
+    let choice: ThemeChoice
+    let selected: Bool
+    @Environment(\.isFocused) private var focused
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let tokens = ThemePalette.tokens(choice, dark: colorScheme == .dark)
+        HStack(spacing: Theme.Space.m) {
+            HStack(spacing: 0) {
+                // By position: Admit One's mark and action are one colour, so the values aren't unique.
+                ForEach(Array([tokens.bg, tokens.fg, tokens.mark, tokens.spot].enumerated()), id: \.offset) { _, hex in
+                    Color(hex: hex).frame(width: 14 * Theme.scale)
+                }
+            }
+            .frame(height: 24 * Theme.scale)
+            // The paper swatch is nearly the page's own colour, so the strip is framed in ink.
+            .overlay(Rectangle().strokeBorder(Theme.Palette.fg, lineWidth: Theme.Rule.thin))
+            .accessibilityHidden(true)
+            Text(choice.title)
+                .font(Theme.Typeface.interface(.regular, 15, .subheadline))
+                #if os(tvOS)
+                .foregroundStyle(focused ? Theme.Palette.onSpot : Theme.Palette.fg)
+                #endif
+            Spacer()
+            if selected {
+                #if os(tvOS)
+                Image(systemName: "checkmark").foregroundStyle(focused ? Theme.Palette.onSpot : Color.accentColor)
+                #else
+                Image(systemName: "checkmark").foregroundStyle(Color.accentColor)
+                #endif
+            }
+        }
+        .contentShape(Rectangle())
+    }
+}
+
 /// The typeface of buttons, rows, settings and body text. A menu can't show each name in its own face, so the choices
 /// are rows; a change applies at once because the design tokens read the choice (`InterfaceFace`).
 struct TypefaceSection: View {

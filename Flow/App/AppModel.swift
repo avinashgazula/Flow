@@ -273,6 +273,16 @@ final class AppModel {
         configureImageCache()
         applyAudioDecoding()
         applyTypeface()
+        applyTheme()
+    }
+
+    /// Hands the colour theme to `ThemeState`, which every colour token reads: a change repaints at once. UIKit's segmented
+    /// controls are styled through the appearance proxy, which only reaches controls made afterwards, so it is set again.
+    private func applyTheme() {
+        ThemeState.shared.choice = settings.general.theme
+        #if os(iOS)
+        FilmAppearance.install()
+        #endif
     }
 
     /// Hands the typeface choice to `InterfaceFace`, which the design tokens read (and which redraws what uses them).
@@ -369,6 +379,11 @@ final class AppModel {
     private func settingsDidChange(from old: AppSettings) {
         if old.playback.decodeLosslessAudio != settings.playback.decodeLosslessAudio { applyAudioDecoding() }
         if old.general.font != settings.general.font { applyTypeface() }
+        if old.general.theme != settings.general.theme {
+            applyTheme()
+            // The widget and the Top Shelf draw in the theme's colours too.
+            Task { await publishSnapshot() }
+        }
         let servicesChanged = old.metadata != settings.metadata
             || old.account != settings.account
             || old.mediaServers.servers != settings.mediaServers.servers
