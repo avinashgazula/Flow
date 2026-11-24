@@ -110,8 +110,11 @@ export type SubtitleDecision =
   | { kind: 'search'; languages: string[]; fallback: TrackInfo | null }
 
 export interface SubtitleChoiceInput {
-  /** What will be heard (undefined when nobody can say, which never counts as foreign). */
+  /** What will be heard, when the track or release says. */
   audioLanguage?: string
+  /** The language the title was made in. A soundtrack with no language label is taken to be in it; when that is
+   *  unknown too, the soundtrack counts as foreign (missing subtitles hurt more than extra ones), as in the apps. */
+  originalLanguage?: string
   preferences: Pick<LanguagePreferences, 'subtitleLanguages' | 'subtitleMode' | 'subtitleType'>
   choice?: TitleChoice
   /** Set for anime when Anime Audio is Sub (subtitles always) or Dub (none, not even forced ones). */
@@ -129,7 +132,7 @@ export function decideSubtitle(subtitles: TrackInfo[], o: SubtitleChoiceInput): 
   if (choice?.subtitle === null) return off
 
   const general = o.preferences.subtitleLanguages
-  const heard = baseLanguage(o.audioLanguage)
+  const heard = baseLanguage(o.audioLanguage) ?? baseLanguage(o.originalLanguage)
   /** A full subtitle: in the file before online, first language before the next. Nothing there means a search. */
   const full = (languages: string[]): SubtitleDecision => {
     for (const pool of [usable.filter((t) => !t.online), usable.filter((t) => t.online)]) {
@@ -162,7 +165,7 @@ export function decideSubtitle(subtitles: TrackInfo[], o: SubtitleChoiceInput): 
   if (o.anime === 'dub') return off
   const mine = general[0]
   const mode = o.anime === 'sub' ? 'always' : o.preferences.subtitleMode
-  const foreign = !!heard && !!mine && !sameLanguage(heard, mine)
+  const foreign = !!mine && !sameLanguage(heard, mine)
   const own = heard ? [heard] : []
   switch (mode) {
     case 'always':
@@ -172,9 +175,8 @@ export function decideSubtitle(subtitles: TrackInfo[], o: SubtitleChoiceInput): 
     case 'foreign':
       return mine && foreign ? full(general) : forced(own)
     default:
-      // Even with subtitles off a film's forced track for its own audio stays on: it translates the
-      // lines the audio leaves in another language, as Apple's players do.
-      return forced(own)
+      // Off means off, forced lines included (as in the apps). Forced Only is the setting for just those.
+      return off
   }
 }
 

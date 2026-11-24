@@ -1,6 +1,6 @@
 {
  "area": "track-selection",
- "description": "Which audio track and subtitle a stream starts with (FlowKit TrackSelection.decide, web/src/features/player/languages.ts). The website's Off mode and a forced track in the audio's own language when no setting asks for one are not compared: see the report.",
+ "description": "Which audio track and subtitle a stream starts with (FlowKit TrackSelection.decide, web/src/features/player/languages.ts). Off shows nothing, forced tracks included. An audio track with no language label is taken to be in the title's original language (originalLanguage, null when unknown); with that unknown too it counts as foreign. Forced Only's own-language forced track beyond the viewer's subtitle languages is not compared: the apps look only at the subtitle languages.",
  "cases": [
   {
    "name": "the first preferred language the file has plays",
@@ -1506,6 +1506,646 @@
     "audio": 1,
     "subtitle": {
      "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "off: a forced track in the audio's own language does not show",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": null
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "off: a forced track does not show for an unlabelled track in the original language",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "und"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "never",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "en"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "foreign: a track tagged und in an English film is not foreign, only the forced track shows",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "und"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "en"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "foreign: an empty tag in an English film is not foreign, only the forced track shows",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": ""
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "en"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "foreign: an unlabelled track in an English film with no forced track means none",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "und"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "en"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "off"
+    }
+   }
+  },
+  {
+   "name": "foreign: a regional original language still counts as the viewer's language",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "unk"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "en-US"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "foreign: an unlabelled track in a Korean film gets full subtitles",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "und"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "ko"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "foreign: an unlabelled track in a Korean film with no subtitles in the file means a search",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "mul"
+     }
+    ],
+    "subtitles": [],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "ko"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "search",
+     "languages": [
+      "en"
+     ]
+    }
+   }
+  },
+  {
+   "name": "foreign: an unlabelled track and an unknown original language counts as foreign",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "und"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": null
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "foreign: an unlabelled track and an undetermined original language counts as foreign",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "zxx"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "und"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "foreign: a labelled track beats the original language",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "en"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "ko"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "foreign: a labelled foreign track beats an English original language",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "ko"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "foreign",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "en"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "forced only: an unlabelled track in an English film plays the forced English track",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "und"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "forced",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "en"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "forced only: an unlabelled track and an unknown original language still plays only forced",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "und"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "forced",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": null
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 11
+    }
+   }
+  },
+  {
+   "name": "always: an unlabelled track in a Korean film still gets full subtitles",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "und"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "ko"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
+    }
+   }
+  },
+  {
+   "name": "always: an unlabelled track in an English film still gets full subtitles",
+   "op": "decide",
+   "input": {
+    "audio": [
+     {
+      "id": 1,
+      "language": "und"
+     }
+    ],
+    "subtitles": [
+     {
+      "id": 10,
+      "language": "en"
+     },
+     {
+      "id": 11,
+      "language": "en",
+      "forced": true
+     }
+    ],
+    "audioLanguages": [
+     "en"
+    ],
+    "subtitleLanguages": [
+     "en"
+    ],
+    "mode": "always",
+    "type": "standard",
+    "anime": null,
+    "choice": {},
+    "originalLanguage": "en"
+   },
+   "expected": {
+    "audio": 1,
+    "subtitle": {
+     "kind": "track",
+     "id": 10
     }
    }
   }
