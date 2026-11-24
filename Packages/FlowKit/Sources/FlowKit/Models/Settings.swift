@@ -87,7 +87,10 @@ public enum FontChoice: String, Codable, Hashable, Sendable, CaseIterable, Ident
 }
 
 public struct GeneralSettings: Codable, Hashable, Sendable {
+    /// Kept so older data and older builds still read it; the colour theme replaced it as what tints the controls.
     public var accent: AccentColorChoice = .white
+    /// The colours: Admit One, Index or Opening Night, each with a light and a dark side (`ThemePalette`).
+    public var theme: ThemeChoice = .admitOne
     /// Interface and body text; headings, titles and reading text keep their own faces.
     public var font: FontChoice = .system
     /// Light or dark paper; System follows the device (Apple TV always does).
