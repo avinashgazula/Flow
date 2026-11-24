@@ -18,6 +18,7 @@ them on every push to `main` or a `claude/**` branch.
 | App UI tests | Real taps reach real screens on iPhone and iPad; every main screen passes an accessibility audit and works at the largest text size; Apple TV always has exactly one thing focused | `UITests`, `UITestsTV` | `scripts/ui-test.sh ios` (also `ipad`, `tvos`) | UI tests (ios, ipad, tvos) |
 | Player check | Both player engines play, seek, switch tracks, resume and fail properly on a real simulator and the Mac | `Flow/App/PlayerCheck.swift` | `scripts/player-check.sh ios` (also `tvos`, `macos`, `ipad`) | Player check (ios, tvos, macos) |
 | Screenshot tour | Every main screen still draws; the screenshots are published for a person to look at | `Flow/App/ScreenshotTour.swift` | `scripts/sim.sh tour ios` | Screenshots |
+| AltStore source | The release workflow's `source.json` update adds, replaces and trims versions, and the result has every field AltStore requires | `scripts/test_altstore_source.py` | `python3 scripts/test_altstore_source.py` | Not in CI yet |
 
 ## Rules
 
