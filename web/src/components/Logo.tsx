@@ -3,7 +3,7 @@ import s from './Logo.module.css'
 /* Marquee's mark, drawn in the page rather than loaded: the name in the condensed face over a row of red
    bulbs, as on the sign above a cinema door. It takes its colours from the cell it sits in (the blue block's
    text colour is the lettering and the bulbs' rim), so it reads in both themes. Static on purpose.
-   public/icon.svg is the compact version (an M and one bulb) for the favicon and the installed app's icon. */
+   public/icon.svg is the app icon (the Admit One ticket) for the favicon and the installed app's icon. */
 
 const bulbs = 7
 
