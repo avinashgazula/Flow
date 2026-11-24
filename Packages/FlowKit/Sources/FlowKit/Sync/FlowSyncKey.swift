@@ -5,6 +5,7 @@ public enum FlowSyncError: Error, LocalizedError, Equatable, Sendable {
     case incompleteKey
     case invalidLink
     case invalidServer
+    case noServer
     case unreachable
     case keyMismatch
     case tooLarge
@@ -22,6 +23,7 @@ public enum FlowSyncError: Error, LocalizedError, Equatable, Sendable {
         case .incompleteKey: return "That sync key isn't complete. Check it against the one on your other device."
         case .invalidLink: return "That isn't a Marquee sync link. Copy it again from your other device."
         case .invalidServer: return "That server address doesn't look right. Use the address of your Worker, like https://flow-stream-proxy.example.workers.dev."
+        case .noServer: return "This build has no account server set. Enter the address of your Worker under Account Server."
         case .unreachable: return "Couldn't reach your sync server. Check its address and token."
         case .keyMismatch: return "This sync key doesn't match."
         case .tooLarge: return "Your synced settings are too large for the sync server. Remove some add-ons or servers and try again."

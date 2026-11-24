@@ -1,4 +1,4 @@
-import { audioLanguagesFor, decideSubtitle, pickAudio, trackLanguage, type TrackInfo } from '../features/player/languages'
+import { audioLanguagesFor, decideSubtitle, isCommentary, pickAudio, trackLanguage, type TrackInfo } from '../features/player/languages'
 import { languageName, sameLanguage } from '../lib/language'
 import { contract } from './support'
 
@@ -32,12 +32,17 @@ contract('track-selection', ({ op, input }) => {
   if (op !== 'decide') throw new Error(`unknown op ${op}`)
   const anime = (input.anime ?? undefined) as 'sub' | 'dub' | undefined
   const choice = input.choice as { audio?: string; subtitle?: string }
-  const audio = pickAudio((input.audio as VectorTrack[]).map(trackOf), {
-    languages: audioLanguagesFor(input.audioLanguages, anime),
-    ...(choice.audio ? { choice: { audio: choice.audio } } : {}),
-  })
+  const tracks = (input.audio as VectorTrack[]).map(trackOf)
+  // When no track is in a wanted language the website leaves the stream's own pick standing, which the apps make
+  // explicit: the first track that isn't a commentary (a file's default is its first here).
+  const audio =
+    pickAudio(tracks, {
+      languages: audioLanguagesFor(input.audioLanguages, anime),
+      ...(choice.audio ? { choice: { audio: choice.audio } } : {}),
+    }) ?? tracks.find((t) => !isCommentary(t)) ?? tracks[0]
   const decision = decideSubtitle((input.subtitles as VectorTrack[]).map(trackOf), {
     audioLanguage: audio ? trackLanguage(audio) : undefined,
+    originalLanguage: (input.originalLanguage ?? undefined) as string | undefined,
     preferences: { subtitleLanguages: input.subtitleLanguages, subtitleMode: modes[input.mode as keyof typeof modes], subtitleType: input.type },
     ...(choice.subtitle ? { choice: { subtitle: choice.subtitle === 'off' ? null : choice.subtitle } } : {}),
     ...(anime ? { anime } : {}),

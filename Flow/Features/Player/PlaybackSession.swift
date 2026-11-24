@@ -920,7 +920,8 @@ final class PlaybackSession: Identifiable {
                                                                isForced: track.source.isForced, isSDH: track.source.isHearingImpaired))
         }
         let decision = TrackSelection.decide(audio: audioTracks, subtitles: subtitleTracks, playback: model.settings.playback, subtitleSettings: model.settings.subtitles,
-                                             isAnime: isAnime, showChoice: showChoice, deviceLanguage: Locale.current.language.languageCode?.identifier)
+                                             isAnime: isAnime, showChoice: showChoice, deviceLanguage: Locale.current.language.languageCode?.identifier,
+                                             originalLanguage: request.item.originalLanguage)
 
         // The same stream reloading after a drop: the viewer's own picks stand, not the rules' choice.
         if let kept = keptTracks {
@@ -2122,7 +2123,8 @@ extension PlaybackSession {
             TrackSelection.SubtitleTrack(id: $0.id, language: LanguageName.bcp47($0.language), isForced: $0.isForced, isSDH: $0.isSDH)
         }
         let decision = TrackSelection.decide(audio: audioTracks, subtitles: subtitleTracks, playback: model.settings.playback, subtitleSettings: model.settings.subtitles,
-                                             isAnime: isAnime, showChoice: showChoice, deviceLanguage: Locale.current.language.languageCode?.identifier)
+                                             isAnime: isAnime, showChoice: showChoice, deviceLanguage: Locale.current.language.languageCode?.identifier,
+                                             originalLanguage: request.item.originalLanguage)
         if let id = decision.audio, engine.selectedAudio != id { engine.selectAudio(id) }
         tracksApplied = true
         // A downloaded subtitle stays through a source switch.
