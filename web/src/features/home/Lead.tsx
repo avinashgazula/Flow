@@ -25,9 +25,10 @@ export interface LeadItem {
   progress?: Progress
 }
 
-/** How wide the lead still renders, for `srcset`. index.html preloads the same still with the same string,
- *  so the browser reuses the download; keep the two in step with the layout in Lead.module.css. */
-export const leadSizes = '(min-width: 1500px) 700px, (min-width: 1100px) 50vw, 92vw'
+/** How wide the lead still renders, for `srcset`: the page's column inside its gutters (the page stops at 1360px).
+ *  index.html preloads the same still with the same string, so the browser reuses the download; keep the two in step
+ *  with the layout in Lead.module.css and HomeScreen.module.css. */
+export const leadSizes = '(min-width: 1400px) 1360px, 92vw'
 /** The Fullscreen style draws the still across the whole window. */
 export const fullSizes = '100vw'
 
@@ -47,9 +48,10 @@ function useReducedMotion() {
   )
 }
 
-/** The one dominant item on Home: its title in giant Archivo capitals, one line of facts, a solid Resume or Play and a
- *  bordered Details, and its backdrop in a 2px rule with the time left, when it would end and the format printed under
- *  it and a red bar along its foot for how far you are.
+/** The one dominant item on Home: its backdrop across the page's column in a 2px rule, with the time left, when it would
+ *  end and the format printed under it and a red bar along its foot for how far you are, and on a solid paper plate over
+ *  its lower-left corner (under the picture on a phone) the title in giant Archivo capitals, one line of facts, a solid
+ *  Resume or Play, a bordered Details and the pager.
  *
  *  With several titles it turns through them (up to ten: what's in progress first, then the top picks), with a numbered
  *  pager (`01 / 10`) for the one you are on. It turns by itself (what is in progress stays first), never while the
@@ -112,8 +114,10 @@ export function Lead({ slides, auto, fullscreen }: { slides: LeadItem[]; auto: b
       onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setHold(false)}
     >
       <Link key={key} to="/title/$type/$id" params={{ type: item.type, id: item.id }} search={season} className={s.plate} onPointerEnter={() => prefetchDetail(item)} viewTransition tabIndex={-1} aria-hidden="true">
-        <Plate shape="still" artPath={item.backdrop} sizes={fullscreen ? fullSizes : leadSizes} priority={at === 0} progress={progress ? watchedFraction(progress) : seen?.progress} print={fullscreen ? undefined : print} fallback={item.title} />
+        <Plate shape="still" artPath={item.backdrop} sizes={fullscreen ? fullSizes : leadSizes} priority={at === 0} progress={progress ? watchedFraction(progress) : seen?.progress} fallback={item.title} />
       </Link>
+      {/* The printed line sits under the picture, outside the link, so the plate can lie over the picture alone. */}
+      {!fullscreen && <PrintLine print={print} hidden />}
       <div className={s.info} data-theme={fullscreen ? (theme === 'dark' ? 'light' : 'dark') : undefined}>
         {/* Every slide's words sit in one cell of a grid, so the block is as tall as the tallest and nothing
             below it moves when the lead turns. Only the one on show is read or reached. */}

@@ -24,7 +24,7 @@ colors:
 typography:
   display:
     fontFamily: "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif"
-    fontSize: "clamp(44px, 13.5vw, 72px) at the top of a title page and the Home lead; 0.82 of it for a section page"
+    fontSize: "clamp(44px, 13.5vw, 72px) at the top of a title page; 0.82 of it for a section page; the Home lead sits on a plate and has its own smaller size"
     fontWeight: 700
     lineHeight: 0.84
     letterSpacing: "-0.03em"
@@ -177,7 +177,7 @@ The tokens are semantic: `--bg --fg --red --blue --onblue --muted --faint --rule
 
 ## Typography
 
-**Display:** Archivo 700 (self-hosted). Page titles and the Home lead: uppercase, line-height .84, letter-spacing -.03em, and one scale. `--fs-display` (`clamp(44px, 13.5vw, 72px)`, stepping up at 721 and 1100px) is what a short Home lead name gets; a lead name of nine to sixteen letters, the usual, takes 0.82 of it, and a section page's title (`--fs-head`, `.page-title`) is that same size, so Search, Library and Settings read at the scale of "Breaking Bad" on Home. A title page's name, a person's and a collection's step down by length exactly as the lead does. Long words use `.page-title.long`.
+**Display:** Archivo 700 (self-hosted). Page titles and the Home lead: uppercase, line-height .84, letter-spacing -.03em, and one scale. `--fs-display` (`clamp(44px, 13.5vw, 72px)`, stepping up at 721 and 1100px) is what a short title page name gets, and a section page's title (`--fs-head`, `.page-title`) is 0.82 of it. The Home lead's name is set smaller (`clamp(36px, 11vw, 52px)` under 900px, `clamp(36px, 4.2vw, 56px)` from there), because it sits on a plate and wraps to two lines before it ends in an ellipsis; it still steps down by length as a title page's name does. A title page's name, a person's and a collection's step down by length exactly as the lead does. Long words use `.page-title.long`.
 **Headings:** IBM Plex Sans Condensed 600/700. Section and row titles, big numbers, empty-state headlines, the search bar's input. Uppercase for category names.
 **Interface:** the viewer's typeface, 400/600: System (the default: the device's own font, SF Pro, Segoe UI or Roboto), Inter, Geist, Manrope or Mono (IBM Plex Mono). The body face: nav, buttons, rows, settings, form fields, body copy that isn't reading text, footers. Chosen in Settings → Appearance; it is `<html data-font>`, set before first paint, and `--font` follows it (`styles/tokens.css`). Control text is uppercase with .06em tracking.
 **Labels and figures:** IBM Plex Mono 400/600, whatever the choice (`--font-mono`). The small uppercase labels (the red section labels, the page note, the names above a fact, `Browse by Genre`) and the lines of figures that should line up (the fact and meta lines under artwork, runtimes, sizes, times, ratings' names, the guide's clock, the shortcuts' keys, code and raw filenames).
@@ -262,8 +262,11 @@ The top bar is bordered cells on a 2px bottom rule. The **logo cell** (left) is 
 ### Rows and Lists
 A `.row` is full width; on hover and focus it inverts to blue. A list (`.rows`) has a 2px rule above and 1px ink lines between rows. Numbered lists use red condensed numerals (`01`) in a fixed column; titles are Condensed (uppercase for categories) or Serif; metadata is mono and muted, and turns white on the blue hover.
 
+### Home Lead
+The top of Home is one full-width picture: the backdrop across the page's column, inside the same gutters as the rows below, in its 2px frame with the thin red progress bar along its foot and the printed line (time left, end time, format) under it. 16:9, capped at 60% of the window's height (never under 380px) from 900px, so the first row of shelves peeks above the fold. The words sit on a solid paper plate over its lower-left corner, inset one step (16px) so the frame shows round it: `--bg`, the 2px ink rule, square corners, no gradient or scrim, which is what keeps them legible on any artwork. The plate holds the title (two lines, then an ellipsis), the italic facts line, Resume or Play, Details and the pager (`01 / 10`, its arrows and the rotation pause). It is 42% of the picture, 360px to 520px wide. Under 900px nothing overlaps: the plate is a ruled box under the picture's printed line. The apps do the same, and put the day label and date on the plate; the website keeps its greeting above the lead. The website's Fullscreen style (the apps keep the setting but draw only the card) is the other lead: the picture edge to edge between two rules, the words on a solid ink band across its foot.
+
 ### Page Head
-`.page-title`: the Archivo title (`--fs-head`, the size of Home's lead), uppercase, with the 2px rule under it running edge to edge. A short uppercase mono note or a count (`.page-note`) can sit at its right.
+`.page-title`: the Archivo title (`--fs-head`), uppercase, with the 2px rule under it running edge to edge. A short uppercase mono note or a count (`.page-note`) can sit at its right.
 
 ### Loading, Empty and Error States
 Loading is the ring (`.spinner`: ink with a red quarter) or a bordered bar with a red fill (`.pbar`). Empty and error states (`StateView`, `ErrorScreen`) are a condensed headline, one serif sentence on what to do next, and an action, left-aligned with the page. App notes (offline, updated) are ruled boxes bottom left, above the tab bar on phones.

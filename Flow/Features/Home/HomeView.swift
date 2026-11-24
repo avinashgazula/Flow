@@ -18,12 +18,13 @@ struct HomeLead: Equatable, Identifiable {
     var minutes: Int? { Reel.minutesLeft(progress: progress, runtimeMinutes: item.runtimeMinutes) }
 }
 
-/// Home, as the website's lead: the day in a red label with the date in mono, the title of what to watch in giant Archivo
-/// capitals, one italic line of facts, a solid Resume (or Play) and a bordered Details, and the backdrop in its 2px frame
-/// with a thin red bar for how far you are. A numbered pager (`01 / 10`) turns through what's in progress and the top
-/// picks, and turns by itself every few seconds (`HomeRotation`) unless the viewer is touching, pointing at or focused
-/// on it. Then Up Next and the shelves, each a ruled section under a red label. Wide screens and Apple TV put the words
-/// beside the backdrop.
+/// Home, as the website's lead: the backdrop across the page in its 2px frame, inside the same gutters as the rows below,
+/// with a thin red bar for how far you are, and the words on a solid paper plate over its lower-left corner: the day in a
+/// red label with the date in mono, the title of what to watch in giant Archivo capitals, one italic line of facts, a solid
+/// Resume (or Play) and a bordered Details, and a numbered pager (`01 / 10`). The pager turns through what's in progress and
+/// the top picks, and turns by itself every few seconds (`HomeRotation`) unless the viewer is touching, pointing at or
+/// focused on it. On a phone the plate sits under the picture instead. Then Up Next and the shelves, each a ruled section
+/// under a red label.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     /// What the lead turns through: what is in progress first, then the top picks, ten at most.
@@ -119,7 +120,7 @@ struct HomeView: View {
             } else {
                 GeometryReader { proxy in
                     ScrollView {
-                        page(wide: Self.splits(width: proxy.size.width), width: proxy.size.width)
+                        page(wide: Self.splits(width: proxy.size.width), size: proxy.size)
                     }
                     .scrollIndicators(.hidden)
                     .onScrollPhaseChangeIfAvailable { scrolling = $0 }
@@ -172,7 +173,7 @@ struct HomeView: View {
 
     // MARK: Layout
 
-    /// The words beside the backdrop once there is room; always on Apple TV.
+    /// The words on a plate over the backdrop once there is room, always on Apple TV; under it on a phone.
     private static func splits(width: CGFloat) -> Bool {
         #if os(tvOS)
         return true
@@ -194,16 +195,17 @@ struct HomeView: View {
         #endif
     }
 
-    /// The backdrop takes a little over half of a wide page, so its title and buttons stand beside it at about its height.
-    private func backdropWidth(in width: CGFloat) -> CGFloat {
-        max(320, (width - Theme.Space.gutter * 2 - Theme.Space.xl) * 0.56)
+    /// The tallest the backdrop gets on a wide page, so the first shelf still shows above the fold: 60% of the screen,
+    /// but never less than the plate needs.
+    private func pictureCap(in height: CGFloat) -> CGFloat {
+        max(height * 0.6, 380 * Theme.scale)
     }
 
-    private func page(wide: Bool, width: CGFloat) -> some View {
+    private func page(wide: Bool, size: CGSize) -> some View {
         LazyVStack(alignment: .leading, spacing: Theme.Space.section) {
             Group {
                 if let lead {
-                    LeadBlock(lead: lead, index: leadIndex, count: leads.count, wide: wide, backdropWidth: backdropWidth(in: width),
+                    LeadBlock(lead: lead, index: leadIndex, count: leads.count, wide: wide, pictureWidth: size.width - Theme.Space.gutter * 2, maxPictureHeight: pictureCap(in: size.height),
                               dayTitle: dayPart.title, dateLine: Reel.dateLine(now), step: { step($0); rotationStopped = true },
                               rotation: rotates ? Rotation(stopped: rotationStopped, toggle: { rotationStopped.toggle() }) : nil,
                               engaged: { focusInside = $0 })
@@ -283,6 +285,9 @@ private struct LeadHeader: View {
                 .textCase(.uppercase)
                 .tracking(0.06 * 12 * Theme.scale)
                 .foregroundStyle(Theme.Palette.muted)
+                // On the plate there is little room; the date gives way rather than wrapping under the label.
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .accessibilityElement(children: .combine)
     }
@@ -337,15 +342,17 @@ private struct LeadPager: View {
     }
 }
 
-/// The one dominant item: the day label, its title in giant capitals, a line of facts, Resume (or Play) and Details, and
-/// its backdrop framed with the time left, when it would end and the format printed under it. The words stand beside the
-/// backdrop when `wide`, above it otherwise.
+/// The one dominant item: its backdrop across the page, framed, with the time left, when it would end and the format
+/// printed under it, and on a solid paper plate the day label, its title in giant capitals, a line of facts, Resume (or
+/// Play) and Details, and the pager. The plate sits over the backdrop's lower-left corner when `wide`, under it otherwise.
 struct LeadBlock: View {
     let lead: HomeLead
     let index: Int
     let count: Int
     let wide: Bool
-    let backdropWidth: CGFloat
+    /// The backdrop's width (the page inside its gutters) and the most height it may take when `wide`.
+    let pictureWidth: CGFloat
+    let maxPictureHeight: CGFloat
     let dayTitle: String
     let dateLine: String
     let step: (Int) -> Void
@@ -399,31 +406,46 @@ struct LeadBlock: View {
                                 endsAt: minutes.map { Reel.endDate(from: Date(), minutesLeft: $0) }, extra: model.lastEdgeFormat(for: item))
     }
 
-    /// Phones 52, iPad 72, Mac 64, Apple TV 91 (48 scaled): the page title's size too (`Theme.Typeface.giantSize`), so a
-    /// long name still sits in two or three lines beside its backdrop and every page starts at one scale.
+    /// The plate is narrower than the old column was, so the title steps down from the page title's size: phones 52, iPad 52,
+    /// Mac 48, Apple TV 68 (36 scaled). Two lines at most on the plate.
     private var titleSize: CGFloat {
-        let base: CGFloat = wide ? (Platform.isPad ? 72 : Platform.isMac ? 64 : 48) : 52
+        let base: CGFloat = Platform.isTV ? 36 : wide && Platform.isMac ? 48 : 52
         return base * Theme.scale
+    }
+
+    /// 16:9, unless that is taller than the page can spare.
+    private var pictureHeight: CGFloat? {
+        wide ? min(pictureWidth * 9 / 16, maxPictureHeight) : nil
+    }
+
+    /// About 42% of the picture, never narrower than the buttons and pager need or wider than a line reads well, and always
+    /// with the frame showing on its right.
+    private var plateWidth: CGFloat {
+        let inset = Theme.Space.m
+        return min(max(pictureWidth * 0.42, 360 * Theme.scale), 460 * Theme.scale, pictureWidth - inset * 2)
     }
 
     var body: some View {
         Group {
             if wide {
-                HStack(alignment: .top, spacing: Theme.Space.xl) {
-                    VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        words
-                        actions
-                        if count > 1 { LeadPager(index: index, count: count, step: step, rotation: rotation, focus: $focus) }
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    ZStack(alignment: .bottomLeading) {
+                        backdrop
+                        plate
+                            .frame(width: plateWidth)
+                            .padding(Theme.Space.m)
+                            // The plate is read first (title, facts, buttons, pager), then the picture's listing.
+                            .accessibilitySortPriority(1)
                     }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    backdrop.frame(width: backdropWidth)
+                    factsLine
                 }
             } else {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    words
-                    actions
-                    backdrop
-                    if count > 1 { LeadPager(index: index, count: count, step: step, rotation: rotation, focus: $focus) }
+                    VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                        backdrop
+                        factsLine
+                    }
+                    plate
                 }
             }
         }
@@ -433,6 +455,19 @@ struct LeadBlock: View {
         .onDisappear { engaged(false) }
         #endif
         .task(id: item.id) { await fetchMinutes() }
+    }
+
+    /// Solid paper with the 2px rule and square corners: no scrim, so the words read the same on any artwork.
+    private var plate: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            words
+            actions
+            if count > 1 { LeadPager(index: index, count: count, step: step, rotation: rotation, focus: $focus) }
+        }
+        .padding(Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(Theme.Palette.bg)
+        .ruleFrame()
     }
 
     private var words: some View {
@@ -445,8 +480,8 @@ struct LeadBlock: View {
                 // The website sets it at 0.84 line height; a negative spacing pulls wrapped lines together.
                 .lineSpacing(-0.14 * titleSize)
                 .foregroundStyle(Theme.Palette.fg)
-                .lineLimit(3)
-                .minimumScaleFactor(0.5)
+                .lineLimit(2)
+                .minimumScaleFactor(0.6)
                 .accessibilityAddTraits(.isHeader)
             if !facts.isEmpty {
                 Text(facts)
@@ -458,8 +493,8 @@ struct LeadBlock: View {
     }
 
     private var primaryMinWidth: CGFloat? {
-        if Platform.isTV { return 240 * Theme.scale }
-        return wide ? 140 : nil
+        if Platform.isTV { return 150 * Theme.scale }
+        return wide ? 128 : nil
     }
 
     private var actions: some View {
@@ -480,7 +515,7 @@ struct LeadBlock: View {
 
     private var backdrop: some View {
         Button { model.navigate(to: .detail(item)) } label: {
-            FilmFrame(art: .still(item), strip: strip)
+            FilmFrame(art: .still(item), strip: strip, height: pictureHeight, showsFacts: false)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(spoken)
         }
@@ -489,6 +524,12 @@ struct LeadBlock: View {
         // The Details button is the remote's way in; a frame that takes focus too would be one stop too many.
         .focusable(false)
         #endif
+    }
+
+    /// Time left, when it would end and the format, under the picture (and under the plate's overhang).
+    @ViewBuilder
+    private var factsLine: some View {
+        if !strip.segments().isEmpty { FactsLine(print: strip) }
     }
 
     private func fetchMinutes() async {
