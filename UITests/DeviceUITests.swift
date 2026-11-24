@@ -41,8 +41,8 @@ final class PhonePlayerUITests: FlowUITestCase {
     }
 }
 
-/// The iPad's wide layouts: Home's lead split into words and backdrop, a tab bar along the top, and the same page and tab
-/// after the iPad is turned.
+/// The iPad's wide layouts: Home's lead as one wide picture with its words on a plate over the corner, a tab bar along the
+/// top, and the same page and tab after the iPad is turned.
 final class iPadLayoutUITests: FlowUITestCase {
     override func setUp() {
         super.setUp()
@@ -50,14 +50,20 @@ final class iPadLayoutUITests: FlowUITestCase {
         launchDemo()
     }
 
-    func testHomesLeadSplitsIntoWordsBesideItsBackdrop() {
+    func testHomesLeadIsOneWidePictureWithItsWordsOverTheLowerLeftCorner() {
         let resume = btn("Resume")
         let backdrop = button(startingWith: "Breaking Bad, season 3")
         XCTAssertTrue(resume.waitForExistence(timeout: patience), "the lead offers Resume")
         XCTAssertTrue(backdrop.waitForExistence(timeout: patience), "and shows its backdrop")
-        // On a phone the backdrop sits under the buttons; on a wide screen it stands beside them.
-        XCTAssertLessThanOrEqual(resume.frame.maxX, backdrop.frame.minX + 1, "the words are to the left of the backdrop")
-        XCTAssertLessThan(abs(resume.frame.midY - backdrop.frame.midY), backdrop.frame.height, "and level with it, not above it")
+        // On a phone the plate sits under the picture; on a wide screen the picture spans the page and the plate lies over
+        // its lower-left corner.
+        // A landscape iPad may show the sidebar, so the page is narrower than the window: the picture only has to take most
+        // of it. What tells the layouts apart is where Resume is: on the picture now, in a column beside it before.
+        let window = app.windows.firstMatch.frame
+        XCTAssertGreaterThan(backdrop.frame.width, window.width * 0.6, "the picture spans the page")
+        XCTAssertTrue(backdrop.frame.insetBy(dx: -1, dy: -1).contains(resume.frame), "Resume sits on the picture, not beside or under it")
+        XCTAssertLessThan(resume.frame.midX, backdrop.frame.midX, "in its left half")
+        XCTAssertGreaterThan(resume.frame.midY, backdrop.frame.midY, "and its lower half")
     }
 
     func testEveryTabIsReachableAlongTheTop() {

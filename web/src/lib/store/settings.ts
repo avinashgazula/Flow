@@ -280,7 +280,7 @@ export interface Settings {
   /** Where Home's top pick comes from when nothing is in progress, and a second source mixed in. */
   heroSource: HeroSource
   heroSecondarySource: HeroSource | null
-  /** The lead turns through its picks by itself (never while something is in progress, or with reduced motion). */
+  /** The lead turns through its picks by itself (what is in progress stays first; never with reduced motion). */
   heroAutoAdvance: boolean
   /** How many titles each catalogue shelf holds. */
   contentShelfLength: number

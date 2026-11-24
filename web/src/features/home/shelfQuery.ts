@@ -104,6 +104,6 @@ export function heroPicks(primary: readonly MediaItem[], secondary: readonly Med
     .slice(0, max)
 }
 
-/** Whether the lead turns by itself: only when the viewer wants it, nothing is in progress (what's in progress is
- *  what they came to resume), there is more than one slide, and motion is allowed. */
-export const advancesByItself = (o: { setting: boolean; resuming: boolean; slides: number; reducedMotion: boolean }) => o.setting && !o.resuming && o.slides > 1 && !o.reducedMotion
+/** Whether the lead turns by itself: when the viewer wants it, there is more than one slide, and motion is allowed.
+ *  What is in progress stays the first slide, so Home still opens on Resume. */
+export const advancesByItself = (o: { setting: boolean; slides: number; reducedMotion: boolean }) => o.setting && o.slides > 1 && !o.reducedMotion

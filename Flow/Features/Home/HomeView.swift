@@ -18,16 +18,29 @@ struct HomeLead: Equatable, Identifiable {
     var minutes: Int? { Reel.minutesLeft(progress: progress, runtimeMinutes: item.runtimeMinutes) }
 }
 
-/// Home, as the website's lead: the day in a red label with the date in mono, the title of what to watch in giant Archivo
-/// capitals, one italic line of facts, a solid Resume (or Play) and a bordered Details, and the backdrop in its 2px frame
-/// with a thin red bar for how far you are. A numbered pager (`01 / 10`) turns through what's in progress and the top
-/// picks. Then Up Next and the shelves, each a ruled section under a red label. Wide screens and Apple TV put the words
-/// beside the backdrop.
+/// Home, as the website's lead: the backdrop across the page in its 2px frame, inside the same gutters as the rows below,
+/// with a thin red bar for how far you are, and the words on a solid paper plate over its lower-left corner: the day in a
+/// red label with the date in mono, the title of what to watch in giant Archivo capitals, one italic line of facts, a solid
+/// Resume (or Play) and a bordered Details, and a numbered pager (`01 / 10`). The pager turns through what's in progress and
+/// the top picks, and turns by itself every few seconds (`HomeRotation`) unless the viewer is touching, pointing at or
+/// focused on it. On a phone the plate sits under the picture instead. Then Up Next and the shelves, each a ruled section
+/// under a red label.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     /// What the lead turns through: what is in progress first, then the top picks, ten at most.
     @State private var leads: [HomeLead] = []
     @State private var leadIndex = 0
+    /// A press on the pager decides where to stop: the lead stays put until Home is next opened fresh.
+    @State private var rotationStopped = false
+    /// What keeps the lead still while the viewer is at it: a scroll under the finger, the pointer over it, focus in it.
+    @State private var scrolling = false
+    @State private var pointerOver = false
+    @State private var focusInside = false
+    /// Whether Home is the page on screen; a pushed page or another tab holds the turn.
+    @State private var onScreen = false
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     /// The greeting follows the hour, so it is refreshed each minute.
     @State private var now = Date()
 
@@ -66,6 +79,35 @@ struct HomeView: View {
         model.mediaServers.map(\.config).filter { model.settings.mediaServers.showsHomeRow(for: $0.id) }
     }
 
+    /// Whether the lead can turn by itself at all. The screenshot tour and the UI tests need a lead that holds still, and
+    /// VoiceOver users a lead that doesn't change under them.
+    private var rotates: Bool {
+        HomeRotation.advancesByItself(setting: general.heroAutoAdvance, titles: leads.count, reduceMotion: reduceMotion)
+            && !voiceOver && !Self.automated
+    }
+
+    private static let automated: Bool = {
+        let defaults = UserDefaults.standard
+        // The iPhone and iPad UI tests keep the player's controls up, so that key tells them apart; Apple TV's pass the other.
+        return ScreenshotTour.isRequested || defaults.bool(forKey: "FlowNoRotation") || defaults.bool(forKey: "FlowKeepPlayerControls")
+    }()
+
+    private var leadHeld: Bool { scrolling || pointerOver || focusInside }
+
+    /// Changes whenever the turn should start over: a new set of titles, a press on the pager, or the viewer letting go,
+    /// so a title always gets its whole dwell.
+    private struct RotationKey: Hashable {
+        var ids: [String]
+        var running: Bool
+        var held: Bool
+    }
+
+    private var rotationKey: RotationKey {
+        RotationKey(ids: leads.map(\.id),
+                    running: rotates && !rotationStopped && onScreen && scenePhase == .active,
+                    held: leadHeld)
+    }
+
     /// What decides the lead: the top Continue Watching entry, or the top pick when nothing is in progress.
     private var leadKey: String {
         "\(model.contentVersion)-\(general.showContinueWatching)-\(model.continueWatching.first?.id ?? "none")-\(general.heroSource.rawValue)-\(general.heroSecondarySource?.rawValue ?? "")"
@@ -78,15 +120,19 @@ struct HomeView: View {
             } else {
                 GeometryReader { proxy in
                     ScrollView {
-                        page(wide: Self.splits(width: proxy.size.width), width: proxy.size.width)
+                        page(wide: Self.splits(width: proxy.size.width), size: proxy.size)
                     }
                     .scrollIndicators(.hidden)
+                    .onScrollPhaseChangeIfAvailable { scrolling = $0 }
                     .refreshable { await model.refreshLibrary(force: true) }
                 }
             }
         }
         .background(Theme.Palette.ground.ignoresSafeArea())
         .task(id: leadKey) { await loadLeads() }
+        .task(id: rotationKey) { await rotate() }
+        .onAppear { onScreen = true }
+        .onDisappear { onScreen = false }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 60_000_000_000)
@@ -127,7 +173,7 @@ struct HomeView: View {
 
     // MARK: Layout
 
-    /// The words beside the backdrop once there is room; always on Apple TV.
+    /// The words on a plate over the backdrop once there is room, always on Apple TV; under it on a phone.
     private static func splits(width: CGFloat) -> Bool {
         #if os(tvOS)
         return true
@@ -149,17 +195,23 @@ struct HomeView: View {
         #endif
     }
 
-    /// The backdrop takes a little over half of a wide page, so its title and buttons stand beside it at about its height.
-    private func backdropWidth(in width: CGFloat) -> CGFloat {
-        max(320, (width - Theme.Space.gutter * 2 - Theme.Space.xl) * 0.56)
+    /// The tallest the backdrop gets on a wide page, so the first shelf still shows above the fold: 60% of the screen,
+    /// but never less than the plate needs.
+    private func pictureCap(in height: CGFloat) -> CGFloat {
+        max(height * 0.6, 380 * Theme.scale)
     }
 
-    private func page(wide: Bool, width: CGFloat) -> some View {
+    private func page(wide: Bool, size: CGSize) -> some View {
         LazyVStack(alignment: .leading, spacing: Theme.Space.section) {
             Group {
                 if let lead {
-                    LeadBlock(lead: lead, index: leadIndex, count: leads.count, wide: wide, backdropWidth: backdropWidth(in: width),
-                              dayTitle: dayPart.title, dateLine: Reel.dateLine(now), step: step)
+                    LeadBlock(lead: lead, index: leadIndex, count: leads.count, wide: wide, pictureWidth: size.width - Theme.Space.gutter * 2, maxPictureHeight: pictureCap(in: size.height),
+                              dayTitle: dayPart.title, dateLine: Reel.dateLine(now), step: { step($0); rotationStopped = true },
+                              rotation: rotates ? Rotation(stopped: rotationStopped, toggle: { rotationStopped.toggle() }) : nil,
+                              engaged: { focusInside = $0 })
+                        #if !os(tvOS)
+                        .onHover { pointerOver = $0 }
+                        #endif
                         // Each title is its own block, so what was fetched for one never shows on the next.
                         .id(lead.id)
                         .transition(.opacity)
@@ -189,6 +241,17 @@ struct HomeView: View {
     private func step(_ delta: Int) {
         guard leads.count > 1 else { return }
         withAnimation(Theme.Motion.enter) { leadIndex = (leadIndex + delta + leads.count) % leads.count }
+    }
+
+    /// Turns to the next title each dwell, for as long as its task lives; `rotationKey` ends it when anything holds the lead.
+    private func rotate() async {
+        let key = rotationKey
+        guard key.running, !key.held else { return }
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: UInt64(HomeRotation.dwell * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            step(1)
+        }
     }
 
     // MARK: Loading
@@ -222,8 +285,22 @@ private struct LeadHeader: View {
                 .textCase(.uppercase)
                 .tracking(0.06 * 12 * Theme.scale)
                 .foregroundStyle(Theme.Palette.muted)
+                // On the plate there is little room; the date gives way rather than wrapping under the label.
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The lead's buttons that can hold focus.
+enum LeadFocus: Hashable { case resume, details, previous, next, rotation }
+
+/// The pager's pause and play button: whether the turn is stopped, and how to flip it.
+extension HomeView {
+    struct Rotation {
+        var stopped: Bool
+        var toggle: () -> Void
     }
 }
 
@@ -233,12 +310,15 @@ private struct LeadPager: View {
     let index: Int
     let count: Int
     let step: (Int) -> Void
+    var rotation: HomeView.Rotation?
+    var focus: FocusState<LeadFocus?>.Binding
 
     var body: some View {
         HStack(spacing: -Theme.Rule.heavy) {
             Button { step(-1) } label: { Image(systemName: "chevron.left") }
                 .buttonStyle(GlassButtonStyle(circle: true, compact: true))
                 .accessibilityLabel("Previous Title")
+                .focused(focus, equals: .previous)
             Text(String(format: "%02d / %02d", index + 1, count))
                 .font(.custom(Theme.Face.sans, size: 19 * Theme.scale).monospacedDigit())
                 .lineLimit(1)
@@ -253,29 +333,40 @@ private struct LeadPager: View {
             Button { step(1) } label: { Image(systemName: "chevron.right") }
                 .buttonStyle(GlassButtonStyle(circle: true, compact: true))
                 .accessibilityLabel("Next Title")
+                .focused(focus, equals: .next)
+            if let rotation {
+                Button { rotation.toggle() } label: { Image(systemName: rotation.stopped ? "play.fill" : "pause.fill") }
+                    .buttonStyle(GlassButtonStyle(circle: true, compact: true))
+                    .accessibilityLabel(rotation.stopped ? "Turn Automatic Rotation Back On" : "Stop Automatic Rotation")
+                    .focused(focus, equals: .rotation)
+            }
         }
     }
 }
 
-/// The one dominant item: the day label, its title in giant capitals, a line of facts, Resume (or Play) and Details, and
-/// its backdrop framed with the time left, when it would end and the format printed under it. The words stand beside the
-/// backdrop when `wide`, above it otherwise.
+/// The one dominant item: its backdrop across the page, framed, with the time left, when it would end and the format
+/// printed under it, and on a solid paper plate the day label, its title in giant capitals, a line of facts, Resume (or
+/// Play) and Details, and the pager. The plate sits over the backdrop's lower-left corner when `wide`, under it otherwise.
 struct LeadBlock: View {
     let lead: HomeLead
     let index: Int
     let count: Int
     let wide: Bool
-    let backdropWidth: CGFloat
+    /// The backdrop's width (the page inside its gutters) and the most height it may take when `wide`.
+    let pictureWidth: CGFloat
+    let maxPictureHeight: CGFloat
     let dayTitle: String
     let dateLine: String
     let step: (Int) -> Void
+    /// The pause and play button in the pager, when the lead turns by itself.
+    var rotation: HomeView.Rotation?
+    /// Tells Home whether focus is inside the lead (Apple TV), so the title isn't turned out from under a focused button.
+    var engaged: (Bool) -> Void = { _ in }
     @Environment(AppModel.self) private var model
     /// A runtime fetched when the lead has none, which is the case for most picks.
     @State private var fetchedMinutes: Int?
-    #if os(tvOS)
-    /// Focus starts on Resume, so one press of Select carries on watching.
-    @FocusState private var resumeFocused: Bool
-    #endif
+    /// Where focus is inside the lead. Apple TV starts it on Resume, so one press of Select carries on watching.
+    @FocusState private var focus: LeadFocus?
 
     private var item: MediaItem { lead.item }
     private var minutes: Int? { lead.minutes ?? fetchedMinutes }
@@ -317,38 +408,68 @@ struct LeadBlock: View {
                                 endsAt: minutes.map { Reel.endDate(from: Date(), minutesLeft: $0) }, extra: model.lastEdgeFormat(for: item))
     }
 
-    /// Phones 52, iPad 72, Mac 64, Apple TV 91 (48 scaled): the page title's size too (`Theme.Typeface.giantSize`), so a
-    /// long name still sits in two or three lines beside its backdrop and every page starts at one scale.
+    /// The plate is narrower than the old column was, so the title steps down from the page title's size: phones 52, iPad 52,
+    /// Mac 48, Apple TV 68 (36 scaled). Two lines at most on the plate.
     private var titleSize: CGFloat {
-        let base: CGFloat = wide ? (Platform.isPad ? 72 : Platform.isMac ? 64 : 48) : 52
+        let base: CGFloat = Platform.isTV ? 36 : wide && Platform.isMac ? 48 : 52
         return base * Theme.scale
+    }
+
+    /// 16:9, unless that is taller than the page can spare.
+    private var pictureHeight: CGFloat? {
+        wide ? min(pictureWidth * 9 / 16, maxPictureHeight) : nil
+    }
+
+    /// About 42% of the picture, never narrower than the buttons and pager need or wider than a line reads well, and always
+    /// with the frame showing on its right.
+    private var plateWidth: CGFloat {
+        let inset = Theme.Space.m
+        return min(max(pictureWidth * 0.42, 360 * Theme.scale), 460 * Theme.scale, pictureWidth - inset * 2)
     }
 
     var body: some View {
         Group {
             if wide {
-                HStack(alignment: .top, spacing: Theme.Space.xl) {
-                    VStack(alignment: .leading, spacing: Theme.Space.m) {
-                        words
-                        actions
-                        if count > 1 { LeadPager(index: index, count: count, step: step) }
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    ZStack(alignment: .bottomLeading) {
+                        backdrop
+                        plate
+                            .frame(width: plateWidth)
+                            .padding(Theme.Space.m)
+                            // The plate is read first (title, facts, buttons, pager), then the picture's listing.
+                            .accessibilitySortPriority(1)
                     }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    backdrop.frame(width: backdropWidth)
+                    factsLine
                 }
             } else {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    words
-                    actions
-                    backdrop
-                    if count > 1 { LeadPager(index: index, count: count, step: step) }
+                    VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                        backdrop
+                        factsLine
+                    }
+                    plate
                 }
             }
         }
         #if os(tvOS)
-        .defaultFocus($resumeFocused, true)
+        .defaultFocus($focus, LeadFocus?.some(.resume))
+        .onChange(of: focus) { _, now in engaged(now != nil) }
+        .onDisappear { engaged(false) }
         #endif
         .task(id: item.id) { await fetchMinutes() }
+    }
+
+    /// Solid paper with the 2px rule and square corners: no scrim, so the words read the same on any artwork.
+    private var plate: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            words
+            actions
+            if count > 1 { LeadPager(index: index, count: count, step: step, rotation: rotation, focus: $focus) }
+        }
+        .padding(Theme.Space.m)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(Theme.Palette.bg)
+        .ruleFrame()
     }
 
     private var words: some View {
@@ -361,8 +482,8 @@ struct LeadBlock: View {
                 // The website sets it at 0.84 line height; a negative spacing pulls wrapped lines together.
                 .lineSpacing(-0.14 * titleSize)
                 .foregroundStyle(Theme.Palette.fg)
-                .lineLimit(3)
-                .minimumScaleFactor(0.5)
+                .lineLimit(2)
+                .minimumScaleFactor(0.6)
                 .accessibilityAddTraits(.isHeader)
             if !facts.isEmpty {
                 Text(facts)
@@ -374,8 +495,8 @@ struct LeadBlock: View {
     }
 
     private var primaryMinWidth: CGFloat? {
-        if Platform.isTV { return 240 * Theme.scale }
-        return wide ? 140 : nil
+        if Platform.isTV { return 150 * Theme.scale }
+        return wide ? 128 : nil
     }
 
     private var actions: some View {
@@ -387,17 +508,16 @@ struct LeadBlock: View {
                     .frame(minWidth: primaryMinWidth)
             }
             .buttonStyle(PrimaryButtonStyle())
-            #if os(tvOS)
-            .focused($resumeFocused)
-            #endif
+            .focused($focus, equals: .resume)
             Button { model.navigate(to: .detail(item)) } label: { Text("Details") }
                 .buttonStyle(GlassButtonStyle())
+                .focused($focus, equals: .details)
         }
     }
 
     private var backdrop: some View {
         Button { model.navigate(to: .detail(item)) } label: {
-            FilmFrame(art: .still(item), strip: strip)
+            FilmFrame(art: .still(item), strip: strip, height: pictureHeight, showsFacts: false)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(spoken)
         }
@@ -406,6 +526,12 @@ struct LeadBlock: View {
         // The Details button is the remote's way in; a frame that takes focus too would be one stop too many.
         .focusable(false)
         #endif
+    }
+
+    /// Time left, when it would end and the format, under the picture (and under the plate's overhang).
+    @ViewBuilder
+    private var factsLine: some View {
+        if !strip.segments().isEmpty { FactsLine(print: strip) }
     }
 
     private func fetchMinutes() async {

@@ -53,7 +53,7 @@
     <script>
       // Home's lead still is its largest image. Its address from the last visit is known before any
       // script loads, so the download starts now, alongside the app's code, not after it.
-      // `s` is the sizes string Home rendered it with (leadSizes in features/home/Featured.tsx).
+      // `s` is the sizes string Home rendered it with (leadSizes in features/home/Lead.tsx).
       try {
         var h = JSON.parse(localStorage.getItem('flow.lcp') || 'null')
         if (h && h.path === location.pathname && h.d && h.s) {
@@ -89,14 +89,9 @@
       .shell-title { font-weight: 600; letter-spacing: 0.12em; color: #c9120a; }
       html[data-theme='dark'] .shell-title { color: #ff5a4e; }
       .shell-date { letter-spacing: 0.08em; opacity: 0.7; }
-      .shell-still { aspect-ratio: 16 / 9; border: var(--border-w, 2px) solid currentColor; overflow: hidden; margin-top: 260px; }
+      .shell-still { aspect-ratio: 16 / 9; border: var(--border-w, 2px) solid currentColor; overflow: hidden; }
       .shell-still img { display: block; width: 100%; height: 100%; object-fit: cover; }
-      @media (min-width: 721px) { .shell-still { margin-top: 330px; } }
-      @media (min-width: 1100px) {
-        .shell-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: 48px; }
-        .shell-top > div { grid-column: 2; }
-        .shell-still { margin-top: 0; }
-      }
+      @media (min-width: 900px) { .shell-still { max-height: max(60vh, 380px); } }
     </style>
   </head>
   <body>
@@ -109,7 +104,7 @@
           (hr >= 5 && hr < 12 ? 'This Morning' : hr >= 12 && hr < 17 ? 'This Afternoon' : 'Tonight') +
           '</div><div class="shell-date">' +
           now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) +
-          '</div></div><div class="shell-top"><div><div class="shell-still"><img alt="" sizes="' + h.s + '" fetchpriority="high" srcset="' + h.d + '"></div></div></div></div></div>'
+          '</div></div><div class="shell-still"><img alt="" sizes="' + h.s + '" fetchpriority="high" srcset="' + h.d + '"></div></div></div>'
       }
     </script>
     <script type="module" src="/src/main.tsx"></script>

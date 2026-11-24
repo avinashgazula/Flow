@@ -1,13 +1,12 @@
-/* The lead. Phone and tablet: the title, its facts and the buttons, then the framed backdrop with its printed line,
-   then the pager. From 1100px the words are a column beside the backdrop, buttons and pager at the foot of it, so
-   both end on one line. */
-.lead { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'stack' 'actions' 'plate' 'pager'; min-width: 0; }
-.plate { grid-area: plate; display: block; min-width: 0; margin-top: var(--space-l); }
-/* The words are the lead's grid items; only Fullscreen gathers them into one band. */
-.info { display: contents; }
-.stack { grid-area: stack; }
-.actions { grid-area: actions; }
-.pager { grid-area: pager; }
+/* The lead. The backdrop spans the page's column in its 2px frame, inside the same gutters as the rows below, with its
+   printed line under it. From 900px the words sit on a solid paper plate over its lower-left corner, inset by one step
+   so the frame shows round it; the picture is capped at 60% of the window's height (never under 380px) so the first row
+   of shelves still peeks above the fold. Under 900px the plate is a box under the picture and nothing overlaps.
+   The plate is flat paper with the 2px rule and square corners: no scrim, so it reads the same on any artwork. */
+.lead { --cap: none; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'plate' 'print' 'info'; min-width: 0; }
+.plate { grid-area: plate; display: block; min-width: 0; }
+.lead > :global(span) { grid-area: print; }
+.info { grid-area: info; margin-top: var(--space-m); padding: var(--space-m); border: var(--rule); background: var(--bg); color: var(--fg); min-width: 0; position: relative; z-index: 1; }
 
 /* Every slide's title and facts share one grid cell, so the block is as tall as the tallest and nothing below the
    lead moves when it turns. Only the one on show is visible (and, for a screen reader, present). */
@@ -32,7 +31,7 @@
    title page) and breaks between words, so it takes the lines it needs instead of ending in an ellipsis. --base is the
    size a short name gets at this width. */
 .name {
-  --base: var(--fs-display);
+  --base: clamp(36px, 11vw, 52px);
   --step: 1;
   padding-bottom: 0.04em;
   font: 700 1em / 0.9 var(--font-title);
@@ -41,6 +40,12 @@
   letter-spacing: -0.03em;
   overflow-wrap: break-word;
   text-wrap: balance;
+  /* Two lines on the plate, then it ends in an ellipsis. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 .name[data-size='long'] { --step: 0.82; }
 .name[data-size='longer'] { --step: 0.68; }
@@ -50,7 +55,7 @@
 .actions > * { flex: 1 1 0; min-width: 0; }
 
 /* Which title you are on: bordered cells that share their borders, the count in red Plex Sans figures. */
-.pager { display: flex; align-items: stretch; width: fit-content; max-width: 100%; margin-top: var(--space-m); }
+.pager { display: flex; align-items: stretch; width: fit-content; max-width: 100%; margin-top: var(--space-s); }
 .pager > * { margin-left: var(--border-w-neg); }
 .pager > :first-child { margin-left: 0; }
 .step, .count { display: flex; align-items: center; justify-content: center; gap: 0.35em; height: 44px; border: var(--rule); background: var(--bg); color: var(--fg); }
@@ -64,31 +69,29 @@
   .actions > * { flex: 0 0 auto; }
   .actions > :first-child { min-width: 168px; }
 }
-@media (min-width: 1100px) {
-  .lead { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-rows: auto auto 1fr; grid-template-areas: 'stack plate' 'actions plate' 'pager plate'; column-gap: var(--space-xxl); }
-  /* Beside the backdrop the words need not reserve the tallest slide's height (nothing below moves: the picture is
-     taller), so the buttons follow the title closely and the spare room is left under the pager. */
-  .stack { display: block; position: relative; align-self: start; }
-  .text { position: absolute; inset: 0 0 auto 0; }
-  .text[data-current] { position: relative; }
-  .pager { align-self: start; }
-  .plate { margin-top: 0; }
+@media (min-width: 900px) {
+  .lead:not([data-style='fullscreen']) { --cap: max(60vh, 380px); }
+  .lead:not([data-style='fullscreen']) .info { grid-area: plate; align-self: end; justify-self: start; width: clamp(360px, 42%, 520px); margin: var(--space-m); }
+  .lead:not([data-style='fullscreen']) .name { --base: clamp(36px, 4.2vw, 56px); }
 }
 
 /* Placeholder: the same box, a flat frame. */
-.ghostFrame { display: block; aspect-ratio: 16 / 9; border: var(--rule); background: var(--tint-1); overflow: hidden; }
+.plate > span > span > div { max-height: var(--cap); }
+.ghostFrame { display: block; aspect-ratio: 16 / 9; max-height: calc(var(--cap) + var(--border-w) * 2); border: var(--rule); background: var(--tint-1); overflow: hidden; }
 .ghostImg { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 /* Fullscreen: the backdrop runs edge to edge between two 2px rules, and the words sit on a solid band across its foot
    (the opposite theme's colours, so it is ink on a light page and paper on a dark one). On a phone the band sits under
    the picture instead of over it. */
 .lead[data-style='fullscreen'] { position: relative; display: block; border-block: var(--rule); }
-.lead[data-style='fullscreen'] .plate { margin-top: 0; width: 100%; }
+.lead[data-style='fullscreen'] .plate { width: 100%; }
 .lead[data-style='fullscreen'] .plate > span > span { border-width: 0; }
 .lead[data-style='fullscreen'] .plate > span > span > div, .lead[data-style='fullscreen'] .ghostFrame { aspect-ratio: 4 / 5; max-height: 60vh; }
 .lead[data-style='fullscreen'] .ghostFrame { border-width: 0; }
 .lead[data-style='fullscreen'] .info {
   display: block;
+  margin-top: 0;
+  border-width: 0;
   background: var(--bg);
   color: var(--fg);
   padding: var(--space-l) var(--page-inset);

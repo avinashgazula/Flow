@@ -220,6 +220,11 @@ struct FactsLine: View {
 struct FilmFrame: View {
     let art: ProgrammeArt
     var strip: EdgePrint?
+    /// A fixed height crops the picture to the width it is given (the Home lead, which is capped on tall screens);
+    /// nil keeps the artwork's own shape.
+    var height: CGFloat?
+    /// False leaves the facts line to the caller, who sets something over the picture and puts the line under both.
+    var showsFacts = true
 
     private var aspect: CGFloat {
         if case .posterImage = art { return 2.0 / 3.0 }
@@ -228,8 +233,7 @@ struct FilmFrame: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            Color.clear
-                .aspectRatio(aspect, contentMode: .fit)
+            sized
                 .overlay(image)
                 .overlay(alignment: .bottom) {
                     if let progress = strip?.progress, progress > 0 {
@@ -239,7 +243,16 @@ struct FilmFrame: View {
                 }
                 .clipped()
                 .cardFrame()
-            if let strip, !strip.segments().isEmpty { FactsLine(print: strip) }
+            if showsFacts, let strip, !strip.segments().isEmpty { FactsLine(print: strip) }
+        }
+    }
+
+    @ViewBuilder
+    private var sized: some View {
+        if let height {
+            Color.clear.frame(maxWidth: .infinity).frame(height: height)
+        } else {
+            Color.clear.aspectRatio(aspect, contentMode: .fit)
         }
     }
 
@@ -249,7 +262,8 @@ struct FilmFrame: View {
         case .posterImage(let url, let fallback, let title):
             RemoteImage(url: url, maxPixel: Platform.isTV ? 600 : 420, fallbackTitle: title, fallbackURL: fallback)
         case .stillImage(let url, let title):
-            RemoteImage(url: url, maxPixel: Platform.isTV ? 1000 : 700, fallbackTitle: title)
+            // The Home lead spans the page, so its still needs more pixels than a card's.
+            RemoteImage(url: url, maxPixel: height != nil ? (Platform.isTV ? 1920 : 1400) : (Platform.isTV ? 1000 : 700), fallbackTitle: title)
         case .none:
             Theme.Palette.tint2
         }
