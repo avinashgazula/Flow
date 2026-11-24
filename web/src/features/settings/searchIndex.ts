@@ -145,6 +145,7 @@ export const rowKeywords: Record<string, string> = {
   'account number': 'marquee account copy show hide write down devices',
   'log out': 'marquee account sign out forget device',
   'delete account': 'marquee account erase remove data',
+  'link for the apps': 'marquee account qr code open iphone ipad mac app log in scan camera devices',
   'pairing link': 'flow sync qr code share devices',
   'text size': 'detail font accessibility larger',
   system: 'typeface font text sans default',

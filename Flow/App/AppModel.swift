@@ -165,6 +165,8 @@ final class AppModel {
     var isSyncingAccount = false
     /// A number just made, waiting for the person to confirm they wrote it down.
     var pendingAccountNumber: String?
+    /// A flow://account link from the website, waiting for the person to confirm the login.
+    var pendingAccountLink: PendingAccountLink?
     /// An account server typed under Settings, for builds that name none. The build's own always wins.
     var accountServerText = UserDefaults.standard.string(forKey: "flow.accountServer") ?? "" {
         didSet { UserDefaults.standard.set(accountServerText, forKey: "flow.accountServer") }
