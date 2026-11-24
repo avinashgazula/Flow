@@ -1,0 +1,51 @@
+{
+  "name": "Marquee",
+  "identifier": "com.example.flow.source",
+  "subtitle": "Beta builds of Marquee for iPhone and iPad",
+  "description": "Marquee is a front end for your own media. This source lists the iPhone and iPad app, and every new beta shows up in AltStore or SideStore as an update. AltStore installs iPhone and iPad apps only: the Apple TV and Mac builds are on the GitHub release page.",
+  "iconURL": "https://raw.githubusercontent.com/avinashgazula/Flow/altstore/icon.png",
+  "website": "https://github.com/avinashgazula/Flow",
+  "tintColor": "#1a3dff",
+  "apps": [
+    {
+      "name": "Marquee",
+      "bundleIdentifier": "com.example.flow",
+      "developerName": "Marquee",
+      "subtitle": "Your movies, shows and live TV",
+      "localizedDescription": "Marquee is a native front end for your own Jellyfin, Emby and Plex servers, WebDAV shares, IPTV providers and stream add-ons. It hosts no content: it plays from the sources you set up.\n\nBuilds from this source are unsigned and carry no API keys. Marquee asks for your free TMDB key at first launch, or you can look around with Explore with Sample Data.",
+      "iconURL": "https://raw.githubusercontent.com/avinashgazula/Flow/altstore/icon.png",
+      "tintColor": "#1a3dff",
+      "category": "entertainment",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "buildVersion": "15",
+          "date": "2026-11-23T07:18:06Z",
+          "localizedDescription": "Beta 14\nhttps://github.com/avinashgazula/Flow/releases/tag/v1.0.0-beta.14",
+          "downloadURL": "https://github.com/avinashgazula/Flow/releases/download/v1.0.0-beta.14/Flow-iOS.ipa",
+          "size": 22307534,
+          "minOSVersion": "17.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {
+          "NSCalendarsWriteOnlyAccessUsageDescription": "Marquee adds the episodes and films you choose to your calendar.",
+          "NSLocalNetworkUsageDescription": "Marquee connects to media servers, WebDAV shares and IPTV providers on your local network.",
+          "NSMicrophoneUsageDescription": "To name the song that's playing, Marquee listens for a few seconds when it can't read the soundtrack itself."
+        }
+      }
+    }
+  ],
+  "news": [
+    {
+      "title": "Marquee is on AltStore",
+      "identifier": "marquee-source-launch",
+      "caption": "Add this source once, and each new Marquee beta appears as an update.",
+      "date": "2026-11-23T07:18:06Z",
+      "tintColor": "#1a3dff",
+      "url": "https://github.com/avinashgazula/Flow/releases",
+      "appID": "com.example.flow"
+    }
+  ]
+}
