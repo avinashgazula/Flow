@@ -87,6 +87,24 @@ jobs:
         with:
           name: ${{ matrix.asset }}
           path: dist/${{ matrix.asset }}
+      # What the AltStore source needs from the built app. AltStore refuses an IPA whose version and
+      # build differ from the source's, so they're read from the app's Info.plist rather than the tag.
+      - name: Read the app's details for the AltStore source
+        if: matrix.name == 'iOS'
+        continue-on-error: true
+        run: |
+          app="build/release/Build/Products/${{ matrix.products }}/Flow.app"
+          # Unsigned builds carry no entitlements, so this normally prints nothing.
+          codesign -d --entitlements :- "$app" > entitlements.plist 2>/dev/null || true
+          mkdir -p altstore-info
+          python3 scripts/altstore-source.py info --plist "$app/Info.plist" --ipa "dist/${{ matrix.asset }}" --entitlements entitlements.plist --out altstore-info/info.json
+          cat altstore-info/info.json
+      - uses: actions/upload-artifact@v4
+        if: matrix.name == 'iOS'
+        continue-on-error: true
+        with:
+          name: altstore-info
+          path: altstore-info/info.json
 
   release:
     name: Publish release
@@ -106,6 +124,7 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with:
+          pattern: Flow-*
           path: dist
           merge-multiple: true
       - name: Create or update the release
@@ -118,7 +137,7 @@ jobs:
 
           These builds are **unsigned**.
 
-          - **iPhone and iPad:** install `Flow-iOS.ipa` with AltStore, SideStore or Sideloadly, which sign it with your own Apple ID.
+          - **iPhone and iPad:** install `Flow-iOS.ipa` with AltStore, SideStore or Sideloadly, which sign it with your own Apple ID. In AltStore or SideStore, add the source `https://raw.githubusercontent.com/avinashgazula/Flow/altstore/source.json` once and every new release appears there as an update.
           - **Apple TV:** install `Flow-tvOS.ipa` with Sideloadly, or sign it yourself and install it with Xcode.
           - **Mac:** unzip `Flow-macOS.zip`, move Flow to Applications, then right-click it and choose Open the first time.
 
@@ -131,4 +150,47 @@ jobs:
           else
             # A new tag lands on the commit that was built.
             gh release create "$tag" dist/* --target "$(git rev-parse HEAD)" --title "Flow ${tag#v}" --notes-file notes.md --generate-notes $prerelease
+          fi
+      # The release is already published by now, so nothing here can undo it. A failure is reported as a
+      # warning, and the next release adds its own version to the source.
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: altstore-info
+          path: altstore-info
+      - name: Update the AltStore source
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ steps.tag.outputs.tag }}"
+          # The iOS leg's details never arrived, or the release is for something that has no iOS build.
+          if [ ! -f altstore-info/info.json ]; then
+            echo "::warning::AltStore source not updated: no app details from the iOS build."
+            exit 0
+          fi
+          # Stamped the same for every try below, so a retry writes the same entry.
+          date=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}"
+          ok=""
+          for attempt in 1 2 3; do
+            rm -rf altstore-branch
+            if git ls-remote --exit-code --heads "$remote" altstore >/dev/null 2>&1; then
+              git clone -q --depth 1 --branch altstore "$remote" altstore-branch || continue
+            else
+              # The branch holds nothing but the source and its icon, so it starts from scratch.
+              git init -q -b altstore altstore-branch
+            fi
+            cp Flow/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png altstore-branch/icon.png
+            python3 scripts/altstore-source.py update --source altstore-branch/source.json --info altstore-info/info.json --tag "$tag" --repo "${{ github.repository }}" --date "$date" || break
+            cd altstore-branch
+            git add -A
+            if git diff --cached --quiet; then ok=1; break; fi
+            git -c user.name="flow-ci" -c user.email="ci@users.noreply.github.com" commit -q -m "Add Marquee ${tag#v} to the AltStore source"
+            if git push -q "$remote" HEAD:altstore; then ok=1; break; fi
+            cd ..
+          done
+          if [ -z "$ok" ]; then
+            echo "::warning::AltStore source not updated for $tag. The release itself is published; re-run this job's last steps or wait for the next release."
+            exit 1
           fi
