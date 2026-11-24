@@ -7,6 +7,20 @@ import AVKit
 import Observation
 import FlowKit
 
+#if os(iOS) || os(tvOS)
+/// The time iOS lends an app that has just left the screen, handed back once, whichever of the work or the deadline comes first.
+@MainActor
+private final class BackgroundTaskBox {
+    var id = UIBackgroundTaskIdentifier.invalid
+
+    func end() {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+        id = .invalid
+    }
+}
+#endif
+
 /// Owns one playback: the AVPlayer, loading state, scrobbling, skip segments, subtitles and Up Next.
 @MainActor
 @Observable
@@ -123,6 +137,12 @@ final class PlaybackSession: Identifiable {
     /// Set by `close()`: whatever was still waiting on the network must not bring the player back.
     @ObservationIgnored private var isClosed = false
     @ObservationIgnored private var isStopping = false
+    /// What Trakt or Simkl has heard about this title, so a resume, a pause in the background or a stop is sent once and in order.
+    @ObservationIgnored private var scrobbles = ScrobbleReporter()
+    /// The requests the reporter has an open play for, by id: a stop for the old episode can follow the new one's start.
+    @ObservationIgnored private var scrobbledRequests: [String: PlaybackRequest] = [:]
+    /// The scrobbles still being sent; each waits for the one before so a pause never lands after the resume.
+    @ObservationIgnored private var scrobbleQueue: Task<Void, Never>?
     /// Set while `switchEpisode` runs, so the up-next countdown, a skipped credits segment and the
     /// item's own end can't each start the same switch.
     @ObservationIgnored private var switchingEpisode = false
@@ -1085,24 +1105,85 @@ final class PlaybackSession: Identifiable {
             if !didStart {
                 didStart = true
                 model.rememberSource(source, for: request)
-                Task {
-                    try? await model.tracker.scrobble(.start, request: request, percent: percent)
-                    await report(.started)
-                }
+                Task { await report(.started) }
             }
+            // Every resume says so, not only the first play, or the service still thinks it is paused at the old point.
+            if !isStopping, !isClosed { scrobble(.played) }
         case .paused:
             // Stopping pauses first and then reports its own stop; a pause report would only race it.
             guard didStart, phase == .playing, !isStopping else { return }
             // Someone's there, unless it's the episode ending or the still-watching question itself.
             if !asksStillWatching { stillWatching.notePause(at: currentTime, duration: duration) }
-            let request = self.request, percent = self.percent
-            Task {
-                try? await model.tracker.scrobble(.pause, request: request, percent: percent)
-                await report(.paused)
-            }
+            scrobble(.paused)
+            Task { await report(.paused) }
         default: break
         }
     }
+
+    // MARK: Tracking service
+
+    /// Feeds what just happened to the reporter and sends what it says to Trakt or Simkl, in order.
+    /// Returns the sending, for a caller that has to wait for it (a stop before the next title starts).
+    @discardableResult
+    private func scrobble(_ event: ScrobbleReporter.Event) -> Task<Void, Never>? {
+        guard let model else { return nil }
+        let calls = scrobbles.handle(event, title: request.id, position: currentTime, duration: duration, enabled: model.settings.account.scrobble)
+        guard !calls.isEmpty else { return scrobbleQueue }
+        scrobbledRequests[request.id] = request
+        let sends = calls.map { ($0, scrobbledRequests[$0.title] ?? request) }
+        for call in calls where call.action == .stop { scrobbledRequests[call.title] = nil }
+        let tracker = model.tracker, previous = scrobbleQueue
+        let task = Task {
+            await previous?.value
+            for (call, request) in sends { try? await tracker.scrobble(call.action, request: request, percent: call.percent) }
+        }
+        scrobbleQueue = task
+        return task
+    }
+
+    /// The app left the screen. If playback stops with it (Apple's player pauses when nothing keeps it going, and Apple TV's Home
+    /// button suspends everything) the last the service heard would be a start, so the resume point would be lost: say it paused,
+    /// and ask for time to finish saying it. Picture in Picture and the built-in player's background audio keep playing, and
+    /// are left as they are.
+    func appLeft() {
+        guard didStart, !isClosed, !isStopping else { return }
+        #if os(iOS) || os(tvOS)
+        let keepAwake = BackgroundTaskBox()
+        keepAwake.id = UIApplication.shared.beginBackgroundTask(withName: "Scrobble pause") { keepAwake.end() }
+        #endif
+        Task { @MainActor [weak self] in
+            // Give the engine a moment to pause itself, which it reports through the ordinary pause.
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            if let self, self.didStart, !self.isClosed, !self.isStopping {
+                await self.scrobble(.backgrounded(continues: self.isPlaying))?.value
+            }
+            #if os(iOS) || os(tvOS)
+            keepAwake.end()
+            #endif
+        }
+    }
+
+    /// The app came back: tell the service playback is running again, if it is.
+    func appReturned() {
+        guard didStart, !isClosed, !isStopping else { return }
+        scrobble(.foregrounded(playing: isPlaying))
+    }
+
+    #if os(macOS)
+    /// The Mac app is quitting with a title playing: no stop will follow, so say it paused, waiting briefly for the answer.
+    func appWillTerminate() {
+        guard didStart, !isClosed, !isStopping, let model else { return }
+        let calls = scrobbles.handle(.backgrounded(continues: false), title: request.id, position: currentTime, duration: duration, enabled: model.settings.account.scrobble)
+        guard !calls.isEmpty else { return }
+        let tracker = model.tracker, request = self.request
+        let done = DispatchSemaphore(value: 0)
+        Task.detached {
+            for call in calls { try? await tracker.scrobble(call.action, request: request, percent: call.percent) }
+            done.signal()
+        }
+        _ = done.wait(timeout: .now() + 2)
+    }
+    #endif
 
     private var percent: Double { PlayerProgress.percent(position: currentTime, duration: duration) }
 
@@ -1642,8 +1723,7 @@ final class PlaybackSession: Identifiable {
     private func finishCurrent(completed: Bool) async {
         guard let model, didStart else { return }
         let position = PlayerProgress.stopPosition(completed: completed, currentTime: currentTime, duration: duration)
-        let pct = PlayerProgress.stopPercent(position: position, duration: duration)
-        try? await model.tracker.scrobble(.stop, request: request, percent: pct)
+        await scrobble(.stopped(completed: completed))?.value
         await report(.stopped)
         await model.recordPlayback(request: request, position: position, duration: duration, finished: completed)
         if completed, request.episode != nil { finishedDownloads.append(request) }
