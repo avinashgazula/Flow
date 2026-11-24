@@ -52,7 +52,7 @@ function useReducedMotion() {
  *  it and a red bar along its foot for how far you are.
  *
  *  With several titles it turns through them (up to ten: what's in progress first, then the top picks), with a numbered
- *  pager (`01 / 10`) for the one you are on. It turns by itself only when nothing is in progress, never while the
+ *  pager (`01 / 10`) for the one you are on. It turns by itself (what is in progress stays first), never while the
  *  pointer or keyboard focus is in it, and never under reduced motion.
  *
  *  `fullscreen` is the apps' Fullscreen top pick: the backdrop edge to edge between two rules, with the title, facts and
@@ -70,7 +70,7 @@ export function Lead({ slides, auto, fullscreen }: { slides: LeadItem[]; auto: b
   // The detail brings the runtime of a title not started.
   const detail = useQuery(q.detail(item.type, item.id))
 
-  const running = advancesByItself({ setting: auto, resuming: !!slides[0]?.progress, slides: slides.length, reducedMotion: reduced })
+  const running = advancesByItself({ setting: auto, slides: slides.length, reducedMotion: reduced })
   useEffect(() => {
     if (!running || hold || stopped) return
     const timer = setInterval(() => {

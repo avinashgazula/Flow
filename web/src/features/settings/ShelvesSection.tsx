@@ -203,7 +203,7 @@ function TopPick() {
   const auto = useSettings((x) => x.heroAutoAdvance)
   const style = useSettings((x) => x.heroStyle ?? 'card')
   return (
-    <Group title="Top Pick" footer="When nothing is in progress, Home leads with the first title from these sources, and turns through up to ten of them. With something in progress it leads with that and stays put. Card is a framed still beside Continue Watching; Fullscreen draws the picture across the whole width, with Continue Watching under it.">
+    <Group title="Top Pick" footer="Home leads with what is in progress, then the first titles from these sources, and turns through up to ten of them. Card is a framed still beside Continue Watching; Fullscreen draws the picture across the whole width, with Continue Watching under it.">
       <Row label="Style" htmlFor="hero-style">
         <Select id="hero-style" value={style} onChange={(v) => settingsStore.set({ heroStyle: v })} options={styles} label="Top pick style" />
       </Row>

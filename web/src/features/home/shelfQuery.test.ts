@@ -68,10 +68,9 @@ describe('the lead’s titles', () => {
     expect(heroPicks(Array.from({ length: 30 }, (_, i) => item(i + 1)), undefined)).toHaveLength(10)
   })
 
-  it('turns by itself only when nothing is in progress and motion is allowed', () => {
-    const on = { setting: true, resuming: false, slides: 5, reducedMotion: false }
+  it('turns by itself when wanted, with several slides, and motion is allowed', () => {
+    const on = { setting: true, slides: 5, reducedMotion: false }
     expect(advancesByItself(on)).toBe(true)
-    expect(advancesByItself({ ...on, resuming: true })).toBe(false)
     expect(advancesByItself({ ...on, reducedMotion: true })).toBe(false)
     expect(advancesByItself({ ...on, setting: false })).toBe(false)
     expect(advancesByItself({ ...on, slides: 1 })).toBe(false)
