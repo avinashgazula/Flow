@@ -228,7 +228,7 @@ private struct ModernTabChrome: ViewModifier {
 
 #if os(macOS)
 /// macOS: a fixed sidebar beside the content. (A floating split-view sidebar lets content
-/// slide underneath it, which breaks full-bleed heroes and grids.) It is the Index: the wordmark on blue, then one
+/// slide underneath it, which breaks full-bleed heroes and grids.) It is the Index: the wordmark ticket, then one
 /// ruled row per section in mono capitals, the current one inverted ink and the one under the pointer blue.
 struct MacShell: View {
     @Environment(AppModel.self) private var model
@@ -259,7 +259,6 @@ struct MacShell: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity)
-                .background(Theme.Palette.blue)
                 .padding(.top, 28)
                 .padding(.bottom, 14)
             RuleLine()

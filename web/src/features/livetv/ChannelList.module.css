@@ -1,4 +1,4 @@
-/* The channel list: ruled rows that scroll inside the screen and run edge to edge, a red condensed number at the
+/* The channel list: ruled rows that scroll inside the screen and run edge to edge, a red Plex Sans number at the
    left of each, hover and focus in blue. */
 .scroller {
   height: 100%;
@@ -31,12 +31,12 @@
 @media (hover: hover) { .main:hover .number, .main:hover .left, .main:hover .next, .main:hover .group { color: var(--onblue); } }
 .main:focus-visible .number, .main:focus-visible .left, .main:focus-visible .next, .main:focus-visible .group { color: var(--onblue); }
 
-.number { flex: 0 0 34px; font: 700 22px / 1 var(--font-cond); color: var(--red); }
+.number { flex: 0 0 34px; font: 700 22px / 1 var(--font-sans); color: var(--red); }
 
 .text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 
 .name { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.nameText { font: 700 20px / 1.15 var(--font-cond); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nameText { font: 700 20px / 1.15 var(--font-sans); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .now { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-s); min-width: 0; font-size: var(--fs-footnote); }
 .nowTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,4 +1,4 @@
-/* Episodes as numbered rows: red condensed numeral, the still, then the title, a mono line and a serif synopsis. A 3px
+/* Episodes as numbered rows: red Plex Sans numeral, the still, then the title, a mono line and a serif synopsis. A 3px
    rule opens the list and 1px lines divide the rows; a row inverts to blue on hover and focus, like every row. */
 .section { margin-top: var(--space-xxl); padding-top: var(--space-s); border-top: var(--rule); }
 .bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s) var(--space-m); margin-bottom: var(--space-m); }
@@ -15,13 +15,13 @@
 .item > .open { display: grid; grid-template-columns: 64px 176px minmax(0, 1fr); align-items: start; column-gap: var(--space-m); padding: 16px 120px 16px 12px; }
 .item > .open:disabled { cursor: default; color: inherit; }
 @media (hover: hover) { .item > .open:disabled:hover { background: transparent; color: inherit; } }
-.num { font: 700 40px / 1 var(--font-cond); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--red); }
+.num { font: 700 40px / 1 var(--font-sans); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--red); }
 .thumb { display: block; border: var(--hair-w) solid currentColor; }
 .still { aspect-ratio: 16 / 9; }
 /* Episode Spoilers off: an aired episode not yet watched keeps its still blurred. */
 .thumb[data-veiled] img { filter: blur(14px); transform: scale(1.15); }
 .text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.name { font: 700 22px / 1.1 var(--font-cond); text-transform: uppercase; text-wrap: balance; }
+.name { font: 700 22px / 1.1 var(--font-sans); text-transform: uppercase; text-wrap: balance; }
 .fact { font: 400 var(--fs-caption) / 1.4 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .fresh { font-weight: 600; color: var(--red); }
 .overview {

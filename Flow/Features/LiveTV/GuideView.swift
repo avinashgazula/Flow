@@ -240,7 +240,7 @@ struct ChannelBadge: View {
                 Theme.Palette.tint2
                     .overlay {
                         Text(Self.initials(channel.name))
-                            .font(.custom(Theme.Face.condensed, size: size * 0.38))
+                            .font(.custom(Theme.Face.sans, size: size * 0.38))
                             .foregroundStyle(Theme.Palette.muted)
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)

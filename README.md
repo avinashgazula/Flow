@@ -102,7 +102,7 @@ CI (`.github/workflows/ci.yml`) runs the FlowKit tests on Linux and macOS and bu
 
 ## Third-party software
 
-The apps' typefaces are bundled under the SIL Open Font License 1.1 (`Flow/Resources/Fonts`, with each licence beside the files): Archivo (Omnibus-Type), IBM Plex Mono, Sans Condensed and Serif (IBM), and, for the Typeface choice in Settings → General, Inter (The Inter Project Authors), Geist (Vercel) and Manrope (The Manrope Project Authors), each as Latin subsets of the regular and semibold weights (about 330 KB together).
+The apps' typefaces are bundled under the SIL Open Font License 1.1 (`Flow/Resources/Fonts`, with each licence beside the files): Archivo (Omnibus-Type), IBM Plex Mono, Sans and Serif (IBM), and, for the Typeface choice in Settings → General, Inter (The Inter Project Authors), Geist (Vercel) and Manrope (The Manrope Project Authors), each as Latin subsets of the regular and semibold weights (about 330 KB together).
 
 Marquee's built-in decoder for files Apple's player can't play is [mpv](https://mpv.io)'s libmpv, through
 [MPVKit](https://github.com/mpvkit/MPVKit) 1.1.0-n9.0.2 (its LGPL product, never the GPL one). That brings

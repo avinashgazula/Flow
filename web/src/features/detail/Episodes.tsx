@@ -18,7 +18,7 @@ import s from './Episodes.module.css'
 const label = (n: number) => (n === 0 ? 'Specials' : `Season ${n}`)
 
 /** Seasons as a bordered segmented row (a select when there are many), and the season's episodes as numbered rows:
- *  a red condensed numeral, the still, the title, a serif synopsis, a mono line (air date, runtime, NEW) and a thin red
+ *  a red Plex Sans numeral, the still, the title, a serif synopsis, a mono line (air date, runtime, NEW) and a thin red
  *  bar for the progress. Each aired episode has a square to mark it watched or not, and the season has Watch Season.
  *  With Episode Spoilers off, an aired episode not yet watched keeps its still blurred and its synopsis hidden. */
 export function Episodes({ detail, initial, onPlay }: { detail: MediaDetail; initial?: number; onPlay: (e: { season: number; episode: number }) => void }) {

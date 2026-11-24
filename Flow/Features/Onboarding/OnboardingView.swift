@@ -60,13 +60,12 @@ struct OnboardingView: View {
         }
     }
 
-    /// The top bar: the wordmark on its blue cell, ruled off from the page.
+    /// The top bar: the wordmark ticket, ruled off from the page.
     private var bar: some View {
         HStack(spacing: 0) {
             Wordmark(size: 22)
                 .padding(.horizontal, Theme.Space.l)
                 .frame(minHeight: 56 * Theme.scale)
-                .background(Theme.Palette.blue)
             Spacer(minLength: 0)
         }
         .overlay(alignment: .bottom) { RuleLine() }

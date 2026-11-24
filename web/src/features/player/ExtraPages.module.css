@@ -10,7 +10,7 @@
 .stepper[data-single] { grid-template-columns: 1fr; }
 .big {
   text-align: center;
-  font: 700 var(--fs-title2) / 1.1 var(--font-cond);
+  font: 700 var(--fs-title2) / 1.1 var(--font-sans);
   font-variant-numeric: tabular-nums;
 }
 .step {

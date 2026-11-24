@@ -286,7 +286,6 @@ struct AboutView: View {
                     Wordmark(size: 34)
                         .padding(.horizontal, Theme.Space.l)
                         .padding(.vertical, Theme.Space.m)
-                        .background(Theme.Palette.blue)
                         .padding(.bottom, 4)
                     Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
                         .font(Theme.Typeface.caption)

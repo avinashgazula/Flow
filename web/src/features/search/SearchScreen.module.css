@@ -1,6 +1,6 @@
 :global(.page).screen { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 
-/* The search bar: the page's biggest field. A giant condensed input across the page, a rule below, and an ink
+/* The search bar: the page's biggest field. A giant Plex Sans input across the page, a rule below, and an ink
    block at the right that goes. It runs edge to edge, so it pulls out to the viewport and pads back in. */
 .bar { display: flex; align-items: stretch; margin: 0 calc(-1 * var(--page-inset)); border-bottom: var(--rule); }
 .field { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; }
@@ -11,7 +11,7 @@
   border: 0;
   background: transparent;
   color: var(--fg);
-  font: 600 clamp(26px, 4vw, 56px) / 1.1 var(--font-cond);
+  font: 600 clamp(26px, 4vw, 56px) / 1.1 var(--font-sans);
 }
 .input::placeholder { color: var(--muted); }
 .input::-webkit-search-cancel-button, .input::-webkit-search-decoration { appearance: none; }
@@ -79,7 +79,7 @@
 .topText { display: flex; flex-direction: column; gap: var(--space-xs); min-width: 0; }
 .topMeta { font: 600 var(--fs-small) / 1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .topTitle {
-  font: 700 clamp(30px, 4vw, 48px) / 1.05 var(--font-cond);
+  font: 700 clamp(30px, 4vw, 48px) / 1.05 var(--font-sans);
   text-transform: uppercase;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -105,7 +105,7 @@
 .person { display: flex; align-items: center; gap: var(--space-m); padding: var(--space-s) var(--space-xs); border-bottom: 1px solid var(--fg); }
 .face { flex: none; width: 48px; height: 72px; }
 .personText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.personName { font: 700 20px / 1.1 var(--font-cond); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.personName { font: 700 20px / 1.1 var(--font-sans); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .personRole { font-size: var(--fs-footnote); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .person:hover .personRole, .person:focus-visible .personRole { color: var(--onblue); }
 @media (hover: hover) { .person:hover { background: var(--blue); color: var(--onblue); } }
@@ -114,11 +114,11 @@
 /* Before typing */
 .idle { display: flex; flex-direction: column; }
 
-/* Genres are the reference's numbered list: red condensed numerals, condensed uppercase names, two columns. */
+/* Genres are the reference's numbered list: red Plex Sans numerals, Plex Sans uppercase names, two columns. */
 .index { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-xxl); }
 .indexRow { align-items: center; min-height: 56px; }
-.indexNumber { flex: 0 0 30px; font: 700 22px / 1 var(--font-cond); color: var(--red); }
-.indexName { flex: 1; font: 700 20px / 1.1 var(--font-cond); text-transform: uppercase; }
+.indexNumber { flex: 0 0 30px; font: 700 22px / 1 var(--font-sans); color: var(--red); }
+.indexName { flex: 1; font: 700 20px / 1.1 var(--font-sans); text-transform: uppercase; }
 .indexRow svg { flex: none; }
 .indexRow:hover .indexNumber, .indexRow:focus-visible .indexNumber { color: var(--onblue); }
 

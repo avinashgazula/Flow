@@ -102,7 +102,7 @@ struct StatsView: View {
                     .font(Theme.Typeface.reading)
                     .foregroundStyle(Theme.Palette.muted)
                 Text(WatchStats.durationText(minutes: stats.totalMinutes))
-                    .font(Theme.Typeface.custom(Theme.Face.condensed, 64, .largeTitle))
+                    .font(Theme.Typeface.custom(Theme.Face.sans, 56, .largeTitle))
                     .foregroundStyle(Theme.Palette.red)
                     .lineLimit(2)
                     .minimumScaleFactor(0.5)
@@ -286,7 +286,7 @@ private struct RankedShow: Identifiable {
     var id: String { item.id }
 }
 
-/// One headline number in a ruled cell: the figure big, red and condensed, its name in mono beneath.
+/// One headline number in a ruled cell: the figure big, red and in Plex Sans, its name in mono beneath.
 private struct StatTile: View {
     let value: String
     let label: String
@@ -295,7 +295,7 @@ private struct StatTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xxs) {
             Text(value)
-                .font(Theme.Typeface.custom(Theme.Face.condensed, 44, .largeTitle).monospacedDigit())
+                .font(Theme.Typeface.custom(Theme.Face.sans, 40, .largeTitle).monospacedDigit())
                 .foregroundStyle(Theme.Palette.red)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)

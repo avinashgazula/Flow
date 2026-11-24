@@ -1,22 +1,45 @@
-/* The wordmark: Plex Sans Condensed capitals over seven red bulbs set evenly along the bottom, each with a rim in the
-   cell's text colour so the red reads on the light blue and on the dark theme's pale blue. */
+/* The wordmark: an admit-one ticket, square-cornered, in the mark red. The notch in each short end and the column of
+   perforation dots are holes (a mask, not paint), so the page shows through in both themes. Everything is in em, so the
+   font size of the holder sizes it: the ticket is 1.5em tall and the stub 1.7em wide. */
 .logo {
+  --stub: 1.7em;
+  position: relative;
   display: inline-flex;
-  flex-direction: column;
-  gap: 0.22em;
-  font: 700 1em / 1 var(--font-cond);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-.word { display: block; }
-.bulbs { display: flex; justify-content: space-between; padding-inline: 0.1em; }
-.bulbs i {
-  display: block;
-  width: 0.2em;
-  height: 0.2em;
-  border-radius: 50%;
+  align-items: center;
+  box-sizing: border-box;
+  height: 1.5em;
+  padding: 0 calc(var(--stub) + 0.55em) 0 0.85em;
   background: var(--red);
-  box-shadow: 0 0 0 0.07em currentColor;
+  color: var(--onblue);
+  -webkit-mask:
+    radial-gradient(circle 0.27em at 0 50%, #0000 calc(0.27em - 0.5px), #000 0.27em) no-repeat,
+    radial-gradient(circle 0.27em at 100% 50%, #0000 calc(0.27em - 0.5px), #000 0.27em) no-repeat,
+    radial-gradient(circle 0.05em at calc(100% - var(--stub)) 50%, #0000 calc(0.05em - 0.5px), #000 0.05em) 0 0 / 100% 0.1875em repeat-y;
+  mask:
+    radial-gradient(circle 0.27em at 0 50%, #0000 calc(0.27em - 0.5px), #000 0.27em) no-repeat,
+    radial-gradient(circle 0.27em at 100% 50%, #0000 calc(0.27em - 0.5px), #000 0.27em) no-repeat,
+    radial-gradient(circle 0.05em at calc(100% - var(--stub)) 50%, #0000 calc(0.05em - 0.5px), #000 0.05em) 0 0 / 100% 0.1875em repeat-y;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  transition: background-color var(--dur-hover);
+}
+.word {
+  font: 700 0.72em / 1 var(--font-sans);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  /* The tracking adds space after the last letter; take it back so the lettering sits centred between notch and stub. */
+  margin-right: -0.2em;
+}
+/* The stub's ring: white (the lettering colour) with an ink centre, as on the icon. */
+.ring {
+  position: absolute;
+  top: 50%;
+  right: calc(var(--stub) / 2);
+  width: 0.64em;
+  height: 0.64em;
+  transform: translate(50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, #0a0a0a 0 0.17em, currentColor calc(0.17em + 0.5px) 100%);
 }
 
 /* The compact M for a bar too narrow for the name. */

@@ -20,18 +20,16 @@
 }
 .top[data-away] { transform: translateY(-100%); transition: transform var(--dur-exit) var(--ease-out); }
 
-/* The logo cell: the wordmark in Plex Sans Condensed on a blue block. */
+/* The logo cell: the ticket wordmark on the page, ruled off from the links. On hover it takes the action colour. */
 .brand {
   display: flex;
   align-items: center;
   padding: 0 24px;
   min-height: 56px;
   border-right: var(--rule);
-  background: var(--blue);
-  color: var(--onblue);
   font-size: 24px;
 }
-@media (hover: hover) { .brand:hover { background: var(--fg); color: var(--bg); } }
+@media (hover: hover) { .brand:hover > span { background: var(--blue); } }
 
 .links { display: flex; align-items: stretch; margin-left: auto; }
 .end { display: flex; align-items: stretch; }

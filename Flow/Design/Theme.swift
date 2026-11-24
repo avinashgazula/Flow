@@ -174,8 +174,8 @@ enum Theme {
         static let archivo = "Archivo-Bold"
         static let mono = "IBMPlexMono"
         static let monoSemiBold = "IBMPlexMono-SmBld"
-        static let condensedSemiBold = "IBMPlexSansCond-SmBld"
-        static let condensed = "IBMPlexSansCond-Bold"
+        static let sansSemiBold = "IBMPlexSans-SmBld"
+        static let sans = "IBMPlexSans-Bold"
         static let serif = "IBMPlexSerif-Regular"
         static let serifSemiBold = "IBMPlexSerif-SemiBold"
         static let serifItalic = "IBMPlexSerif-Italic"
@@ -188,7 +188,7 @@ enum Theme {
         static let manropeSemiBold = "Manrope-SemiBold"
     }
 
-    /// Typefaces. Archivo is the giant page title alone; Plex Sans Condensed sets headings and big numbers; Plex Serif
+    /// Typefaces. Archivo is the giant page title alone; Plex Sans sets headings and big numbers; Plex Serif
     /// is for sentences people read; none of those three changes. Everything else is the *interface face*, which
     /// is the viewer's choice (System by default): buttons, rows, settings, notes, body copy. Plex Mono stays, whatever
     /// the choice, for small uppercase print (`label`, `micro`, `edgePrint`, `detailKey`) and for lines of figures that
@@ -236,9 +236,9 @@ enum Theme {
         static var giant: Font { custom(Face.archivo, giantSize, .largeTitle) }
         static var display: Font { custom(Face.archivo, 36, .largeTitle) }
         /// A title page's name, a person's name.
-        static var title: Font { custom(Face.condensed, 30, .title2) }
+        static var title: Font { custom(Face.sans, 28, .title2) }
         /// A section's or a row's name.
-        static var heading: Font { custom(Face.condensed, 22, .title3) }
+        static var heading: Font { custom(Face.sans, 21, .title3) }
         static var sectionTitle: Font { heading }
         /// Buttons and anything you press: semibold. Uppercase and track with `.controlText()`.
         static var headline: Font { interface(.semibold, 15, .headline, system: .subheadline) }
@@ -266,11 +266,11 @@ enum Theme {
         /// A time, duration or resolution that should line up with its neighbours (Plex Mono is tabular already).
         static var time: Font { custom(Face.monoSemiBold, 15, .headline).monospacedDigit() }
         /// A big number with a label under it: ratings, stats.
-        static var figure: Font { custom(Face.condensed, 24, .title3).monospacedDigit() }
+        static var figure: Font { custom(Face.sans, 22, .title3).monospacedDigit() }
         /// Small print: mono, tracked and uppercase through `.edgePrint()`.
         static var edgePrint: Font { micro.monospacedDigit() }
         /// A title set as text when a film has no logo art.
-        static func artworkTitle(_ size: CGFloat) -> Font { .custom(Face.condensed, size: size, relativeTo: .title) }
+        static func artworkTitle(_ size: CGFloat) -> Font { .custom(Face.sans, size: size, relativeTo: .title) }
     }
 }
 
@@ -651,38 +651,61 @@ struct PageTitle: View {
     }
 }
 
-/// The wordmark: MARQUEE in Plex Sans Condensed over a row of seven red bulbs, each rimmed in the lettering's colour
-/// so the red reads on blue and on paper. Sized by `size` (the font size, as on the website); `color` is the lettering
-/// and the rim (on-blue on the blue logo block).
+/// The wordmark: an admit-one ticket, as in the app icon. A square-cornered ticket in the mark red, MARQUEE across it in
+/// Plex Sans Bold with open tracking, a notch cut into each short end, a column of perforation dots and, on the stub,
+/// a ring with an ink centre. The notches and dots are real holes, so whatever is behind shows through. Sized by `size`
+/// (the font size, as on the website: the ticket is 1.5 em tall); `color` is the lettering and the ring (on-blue, the
+/// text colour on a solid mark).
 struct Wordmark: View {
     var size: CGFloat = 28
     var color: Color = Theme.Palette.onBlue
 
     var body: some View {
         let em = size * Theme.scale
-        // The bulbs are an overlay of the lettering, so their row is exactly as wide as the word.
+        let stub = 1.7 * em
+        let tracking = 0.2 * 0.72 * em
         Text("MARQUEE")
-            .font(.custom(Theme.Face.condensed, size: em))
-            .tracking(0.03 * em)
+            .font(.custom(Theme.Face.sans, size: 0.72 * em))
+            .tracking(tracking)
+            .foregroundStyle(color)
             .lineLimit(1)
             .fixedSize()
-            .padding(.bottom, 0.56 * em)
-            .overlay(alignment: .bottom) {
-                HStack(spacing: 0) {
-                    ForEach(0..<7, id: \.self) { index in
-                        if index > 0 { Spacer(minLength: 0) }
-                        ZStack {
-                            Circle().fill(color)
-                            Circle().fill(Theme.Palette.red).padding(0.07 * em)
+            .padding(.leading, 0.85 * em)
+            // The tracking leaves space after the last letter; take it back so the word sits centred in its field.
+            .padding(.trailing, stub + 0.55 * em - tracking)
+            .frame(height: 1.5 * em)
+            .background {
+                GeometryReader { proxy in
+                    Rectangle()
+                        .fill(Theme.Palette.red)
+                        .mask {
+                            ZStack {
+                                Rectangle()
+                                ZStack {
+                                    Circle().frame(width: 0.54 * em, height: 0.54 * em)
+                                        .position(x: 0, y: proxy.size.height / 2)
+                                    Circle().frame(width: 0.54 * em, height: 0.54 * em)
+                                        .position(x: proxy.size.width, y: proxy.size.height / 2)
+                                    ForEach(0..<8, id: \.self) { index in
+                                        Circle().frame(width: 0.1 * em, height: 0.1 * em)
+                                            .position(x: proxy.size.width - stub, y: (CGFloat(index) + 0.5) * proxy.size.height / 8)
+                                    }
+                                }
+                                .blendMode(.destinationOut)
+                            }
+                            .compositingGroup()
                         }
-                        .frame(width: 0.34 * em, height: 0.34 * em)
-                    }
                 }
-                .padding(.horizontal, -0.07 * em)
             }
-        .foregroundStyle(color)
-        .fixedSize()
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Marquee")
+            .overlay(alignment: .trailing) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 0.64 * em, height: 0.64 * em)
+                    .overlay { Circle().fill(Color(red: 0.04, green: 0.04, blue: 0.04)).frame(width: 0.34 * em, height: 0.34 * em) }
+                    .padding(.trailing, stub / 2 - 0.32 * em)
+            }
+            .fixedSize()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Marquee")
     }
 }

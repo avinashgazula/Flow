@@ -312,7 +312,7 @@
   .connectingLine[data-idle] > span { animation: none; left: 0; width: 25%; }
 }
 .connectingTitle {
-  font: 700 var(--fs-title2) / 1.05 var(--font-cond);
+  font: 700 var(--fs-title2) / 1.05 var(--font-sans);
   text-transform: uppercase;
   text-wrap: balance;
 }
@@ -366,7 +366,7 @@
   animation: appear var(--dur-enter) var(--ease-out);
 }
 .errorIcon { color: var(--red); }
-.errorTitle { font: 700 var(--fs-title2) / 1.1 var(--font-cond); text-transform: uppercase; }
+.errorTitle { font: 700 var(--fs-title2) / 1.1 var(--font-sans); text-transform: uppercase; }
 .errorMessage { max-width: 460px; color: var(--muted); font-size: var(--fs-small); line-height: 1.5; text-wrap: pretty; }
 .errorActions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xs); margin-top: var(--space-s); }
 /* The technical reason is data: set apart on a darker band, selectable so it can be copied. */

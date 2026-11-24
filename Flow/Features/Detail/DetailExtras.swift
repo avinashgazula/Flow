@@ -40,8 +40,8 @@ extension AppModel {
 extension Theme.Typeface {
     /// A small muted caption above a value: mono semibold, uppercase when set with `detailCaps()`.
     static var detailKey: Font { custom(Theme.Face.monoSemiBold, 12, .caption) }
-    /// A big condensed numeral: a rating, an episode number, a resolution.
-    static func detailNumeral(_ size: CGFloat) -> Font { custom(Theme.Face.condensed, size, .title).monospacedDigit() }
+    /// A big Plex Sans numeral: a rating, an episode number, a resolution.
+    static func detailNumeral(_ size: CGFloat) -> Font { custom(Theme.Face.sans, size, .title).monospacedDigit() }
 }
 
 extension View {
@@ -555,7 +555,7 @@ private struct ReviewByline: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(review.author)
-                    .font(Theme.Typeface.custom(Theme.Face.condensed, 17, .headline))
+                    .font(Theme.Typeface.custom(Theme.Face.sans, 17, .headline))
                     .textCase(.uppercase)
                     .lineLimit(1)
                 Text(meta)
@@ -618,7 +618,7 @@ struct ReviewSheet: View {
 }
 
 /// The scores chosen in Settings → Metadata → Ratings Shown, in that order: each the service's mark over a big red
-/// condensed numeral over its name in mono, in ruled cells as wide as their content needs that wrap onto further lines
+/// Plex Sans numeral over its name in mono, in ruled cells as wide as their content needs that wrap onto further lines
 /// (the website's row). A custom icon pack (Settings) still replaces the name.
 struct RatingsRow: View {
     let ratings: Ratings

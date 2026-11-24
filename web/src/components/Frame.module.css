@@ -1,4 +1,4 @@
-/* Frame: a picture in a 2px ink rule, square, with its facts and title printed under it as mono and condensed text.
+/* Frame: a picture in a 2px ink rule, square, with its facts and title printed under it as mono and Plex Sans text.
    A plate fills the width its parent gives it. */
 
 .plate { display: block; }
@@ -49,7 +49,7 @@
 .title {
   display: block;
   margin-top: 2px;
-  font: 600 16px / 1.25 var(--font-cond);
+  font: 600 16px / 1.25 var(--font-sans);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -36,7 +36,7 @@
 .films > h2 { margin-bottom: var(--space-l); }
 
 .state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); max-width: 560px; margin: var(--section) 0; }
-.stateTitle { font: 700 var(--fs-title1) / 1.05 var(--font-cond); text-transform: uppercase; }
+.stateTitle { font: 700 var(--fs-title1) / 1.05 var(--font-sans); text-transform: uppercase; }
 .state :global(.btn) { margin-top: var(--space-xs); }
 
 .ghost { background: var(--tint-1); }

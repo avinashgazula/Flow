@@ -49,7 +49,7 @@
 .select option { background: var(--bg); color: var(--fg); }
 .select svg { position: absolute; right: 12px; pointer-events: none; color: var(--fg); }
 
-/* Nothing to list, or loading failed: a condensed headline, a line on what to do next, and the action.
+/* Nothing to list, or loading failed: a Plex Sans headline, a line on what to do next, and the action.
    Left-aligned with the page, as the reference's empty states are. */
 .state {
   display: flex;
@@ -60,6 +60,6 @@
   padding: var(--space-xxl) 0;
 }
 .stateIcon { color: var(--red); margin-bottom: var(--space-xxs); }
-.stateTitle { font: 700 clamp(28px, 3vw, 40px) / 1.1 var(--font-cond); max-width: 24ch; }
+.stateTitle { font: 700 clamp(28px, 3vw, 40px) / 1.1 var(--font-sans); max-width: 24ch; }
 .stateMessage { font: 400 17px / 1.6 var(--font-serif); text-wrap: pretty; max-width: 52ch; }
 .state :global(.btn) { margin-top: var(--space-s); }

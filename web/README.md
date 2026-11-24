@@ -28,7 +28,7 @@ npm run build && npm run e2e   # browser tests (Playwright) against dist/, in Ch
   Matroska and remuxing it to fragmented MP4 for Media Source Extensions, in a Web Worker.
 - **CSS Modules + tokens** (`src/styles/tokens.css`: paper and ink in light and dark, 3px rules, and a colour theme (Admit One, the default, Index or Opening Night) that sets the mark and the action; see
   `DESIGN.md`). No CSS-in-JS runtime. Self-hosted open-source faces from `@fontsource` (Archivo, IBM Plex Mono,
-  Sans Condensed and Serif, and Inter, Geist and Manrope as the typeface choices in Settings → Appearance, which load
+  Sans and Serif, and Inter, Geist and Manrope as the typeface choices in Settings → Appearance, which load
   only when chosen; `src/styles/fonts.css`), latin and latin-ext only, with the two first-paint faces preloaded. The
   interface and body text follow the chosen typeface (System, the device's own font, by default; `<html data-font>`,
   `src/lib/typeface.ts`); the titles, headings, reading text and the small labels keep Index's own faces.

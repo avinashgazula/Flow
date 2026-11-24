@@ -195,15 +195,15 @@
   --reading-width: 960px;
 
   /* Four fixed faces, self-hosted (fonts.css). Archivo is the display face: page titles and the Home lead, uppercase.
-     Plex Sans Condensed sets headings, row titles and big numbers. Plex Serif is for reading: overviews, reviews,
+     Plex Sans sets headings, row titles and big numbers. Plex Serif is for reading: overviews, reviews,
      biographies. Plex Mono is for the small uppercase labels and the lines of figures that should line up, whatever
-     typeface is chosen. The fallbacks keep the same genre (a grotesque, a condensed sans, a monospace, a serif).
+     typeface is chosen. The fallbacks keep the same genre (a grotesque, a neutral sans, a monospace, a serif).
      --font, the interface and body face, is the viewer's choice (the [data-font] rules below). */
   --font-title: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-cond: "IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
-  --font-display: var(--font-cond);
+  --font-display: var(--font-sans);
 
   /* Motion (DESIGN.md, Motion). Entrances and exits both decelerate (--ease-out; ease-in starts slow, which delays the
      moment a viewer is watching) and exits are shorter. Nothing is linear except spinners and clocks. Colour changes on hover are 100ms; entrances 240 to 320ms;

@@ -7,7 +7,7 @@ only when the viewer chooses it.
 
 OFL-Archivo.txt              Archivo 700                          @fontsource/archivo
 OFL-Plex-Mono.txt            IBM Plex Mono 400, 600               @fontsource/ibm-plex-mono
-OFL-Plex-Sans-Condensed.txt  IBM Plex Sans Condensed 600, 700     @fontsource/ibm-plex-sans-condensed
+OFL-Plex-Sans.txt            IBM Plex Sans 600, 700               @fontsource/ibm-plex-sans
 OFL-Plex-Serif.txt           IBM Plex Serif 400, 600, 400 italic  @fontsource/ibm-plex-serif
 OFL-Inter.txt                Inter, variable weight               @fontsource-variable/inter
 OFL-Geist.txt                Geist, variable weight               @fontsource-variable/geist

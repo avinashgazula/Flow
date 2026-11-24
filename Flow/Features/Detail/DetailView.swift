@@ -766,7 +766,7 @@ private struct CastCell: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(member.name)
-                    .font(Theme.Typeface.custom(Theme.Face.condensed, 17, .headline))
+                    .font(Theme.Typeface.custom(Theme.Face.sans, 17, .headline))
                     .textCase(.uppercase)
                     .multilineTextAlignment(.leading)
                 if !member.role.isEmpty {

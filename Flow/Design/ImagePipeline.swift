@@ -203,7 +203,7 @@ struct GeneratedArtwork: View {
             ZStack(alignment: .bottomLeading) {
                 Theme.Palette.control
                 Text(title)
-                    .font(Theme.Typeface.artworkTitle(max(11, proxy.size.width * 0.13)))
+                    .font(Theme.Typeface.artworkTitle(max(11, proxy.size.width * 0.115)))
                     .foregroundStyle(Theme.Palette.textSecondary)
                     .lineLimit(4)
                     .minimumScaleFactor(0.5)

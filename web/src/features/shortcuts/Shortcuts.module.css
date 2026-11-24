@@ -18,7 +18,7 @@
 .sheet[data-leaving]::backdrop { opacity: 0; }
 
 .head { display: flex; align-items: stretch; justify-content: space-between; border-bottom: var(--rule); }
-.title { margin: 0; display: flex; align-items: center; padding: 0 var(--space-l); font: 700 26px / 1.1 var(--font-cond); text-transform: uppercase; }
+.title { margin: 0; display: flex; align-items: center; padding: 0 var(--space-l); font: 700 26px / 1.1 var(--font-sans); text-transform: uppercase; }
 .head :global(.btn) { width: 56px; height: auto; min-height: 56px; border-width: 0 0 0 var(--border-w); border-color: var(--fg); }
 @media (hover: hover) { .head :global(.btn:hover) { border-color: var(--blue); } }
 
