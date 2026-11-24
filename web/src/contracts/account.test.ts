@@ -1,3 +1,4 @@
+import { accountLink, parseAccountLink } from '../lib/account/link'
 import { groupNumber, formatTyped, makeNumber, parseNumber } from '../lib/account/number'
 import { expandKeys, hkdfSalt, iterations, masterKey, pbkdf2Salt, seal } from '../lib/account/keys'
 import { at, canonical, emptyState, historyId, isHistorySection, isItemsSection, isLibrarySection, iso, itemsShard, mergeState, progressId, readState, removedKey, splitHistory, writeState } from '../lib/account/wire'
@@ -27,6 +28,17 @@ contract('account-number', ({ op, input }) => {
 
 const hex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
 const bytesOf = (text: string) => Uint8Array.from(text.match(/../g) ?? [], (h) => parseInt(h, 16))
+
+contract('account-link', ({ op, input }) => {
+  switch (op) {
+    case 'appLink':
+      return accountLink(input.number, input.server)
+    case 'parse':
+      return parseAccountLink(input)
+    default:
+      throw new Error(`unknown op ${op}`)
+  }
+})
 
 contract('account-crypto', async ({ op, input }) => {
   if (op === 'constants') return { iterations, pbkdf2Salt, hkdfSalt }

@@ -197,32 +197,8 @@ enum BundleKeys {
     static var accountServerHost: String? { value("FlowAccountServerHost") }
 }
 
-extension AccentColorChoice {
-    var color: Color {
-        switch self {
-        // White was the old default; Marquee's action blue takes its place.
-        case .white: return Theme.Palette.blue
-        case .blue: return .blue
-        case .red: return .red
-        case .orange: return .orange
-        case .green: return .green
-        case .purple: return .purple
-        case .pink: return .pink
-        case .teal: return .teal
-        }
-    }
-}
-
-extension AccentColorChoice {
-    /// Switches turn on in the accent.
-    var switchColor: Color { color }
-
-    /// The app-wide tint: system controls, tab selection and toggles take it.
-    var tint: Color? { color }
-}
-
 #if os(iOS)
-/// Draws switches with a colour of their own, so the app's accent can be white.
+/// Draws switches with a colour of their own: the theme's action colour, which the system's green would otherwise replace.
 struct FlowSwitchStyle: ToggleStyle {
     let tint: Color
     func makeBody(configuration: Configuration) -> some View {
@@ -232,10 +208,11 @@ struct FlowSwitchStyle: ToggleStyle {
 #endif
 
 extension View {
+    /// Switches turn on in the theme's action colour (`Theme.Palette.spot`).
     @ViewBuilder
-    func switchTint(_ accent: AccentColorChoice) -> some View {
+    func switchTint() -> some View {
         #if os(iOS)
-        self.toggleStyle(FlowSwitchStyle(tint: accent.switchColor))
+        self.toggleStyle(FlowSwitchStyle(tint: Theme.Palette.spot))
         #else
         self
         #endif

@@ -97,7 +97,7 @@ targets:
         FlowAppGroup: group.$(FLOW_BUNDLE_ID)
         UILaunchScreen: {}
         UIBackgroundModes: [audio]
-        UIAppFonts: [Fonts/Archivo-Bold.ttf, Fonts/IBMPlexMono-Regular.ttf, Fonts/IBMPlexMono-SemiBold.ttf, Fonts/IBMPlexSansCondensed-SemiBold.ttf, Fonts/IBMPlexSansCondensed-Bold.ttf, Fonts/IBMPlexSerif-Regular.ttf, Fonts/IBMPlexSerif-SemiBold.ttf, Fonts/IBMPlexSerif-Italic.ttf, Fonts/Inter-Regular.ttf, Fonts/Inter-SemiBold.ttf, Fonts/Geist-Regular.ttf, Fonts/Geist-SemiBold.ttf, Fonts/Manrope-Regular.ttf, Fonts/Manrope-SemiBold.ttf]
+        UIAppFonts: [Fonts/Archivo-Bold.ttf, Fonts/IBMPlexMono-Regular.ttf, Fonts/IBMPlexMono-SemiBold.ttf, Fonts/IBMPlexSans-SemiBold.ttf, Fonts/IBMPlexSans-Bold.ttf, Fonts/IBMPlexSerif-Regular.ttf, Fonts/IBMPlexSerif-SemiBold.ttf, Fonts/IBMPlexSerif-Italic.ttf, Fonts/Inter-Regular.ttf, Fonts/Inter-SemiBold.ttf, Fonts/Geist-Regular.ttf, Fonts/Geist-SemiBold.ttf, Fonts/Manrope-Regular.ttf, Fonts/Manrope-SemiBold.ttf]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UIApplicationSupportsIndirectInputEvents: true
@@ -190,7 +190,7 @@ targets:
         NSUserActivityTypes: [app.flow.title]
         FlowAppGroup: group.$(FLOW_BUNDLE_ID)
         UILaunchScreen: {}
-        UIAppFonts: [Fonts/Archivo-Bold.ttf, Fonts/IBMPlexMono-Regular.ttf, Fonts/IBMPlexMono-SemiBold.ttf, Fonts/IBMPlexSansCondensed-SemiBold.ttf, Fonts/IBMPlexSansCondensed-Bold.ttf, Fonts/IBMPlexSerif-Regular.ttf, Fonts/IBMPlexSerif-SemiBold.ttf, Fonts/IBMPlexSerif-Italic.ttf, Fonts/Inter-Regular.ttf, Fonts/Inter-SemiBold.ttf, Fonts/Geist-Regular.ttf, Fonts/Geist-SemiBold.ttf, Fonts/Manrope-Regular.ttf, Fonts/Manrope-SemiBold.ttf]
+        UIAppFonts: [Fonts/Archivo-Bold.ttf, Fonts/IBMPlexMono-Regular.ttf, Fonts/IBMPlexMono-SemiBold.ttf, Fonts/IBMPlexSans-SemiBold.ttf, Fonts/IBMPlexSans-Bold.ttf, Fonts/IBMPlexSerif-Regular.ttf, Fonts/IBMPlexSerif-SemiBold.ttf, Fonts/IBMPlexSerif-Italic.ttf, Fonts/Inter-Regular.ttf, Fonts/Inter-SemiBold.ttf, Fonts/Geist-Regular.ttf, Fonts/Geist-SemiBold.ttf, Fonts/Manrope-Regular.ttf, Fonts/Manrope-SemiBold.ttf]
         UIRequiredDeviceCapabilities: [arm64]
     entitlements:
       path: Flow/Resources/Flow-tvOS.entitlements

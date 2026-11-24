@@ -76,12 +76,12 @@ struct SearchView: View {
     // MARK: Field
 
     #if !os(tvOS)
-    /// The page's biggest field: a condensed face across the width inside a 2px frame, blue while it has the cursor.
+    /// The page's biggest field: Plex Sans across the width inside a 2px frame, blue while it has the cursor.
     private var field: some View {
         HStack(spacing: Theme.Space.xs) {
             TextField("Search", text: textBinding,
                       prompt: Text("Movies, shows and people").foregroundStyle(Theme.Palette.muted))
-                .font(Theme.Typeface.custom(Theme.Face.condensedSemiBold, Platform.isPhone ? 28 : 40, .title))
+                .font(Theme.Typeface.custom(Theme.Face.sansSemiBold, Platform.isPhone ? 26 : 38, .title))
                 .textFieldStyle(.plain)
                 .focused($fieldFocused)
                 .accessibilityIdentifier("search-field")

@@ -77,8 +77,8 @@
 		<string>Fonts/Archivo-Bold.ttf</string>
 		<string>Fonts/IBMPlexMono-Regular.ttf</string>
 		<string>Fonts/IBMPlexMono-SemiBold.ttf</string>
-		<string>Fonts/IBMPlexSansCondensed-SemiBold.ttf</string>
-		<string>Fonts/IBMPlexSansCondensed-Bold.ttf</string>
+		<string>Fonts/IBMPlexSans-SemiBold.ttf</string>
+		<string>Fonts/IBMPlexSans-Bold.ttf</string>
 		<string>Fonts/IBMPlexSerif-Regular.ttf</string>
 		<string>Fonts/IBMPlexSerif-SemiBold.ttf</string>
 		<string>Fonts/IBMPlexSerif-Italic.ttf</string>

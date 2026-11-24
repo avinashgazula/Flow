@@ -7,8 +7,9 @@ import { useSyncExternalStore } from 'react'
 export type Theme = 'light' | 'dark'
 
 export const themeKey = 'flow.theme'
-/** The colour of the browser's own chrome (the address bar on a phone), as --bg. */
-export const themeColour: Record<Theme, string> = { light: '#ffffff', dark: '#0a0a0a' }
+/** The colour of the browser's own chrome (the address bar on a phone), as --bg, for Admit One, the default theme. Another
+ *  theme's paper is read from the page itself once it has changed (apply below, lib/palette.ts). */
+export const themeColour: Record<Theme, string> = { light: '#f4f1ea', dark: '#0d0b0a' }
 
 /** The saved choice if it is one of the two, otherwise whatever the system prefers. */
 export function resolveTheme(saved: string | null | undefined, systemDark: boolean): Theme {
@@ -35,7 +36,8 @@ export function currentTheme(): Theme {
 
 function apply(theme: Theme) {
   document.documentElement.dataset.theme = theme
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColour[theme])
+  const paper = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', paper || themeColour[theme])
   listeners.forEach((l) => l())
 }
 

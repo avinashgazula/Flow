@@ -63,7 +63,7 @@
 
 /* Nothing to show yet: teach the next step. A ruled box, no icon. */
 .setup { max-width: 600px; padding: var(--space-l); border: var(--rule); }
-.setupTitle { font: 700 var(--fs-title2) / 1.1 var(--font-cond); text-transform: uppercase; }
+.setupTitle { font: 700 var(--fs-title2) / 1.1 var(--font-sans); text-transform: uppercase; }
 .setupText { margin-top: var(--space-s); font: 400 17px / 1.6 var(--font-serif); max-width: var(--measure); }
 .setupActions { display: flex; flex-wrap: wrap; gap: var(--space-s); margin-top: var(--space-l); }
 

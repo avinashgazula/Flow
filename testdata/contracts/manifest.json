@@ -4,6 +4,7 @@
   "account-number": { "swift": true, "web": true },
   "account-crypto": { "swift": true, "web": true },
   "account-wire": { "swift": true, "web": true },
+  "account-link": { "swift": true, "web": true },
   "sync-key": { "swift": true, "web": true },
   "sync-link": { "swift": true, "web": true },
   "source-parser": { "swift": true, "web": true },
@@ -13,6 +14,7 @@
   "calendar-ics": { "swift": true, "web": true },
   "language": { "swift": true, "web": true },
   "source-rank": { "swift": true, "web": true },
-  "track-selection": { "swift": true, "web": true }
+  "track-selection": { "swift": true, "web": true },
+  "themes": { "swift": true, "web": true }
  }
 }

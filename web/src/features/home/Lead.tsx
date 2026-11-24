@@ -160,7 +160,7 @@ function LeadText({ lead, current }: { lead: LeadItem; current: boolean }) {
   )
 }
 
-/** Which title of the turn you are on, as red condensed figures (`01 / 10`) between two square buttons. The arrow keys
+/** Which title of the turn you are on, as red Plex Sans figures (`01 / 10`) between two square buttons. The arrow keys
  *  go along it from anywhere in the pager, and Home and End to either end. */
 function Pager({ count, at, onGo, running, stopped, onToggle }: { count: number; at: number; onGo: (i: number) => void; running: boolean; stopped: boolean; onToggle: () => void }) {
   const onKey = (e: KeyboardEvent) => {

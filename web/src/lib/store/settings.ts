@@ -52,6 +52,10 @@ export interface WebDAVConfig {
  *  as Mono (lib/typeface.ts). */
 export type FontChoice = 'system' | 'inter' | 'geist' | 'manrope' | 'mono'
 
+/** The colour themes, as the apps' `ThemeChoice` (same ids). They are the `[data-palette]` blocks of styles/tokens.css and
+ *  the keys of index.html's pre-paint script; testdata/contracts/themes.json holds their colours for both sides. */
+export type PaletteChoice = 'admitOne' | 'index' | 'openingNight'
+
 /** When subtitles turn on by themselves: never, only when the audio isn't in the viewer's own
  *  language (the first subtitle language), for every title, or only the forced ones the file carries.
  *  As FlowKit's AutoSubtitleMode (automatic, always, forcedOnly, never). */
@@ -248,6 +252,9 @@ export interface Settings {
   /** The typeface the interface and body text are set in; System is the device's own and downloads nothing. The titles,
    *  headings, reading text and small labels keep Index's own faces. */
   font: FontChoice
+  /** The colours: Admit One (the default), Index or Opening Night, each with a light and a dark side (lib/palette.ts). The apps
+   *  call it `general.theme`; light or dark is separate (the top bar's cell, kept per browser). */
+  palette: PaletteChoice
   /** The order of the sections in the top bar and the phone's tab bar, by id (lib/tabs.ts). A section this
    *  list doesn't name yet takes its default place. */
   tabOrder: string[]
@@ -334,6 +341,7 @@ export const defaultSettings: Settings = {
   preferredQuality: '1080p',
   rememberLastSource: true,
   font: 'system',
+  palette: 'admitOne',
   tabOrder: [...defaultTabOrder],
   streamProxy: '',
   showAboutSection: true,

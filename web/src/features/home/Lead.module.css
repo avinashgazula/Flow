@@ -54,7 +54,7 @@
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-s); margin-top: var(--space-m); }
 .actions > * { flex: 1 1 0; min-width: 0; }
 
-/* Which title you are on: bordered cells that share their borders, the count in red condensed figures. */
+/* Which title you are on: bordered cells that share their borders, the count in red Plex Sans figures. */
 .pager { display: flex; align-items: stretch; width: fit-content; max-width: 100%; margin-top: var(--space-s); }
 .pager > * { margin-left: var(--border-w-neg); }
 .pager > :first-child { margin-left: 0; }
@@ -62,7 +62,7 @@
 .step { width: 44px; transition: background-color var(--dur-hover) ease, border-color var(--dur-hover) ease, color var(--dur-hover) ease; }
 @media (hover: hover) { .step:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); position: relative; } }
 .step:focus-visible { position: relative; z-index: 1; }
-.count { padding: 0 var(--space-m); font: 700 24px / 1 var(--font-cond); letter-spacing: 0.02em; color: var(--red); white-space: nowrap; }
+.count { padding: 0 var(--space-m); font: 700 24px / 1 var(--font-sans); letter-spacing: 0.02em; color: var(--red); white-space: nowrap; }
 
 @media (min-width: 721px) {
   .meta { font-size: 20px; }

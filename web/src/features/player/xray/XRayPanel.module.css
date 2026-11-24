@@ -1,6 +1,6 @@
 /* X-Ray: a flat ink panel with a 2px paper rule beside the picture (a wide window) or a sheet over its lower part (a
    phone held upright). Solid, not the 94% panel colour, because the subtitle line is kept clear of it and nothing
-   should show through. Photos are square frames, names are in Plex Mono, headings in Plex Sans Condensed, characters
+   should show through. Photos are square frames, names are in Plex Mono, headings in Plex Sans, characters
    muted; blue is the focus ring, the pointer, and the check on the scene that is playing. */
 
 .panel {
@@ -59,7 +59,7 @@
   min-height: 52px;
   padding: 4px 6px 4px 16px;
 }
-.title { font: 700 var(--fs-headline) / 1.2 var(--font-cond); text-transform: uppercase; letter-spacing: 0.02em; }
+.title { font: 700 var(--fs-headline) / 1.2 var(--font-sans); text-transform: uppercase; letter-spacing: 0.02em; }
 .iconButton {
   flex: none;
   width: 40px;
@@ -162,7 +162,7 @@
   background: var(--tint-2);
 }
 .who { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.name { font: 700 var(--fs-body) / 1.2 var(--font-cond); overflow-wrap: anywhere; }
+.name { font: 700 var(--fs-body) / 1.2 var(--font-sans); overflow-wrap: anywhere; }
 .role {
   font: 400 var(--fs-footnote) / 1.3 var(--font);
   color: var(--muted);
@@ -202,7 +202,7 @@
   background: var(--tint-2);
 }
 .personWho { min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-bottom: 2px; }
-.personName { font: 700 var(--fs-title3) / 1.1 var(--font-cond); text-transform: uppercase; text-wrap: balance; overflow-wrap: anywhere; }
+.personName { font: 700 var(--fs-title3) / 1.1 var(--font-sans); text-transform: uppercase; text-wrap: balance; overflow-wrap: anywhere; }
 .personRole { font: 400 var(--fs-small) / 1.3 var(--font); color: var(--muted); overflow-wrap: anywhere; }
 .personFacts { font: 400 var(--fs-footnote) / 1.4 var(--font); color: var(--muted); }
 .bio { font: 400 var(--fs-small) / 1.5 var(--font); color: var(--muted); text-wrap: pretty; }

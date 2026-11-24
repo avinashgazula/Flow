@@ -57,7 +57,7 @@ export function HistoryList({ rows }: { rows: Row[] }) {
   )
 }
 
-/** One watched title or episode as a ruled row: when (mono), a small still, what it was (condensed) and its line
+/** One watched title or episode as a ruled row: when (mono), a small still, what it was (Plex Sans) and its line
  *  (an episode's code and length, or a film's year). */
 export function HistoryItem({ entry }: { entry: HistoryEntry }) {
   const { item, episode } = entry

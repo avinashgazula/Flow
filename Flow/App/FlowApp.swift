@@ -27,8 +27,8 @@ struct FlowApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
-                .tint(model.settings.general.accent.tint)
-                .switchTint(model.settings.general.accent)
+                .tint(Theme.Palette.spot)
+                .switchTint()
                 .preferredColorScheme(model.settings.general.appearance.colorScheme)
                 .onOpenURL { url in model.handle(url: url) }
                 .task(id: ObjectIdentifier(model)) {
@@ -45,7 +45,10 @@ struct FlowApp: App {
                         model.scheduleNotificationRefresh()
                         model.syncNow()
                     }
+                    // Leaving mid-film must tell Trakt and Simkl where it stopped; coming back says it plays again.
+                    if phase == .active { model.activePlayback?.appReturned() }
                     if phase == .background {
+                        model.activePlayback?.appLeft()
                         model.flushSettings(waits: true)
                         model.flushAccount()
                     }
@@ -53,6 +56,7 @@ struct FlowApp: App {
                 #if os(macOS)
                 .opensSettingsOnRequest(model)
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                    model.activePlayback?.appWillTerminate()
                     model.flushSettings(waits: true)
                 }
                 #endif
@@ -140,7 +144,7 @@ struct FlowApp: App {
 }
 
 extension AppModel {
-    /// flow://setup?d=… imports a shared setup; flow://title/movie/603 opens a title.
+    /// flow://setup?d=… imports a shared setup; flow://account?n=…&s=… logs in to an account; flow://title/movie/603 opens a title.
     func handle(url: URL) {
         switch FlowLink(url: url) {
         case .title(let key): open(key)
@@ -155,6 +159,13 @@ extension AppModel {
             searchText = query
         case .setup(let link): pendingImport = link
         case .sync(let link): pendingSyncLink = link
+        case .account(let text):
+            do {
+                let link = try AccountLink.parse(text)
+                pendingAccountLink = .open(link, accountLinkPlan(for: link))
+            } catch {
+                pendingAccountLink = .unreadable((error as? AccountLinkError)?.errorDescription ?? AccountLinkError.invalidLink.errorDescription!)
+            }
         case nil: break
         }
     }

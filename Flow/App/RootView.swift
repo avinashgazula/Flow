@@ -41,13 +41,20 @@ struct RootView: View {
         #endif
         .flowModal(isPresented: Binding(get: { model.pendingImport != nil }, set: { if !$0 { model.pendingImport = nil } })) {
             NavigationStack { ImportSetupView() }
-                .switchTint(model.settings.general.accent)
+                .switchTint()
                 .environment(model)
         }
         .flowModal(isPresented: Binding(get: { model.pendingSyncLink != nil }, set: { if !$0 { model.pendingSyncLink = nil } })) {
             NavigationStack { SyncJoinView(initialLink: model.pendingSyncLink, isSheet: true) }
-                .switchTint(model.settings.general.accent)
+                .switchTint()
                 .environment(model)
+        }
+        .flowModal(isPresented: Binding(get: { model.pendingAccountLink != nil }, set: { if !$0 { model.pendingAccountLink = nil } })) {
+            if let pending = model.pendingAccountLink {
+                NavigationStack { AccountLinkView(pending: pending) }
+                    .switchTint(model.settings.general.accent)
+                    .environment(model)
+            }
         }
         .flowModal(item: $model.sourcePickerRequest) { request in
             SourcePickerView(request: request)
@@ -69,7 +76,7 @@ struct RootView: View {
             .background(Theme.Palette.canvas.ignoresSafeArea())
             #endif
             // Styles set at the app's root don't reach into sheets.
-            .switchTint(model.settings.general.accent)
+            .switchTint()
             .environment(model)
             .largeSheetOnPad()
         }
@@ -221,7 +228,7 @@ private struct ModernTabChrome: ViewModifier {
 
 #if os(macOS)
 /// macOS: a fixed sidebar beside the content. (A floating split-view sidebar lets content
-/// slide underneath it, which breaks full-bleed heroes and grids.) It is the Index: the wordmark on blue, then one
+/// slide underneath it, which breaks full-bleed heroes and grids.) It is the Index: the wordmark ticket, then one
 /// ruled row per section in mono capitals, the current one inverted ink and the one under the pointer blue.
 struct MacShell: View {
     @Environment(AppModel.self) private var model
@@ -252,7 +259,6 @@ struct MacShell: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity)
-                .background(Theme.Palette.blue)
                 .padding(.top, 28)
                 .padding(.bottom, 14)
             RuleLine()

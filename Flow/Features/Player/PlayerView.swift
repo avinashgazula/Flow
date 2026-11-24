@@ -1310,9 +1310,10 @@ struct IOSPlayerControls: View {
                 HStack(alignment: .bottom, spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(session.title)
-                            .font(.custom(Theme.Face.condensed, size: Platform.isPhone ? 22 : 26, relativeTo: .title3))
+                            .font(.custom(Theme.Face.sans, size: Platform.isPhone ? 20 : 24, relativeTo: .title3))
                             .foregroundStyle(Theme.Palette.fg)
                             .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                         if let line = session.subtitleLine {
                             Text(line)
                                 .font(Theme.Typeface.caption)

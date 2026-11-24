@@ -1,6 +1,6 @@
 /* The source picker: a square dialog on a dark scrim, ruled with 3px lines like the reference's popup. The header holds
    the title and a status line, with square control cells at its top right; the filters are bordered cells under it; each
-   source is a ruled row: its resolution in red condensed numerals, the release in condensed type, the facts in mono. */
+   source is a ruled row: its resolution in red Plex Sans numerals, the release in Plex Sans, the facts in mono. */
 .overlay {
   outline: none;
   position: fixed;
@@ -36,7 +36,7 @@
 .poster { width: 48px; aspect-ratio: 2 / 3; flex: none; border: var(--rule-thin); }
 .heading { min-width: 0; display: grid; gap: 4px; }
 .title {
-  font: 700 28px / 1.05 var(--font-cond);
+  font: 700 28px / 1.05 var(--font-sans);
   text-transform: uppercase;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -89,8 +89,8 @@
 .row[aria-disabled] { cursor: default; }
 .row[aria-disabled] .resolution, .row[aria-disabled] .content { opacity: 0.5; }
 
-/* The resolution is the row's headline: red condensed numerals, large. */
-.resolution { font: 700 32px / 1 var(--font-cond); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--red); }
+/* The resolution is the row's headline: red Plex Sans numerals, large. */
+.resolution { font: 700 32px / 1 var(--font-sans); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--red); }
 
 .body { display: contents; }
 .content { grid-column: 2; display: grid; gap: 4px; min-width: 0; }
@@ -99,7 +99,7 @@
 .row[data-active] .play { background: var(--fg); border-color: var(--fg); color: var(--bg); }
 
 .formats { font: 600 var(--fs-caption) / 1.4 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.release { font: 600 18px / 1.2 var(--font-cond); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.release { font: 600 18px / 1.2 var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meta { font: 400 var(--fs-caption) / 1.4 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .raw { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 8; overflow: hidden; white-space: pre-line; font: 400 var(--fs-caption) / 1.4 var(--font-mono); color: var(--muted); overflow-wrap: anywhere; }
 .row[data-compact] .raw { -webkit-line-clamp: 3; }
@@ -112,7 +112,7 @@
 .placeholder .content { gap: 9px; }
 
 .empty { display: grid; justify-items: start; gap: var(--space-xs); padding: var(--space-xxl) var(--space-l); color: var(--muted); }
-.empty h3 { color: var(--fg); font: 700 var(--fs-title1) / 1.05 var(--font-cond); text-transform: uppercase; }
+.empty h3 { color: var(--fg); font: 700 var(--fs-title1) / 1.05 var(--font-sans); text-transform: uppercase; }
 .empty p { font: 400 16px / 1.6 var(--font-serif); max-width: 46ch; color: var(--fg); }
 .empty :global(.btn) { margin-top: var(--space-s); }
 

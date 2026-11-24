@@ -1,4 +1,4 @@
-import type { DetailTextSize, FontChoice } from '../../lib/store/settings'
+import type { DetailTextSize, FontChoice, PaletteChoice } from '../../lib/store/settings'
 
 /* The choices the pickers offer. TMDB takes any ISO language-region pair; these are the common ones,
    and a saved value that isn't listed is added so it never silently changes. */
@@ -43,6 +43,14 @@ export const typefaces: { value: FontChoice; label: string; detail: string }[] =
   { value: 'geist', label: 'Geist', detail: 'Precise and modern.' },
   { value: 'manrope', label: 'Manrope', detail: 'Rounded and friendly.' },
   { value: 'mono', label: 'Mono', detail: 'IBM Plex Mono, the face of the small labels, used everywhere.' },
+]
+
+/** The colour themes Appearance offers, in the order shown, as the apps' Theme (testdata/contracts/themes.json lists the same
+ *  ids and titles). `detail` says what marks and what acts, since the swatches can't. */
+export const palettes: { value: PaletteChoice; label: string; detail: string }[] = [
+  { value: 'admitOne', label: 'Admit One', detail: 'Marks and acts in one red, the ticket’s, on warm paper.' },
+  { value: 'index', label: 'Index', detail: 'Marks in red and acts in blue, on white paper.' },
+  { value: 'openingNight', label: 'Opening Night', detail: 'Marks in red and acts in bulb gold.' },
 ]
 
 /** The sizes Title Pages text can be set in, as the apps' Text Size. The page scales its own type steps to match

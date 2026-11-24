@@ -251,6 +251,20 @@ All merging is a pure function of two copies, so it is unit-tested without a net
 - **Move to an Account** (from Marquee Sync). One tap in Settings → Data → Sync: create an account as above (this device's settings, already synced, and its library go up), show the number to write down, turn the pairing off on this device. The old `/sync/<id>` record stays on the Worker until someone erases it from a device that still has the pairing; other paired devices keep syncing settings that way until they move too. Once an account is on, a device that isn't paired isn't offered Turn On Sync.
 - **Both on one device** is allowed only during the move; the account is the sync from then on.
 
+## The account link
+
+One step to log an app in to the account the website is on, with nothing to type: **`flow://account?n=<16 digits>&s=<server origin, URL-encoded>`**.
+
+- `n` is the account number without spaces (leading zeros kept); the reader also takes spaces and dashes. `s` is the account server's origin, written as `encodeURIComponent` writes it (`https%3A%2F%2Fexample.workers.dev`); the reader tidies it as it does a typed Account Server (`https://` added, path dropped). Both are required: a link with a missing or unreadable one is refused. Other parameters are ignored, the first of a repeated one counts, a `+` is a plus, scheme and host are case-insensitive. There is no token: account routes have none.
+- **The number is the account's key**, so the link is as secret as the number. The website builds it only while it is shown (Settings → Account → Use This Account in the App: hidden until **Show**, with a plain sentence that anyone with the link can open the account), never puts it in the page address, history, a log or analytics, and removes it again on Hide or Log Out. It offers an **Open in Marquee** link and a QR code of the same text for an iPhone or iPad camera. The vectors are `testdata/contracts/account-link.json`; both readers run them (`web/src/lib/account/link.ts`, `FlowKit/Sync/AccountLink.swift`).
+- **What the apps do on open** (`AccountLinkPlan` decides, `AccountLinkView` asks). Every case opens a confirmation first; nothing is logged in by merely opening a link:
+  - *Not logged in:* "Log in to Marquee account ending 3456 on example.workers.dev?" then the normal Log In (this device's data is kept and merged). A build with no account server of its own then remembers the link's as the typed Account Server.
+  - *Same account already on this device* (same number, same server): says so and changes nothing.
+  - *Another account:* asks before switching, with Log Out's own choice: **Switch and Keep This Device's Data** or **Switch and Clear This Device**. The new account is checked first, so a link that doesn't work can't leave the device logged out. Then it is Log Out (keeping or clearing) followed by Log In, with no other data handling.
+  - *The build has an account server that the link doesn't name:* says so and asks which to use (the link's is the default), and nothing is saved as the typed server.
+  - *A link that can't be read:* a sheet with the reason and where to get a fresh link.
+- **Apple TV** can't scan or open links, so it has no one-step path: its Account page takes the 16 digits (the remote's number entry) and, in a build with no server of its own, the Worker's address, which Settings → Account on any logged-in device shows as Account Server.
+
 ## Apps: what to build
 
 - `FlowKit/Sync/Account*`: number (generate, format, parse), keys (PBKDF2 then HKDF, the vector above), the wire DTOs and merge functions of this document with unit tests (reuse the web's cases: `web/src/lib/account/*.test.ts` and `web/proxy/account.test.js`), the client (`GET` list, `GET`/`PUT` section, `POST`, `DELETE`, retry on 409, 429 handling) and the history splitter with the vector.

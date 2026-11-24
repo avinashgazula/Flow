@@ -10,6 +10,7 @@ import { defaultSettings, settingsStore, type ExternalPlayerId, type Settings } 
 import { externalPlayerIds } from '../player/externalPlayers'
 import { libraryStore, type Library } from '../../lib/store/library'
 import { isTabOrder } from '../../lib/tabs'
+import { paletteIds } from '../../lib/palette'
 import { resolveTypeface } from '../../lib/typeface'
 import { isShelfList } from '../../lib/shelves'
 import { isSubtitleStyle, normaliseSubtitleStyle } from '../../lib/store/subtitleStyle'
@@ -125,6 +126,8 @@ const settingTypes: { [K in keyof Settings]: (v: unknown) => boolean } = {
   sources: isSourceOrdering,
   // 'ioskeley' is what an older build saved for Ioskeley Mono; it reads as Mono.
   font: (v) => ['system', 'inter', 'geist', 'manrope', 'mono', 'ioskeley'].includes(v as string),
+  // An unknown theme is skipped, so the one the person has stays.
+  palette: (v) => paletteIds.includes(v as never),
   tabOrder: isTabOrder,
   // Empty clears the proxy; anything else has to be an address Marquee can call.
   streamProxy: (v) => typeof v === 'string' && proxyProblem(v) === undefined,

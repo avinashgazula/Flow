@@ -323,13 +323,22 @@ recent options (Volume Boost, Dolby Vision, X-Ray, Still Watching, Smart Downloa
 - **Typography:** Settings → General → Typeface (System, Inter, Geist, Manrope, Mono; System is the default).
   - Choosing one restyles buttons, rows, settings, notes and body copy at once, without leaving the page, and
     survives a relaunch. Each name in the list is set in its own face. The iPhone tab bar labels follow it too.
-  - Whatever the choice, page titles stay Archivo, headings and big numbers Plex Sans Condensed, reading text
+  - Whatever the choice, page titles stay Archivo, headings and big numbers Plex Sans, reading text
     (overviews, biographies, reviews) Plex Serif, and Plex Mono stays for small uppercase labels and for lines of
     figures (the meta line under artwork, runtimes, sizes, clock times).
   - System follows Dynamic Type like the system's own text, including at the largest sizes. Look for loose pills,
     chips and columns after a switch (Mono is the widest face), and for clipping in Mono at large sizes.
   - Page titles (Explore, Settings, title pages) start at the same scale as Home's lead title.
   - The tour has `home-mono` (Home in Mono) and `settings-typeface`.
+- **Colour themes:** Settings → General → Theme (Admit One, Index, Opening Night; Admit One is the default), and Settings →
+  Appearance on the website. Appearance still picks the light or dark side of each.
+  - Choosing one repaints the whole app at once, behind the open Settings page, with no relaunch; navigation, scroll
+    position and a playing video are untouched. Switches, the tab bar's selection and links take the theme's action colour.
+  - In Admit One the mark and the action are one red: look for a red numeral, bar or label left on a red fill under the
+    pointer or the Apple TV focus (it must turn to the on-action colour), and for status dots that told red from blue.
+  - On tvOS something must visibly have focus in every theme, on red-marked content too.
+  - The widget and the Top Shelf follow the theme after the app has run once (the snapshot carries the colours).
+  - The tour has `home-index-light`, `home-opening-night-light`, `home-opening-night`, `home-index` and `settings-theme`.
 - **Layout:**
   - iPhone SE size to Pro Max; portrait and landscape (Dynamic Island on the leading edge in landscape).
   - iPad split view and Stage Manager sizes.

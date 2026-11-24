@@ -30,7 +30,7 @@ export const libraries: Licence[] = [
   { package: 'qrcode-generator', name: 'qrcode-generator', version: '2.0.4', licence: 'MIT', url: 'https://github.com/kazuhikoarase/qrcode-generator', use: 'The pairing code for Sync' },
   { package: '@fontsource/archivo', name: 'Archivo (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'The page titles' },
   { package: '@fontsource/ibm-plex-mono', name: 'IBM Plex Mono (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Small labels, lines of figures and the Mono typeface choice' },
-  { package: '@fontsource/ibm-plex-sans-condensed', name: 'IBM Plex Sans Condensed (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Headings and titles in lists' },
+  { package: '@fontsource/ibm-plex-sans', name: 'IBM Plex Sans (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Headings and titles in lists' },
   { package: '@fontsource/ibm-plex-serif', name: 'IBM Plex Serif (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'Reading text' },
   { package: '@fontsource-variable/inter', name: 'Inter (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'A typeface choice, loaded only when chosen' },
   { package: '@fontsource-variable/geist', name: 'Geist (fontsource)', version: '5.3.0', licence: 'OFL-1.1', url: 'https://github.com/fontsource/font-files', use: 'A typeface choice, loaded only when chosen' },
@@ -80,7 +80,7 @@ export const models: Model[] = [
 export const typefaces: { name: string; file: string }[] = [
   { name: 'Archivo', file: 'OFL-Archivo.txt' },
   { name: 'IBM Plex Mono', file: 'OFL-Plex-Mono.txt' },
-  { name: 'IBM Plex Sans Condensed', file: 'OFL-Plex-Sans-Condensed.txt' },
+  { name: 'IBM Plex Sans', file: 'OFL-Plex-Sans.txt' },
   { name: 'IBM Plex Serif', file: 'OFL-Plex-Serif.txt' },
   { name: 'Inter', file: 'OFL-Inter.txt' },
   { name: 'Geist', file: 'OFL-Geist.txt' },

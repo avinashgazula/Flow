@@ -1,7 +1,7 @@
 import SwiftUI
 import FlowKit
 
-/// A show's episodes as numbered rows (a red condensed number, the still, the title, its air date and runtime in mono, and
+/// A show's episodes as numbered rows (a red Plex Sans number, the still, the title, its air date and runtime in mono, and
 /// what it is about in serif), under a ruled label. Seasons are bordered tabs, or a menu for a long-running show.
 struct SeasonsSection: View {
     let show: MediaItem
@@ -215,7 +215,7 @@ private struct EpisodeRow: View {
                 still
                 VStack(alignment: .leading, spacing: 4) {
                     Text(episode.title)
-                        .font(Theme.Typeface.custom(Theme.Face.condensed, Platform.isPhone ? 18 : 22, .headline))
+                        .font(Theme.Typeface.custom(Theme.Face.sans, Platform.isPhone ? 18 : 22, .headline))
                         .textCase(.uppercase)
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)

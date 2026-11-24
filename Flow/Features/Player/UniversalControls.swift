@@ -39,9 +39,10 @@ struct UniversalMacControls: View {
         VStack(spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(session.title)
-                    .font(.custom(Theme.Face.condensed, size: 22, relativeTo: .title3))
+                    .font(.custom(Theme.Face.sans, size: 20, relativeTo: .title3))
                     .foregroundStyle(Theme.Palette.fg)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 if let line = session.subtitleLine {
                     Text(line).font(Theme.Typeface.caption).foregroundStyle(Theme.Palette.muted).lineLimit(1)
                 }

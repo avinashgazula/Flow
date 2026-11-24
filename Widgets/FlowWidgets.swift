@@ -38,7 +38,12 @@ struct ContinueProvider: TimelineProvider {
     }
 
     private func entry(for family: WidgetFamily) async -> ContinueEntry {
-        guard let snapshot = FlowSnapshot.load() else { return .placeholder }
+        // The views read `Ink`, so it is set before the entry they draw is handed back.
+        guard let snapshot = FlowSnapshot.load() else {
+            Ink.current = .admitOne
+            return .placeholder
+        }
+        Ink.current = snapshot.colors ?? .admitOne
         let items = snapshot.continueWatching.isEmpty ? snapshot.watchlist : snapshot.continueWatching
         let count = family == .systemLarge ? 3 : 1
         var cards: [ContinueEntry.Card] = []
@@ -61,15 +66,22 @@ struct ContinueProvider: TimelineProvider {
 
 // MARK: Palette
 
-/// Marquee's dark tokens (web/DESIGN.md): ink ground, paper text, one red for progress and labels. A widget is
-/// always dark, over artwork. It uses the system's monospaced face rather than bundling Plex Mono into the
+/// Marquee's dark tokens (web/DESIGN.md) in the theme chosen in the app: ink ground, paper text, the theme's mark for
+/// progress and labels. A widget is always dark, over artwork. The app writes the colours into the shared snapshot;
+/// Admit One is used until it has. It uses the system's monospaced face rather than bundling Plex Mono into the
 /// extension: a few small labels don't justify duplicating the font files, and the system's is close.
 private enum Ink {
-    static let ground = Color(red: 0x0A / 255, green: 0x0A / 255, blue: 0x0A / 255)
-    static let paper = Color(red: 0xF2 / 255, green: 0xF2 / 255, blue: 0xEE / 255)
-    static let muted = Color(red: 0xB0 / 255, green: 0xB0 / 255, blue: 0xAC / 255)
-    static let red = Color(red: 0xFF / 255, green: 0x5A / 255, blue: 0x4E / 255)
-    static let track = Color(red: 0x33 / 255, green: 0x33 / 255, blue: 0x33 / 255)
+    /// Set from the snapshot each time a timeline entry is made, before any view that reads it is drawn.
+    static var current = FlowSnapshot.Colors.admitOne
+
+    private static func color(_ hex: UInt32) -> Color {
+        Color(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
+    }
+    static var ground: Color { color(current.ground) }
+    static var paper: Color { color(current.paper) }
+    static var muted: Color { color(current.muted) }
+    static var red: Color { color(current.mark) }
+    static var track: Color { color(current.track) }
 
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
         .system(size: size, weight: weight, design: .monospaced)

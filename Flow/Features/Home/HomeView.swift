@@ -304,7 +304,7 @@ extension HomeView {
     }
 }
 
-/// Which title of the turn you are on: `01 / 10` in red condensed figures between two square arrows. On Apple TV the
+/// Which title of the turn you are on: `01 / 10` in red Plex Sans figures between two square arrows. On Apple TV the
 /// arrows take focus, so the remote can turn through the picks.
 private struct LeadPager: View {
     let index: Int
@@ -320,7 +320,9 @@ private struct LeadPager: View {
                 .accessibilityLabel("Previous Title")
                 .focused(focus, equals: .previous)
             Text(String(format: "%02d / %02d", index + 1, count))
-                .font(.custom(Theme.Face.condensed, size: 22 * Theme.scale).monospacedDigit())
+                .font(.custom(Theme.Face.sans, size: 19 * Theme.scale).monospacedDigit())
+                .lineLimit(1)
+                .fixedSize()
                 .foregroundStyle(Theme.Palette.red)
                 .padding(.horizontal, Theme.Space.m)
                 .frame(minHeight: 44 * Theme.scale)

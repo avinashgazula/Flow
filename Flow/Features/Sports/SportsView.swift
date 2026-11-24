@@ -47,7 +47,7 @@ struct SportsView: View {
         .sheet(isPresented: $showSearch) { TeamSearchView().environment(model) }
         .flowModal(item: $channelsFor) { event in
             GameChannelsView(event: event)
-                .switchTint(model.settings.general.accent)
+                .switchTint()
                 .environment(model)
         }
         .liveChannelCover($playing, epg: live.epg, autoRotate: model.settings.playback.autoRotate)
@@ -288,7 +288,7 @@ struct EventRow: View {
         }
     }
 
-    private var scoreFont: Font { Theme.Typeface.custom(Theme.Face.condensed, 28, .title2).monospacedDigit() }
+    private var scoreFont: Font { Theme.Typeface.custom(Theme.Face.sans, 26, .title2).monospacedDigit() }
 
     @ViewBuilder
     private var score: some View {

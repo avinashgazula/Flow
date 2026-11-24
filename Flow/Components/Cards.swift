@@ -137,7 +137,7 @@ struct FocusLift: ViewModifier {
 
 extension Theme.Typeface {
     /// A card's title under its picture.
-    static var cardTitle: Font { custom(Theme.Face.condensedSemiBold, 16, .subheadline) }
+    static var cardTitle: Font { custom(Theme.Face.sansSemiBold, 16, .subheadline) }
 }
 
 /// The 2px ink frame around a card's picture. Blue under the pointer, and a thicker blue ring when focused (Apple TV, a
@@ -770,7 +770,7 @@ struct Monogram: View {
         Theme.Palette.tint2
             .overlay {
                 Text(Self.initials(name))
-                    .font(.custom(Theme.Face.condensed, size: fontSize))
+                    .font(.custom(Theme.Face.sans, size: fontSize))
                     .foregroundStyle(Theme.Palette.muted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)

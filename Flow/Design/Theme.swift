@@ -8,7 +8,7 @@ import AppKit
 
 /// Marquee's design tokens: the Index, as on the website (web/DESIGN.md). Paper and ink ruled with 2px lines, a giant
 /// grotesque for titles, the viewer's own typeface (System unless Settings says otherwise) for everything you press,
-/// one red that marks and one blue that acts. Both themes are first-class and follow the system unless Settings → Appearance says otherwise; the player is always
+/// one colour that marks and one that acts (the theme sets them: Admit One uses its ticket red for both). Both sides of a theme are first-class and follow the system unless Settings → Appearance says otherwise; the player is always
 /// dark (`darkScope()`). Nothing is rounded, shadowed or glassy outside the player: structure is rules, and a hover,
 /// a press or the tvOS focus is shown by inversion (blue fill, on-blue text).
 enum Theme {
@@ -58,78 +58,99 @@ enum Theme {
         let dark: UInt32
         var color: Color { Color(light: light, dark: dark) }
         #if os(iOS) || os(tvOS)
+        /// For UIKit's appearance proxies (the segmented control), set again by `AppModel` when the theme changes.
         var ui: UIColor { UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) } }
         #endif
     }
 
-    /// The website's tokens (web/src/styles/tokens.css), light then dark.
+    /// The tokens of the chosen theme (FlowKit's `ThemePalette`, which web/src/styles/tokens.css repeats), light then dark.
+    /// Each read goes through `ThemeState`, which is `@Observable`: a view body that evaluates one is tracked by SwiftUI,
+    /// so choosing another theme in Settings repaints every view that uses a colour at once, with no relaunch and no
+    /// `.id` on the root (which would throw away navigation, scroll position and the player).
     enum Tones {
-        static let bg = Tone(light: 0xFFFFFF, dark: 0x0A0A0A)
-        static let fg = Tone(light: 0x0A0A0A, dark: 0xF2F2EE)
-        static let red = Tone(light: 0xC9120A, dark: 0xFF5A4E)
-        static let blue = Tone(light: 0x1A3DFF, dark: 0x8FA2FF)
-        static let onBlue = Tone(light: 0xFFFFFF, dark: 0x0A0A0A)
-        static let muted = Tone(light: 0x555555, dark: 0xB0B0AC)
-        static let faint = Tone(light: 0x636363, dark: 0x8F8F8B)
-        static let warn = Tone(light: 0xA64B00, dark: 0xFF9F43)
-        static let tint1 = Tone(light: 0xF3F3F0, dark: 0x151515)
-        static let tint2 = Tone(light: 0xE7E7E3, dark: 0x212121)
-        static let tint3 = Tone(light: 0xD4D4CE, dark: 0x333333)
-        /// Pressed blue: a little deeper in light, a little paler in dark.
-        static let bluePressed = Tone(light: 0x0F2BD6, dark: 0xB4C1FF)
+        private static func tone(_ token: KeyPath<ThemeTokens, UInt32>) -> Tone {
+            let theme = ThemeState.shared.choice
+            return Tone(light: ThemePalette.tokens(theme, dark: false)[keyPath: token],
+                        dark: ThemePalette.tokens(theme, dark: true)[keyPath: token])
+        }
+        static var bg: Tone { tone(\.bg) }
+        static var fg: Tone { tone(\.fg) }
+        /// The mark: labels, numerals, progress, live.
+        static var mark: Tone { tone(\.mark) }
+        /// The action colour. Admit One acts in the same red it marks with; Index acts in blue, Opening Night in gold.
+        static var spot: Tone { tone(\.spot) }
+        static var onSpot: Tone { tone(\.onSpot) }
+        static var muted: Tone { tone(\.muted) }
+        static var faint: Tone { tone(\.faint) }
+        static var warn: Tone { tone(\.warn) }
+        static var tint1: Tone { tone(\.tint1) }
+        static var tint2: Tone { tone(\.tint2) }
+        static var tint3: Tone { tone(\.tint3) }
+        /// Pressed action: a little deeper in light, a little paler in dark.
+        static var spotPressed: Tone { tone(\.spotPressed) }
+        // Older names.
+        static var red: Tone { mark }
+        static var blue: Tone { spot }
+        static var onBlue: Tone { onSpot }
+        static var bluePressed: Tone { spotPressed }
     }
 
-    /// Red marks, blue acts. Nothing else is coloured but artwork.
+    /// The mark and the action, in the chosen theme: Admit One has one red for both, Index red and blue, Opening Night
+    /// red and gold. Nothing else is coloured but artwork. The names say the role; `red` and `blue` are what they were
+    /// called when those were always the two colours, and still read as mark and action.
     enum Palette {
         /// Paper: every screen's background.
-        static let bg = Tones.bg.color
+        static var bg: Color { Tones.bg.color }
         /// Ink: text, rules, borders, the solid button, the current tab.
-        static let fg = Tones.fg.color
+        static var fg: Color { Tones.fg.color }
         /// Markers, labels, numerals, progress, live; never body text.
-        static let red = Tones.red.color
+        static var mark: Color { Tones.mark.color }
         /// Action: links, hover and focus fills, selection, switch tracks.
-        static let blue = Tones.blue.color
-        static let bluePressed = Tones.bluePressed.color
-        /// Text and icons on a blue fill.
-        static let onBlue = Tones.onBlue.color
+        static var spot: Color { Tones.spot.color }
+        static var spotPressed: Color { Tones.spotPressed.color }
+        /// Text and icons on an action fill.
+        static var onSpot: Color { Tones.onSpot.color }
         /// Secondary text and metadata.
-        static let muted = Tones.muted.color
+        static var muted: Color { Tones.muted.color }
         /// Captions and placeholders; never body copy.
-        static let faint = Tones.faint.color
+        static var faint: Color { Tones.faint.color }
         /// Degraded states: "may stutter".
-        static let warn = Tones.warn.color
+        static var warn: Color { Tones.warn.color }
         /// Quiet fills for what is not there yet: tracks, skeletons, a hovered menu item. Nothing that holds
         /// content is tint-filled.
-        static let tint1 = Tones.tint1.color
-        static let tint2 = Tones.tint2.color
-        static let tint3 = Tones.tint3.color
+        static var tint1: Color { Tones.tint1.color }
+        static var tint2: Color { Tones.tint2.color }
+        static var tint3: Color { Tones.tint3.color }
         /// Flat translucent ink for notices and chrome over video.
         static let overlay = Color(hex: 0x0A0A0A, opacity: 0.94)
         /// A rule or border: ink at full strength in both themes.
         static var rule: Color { fg }
 
-        // Older names, mapped onto the Index so every screen compiles while it is converted.
-        static let ground = bg
-        static let canvas = bg
-        static let panel = tint1
-        static let elevated = tint1
-        static let surface = tint1
-        static let control = tint2
-        static let surfaceStrong = tint2
-        static let lineStrong = tint3
-        static let edge = tint2
-        static let line = fg
-        static let hairline = fg
-        static let text = fg
-        static let textSecondary = muted
-        static let textTertiary = faint
-        static let print = muted
-        static let spot = blue
-        static let spotPressed = bluePressed
-        static let onSpot = onBlue
-        static let error = red
-        static let gold = warn
-        static let overPicture = overlay
+        // Names from before themes: the mark, the action and what sits on it.
+        static var red: Color { mark }
+        static var blue: Color { spot }
+        static var bluePressed: Color { spotPressed }
+        static var onBlue: Color { onSpot }
+
+        // Older names, mapped onto the theme so every screen compiles while it is converted.
+        static var ground: Color { bg }
+        static var canvas: Color { bg }
+        static var panel: Color { tint1 }
+        static var elevated: Color { tint1 }
+        static var surface: Color { tint1 }
+        static var control: Color { tint2 }
+        static var surfaceStrong: Color { tint2 }
+        static var lineStrong: Color { tint3 }
+        static var edge: Color { tint2 }
+        static var line: Color { fg }
+        static var hairline: Color { fg }
+        static var text: Color { fg }
+        static var textSecondary: Color { muted }
+        static var textTertiary: Color { faint }
+        static var print: Color { muted }
+        static var error: Color { mark }
+        static var gold: Color { warn }
+        static var overPicture: Color { overlay }
     }
 
     /// Motion explains state and never decorates (web/DESIGN.md, Motion): an entrance eases out, an exit is quicker,
@@ -153,8 +174,8 @@ enum Theme {
         static let archivo = "Archivo-Bold"
         static let mono = "IBMPlexMono"
         static let monoSemiBold = "IBMPlexMono-SmBld"
-        static let condensedSemiBold = "IBMPlexSansCond-SmBld"
-        static let condensed = "IBMPlexSansCond-Bold"
+        static let sansSemiBold = "IBMPlexSans-SmBld"
+        static let sans = "IBMPlexSans-Bold"
         static let serif = "IBMPlexSerif-Regular"
         static let serifSemiBold = "IBMPlexSerif-SemiBold"
         static let serifItalic = "IBMPlexSerif-Italic"
@@ -167,7 +188,7 @@ enum Theme {
         static let manropeSemiBold = "Manrope-SemiBold"
     }
 
-    /// Typefaces. Archivo is the giant page title alone; Plex Sans Condensed sets headings and big numbers; Plex Serif
+    /// Typefaces. Archivo is the giant page title alone; Plex Sans sets headings and big numbers; Plex Serif
     /// is for sentences people read; none of those three changes. Everything else is the *interface face*, which
     /// is the viewer's choice (System by default): buttons, rows, settings, notes, body copy. Plex Mono stays, whatever
     /// the choice, for small uppercase print (`label`, `micro`, `edgePrint`, `detailKey`) and for lines of figures that
@@ -215,9 +236,9 @@ enum Theme {
         static var giant: Font { custom(Face.archivo, giantSize, .largeTitle) }
         static var display: Font { custom(Face.archivo, 36, .largeTitle) }
         /// A title page's name, a person's name.
-        static var title: Font { custom(Face.condensed, 30, .title2) }
+        static var title: Font { custom(Face.sans, 28, .title2) }
         /// A section's or a row's name.
-        static var heading: Font { custom(Face.condensed, 22, .title3) }
+        static var heading: Font { custom(Face.sans, 21, .title3) }
         static var sectionTitle: Font { heading }
         /// Buttons and anything you press: semibold. Uppercase and track with `.controlText()`.
         static var headline: Font { interface(.semibold, 15, .headline, system: .subheadline) }
@@ -245,11 +266,11 @@ enum Theme {
         /// A time, duration or resolution that should line up with its neighbours (Plex Mono is tabular already).
         static var time: Font { custom(Face.monoSemiBold, 15, .headline).monospacedDigit() }
         /// A big number with a label under it: ratings, stats.
-        static var figure: Font { custom(Face.condensed, 24, .title3).monospacedDigit() }
+        static var figure: Font { custom(Face.sans, 22, .title3).monospacedDigit() }
         /// Small print: mono, tracked and uppercase through `.edgePrint()`.
         static var edgePrint: Font { micro.monospacedDigit() }
         /// A title set as text when a film has no logo art.
-        static func artworkTitle(_ size: CGFloat) -> Font { .custom(Face.condensed, size: size, relativeTo: .title) }
+        static func artworkTitle(_ size: CGFloat) -> Font { .custom(Face.sans, size: size, relativeTo: .title) }
     }
 }
 
@@ -260,6 +281,14 @@ enum Theme {
 final class InterfaceFace {
     static let shared = InterfaceFace()
     var choice: FontChoice = .system
+}
+
+/// The viewer's colour theme, set by `AppModel` when settings load and change. `@Observable` for the same reason as
+/// `InterfaceFace`: every colour token reads it, so a change redraws exactly the views that show a colour.
+@Observable
+final class ThemeState {
+    static let shared = ThemeState()
+    var choice: ThemeChoice = .admitOne
 }
 
 extension Color {
@@ -622,38 +651,61 @@ struct PageTitle: View {
     }
 }
 
-/// The wordmark: MARQUEE in Plex Sans Condensed over a row of seven red bulbs, each rimmed in the lettering's colour
-/// so the red reads on blue and on paper. Sized by `size` (the font size, as on the website); `color` is the lettering
-/// and the rim (on-blue on the blue logo block).
+/// The wordmark: an admit-one ticket, as in the app icon. A square-cornered ticket in the mark red, MARQUEE across it in
+/// Plex Sans Bold with open tracking, a notch cut into each short end, a column of perforation dots and, on the stub,
+/// a ring with an ink centre. The notches and dots are real holes, so whatever is behind shows through. Sized by `size`
+/// (the font size, as on the website: the ticket is 1.5 em tall); `color` is the lettering and the ring (on-blue, the
+/// text colour on a solid mark).
 struct Wordmark: View {
     var size: CGFloat = 28
     var color: Color = Theme.Palette.onBlue
 
     var body: some View {
         let em = size * Theme.scale
-        // The bulbs are an overlay of the lettering, so their row is exactly as wide as the word.
+        let stub = 1.7 * em
+        let tracking = 0.2 * 0.72 * em
         Text("MARQUEE")
-            .font(.custom(Theme.Face.condensed, size: em))
-            .tracking(0.03 * em)
+            .font(.custom(Theme.Face.sans, size: 0.72 * em))
+            .tracking(tracking)
+            .foregroundStyle(color)
             .lineLimit(1)
             .fixedSize()
-            .padding(.bottom, 0.56 * em)
-            .overlay(alignment: .bottom) {
-                HStack(spacing: 0) {
-                    ForEach(0..<7, id: \.self) { index in
-                        if index > 0 { Spacer(minLength: 0) }
-                        ZStack {
-                            Circle().fill(color)
-                            Circle().fill(Theme.Palette.red).padding(0.07 * em)
+            .padding(.leading, 0.85 * em)
+            // The tracking leaves space after the last letter; take it back so the word sits centred in its field.
+            .padding(.trailing, stub + 0.55 * em - tracking)
+            .frame(height: 1.5 * em)
+            .background {
+                GeometryReader { proxy in
+                    Rectangle()
+                        .fill(Theme.Palette.red)
+                        .mask {
+                            ZStack {
+                                Rectangle()
+                                ZStack {
+                                    Circle().frame(width: 0.54 * em, height: 0.54 * em)
+                                        .position(x: 0, y: proxy.size.height / 2)
+                                    Circle().frame(width: 0.54 * em, height: 0.54 * em)
+                                        .position(x: proxy.size.width, y: proxy.size.height / 2)
+                                    ForEach(0..<8, id: \.self) { index in
+                                        Circle().frame(width: 0.1 * em, height: 0.1 * em)
+                                            .position(x: proxy.size.width - stub, y: (CGFloat(index) + 0.5) * proxy.size.height / 8)
+                                    }
+                                }
+                                .blendMode(.destinationOut)
+                            }
+                            .compositingGroup()
                         }
-                        .frame(width: 0.34 * em, height: 0.34 * em)
-                    }
                 }
-                .padding(.horizontal, -0.07 * em)
             }
-        .foregroundStyle(color)
-        .fixedSize()
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Marquee")
+            .overlay(alignment: .trailing) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 0.64 * em, height: 0.64 * em)
+                    .overlay { Circle().fill(Color(red: 0.04, green: 0.04, blue: 0.04)).frame(width: 0.34 * em, height: 0.34 * em) }
+                    .padding(.trailing, stub / 2 - 0.32 * em)
+            }
+            .fixedSize()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Marquee")
     }
 }

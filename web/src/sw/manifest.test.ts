@@ -43,7 +43,7 @@ describe('the web app manifest', () => {
 
   it('takes its colours from the design’s paper (the light theme, the first --bg), so the window frame and splash screen match the page', () => {
     const base = /--bg:\s*(#[0-9a-f]{6})/i.exec(read('src/styles/tokens.css'))?.[1]
-    expect(base).toBe('#ffffff')
+    expect(base).toBe('#f4f1ea')
     expect(manifest.theme_color).toBe(base)
     expect(manifest.background_color).toBe(base)
     // index.html's theme-color is what the browser uses before the manifest loads.

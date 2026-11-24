@@ -4,13 +4,13 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .refresh[data-working] svg { animation: none; } }
 
-/* The index of pages that read your library, as the reference's numbered category list: red condensed numerals,
-   condensed uppercase names, what each holds in mono at the right. Two columns where there is room. */
+/* The index of pages that read your library, as the reference's numbered category list: red Plex Sans numerals,
+   Plex Sans uppercase names, what each holds in mono at the right. Two columns where there is room. */
 .pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); column-gap: var(--space-xxl); margin-bottom: var(--section); }
 .pages > li { border-bottom: 1px solid var(--fg); }
 .pageLink { align-items: center; min-height: 64px; height: 100%; }
-.pageNumber { flex: 0 0 30px; font: 700 22px / 1 var(--font-cond); color: var(--red); }
-.pageName { flex: 1; min-width: 0; font: 700 22px / 1.1 var(--font-cond); text-transform: uppercase; }
+.pageNumber { flex: 0 0 30px; font: 700 22px / 1 var(--font-sans); color: var(--red); }
+.pageName { flex: 1; min-width: 0; font: 700 22px / 1.1 var(--font-sans); text-transform: uppercase; }
 .pageSub { flex: none; font-size: var(--fs-small); }
 .pageLink:hover .pageNumber, .pageLink:focus-visible .pageNumber { color: var(--onblue); }
 .pageLink svg { flex: none; }
@@ -52,7 +52,7 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
 
 .continueGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-l) var(--space-m); padding-top: var(--space-l); }
 
-/* History: dated ruled rows. The date column is mono, the title condensed, and a day's heading is a red label under a
+/* History: dated ruled rows. The date column is mono, the title in Plex Sans, and a day's heading is a red label under a
    2px rule. The rows run edge to edge, so their blue hover does. */
 .history { content-visibility: auto; contain-intrinsic-size: auto 500px; }
 .bleed { margin-inline: calc(-1 * var(--page-inset)); }
@@ -85,7 +85,7 @@ li:hover > .remove, li:focus-within > .remove, .remove:focus-visible { opacity: 
 .historyTime { flex: 0 0 112px; font-size: var(--fs-small); letter-spacing: 0.04em; }
 .historyPlate { flex: none; width: 96px; }
 .historyText { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
-.historyTitle { font: 700 20px / 1.1 var(--font-cond); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.historyTitle { font: 700 20px / 1.1 var(--font-sans); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .historyMeta { font-size: var(--fs-footnote); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .historyItem:hover .historyMeta, .historyItem:focus-visible .historyMeta, .historyItem:hover .historyTime, .historyItem:focus-visible .historyTime { color: var(--onblue); }
 

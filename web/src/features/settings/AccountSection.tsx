@@ -8,6 +8,7 @@ import { redirectURI } from '../../lib/trakt/oauth'
 import { beginSignIn, checkClientID, finishingSignIn, signOut } from '../../lib/trakt/session'
 import { useTrakt } from '../../lib/trakt/store'
 import { AccountGroup } from './AccountGroup'
+import { AppLinkGroup } from './AccountAppLink'
 import { ConfirmButton, Group, Note, Row } from './controls'
 import s from './SettingsScreen.module.css'
 import { ListsGroup, MDBListGroup, SimklAppGroup, SimklGroup, SyncPreferencesGroup, TrackingWithGroup, syncDetail } from './TrackerGroups'
@@ -202,6 +203,7 @@ export function AccountSection() {
   return (
     <>
       <AccountGroup />
+      <AppLinkGroup />
       <TrackingWithGroup />
       <ListsGroup />
       <SyncPreferencesGroup />
