@@ -1,24 +1,19 @@
 import s from './Logo.module.css'
 
-/* Marquee's mark, drawn in the page rather than loaded: the name in Plex Sans over a row of red
-   bulbs, as on the sign above a cinema door. It takes its colours from the cell it sits in (the blue block's
-   text colour is the lettering and the bulbs' rim), so it reads in both themes. Static on purpose.
+/* Marquee's mark, drawn in the page rather than loaded: an admit-one ticket, as in the app icon. The ticket is the
+   red of the mark (--red) with real holes (a notch in each short end and a perforation, cut with a CSS mask so
+   the page shows through in both themes), the name in Plex Sans Bold across it and the stub's ring at the right.
+   The lettering and ring take --onblue, the colour of text on a solid mark. Static on purpose.
    public/icon.svg is the compact version (an M and one bulb) for the favicon and the installed app's icon. */
 
-const bulbs = 7
-
-/** The wordmark with its bulbs. Sized by the font size of whatever holds it. */
+/** The wordmark as a ticket. Sized by the font size of whatever holds it. */
 export function Logo() {
   return (
     <span className={s.logo} role="img" aria-label="Marquee">
       <span className={s.word} aria-hidden="true">
         Marquee
       </span>
-      <span className={s.bulbs} aria-hidden="true">
-        {Array.from({ length: bulbs }, (_, i) => (
-          <i key={i} />
-        ))}
-      </span>
+      <span className={s.ring} aria-hidden="true" />
     </span>
   )
 }

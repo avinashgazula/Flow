@@ -622,38 +622,61 @@ struct PageTitle: View {
     }
 }
 
-/// The wordmark: MARQUEE in Plex Sans over a row of seven red bulbs, each rimmed in the lettering's colour
-/// so the red reads on blue and on paper. Sized by `size` (the font size, as on the website); `color` is the lettering
-/// and the rim (on-blue on the blue logo block).
+/// The wordmark: an admit-one ticket, as in the app icon. A square-cornered ticket in the mark red, MARQUEE across it in
+/// Plex Sans Bold with open tracking, a notch cut into each short end, a column of perforation dots and, on the stub,
+/// a ring with an ink centre. The notches and dots are real holes, so whatever is behind shows through. Sized by `size`
+/// (the font size, as on the website: the ticket is 1.5 em tall); `color` is the lettering and the ring (on-blue, the
+/// text colour on a solid mark).
 struct Wordmark: View {
     var size: CGFloat = 28
     var color: Color = Theme.Palette.onBlue
 
     var body: some View {
         let em = size * Theme.scale
-        // The bulbs are an overlay of the lettering, so their row is exactly as wide as the word.
+        let stub = 1.7 * em
+        let tracking = 0.2 * 0.72 * em
         Text("MARQUEE")
-            .font(.custom(Theme.Face.sans, size: em * 0.9))
-            .tracking(0.02 * em)
+            .font(.custom(Theme.Face.sans, size: 0.72 * em))
+            .tracking(tracking)
+            .foregroundStyle(color)
             .lineLimit(1)
             .fixedSize()
-            .padding(.bottom, 0.56 * em)
-            .overlay(alignment: .bottom) {
-                HStack(spacing: 0) {
-                    ForEach(0..<7, id: \.self) { index in
-                        if index > 0 { Spacer(minLength: 0) }
-                        ZStack {
-                            Circle().fill(color)
-                            Circle().fill(Theme.Palette.red).padding(0.07 * em)
+            .padding(.leading, 0.85 * em)
+            // The tracking leaves space after the last letter; take it back so the word sits centred in its field.
+            .padding(.trailing, stub + 0.55 * em - tracking)
+            .frame(height: 1.5 * em)
+            .background {
+                GeometryReader { proxy in
+                    Rectangle()
+                        .fill(Theme.Palette.red)
+                        .mask {
+                            ZStack {
+                                Rectangle()
+                                ZStack {
+                                    Circle().frame(width: 0.54 * em, height: 0.54 * em)
+                                        .position(x: 0, y: proxy.size.height / 2)
+                                    Circle().frame(width: 0.54 * em, height: 0.54 * em)
+                                        .position(x: proxy.size.width, y: proxy.size.height / 2)
+                                    ForEach(0..<8, id: \.self) { index in
+                                        Circle().frame(width: 0.1 * em, height: 0.1 * em)
+                                            .position(x: proxy.size.width - stub, y: (CGFloat(index) + 0.5) * proxy.size.height / 8)
+                                    }
+                                }
+                                .blendMode(.destinationOut)
+                            }
+                            .compositingGroup()
                         }
-                        .frame(width: 0.34 * em, height: 0.34 * em)
-                    }
                 }
-                .padding(.horizontal, -0.07 * em)
             }
-        .foregroundStyle(color)
-        .fixedSize()
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Marquee")
+            .overlay(alignment: .trailing) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 0.64 * em, height: 0.64 * em)
+                    .overlay { Circle().fill(Color(red: 0.04, green: 0.04, blue: 0.04)).frame(width: 0.34 * em, height: 0.34 * em) }
+                    .padding(.trailing, stub / 2 - 0.32 * em)
+            }
+            .fixedSize()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Marquee")
     }
 }
