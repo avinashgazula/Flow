@@ -115,7 +115,7 @@
 .cardHead { display: flex; align-items: center; gap: var(--space-xs); min-width: 0; }
 .number { font: 600 var(--fs-footnote) / 1 var(--font-mono); color: var(--muted); }
 .channelName { font: 600 var(--fs-footnote) / 1.2 var(--font); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.programme { font: 700 var(--fs-title3) / 1.15 var(--font-cond); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.programme { font: 700 var(--fs-title3) / 1.15 var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .times { display: flex; align-items: center; gap: var(--space-s); font-size: var(--fs-footnote); color: var(--fg); }
 .progress { flex: 1; height: 4px; background: color-mix(in srgb, var(--fg) 25%, transparent); overflow: hidden; }
 .progress > span { display: block; height: 100%; background: var(--red); }
@@ -148,7 +148,7 @@
 @keyframes rise { from { opacity: 0; translate: 0 16px; } }
 @keyframes slide { from { opacity: 0; translate: 16px 0; } }
 .panelHead { display: flex; align-items: center; justify-content: space-between; padding: var(--space-s) var(--space-s) var(--space-xs) var(--space-m); }
-.panelTitle { font: 700 var(--fs-headline) / 1.2 var(--font-cond); text-transform: uppercase; letter-spacing: 0.02em; }
+.panelTitle { font: 700 var(--fs-headline) / 1.2 var(--font-sans); text-transform: uppercase; letter-spacing: 0.02em; }
 .panelList { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: var(--inset-bottom); }
 .panelItem { position: absolute; inset: 0 0 auto; }
 .panelRow {
@@ -166,7 +166,7 @@
 .panelRow[aria-current='true'] :is(.panelNumber, .panelNow) { color: var(--bg); }
 .panelRow:focus-visible { outline-offset: -3px; }
 .panelText { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.panelName { display: flex; align-items: baseline; gap: 8px; font: 700 var(--fs-body) / 1.2 var(--font-cond); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panelName { display: flex; align-items: baseline; gap: 8px; font: 700 var(--fs-body) / 1.2 var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panelNumber { font-size: var(--fs-caption); color: var(--muted); }
 .panelNow { font-size: var(--fs-footnote); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -185,7 +185,7 @@
   text-align: center;
 }
 .failedIcon { color: var(--red); }
-.failedTitle { font: 700 var(--fs-title2) / 1.1 var(--font-cond); text-transform: uppercase; text-wrap: balance; }
+.failedTitle { font: 700 var(--fs-title2) / 1.1 var(--font-sans); text-transform: uppercase; text-wrap: balance; }
 .failedMessage { max-width: 56ch; font-size: var(--fs-small); line-height: 1.5; color: var(--muted); text-wrap: pretty; }
 .failedActions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xs); margin-top: var(--space-xs); }
 .failedDetail { font-size: var(--fs-caption); color: var(--faint); }

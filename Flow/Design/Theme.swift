@@ -153,8 +153,8 @@ enum Theme {
         static let archivo = "Archivo-Bold"
         static let mono = "IBMPlexMono"
         static let monoSemiBold = "IBMPlexMono-SmBld"
-        static let condensedSemiBold = "IBMPlexSansCond-SmBld"
-        static let condensed = "IBMPlexSansCond-Bold"
+        static let sansSemiBold = "IBMPlexSans-SmBld"
+        static let sans = "IBMPlexSans-Bold"
         static let serif = "IBMPlexSerif-Regular"
         static let serifSemiBold = "IBMPlexSerif-SemiBold"
         static let serifItalic = "IBMPlexSerif-Italic"
@@ -167,7 +167,7 @@ enum Theme {
         static let manropeSemiBold = "Manrope-SemiBold"
     }
 
-    /// Typefaces. Archivo is the giant page title alone; Plex Sans Condensed sets headings and big numbers; Plex Serif
+    /// Typefaces. Archivo is the giant page title alone; Plex Sans sets headings and big numbers; Plex Serif
     /// is for sentences people read; none of those three changes. Everything else is the *interface face*, which
     /// is the viewer's choice (System by default): buttons, rows, settings, notes, body copy. Plex Mono stays, whatever
     /// the choice, for small uppercase print (`label`, `micro`, `edgePrint`, `detailKey`) and for lines of figures that
@@ -215,9 +215,9 @@ enum Theme {
         static var giant: Font { custom(Face.archivo, giantSize, .largeTitle) }
         static var display: Font { custom(Face.archivo, 36, .largeTitle) }
         /// A title page's name, a person's name.
-        static var title: Font { custom(Face.condensed, 30, .title2) }
+        static var title: Font { custom(Face.sans, 28, .title2) }
         /// A section's or a row's name.
-        static var heading: Font { custom(Face.condensed, 22, .title3) }
+        static var heading: Font { custom(Face.sans, 21, .title3) }
         static var sectionTitle: Font { heading }
         /// Buttons and anything you press: semibold. Uppercase and track with `.controlText()`.
         static var headline: Font { interface(.semibold, 15, .headline, system: .subheadline) }
@@ -245,11 +245,11 @@ enum Theme {
         /// A time, duration or resolution that should line up with its neighbours (Plex Mono is tabular already).
         static var time: Font { custom(Face.monoSemiBold, 15, .headline).monospacedDigit() }
         /// A big number with a label under it: ratings, stats.
-        static var figure: Font { custom(Face.condensed, 24, .title3).monospacedDigit() }
+        static var figure: Font { custom(Face.sans, 22, .title3).monospacedDigit() }
         /// Small print: mono, tracked and uppercase through `.edgePrint()`.
         static var edgePrint: Font { micro.monospacedDigit() }
         /// A title set as text when a film has no logo art.
-        static func artworkTitle(_ size: CGFloat) -> Font { .custom(Face.condensed, size: size, relativeTo: .title) }
+        static func artworkTitle(_ size: CGFloat) -> Font { .custom(Face.sans, size: size, relativeTo: .title) }
     }
 }
 
@@ -622,7 +622,7 @@ struct PageTitle: View {
     }
 }
 
-/// The wordmark: MARQUEE in Plex Sans Condensed over a row of seven red bulbs, each rimmed in the lettering's colour
+/// The wordmark: MARQUEE in Plex Sans over a row of seven red bulbs, each rimmed in the lettering's colour
 /// so the red reads on blue and on paper. Sized by `size` (the font size, as on the website); `color` is the lettering
 /// and the rim (on-blue on the blue logo block).
 struct Wordmark: View {
@@ -633,8 +633,8 @@ struct Wordmark: View {
         let em = size * Theme.scale
         // The bulbs are an overlay of the lettering, so their row is exactly as wide as the word.
         Text("MARQUEE")
-            .font(.custom(Theme.Face.condensed, size: em))
-            .tracking(0.03 * em)
+            .font(.custom(Theme.Face.sans, size: em * 0.9))
+            .tracking(0.02 * em)
             .lineLimit(1)
             .fixedSize()
             .padding(.bottom, 0.56 * em)

@@ -20,7 +20,7 @@
 }
 .top[data-away] { transform: translateY(-100%); transition: transform var(--dur-exit) var(--ease-out); }
 
-/* The logo cell: the wordmark in Plex Sans Condensed on a blue block. */
+/* The logo cell: the wordmark in Plex Sans on a blue block. */
 .brand {
   display: flex;
   align-items: center;

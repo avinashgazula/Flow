@@ -1,10 +1,10 @@
-/* The wordmark: Plex Sans Condensed capitals over seven red bulbs set evenly along the bottom, each with a rim in the
+/* The wordmark: Plex Sans capitals over seven red bulbs set evenly along the bottom, each with a rim in the
    cell's text colour so the red reads on the light blue and on the dark theme's pale blue. */
 .logo {
   display: inline-flex;
   flex-direction: column;
   gap: 0.22em;
-  font: 700 1em / 1 var(--font-cond);
+  font: 700 1em / 1 var(--font-sans);
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }

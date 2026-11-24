@@ -302,7 +302,7 @@ extension View {
     }
 }
 
-/// The red condensed numeral that opens an index row: 01, 02, ...
+/// The red Plex Sans numeral that opens an index row: 01, 02, ...
 struct IndexNumeral: View {
     let number: Int
 

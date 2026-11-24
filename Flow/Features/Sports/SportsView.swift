@@ -288,7 +288,7 @@ struct EventRow: View {
         }
     }
 
-    private var scoreFont: Font { Theme.Typeface.custom(Theme.Face.condensed, 28, .title2).monospacedDigit() }
+    private var scoreFont: Font { Theme.Typeface.custom(Theme.Face.sans, 26, .title2).monospacedDigit() }
 
     @ViewBuilder
     private var score: some View {

@@ -8,7 +8,7 @@ import s from './Frame.module.css'
 
 /* Frame: Marquee's one repeating object. A still or a poster sits in a 2px ink rule, square, and what decides whether to
    watch it is printed under it in mono capitals ("S3 E7 · 18M LEFT · ENDS 21:30 · 2160P · DV"), then its title in
-   Plex Sans Condensed. Progress is a thin red bar along the foot of the picture.
+   Plex Sans. Progress is a thin red bar along the foot of the picture.
 
    - Plate: the framed picture, with its progress bar and (unless hidden) its printed line.
    - PrintLine: the printed line alone.

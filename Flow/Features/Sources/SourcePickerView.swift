@@ -205,7 +205,7 @@ struct SourcePickerView: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(request.item.title)
-                        .font(Theme.Typeface.custom(Theme.Face.condensed, 28, .title2))
+                        .font(Theme.Typeface.custom(Theme.Face.sans, 26, .title2))
                         .textCase(.uppercase)
                         .foregroundStyle(Theme.Palette.fg)
                         .lineLimit(2)
@@ -375,8 +375,8 @@ struct SourcePickerView: View {
     }
 }
 
-/// One source as a ruled row: the resolution in red condensed numerals at the left, then the formats in mono capitals,
-/// the release name in condensed type, and the size, provider and languages in muted mono. The ranked-best row carries
+/// One source as a ruled row: the resolution in red Plex Sans numerals at the left, then the formats in mono capitals,
+/// the release name in Plex Sans, and the size, provider and languages in muted mono. The ranked-best row carries
 /// the solid Play; every row plays on tap. Only exceptions are flagged, in words. The row sits inside a
 /// `RuledCellStyle` button, which turns the whole row blue while it is hovered, focused or pressed.
 struct SourceRow: View {
@@ -429,7 +429,7 @@ struct SourceRow: View {
                         .lineLimit(2)
                 }
                 Text(title)
-                    .font(Theme.Typeface.custom(Theme.Face.condensedSemiBold, 18, .headline))
+                    .font(Theme.Typeface.custom(Theme.Face.sansSemiBold, 18, .headline))
                     .foregroundStyle(primary)
                     .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
                     .truncationMode(.middle)

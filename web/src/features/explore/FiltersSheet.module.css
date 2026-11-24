@@ -24,7 +24,7 @@
 
 /* The title and a square close cell, divided by rules, as the reference's dialog top. */
 .header { display: flex; align-items: stretch; justify-content: space-between; border-bottom: var(--rule); }
-.title { display: flex; align-items: center; padding: 0 var(--space-l); font: 700 28px / 1.1 var(--font-cond); text-transform: uppercase; }
+.title { display: flex; align-items: center; padding: 0 var(--space-l); font: 700 28px / 1.1 var(--font-sans); text-transform: uppercase; }
 .header :global(.btn) { width: 56px; height: auto; min-height: 56px; border-width: 0 0 0 var(--border-w); border-color: var(--fg); }
 @media (hover: hover) { .header :global(.btn:hover) { border-color: var(--blue); } }
 
@@ -68,7 +68,7 @@
 
 .logo { display: block; width: 56px; height: 56px; background: var(--tint-2); overflow: hidden; }
 .logo img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.initial { display: grid; place-items: center; width: 100%; height: 100%; font: 700 var(--fs-headline) / 1 var(--font-cond); color: var(--muted); }
+.initial { display: grid; place-items: center; width: 100%; height: 100%; font: 700 var(--fs-headline) / 1 var(--font-sans); color: var(--muted); }
 
 .name {
   max-width: 100%;
