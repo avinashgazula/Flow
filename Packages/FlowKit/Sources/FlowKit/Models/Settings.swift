@@ -167,9 +167,11 @@ public enum AppearanceChoice: String, Codable, Hashable, Sendable, CaseIterable,
 }
 
 public enum AppIconChoice: String, Codable, Hashable, Sendable, CaseIterable, Identifiable {
+    /// Raw values stay `dark` and `light` so saved settings still decode: `dark` is the primary icon (Paper, the default)
+    /// and `light` the alternate one (Ink).
     case dark, light
     public var id: String { rawValue }
-    public var title: String { rawValue.capitalized }
+    public var title: String { self == .dark ? "Paper" : "Ink" }
 }
 
 /// Which release a film's date means on Upcoming and Calendar.

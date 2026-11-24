@@ -8,10 +8,11 @@ import UIKit
 
 #if os(iOS)
 /// Switches between the bundled app icons. Icons can't be loaded as images, so the tiles use
-/// the previews in the asset catalog (regenerate both with scripts/make-icons.py).
+/// the previews in the asset catalog (regenerate both with scripts/render-icons.mjs).
 @MainActor
 enum AppIconSwitcher {
-    /// The alternate icon's name in the asset catalog; the dark icon is the primary one.
+    /// The alternate icon's name in the asset catalog. It is the Ink icon (the choice's raw value `light` and this name predate
+    /// the Admit One icon); the Paper icon is the primary one.
     static let lightName = "AppIcon-Light"
 
     /// Applies `choice`; false when the system refused.
@@ -36,7 +37,7 @@ enum AppIconSwitcher {
 struct AppIconSection: View {
     @Environment(AppModel.self) private var model
 
-    private let choices: [AppIconChoice] = [.light, .dark]
+    private let choices: [AppIconChoice] = [.dark, .light]
 
     var body: some View {
         Section(film: "App Icon") {
@@ -53,7 +54,7 @@ struct AppIconSection: View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
         return Button { select(choice) } label: {
             VStack(spacing: Theme.Space.xs) {
-                Image(choice == .light ? "IconPreviewLight" : "IconPreviewDark")
+                Image(choice == .light ? "IconPreviewInk" : "IconPreviewPaper")
                     .resizable()
                     .frame(width: 72, height: 72)
                     .clipShape(shape)
