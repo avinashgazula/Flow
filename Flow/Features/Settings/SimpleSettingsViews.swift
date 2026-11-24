@@ -64,17 +64,13 @@ struct GeneralSettingsView: View {
             #endif
             Section(film: "Appearance") {
                 #if !os(tvOS)
-                FilmPicker("Theme", selection: $model.settings.general.appearance) {
+                FilmPicker("Appearance", selection: $model.settings.general.appearance) {
                     ForEach(AppearanceChoice.allCases) { Text($0.title).tag($0) }
                 }
                 #endif
-                FilmPicker("Accent Colour", selection: $model.settings.general.accent) {
-                    ForEach(AccentColorChoice.allCases) { choice in
-                        Label(choice == .white ? "Marquee" : choice.rawValue.capitalized, systemImage: "circle.fill").foregroundStyle(choice.color).tag(choice)
-                    }
-                }
                 Toggle("Show Watched Check Marks", isOn: $model.settings.general.showWatchedBadges)
             }
+            ThemeSection()
             Section(film: "Home") {
                 FilmPicker("Top Pick From", selection: $model.settings.general.heroSource) {
                     ForEach(HeroSource.allCases) { Text($0.title).tag($0) }

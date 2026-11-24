@@ -310,6 +310,15 @@ img.logo { padding: 4px; }
 .faceSample { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .faceName { font: 600 var(--fs-headline) / 1.2 var(--font); }
 .faceText { font: 400 var(--fs-small) / 1.4 var(--font); opacity: 0.8; text-wrap: pretty; }
+.paletteSample { display: flex; align-items: center; gap: var(--space-m); min-width: 0; }
+/* Four cells in a ruled strip: paper, ink, the mark, the action. The frame is the row's own text colour, so it shows on a
+   selected (inverted) row too, where the paper cell would otherwise vanish into it. */
+.swatch { display: flex; flex: none; height: 28px; border: var(--hair-w) solid currentColor; }
+.swatch > span { width: 20px; }
+.swatch > :nth-child(1) { background: var(--bg); }
+.swatch > :nth-child(2) { background: var(--fg); }
+.swatch > :nth-child(3) { background: var(--red); }
+.swatch > :nth-child(4) { background: var(--blue); }
 .faceDetail { font: 400 var(--fs-footnote) / 1.45 var(--font); opacity: 0.8; text-wrap: pretty; }
 .faceCheck { display: grid; place-items: center; opacity: 0; }
 .face[data-selected] .faceCheck { opacity: 1; }

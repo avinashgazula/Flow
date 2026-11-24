@@ -4,7 +4,7 @@ import s from './Logo.module.css'
    red of the mark (--red) with real holes (a notch in each short end and a perforation, cut with a CSS mask so
    the page shows through in both themes), the name in Plex Sans Bold across it and the stub's ring at the right.
    The lettering and ring take --onblue, the colour of text on a solid mark. Static on purpose.
-   public/icon.svg is the compact version (an M and one bulb) for the favicon and the installed app's icon. */
+   public/icon.svg is the app icon (the Admit One ticket) for the favicon and the installed app's icon. */
 
 /** The wordmark as a ticket. Sized by the font size of whatever holds it. */
 export function Logo() {

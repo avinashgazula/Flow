@@ -1,0 +1,157 @@
+{
+ "area": "themes",
+ "description": "The colour themes (FlowKit ThemePalette, web/src/styles/tokens.css and web/src/features/settings/options.ts): every theme has a light and a dark side with the same twelve tokens. Admit One is the default. Both sides also test that every text and background pair the design uses meets WCAG AA.",
+ "cases": [
+  {
+   "name": "the themes, in the order Settings lists them",
+   "op": "choices",
+   "input": null,
+   "expected": [
+    {
+     "id": "admitOne",
+     "title": "Admit One"
+    },
+    {
+     "id": "index",
+     "title": "Index"
+    },
+    {
+     "id": "openingNight",
+     "title": "Opening Night"
+    }
+   ]
+  },
+  {
+   "name": "admitOne light",
+   "op": "palette",
+   "input": {
+    "theme": "admitOne",
+    "side": "light"
+   },
+   "expected": {
+    "bg": "#f4f1ea",
+    "fg": "#0a0a0a",
+    "mark": "#c9120a",
+    "spot": "#c9120a",
+    "spotPressed": "#a50e08",
+    "onSpot": "#ffffff",
+    "muted": "#57534c",
+    "faint": "#625d55",
+    "tint1": "#ebe7dd",
+    "tint2": "#dfdacd",
+    "tint3": "#ccc6b6",
+    "warn": "#a64b00"
+   }
+  },
+  {
+   "name": "admitOne dark",
+   "op": "palette",
+   "input": {
+    "theme": "admitOne",
+    "side": "dark"
+   },
+   "expected": {
+    "bg": "#0d0b0a",
+    "fg": "#f4f1ea",
+    "mark": "#ff5a4e",
+    "spot": "#ff5a4e",
+    "spotPressed": "#ff8a80",
+    "onSpot": "#0a0a0a",
+    "muted": "#b6b0a7",
+    "faint": "#948e85",
+    "tint1": "#181513",
+    "tint2": "#24201d",
+    "tint3": "#37322e",
+    "warn": "#ff9f43"
+   }
+  },
+  {
+   "name": "index light",
+   "op": "palette",
+   "input": {
+    "theme": "index",
+    "side": "light"
+   },
+   "expected": {
+    "bg": "#ffffff",
+    "fg": "#0a0a0a",
+    "mark": "#c9120a",
+    "spot": "#1a3dff",
+    "spotPressed": "#0f2bd6",
+    "onSpot": "#ffffff",
+    "muted": "#555555",
+    "faint": "#636363",
+    "tint1": "#f3f3f0",
+    "tint2": "#e7e7e3",
+    "tint3": "#d4d4ce",
+    "warn": "#a64b00"
+   }
+  },
+  {
+   "name": "index dark",
+   "op": "palette",
+   "input": {
+    "theme": "index",
+    "side": "dark"
+   },
+   "expected": {
+    "bg": "#0a0a0a",
+    "fg": "#f2f2ee",
+    "mark": "#ff5a4e",
+    "spot": "#8fa2ff",
+    "spotPressed": "#b4c1ff",
+    "onSpot": "#0a0a0a",
+    "muted": "#b0b0ac",
+    "faint": "#8f8f8b",
+    "tint1": "#151515",
+    "tint2": "#212121",
+    "tint3": "#333333",
+    "warn": "#ff9f43"
+   }
+  },
+  {
+   "name": "openingNight light",
+   "op": "palette",
+   "input": {
+    "theme": "openingNight",
+    "side": "light"
+   },
+   "expected": {
+    "bg": "#fbf7ee",
+    "fg": "#0a0a0a",
+    "mark": "#c9120a",
+    "spot": "#8a5a00",
+    "spotPressed": "#6e4700",
+    "onSpot": "#ffffff",
+    "muted": "#5a5448",
+    "faint": "#655e51",
+    "tint1": "#f2ecdf",
+    "tint2": "#e6dfcf",
+    "tint3": "#d3cab6",
+    "warn": "#a64b00"
+   }
+  },
+  {
+   "name": "openingNight dark",
+   "op": "palette",
+   "input": {
+    "theme": "openingNight",
+    "side": "dark"
+   },
+   "expected": {
+    "bg": "#0a0a0a",
+    "fg": "#fff4d6",
+    "mark": "#ff5a4e",
+    "spot": "#ffb21a",
+    "spotPressed": "#ffc857",
+    "onSpot": "#0a0a0a",
+    "muted": "#bdb3a0",
+    "faint": "#9a917f",
+    "tint1": "#151412",
+    "tint2": "#211f1b",
+    "tint3": "#333029",
+    "warn": "#ff9f43"
+   }
+  }
+ ]
+}

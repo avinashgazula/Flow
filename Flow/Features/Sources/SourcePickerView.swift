@@ -603,7 +603,7 @@ private struct SourceSummary {
 
 /// The badges worth a colour: Dolby Vision and HDR, and the object-based or lossless audio formats.
 private enum PremiumBadge {
-    static let hdr: [String: String] = ["DV": "Dolby Vision", "HDR10+": "HDR10 Plus", "HDR": "HDR", "HLG": "HLG"]
+    static let hdr: [String: String] = ["DV": "Dolby Vision", "HDR10+": "HDR10 Plus", "HDR10": "HDR10", "HDR": "HDR", "HLG": "HLG"]
     static let audio: [String: String] = ["Atmos": "Atmos", "TrueHD Atmos": "TrueHD Atmos", "TrueHD": "TrueHD", "DTS-HD MA": "DTS-HD Master Audio", "DTS:X": "DTS X"]
 
     /// How a badge reads on screen: "DV" is spelled out, the rest are already familiar.

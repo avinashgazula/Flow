@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { hasCatalog, settingsStore, useSettings } from '../../lib/store/settings'
 import { joinSync } from '../../lib/sync/engine'
-import { normaliseServer, parsePairing, serverFromProxy } from '../../lib/sync/pairing'
+import { joinTarget, normaliseServer, parsePairing, serverFromProxy } from '../../lib/sync/pairing'
 import { ServerFields } from '../settings/SyncGroup'
 import s from './Welcome.module.css'
 
@@ -25,12 +25,9 @@ export function WelcomeJoin({ onBack, link = '' }: { onBack: () => void; link?: 
     const result = parsePairing(paste)
     if (!result.ok) return setError(result.error)
     const { pairing } = result
-    let target = pairing.server ? { server: pairing.server, token: pairing.token ?? '' } : null
-    if (!target) {
-      const address = normaliseServer((fromProxy ?? typed).server)
-      if (!address) return setError('Enter your Worker’s address. Sync keeps its copy there.')
-      target = { server: address, token: (fromProxy ?? typed).token.trim() }
-    } else if (!pairing.token && fromProxy && fromProxy.server === pairing.server) target = { server: pairing.server!, token: fromProxy.token }
+    const address = normaliseServer((fromProxy ?? typed).server)
+    const target = joinTarget(pairing, address ? { server: address, token: (fromProxy ?? typed).token.trim() } : null)
+    if (!target) return setError('Enter your Worker’s address. Sync keeps its copy there.')
     setError(undefined)
     setBusy(true)
     const joined = await joinSync({ ...pairing, ...target })

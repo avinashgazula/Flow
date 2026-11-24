@@ -432,7 +432,7 @@ export class PlayerController {
     }
     if (this.manual.subtitles) return
     const audioLanguage = (heard && trackLanguage(heard)) ?? releaseLanguage(this.source?.languages)
-    const decision = decideSubtitle(subtitles, { audioLanguage, preferences: { subtitleLanguages: settings.subtitleLanguages, subtitleMode: settings.subtitleMode, subtitleType: options.type }, choice, anime: rule })
+    const decision = decideSubtitle(subtitles, { audioLanguage, originalLanguage: this.context.original, preferences: { subtitleLanguages: settings.subtitleLanguages, subtitleMode: settings.subtitleMode, subtitleType: options.type }, choice, anime: rule })
     const pick = decision.kind === 'track' ? decision.track : decision.kind === 'search' ? decision.fallback : null
     if ((pick?.id ?? null) !== this.state.subtitleId) void this.selectSubtitle(pick?.id ?? null, false)
     // The file has none of the subtitles Settings ask for: look online, once the tracks have settled.

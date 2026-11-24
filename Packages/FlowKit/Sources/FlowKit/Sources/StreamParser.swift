@@ -73,7 +73,8 @@ public enum StreamParser {
         var out: [String] = []
         if matches(#"\b(dolby ?vision|dovi|dv)\b"#, s) { out.append("DV") }
         if matches(#"\bhdr10\+|hdr10plus"#, s) { out.append("HDR10+") }
-        else if matches(#"\bhdr(10)?\b"#, s) { out.append("HDR") }
+        else if matches(#"\bhdr10\b"#, s) { out.append("HDR10") }
+        else if matches(#"\bhdr\b"#, s) { out.append("HDR") }
         if matches(#"\bhlg\b"#, s) { out.append("HLG") }
         return out
     }

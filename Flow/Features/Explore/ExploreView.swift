@@ -169,6 +169,50 @@ extension View {
     }
 }
 
+extension View {
+    /// For a page that shows nothing focusable until its data arrives. On Apple TV a page with nothing to focus hands
+    /// focus to the tab bar, and it doesn't come back when the content appears, so Menu then does nothing. While
+    /// `loading`, a tiny inert stop holds focus inside the page; when the content replaces it, focus moves to the
+    /// page's first item, unless the viewer already moved it elsewhere. Other platforms are unchanged.
+    @ViewBuilder
+    func holdsFocusWhileLoading(_ loading: Bool) -> some View {
+        #if os(tvOS)
+        modifier(LoadingFocusStop(loading: loading))
+        #else
+        self
+        #endif
+    }
+}
+
+#if os(tvOS)
+private struct LoadingFocusStop: ViewModifier {
+    let loading: Bool
+    @Namespace private var scope
+    @Environment(\.resetFocus) private var resetFocus
+    @FocusState private var onStop: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .focusScope(scope)
+            .overlay(alignment: .topLeading) {
+                if loading {
+                    Color.clear
+                        .frame(width: 1, height: 1)
+                        .focusable()
+                        .focusEffectDisabled()
+                        .focused($onStop)
+                        .accessibilityLabel("Loading")
+                }
+            }
+            // The stop only loses focus for good when the content replaces it (a viewer who pressed away while
+            // loading is still `loading`), so this never pulls focus back from somewhere they chose.
+            .onChange(of: onStop) { was, has in
+                if was, !has, !loading { resetFocus(in: scope) }
+            }
+    }
+}
+#endif
+
 /// The row of controls under a page head: a 2px rule closes it, as on the website.
 struct BrowseToolbar<Content: View>: View {
     @ViewBuilder var content: Content

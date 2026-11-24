@@ -1,5 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Marquee">
-  <rect width="512" height="512" fill="#1a3dff"/>
-  <path fill="#fff" d="M146 100h70l40 118 40-118h70v240h-56V204l-30 88h-48l-30-88v136h-56z"/>
-  <circle cx="256" cy="402" r="20" fill="#c9120a" stroke="#fff" stroke-width="8"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Admit One: a red cinema ticket, tilted, with a white M and a torn-off stub">
+  <defs>
+    <!-- The notches and the perforation are holes in the ticket, so the ground (or the Apple TV back layer) shows through. -->
+    <mask id="punch" maskUnits="userSpaceOnUse" x="-200" y="-200" width="1424" height="1424">
+      <rect x="-200" y="-200" width="1424" height="1424" fill="#fff"/>
+      <g fill="#000">
+        <circle cx="152" cy="512" r="58"/><circle cx="872" cy="512" r="58"/>
+        
+      </g>
+    </mask>
+    <filter id="soft" x="-10%" y="-10%" width="120%" height="125%"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+  <rect id="ground" x="-2000" y="-2000" width="5024" height="5024" fill="#f3f3f0"/>
+  <g id="tilt" transform="rotate(-10 512 512)">
+    <!-- Cut by the same holes, in place, so the ground shows through a notch clean and the shadow only falls outside the ticket. -->
+    <g id="shadow" opacity="0.16" mask="url(#punch)"><rect x="152" y="292" width="720" height="440" rx="30" fill="#0a0a0a" transform="translate(10 22)" filter="url(#soft)"/></g>
+    <rect id="ticket" x="152" y="292" width="720" height="440" rx="30" fill="#c9120a" mask="url(#punch)"/>
+    <g id="print">
+      <polygon id="mark" fill="#fff" transform="translate(422 512) scale(0.66) translate(-512 -440)" points="292,200 432,200 512,435 592,200 732,200 732,680 620,680 620,410 560,584 464,584 404,410 404,680 292,680"/>
+      <circle id="ring" cx="748" cy="512" r="44" fill="#fff"/>
+      <circle id="core" cx="748" cy="512" r="27" fill="#0a0a0a"/>
+    </g>
+  </g>
 </svg>

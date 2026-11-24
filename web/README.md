@@ -26,7 +26,7 @@ npm run build && npm run e2e   # browser tests (Playwright) against dist/, in Ch
 - **TanStack Virtual** for long grids (Explore, Library).
 - **Rust → WebAssembly** (`crates/`) for the work that's actually heavy in a browser: demuxing
   Matroska and remuxing it to fragmented MP4 for Media Source Extensions, in a Web Worker.
-- **CSS Modules + tokens** (`src/styles/tokens.css`: Index: paper and ink in light and dark, 3px rules, one red and one blue; see
+- **CSS Modules + tokens** (`src/styles/tokens.css`: paper and ink in light and dark, 3px rules, and a colour theme (Admit One, the default, Index or Opening Night) that sets the mark and the action; see
   `DESIGN.md`). No CSS-in-JS runtime. Self-hosted open-source faces from `@fontsource` (Archivo, IBM Plex Mono,
   Sans and Serif, and Inter, Geist and Manrope as the typeface choices in Settings → Appearance, which load
   only when chosen; `src/styles/fonts.css`), latin and latin-ext only, with the two first-paint faces preloaded. The
@@ -451,8 +451,11 @@ What a web page can do, checked against the live services:
 **Selection** (`player/languages.ts`, with the apps' `TrackSelection` rules): Show Subtitles has Forced Only beside Foreign Audio
 Only, Always and Off; Subtitle Type (Standard or SDH) decides between two tracks of one language, in the file and in search
 results; Anime Audio (No Preference, Sub, Dub) applies to Japanese animation (TMDB's Animation genre with Japanese as the original
-language): Sub plays Japanese audio and always shows subtitles, Dub shows none, not even forced ones. A subtitle in the file is
-taken before one from a search.
+language): Sub plays Japanese audio and always shows subtitles, Dub shows none, not even forced ones. Off shows nothing, forced
+tracks included (Forced Only is the setting for just those). An audio track with no language label is taken to be in the title's
+original language (TMDB's `original_language`), so an English film with an unlabelled soundtrack gets no full subtitles for an
+English viewer and a Korean one gets them; when the original language is unknown too the soundtrack counts as foreign. A subtitle in
+the file is taken before one from a search.
 
 **ASS styling.** Settings → Playback → Keep Original ASS Styling (off, as in the apps) draws ASS and SSA files the way their author
 styled them, with libass through JASSUB 2.5.18 (`player/ass.ts`). A renderer of our own would be a partial libass, so JASSUB it is;

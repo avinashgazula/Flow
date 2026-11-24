@@ -330,6 +330,15 @@ recent options (Volume Boost, Dolby Vision, X-Ray, Still Watching, Smart Downloa
     chips and columns after a switch (Mono is the widest face), and for clipping in Mono at large sizes.
   - Page titles (Explore, Settings, title pages) start at the same scale as Home's lead title.
   - The tour has `home-mono` (Home in Mono) and `settings-typeface`.
+- **Colour themes:** Settings → General → Theme (Admit One, Index, Opening Night; Admit One is the default), and Settings →
+  Appearance on the website. Appearance still picks the light or dark side of each.
+  - Choosing one repaints the whole app at once, behind the open Settings page, with no relaunch; navigation, scroll
+    position and a playing video are untouched. Switches, the tab bar's selection and links take the theme's action colour.
+  - In Admit One the mark and the action are one red: look for a red numeral, bar or label left on a red fill under the
+    pointer or the Apple TV focus (it must turn to the on-action colour), and for status dots that told red from blue.
+  - On tvOS something must visibly have focus in every theme, on red-marked content too.
+  - The widget and the Top Shelf follow the theme after the app has run once (the snapshot carries the colours).
+  - The tour has `home-index-light`, `home-opening-night-light`, `home-opening-night`, `home-index` and `settings-theme`.
 - **Layout:**
   - iPhone SE size to Pro Max; portrait and landscape (Dynamic Island on the leading edge in landscape).
   - iPad split view and Stage Manager sizes.

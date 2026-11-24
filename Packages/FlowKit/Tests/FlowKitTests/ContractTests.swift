@@ -56,6 +56,7 @@ enum Contracts {
         "language": Contracts.language,
         "source-rank": Contracts.sourceRank,
         "track-selection": Contracts.trackSelection,
+        "themes": Contracts.themes,
     ]
 }
 

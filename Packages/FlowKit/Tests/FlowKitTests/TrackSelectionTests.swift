@@ -15,12 +15,12 @@ final class TrackSelectionTests: XCTestCase {
     }
 
     func decide(audio: [TrackSelection.AudioTrack]? = nil, subtitles: [TrackSelection.SubtitleTrack] = [], anime: Bool = false, show: ShowTrackChoice? = nil,
-                device: String? = nil, _ configure: (inout PlaybackSettings, inout SubtitleSettings) -> Void = { _, _ in }) -> TrackSelection.Decision {
+                device: String? = nil, original: String? = nil, _ configure: (inout PlaybackSettings, inout SubtitleSettings) -> Void = { _, _ in }) -> TrackSelection.Decision {
         var playback = PlaybackSettings()
         var subtitleSettings = SubtitleSettings()
         configure(&playback, &subtitleSettings)
         return TrackSelection.decide(audio: audio ?? self.audio, subtitles: subtitles, playback: playback, subtitleSettings: subtitleSettings,
-                                     isAnime: anime, showChoice: show, deviceLanguage: device)
+                                     isAnime: anime, showChoice: show, deviceLanguage: device, originalLanguage: original)
     }
 
     // MARK: Audio
@@ -163,10 +163,25 @@ final class TrackSelectionTests: XCTestCase {
         XCTAssertEqual(result.subtitle, .search(["en"]))
     }
 
-    func testUnlabelledAudioCountsAsForeign() {
+    func testUnlabelledAudioWithUnknownOriginalLanguageCountsAsForeign() {
         let tracks = [TrackSelection.AudioTrack(id: 0, language: "und", isDefault: true)]
         let result = decide(audio: tracks, subtitles: [sub(10, "eng")]) { _, s in s.preferredLanguages = ["en"] }
         XCTAssertEqual(result.subtitle, .track(10))
+        XCTAssertEqual(decide(audio: tracks, subtitles: [sub(10, "eng")], original: "und") { _, s in s.preferredLanguages = ["en"] }.subtitle, .track(10))
+    }
+
+    func testUnlabelledAudioIsInTheOriginalLanguage() {
+        let tracks = [TrackSelection.AudioTrack(id: 0, language: "", isDefault: true)]
+        let subtitles = [sub(10, "eng"), sub(11, "eng", forced: true)]
+        XCTAssertEqual(decide(audio: tracks, subtitles: subtitles, original: "en") { _, s in s.preferredLanguages = ["en"] }.subtitle, .track(11))
+        XCTAssertEqual(decide(audio: tracks, subtitles: subtitles, original: "ko") { _, s in s.preferredLanguages = ["en"] }.subtitle, .track(10))
+        // A labelled track says what it is, whatever the title's original language.
+        XCTAssertEqual(decide(subtitles: subtitles, original: "ko") { p, s in p.preferredAudioLanguage = "en"; s.preferredLanguages = ["en"] }.subtitle, .track(11))
+    }
+
+    func testOffShowsNoForcedSubtitles() {
+        let subtitles = [sub(10, "eng", forced: true)]
+        XCTAssertEqual(decide(subtitles: subtitles) { p, s in p.preferredAudioLanguage = "en"; s.autoSelect = .never; s.preferredLanguages = ["en"] }.subtitle, .off)
     }
 
     func testNoSubtitleLanguagesMeansOff() {

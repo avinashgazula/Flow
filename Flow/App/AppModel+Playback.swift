@@ -91,6 +91,11 @@ extension AppModel {
         if resolved.ids.imdb == nil || (item.type == .show && resolved.ids.tvdb == nil), let catalog, let id = item.ids.tmdb {
             if let ids = try? await catalog.tmdb.externalIDs(item.type, id: id) { resolved.ids = resolved.ids.merged(with: ids) }
         }
+        // A poster from the library or a search lacks the original language, which the track rules need for an
+        // unlabelled soundtrack; the detail page's data is usually cached already.
+        if resolved.originalLanguage == nil, let catalog, let id = item.ids.tmdb, let detail = try? await catalog.details(item.type, id: id) {
+            resolved.originalLanguage = detail.item.originalLanguage
+        }
         var target = episode
         if item.type == .show, target == nil {
             target = await nextEpisodeToPlay(for: resolved)
@@ -192,7 +197,8 @@ extension AppModel {
         if Platform.externalPlayers.contains(settings.playback.externalPlayer),
            let launch = settings.playback.externalPlayer.launchURL(for: url, position: resume, filename: source.filename) {
             openExternally(launch)
-            Task { try? await tracker.scrobble(.start, request: request, percent: 0) }
+            // An external player can't say how far you got, so this is the only word the service hears from it.
+            if settings.account.scrobble { Task { try? await tracker.scrobble(.start, request: request, percent: 0) } }
             return
         }
         // A new title (from Siri, a link, or Handoff) replaces one already playing: save its place and let it go.

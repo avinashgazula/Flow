@@ -138,6 +138,25 @@ final class FlowSyncLinkTests: XCTestCase {
         XCTAssertThrowsError(try FlowSyncPairing(key: keyText, server: "  ", token: "")) { XCTAssertEqual($0 as? FlowSyncError, .invalidServer) }
     }
 
+    func testAKeyWithNoServerJoinsTheBuildsOwn() throws {
+        let own = "https://own.example.dev"
+        for text in ["flow://sync?k=\(keyText)", "flow://sync?k=\(keyText)&s=&t=abc", keyText] {
+            let parsed = try FlowSyncLink.parse(text, defaultServer: own)
+            XCTAssertEqual(parsed.server, own)
+            XCTAssertEqual(parsed.keyText, try FlowSyncKey.parse(keyText).text)
+        }
+        XCTAssertEqual(try FlowSyncLink.parse("flow://sync?k=\(keyText)&t=abc", defaultServer: "Own.Example.dev/x").token, "abc")
+        // The link's own server wins.
+        XCTAssertEqual(try FlowSyncLink.parse("flow://sync?k=\(keyText)&s=https%3A%2F%2Fa.dev", defaultServer: own).server, "https://a.dev")
+        // Only a build with no server of its own refuses.
+        for blank in [nil, "", "  "] as [String?] {
+            XCTAssertThrowsError(try FlowSyncLink.parse("flow://sync?k=\(keyText)", defaultServer: blank)) { XCTAssertEqual($0 as? FlowSyncError, .noServer) }
+        }
+        XCTAssertThrowsError(try FlowSyncLink.parse(keyText)) { XCTAssertEqual($0 as? FlowSyncError, .noServer) }
+        // A server that can't be read is not quietly replaced.
+        XCTAssertThrowsError(try FlowSyncLink.parse("flow://sync?k=\(keyText)&s=ftp%3A%2F%2Fa.dev", defaultServer: own)) { XCTAssertEqual($0 as? FlowSyncError, .invalidServer) }
+    }
+
     func testServerAddressesAreReducedToTheirOrigin() throws {
         XCTAssertEqual(try FlowSyncPairing.normalizedServer("flow.example.workers.dev"), "https://flow.example.workers.dev")
         XCTAssertEqual(try FlowSyncPairing.normalizedServer("https://Flow.Example.workers.dev/?url=x#y"), "https://flow.example.workers.dev")

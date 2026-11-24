@@ -41,12 +41,12 @@ struct RootView: View {
         #endif
         .flowModal(isPresented: Binding(get: { model.pendingImport != nil }, set: { if !$0 { model.pendingImport = nil } })) {
             NavigationStack { ImportSetupView() }
-                .switchTint(model.settings.general.accent)
+                .switchTint()
                 .environment(model)
         }
         .flowModal(isPresented: Binding(get: { model.pendingSyncLink != nil }, set: { if !$0 { model.pendingSyncLink = nil } })) {
             NavigationStack { SyncJoinView(initialLink: model.pendingSyncLink, isSheet: true) }
-                .switchTint(model.settings.general.accent)
+                .switchTint()
                 .environment(model)
         }
         .flowModal(item: $model.sourcePickerRequest) { request in
@@ -69,7 +69,7 @@ struct RootView: View {
             .background(Theme.Palette.canvas.ignoresSafeArea())
             #endif
             // Styles set at the app's root don't reach into sheets.
-            .switchTint(model.settings.general.accent)
+            .switchTint()
             .environment(model)
             .largeSheetOnPad()
         }

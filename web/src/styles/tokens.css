@@ -1,42 +1,135 @@
-/* Flow's design tokens: Index. Paper and ink, ruled with 2px lines, one red for markers and one blue for
-   action. No gradient, shadow, blur or rounded corner anywhere but the video player. Light and dark are both
-   first-class: `<html data-theme>` is set before first paint (index.html) from the saved choice or the system,
-   and the Light/Dark cell in the top bar changes it. The player (and anything else that sits on video) is dark in
-   both themes: give its root data-theme="dark" and every token below follows.
+/* Marquee's design tokens. Paper and ink, ruled with 2px lines, one colour that marks and one that acts (the theme
+   chooses them: Admit One, the default, uses its ticket red for both; Index marks in red and acts in blue; Opening
+   Night marks in red and acts in gold). No gradient, shadow, blur or rounded corner anywhere but the video player.
+   Light and dark are both first-class sides of every theme: `<html data-theme>` (light or dark) and
+   `<html data-palette>` (which theme) are set before first paint (index.html) from the saved choices, and the
+   Light/Dark cell in the top bar and Settings → Appearance → Theme change them. The player (and anything else that sits
+   on video) is dark in both: give its root data-theme="dark" and every token below follows.
 
-   The names are semantic: --bg --fg --red --blue --onblue --muted --faint, with --tint-1..3 for the quiet fills. */
+   The names are semantic: --bg --fg --red (the mark) --blue (the action) --onblue --muted --faint, with --tint-1..3 for
+   the quiet fills. The twelve values of every theme and side are repeated in testdata/contracts/themes.json, which
+   the apps read too; a test (features/settings/themes.test.ts) fails if the two differ. Change both together. */
+/* palette: admitOne light */
 :root,
-[data-theme='light'] {
-  --bg: #ffffff;
+[data-theme='light'],
+[data-swatch='admitOne-light'] {
+  --bg: #f4f1ea;
   --fg: #0a0a0a;
-  --red: #c9120a; /* markers, numbers, labels, progress; 5:1 on --bg */
-  --blue: #1a3dff; /* action: links, hover fills, selection, focus; 7:1 on --bg */
+  --red: #c9120a; /* markers, numbers, labels, progress */
+  --blue: #c9120a; /* action: links, hover fills, selection, focus */
+  --blue-pressed: #a50e08;
   --onblue: #ffffff;
-  --onred: #ffffff;
-  --muted: #555555; /* secondary text, 7.5:1 */
-  --faint: #636363; /* captions and placeholders, 5.3:1; never for body copy */
+  --muted: #57534c;
+  --faint: #625d55; /* captions and placeholders; never body copy */
   --warn: #a64b00; /* degraded states: "may stutter" */
-  /* Quiet fills for what has no border yet: tracks, skeletons, a hovered menu item. */
-  --tint-1: #f3f3f0;
-  --tint-2: #e7e7e3;
-  --tint-3: #d4d4ce;
+  --tint-1: #ebe7dd; /* quiet fills for what has no border yet: tracks, skeletons, a hovered menu item */
+  --tint-2: #dfdacd;
+  --tint-3: #ccc6b6;
+  --onred: #ffffff;
   --overlay: rgb(10 10 10 / 0.94); /* player chrome and notices over video: flat, no blur */
   color-scheme: light;
 }
+/* palette: admitOne dark */
 :root[data-theme='dark'],
-[data-theme='dark'] {
+[data-theme='dark'],
+[data-swatch='admitOne-dark'] {
+  --bg: #0d0b0a;
+  --fg: #f4f1ea;
+  --red: #ff5a4e;
+  --blue: #ff5a4e;
+  --blue-pressed: #ff8a80;
+  --onblue: #0a0a0a;
+  --muted: #b6b0a7;
+  --faint: #948e85;
+  --warn: #ff9f43;
+  --tint-1: #181513;
+  --tint-2: #24201d;
+  --tint-3: #37322e;
+  --onred: #0a0a0a;
+  --overlay: rgb(10 10 10 / 0.94);
+  color-scheme: dark;
+}
+
+/* The other themes. `data-palette` on <html> (set before first paint, index.html) picks one; the forms below also reach a
+   light or dark scope inside the page (the player), which keeps the page's palette. Their specificity beats the two blocks above.
+   `data-swatch="<theme>-<side>"` on an element gives it a theme's colours whatever theme is showing (the Theme rows' swatches). */
+/* palette: index light */
+:root[data-palette='index'],
+:root[data-palette='index'] [data-theme='light'],
+[data-swatch='index-light'] {
+  --bg: #ffffff;
+  --fg: #0a0a0a;
+  --red: #c9120a;
+  --blue: #1a3dff;
+  --blue-pressed: #0f2bd6;
+  --onblue: #ffffff;
+  --muted: #555555;
+  --faint: #636363;
+  --warn: #a64b00;
+  --tint-1: #f3f3f0;
+  --tint-2: #e7e7e3;
+  --tint-3: #d4d4ce;
+  --onred: #ffffff;
+  --overlay: rgb(10 10 10 / 0.94);
+  color-scheme: light;
+}
+/* palette: index dark */
+:root[data-palette='index'][data-theme='dark'],
+:root[data-palette='index'] [data-theme='dark'],
+[data-swatch='index-dark'] {
   --bg: #0a0a0a;
   --fg: #f2f2ee;
   --red: #ff5a4e;
   --blue: #8fa2ff;
+  --blue-pressed: #b4c1ff;
   --onblue: #0a0a0a;
-  --onred: #0a0a0a;
   --muted: #b0b0ac;
   --faint: #8f8f8b;
   --warn: #ff9f43;
   --tint-1: #151515;
   --tint-2: #212121;
   --tint-3: #333333;
+  --onred: #0a0a0a;
+  --overlay: rgb(10 10 10 / 0.94);
+  color-scheme: dark;
+}
+/* palette: openingNight light */
+:root[data-palette='openingNight'],
+:root[data-palette='openingNight'] [data-theme='light'],
+[data-swatch='openingNight-light'] {
+  --bg: #fbf7ee;
+  --fg: #0a0a0a;
+  --red: #c9120a;
+  --blue: #8a5a00;
+  --blue-pressed: #6e4700;
+  --onblue: #ffffff;
+  --muted: #5a5448;
+  --faint: #655e51;
+  --warn: #a64b00;
+  --tint-1: #f2ecdf;
+  --tint-2: #e6dfcf;
+  --tint-3: #d3cab6;
+  --onred: #ffffff;
+  --overlay: rgb(10 10 10 / 0.94);
+  color-scheme: light;
+}
+/* palette: openingNight dark */
+:root[data-palette='openingNight'][data-theme='dark'],
+:root[data-palette='openingNight'] [data-theme='dark'],
+[data-swatch='openingNight-dark'] {
+  --bg: #0a0a0a;
+  --fg: #fff4d6;
+  --red: #ff5a4e;
+  --blue: #ffb21a;
+  --blue-pressed: #ffc857;
+  --onblue: #0a0a0a;
+  --muted: #bdb3a0;
+  --faint: #9a917f;
+  --warn: #ff9f43;
+  --tint-1: #151412;
+  --tint-2: #211f1b;
+  --tint-3: #333029;
+  --onred: #0a0a0a;
   --overlay: rgb(10 10 10 / 0.94);
   color-scheme: dark;
 }

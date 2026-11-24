@@ -8,7 +8,7 @@ import AppKit
 
 /// Marquee's design tokens: the Index, as on the website (web/DESIGN.md). Paper and ink ruled with 2px lines, a giant
 /// grotesque for titles, the viewer's own typeface (System unless Settings says otherwise) for everything you press,
-/// one red that marks and one blue that acts. Both themes are first-class and follow the system unless Settings → Appearance says otherwise; the player is always
+/// one colour that marks and one that acts (the theme sets them: Admit One uses its ticket red for both). Both sides of a theme are first-class and follow the system unless Settings → Appearance says otherwise; the player is always
 /// dark (`darkScope()`). Nothing is rounded, shadowed or glassy outside the player: structure is rules, and a hover,
 /// a press or the tvOS focus is shown by inversion (blue fill, on-blue text).
 enum Theme {
@@ -58,78 +58,99 @@ enum Theme {
         let dark: UInt32
         var color: Color { Color(light: light, dark: dark) }
         #if os(iOS) || os(tvOS)
+        /// For UIKit's appearance proxies (the segmented control), set again by `AppModel` when the theme changes.
         var ui: UIColor { UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) } }
         #endif
     }
 
-    /// The website's tokens (web/src/styles/tokens.css), light then dark.
+    /// The tokens of the chosen theme (FlowKit's `ThemePalette`, which web/src/styles/tokens.css repeats), light then dark.
+    /// Each read goes through `ThemeState`, which is `@Observable`: a view body that evaluates one is tracked by SwiftUI,
+    /// so choosing another theme in Settings repaints every view that uses a colour at once, with no relaunch and no
+    /// `.id` on the root (which would throw away navigation, scroll position and the player).
     enum Tones {
-        static let bg = Tone(light: 0xFFFFFF, dark: 0x0A0A0A)
-        static let fg = Tone(light: 0x0A0A0A, dark: 0xF2F2EE)
-        static let red = Tone(light: 0xC9120A, dark: 0xFF5A4E)
-        static let blue = Tone(light: 0x1A3DFF, dark: 0x8FA2FF)
-        static let onBlue = Tone(light: 0xFFFFFF, dark: 0x0A0A0A)
-        static let muted = Tone(light: 0x555555, dark: 0xB0B0AC)
-        static let faint = Tone(light: 0x636363, dark: 0x8F8F8B)
-        static let warn = Tone(light: 0xA64B00, dark: 0xFF9F43)
-        static let tint1 = Tone(light: 0xF3F3F0, dark: 0x151515)
-        static let tint2 = Tone(light: 0xE7E7E3, dark: 0x212121)
-        static let tint3 = Tone(light: 0xD4D4CE, dark: 0x333333)
-        /// Pressed blue: a little deeper in light, a little paler in dark.
-        static let bluePressed = Tone(light: 0x0F2BD6, dark: 0xB4C1FF)
+        private static func tone(_ token: KeyPath<ThemeTokens, UInt32>) -> Tone {
+            let theme = ThemeState.shared.choice
+            return Tone(light: ThemePalette.tokens(theme, dark: false)[keyPath: token],
+                        dark: ThemePalette.tokens(theme, dark: true)[keyPath: token])
+        }
+        static var bg: Tone { tone(\.bg) }
+        static var fg: Tone { tone(\.fg) }
+        /// The mark: labels, numerals, progress, live.
+        static var mark: Tone { tone(\.mark) }
+        /// The action colour. Admit One acts in the same red it marks with; Index acts in blue, Opening Night in gold.
+        static var spot: Tone { tone(\.spot) }
+        static var onSpot: Tone { tone(\.onSpot) }
+        static var muted: Tone { tone(\.muted) }
+        static var faint: Tone { tone(\.faint) }
+        static var warn: Tone { tone(\.warn) }
+        static var tint1: Tone { tone(\.tint1) }
+        static var tint2: Tone { tone(\.tint2) }
+        static var tint3: Tone { tone(\.tint3) }
+        /// Pressed action: a little deeper in light, a little paler in dark.
+        static var spotPressed: Tone { tone(\.spotPressed) }
+        // Older names.
+        static var red: Tone { mark }
+        static var blue: Tone { spot }
+        static var onBlue: Tone { onSpot }
+        static var bluePressed: Tone { spotPressed }
     }
 
-    /// Red marks, blue acts. Nothing else is coloured but artwork.
+    /// The mark and the action, in the chosen theme: Admit One has one red for both, Index red and blue, Opening Night
+    /// red and gold. Nothing else is coloured but artwork. The names say the role; `red` and `blue` are what they were
+    /// called when those were always the two colours, and still read as mark and action.
     enum Palette {
         /// Paper: every screen's background.
-        static let bg = Tones.bg.color
+        static var bg: Color { Tones.bg.color }
         /// Ink: text, rules, borders, the solid button, the current tab.
-        static let fg = Tones.fg.color
+        static var fg: Color { Tones.fg.color }
         /// Markers, labels, numerals, progress, live; never body text.
-        static let red = Tones.red.color
+        static var mark: Color { Tones.mark.color }
         /// Action: links, hover and focus fills, selection, switch tracks.
-        static let blue = Tones.blue.color
-        static let bluePressed = Tones.bluePressed.color
-        /// Text and icons on a blue fill.
-        static let onBlue = Tones.onBlue.color
+        static var spot: Color { Tones.spot.color }
+        static var spotPressed: Color { Tones.spotPressed.color }
+        /// Text and icons on an action fill.
+        static var onSpot: Color { Tones.onSpot.color }
         /// Secondary text and metadata.
-        static let muted = Tones.muted.color
+        static var muted: Color { Tones.muted.color }
         /// Captions and placeholders; never body copy.
-        static let faint = Tones.faint.color
+        static var faint: Color { Tones.faint.color }
         /// Degraded states: "may stutter".
-        static let warn = Tones.warn.color
+        static var warn: Color { Tones.warn.color }
         /// Quiet fills for what is not there yet: tracks, skeletons, a hovered menu item. Nothing that holds
         /// content is tint-filled.
-        static let tint1 = Tones.tint1.color
-        static let tint2 = Tones.tint2.color
-        static let tint3 = Tones.tint3.color
+        static var tint1: Color { Tones.tint1.color }
+        static var tint2: Color { Tones.tint2.color }
+        static var tint3: Color { Tones.tint3.color }
         /// Flat translucent ink for notices and chrome over video.
         static let overlay = Color(hex: 0x0A0A0A, opacity: 0.94)
         /// A rule or border: ink at full strength in both themes.
         static var rule: Color { fg }
 
-        // Older names, mapped onto the Index so every screen compiles while it is converted.
-        static let ground = bg
-        static let canvas = bg
-        static let panel = tint1
-        static let elevated = tint1
-        static let surface = tint1
-        static let control = tint2
-        static let surfaceStrong = tint2
-        static let lineStrong = tint3
-        static let edge = tint2
-        static let line = fg
-        static let hairline = fg
-        static let text = fg
-        static let textSecondary = muted
-        static let textTertiary = faint
-        static let print = muted
-        static let spot = blue
-        static let spotPressed = bluePressed
-        static let onSpot = onBlue
-        static let error = red
-        static let gold = warn
-        static let overPicture = overlay
+        // Names from before themes: the mark, the action and what sits on it.
+        static var red: Color { mark }
+        static var blue: Color { spot }
+        static var bluePressed: Color { spotPressed }
+        static var onBlue: Color { onSpot }
+
+        // Older names, mapped onto the theme so every screen compiles while it is converted.
+        static var ground: Color { bg }
+        static var canvas: Color { bg }
+        static var panel: Color { tint1 }
+        static var elevated: Color { tint1 }
+        static var surface: Color { tint1 }
+        static var control: Color { tint2 }
+        static var surfaceStrong: Color { tint2 }
+        static var lineStrong: Color { tint3 }
+        static var edge: Color { tint2 }
+        static var line: Color { fg }
+        static var hairline: Color { fg }
+        static var text: Color { fg }
+        static var textSecondary: Color { muted }
+        static var textTertiary: Color { faint }
+        static var print: Color { muted }
+        static var error: Color { mark }
+        static var gold: Color { warn }
+        static var overPicture: Color { overlay }
     }
 
     /// Motion explains state and never decorates (web/DESIGN.md, Motion): an entrance eases out, an exit is quicker,
@@ -260,6 +281,14 @@ enum Theme {
 final class InterfaceFace {
     static let shared = InterfaceFace()
     var choice: FontChoice = .system
+}
+
+/// The viewer's colour theme, set by `AppModel` when settings load and change. `@Observable` for the same reason as
+/// `InterfaceFace`: every colour token reads it, so a change redraws exactly the views that show a colour.
+@Observable
+final class ThemeState {
+    static let shared = ThemeState()
+    var choice: ThemeChoice = .admitOne
 }
 
 extension Color {

@@ -47,7 +47,7 @@ struct SportsView: View {
         .sheet(isPresented: $showSearch) { TeamSearchView().environment(model) }
         .flowModal(item: $channelsFor) { event in
             GameChannelsView(event: event)
-                .switchTint(model.settings.general.accent)
+                .switchTint()
                 .environment(model)
         }
         .liveChannelCover($playing, epg: live.epg, autoRotate: model.settings.playback.autoRotate)

@@ -20,7 +20,7 @@
 }
 .top[data-away] { transform: translateY(-100%); transition: transform var(--dur-exit) var(--ease-out); }
 
-/* The logo cell: the ticket wordmark on the page, ruled off from the links. It turns blue on hover. */
+/* The logo cell: the ticket wordmark on the page, ruled off from the links. On hover it takes the action colour. */
 .brand {
   display: flex;
   align-items: center;
