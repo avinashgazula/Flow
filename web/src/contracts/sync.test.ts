@@ -1,5 +1,5 @@
 import { derive, deriveKeys, encodeKey, parseKey, sha256hex } from '../lib/sync/crypto'
-import { appLink, normaliseServer, parsePairing, webLink } from '../lib/sync/pairing'
+import { appLink, joinTarget, normaliseServer, parsePairing, webLink } from '../lib/sync/pairing'
 import { contract } from './support'
 
 const hex = (bytes: Uint8Array) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
@@ -31,10 +31,18 @@ contract('sync-link', ({ op, input }) => {
       return webLink(bytesOf(input.key), input.server, input.token, input.site)
     case 'parse': {
       const parsed = parsePairing(input)
-      // The website also accepts a bare key with no server (Join a Sync can then use the server it already has); the apps
-      // need the server in the link. Only links that carry one are compared, and none of the vectors is a bare key.
+      // A link with no server in it is the next op's.
+      if (!parsed.ok || !parsed.pairing.server) return null
+      return { key: hex(parsed.pairing.key), server: parsed.pairing.server, token: parsed.pairing.token ?? '' }
+    }
+    case 'parseWithDefault': {
+      // A key with no server in it joins this build's own server; null when there is none either.
+      const parsed = parsePairing(input.link)
       if (!parsed.ok) return null
-      return { key: hex(parsed.pairing.key), server: parsed.pairing.server ?? null, token: parsed.pairing.token ?? '' }
+      const server = input.defaultServer ? normaliseServer(input.defaultServer) : null
+      const own = server ? { server, token: '' } : null
+      const target = joinTarget(parsed.pairing, own)
+      return target ? { key: hex(parsed.pairing.key), server: target.server, token: target.token } : null
     }
     case 'normalizeServer':
       return normaliseServer(input)
