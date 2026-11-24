@@ -32,6 +32,12 @@ final class LastSourceTests: XCTestCase {
         XCTAssertEqual(last.match(in: list)?.id, "y")
     }
 
+    func testAnHDRReleaseStoredBeforeHDR10HadItsOwnBadgeStillMatches() {
+        let last = LastSource(source("e1", file: "Show.S01E01.mkv", group: "NTb", resolution: .uhd4k, hdr: ["HDR"]))
+        let list = [source("y", group: "ntb", resolution: .uhd4k, hdr: ["HDR10"]), source("z", group: "ntb", resolution: .uhd4k, hdr: ["DV"])]
+        XCTAssertEqual(last.match(in: list)?.id, "y")
+    }
+
     func testNothingCloseEnoughLeavesTheProvidersOrder() {
         let last = LastSource(source("old", file: "a.mkv", group: "NTb"))
         XCTAssertNil(last.match(in: [source("x", file: "b.mkv", group: "FLUX")]))

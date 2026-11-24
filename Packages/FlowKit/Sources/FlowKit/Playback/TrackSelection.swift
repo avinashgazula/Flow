@@ -69,9 +69,10 @@ public enum TrackSelection {
 
     /// `showChoice` is what the viewer picked earlier in this show (nil for films or when remembering is off).
     /// `deviceLanguage` stands in when no audio language is set, so a multi-language release whose
-    /// default track is a dub doesn't start in the wrong language.
+    /// default track is a dub doesn't start in the wrong language. `originalLanguage` (TMDb's) is the language
+    /// heard when the chosen track has no language label.
     public static func decide(audio: [AudioTrack], subtitles: [SubtitleTrack], playback: PlaybackSettings, subtitleSettings: SubtitleSettings,
-                              isAnime: Bool, showChoice: ShowTrackChoice? = nil, deviceLanguage: String? = nil) -> Decision {
+                              isAnime: Bool, showChoice: ShowTrackChoice? = nil, deviceLanguage: String? = nil, originalLanguage: String? = nil) -> Decision {
         let audioOrder = audioLanguages(playback: playback, isAnime: isAnime, showChoice: showChoice, deviceLanguage: deviceLanguage)
         let chosen = chooseAudio(audio, languages: audioOrder)
         let languages = subtitleLanguages(subtitleSettings, showChoice: showChoice)
@@ -104,14 +105,23 @@ public enum TrackSelection {
         case .forcedOnly:
             subtitle = forced(subtitles, languages: languages, type: type)
         case .automatic:
-            // An unlabelled soundtrack counts as foreign: missing subtitles hurt more than extra ones.
-            if let chosen, matches(chosen.language, languages[0]) {
+            // A soundtrack with no language label is taken to be in the title's original language. When that
+            // isn't known either it counts as foreign: missing subtitles hurt more than extra ones.
+            if let heard = heardLanguage(chosen, originalLanguage: originalLanguage), matches(heard, languages[0]) {
                 subtitle = forced(subtitles, languages: [languages[0]], type: type)
             } else {
                 subtitle = full(subtitles, languages: languages, type: type)
             }
         }
         return Decision(audio: chosen?.id, subtitle: subtitle)
+    }
+
+    /// The language the viewer hears: the chosen track's, else the title's original, else nil.
+    static func heardLanguage(_ chosen: AudioTrack?, originalLanguage: String?) -> String? {
+        [chosen?.language, originalLanguage].compactMap { $0 }.first { tag in
+            let language = primaryLanguage(tag)
+            return !language.isEmpty && language != "und"
+        }
     }
 
     /// Audio languages in the order they're tried: this show's, Japanese for anime Sub, then the

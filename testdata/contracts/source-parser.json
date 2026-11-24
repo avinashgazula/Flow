@@ -629,6 +629,56 @@
    }
   },
   {
+   "name": "HDR formats of 'Movie HDR10' are ['HDR10']",
+   "op": "parse",
+   "input": [
+    "Movie HDR10"
+   ],
+   "expected": {
+    "hdr": [
+     "HDR10"
+    ]
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie.2160p.WEB-DL.DV.HDR10.HEVC' are ['DV', 'HDR10']",
+   "op": "parse",
+   "input": [
+    "Movie.2160p.WEB-DL.DV.HDR10.HEVC"
+   ],
+   "expected": {
+    "hdr": [
+     "DV",
+     "HDR10"
+    ]
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie hdr10 HLG' are ['HDR10', 'HLG']",
+   "op": "parse",
+   "input": [
+    "Movie hdr10 HLG"
+   ],
+   "expected": {
+    "hdr": [
+     "HDR10",
+     "HLG"
+    ]
+   }
+  },
+  {
+   "name": "HDR formats of 'Movie HDR10 HDR' are ['HDR10']",
+   "op": "parse",
+   "input": [
+    "Movie HDR10 HDR"
+   ],
+   "expected": {
+    "hdr": [
+     "HDR10"
+    ]
+   }
+  },
+  {
    "name": "HDR formats of 'Movie HDR10+' are ['HDR10+']",
    "op": "parse",
    "input": [
