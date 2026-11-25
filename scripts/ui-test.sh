@@ -124,8 +124,8 @@ if [ "$UI_TEST_WORKERS" -gt 1 ]; then
   parallel=(-parallel-testing-enabled YES -parallel-testing-worker-count "$UI_TEST_WORKERS")
 else
   parallel=(-parallel-testing-enabled NO)
+  # The simulator boots while the app builds (a cold one takes a minute or two on a runner); the tests wait for it below.
   xcrun simctl boot "$udid" 2>/dev/null || true
-  xcrun simctl bootstatus "$udid" -b > /dev/null
 fi
 echo "$( [ "$smoke" = YES ] && echo "Smoke tests" || echo "All tests" ) on $UI_TEST_WORKERS worker(s)"
 
@@ -145,12 +145,27 @@ if [ "$build" = YES ]; then
 fi
 
 # A test that hangs is stopped after fifteen minutes rather than holding the runner until the job's own limit.
-if [ "$status" -eq 0 ]; then
-  tests_start=$(date +%s)
+run_tests() {
+  rm -rf "$result"
   xcodebuild test-without-building "${common[@]}" -resultBundlePath "$result" ${parallel[@]+"${parallel[@]}"} \
     -default-test-execution-time-allowance 600 -maximum-test-execution-time-allowance 900 \
     ${selection[@]+"${selection[@]}"} ${passthrough[@]+"${passthrough[@]}"} >> "$log" 2>&1
+}
+if [ "$status" -eq 0 ]; then
+  [ "$UI_TEST_WORKERS" -gt 1 ] || xcrun simctl bootstatus "$udid" -b > /dev/null
+  tests_start=$(date +%s)
+  run_tests
   status=$?
+  # The simulator sometimes refuses to start the test runner at all ("Failed to install or launch the test runner"),
+  # before any test has run. That says nothing about the app, so it gets one more try; a test that fails does not.
+  if [ "$status" -ne 0 ] && grep -q "Failed to install or launch the test runner" "$log"; then
+    echo "The simulator didn't start the test runner; trying once more."
+    xcrun simctl shutdown "$udid" 2>/dev/null || true
+    xcrun simctl boot "$udid" 2>/dev/null || true
+    xcrun simctl bootstatus "$udid" -b > /dev/null
+    run_tests
+    status=$?
+  fi
   echo "Tested in $(( $(date +%s) - tests_start )) s"
 fi
 
