@@ -422,6 +422,12 @@ struct LeadCarousel: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Where focus is inside the lead. Apple TV starts it on Resume, so one press of Select carries on watching.
     @FocusState private var focus: LeadFocus?
+    #if os(tvOS)
+    /// Home went away (a title's page opened) with focus in the lead, so focus coming back is a return, not an arrival.
+    @State private var returning = false
+    /// Where focus was when it last left the lead.
+    @State private var leftFrom: LeadFocus?
+    #endif
     @State private var width: CGFloat = 0
     /// A swipe: how far the finger has moved, which neighbour is showing (1 the next, -1 the previous), and whether the
     /// slides are finishing the move.
@@ -484,8 +490,20 @@ struct LeadCarousel: View {
         #endif
         #if os(tvOS)
         .defaultFocus($focus, LeadFocus?.some(.resume))
-        .onChange(of: focus) { _, now in engaged(now != nil) }
-        .onDisappear { engaged(false) }
+        .onChange(of: focus) { old, now in
+            engaged(now != nil)
+            // Down from the tab bar goes to the nearest button, which is Details when it sits under the Home tab. Arriving
+            // from outside the lead lands on Resume, so one press of Select carries on watching; coming back from a page
+            // keeps focus where it was.
+            if old == nil, now == .details, !returning { focus = .resume }
+            if now != nil { returning = false }
+            leftFrom = now == nil ? old : nil
+        }
+        .onDisappear {
+            // Focus may already have gone to the new page when the lead disappears.
+            returning = (focus ?? leftFrom) != nil
+            engaged(false)
+        }
         #endif
         .accessibilityElement(children: .contain)
         .accessibilityAction(named: "Next Title") { go(1) }
@@ -504,8 +522,16 @@ struct LeadCarousel: View {
     /// A choice: the dots, the remote's Left and Right, VoiceOver's actions. It cross-fades, and the lead stays where it was put.
     private func go(_ delta: Int) {
         guard leads.count > 1, !settling else { return }
+        #if os(tvOS)
+        let wasOnDots = focus == .dots
+        #endif
         withAnimation(Theme.Motion.enter) { index = HeroLead.wrapped(index, by: delta, count: leads.count) }
         chose()
+        #if os(tvOS)
+        // Apple TV's dots are drawn in the slide, which the turn replaces: hand focus to the new slide's dots, or it falls
+        // back to Resume and the next Right moves to Details instead of turning again.
+        if wasOnDots { DispatchQueue.main.async { focus = .dots } }
+        #endif
     }
 
     #if os(iOS)
