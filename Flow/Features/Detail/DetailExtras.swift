@@ -550,11 +550,11 @@ struct RatingsRow: View {
     private func score(_ source: RatingSource) -> some View {
         if let value = text(for: source) {
             if let link = reviewsURL(for: source) {
-                Button { model.openExternally(link) } label: { RatingCell(source: source, value: value, icon: iconPack?[source]) }
+                Button { model.openExternally(link) } label: { RatingCell(source: source, value: value, icon: iconPack?[source], centered: centered) }
                     .buttonStyle(RuledCellStyle())
                     .accessibilityHint("Opens \(source.title)")
             } else {
-                RatingCell(source: source, value: value, icon: iconPack?[source])
+                RatingCell(source: source, value: value, icon: iconPack?[source], centered: centered)
             }
         }
     }
@@ -589,6 +589,9 @@ private struct RatingCell: View {
     let source: RatingSource
     let value: String
     let icon: URL?
+    /// Centred in its column under a phone's logo; from the column's leading edge on a wide page, so the first score
+    /// starts on the same edge as the words above and below it.
+    var centered = true
     @Environment(\.cellLit) private var lit
 
     private var markHeight: CGFloat { (Platform.isPhone ? 15 : 17) * Theme.scale }
@@ -616,7 +619,7 @@ private struct RatingCell: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
         .frame(height: 36 * Theme.scale)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
