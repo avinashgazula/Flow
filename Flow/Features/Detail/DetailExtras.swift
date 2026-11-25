@@ -90,108 +90,6 @@ private struct RuledCellBody: View {
     }
 }
 
-/// One cell of the list-actions row (Watchlist, Watched, Favourite, ...): bordered, sharing its borders with its
-/// neighbours; the one that is on is inverted ink and carries a check, so "on" is never told by colour alone.
-struct ListActionStyle: ButtonStyle {
-    var on = false
-
-    func makeBody(configuration: Configuration) -> some View {
-        ListActionBody(configuration: configuration, on: on)
-    }
-}
-
-private struct ListActionBody: View {
-    let configuration: ButtonStyleConfiguration
-    let on: Bool
-    @Environment(\.isFocused) private var focused
-    @Environment(\.isEnabled) private var enabled
-    @Environment(\.layoutDirection) private var direction
-    @State private var hovering = false
-
-    var body: some View {
-        let lit = enabled && (focused || hovering)
-        let fill = lit ? Theme.Palette.blue : on ? Theme.Palette.fg : Theme.Palette.bg
-        let ink = lit ? Theme.Palette.onBlue : on ? Theme.Palette.bg : Theme.Palette.fg
-        configuration.label
-            .font(Theme.Typeface.control)
-            .controlText()
-            .foregroundStyle(enabled ? ink : Theme.Palette.faint)
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
-            .padding(.horizontal, Theme.Space.xs)
-            .frame(maxWidth: .infinity, minHeight: 44 * Theme.scale)
-            .background(fill)
-            .overlay(Rectangle().strokeBorder(lit ? Theme.Palette.blue : Theme.Palette.fg, lineWidth: Theme.Rule.heavy))
-            .contentShape(OwnShare(rule: Theme.Rule.heavy, leadingOnRight: direction == .rightToLeft))
-            .opacity(configuration.isPressed ? 0.7 : 1)
-            .animation(Theme.Motion.hover, value: lit)
-            .modifier(FocusLift(scale: 1.04))
-            #if !os(tvOS)
-            .onHover { hovering = $0 }
-            #endif
-    }
-}
-
-/// What a grid cell answers presses for. A line pulls its cells together by a rule's width so neighbours share one
-/// border, which lays each cell's leading edge over the end of the cell before it. Left alone, that strip answers for
-/// the later cell, so a press at the very end of one cell, which is still inside it, works the next one along. The strip
-/// is left to the cell it ends instead; the border looks the same.
-private struct OwnShare: Shape {
-    let rule: CGFloat
-    let leadingOnRight: Bool
-
-    func path(in rect: CGRect) -> Path {
-        let width = max(rect.width - rule, 0)
-        return Path(CGRect(x: leadingOnRight ? rect.minX : rect.minX + rule, y: rect.minY, width: width, height: rect.height))
-    }
-}
-
-/// Type-erased so a call site can pick the phone's chip or the grid cell at run time.
-struct AnyButtonStyle: ButtonStyle {
-    private let make: (Configuration) -> AnyView
-
-    init<S: ButtonStyle>(_ style: S) {
-        make = { AnyView(style.makeBody(configuration: $0)) }
-    }
-
-    func makeBody(configuration: Configuration) -> some View { make(configuration) }
-}
-
-/// A list action on the phone: its icon over a small label.
-struct ListChipLabel: View {
-    let title: String
-    let symbol: String
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: symbol)
-                .font(.system(size: 18, weight: .regular))
-                .frame(height: 24)
-            Text(title)
-                .font(Theme.Typeface.micro)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        }
-    }
-}
-
-/// The phone's list action: no box. Off it is an outline icon; on, the icon is filled in an inverted tile, so "on" is
-/// told by shape and by contrast, never by colour alone.
-struct ListChipStyle: ButtonStyle {
-    var on = false
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(on ? Theme.Palette.bg : Theme.Palette.fg)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 8)
-            .frame(minWidth: 64, minHeight: 56)
-            .background(on ? Theme.Palette.fg : Color.clear)
-            .contentShape(Rectangle())
-            .opacity(configuration.isPressed ? 0.6 : 1)
-    }
-}
-
 /// The page's name, set as the website sets it: giant, uppercase, Archivo, tight. A longer title steps down, and one
 /// with a long word steps down until the word fits on a line, so a word is never broken in two.
 struct GiantTitle: View {
@@ -332,8 +230,9 @@ struct PageHead: View {
     }
 }
 
-/// A section: a 2px rule, a red mono label (with a muted note at its right), then its content. A row that scrolls
-/// sideways takes `paddedContent: false` and sets its own margin.
+/// A section of a page: its title as a shelf's title is set (Plex Sans semibold, a muted note at its right), then its
+/// content. No rule above it: the page's one section gap separates them. A row that scrolls sideways takes
+/// `paddedContent: false` and sets its own margin.
 struct RuledSection<Content: View>: View {
     let title: String
     var note: String?
@@ -341,22 +240,8 @@ struct RuledSection<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.m) {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                RuleLine()
-                HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-                    SectionLabel(title)
-                    Spacer(minLength: 0)
-                    if let note {
-                        Text(note)
-                            .font(Theme.Typeface.facts)
-                            .detailCaps()
-                            .foregroundStyle(Theme.Palette.muted)
-                            .lineLimit(1)
-                    }
-                }
-            }
-            .padding(.horizontal, Theme.Space.gutter)
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            SectionHeader<Route>(title, note: note)
             if paddedContent {
                 content.padding(.horizontal, Theme.Space.gutter)
             } else {
@@ -511,7 +396,7 @@ struct ReviewsSection: View {
             }
             .scrollTargetBehavior(.viewAligned)
             .scrollClipDisabled()
-            .pagingArrows(ids: reviews.map(\.id), itemWidth: cardWidth + 14)
+            .pagingArrows(ids: reviews.map(\.id), itemWidth: cardWidth + Theme.Space.card)
         }
         .sheet(item: $selected) { review in
             ReviewSheet(review: review).detailTextSize(textSize)
@@ -519,6 +404,8 @@ struct ReviewsSection: View {
     }
 }
 
+/// One review as a card of a fixed size: the byline at one height, then five lines of the text whether it fills them or
+/// not, so a row of reviews is a row of equal boxes. The whole text opens in a sheet.
 struct ReviewCard: View {
     let review: Review
 
@@ -528,14 +415,14 @@ struct ReviewCard: View {
             Text(review.text)
                 .font(Theme.Typeface.reading)
                 .foregroundStyle(Theme.Palette.fg)
-                .lineLimit(5)
+                .lineLimit(5, reservesSpace: true)
                 .lineSpacing(3)
                 .multilineTextAlignment(.leading)
         }
         .padding(Theme.Space.m)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(Theme.Palette.bg)
-        .ruleFrame()
+        .ruleFrame(width: Theme.Rule.thin)
         .contentShape(Rectangle())
     }
 }
@@ -566,6 +453,7 @@ private struct ReviewByline: View {
             }
             Spacer(minLength: 0)
             VStack(alignment: .trailing, spacing: 4) {
+                // A byline is as tall as its initial, with or without a score and a spoiler tag beside it.
                 if let rating = review.rating {
                     Text("\(rating)/10")
                         .font(Theme.Typeface.detailNumeral(20))
@@ -582,6 +470,7 @@ private struct ReviewByline: View {
                 }
             }
         }
+        .frame(height: 44 * Theme.scale, alignment: .top)
     }
 
     private var meta: String {
@@ -617,44 +506,39 @@ struct ReviewSheet: View {
     }
 }
 
-/// The scores chosen in Settings → Metadata → Ratings Shown, in that order: each the service's mark over a big red
-/// Plex Sans numeral over its name in mono, in ruled cells as wide as their content needs that wrap onto further lines
-/// (the website's row). A custom icon pack (Settings) still replaces the name.
+/// The scores chosen in Settings → Metadata → Ratings Shown, in that order, as one even row: each the service's mark and
+/// its score side by side, in equal columns with no boxes, so every score lines up with the next whatever its length. More
+/// than a line holds share their lines evenly (`TitleHead.ratingColumns`). Tapping one opens that site's page for the title
+/// when Tap a Rating is on. A custom icon pack (Settings) replaces the marks.
 struct RatingsRow: View {
     let ratings: Ratings
     /// The title, so a score can open its site's page when Tap a Rating is on.
     var item: MediaItem?
+    /// Centred under a phone's logo; from the leading edge in a wide page's column.
+    var centered = true
     @Environment(AppModel.self) private var model
-    @State private var showAll = false
 
     private var metadata: MetadataSettings { model.settings.metadata }
-    /// Only while a pack URL is set, so clearing the field brings the plain names straight back.
+    /// Only while a pack URL is set, so clearing the field brings the plain marks straight back.
     private var iconPack: RatingIconPack? { metadata.ratingIconPackURL == nil ? nil : model.ratingIconPack }
 
     /// The sources with a score for this title, in the order chosen.
     private var shown: [RatingSource] { metadata.ratingsShown.filter { text(for: $0) != nil } }
-    /// Four is as many as a phone holds in a row, and on an iPad a fifth or sixth would wrap and leave one score
-    /// alone on a second line, so the rest sit behind More on both.
-    private var limited: Bool { Platform.isPhone || Platform.isPad }
-    private var visible: [RatingSource] { limited && !showAll ? Array(shown.prefix(4)) : shown }
+    /// A phone holds four to a line; everything else all seven.
+    private var perLine: Int { Platform.isPhone ? 4 : 7 }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            RatingFlow {
-                ForEach(visible) { source in score(source) }
-            }
-            // The cells carry their own left and top rules; the row is pulled left by one rule so the first of each
-            // line starts on the page's edge, and the clip hides the rest.
-            .padding(.leading, -Theme.Rule.thin)
-            .clipped()
-            .overlay(alignment: .top) { Rectangle().fill(Theme.Palette.rule).frame(height: Theme.Rule.heavy) }
-            .overlay(alignment: .bottom) { Rectangle().fill(Theme.Palette.rule).frame(height: Theme.Rule.thin) }
-            if limited && !showAll && shown.count > 4 {
-                Button("More Ratings") { withAnimation(Theme.Motion.enter) { showAll = true } }
-                    .buttonStyle(QuietButtonStyle())
-            }
+        let sources = shown
+        let columns = TitleHead.ratingColumns(count: sources.count, perLine: perLine)
+        // A column is as wide as the widest score needs and no wider on a wide page, so a short row doesn't spread across it.
+        let width: CGFloat? = Platform.isPhone ? nil : 112 * Theme.scale
+        LazyVGrid(columns: Array(repeating: GridItem(width.map { .fixed($0) } ?? .flexible(), spacing: 0), count: columns),
+                  alignment: centered ? .center : .leading, spacing: Theme.Space.xs) {
+            ForEach(sources) { source in score(source) }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Ratings")
         .task(id: metadata.ratingIconPackURL) { await model.loadRatingIconPack() }
     }
 
@@ -696,89 +580,42 @@ struct RatingsRow: View {
     }
 }
 
-/// Lays the cells in lines as wide as their content, starting a new line when the next doesn't fit, and shares each
-/// line's spare width out evenly (flex-grow on the website), so a long name such as Popcornmeter is never cut off.
-struct RatingFlow: Layout {
-    private func lines(_ subviews: Subviews, width: CGFloat) -> [[Int]] {
-        var lines: [[Int]] = [[]]
-        var x: CGFloat = 0
-        for i in subviews.indices {
-            let w = subviews[i].sizeThatFits(.unspecified).width
-            if !lines[lines.count - 1].isEmpty, x + w > width {
-                lines.append([])
-                x = 0
-            }
-            x += w
-            lines[lines.count - 1].append(i)
-        }
-        return lines
-    }
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? .infinity
-        let lines = lines(subviews, width: width)
-        let height = lines.reduce(CGFloat(0)) { $0 + ($1.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0) }
-        return CGSize(width: proposal.width ?? lines.map { $0.reduce(0) { $0 + subviews[$1].sizeThatFits(.unspecified).width } }.max() ?? 0, height: height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var y = bounds.minY
-        for line in lines(subviews, width: bounds.width) {
-            let sizes = line.map { subviews[$0].sizeThatFits(.unspecified) }
-            let lineHeight = sizes.map(\.height).max() ?? 0
-            let spare = max(0, bounds.width - sizes.reduce(0) { $0 + $1.width }) / CGFloat(max(line.count, 1))
-            var x = bounds.minX
-            for (n, i) in line.enumerated() {
-                let w = min(sizes[n].width + spare, bounds.width)
-                subviews[i].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: w, height: lineHeight))
-                x += w
-            }
-            y += lineHeight
-        }
-    }
-}
-
+/// One score: the service's mark, then the number in red Plex Sans, on one line at one height.
 private struct RatingCell: View {
     let source: RatingSource
     let value: String
     let icon: URL?
     @Environment(\.cellLit) private var lit
 
+    private var markHeight: CGFloat { (Platform.isPhone ? 15 : 17) * Theme.scale }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            // Simple Icons marks (scripts/make-rating-marks.mjs), template images so they take the text colour.
-            Image("Rating-\(source.rawValue)")
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 30 * Theme.scale, maxHeight: (Platform.isPhone ? 16 : 18) * Theme.scale, alignment: .leading)
-                .frame(height: (Platform.isPhone ? 16 : 18) * Theme.scale, alignment: .leading)
-                .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
-                .padding(.bottom, 4)
-                .accessibilityHidden(true)
+        HStack(alignment: .center, spacing: 6 * Theme.scale) {
+            Group {
+                if let icon {
+                    RemoteImage(url: icon, contentMode: .fit, maxPixel: 96)
+                        .frame(width: 24 * Theme.scale, height: markHeight)
+                } else {
+                    // Simple Icons marks (scripts/make-rating-marks.mjs), template images so they take the text colour.
+                    Image("Rating-\(source.rawValue)")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 26 * Theme.scale, maxHeight: markHeight)
+                        .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
+                }
+            }
+            .accessibilityHidden(true)
             Text(value)
-                .font(Theme.Typeface.detailNumeral(34))
+                .font(Theme.Typeface.detailNumeral(Platform.isPhone ? 17 : 19))
                 .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.red)
                 .lineLimit(1)
-            if let icon {
-                RemoteImage(url: icon, contentMode: .fit, maxPixel: 96)
-                    .frame(width: 24 * Theme.scale, height: 14 * Theme.scale, alignment: .leading)
-            } else {
-                Text(source.title)
-                    .font(Theme.Typeface.micro)
-                    .detailCaps(0.06, size: 11)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted)
-            }
+                .minimumScaleFactor(0.8)
         }
-        .padding(.leading, Theme.Space.s)
-        .padding(.trailing, Theme.Space.xs)
-        .padding(.vertical, Theme.Space.s)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .leading) { Rectangle().fill(Theme.Palette.rule).frame(width: Theme.Rule.thin) }
-        .overlay(alignment: .top) { Rectangle().fill(Theme.Palette.rule).frame(height: Theme.Rule.thin) }
-        .accessibilityElement(children: .combine)
+        .frame(maxWidth: .infinity)
+        .frame(height: 36 * Theme.scale)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(source.spokenScore(value))
     }
 }

@@ -22,9 +22,10 @@ struct HomeLead: Equatable, Identifiable {
 /// the page, and over the fade sit the title's logo (its name in Archivo capitals when TMDb has no logo art), one line of
 /// facts, a solid Resume (or Play) pill, a round Details and a dot for each title. The lead turns through the top picks (Settings →
 /// Shelves → Top Pick) and never what is in progress, which is Up Next's; it turns by itself every few seconds with a cross-fade (`HomeRotation`) unless the viewer is touching,
-/// pointing at or focused on it. A swipe follows the finger. The day label and date open the page under it, then Up Next and
-/// the shelves, each a ruled section under a red label. This is the one screen with a gradient and round controls; the rest
-/// of the app keeps the Index's flat, square look (web/DESIGN.md, Home Lead).
+/// pointing at or focused on it. A swipe follows the finger. Under it come Up Next and the shelves, each under its title in
+/// Plex Sans (the title is the See All link), one even gap between them and no rules. A title's page opens the same way
+/// (`TitleHero`). Gradients and round controls stay in these leads; the rest of the app keeps the Index's flat, square look
+/// (web/DESIGN.md, Home Lead).
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     /// What the lead turns through: the top picks, ten at most. Never Continue Watching; a pick that was started still shows its progress.
@@ -54,11 +55,8 @@ struct HomeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
-    /// The greeting follows the hour, so it is refreshed each minute.
-    @State private var now = Date()
 
     private var general: GeneralSettings { model.settings.general }
-    private var dayPart: Reel.DayPart { Reel.DayPart(date: now) }
 
     /// The enabled shelves, minus the ones their General switches turn off.
     private var shelves: [ShelfConfig] {
@@ -131,8 +129,15 @@ struct HomeView: View {
                 MissingKeyView()
             } else {
                 GeometryReader { proxy in
+                    ScrollViewReader { reader in
                     ScrollView {
                         page(size: proxy.size)
+                    }
+                    // The screenshot tour scrolls down to the shelves; nothing else sets this.
+                    .onChange(of: model.pageScrollTarget) { _, target in
+                        guard target == "home-shelves" else { return }
+                        reader.scrollTo(target, anchor: .top)
+                        model.pageScrollTarget = nil
                     }
                     .scrollIndicators(.hidden)
                     .onScrollPhaseChangeIfAvailable { scrolling = $0 }
@@ -146,6 +151,7 @@ struct HomeView: View {
                     .ignoresSafeArea(edges: [.top, .horizontal])
                     .background { insetsProbe }
                     #endif
+                    }
                 }
             }
         }
@@ -156,12 +162,6 @@ struct HomeView: View {
         .task(id: rotationKey) { await rotate() }
         .onAppear { onScreen = true }
         .onDisappear { onScreen = false }
-        .task {
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 60_000_000_000)
-                now = Date()
-            }
-        }
         // The page names itself in its own red label, so the bar carries no title.
         #if os(iOS)
         .navigationTitle("")
@@ -234,7 +234,7 @@ struct HomeView: View {
         let shape = HeroLead.shape(width: Double(size.width), isTV: Platform.isTV)
         let height = CGFloat(HeroLead.height(shape: shape, width: Double(size.width), viewport: Double(size.height + topExtra)))
         return LazyVStack(alignment: .leading, spacing: Theme.Space.section) {
-            VStack(alignment: .leading, spacing: Theme.Space.m) {
+            Group {
                 if !leads.isEmpty {
                     LeadCarousel(leads: leads, index: $leadIndex, logos: logos, extras: extras, shape: shape, height: height,
                                  leadingInset: leadingInset, trailingInset: trailingInset, topInset: topExtra,
@@ -258,17 +258,17 @@ struct HomeView: View {
                         #if os(iOS)
                         .ignoresSafeArea(edges: .horizontal)
                         #endif
+                } else {
+                    // No picks at all: the first shelf starts clear of the bar it would otherwise run under.
+                    Color.clear.frame(height: max(0, plainTop - Theme.Space.section)).accessibilityHidden(true)
                 }
-                LeadHeader(dayTitle: dayPart.title, dateLine: Reel.dateLine(now))
-                    .padding(.horizontal, Theme.Space.gutter)
-                    // With no picture above it the day label is the top of the page, under the bar.
-                    .padding(.top, leads.isEmpty && leadsLoaded ? plainTop : 0)
             }
             if showsUpNext {
                 UpNextSection(leadEntryID: nil)
             }
             ForEach(rowShelves) { shelf in
                 HomeRow(shelf: shelf)
+                    .id(shelf.id == rowShelves.first?.id ? "home-shelves" : shelf.id)
             }
             ForEach(servers) { server in
                 ServerLibrariesIndex(server: server)
@@ -280,7 +280,7 @@ struct HomeView: View {
         .padding(.bottom, Theme.Space.xxl)
     }
 
-    /// Where the day label sits when there is no picture: clear of the bar it would otherwise run under.
+    /// Where the page's first shelf starts when there is no picture: clear of the bar it would otherwise run under.
     private var plainTop: CGFloat {
         #if os(iOS)
         return barBottom + Theme.Space.s
@@ -352,27 +352,6 @@ struct HomeView: View {
 struct LeadExtras: Equatable {
     var minutes: Int?
     var certification: String?
-}
-
-/// The day as a red mono label, with the date beside it in muted mono.
-private struct LeadHeader: View {
-    let dayTitle: String
-    let dateLine: String
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
-            SectionLabel(dayTitle)
-            Text(dateLine)
-                .font(Theme.Typeface.facts)
-                .textCase(.uppercase)
-                .tracking(0.06 * 12 * Theme.scale)
-                .foregroundStyle(Theme.Palette.muted)
-                // There is little room; the date gives way rather than wrapping under the label.
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        }
-        .accessibilityElement(children: .combine)
-    }
 }
 
 /// What can hold focus in the lead on Apple TV: Resume, Details, and the dots row, which turns the carousel (Left and Right
@@ -707,39 +686,9 @@ private struct LeadSlide: View {
             .accessibilityLabel(spoken)
     }
 
-    /// The page's own colour rising from the foot, a little from the left on a wide screen: eased, so no band shows, and
-    /// solid at the bottom so the shelves begin where the picture ends and nothing seams.
-    private var fade: some View {
-        let ground = Theme.Palette.bg
-        return ZStack {
-            LinearGradient(stops: [
-                .init(color: ground.opacity(0), location: 0.28),
-                .init(color: ground.opacity(0.12), location: 0.42),
-                .init(color: ground.opacity(0.40), location: 0.56),
-                .init(color: ground.opacity(0.76), location: 0.72),
-                .init(color: ground.opacity(0.94), location: 0.86),
-                .init(color: ground, location: 1),
-            ], startPoint: .top, endPoint: .bottom)
-            if wide {
-                LinearGradient(stops: [
-                    .init(color: ground.opacity(0.86), location: 0),
-                    .init(color: ground.opacity(0.62), location: 0.25),
-                    .init(color: ground.opacity(0.26), location: 0.5),
-                    .init(color: ground.opacity(0), location: 0.72),
-                ], startPoint: .leading, endPoint: .trailing)
-            }
-        }
-    }
+    private var fade: some View { HeroFade(wide: wide) }
 
-    /// Black fading out from the top, behind the status bar and the bar's buttons, which are drawn in the page's colours and
-    /// would otherwise sit on bright artwork.
-    private var scrim: some View {
-        VStack(spacing: 0) {
-            LinearGradient(colors: [.black.opacity(0.5), .black.opacity(0.18), .clear], startPoint: .top, endPoint: .bottom)
-                .frame(height: topInset + 56 * Theme.scale)
-            Spacer(minLength: 0)
-        }
-    }
+    private var scrim: some View { HeroScrim(topInset: topInset) }
 
     // MARK: Words
 
@@ -806,12 +755,58 @@ private struct LeadSlide: View {
     }
 }
 
+/// The page's own colour rising from the foot of a lead picture (Home's, a title's page), a little from the left on a wide
+/// screen: eased, so no band shows, and solid at the bottom so what follows begins where the picture ends and nothing seams.
+struct HeroFade: View {
+    let wide: Bool
+
+    var body: some View {
+        let ground = Theme.Palette.bg
+        ZStack {
+            LinearGradient(stops: [
+                .init(color: ground.opacity(0), location: 0.28),
+                .init(color: ground.opacity(0.12), location: 0.42),
+                .init(color: ground.opacity(0.40), location: 0.56),
+                .init(color: ground.opacity(0.76), location: 0.72),
+                .init(color: ground.opacity(0.94), location: 0.86),
+                .init(color: ground, location: 1),
+            ], startPoint: .top, endPoint: .bottom)
+            if wide {
+                LinearGradient(stops: [
+                    .init(color: ground.opacity(0.86), location: 0),
+                    .init(color: ground.opacity(0.62), location: 0.25),
+                    .init(color: ground.opacity(0.26), location: 0.5),
+                    .init(color: ground.opacity(0), location: 0.72),
+                ], startPoint: .leading, endPoint: .trailing)
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Black fading out from the top of a lead picture, behind the status bar and the bar's buttons, which are drawn in the
+/// page's colours and would otherwise sit on bright artwork.
+struct HeroScrim: View {
+    let topInset: CGFloat
+
+    var body: some View {
+        VStack(spacing: 0) {
+            LinearGradient(colors: [.black.opacity(0.5), .black.opacity(0.18), .clear], startPoint: .top, endPoint: .bottom)
+                .frame(height: topInset + 56 * Theme.scale)
+            Spacer(minLength: 0)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 /// The title's logo art over the fade. TMDb's logos are made for dark screens (mostly white), so on a page of paper one would
 /// vanish: once loaded its tone is measured (`LogoTone`), and a light logo on a light page, or a dark one on a dark page, has
 /// its lightness flipped (inverted, with the hue turned back so a coloured logo keeps its colours). With no logo, or one
 /// that won't load, the name stands in, in Archivo capitals: never an empty space. While the logo is being asked for, nothing
 /// shows (the words are anchored at the bottom, so nothing under them moves when it arrives).
-private struct HeroLogo: View {
+struct HeroLogo: View {
     let path: String?
     let title: String
     let maxWidth: CGFloat
@@ -1047,28 +1042,33 @@ private struct LeadDotsFocusBody<Label: View>: View {
 }
 #endif
 
-/// The lead's two controls: Resume (or Play) as a solid pill, Details as a round button with a ring. Hover (Mac, iPad pointer)
-/// and focus (Apple TV) invert them to the action colour, as every control in the app does. These two are the app's only
-/// round controls outside the player (web/DESIGN.md, Home Lead).
-private struct HeroButtonStyle: ButtonStyle {
+/// A lead's controls (Home's and a title page's): Resume (or Play) as a solid pill, the rest as round buttons with a ring,
+/// all one height. Hover (Mac, iPad pointer) and focus (Apple TV) invert them to the action colour, as every control in the
+/// app does. These are the app's only round controls outside the player (web/DESIGN.md, Home Lead). `fill` stretches the
+/// pill across what its row leaves; `size` is the height, and the width of a circle.
+struct HeroButtonStyle: ButtonStyle {
     enum Kind { case pill, circle }
     let kind: Kind
+    var size: CGFloat = 52
+    var fill = false
 
     func makeBody(configuration: Configuration) -> some View {
-        HeroButtonBody(configuration: configuration, kind: kind)
+        HeroButtonBody(configuration: configuration, kind: kind, side: size, stretches: fill)
     }
 }
 
 private struct HeroButtonBody: View {
     let configuration: ButtonStyleConfiguration
     let kind: HeroButtonStyle.Kind
+    let side: CGFloat
+    let stretches: Bool
     @Environment(\.isFocused) private var focused
     @Environment(\.isEnabled) private var enabled
     @State private var hovering = false
 
     var body: some View {
         let lit = enabled && (focused || hovering)
-        let size = 52 * Theme.scale
+        let size = side * Theme.scale
         let ink: Color = lit ? Theme.Palette.onBlue : kind == .pill ? Theme.Palette.bg : Theme.Palette.fg
         let fill: Color = lit ? (configuration.isPressed ? Theme.Palette.bluePressed : Theme.Palette.blue) : kind == .pill ? Theme.Palette.fg : Theme.Palette.fg.opacity(0.12)
         let ring: Color = lit ? Theme.Palette.blue : Theme.Palette.fg
@@ -1077,8 +1077,9 @@ private struct HeroButtonBody: View {
             .controlText()
             .foregroundStyle(ink)
             .lineLimit(1)
-            .padding(.horizontal, kind == .pill ? Theme.Space.l : 0)
-            .frame(minWidth: kind == .pill ? 150 * Theme.scale : size, minHeight: size)
+            .minimumScaleFactor(0.75)
+            .padding(.horizontal, kind == .pill ? (stretches ? Theme.Space.m : Theme.Space.l) : 0)
+            .frame(minWidth: kind == .pill ? (stretches ? nil : 150 * Theme.scale) : size, maxWidth: stretches ? .infinity : nil, minHeight: size)
             .frame(width: kind == .circle ? size : nil)
             .background(fill, in: Capsule())
             .overlay(Capsule().strokeBorder(ring, lineWidth: Theme.Rule.heavy))
@@ -1157,6 +1158,12 @@ struct UpNextCell: View {
                          endsInMinutes: minutes, tail: format)
     }
 
+    /// The show's backdrop; without one, an episode is its poster dimmed with "S3 E7" over it rather than a bare box.
+    private var art: ProgrammeArt {
+        guard let episode = entry.episode else { return .still(item) }
+        return .episodeStill(url: item.smallBackdropURL, fallback: item.tmdbPosterURL, label: "S\(episode.season) E\(episode.episode)", title: item.title)
+    }
+
     private var spoken: String {
         Reel.spokenListing(title: item.title, episode: entry.episode, minutesLeft: entry.isNextUp ? nil : minutes,
                                 endsAt: minutes.map { Reel.endDate(from: Date(), minutesLeft: $0) },
@@ -1165,7 +1172,7 @@ struct UpNextCell: View {
 
     var body: some View {
         Button(action: open) {
-            FilmCard(art: .still(item), strip: strip, title: item.title, meta: item.shortMeta, width: width, spoken: spoken)
+            FilmCard(art: art, strip: strip, title: item.title, meta: item.shortMeta, width: width, spoken: spoken)
         }
         .buttonStyle(CardButtonStyle(lift: 1.04))
         .contextMenu {
@@ -1315,7 +1322,7 @@ struct FilmScroller<ID: Hashable, Content: View>: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
+            LazyHStack(alignment: .top, spacing: Theme.Space.card) {
                 content
             }
             .padding(.horizontal, Theme.Space.gutter)
@@ -1324,7 +1331,7 @@ struct FilmScroller<ID: Hashable, Content: View>: View {
         }
         .scrollTargetBehavior(.viewAligned)
         .scrollClipDisabled()
-        .pagingArrows(ids: ids, itemWidth: itemWidth + 14)
+        .pagingArrows(ids: ids, itemWidth: itemWidth + Theme.Space.card)
     }
 }
 

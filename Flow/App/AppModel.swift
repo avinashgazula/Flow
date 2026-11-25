@@ -194,6 +194,8 @@ final class AppModel {
     var settingsPath: [Route] = []
     /// Set by the screenshot tour: the General page scrolls to this row id.
     var settingsScrollTarget: String?
+    /// Set by the screenshot tour: Home ("home-shelves") or a title's page ("detail-episodes") scrolls to that section.
+    var pageScrollTarget: String?
     /// Bumped by the screenshot tour on the Mac, whose Settings is a window that only a view can open.
     var settingsWindowRequest = 0
     var searchText = ""

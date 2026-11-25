@@ -65,7 +65,11 @@ Platforms: **i** iPhone, **P** iPad, **M** Mac, **T** Apple TV. Unmarked means a
 The Film Stock design (October 2026): `web/DESIGN.md` records its rules, and the same palette and
 pieces are in Theme.swift natively.
 
-- **Title by hour:** "This Morning" 5–12, "This Afternoon" 12–17, "Tonight" 17–5, with the date below.
+- **No greeting or date:** the lead is followed straight by Up Next and the shelves, one section gap
+  (`Theme.Space.section`, 32 pt; 64 on Apple TV) between each, no rules.
+- **Shelves:** each titled in Plex Sans semibold (21 pt on a phone, 24 elsewhere) with a chevron; the title is the See
+  All link (VoiceOver: "See All Trending Movies"). Every poster in a row and in every grid is the same size: 2:3
+  artwork in a 1 px frame, one line of facts, one line of title cut with "…". Cards are `Theme.Space.card` apart.
 - **Lead:** a streaming app's hero (`HomeView`'s `LeadCarousel`): the backdrop edge to edge and up under the bar,
   fading into the page; over the fade the title's logo (its name in Archivo capitals when TMDb has none: only Dune
   and Breaking Bad have logos in the sample data), one line of facts ("S3 E7 · 18m left" for something started,

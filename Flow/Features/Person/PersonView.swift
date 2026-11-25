@@ -120,7 +120,7 @@ struct PersonView: View {
         }
         .frame(width: portraitWidth, height: portraitWidth * 1.5)
         .clipped()
-        .ruleFrame()
+        .ruleFrame(width: Theme.Rule.thin)
         .accessibilityHidden(true)
     }
 

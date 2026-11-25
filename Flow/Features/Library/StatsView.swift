@@ -198,7 +198,7 @@ struct StatsView: View {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 SectionHead("Most Watched")
                 ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
+                    LazyHStack(alignment: .top, spacing: Theme.Space.card) {
                         ForEach(shows) { show in
                             VStack(alignment: .leading, spacing: Theme.Space.xxs) {
                                 PosterFilmCard(item: show.item, context: "stats")
@@ -215,7 +215,7 @@ struct StatsView: View {
                 }
                 .scrollTargetBehavior(.viewAligned)
                 .scrollClipDisabled()
-                .pagingArrows(ids: shows.map(\.id), itemWidth: Platform.posterWidth + 14)
+                .pagingArrows(ids: shows.map(\.id), itemWidth: Platform.posterWidth + Theme.Space.card)
             }
         }
     }

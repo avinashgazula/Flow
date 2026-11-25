@@ -96,9 +96,10 @@ final class BrowseUITests: FlowUITestCase {
 
     func testLibrarySectionsShowTheSampleLists() {
         openTab("Library")
-        XCTAssertTrue(text("Continue Watching").waitForExistence(timeout: patience), "Library has a Continue Watching section")
-        XCTAssertTrue(text("Watchlist").waitForExistence(timeout: patience), "and a Watchlist")
-        XCTAssertTrue(text("Favourites").waitForExistence(timeout: patience), "and Favourites")
+        // Each section's title is its See All link.
+        XCTAssertTrue(btn("See All Continue Watching").waitForExistence(timeout: patience), "Library has a Continue Watching section")
+        XCTAssertTrue(btn("See All Watchlist").waitForExistence(timeout: patience), "and a Watchlist")
+        XCTAssertTrue(btn("See All Favourites").waitForExistence(timeout: patience), "and Favourites")
     }
 
     func testHistoryListsTheWatchedTitles() {

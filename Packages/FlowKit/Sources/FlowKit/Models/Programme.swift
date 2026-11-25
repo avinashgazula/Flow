@@ -108,43 +108,6 @@ public enum Reel {
         return ([words.first ?? "aired", column.day] + words.dropFirst()).joined(separator: " ")
     }
 
-    // MARK: Greeting
-
-    /// Which part of the day Home is named for.
-    public enum DayPart: Equatable, Sendable {
-        case morning, afternoon, evening
-
-        public init(hour: Int) {
-            switch hour {
-            case 5..<12: self = .morning
-            case 12..<17: self = .afternoon
-            default: self = .evening
-            }
-        }
-
-        public init(date: Date, calendar: Calendar = .current) {
-            self.init(hour: calendar.component(.hour, from: date))
-        }
-
-        /// The large title: "This Morning", "This Afternoon", "Tonight".
-        public var title: String {
-            switch self {
-            case .morning: return "This Morning"
-            case .afternoon: return "This Afternoon"
-            case .evening: return "Tonight"
-            }
-        }
-    }
-
-    /// "Thursday 22 October", in the viewer's language and order.
-    public static func dateLine(_ date: Date, locale: Locale = .current, timeZone: TimeZone = .current) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = locale
-        formatter.timeZone = timeZone
-        formatter.setLocalizedDateFormatFromTemplate("EEEEdMMMM")
-        return formatter.string(from: date)
-    }
-
     // MARK: Spoken listing
 
     /// "Breaking Bad, season 3 episode 7, 18 minutes left, ends 9:48 PM". Empty parts are left out.

@@ -25,8 +25,12 @@ enum Theme {
         static let xxl: CGFloat = 48 * Theme.scale
         /// Leading/trailing page margin.
         static var gutter: CGFloat { Platform.horizontalPadding }
-        /// Gap between sections on Home: more above a heading than below it.
-        static var section: CGFloat { Platform.isTV ? 64 : 40 }
+        /// The one gap between sections on Home, a title's page, Explore and Library. Spacing separates them; no rule.
+        static var section: CGFloat { Platform.isTV ? 64 : 32 }
+        /// The gap between cards side by side, in every shelf and every poster grid.
+        static var card: CGFloat { Platform.isTV ? 40 : 10 }
+        /// The gap between the rows of a poster grid.
+        static var cardRow: CGFloat { Platform.isTV ? 48 : 20 }
     }
 
     /// Square, everywhere: only the video player rounds anything. The older names stay so call sites compile, and
@@ -240,6 +244,9 @@ enum Theme {
         /// A section's or a row's name.
         static var heading: Font { custom(Face.sans, 21, .title3) }
         static var sectionTitle: Font { heading }
+        /// A shelf's title above its row (Home, Explore, Library, a title's page): Plex Sans semibold in the shelf's own
+        /// title case, 21 on a phone and 24 on an iPad, a Mac and (scaled) Apple TV.
+        static var shelfTitle: Font { custom(Face.sansSemiBold, Platform.isPhone ? 21 : 24, .title3) }
         /// Buttons and anything you press: semibold. Uppercase and track with `.controlText()`.
         static var headline: Font { interface(.semibold, 15, .headline, system: .subheadline) }
         // On iPhone and iPad System sets a control at 15, not 13: the thin strokes of small light-on-dark capitals failed

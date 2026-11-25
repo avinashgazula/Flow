@@ -1,37 +1,92 @@
 import SwiftUI
 import FlowKit
 
-/// A ruled section's head: a 2px ink rule, the name as a red mono label and, when it opens something, See All at the right.
+/// A shelf's head: its name in Plex Sans semibold, title case, and when it opens something a chevron after it, the whole
+/// title being the See All link. No rule: the page's even spacing (`Theme.Space.section`) separates the shelves. VoiceOver
+/// reads the link as "See All <title>".
 struct SectionHeader<Destination: Hashable>: View {
     let title: String
     var destination: Destination?
+    /// A muted count or source at the right, such as the number of results.
+    var note: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            RuleLine()
-            HStack(alignment: .center, spacing: Theme.Space.s) {
-                SectionLabel(title)
-                Spacer(minLength: 0)
-                if let destination {
-                    NavigationLink(value: destination) {
-                        HStack(spacing: 6 * Theme.scale) {
-                            Text("See All")
-                            Image(systemName: "chevron.right").font(.system(size: 11 * Theme.scale, weight: .bold))
-                        }
-                    }
-                    .buttonStyle(QuietButtonStyle())
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {
+            if let destination {
+                NavigationLink(value: destination) { label(chevron: true) }
+                    .buttonStyle(ShelfTitleStyle())
                     .accessibilityLabel("See All \(title)")
-                }
+            } else {
+                label(chevron: false)
+                    .foregroundStyle(Theme.Palette.fg)
+                    .accessibilityAddTraits(.isHeader)
+            }
+            Spacer(minLength: 0)
+            if let note {
+                Text(note)
+                    .font(Theme.Typeface.facts)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Theme.Palette.muted)
+                    .lineLimit(1)
             }
         }
         .padding(.horizontal, Theme.Space.gutter)
     }
+
+    private func label(chevron: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6 * Theme.scale) {
+            Text(title)
+                .font(Theme.Typeface.shelfTitle)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            if chevron {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: (Platform.isPhone ? 15 : 17) * Theme.scale, weight: .semibold))
+                    // The secondary level of whatever ink the title is in: muted at rest, on-blue when lit.
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+/// A shelf title that is a link: plain ink at rest; under the pointer or in focus it inverts to the action colour, as every
+/// control does, with the fill reaching a little past the words so they keep their place on the gutter.
+private struct ShelfTitleStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        ShelfTitleBody(configuration: configuration)
+    }
+}
+
+private struct ShelfTitleBody: View {
+    let configuration: ButtonStyleConfiguration
+    @Environment(\.isFocused) private var focused
+    @State private var hovering = false
+
+    var body: some View {
+        let lit = focused || hovering
+        let pad = (Platform.isTV ? 12 : 6) * Theme.scale
+        configuration.label
+            .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
+            .padding(.horizontal, pad)
+            .padding(.vertical, Platform.isTV ? pad / 2 : 2)
+            .background(lit ? Theme.Palette.blue : Color.clear)
+            .padding(.horizontal, -pad)
+            .padding(.vertical, Platform.isTV ? -pad / 2 : -2)
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.6 : 1)
+            .scaleEffect(focused ? 1.04 : 1, anchor: .leading)
+            .animation(Theme.Motion.hover, value: lit)
+            #if !os(tvOS)
+            .onHover { hovering = $0 }
+            #endif
+    }
 }
 
 extension SectionHeader where Destination == Route {
-    init(_ title: String, route: Route? = nil) {
+    init(_ title: String, route: Route? = nil, note: String? = nil) {
         self.title = title
         self.destination = route
+        self.note = note
     }
 }
 
@@ -196,7 +251,7 @@ struct ServerLibrariesShelf: View {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     SectionHeader<Route>(server.name)
                     ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
+                        LazyHStack(alignment: .top, spacing: Theme.Space.card) {
                             ForEach(libraries) { entry in
                                 ServerLibraryCard(entry: entry)
                             }
@@ -207,7 +262,7 @@ struct ServerLibrariesShelf: View {
                     }
                     .scrollTargetBehavior(.viewAligned)
                     .scrollClipDisabled()
-                    .pagingArrows(ids: libraries.map(\.id), itemWidth: Platform.landscapeWidth + 14)
+                    .pagingArrows(ids: libraries.map(\.id), itemWidth: Platform.landscapeWidth + Theme.Space.card)
                 }
                 .transition(.opacity)
             }
@@ -249,12 +304,12 @@ struct ShelfPlaceholder: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             SectionHeader<Route>(title)
-            HStack(spacing: Platform.isTV ? 44 : 14) {
+            HStack(spacing: Theme.Space.card) {
                 ForEach(0..<8, id: \.self) { _ in
                     Rectangle()
                         .fill(Theme.Palette.tint1)
                         .frame(width: Platform.posterWidth, height: Platform.posterWidth * 1.5)
-                        .ruleFrame(Theme.Palette.tint3)
+                        .ruleFrame(Theme.Palette.tint3, width: Theme.Rule.thin)
                 }
             }
             .padding(.horizontal, Theme.Space.gutter)
@@ -347,7 +402,7 @@ struct PosterGrid: View {
     var onReachEnd: (() -> Void)?
 
     var body: some View {
-        LazyVGrid(columns: PosterGrid.columns, spacing: Platform.isTV ? 56 : 22) {
+        LazyVGrid(columns: PosterGrid.columns, spacing: Theme.Space.cardRow) {
             ForEach(items) { item in
                 PosterFilmCard(item: item, context: context, width: nil)
                     .onAppear { if item.id == items.last?.id { onReachEnd?() } }
@@ -357,7 +412,7 @@ struct PosterGrid: View {
     }
 
     static var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: Platform.posterWidth, maximum: Platform.posterWidth * 1.35), spacing: Platform.isTV ? 44 : 14, alignment: .top)]
+        [GridItem(.adaptive(minimum: Platform.posterWidth, maximum: Platform.posterWidth * 1.35), spacing: Theme.Space.card, alignment: .top)]
     }
 }
 

@@ -35,7 +35,11 @@ enum ScreenshotTour {
             // The title page in light too: its ruled cells, ratings and list actions are all colour-dependent.
             Step(name: "detail-movie-light") { m in m.settings.general.appearance = .light },
             Step(name: "detail-show") { m in m.settings.general.appearance = .system; m.paths[.home] = [.detail(bbItem)] },
-            Step(name: "sources") { m in await m.play(duneItem) },
+            // The episodes: a row of equal cards under the season picker, opened at the episode to watch next.
+            Step(name: "detail-show-episodes") { m in m.pageScrollTarget = "detail-episodes" },
+            // With spoilers hidden the unwatched episodes have no still to show: each is the show's art, dimmed, with its number.
+            Step(name: "detail-show-no-stills") { m in m.settings.general.showEpisodeSpoilers = false },
+            Step(name: "sources") { m in m.settings.general.showEpisodeSpoilers = true; await m.play(duneItem) },
             // A film that is only in cinemas: the empty picker says why instead of "No Sources".
             Step(name: "sources-in-cinemas") { m in
                 m.sourcePickerRequest = nil
@@ -148,6 +152,8 @@ enum ScreenshotTour {
             Step(name: "person") { m in m.activePlayback?.stop(); m.paths[.home] = [.detail(duneItem), .person(id: 1190668, name: "Timothée Chalamet")] },
             // Home once more after the player has saved a new resume point: it must agree with the Library's row.
             Step(name: "home-after-playback") { m in m.paths[.home] = []; m.selectedTab = .home },
+            // Home's shelves: titles at one size in even rows, each under its own title.
+            Step(name: "home-shelves") { m in m.pageScrollTarget = "home-shelves" },
             Step(name: "explore") { m in m.paths[.home] = []; m.selectedTab = .explore },
             Step(name: "library") { m in m.selectedTab = .library },
             Step(name: "library-watchlist") { m in m.paths[.library] = [.library(.watchlist)] },

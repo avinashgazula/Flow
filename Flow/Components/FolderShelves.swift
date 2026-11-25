@@ -85,7 +85,7 @@ private struct FolderRow<ID: Hashable, Content: View>: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(alignment: .top, spacing: Platform.isTV ? 44 : 14) {
+            LazyHStack(alignment: .top, spacing: Theme.Space.card) {
                 content
             }
             .padding(.horizontal, Theme.Space.gutter)
@@ -94,7 +94,7 @@ private struct FolderRow<ID: Hashable, Content: View>: View {
         }
         .scrollTargetBehavior(.viewAligned)
         .scrollClipDisabled()
-        .pagingArrows(ids: ids, itemWidth: FolderTile.width + 14)
+        .pagingArrows(ids: ids, itemWidth: FolderTile.width + Theme.Space.card)
     }
 }
 

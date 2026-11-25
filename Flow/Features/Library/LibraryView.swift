@@ -6,7 +6,7 @@ struct LibraryView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
+            VStack(alignment: .leading, spacing: Theme.Space.section) {
                 BrowseHead("Library", note: "\(model.watchedKeys.count.formatted()) watched")
                 index
                 // Reads the downloads and the lists itself, so this page doesn't redraw with every download tick.
@@ -146,10 +146,7 @@ struct LibraryKeysShelf: View {
         // Not a bare Group: a Group with no children never appears, so its task would never run.
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             if !items.isEmpty {
-                SectionHead(title, note: keys.count.formatted()) {
-                    NavigationLink(value: route) { Text("See All") }
-                        .buttonStyle(QuietButtonStyle())
-                }
+                SectionHeader(title, route: route, note: keys.count.formatted())
                 PosterRow(items: items, context: "library-\(title)")
             }
         }
@@ -343,7 +340,7 @@ struct CollectionView: View {
                             .aspectRatio(16.0 / 9.0, contentMode: .fit)
                             .overlay(RemoteImage(url: TMDBImage.url(collection.backdropPath, size: .backdropLarge), fallbackTitle: collection.name))
                             .clipped()
-                            .ruleFrame()
+                            .ruleFrame(width: Theme.Rule.thin)
                             .frame(maxWidth: 560 * Theme.scale, alignment: .leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, Theme.Space.gutter)
@@ -405,7 +402,7 @@ private struct ReorderableWatchlistGrid: View {
     let onMove: ([MediaKey], MediaKey?) -> Void
 
     var body: some View {
-        LazyVGrid(columns: PosterGrid.columns, spacing: 22) {
+        LazyVGrid(columns: PosterGrid.columns, spacing: Theme.Space.cardRow) {
             ForEach(items) { item in
                 PosterFilmCard(item: item, context: "watchlist", width: nil)
             }

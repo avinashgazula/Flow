@@ -13,7 +13,8 @@ final class HomeAndTabsUITests: FlowUITestCase {
         XCTAssertTrue(leadPicture.exists, "and shows the pick's picture")
         XCTAssertTrue(anyElement(startingWith: "Title 1 of").exists, "the dots start on the first pick")
         // What is in progress is Up Next's, not the lead's: Breaking Bad has a resume point but is not a top pick here.
-        XCTAssertTrue(text("Up Next").exists, "Continue Watching stays in its own row")
+        // A shelf's title is its See All link, so VoiceOver reads it as one.
+        XCTAssertTrue(btn("See All Up Next").exists, "Continue Watching stays in its own row")
     }
 
     func testLeadTurnsWithASwipeAndItsDotsSayWhere() {

@@ -39,12 +39,17 @@ struct ExploreView: View {
                     }
                 }
 
-                SectionHead(isFiltered ? "Filtered · \(query.sort.title)" : "Trending Now") {
+                // The grid's title in the shelves' own style, so Explore reads like Home and Library.
+                HStack(alignment: .center, spacing: 0) {
+                    SectionHeader<Route>(isFiltered ? "Filtered · \(query.sort.title)" : "Trending Now")
                     if isFiltered {
                         Button("Reset") { query = DiscoverQuery(type: type) }
                             .buttonStyle(QuietButtonStyle())
+                            // The word's right edge lines up with the page's margin, not with the button's own padding.
+                            .padding(.trailing, Theme.Space.gutter - (Theme.Space.m + 2))
                     }
                 }
+                .padding(.top, Theme.Space.s)
 
                 if model.catalog == nil {
                     MissingKeyView()

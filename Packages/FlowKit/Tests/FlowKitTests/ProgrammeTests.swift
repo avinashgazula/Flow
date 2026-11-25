@@ -110,23 +110,6 @@ final class ProgrammeTests: XCTestCase {
         XCTAssertTrue(old.hasSuffix("2011"), old)
     }
 
-    func testDayPartNamesTheGreeting() {
-        XCTAssertEqual(Reel.DayPart(hour: 4).title, "Tonight")
-        XCTAssertEqual(Reel.DayPart(hour: 5).title, "This Morning")
-        XCTAssertEqual(Reel.DayPart(hour: 11).title, "This Morning")
-        XCTAssertEqual(Reel.DayPart(hour: 12).title, "This Afternoon")
-        XCTAssertEqual(Reel.DayPart(hour: 16).title, "This Afternoon")
-        XCTAssertEqual(Reel.DayPart(hour: 17).title, "Tonight")
-        XCTAssertEqual(Reel.DayPart(hour: 23).title, "Tonight")
-    }
-
-    func testDateLineHasTheDayAndMonth() {
-        let line = Reel.dateLine(date("2026-10-22T12:00:00Z"), locale: gb, timeZone: utc)
-        XCTAssertTrue(line.contains("22"), line)
-        XCTAssertTrue(line.contains("October"), line)
-        XCTAssertTrue(line.contains("Thursday"), line)
-    }
-
     func testVersionLineIsPlainText() {
         XCTAssertEqual(Reel.versionLine(resolution: .uhd4k, hdr: ["DV"], audioCodec: "TrueHD", audioChannels: "7.1", sizeBytes: 19_541_000_000),
                        "2160p · Dolby Vision · TrueHD 7.1 · 18.20 GB")

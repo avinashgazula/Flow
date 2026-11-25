@@ -128,13 +128,13 @@ struct SearchView: View {
         }
         if !movies.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                SectionHead("Movies", note: "\(movies.count)")
+                SectionHeader<Route>("Movies", note: "\(movies.count)")
                 PosterRow(items: movies)
             }
         }
         if !shows.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Space.s) {
-                SectionHead("TV Shows", note: "\(shows.count)")
+                SectionHeader<Route>("TV Shows", note: "\(shows.count)")
                 PosterRow(items: shows)
             }
         }

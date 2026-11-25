@@ -30,7 +30,7 @@ struct PosterFilmCard: View {
         NavigationLink(value: Route.detail(item, zoom: zoomID, library: libraryProviderID)) {
             FilmCard(art: .poster(item), strip: model.posterPrint(for: item, runtime: runtime),
                      title: model.settings.general.showPosterTitles ? item.title : nil,
-                     meta: model.settings.general.showReleaseYear ? item.year.map { String($0) } : nil,
+                     meta: model.settings.general.showReleaseYear ? (item.year.map { String($0) } ?? "") : nil,
                      width: width, spoken: spoken, zoomID: zoomID)
         }
         .buttonStyle(CardButtonStyle(lift: 1.04))
@@ -140,8 +140,8 @@ extension Theme.Typeface {
     static var cardTitle: Font { custom(Theme.Face.sansSemiBold, 16, .subheadline) }
 }
 
-/// The 2px ink frame around a card's picture. Blue under the pointer, and a thicker blue ring when focused (Apple TV, a
-/// keyboard), so there is always something unmistakable.
+/// The 1px ink frame around a card's picture: artwork wears the thin rule, so the picture leads and not its border. Blue
+/// under the pointer, and a thick blue ring when focused (Apple TV, a keyboard), so there is always something unmistakable.
 private struct CardFrame: ViewModifier {
     @Environment(\.isFocused) private var focused
     @State private var hovering = false
@@ -149,7 +149,7 @@ private struct CardFrame: ViewModifier {
     func body(content: Content) -> some View {
         let lit = focused || hovering
         content
-            .overlay(Rectangle().strokeBorder(lit ? Theme.Palette.blue : Theme.Palette.rule, lineWidth: focused ? Theme.Rule.focus : Theme.Rule.heavy))
+            .overlay(Rectangle().strokeBorder(lit ? Theme.Palette.blue : Theme.Palette.rule, lineWidth: focused ? Theme.Rule.focus : Theme.Rule.thin))
             .animation(Theme.Motion.hover, value: lit)
             #if !os(tvOS)
             .onHover { hovering = $0 }
@@ -158,7 +158,7 @@ private struct CardFrame: ViewModifier {
 }
 
 extension View {
-    /// Frames a card's picture: square, 2px ink, blue when hovered or focused.
+    /// Frames a card's picture: square, 1px ink, blue when hovered or focused.
     func cardFrame() -> some View { modifier(CardFrame()) }
 }
 
@@ -215,8 +215,9 @@ struct FactsLine: View {
     }
 }
 
-/// A still or poster in its 2px frame with the facts line under it, one object. Progress is a thin red bar along the
-/// foot of the picture. It fills the width it is given; the caller fixes the size per row.
+/// A still or poster in its 1px frame with the facts line under it, one object. Progress is a thin red bar along the
+/// foot of the picture. It fills the width it is given and is always the artwork's own shape (2:3 or 16:9), and the facts
+/// line keeps its line even when it has nothing to say, so every card in a row is the same size.
 struct FilmFrame: View {
     let art: ProgrammeArt
     var strip: EdgePrint?
@@ -238,12 +239,19 @@ struct FilmFrame: View {
                 .overlay(alignment: .bottom) {
                     if let progress = strip?.progress, progress > 0 {
                         ProgressCapsule(value: progress, height: 4 * Theme.scale)
-                            .padding(Theme.Rule.heavy)
+                            .padding(Theme.Rule.thin)
                     }
                 }
                 .clipped()
                 .cardFrame()
-            if showsFacts, let strip, !strip.segments().isEmpty { FactsLine(print: strip) }
+            if showsFacts, let strip {
+                if strip.segments().isEmpty {
+                    // The line's height, unseen: a card with no facts stays level with its neighbours.
+                    Text(" ").font(Theme.Typeface.facts).accessibilityHidden(true)
+                } else {
+                    FactsLine(print: strip)
+                }
+            }
         }
     }
 
@@ -252,7 +260,9 @@ struct FilmFrame: View {
         if let height {
             Color.clear.frame(maxWidth: .infinity).frame(height: height)
         } else {
-            Color.clear.aspectRatio(aspect, contentMode: .fit)
+            // Its height comes from the width alone, never from what the row has left over: a long title under a card
+            // must not shrink its picture.
+            Color.clear.aspectRatio(aspect, contentMode: .fit).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -264,19 +274,24 @@ struct FilmFrame: View {
         case .stillImage(let url, let title):
             // The Home lead spans the page, so its still needs more pixels than a card's.
             RemoteImage(url: url, maxPixel: height != nil ? (Platform.isTV ? 1920 : 1400) : (Platform.isTV ? 1000 : 700), fallbackTitle: title)
+        case .episodeStill(let url, let fallback, let label, let title):
+            StillArt(url: url, fallback: fallback, label: label, title: title)
         case .none:
             Theme.Palette.tint2
         }
     }
 }
 
-/// A frame and facts line with the title and one meta line under it. Wrap it in a button or link; its spoken
-/// label reads the facts naturally ("Breaking Bad, season 3 episode 7, 18 minutes left, ends 9:30 PM").
+/// A frame and facts line with the title and one meta line under it. Every part has a fixed height (the title one line,
+/// cut with "…"; the meta line kept even when empty), so cards in a row or grid are all one size whatever their names.
+/// Wrap it in a button or link; its spoken label reads the whole title and the facts ("Breaking Bad, season 3 episode 7,
+/// 18 minutes left, ends 9:30 PM").
 struct FilmCard: View {
     let art: ProgrammeArt
     var strip: EdgePrint?
     /// Nil leaves it out (Show Titles Under Posters is off), so the meta line stands alone.
     let title: String?
+    /// Nil leaves the line out; an empty string keeps its place, so a title without a year lines up with those that have one.
     var meta: String?
     /// Nil fills the width the card is given (a grid column).
     var width: CGFloat?
@@ -289,18 +304,17 @@ struct FilmCard: View {
             FilmFrame(art: art, strip: strip)
                 .zoomSource(zoomID)
                 .frame(width: width)
-            if title != nil || !(meta ?? "").isEmpty {
+            if title != nil || meta != nil {
                 VStack(alignment: .leading, spacing: 2) {
                     if let title {
                         Text(title)
                             .font(Theme.Typeface.cardTitle)
                             .foregroundStyle(Theme.Palette.fg)
-                            // Two lines, so "Dune: Part Two" on a phone's narrow poster isn't cut to "Dune: Part T...".
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                     }
-                    if let meta, !meta.isEmpty {
-                        Text(meta)
+                    if let meta {
+                        Text(meta.isEmpty ? " " : meta)
                             .font(Theme.Typeface.facts)
                             .foregroundStyle(Theme.Palette.muted)
                             .lineLimit(1)
@@ -321,6 +335,42 @@ extension MediaItem {
         if let year { parts.append(String(year)) }
         if let genre = genres.first?.name { parts.append(genre) }
         return parts.joined(separator: " · ")
+    }
+}
+
+/// A 16:9 still that is never an empty box. With its own picture it is that picture. Without one (TMDB has no still for
+/// most episodes of many shows, and some titles no backdrop) it is `fallback`, the show's backdrop or a crop of its poster,
+/// dimmed, with `label` (the episode's number) set large over it, so a row of episodes stays even and each still says
+/// which one it is.
+struct StillArt: View {
+    let url: URL?
+    var fallback: URL?
+    let label: String
+    let title: String
+    var maxPixel: Int = Platform.isTV ? 1000 : 700
+
+    var body: some View {
+        if let url {
+            RemoteImage(url: url, maxPixel: maxPixel, fallbackTitle: title, fallbackURL: fallback)
+        } else {
+            ZStack {
+                if let fallback {
+                    RemoteImage(url: fallback, maxPixel: maxPixel)
+                    // Dark in both themes: the number is the subject, the art only says which show.
+                    Color.black.opacity(0.6)
+                } else {
+                    Theme.Palette.tint2
+                }
+                Text(label)
+                    .font(Theme.Typeface.custom(Theme.Face.sans, 40, .largeTitle))
+                    .monospacedDigit()
+                    .foregroundStyle(fallback == nil ? Theme.Palette.fg : .white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .padding(Theme.Space.s)
+            }
+            .accessibilityHidden(true)
+        }
     }
 }
 
@@ -366,6 +416,8 @@ enum ProgrammeMetrics {
 enum ProgrammeArt {
     case posterImage(url: URL?, fallback: URL?, title: String)
     case stillImage(url: URL?, title: String)
+    /// An episode's still; without one, the show's art dimmed with `label` ("7", "S3 E7") large over it.
+    case episodeStill(url: URL?, fallback: URL?, label: String, title: String)
     case none
 
     static func poster(_ item: MediaItem) -> ProgrammeArt {
@@ -379,7 +431,7 @@ enum ProgrammeArt {
     var size: CGSize {
         switch self {
         case .posterImage: return ProgrammeMetrics.poster
-        case .stillImage: return ProgrammeMetrics.still
+        case .stillImage, .episodeStill: return ProgrammeMetrics.still
         case .none: return .zero
         }
     }
@@ -552,7 +604,7 @@ private struct ProgrammeRowContent: View {
             image
                 .frame(width: size.width, height: size.height)
                 .clipped()
-                .ruleFrame(lit ? Theme.Palette.onBlue : Theme.Palette.rule)
+                .ruleFrame(lit ? Theme.Palette.onBlue : Theme.Palette.rule, width: Theme.Rule.thin)
             if let progress = row.progress {
                 ProgrammeProgressLine(value: progress, focused: lit).frame(width: size.width)
             }
@@ -566,6 +618,8 @@ private struct ProgrammeRowContent: View {
             RemoteImage(url: url, maxPixel: Platform.isTV ? 400 : 240, fallbackTitle: title, fallbackURL: fallback)
         case .stillImage(let url, let title):
             RemoteImage(url: url, maxPixel: Platform.isTV ? 600 : 400, fallbackTitle: title)
+        case .episodeStill(let url, let fallback, let label, let title):
+            StillArt(url: url, fallback: fallback, label: label, title: title, maxPixel: Platform.isTV ? 600 : 400)
         case .none:
             EmptyView()
         }
