@@ -272,11 +272,12 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Flow-iOS
 
-  # Apple TV's focus engine, driven with the remote's own presses. Lives in its own folder: tvOS has no touch tests to share.
+  # Apple TV's focus engine, driven with the remote's own presses. Lives in its own folder: tvOS has no touch tests to share,
+  # only the quick wait every UI test uses.
   FlowTVUITests:
     type: bundle.ui-testing
     platform: tvOS
-    sources: [UITestsTV]
+    sources: [UITestsTV, UITests/Support/Waiting.swift]
     dependencies:
       - target: Flow-tvOS
     settings:

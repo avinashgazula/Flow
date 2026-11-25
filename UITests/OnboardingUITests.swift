@@ -9,7 +9,7 @@ final class OnboardingUITests: FlowUITestCase {
     }
 
     func testAFreshLaunchShowsTheWelcomeScreenWithItsWaysIn() {
-        XCTAssertTrue(element("onboarding-key").waitForExistence(timeout: patience), "the welcome screen has the TMDB key field")
+        XCTAssertTrue(element("onboarding-key").appears(within: patience), "the welcome screen has the TMDB key field")
         XCTAssertTrue(text("Marquee").exists, "and the app's name")
         XCTAssertTrue(btn("Continue").exists, "a Continue button")
         XCTAssertTrue(btn("Explore with Sample Data").exists, "a way into the sample data")
@@ -21,7 +21,7 @@ final class OnboardingUITests: FlowUITestCase {
 
     func testTheKeyFieldAcceptsTextAndContinueFollowsIt() {
         let field = element("onboarding-key")
-        XCTAssertTrue(field.waitForExistence(timeout: patience))
+        XCTAssertTrue(field.appears(within: patience))
         let continueButton = btn("Continue")
         XCTAssertFalse(continueButton.isEnabled, "Continue waits for a key")
         field.tap()
@@ -32,19 +32,19 @@ final class OnboardingUITests: FlowUITestCase {
 
     func testAKeyThatCannotBeCheckedSaysWhatToDoNext() {
         let field = element("onboarding-key")
-        XCTAssertTrue(field.waitForExistence(timeout: patience))
+        XCTAssertTrue(field.appears(within: patience))
         field.tap()
         field.typeText("not-a-real-key")
         btn("Continue").tap()
-        XCTAssertTrue(text(startingWith: "That key didn't work").waitForExistence(timeout: patience), "a key that fails the check is refused in words")
+        XCTAssertTrue(text(startingWith: "That key didn't work").appears(within: patience), "a key that fails the check is refused in words")
         XCTAssertTrue(element("onboarding-key").exists, "and the welcome screen stays")
     }
 
     func testTheSetupFromAnotherDeviceOpensItsSheet() {
         let row = button(startingWith: "I Have a Setup From Another Device")
-        XCTAssertTrue(row.waitForExistence(timeout: patience), "the row is there")
+        XCTAssertTrue(row.appears(within: patience), "the row is there")
         row.tap()
-        XCTAssertTrue(btn("Read Setup").waitForExistence(timeout: patience), "the import sheet opens with its Read Setup button")
+        XCTAssertTrue(btn("Read Setup").appears(within: patience), "the import sheet opens with its Read Setup button")
         XCTAssertFalse(btn("Read Setup").isEnabled, "which waits for a link or a file")
     }
 }

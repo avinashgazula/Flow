@@ -179,7 +179,8 @@ class AuditingUITestCase: FlowUITestCase {
     }
 }
 
-/// Every main screen on iPhone and iPad, at the normal text size, with the full audit.
+/// Every main screen on iPhone and iPad, at the normal text size, with the full audit: the tabs here, and the pages, sheets
+/// and player in `PageAccessibilityAuditUITests` (two classes, because parallel testing hands out whole classes).
 final class AccessibilityAuditUITests: AuditingUITestCase {
     override func setUp() {
         super.setUp()
@@ -187,27 +188,33 @@ final class AccessibilityAuditUITests: AuditingUITestCase {
     }
 
     func testHome() {
-        XCTAssertTrue(leadPrimary.waitForExistence(timeout: patience))
+        XCTAssertTrue(leadPrimary.appears(within: patience))
         audit("Home")
     }
 
     func testExplore() {
         openTab("Explore")
-        XCTAssertTrue(button(startingWith: "Dune: Part Two").waitForExistence(timeout: patience))
+        XCTAssertTrue(button(startingWith: "Dune: Part Two").appears(within: patience))
         audit("Explore")
     }
 
     func testLibrary() {
         openTab("Library")
-        XCTAssertTrue(button(startingWith: "Upcoming").waitForExistence(timeout: patience))
+        XCTAssertTrue(button(startingWith: "Upcoming").appears(within: patience))
         audit("Library")
     }
 
     func testLiveTV() {
         openTab("Live TV")
+        // iPad opens on the guide, a tap away from the list; iPhone opens on the list, so there the look ends with its first row.
         let list = btn("Show List")
-        if list.waitForExistence(timeout: 3) { list.tap() }
-        XCTAssertTrue(button(containing: "Flow News").waitForExistence(timeout: patience))
+        if isPad {
+            if list.appears(within: 3) { list.tap() }
+        } else {
+            waitUntil(3) { list.exists || self.button(containing: "Flow News").exists }
+            if list.exists { list.tap() }
+        }
+        XCTAssertTrue(button(containing: "Flow News").appears(within: patience))
         // The whole guide has too many channels for the audit to finish in the time the system gives it on a large iPad, so
         // one group is audited: the Sports chip (the chips are named for the channels' groups) leaves two channels.
         btn("Sports").tap()
@@ -217,20 +224,29 @@ final class AccessibilityAuditUITests: AuditingUITestCase {
 
     func testSearch() {
         openTab("Search")
-        XCTAssertTrue(element("search-field").waitForExistence(timeout: patience))
+        XCTAssertTrue(element("search-field").appears(within: patience))
         audit("Search")
     }
 
     func testSearchResults() {
-        openLink("flow://search?q=oppenheimer")
-        XCTAssertTrue(button(startingWith: "Oppenheimer").waitForExistence(timeout: patience))
+        openLink("flow://search?q=oppenheimer", expecting: button(startingWith: "Oppenheimer"))
+        XCTAssertTrue(button(startingWith: "Oppenheimer").appears(within: patience))
         audit("Search results")
     }
 
     func testCalendar() {
-        openLink("flow://upcoming")
-        XCTAssertTrue(btn("Add All to Calendar").waitForExistence(timeout: patience))
+        openLink("flow://upcoming", expecting: btn("Add All to Calendar"))
+        XCTAssertTrue(btn("Add All to Calendar").appears(within: patience))
         audit("Upcoming")
+    }
+
+}
+
+/// Title pages, the source list, Settings and the player, with the full audit.
+final class PageAccessibilityAuditUITests: AuditingUITestCase {
+    override func setUp() {
+        super.setUp()
+        launchDemo()
     }
 
     func testMoviePage() {
@@ -239,30 +255,30 @@ final class AccessibilityAuditUITests: AuditingUITestCase {
     }
 
     func testShowPage() {
-        openLink("flow://title/show/1396")
-        XCTAssertTrue(button(startingWith: "Resume").waitForExistence(timeout: patience))
+        openLink("flow://title/show/1396", expecting: button(startingWith: "Resume"))
+        XCTAssertTrue(button(startingWith: "Resume").appears(within: patience))
         audit("Show page")
     }
 
     func testSourceList() {
         openDune()
         button(startingWith: "Resume").tap()
-        XCTAssertTrue(element("source-demo#3").waitForExistence(timeout: patience))
+        XCTAssertTrue(element("source-demo#3").appears(within: patience))
         audit("Source list")
     }
 
     func testSettingsList() {
         btn("Settings").tap()
-        XCTAssertTrue(element("settings-row-general").waitForExistence(timeout: patience))
+        XCTAssertTrue(element("settings-row-general").appears(within: patience))
         audit("Settings")
     }
 
     func testSettingsGeneralPage() {
         btn("Settings").tap()
         let row = element("settings-row-general")
-        XCTAssertTrue(row.waitForExistence(timeout: patience))
+        XCTAssertTrue(row.appears(within: patience))
         row.tap()
-        XCTAssertTrue(app.navigationBars["General"].waitForExistence(timeout: patience))
+        XCTAssertTrue(app.navigationBars["General"].appears(within: patience))
         audit("Settings, General")
     }
 
@@ -274,7 +290,7 @@ final class AccessibilityAuditUITests: AuditingUITestCase {
     func testPlayerOptionsPanel() {
         playDuneAndPause()
         btn("Options").tap()
-        XCTAssertTrue(button(containing: "Speed").waitForExistence(timeout: 10))
+        XCTAssertTrue(button(containing: "Speed").appears(within: 10))
         audit("Player options", overVideo: true)
     }
 }
@@ -283,7 +299,7 @@ final class AccessibilityAuditUITests: AuditingUITestCase {
 final class OnboardingAuditUITests: AuditingUITestCase {
     func testWelcome() {
         launchFresh()
-        XCTAssertTrue(element("onboarding-key").waitForExistence(timeout: patience))
+        XCTAssertTrue(element("onboarding-key").appears(within: patience))
         audit("Welcome")
     }
 }

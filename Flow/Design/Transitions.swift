@@ -78,6 +78,8 @@ struct Shimmer: ViewModifier {
                 .mask(content)
             }
             .onAppear {
+                // A sweep that never ends keeps the UI tests' every step waiting for the screen to settle.
+                guard !UITestMode.isActive else { return }
                 withAnimation(.linear(duration: 1.4).repeatForever(autoreverses: false)) { phase = 1 }
             }
     }
