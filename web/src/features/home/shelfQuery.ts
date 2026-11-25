@@ -104,6 +104,15 @@ export function heroPicks(primary: readonly MediaItem[], secondary: readonly Med
     .slice(0, max)
 }
 
-/** Whether the lead turns by itself: when the viewer wants it, there is more than one slide, and motion is allowed.
- *  What is in progress stays the first slide, so Home still opens on Resume. */
+/** The lead's slides: the top picks and nothing else. Continue Watching and Up Next are their own rows below it, so what
+ *  is in progress is never put into the lead; a pick the viewer has started still carries its resume point (a progress
+ *  bar and Resume), when Continue Watching is on. `progress` is the library's, by title. */
+export function leadSlides<T extends { type: MediaItem['type']; id: number }, P extends { duration: number }>(picks: readonly T[], progress: Record<string, P>, withProgress: boolean): { item: T; progress?: P }[] {
+  return picks.map((item) => {
+    const started = withProgress ? progress[`${item.type}:${item.id}`] : undefined
+    return started && started.duration > 0 ? { item, progress: started } : { item }
+  })
+}
+
+/** Whether the lead turns by itself: when the viewer wants it, there is more than one slide, and motion is allowed. */
 export const advancesByItself = (o: { setting: boolean; slides: number; reducedMotion: boolean }) => o.setting && o.slides > 1 && !o.reducedMotion

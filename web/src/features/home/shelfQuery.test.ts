@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { newQuery } from '../../lib/shelfDefaults'
 import type { MediaItem } from '../../lib/tmdb/types'
-import { advancesByItself, builtInExplore, discoverParams, exploreLinkFor, heroPicks, interleave } from './shelfQuery'
+import { advancesByItself, builtInExplore, discoverParams, exploreLinkFor, heroPicks, interleave, leadSlides } from './shelfQuery'
 import { airLabel, airSpoken, buildUpcoming, type UpcomingShow } from './upcoming'
 
 const now = new Date(2026, 9, 24, 20, 0).getTime()
@@ -122,5 +122,21 @@ describe('Upcoming', () => {
     expect(airLabel(day(27), now, 'en-GB')).toBe('Tue 27')
     expect(airSpoken(day(25), now, 'en-GB')).toBe('tomorrow')
     expect(airSpoken(day(27), now, 'en-GB')).toBe('on Tuesday 27 October')
+  })
+})
+
+describe('the lead\u2019s slides', () => {
+  const pick = (id: number) => ({ type: 'movie' as const, id })
+  const started = { duration: 100, position: 40 }
+
+  it('are the top picks in order, whatever is in progress', () => {
+    const slides = leadSlides([pick(1), pick(2)], { 'movie:99': started }, true)
+    expect(slides.map((s) => s.item.id)).toEqual([1, 2])
+  })
+
+  it('carry the resume point of a pick that was started, when Continue Watching is on', () => {
+    expect(leadSlides([pick(1), pick(2)], { 'movie:2': started }, true)[1]!.progress).toBe(started)
+    expect(leadSlides([pick(1), pick(2)], { 'movie:2': started }, false)[1]!.progress).toBeUndefined()
+    expect(leadSlides([pick(2)], { 'movie:2': { duration: 0 } }, true)[0]!.progress).toBeUndefined()
   })
 })

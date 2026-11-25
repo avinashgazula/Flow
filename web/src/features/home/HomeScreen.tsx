@@ -2,22 +2,21 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { lazy, Suspense, useEffect } from 'react'
 import { q } from '../../lib/queries'
-import { mediaKey, useLibrary } from '../../lib/store/library'
+import { useLibrary } from '../../lib/store/library'
 import { useSettings } from '../../lib/store/settings'
 import { formatWeekdayDate, greetingTitle, userLocale, useMinuteTick } from '../../lib/time'
 import { srcSet } from '../../lib/tmdb/images'
 import type { MediaItem } from '../../lib/tmdb/types'
 import { Lead, LeadGhost, leadSizes, type LeadItem } from './Lead'
-import { inProgress } from './logic'
-import { heroPicks, maxSlides } from './shelfQuery'
+import { heroPicks, leadSlides } from './shelfQuery'
 import { UpNext } from './UpNext'
 import s from './HomeScreen.module.css'
 
 /** The shelves are under the fold: their code arrives beside the page's first data, not ahead of the first paint. */
 const Shelves = lazy(() => import('./Shelves'))
 
-/** Home: the lead across the top of the window, edge to edge and under the top bar (what's in progress with its solid
- *  Resume, or the day's top picks, turning through up to ten), then the greeting and date by the hour, Continue Watching
+/** Home: the lead across the top of the window, edge to edge and under the top bar (the top picks from Settings → Shelves,
+ *  turning through up to ten; never what is in progress, which is Continue Watching's), then the greeting and date by the hour, Continue Watching
  *  as a ruled grid of cells, and the viewer's shelves in the order Settings → Shelves keeps, each a ruled section of
  *  posters or stills. Everything below the lead is a Frame (components/Frame). */
 export function HomeScreen() {
@@ -39,13 +38,8 @@ export function HomeScreen() {
   const pending = (uses('trending') && trending.isPending) || (uses('popular') && popular.isPending)
   const failed = (uses('trending') && trending.isError) || (uses('popular') && popular.isError)
 
-  // What's in progress leads, when Continue Watching is on; the picks follow it.
-  const resume = showContinue ? inProgress(progress)[0] : undefined
-  const resumeKey = resume && mediaKey(resume.item.type, resume.item.id)
-  const slides: LeadItem[] = [
-    ...(resume ? [{ item: resume.item, progress: resume }] : []),
-    ...picks.filter((m) => mediaKey(m.type, m.id) !== resumeKey).map((item) => ({ item })),
-  ].slice(0, maxSlides)
+  // The lead turns through the top picks only; what is in progress is in Continue Watching below it.
+  const slides: LeadItem[] = leadSlides(picks, progress, showContinue)
 
   // The next visit's HTML paints this still before any script runs, and preloads it (index.html).
   const still = slides[0]?.item.backdrop
@@ -66,7 +60,7 @@ export function HomeScreen() {
   const none = slides.length === 0 && !pending && failed
 
   const lead = slides.length ? <Lead slides={slides} auto={auto} /> : pending ? <LeadGhost /> : null
-  const side = upNext && <UpNext leadKey={resume && resumeKey} title={upNext.title} nextOnly={!continuing} />
+  const side = upNext && <UpNext title={upNext.title} nextOnly={!continuing} />
 
   const head = (
     <header className={s.head}>

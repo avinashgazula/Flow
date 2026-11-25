@@ -155,10 +155,9 @@ test.describe('playing a film', () => {
     // The page keeps the scroll it had; the bar is at the top.
     await page.evaluate(() => scrollTo(0, 0))
     await page.getByRole('link', { name: 'Home', exact: true }).click()
-    // What was played last leads Home, with its Resume.
-    const hero = page.getByRole('region', { name: 'Featured titles' })
-    await expect(hero.getByRole('heading', { name: 'Interstellar' })).toBeVisible()
-    await expect(hero.getByRole('link', { name: 'Resume' })).toHaveAttribute('href', '/watch/movie/157336')
+    // What was played last is first in Continue Watching, with its Resume. (The lead turns through the top picks only.)
+    const shelf = page.getByRole('region', { name: 'Continue Watching' })
+    await expect(shelf.getByRole('link', { name: /^Interstellar/ }).first()).toHaveAttribute('href', '/watch/movie/157336')
   })
 
   test('Escape leaves the player', async ({ boot, page }) => {

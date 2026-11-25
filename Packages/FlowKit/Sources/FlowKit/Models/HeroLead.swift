@@ -33,6 +33,15 @@ public enum HeroLead {
         }
     }
 
+    // MARK: Slides
+
+    /// The lead's slides: the top picks, in order, and nothing else. Continue Watching and Up Next are their own rows below
+    /// the lead, so what is in progress is never added to it. A pick the viewer has started is paired with its resume point
+    /// (`started`, by title), so it can still show a progress bar and Resume.
+    public static func slides<Pick, Started>(picks: [Pick], key: (Pick) -> MediaKey?, started: [MediaKey: Started]) -> [(pick: Pick, started: Started?)] {
+        picks.map { pick in (pick: pick, started: key(pick).flatMap { started[$0] }) }
+    }
+
     // MARK: Facts
 
     public enum Kind: Equatable, Sendable {

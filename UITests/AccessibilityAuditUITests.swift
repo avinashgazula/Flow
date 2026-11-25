@@ -187,7 +187,7 @@ final class AccessibilityAuditUITests: AuditingUITestCase {
     }
 
     func testHome() {
-        XCTAssertTrue(btn("Resume").waitForExistence(timeout: patience))
+        XCTAssertTrue(leadPrimary.waitForExistence(timeout: patience))
         audit("Home")
     }
 
@@ -308,7 +308,7 @@ final class LargeTextUITests: AuditingUITestCase {
     }
 
     func testHome() {
-        assertReachable(btn("Resume"), "Home's Resume")
+        assertReachable(leadPrimary, "Home's Play or Resume")
         assertReachable(btn("Details"), "Home's Details")
         assertReachable(btn("Settings"), "Settings")
         audit("Home, large text", for: largeTextAudit)

@@ -192,13 +192,13 @@ function ShelfList() {
   )
 }
 
-/** Where Home's top pick comes from when nothing is in progress, as the apps' Top Pick. */
+/** Where Home's top picks come from, as the apps' Top Pick. */
 function TopPick() {
   const primary = useSettings((x) => x.heroSource)
   const secondary = useSettings((x) => x.heroSecondarySource)
   const auto = useSettings((x) => x.heroAutoAdvance)
   return (
-    <Group title="Top Pick" footer="Home leads with what is in progress, then the first titles from these sources, and turns through up to ten of them. The picture runs edge to edge behind the title’s logo, with its buttons and a dot for each title.">
+    <Group title="Top Pick" footer="Home leads with the first titles from these sources and turns through up to ten of them. What you are watching stays in Continue Watching. The picture runs edge to edge behind the title’s logo, with its buttons and a dot for each title.">
       <Row label="Primary Source" htmlFor="hero-primary">
         <Select id="hero-primary" value={primary} onChange={(v) => settingsStore.set({ heroSource: v })} options={heroOptions} label="Primary source" />
       </Row>

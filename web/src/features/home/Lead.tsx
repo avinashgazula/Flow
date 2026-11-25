@@ -48,7 +48,7 @@ function useReducedMotion() {
  *  page below it, with the title's logo (its name in the display face when TMDB has none) over the fade, one short line of
  *  facts, a solid Resume or Play, a round Details, and a dot for each title.
  *
- *  With several titles it turns through them (up to ten: what's in progress first, then the top picks). It turns by itself
+ *  With several titles it turns through them (up to ten top picks; what is in progress is in Continue Watching, and a pick that was started still has its Resume). It turns by itself
  *  with a cross-fade (never while the pointer or keyboard focus is in it, while a finger is on it, off screen, with the tab
  *  hidden or under reduced motion). A swipe on a touch screen follows the finger; the arrow keys turn it from inside it;
  *  the dots choose a title; the pause button at their end stops the turning for good. Choosing a title is deciding where

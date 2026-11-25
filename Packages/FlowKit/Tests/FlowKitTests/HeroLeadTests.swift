@@ -106,3 +106,19 @@ final class LogoToneTests: XCTestCase {
         XCTAssertFalse(LogoTone.mid.flips(onDarkPage: true))
     }
 }
+
+final class HeroLeadSlidesTests: XCTestCase {
+    func testTheLeadIsTheTopPicksAloneWhateverIsInProgress() {
+        let slides = HeroLead.slides(picks: [1, 2, 3], key: { MediaKey(type: .movie, tmdbID: $0) },
+                                     started: [MediaKey(type: .movie, tmdbID: 99): "elsewhere"])
+        XCTAssertEqual(slides.map(\.pick), [1, 2, 3], "a title in progress that is not a pick is not added")
+        XCTAssertTrue(slides.allSatisfy { $0.started == nil })
+    }
+
+    func testAPickThatWasStartedKeepsItsResumePoint() {
+        let slides = HeroLead.slides(picks: [1, 2], key: { MediaKey(type: .show, tmdbID: $0) },
+                                     started: [MediaKey(type: .show, tmdbID: 2): "S3 E7"])
+        XCTAssertNil(slides[0].started)
+        XCTAssertEqual(slides[1].started, "S3 E7")
+    }
+}

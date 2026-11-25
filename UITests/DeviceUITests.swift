@@ -51,9 +51,9 @@ final class iPadLayoutUITests: FlowUITestCase {
     }
 
     func testHomesLeadRunsEdgeToEdgeFromTheTopWithItsWordsOverTheLowerLeft() {
-        let resume = btn("Resume")
-        let backdrop = button(startingWith: "Breaking Bad, season 3")
-        XCTAssertTrue(resume.waitForExistence(timeout: patience), "the lead offers Resume")
+        let resume = leadPrimary
+        let backdrop = leadPicture
+        XCTAssertTrue(resume.waitForExistence(timeout: patience), "the lead offers Play (or Resume)")
         XCTAssertTrue(backdrop.waitForExistence(timeout: patience), "and shows its backdrop")
         // The picture has no frame or gutter: it runs up under the top bar and to the window's right edge. A landscape iPad
         // may show the sidebar, so its left edge can be the sidebar's; it still has to take most of the window.

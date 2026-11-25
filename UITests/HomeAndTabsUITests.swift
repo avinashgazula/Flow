@@ -1,27 +1,30 @@
 import XCTest
 
 /// Launch, Home and the five tabs, on sample data. The sample library has Breaking Bad (season 3, episode 7) and Dune: Part
-/// Two part watched, so Home's lead is Breaking Bad and Dune sits in Up Next.
+/// Two part watched, so both sit in Up Next; Home's lead turns through the top picks (trending) and never through those.
 final class HomeAndTabsUITests: FlowUITestCase {
     override func setUp() {
         super.setUp()
         launchDemo()
     }
 
-    func testLaunchLandsOnHomeWithTheLatestResumeAsItsLead() {
-        XCTAssertTrue(btn("Resume").waitForExistence(timeout: patience), "the lead offers Resume, since Breaking Bad is in progress")
-        XCTAssertTrue(waitUntil(patience) { self.leadIs("Breaking Bad") }, "the lead is the title watched most recently")
-        XCTAssertFalse(leadIs("Dune: Part Two"), "Dune, watched earlier, is only in Up Next")
+    func testLaunchLandsOnHomeWithTheTopPickAsItsLead() {
+        XCTAssertTrue(leadPrimary.waitForExistence(timeout: patience), "the lead offers Play (or Resume, for a pick that was started)")
+        XCTAssertTrue(leadPicture.exists, "and shows the pick's picture")
+        XCTAssertTrue(anyElement(startingWith: "Title 1 of").exists, "the dots start on the first pick")
+        // What is in progress is Up Next's, not the lead's: Breaking Bad has a resume point but is not a top pick here.
+        XCTAssertTrue(text("Up Next").exists, "Continue Watching stays in its own row")
     }
 
     func testLeadTurnsWithASwipeAndItsDotsSayWhere() {
         XCTAssertTrue(anyElement(startingWith: "Title 1 of").waitForExistence(timeout: patience), "the dots start on the first pick")
+        let first = leadPicture.label
         swipeLead(left: true)
         XCTAssertTrue(anyElement(startingWith: "Title 2 of").waitForExistence(timeout: 10), "a swipe left brings in the second pick")
-        XCTAssertTrue(waitUntil(10) { !self.leadIs("Breaking Bad") }, "the first pick's title is replaced")
+        XCTAssertTrue(waitUntil(10) { self.leadPicture.label != first }, "its picture is a different title's")
         swipeLead(left: false)
         XCTAssertTrue(anyElement(startingWith: "Title 1 of").waitForExistence(timeout: 10), "a swipe right comes back to the first")
-        XCTAssertTrue(waitUntil(10) { self.leadIs("Breaking Bad") }, "and to its title")
+        XCTAssertTrue(waitUntil(10) { self.leadPicture.label == first }, "and to its title")
     }
 
     /// A swipe across the upper part of the window, where the lead's picture is.
@@ -41,7 +44,7 @@ final class HomeAndTabsUITests: FlowUITestCase {
 
     func testDetailsOpensTheLeadsPageAndBackReturnsHome() {
         btn("Details").tap()
-        XCTAssertTrue(button(startingWith: "Resume").waitForExistence(timeout: patience), "Breaking Bad's page offers Resume")
+        XCTAssertTrue(titlePagePlay.waitForExistence(timeout: patience), "the pick's page offers Play or Resume")
         XCTAssertFalse(btn("Details").exists, "Home is covered by the page")
         goBack()
         waitForHome()
@@ -68,11 +71,11 @@ final class HomeAndTabsUITests: FlowUITestCase {
     func testTabsKeepTheirOwnPages() {
         // A page pushed on one tab stays there while another tab is used.
         btn("Details").tap()
-        XCTAssertTrue(button(startingWith: "Resume").waitForExistence(timeout: patience))
+        XCTAssertTrue(titlePagePlay.waitForExistence(timeout: patience))
         openTab("Library")
         XCTAssertTrue(button(startingWith: "Upcoming").waitForExistence(timeout: patience))
         openTab("Home")
-        XCTAssertTrue(button(startingWith: "Resume").waitForExistence(timeout: patience), "Home still shows the page that was open")
+        XCTAssertTrue(titlePagePlay.waitForExistence(timeout: patience), "Home still shows the page that was open")
         XCTAssertFalse(btn("Details").exists, "and not its root")
     }
 }

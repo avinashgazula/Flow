@@ -4,17 +4,18 @@ import { expectPlaying, go, reload } from './helpers'
 /* Home, a title page and the source picker, driven the way a visitor does: by clicking and pressing keys. */
 
 test.describe('home', () => {
-  test('leads with the day, the date and the title you were watching', async ({ boot, page }) => {
+  test('leads with a top pick, then the day and the date, and keeps what you are watching to Continue Watching', async ({ boot, page }) => {
     await boot('/')
     // The clock is pinned to noon on 15 June 2026 (fixtures.ts), so what Home says about the day is fixed too.
     await expect(page.getByRole('heading', { level: 1, name: 'This Afternoon' })).toBeVisible()
     await expect(page.getByText('Monday, June 15')).toBeVisible()
     const hero = page.getByRole('region', { name: 'Featured titles' })
-    await expect(hero.getByRole('heading', { name: 'Breaking Bad' })).toBeVisible()
-    // One line of facts under the logo: where you are, then how long is left.
-    await expect(hero.getByText('S3 E7')).toBeVisible()
-    await expect(hero.getByText(/\dm left$/)).toBeVisible()
-    await expect(hero.getByRole('link', { name: 'Resume' })).toHaveAttribute('href', '/watch/show/1396?season=3&episode=7')
+    await expect(hero.getByRole('heading', { level: 2 })).toBeVisible()
+    // Play, or Resume for a pick that was started; and one line of facts under the logo.
+    await expect(hero.getByRole('link', { name: /^(Play|Resume)$/ })).toBeVisible()
+    await expect(hero.locator('p').first()).not.toBeEmpty()
+    // Titles in progress are in Continue Watching, which the lead is not built from.
+    await expect(page.getByRole('region', { name: 'Continue Watching' }).getByRole('link', { name: /^Dune: Part Two/ })).toBeVisible()
   })
 
   test('the dots choose a title and the arrow keys step through the picks and wrap round', async ({ boot, page }) => {
@@ -54,7 +55,7 @@ test.describe('home', () => {
     // The whole window's width (a classic scrollbar, where there is one, takes up to 17px of it).
     expect(window.width - box.width).toBeLessThanOrEqual(17)
     // Resume sits on the picture, not under it.
-    const resume = (await hero.getByRole('link', { name: 'Resume' }).boundingBox())!
+    const resume = (await hero.getByRole('link', { name: /^(Play|Resume)$/ }).boundingBox())!
     expect(resume.y + resume.height).toBeLessThanOrEqual(box.y + box.height)
     expect(resume.y).toBeGreaterThan(box.y + box.height * 0.3)
   })
@@ -74,11 +75,10 @@ test.describe('home', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Interstellar' })).toBeVisible()
   })
 
-  test('Details on the hero opens the series page at the season being watched', async ({ boot, page }) => {
+  test('Details on the hero opens the title\u2019s page', async ({ boot, page }) => {
     await boot('/')
     await page.getByRole('region', { name: 'Featured titles' }).getByRole('link', { name: 'Details' }).click()
-    await expect(page).toHaveURL(/\/title\/show\/1396\?season=3$/)
-    await expect(page.getByRole('combobox', { name: 'Season' })).toHaveValue(/3/)
+    await expect(page).toHaveURL(/\/title\/(movie|show)\/\d+/)
   })
 
   test('the Genres shelf opens Explore on that genre', async ({ boot, page }) => {

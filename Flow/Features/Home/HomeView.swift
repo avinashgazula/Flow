@@ -20,14 +20,14 @@ struct HomeLead: Equatable, Identifiable {
 
 /// Home, as a streaming app's hero: the title's artwork runs edge to edge and up under the top bar, fading at its foot into
 /// the page, and over the fade sit the title's logo (its name in Archivo capitals when TMDb has no logo art), one line of
-/// facts, a solid Resume (or Play) pill, a round Details and a dot for each title. The lead turns through what's in progress
-/// and the top picks, and turns by itself every few seconds with a cross-fade (`HomeRotation`) unless the viewer is touching,
+/// facts, a solid Resume (or Play) pill, a round Details and a dot for each title. The lead turns through the top picks (Settings →
+/// Shelves → Top Pick) and never what is in progress, which is Up Next's; it turns by itself every few seconds with a cross-fade (`HomeRotation`) unless the viewer is touching,
 /// pointing at or focused on it. A swipe follows the finger. The day label and date open the page under it, then Up Next and
 /// the shelves, each a ruled section under a red label. This is the one screen with a gradient and round controls; the rest
 /// of the app keeps the Index's flat, square look (web/DESIGN.md, Home Lead).
 struct HomeView: View {
     @Environment(AppModel.self) private var model
-    /// What the lead turns through: what is in progress first, then the top picks, ten at most.
+    /// What the lead turns through: the top picks, ten at most. Never Continue Watching; a pick that was started still shows its progress.
     @State private var leads: [HomeLead] = []
     @State private var leadIndex = 0
     /// Whether the leads have been asked for yet, so the picture's place is held (and not a bare header) while they load.
@@ -120,7 +120,7 @@ struct HomeView: View {
                     held: leadHeld)
     }
 
-    /// What decides the lead: the top Continue Watching entry, or the top pick when nothing is in progress.
+    /// What decides the lead: the top picks' sources, and what is in progress (a pick that was started shows its progress).
     private var leadKey: String {
         "\(model.contentVersion)-\(general.showContinueWatching)-\(model.continueWatching.first?.id ?? "none")-\(general.heroSource.rawValue)-\(general.heroSecondarySource?.rawValue ?? "")"
     }
@@ -265,7 +265,7 @@ struct HomeView: View {
                     .padding(.top, leads.isEmpty && leadsLoaded ? plainTop : 0)
             }
             if showsUpNext {
-                UpNextSection(leadEntryID: leads.first?.entryID)
+                UpNextSection(leadEntryID: nil)
             }
             ForEach(rowShelves) { shelf in
                 HomeRow(shelf: shelf)
@@ -306,12 +306,11 @@ struct HomeView: View {
     // MARK: Loading
 
     private func loadLeads() async {
-        var out: [HomeLead] = []
-        if general.showContinueWatching, let entry = model.continueWatching.first, let item = await model.hydrate([entry.key]).first {
-            out.append(HomeLead(item: item, episode: entry.episode, progress: entry.progress, kind: entry.isNextUp ? .nextUp : .resume, entryID: entry.id))
-        }
-        for pick in await model.heroItems() where out.count < 10 && !out.contains(where: { $0.item.id == pick.id }) {
-            out.append(HomeLead(item: pick))
+        let picks = Array(await model.heroItems().prefix(10))
+        // A pick that was started keeps its resume point, so it shows its progress and Resume; nothing in progress is added.
+        let started: [MediaKey: ContinueWatchingBuilder.Entry] = general.showContinueWatching ? Dictionary(model.continueWatching.filter { !$0.isNextUp }.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first }) : [:]
+        let out = HeroLead.slides(picks: picks, key: { $0.key }, started: started).map { slide in
+            slide.started.map { HomeLead(item: slide.pick, episode: $0.episode, progress: $0.progress, kind: .resume) } ?? HomeLead(item: slide.pick)
         }
         leadsLoaded = true
         guard out != leads else { return }
@@ -652,6 +651,7 @@ private struct LeadSlide: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(spoken)
         }
+        .accessibilityIdentifier("home-lead-picture")
         .buttonStyle(.plain)
         #if os(tvOS)
         // Resume and Details are the remote's way in; a picture that took focus too would be one stop too many.
@@ -745,6 +745,7 @@ private struct LeadSlide: View {
                 Label(lead.kind == .resume ? "Resume" : "Play", systemImage: "play.fill")
             }
             .buttonStyle(HeroButtonStyle(kind: .pill))
+            .accessibilityIdentifier("home-lead-primary")
             .focused(focus, equals: .resume)
             Button { model.navigate(to: .detail(item)) } label: { Image(systemName: "info") }
                 .buttonStyle(HeroButtonStyle(kind: .circle))
