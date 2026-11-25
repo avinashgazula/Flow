@@ -15,9 +15,9 @@ final class TVFocusUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["-FlowDemo", "YES", "-FlowNoRotation", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
-        XCTAssertTrue(btn("Resume").waitForExistence(timeout: patience), "Home shows its lead, with Resume")
+        XCTAssertTrue(element("home-lead-primary").waitForExistence(timeout: patience), "Home shows its lead, with Play or Resume")
         // Focus lands a moment after the page does; the tests start from where it settles.
-        waitUntil(20) { self.btn("Resume").hasFocus }
+        waitUntil(20) { self.element("home-lead-primary").hasFocus }
     }
 
     // MARK: Helpers
@@ -30,6 +30,12 @@ final class TVFocusUITests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         }
         return condition()
+    }
+
+    /// An element by accessibility identifier, whatever its type. Home's lead is found by its identifiers: it turns through the
+    /// top picks, whatever they are.
+    private func element(_ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
     /// A button by its exact label, ignoring case: button styles set their words in capitals, and the spoken label follows.
@@ -128,14 +134,24 @@ final class TVFocusUITests: XCTestCase {
     private func enterHome() {
         assertOneFocus("on arrival at Home")
         if focusIsOnTheTabBar { press(.down, "Down from the Home tab") }
-        XCTAssertTrue(waitUntil(20) { self.btn("Resume").hasFocus }, "Down from the tab bar reaches Resume, focus is on \(describeFocus())")
+        XCTAssertTrue(waitUntil(20) { self.element("home-lead-primary").hasFocus }, "Down from the tab bar reaches Resume, focus is on \(describeFocus())")
     }
 
     func testLaunchFocusesOneThingAndDownReachesResumeThenAcrossHome() {
         enterHome()
         press(.right, "Right from Resume")
         XCTAssertTrue(btn("Details").hasFocus, "Right from Resume reaches Details, focus is on \(describeFocus())")
-        press(.down, "Down from Details")
+        press(.down, "Down from Details onto the dots")
+        let dots = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Title 1 of")).firstMatch
+        XCTAssertTrue(waitUntil(10) { dots.hasFocus }, "Down from the buttons reaches the dots row, focus is on \(describeFocus())")
+        // The dots row is the carousel's own control: Right and Left turn it, with focus staying on the row.
+        press(.right, "Right on the dots")
+        let second = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Title 2 of")).firstMatch
+        XCTAssertTrue(second.waitForExistence(timeout: 10), "Right on the dots turns to the second pick")
+        XCTAssertTrue(waitUntil(10) { second.hasFocus }, "and focus stays on the dots, focus is on \(describeFocus())")
+        press(.left, "Left on the dots")
+        XCTAssertTrue(dots.waitForExistence(timeout: 10), "Left turns back to the first pick")
+        press(.down, "Down from the dots")
         press(.down, "Down again")
         press(.up, "Up")
     }

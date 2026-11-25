@@ -1,6 +1,7 @@
 import type { CastMember, Genre, MediaDetail, MediaType, MovieRelease, Provider, Video } from './types'
 import { tmdbPath } from './types'
 import { episode, item, items } from './client'
+import { bestLogo } from './logo'
 
 /* A title page's details, from TMDB's one big answer (the title with its credits, videos, recommendations, release
    dates, images and watch providers appended) to the small shape components read. It is a chunk of its own: the
@@ -8,12 +9,6 @@ import { episode, item, items } from './client'
 
 function provider(raw: any): Provider {
   return { id: raw.provider_id, name: raw.provider_name, logo: raw.logo_path ?? undefined }
-}
-
-function bestLogo(logos: any[] | undefined, language: string): string | undefined {
-  if (!logos?.length) return undefined
-  const score = (l: any) => (l.iso_639_1 === language ? 3 : l.iso_639_1 === 'en' ? 2 : l.iso_639_1 == null ? 1 : 0) + (l.vote_average ?? 0) / 100
-  return [...logos].sort((a, b) => score(b) - score(a))[0]?.file_path
 }
 
 function certification(raw: any, type: MediaType, region: string): string | undefined {

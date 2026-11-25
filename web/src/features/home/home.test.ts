@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Progress } from '../../lib/store/library'
 import type { MediaItem } from '../../lib/tmdb/types'
-import { episodeLine, episodeShort, firstWithStill, formatPrint, formatSpoken, inProgress, pickMeta, pickPrint, resumePrint, secondsLeft, spokenPick, spokenResume, watchedFraction } from './logic'
+import { episodeLine, episodeShort, firstWithStill, formatPrint, heroFacts, formatSpoken, inProgress, pickMeta, pickPrint, resumePrint, secondsLeft, spokenPick, spokenResume, watchedFraction } from './logic'
 import { toFacts } from '../../components/printLayout'
 import type { PrintPart } from '../../components/printLayout'
 
@@ -111,5 +111,23 @@ describe('words for titles and screen readers', () => {
   it('finds the first title with a still', () => {
     expect(firstWithStill([item({ id: 1 }), item({ id: 2, backdrop: '/a.jpg' })])?.id).toBe(2)
     expect(firstWithStill(undefined)).toBeUndefined()
+  })
+})
+
+describe('the lead\u2019s line of facts', () => {
+  it('says where you are and how long is left for something started', () => {
+    const episode = { position: 1740, duration: 2820, episode: { season: 3, episode: 7 } }
+    expect(heroFacts(item({ type: 'show', genres: [18, 80] }), episode)).toEqual(['S3 E7', '18m left'])
+    expect(heroFacts(item({ genres: [878] }), { position: 3720, duration: 10020 })).toEqual(['2024', '1h45 left'])
+  })
+
+  it('says what a title is when it has not been started: genre, year, rating', () => {
+    expect(heroFacts(item({ type: 'show', genres: [18, 80], year: 2008 }), undefined, 'TV-MA')).toEqual(['Drama', '2008', 'TV-MA'])
+    expect(heroFacts(item(), undefined)).toEqual(['Science Fiction', '2024'])
+  })
+
+  it('leaves out what it does not know, so the line has no gaps', () => {
+    expect(heroFacts(item({ genres: [], year: undefined }), undefined, 'PG-13')).toEqual(['PG-13'])
+    expect(heroFacts(item({ genres: [], year: undefined }), undefined)).toEqual([])
   })
 })

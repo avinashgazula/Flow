@@ -124,3 +124,11 @@ export function spokenPick(item: MediaItem, detail?: PickDetail): string {
 
 /** The first title of a list that has a still to show. */
 export const firstWithStill = (items: MediaItem[] | undefined) => items?.find((i) => i.backdrop)
+
+/** The one short line of facts under the lead's logo. Something started says where you are and how long is left
+ *  ("S3 E7 · 18m left"); anything else says what it is ("Drama · 2008 · TV-MA": the first genre, the year and the rating
+ *  as the viewer's region prints it). Parts it doesn't know are left out, so the line never has a gap in it. */
+export function heroFacts(item: Pick<MediaItem, 'type' | 'year' | 'genres'>, progress: Pick<Progress, 'position' | 'duration' | 'episode'> | undefined, certification?: string): string[] {
+  if (progress) return [episodeShort(progress.episode) ?? (item.year ? String(item.year) : undefined), formatLeftShort(secondsLeft(progress))].filter((p): p is string => !!p)
+  return [genreNames(item.genres, item.type)[0], item.year ? String(item.year) : undefined, certification].filter((p): p is string => !!p)
+}

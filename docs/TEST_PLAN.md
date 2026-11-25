@@ -66,10 +66,18 @@ The Film Stock design (October 2026): `web/DESIGN.md` records its rules, and the
 pieces are in Theme.swift natively.
 
 - **Title by hour:** "This Morning" 5–12, "This Afternoon" 12–17, "Tonight" 17–5, with the date below.
-- **Lead:** the latest resume (else the top pick) as one large framed still. Its edge strip's
-  perforations show progress, and its print says "S3 E7 · 18M LEFT · ENDS 9:30 PM"; time left is
-  yellow. Yellow Resume (or Play) and a quiet Details sit below, in the same type size.
-  T: Resume is focused on arrival and the lead fits the first screen.
+- **Lead:** a streaming app's hero (`HomeView`'s `LeadCarousel`): the backdrop edge to edge and up under the bar,
+  fading into the page; over the fade the title's logo (its name in Archivo capitals when TMDb has none: only Dune
+  and Breaking Bad have logos in the sample data), one line of facts ("S3 E7 · 18m left" for something started,
+  "Drama · 2008 · TV-MA" otherwise), a Resume (or Play) pill, a round Details and dots. Height: phone about 68% of the
+  window, iPad and Mac 16:9 up to 75%, Apple TV 82%. Words centred on a phone, lower left from 640 pt.
+  - Turns by itself with a cross-fade (not with Reduce Motion or VoiceOver, and not while scrolling, touching,
+    pointing or focused); a swipe follows the finger and a short slow drag settles back; the glyph at the end of the
+    dots stops and restarts the turning. Look for: the logo readable on bright and dark art in light and dark mode
+    (a light logo on a light page is flipped), the picture under the status bar with the bar's buttons legible, no seam
+    where the fade meets the page, the dots centred under the buttons.
+  - T: Resume is focused on arrival and the first shelf peeks under the lead. Down from the buttons reaches the dots;
+    Left and Right there turn the carousel and Select stops or restarts the turning; focus is always visible.
 - **Up Next:** framed stills with the same strips. On a wide window (P, M from 760 pt, T always)
   they sit beside the lead, in one or two columns; otherwise they form a row below it.
   - Progress agrees everywhere. After playing, Home, Library and the title page show the same time

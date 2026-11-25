@@ -140,15 +140,24 @@ final class TitleAndPlayerUITests: FlowUITestCase {
     }
 
     func testAPlaceSavedInThePlayerShowsOnHome() {
-        XCTAssertTrue(waitUntil(patience) { self.leadIs("Breaking Bad") }, "Home's lead starts as Breaking Bad")
+        // What is in progress is Up Next's (the lead turns through the top picks only), newest first: Breaking Bad leads it.
+        XCTAssertTrue(reveal(upNextCard("Breaking Bad")), "Up Next has Breaking Bad")
+        XCTAssertTrue(upNextCard("Breaking Bad").frame.minX < upNextCard("Dune: Part Two").frame.minX, "ahead of Dune at first")
         playDuneAndPause()
         scrubber.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
         XCTAssertTrue(waitUntil(15) { (self.playbackPosition()?.now ?? 0) > 3 }, "the playhead moved into the clip")
         closePlayer()
         goBack()
         waitForHome()
-        XCTAssertTrue(waitUntil(patience) { self.leadIs("Dune: Part Two") }, "Dune, played last, is Home's lead now")
-        XCTAssertTrue(btn("Resume").exists, "and it offers Resume")
-        XCTAssertFalse(leadIs("Breaking Bad"), "in place of Breaking Bad")
+        XCTAssertTrue(reveal(upNextCard("Dune: Part Two")), "Up Next has Dune, with the time left")
+        XCTAssertTrue(waitUntil(patience) { self.upNextCard("Dune: Part Two").frame.minX < self.upNextCard("Breaking Bad").frame.minX },
+                      "Dune, played last, now comes first in Up Next")
+    }
+
+    /// An Up Next card: its spoken label starts with the title and says how much is left. The lead's picture can say the
+    /// same (a top pick that was started), so it is left out.
+    private func upNextCard(_ title: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@ AND identifier != %@", title, "left",
+                                         "home-lead-picture")).firstMatch
     }
 }

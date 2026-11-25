@@ -4,30 +4,60 @@ import { expectPlaying, go, reload } from './helpers'
 /* Home, a title page and the source picker, driven the way a visitor does: by clicking and pressing keys. */
 
 test.describe('home', () => {
-  test('leads with the day, the date and the title you were watching', async ({ boot, page }) => {
+  test('leads with a top pick, then the day and the date, and keeps what you are watching to Continue Watching', async ({ boot, page }) => {
     await boot('/')
     // The clock is pinned to noon on 15 June 2026 (fixtures.ts), so what Home says about the day is fixed too.
     await expect(page.getByRole('heading', { level: 1, name: 'This Afternoon' })).toBeVisible()
     await expect(page.getByText('Monday, June 15')).toBeVisible()
     const hero = page.getByRole('region', { name: 'Featured titles' })
-    await expect(hero.getByRole('heading', { name: 'Breaking Bad' })).toBeVisible()
-    await expect(hero.getByText('Season 3, Episode 7')).toBeVisible()
-    await expect(hero.getByRole('link', { name: 'Resume' })).toHaveAttribute('href', '/watch/show/1396?season=3&episode=7')
+    await expect(hero.getByRole('heading', { level: 2 })).toBeVisible()
+    // Play, or Resume for a pick that was started; and one line of facts under the logo.
+    await expect(hero.getByRole('link', { name: /^(Play|Resume)$/ })).toBeVisible()
+    await expect(hero.locator('p').first()).not.toBeEmpty()
+    // Titles in progress are in Continue Watching, which the lead is not built from.
+    await expect(page.getByRole('region', { name: 'Continue Watching' }).getByRole('link', { name: /^Dune: Part Two/ })).toBeVisible()
   })
 
-  test('the pager steps through the picks and wraps round', async ({ boot, page }) => {
+  test('the dots choose a title and the arrow keys step through the picks and wrap round', async ({ boot, page }) => {
     await boot('/')
     const hero = page.getByRole('region', { name: 'Featured titles' })
     const position = hero.getByRole('status')
-    await expect(position).toHaveAccessibleName('1 of 10')
+    await expect(position).toHaveText('Title 1 of 10')
+    await expect(hero.getByRole('button', { name: 'Title 1 of 10' })).toHaveAttribute('aria-current', 'true')
     const first = await hero.getByRole('heading', { level: 2 }).textContent()
-    await hero.getByRole('button', { name: 'Next title' }).click()
-    await expect(position).toHaveAccessibleName('2 of 10')
+    await hero.getByRole('button', { name: 'Title 2 of 10' }).click()
+    await expect(position).toHaveText('Title 2 of 10')
+    await expect(hero.getByRole('button', { name: 'Title 2 of 10' })).toHaveAttribute('aria-current', 'true')
     await expect(hero.getByRole('heading', { level: 2 })).not.toHaveText(first!)
-    await hero.getByRole('button', { name: 'Previous title' }).click()
-    await expect(position).toHaveAccessibleName('1 of 10')
-    await hero.getByRole('button', { name: 'Previous title' }).click()
-    await expect(position).toHaveAccessibleName('10 of 10')
+    // The arrow keys turn it from anywhere inside it, here from the dot just pressed.
+    await page.keyboard.press('ArrowLeft')
+    await expect(position).toHaveText('Title 1 of 10')
+    await page.keyboard.press('ArrowLeft')
+    await expect(position).toHaveText('Title 10 of 10')
+    await page.keyboard.press('ArrowRight')
+    await expect(position).toHaveText('Title 1 of 10')
+  })
+
+  test('the pause button stops the lead turning by itself, and choosing a title keeps it still', async ({ boot, page }) => {
+    await boot('/')
+    const hero = page.getByRole('region', { name: 'Featured titles' })
+    await hero.getByRole('button', { name: 'Stop automatic rotation' }).click()
+    await expect(hero.getByRole('button', { name: 'Turn automatic rotation back on' })).toBeVisible()
+  })
+
+  test('the lead runs edge to edge from the top of the window, under the top bar', async ({ boot, page }) => {
+    await boot('/')
+    const hero = page.getByRole('region', { name: 'Featured titles' })
+    const box = (await hero.boundingBox())!
+    const window = page.viewportSize()!
+    expect(box.x).toBe(0)
+    expect(box.y).toBe(0)
+    // The whole window's width (a classic scrollbar, where there is one, takes up to 17px of it).
+    expect(window.width - box.width).toBeLessThanOrEqual(17)
+    // Resume sits on the picture, not under it.
+    const resume = (await hero.getByRole('link', { name: /^(Play|Resume)$/ }).boundingBox())!
+    expect(resume.y + resume.height).toBeLessThanOrEqual(box.y + box.height)
+    expect(resume.y).toBeGreaterThan(box.y + box.height * 0.3)
   })
 
   test('Continue Watching lists what has a resume point, with the time left', async ({ boot, page }) => {
@@ -45,11 +75,10 @@ test.describe('home', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Interstellar' })).toBeVisible()
   })
 
-  test('Details on the hero opens the series page at the season being watched', async ({ boot, page }) => {
+  test('Details on the hero opens the title\u2019s page', async ({ boot, page }) => {
     await boot('/')
     await page.getByRole('region', { name: 'Featured titles' }).getByRole('link', { name: 'Details' }).click()
-    await expect(page).toHaveURL(/\/title\/show\/1396\?season=3$/)
-    await expect(page.getByRole('combobox', { name: 'Season' })).toHaveValue(/3/)
+    await expect(page).toHaveURL(/\/title\/(movie|show)\/\d+/)
   })
 
   test('the Genres shelf opens Explore on that genre', async ({ boot, page }) => {

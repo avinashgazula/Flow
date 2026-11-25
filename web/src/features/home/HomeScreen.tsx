@@ -2,24 +2,23 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { lazy, Suspense, useEffect } from 'react'
 import { q } from '../../lib/queries'
-import { mediaKey, useLibrary } from '../../lib/store/library'
+import { useLibrary } from '../../lib/store/library'
 import { useSettings } from '../../lib/store/settings'
 import { formatWeekdayDate, greetingTitle, userLocale, useMinuteTick } from '../../lib/time'
 import { srcSet } from '../../lib/tmdb/images'
 import type { MediaItem } from '../../lib/tmdb/types'
-import { fullSizes, Lead, LeadGhost, leadSizes, type LeadItem } from './Lead'
-import { inProgress } from './logic'
-import { heroPicks, maxSlides } from './shelfQuery'
+import { Lead, LeadGhost, leadSizes, type LeadItem } from './Lead'
+import { heroPicks, leadSlides } from './shelfQuery'
 import { UpNext } from './UpNext'
 import s from './HomeScreen.module.css'
 
 /** The shelves are under the fold: their code arrives beside the page's first data, not ahead of the first paint. */
 const Shelves = lazy(() => import('./Shelves'))
 
-/** Home, by the hour: the greeting and date, the lead (what's in progress with its solid Resume, or the day's top
- *  picks, turning through up to ten), Continue Watching under it as a ruled grid of cells, and then the viewer's
- *  shelves in the order Settings → Shelves keeps, each a ruled section of posters or stills. Everything is a Frame
- *  (components/Frame). */
+/** Home: the lead across the top of the window, edge to edge and under the top bar (the top picks from Settings → Shelves,
+ *  turning through up to ten; never what is in progress, which is Continue Watching's), then the greeting and date by the hour, Continue Watching
+ *  as a ruled grid of cells, and the viewer's shelves in the order Settings → Shelves keeps, each a ruled section of
+ *  posters or stills. Everything below the lead is a Frame (components/Frame). */
 export function HomeScreen() {
   const now = useMinuteTick()
   const progress = useLibrary((l) => l.progress)
@@ -29,7 +28,6 @@ export function HomeScreen() {
   const primary = useSettings((x) => x.heroSource)
   const secondary = useSettings((x) => x.heroSecondarySource)
   const auto = useSettings((x) => x.heroAutoAdvance)
-  const fullscreen = useSettings((x) => x.heroStyle === 'fullscreen')
 
   // The sources of the top picks. Each is asked for only if it is chosen; trending is the one Home paints from.
   const uses = (source: string) => primary === source || secondary === source
@@ -40,24 +38,19 @@ export function HomeScreen() {
   const pending = (uses('trending') && trending.isPending) || (uses('popular') && popular.isPending)
   const failed = (uses('trending') && trending.isError) || (uses('popular') && popular.isError)
 
-  // What's in progress leads, when Continue Watching is on; the picks follow it.
-  const resume = showContinue ? inProgress(progress)[0] : undefined
-  const resumeKey = resume && mediaKey(resume.item.type, resume.item.id)
-  const slides: LeadItem[] = [
-    ...(resume ? [{ item: resume.item, progress: resume }] : []),
-    ...picks.filter((m) => mediaKey(m.type, m.id) !== resumeKey).map((item) => ({ item })),
-  ].slice(0, maxSlides)
+  // The lead turns through the top picks only; what is in progress is in Continue Watching below it.
+  const slides: LeadItem[] = leadSlides(picks, progress, showContinue)
 
   // The next visit's HTML paints this still before any script runs, and preloads it (index.html).
   const still = slides[0]?.item.backdrop
   useEffect(() => {
     if (!still) return
     try {
-      localStorage.setItem('flow.lcp', JSON.stringify({ path: location.pathname, d: srcSet(still, 'backdrop'), s: fullscreen ? fullSizes : leadSizes }))
+      localStorage.setItem('flow.lcp', JSON.stringify({ path: location.pathname, d: srcSet(still, 'backdrop'), s: leadSizes }))
     } catch {
       // Only a head start for the next visit.
     }
-  }, [still, fullscreen])
+  }, [still])
 
   // Continue Watching and Up Next are the apps' two shelves for this place. Continue Watching holds both what is in
   // progress and what is next, so it names the place when it is on; Up Next alone holds only the next episodes.
@@ -66,23 +59,27 @@ export function HomeScreen() {
   const upNext = continuing ?? beside[0]
   const none = slides.length === 0 && !pending && failed
 
-  const lead = slides.length ? <Lead slides={slides} auto={auto} fullscreen={fullscreen} /> : pending ? <LeadGhost fullscreen={fullscreen} /> : null
-  const side = upNext && <UpNext leadKey={resume && resumeKey} title={upNext.title} nextOnly={!continuing} />
+  const lead = slides.length ? <Lead slides={slides} auto={auto} /> : pending ? <LeadGhost /> : null
+  const side = upNext && <UpNext title={upNext.title} nextOnly={!continuing} />
+
+  const head = (
+    <header className={s.head}>
+      <h1 className={s.title}>{greetingTitle(now)}</h1>
+      <p className={`${s.date} num`}>{formatWeekdayDate(now, userLocale)}</p>
+    </header>
+  )
 
   return (
     <div className={s.home}>
-      <div className={s.wrap}>
-        <header className={s.head}>
-          <h1 className={s.title}>{greetingTitle(now)}</h1>
-          <p className={`${s.date} num`}>{formatWeekdayDate(now, userLocale)}</p>
-        </header>
+      {/* The lead takes itself out of the page's column, so it can run to the window's edges and under the top bar. With
+          none (a fresh install, or the catalogue can't be reached) the greeting opens the page under the bar instead. */}
+      {!none && lead && <div className={s.bleed}>{lead}</div>}
+      <div className={s.wrap} data-plain={!lead || none ? '' : undefined}>
+        {head}
         {none && <Setup error />}
       </div>
-      {/* Fullscreen takes the lead out of the page's column, so it can run to the window's edges. */}
-      {!none && fullscreen && lead && <div className={s.bleed}>{lead}</div>}
       {!none && (
         <div className={s.wrap}>
-          {!fullscreen && lead}
           {side}
           <Suspense fallback={null}>
             <Shelves />

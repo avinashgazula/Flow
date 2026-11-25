@@ -62,7 +62,7 @@ struct ShelvesSettingsView: View {
             } header: {
                 FilmSectionHeader("Top Pick")
             } footer: { FilmFooter {
-                Text("Home leads with what is in progress, then the first titles from these sources, and turns through up to ten of them. Rotation pauses while you scroll, point at or focus on the top of Home, and never runs with Reduce Motion or VoiceOver on.")
+                Text("Home leads with the first titles from these sources and turns through up to ten of them; what you are watching stays in Up Next. Rotation pauses while you scroll, touch, point at or focus on the top of Home, and never runs with Reduce Motion or VoiceOver on.")
             } }
 
             Section {

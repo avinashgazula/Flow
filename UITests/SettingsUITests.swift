@@ -72,7 +72,8 @@ final class SettingsUITests: FlowUITestCase {
     }
 
     func testAChangedSettingTakesEffectOnHome() {
-        XCTAssertTrue(btn("Resume").waitForExistence(timeout: patience), "Home's lead resumes Breaking Bad")
+        XCTAssertTrue(leadPrimary.waitForExistence(timeout: patience), "Home has its lead")
+        XCTAssertTrue(text(startingWith: "Up Next").waitForExistence(timeout: patience), "and Up Next under it")
         openSettings()
         element("settings-row-general").tap()
         // The custom switch carries the toggle trait, so the system calls it a switch, not a button.
@@ -84,8 +85,8 @@ final class SettingsUITests: FlowUITestCase {
         goBack(from: "General")
         btn("Done").tap()
         waitForHome()
-        // Without Continue Watching the lead is the top pick: it offers Play, not Resume.
-        XCTAssertTrue(waitUntilGone(btn("Resume"), timeout: patience), "Home no longer resumes anything")
-        XCTAssertTrue(btn("Play").waitForExistence(timeout: patience), "the lead offers Play instead")
+        // Without Continue Watching Up Next is gone from Home, and the lead (always the top picks) is still there.
+        XCTAssertTrue(waitUntilGone(text(startingWith: "Up Next"), timeout: patience), "Home no longer lists what is in progress")
+        XCTAssertTrue(leadPrimary.waitForExistence(timeout: patience), "the lead is still there")
     }
 }

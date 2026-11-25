@@ -70,6 +70,15 @@ class FlowUITestCase: XCTestCase {
         app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
+    /// Home's lead: its primary button (Play, or Resume for a pick that was started) and its picture. The lead turns through the
+    /// top picks, whatever they are, so tests find it by identifier and not by a sample title.
+    var leadPrimary: XCUIElement { element("home-lead-primary") }
+    var leadPicture: XCUIElement { element("home-lead-picture") }
+    /// A title page's one solid button, Play or Resume ("Resume · 1 h 44 min left").
+    var titlePagePlay: XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@ OR label BEGINSWITH[c] %@", "Play", "Resume")).firstMatch
+    }
+
     /// A button by its exact label, ignoring case. Button styles set their words in capitals, and the system hands that
     /// capitalised text on as the spoken label ("DETAILS", "PREVIOUS TITLE").
     func btn(_ label: String) -> XCUIElement {

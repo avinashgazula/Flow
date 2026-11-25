@@ -20,6 +20,27 @@
 }
 .top[data-away] { transform: translateY(-100%); transition: transform var(--dur-exit) var(--ease-out); }
 
+/* Over Home's lead (it sets data-hero on <html>) and at the top of the page, the bar is transparent with white cells and
+   rules on a dark scrim, so it reads over any artwork and the picture runs up behind it. The moment the page scrolls it is
+   paper again. */
+.top::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 -36px;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(to bottom, rgb(0 0 0 / 0.62), rgb(0 0 0 / 0.28) 60%, transparent);
+  transition: opacity var(--dur-state) ease;
+}
+:global(html[data-hero]) .top[data-top] { background: transparent; border-bottom-color: transparent; color: #fff; }
+:global(html[data-hero]) .top[data-top]::before { opacity: 1; }
+:global(html[data-hero]) .top[data-top] .cell { color: #fff; border-left-color: rgb(255 255 255 / 0.4); }
+:global(html[data-hero]) .top[data-top] .brand { border-right-color: rgb(255 255 255 / 0.4); }
+:global(html[data-hero]) .top[data-top] .cell[aria-current='page'] { background: #fff; color: #0a0a0a; }
+@media (hover: hover) { :global(html[data-hero]) .top[data-top] .cell:hover { background: var(--blue); color: var(--onblue); } }
+:global(html[data-hero]) .top[data-top] .cell:focus-visible { background: var(--blue); color: var(--onblue); }
+
 /* The logo cell: the ticket wordmark on the page, ruled off from the links. On hover it takes the action colour. */
 .brand {
   display: flex;

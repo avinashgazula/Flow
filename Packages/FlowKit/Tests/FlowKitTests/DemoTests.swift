@@ -61,6 +61,18 @@ final class DemoTests: XCTestCase {
         XCTAssertNotNil(epg.nowAndNext(for: channels[0].epgID).now)
     }
 
+    func testTheSampleTitlesThatHaveLogoArtServeItAndTheRestSetTheirName() async throws {
+        let tmdb = TMDBClient(credential: "demo", language: "en-US", http: http)
+        let dune = try await tmdb.logoPath(.movie, id: 693134)
+        XCTAssertEqual(dune, "/gOWf4IYBP2m1Q7dhbQJkwxH714x.png")
+        let breakingBad = try await tmdb.logoPath(.show, id: 1396)
+        XCTAssertEqual(breakingBad, "/h6yDiAXP5AyOzXHTxjUssYOGbG3.png")
+        let none = try await tmdb.logoPath(.movie, id: 155)
+        XCTAssertNil(none, "a title with no logo is none, and Home's lead shows its name")
+        let detail = try await tmdb.details(.movie, id: 693134)
+        XCTAssertEqual(detail.item.logoPath, "/gOWf4IYBP2m1Q7dhbQJkwxH714x.png")
+    }
+
     func testDemoSources() async throws {
         let item = MediaItem(type: .movie, ids: ExternalIDs(tmdb: 155, imdb: "tt0468569"), title: "The Dark Knight")
         let sources = try await DemoSourceProvider().sources(for: PlaybackRequest(item: item))

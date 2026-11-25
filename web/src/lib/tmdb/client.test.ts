@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { settingsStore } from '../store/settings'
 import { api, item, looksAhead } from './client'
 import { trailers } from './detail'
+import { bestLogo, logoLanguages } from './logo'
 import { srcSet, imageURL } from './images'
 import { demoTmdb } from './demo'
 import { tmdbReviews } from '../reviews'
@@ -111,5 +112,36 @@ describe('Show Unreleased Titles', () => {
     settingsStore.set({ showUnreleasedTitles: undefined })
     expect(released.results.length).toBeLessThanOrEqual(all.results.length)
     expect(released.results.every((m) => !m.date || m.date <= new Date().toISOString().slice(0, 10))).toBe(true)
+  })
+})
+
+describe('A title’s logo art', () => {
+  it('prefers the viewer’s language, then English, then a logo with none', () => {
+    const logos = [
+      { file_path: '/none.png', iso_639_1: null, vote_average: 9 },
+      { file_path: '/en.png', iso_639_1: 'en', vote_average: 5 },
+      { file_path: '/fr.png', iso_639_1: 'fr', vote_average: 1 },
+    ]
+    expect(bestLogo(logos, 'fr-FR')).toBe('/fr.png')
+    expect(bestLogo(logos, 'de-DE')).toBe('/en.png')
+    expect(bestLogo([logos[0]!], 'de-DE')).toBe('/none.png')
+    expect(bestLogo([], 'en-US')).toBeUndefined()
+    expect(bestLogo(undefined, 'en-US')).toBeUndefined()
+  })
+
+  it('takes the best voted of the same language', () => {
+    expect(bestLogo([{ file_path: '/a.png', iso_639_1: 'en', vote_average: 3 }, { file_path: '/b.png', iso_639_1: 'en', vote_average: 6 }], 'en-US')).toBe('/b.png')
+  })
+
+  it('asks for the viewer’s language, English and the language-less ones', () => {
+    expect(logoLanguages('fr-FR')).toBe('fr,en,null')
+    expect(logoLanguages('en-GB')).toBe('en,null')
+  })
+
+  it('is served for the sample titles that have one, and nothing for the rest', async () => {
+    settingsStore.set({ demo: true, region: 'US' })
+    expect(await api.logo('movie', 693134)).toBe('/gOWf4IYBP2m1Q7dhbQJkwxH714x.png')
+    expect(await api.logo('show', 1396)).toBe('/h6yDiAXP5AyOzXHTxjUssYOGbG3.png')
+    expect(await api.logo('movie', 155)).toBeUndefined()
   })
 })

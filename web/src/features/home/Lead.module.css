@@ -1,122 +1,155 @@
-/* The lead. The backdrop spans the page's column in its 2px frame, inside the same gutters as the rows below, with its
-   printed line under it. From 900px the words sit on a solid paper plate over its lower-left corner, inset by one step
-   so the frame shows round it; the picture is capped at 60% of the window's height (never under 380px) so the first row
-   of shelves still peeks above the fold. Under 900px the plate is a box under the picture and nothing overlaps.
-   The plate is flat paper with the 2px rule and square corners: no scrim, so it reads the same on any artwork. */
-.lead { --cap: none; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: 'plate' 'print' 'info'; min-width: 0; }
-.plate { grid-area: plate; display: block; min-width: 0; }
-.lead > :global(span) { grid-area: print; }
-.info { grid-area: info; margin-top: var(--space-m); padding: var(--space-m); border: var(--rule); background: var(--bg); color: var(--fg); min-width: 0; position: relative; z-index: 1; }
+/* The lead, as a streaming app's hero. The artwork runs edge to edge and up under the top bar, and fades into the page
+   at its foot (a gradient of the page's own colour, so the shelves start where the picture ends and the words read on
+   any artwork). Over the fade: the title's logo, one line of facts, a solid Resume pill and a round Details, and a dot for
+   each title. A phone centres all of it and the picture is 68% of the window's height; from 721px the words sit at the
+   column's left edge, the dots at its right, and the picture is 16:9 capped at 75% of the window's height, so the first
+   shelf shows under it. It is the one place besides the player with a gradient, round controls and no frame (DESIGN.md,
+   Home Lead). Keep the heights in step with the .shell-still rules in index.html. */
+.lead {
+  /* The page's column: its left edge, where the shelves start, which the words and the dots line up with. */
+  --col: calc(var(--page-inset) + max(0px, (100vw - 2 * var(--page-inset) - 1360px) / 2));
+  position: relative;
+  height: max(320px, 68vh);
+  height: max(320px, 68svh);
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+}
+@media (min-width: 721px) {
+  .lead { height: min(56.25vw, 75vh); height: min(56.25vw, 75svh); min-height: 380px; }
+}
 
-/* Every slide's title and facts share one grid cell, so the block is as tall as the tallest and nothing below the
-   lead moves when it turns. Only the one on show is visible (and, for a screen reader, present). */
-.stack { display: grid; min-width: 0; }
-.text {
-  grid-area: 1 / 1;
-  min-width: 0;
+/* The slides are stacked. One shows; the one it replaces fades out over it (its z-index is higher while it leaves), so a
+   cross-fade never dips to the page. A swipe slides them instead, and follows the finger through --dx. */
+.track { position: absolute; inset: 0; touch-action: pan-y; }
+.slide {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(8px);
-  transition: opacity var(--dur-exit) var(--ease-out), transform var(--dur-exit) var(--ease-out), visibility 0s linear var(--dur-exit);
+  transition: opacity var(--dur-enter) var(--ease-out), visibility 0s linear var(--dur-enter);
 }
-/* The new slide waits for the old one to leave (its delay), then rises into place. */
-.text[data-current] {
-  opacity: 1;
-  visibility: visible;
-  transform: none;
-  transition: opacity var(--dur-enter) var(--ease-out) var(--dur-exit), transform var(--dur-enter) var(--ease-out) var(--dur-exit), visibility 0s;
+.slide[data-current] { z-index: 1; opacity: 1; visibility: visible; transition: none; transform: translateX(var(--dx, 0px)); }
+.slide[data-peek] { z-index: 1; opacity: 1; visibility: visible; transition: none; transform: translateX(calc(var(--dx, 0px) + var(--side, 0) * 100%)); }
+.lead[data-phase='settle'] .slide { transition: transform var(--dur-move) var(--ease-out); }
+.lead[data-instant] .slide { transition: none; }
+
+.art { position: absolute; inset: 0; display: block; background: var(--tint-1); }
+.fill { width: 100%; height: 100%; }
+.art img { object-position: 50% 28%; }
+.ghostImg { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; }
+
+/* The page's colour rising from the foot, a little from the left on a wide screen. It is solid paper (or ink) with a
+   mask, not a gradient to a named colour, so it is exact in every theme and nothing seams where the shelves begin. The
+   curve is eased: a straight ramp shows a band. */
+.fade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--bg);
+  -webkit-mask-image: linear-gradient(to top, #000 0, #000 14%, rgb(0 0 0 / 0.94) 32%, rgb(0 0 0 / 0.76) 48%, rgb(0 0 0 / 0.4) 64%, rgb(0 0 0 / 0.12) 82%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0, #000 14%, rgb(0 0 0 / 0.94) 32%, rgb(0 0 0 / 0.76) 48%, rgb(0 0 0 / 0.4) 64%, rgb(0 0 0 / 0.12) 82%, transparent 100%);
+}
+@media (min-width: 721px) {
+  .fade {
+    -webkit-mask-image: linear-gradient(to top, #000 0, rgb(0 0 0 / 0.94) 16%, rgb(0 0 0 / 0.72) 32%, rgb(0 0 0 / 0.36) 50%, rgb(0 0 0 / 0.1) 68%, transparent 85%), linear-gradient(to right, rgb(0 0 0 / 0.86) 0, rgb(0 0 0 / 0.62) 25%, rgb(0 0 0 / 0.26) 50%, transparent 72%);
+    mask-image: linear-gradient(to top, #000 0, rgb(0 0 0 / 0.94) 16%, rgb(0 0 0 / 0.72) 32%, rgb(0 0 0 / 0.36) 50%, rgb(0 0 0 / 0.1) 68%, transparent 85%), linear-gradient(to right, rgb(0 0 0 / 0.86) 0, rgb(0 0 0 / 0.62) 25%, rgb(0 0 0 / 0.26) 50%, transparent 72%);
+  }
 }
 
-/* The title is the giant face: Archivo capitals, never cut. A long name steps down (data-size, from nameSize, as on the
-   title page) and breaks between words, so it takes the lines it needs instead of ending in an ellipsis. --base is the
-   size a short name gets at this width. */
-.name {
-  --base: clamp(36px, 11vw, 52px);
+/* Over the fade: centred on a phone, at the column's left edge from 721px. The room under it is the dots' row (44px). */
+.words {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-s);
+  padding: 0 var(--gutter) calc(var(--space-s) + 44px + var(--space-xs));
+  text-align: center;
+  pointer-events: none;
+}
+.actions, .name img { pointer-events: auto; }
+
+.name { margin: 0; max-width: 100%; }
+/* The logo is TMDB's wordmark, made for dark screens (mostly white), so on a paper-coloured fade it would vanish. Once it
+   has loaded its tone is known (data-tone, from lib/tmdb/logoTone): a light one on a light page, or a dark one on a dark
+   page, has its lightness flipped (invert, then turn the hue back). Only plain white or plain black ones are flipped: a
+   coloured logo (data-tone='color') keeps its colours and gets a soft shadow for legibility over bright artwork. Until it
+   has loaded it is hidden, so it never shows in the wrong colour. */
+.logo { display: block; width: auto; height: auto; max-width: min(72vw, 420px); max-height: 96px; object-fit: contain; opacity: 0; transition: opacity var(--dur-enter) var(--ease-out); }
+.logo[data-tone] { opacity: 1; }
+.logo[data-tone='color'] { filter: drop-shadow(0 1px 6px rgb(0 0 0 / 0.35)); }
+:global(html:not([data-theme='dark'])) .logo[data-tone='light'], :global(html[data-theme='dark']) .logo[data-tone='dark'] { filter: invert(1) hue-rotate(180deg); }
+/* With no logo, the name in the display face: Archivo capitals, stepping down by length (data-size, from nameSize, as
+   on the title page) and breaking between words. */
+.name:not(:has(img)) {
   --step: 1;
-  padding-bottom: 0.04em;
   font: 700 1em / 0.9 var(--font-title);
-  font-size: max(28px, calc(var(--base) * var(--step)));
+  font-size: max(28px, calc(clamp(40px, 12vw, 56px) * var(--step)));
   text-transform: uppercase;
   letter-spacing: -0.03em;
   overflow-wrap: break-word;
   text-wrap: balance;
-  /* Two lines on the plate, then it ends in an ellipsis. */
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
+  padding-bottom: 0.04em;
 }
 .name[data-size='long'] { --step: 0.82; }
 .name[data-size='longer'] { --step: 0.68; }
 .name[data-size='longest'] { --step: 0.55; line-height: 0.95; }
-.meta { margin-top: var(--space-s); font: italic 400 18px / 1.45 var(--font-serif); }
-.actions { display: flex; flex-wrap: wrap; gap: var(--space-s); margin-top: var(--space-m); }
-.actions > * { flex: 1 1 0; min-width: 0; }
 
-/* Which title you are on: bordered cells that share their borders, the count in red Plex Sans figures. */
-.pager { display: flex; align-items: stretch; width: fit-content; max-width: 100%; margin-top: var(--space-s); }
-.pager > * { margin-left: var(--border-w-neg); }
-.pager > :first-child { margin-left: 0; }
-.step, .count { display: flex; align-items: center; justify-content: center; gap: 0.35em; height: 44px; border: var(--rule); background: var(--bg); color: var(--fg); }
-.step { width: 44px; transition: background-color var(--dur-hover) ease, border-color var(--dur-hover) ease, color var(--dur-hover) ease; }
-@media (hover: hover) { .step:hover { background: var(--blue); border-color: var(--blue); color: var(--onblue); position: relative; } }
-.step:focus-visible { position: relative; z-index: 1; }
-.count { padding: 0 var(--space-m); font: 700 24px / 1 var(--font-sans); letter-spacing: 0.02em; color: var(--red); white-space: nowrap; }
+/* One short line: mono capitals, a 1px rule between the parts and no dot before the first. */
+.facts { display: flex; flex-wrap: wrap; justify-content: center; margin: 0; font: 600 var(--fs-small) / 1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg); }
+.facts > span { padding: 0 var(--space-s); }
+.facts > span + span { border-left: var(--rule-thin); }
+/* How far through, for something started: a thin red bar under the facts. */
+.progress { display: block; width: min(240px, 60%); height: 3px; background: var(--tint-3); }
+.progress > i { display: block; height: 100%; background: var(--red); }
+
+.actions { display: flex; align-items: center; gap: var(--space-s); margin-top: var(--space-xs); }
+/* The pill and the circle: the system's solid and bordered buttons, round (these two are the lead's own shape). */
+.actions .play { min-width: 168px; border-radius: 999px; }
+.actions .details { width: 56px; height: 56px; min-height: 0; padding: 0; border-radius: 50%; }
+
+/* The dots: a button each (28 by 44, so a thumb finds it), a small round mark inside it. The one on show is wider. */
+.dots { position: absolute; z-index: 3; inset: auto 0 var(--space-xs); display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.dots > button { pointer-events: auto; }
+.dot { position: relative; width: 28px; height: 44px; padding: 0; border: 0; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.dot::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--fg);
+  opacity: 0.32;
+  transition: opacity var(--dur-state) ease, transform var(--dur-state) var(--ease-out);
+}
+.dot[aria-current='true']::before { opacity: 1; transform: scaleX(2.4); }
+@media (hover: hover) { .dot:hover::before { opacity: 1; background: var(--blue); } }
+.pause { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; color: var(--fg); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+@media (hover: hover) { .pause:hover { color: var(--blue); } }
 
 @media (min-width: 721px) {
-  .meta { font-size: 20px; }
-  .actions > * { flex: 0 0 auto; }
-  .actions > :first-child { min-width: 168px; }
-}
-@media (min-width: 900px) {
-  .lead:not([data-style='fullscreen']) { --cap: max(60vh, 380px); }
-  .lead:not([data-style='fullscreen']) .info { grid-area: plate; align-self: end; justify-self: start; width: clamp(360px, 42%, 520px); margin: var(--space-m); }
-  .lead:not([data-style='fullscreen']) .name { --base: clamp(36px, 4.2vw, 56px); }
-}
-
-/* Placeholder: the same box, a flat frame. */
-.plate > span > span > div { max-height: var(--cap); }
-.ghostFrame { display: block; aspect-ratio: 16 / 9; max-height: calc(var(--cap) + var(--border-w) * 2); border: var(--rule); background: var(--tint-1); overflow: hidden; }
-.ghostImg { display: block; width: 100%; height: 100%; object-fit: cover; }
-
-/* Fullscreen: the backdrop runs edge to edge between two 2px rules, and the words sit on a solid band across its foot
-   (the opposite theme's colours, so it is ink on a light page and paper on a dark one). On a phone the band sits under
-   the picture instead of over it. */
-.lead[data-style='fullscreen'] { position: relative; display: block; border-block: var(--rule); }
-.lead[data-style='fullscreen'] .plate { width: 100%; }
-.lead[data-style='fullscreen'] .plate > span > span { border-width: 0; }
-.lead[data-style='fullscreen'] .plate > span > span > div, .lead[data-style='fullscreen'] .ghostFrame { aspect-ratio: 4 / 5; max-height: 60vh; }
-.lead[data-style='fullscreen'] .ghostFrame { border-width: 0; }
-.lead[data-style='fullscreen'] .info {
-  display: block;
-  margin-top: 0;
-  border-width: 0;
-  background: var(--bg);
-  color: var(--fg);
-  padding: var(--space-l) var(--page-inset);
-}
-.lead[data-style='fullscreen'] .name { --base: clamp(44px, 12vw, 64px); }
-.lead[data-style='fullscreen'] .actions { margin-top: var(--space-m); }
-.lead[data-style='fullscreen'] .meta { color: var(--fg); }
-.lead[data-style='fullscreen'] .info > :global(span) { margin-top: var(--space-s); }
-@media (min-width: 721px) {
-  .lead[data-style='fullscreen'] .plate > span > span > div, .lead[data-style='fullscreen'] .ghostFrame { aspect-ratio: 21 / 9; max-height: 72vh; }
-  .lead[data-style='fullscreen'] .info {
-    position: absolute;
-    inset: auto 0 0 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: var(--space-xl);
-    align-items: end;
-  }
-  .lead[data-style='fullscreen'] .stack { grid-column: 1; grid-row: 1; }
-  .lead[data-style='fullscreen'] .info > :global(span) { grid-column: 1; grid-row: 2; }
-  .lead[data-style='fullscreen'] .actions { grid-column: 2; grid-row: 1 / 3; margin-top: 0; flex-direction: column; align-items: stretch; }
-  .lead[data-style='fullscreen'] .pager { grid-column: 2; grid-row: 3; margin-top: var(--space-s); }
-  .lead[data-style='fullscreen'] .name { --base: clamp(56px, 6vw, 96px); }
+  .words { align-items: flex-start; padding: 0 var(--gutter) var(--space-xl) var(--col); max-width: min(780px, 62%); text-align: left; }
+  .logo { max-width: min(40vw, 560px); max-height: clamp(88px, 12vw, 160px); }
+  .name:not(:has(img)) { font-size: max(36px, calc(clamp(40px, 4.8vw, 72px) * var(--step))); -webkit-line-clamp: 2; line-clamp: 2; }
+  .facts { justify-content: flex-start; }
+  .facts > span:first-child { padding-left: 0; }
+  .progress { width: 240px; }
+  .dots { justify-content: flex-end; padding-right: calc(var(--col) - 14px); inset-block-end: calc(var(--space-xl) + 6px); }
 }
 
+/* A touch screen drags it, so its buttons are 44px and up already; the hover colours are for a pointer. */
 @media (prefers-reduced-motion: reduce) {
-  .text { transform: none; }
+  .slide { transition-duration: var(--dur-state); }
 }

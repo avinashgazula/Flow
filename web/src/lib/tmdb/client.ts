@@ -1,6 +1,7 @@
 import { settingsStore } from '../store/settings'
 import type { Episode, Genre, MediaDetail, MediaItem, MediaType, Page, Person, SearchResult } from './types'
 import { tmdbPath } from './types'
+import { bestLogo, logoLanguages } from './logo'
 
 /* TMDB v3, as FlowKit's TMDBClient: either a v3 API key or a v4 read-access token. Responses are
    normalised straight away into the small shapes in types.ts, so the persisted cache stays compact
@@ -147,6 +148,14 @@ export const api = {
     // pages that never open a title don't carry it.
     const [raw, { buildDetail }] = await Promise.all([tmdb(`/${tmdbPath(type)}/${id}`, { append_to_response: append, include_image_language: `${s.language.slice(0, 2)},en,null` }), import('./detail')])
     return buildDetail(type, raw, s.language.slice(0, 2), s.region)
+  },
+
+  /** A title's logo art, on its own: Home's lead asks for it per slide, and the lists it picks from don't carry it. */
+  logo: async (type: MediaType, id: number): Promise<string | undefined> => {
+    const language = settingsStore.get().language
+    // `language` is cleared so TMDB filters by include_image_language alone, as the apps do.
+    const raw = await tmdb(`/${tmdbPath(type)}/${id}/images`, { include_image_language: logoLanguages(language), language: undefined })
+    return bestLogo(raw.logos, language)
   },
 
   season: async (showId: number, season: number): Promise<Episode[]> => ((await tmdb(`/tv/${showId}/season/${season}`)).episodes ?? []).map(episode),
