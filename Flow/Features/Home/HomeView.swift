@@ -476,7 +476,7 @@ struct LeadCarousel: View {
         .clipped()
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         #if os(iOS)
-        .simultaneousGesture(swipe)
+        .modifier(LeadSwipe(fallback: swipe, changed: follow, ended: { finish(translation: $0, velocity: $1) }))
         .onChange(of: fingerDown) { _, down in
             // A drag the system took away (the page began to scroll) never ends: settle back rather than stay mid-swipe.
             if !down, axis == .horizontal, !settling { finish(translation: drag, velocity: 0) }
@@ -518,9 +518,7 @@ struct LeadCarousel: View {
                 guard leads.count > 1, !settling else { return }
                 if axis == nil { axis = abs(value.translation.width) > abs(value.translation.height) ? .horizontal : .vertical }
                 guard axis == .horizontal else { return }
-                touching(true)
-                drag = value.translation.width
-                if drag != 0 { peekSide = drag < 0 ? 1 : -1 }
+                follow(value.translation.width)
             }
             .onEnded { value in
                 defer { axis = nil }
@@ -529,7 +527,16 @@ struct LeadCarousel: View {
             }
     }
 
+    /// The slide under the finger, one to one.
+    private func follow(_ translation: CGFloat) {
+        guard leads.count > 1, !settling else { return }
+        touching(true)
+        drag = translation
+        if drag != 0 { peekSide = drag < 0 ? 1 : -1 }
+    }
+
     private func finish(translation: CGFloat, velocity: CGFloat) {
+        guard !settling else { return }
         axis = nil
         touching(false)
         let turn = HeroLead.swipe(translation: Double(translation), velocity: Double(velocity), width: Double(width))
@@ -643,20 +650,33 @@ private struct LeadSlide: View {
     // MARK: Picture
 
     private var art: some View {
-        Button { model.navigate(to: .detail(item)) } label: {
-            // Cropped to fill. The original size: a phone shows a narrow slice of a wide picture, and a smaller file would
-            // be stretched to twice its size.
-            RemoteImage(url: TMDBImage.url(item.backdropPath, size: .original), maxPixel: Platform.isTV ? 1920 : 2400, fallbackTitle: item.title)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(spoken)
-        }
-        .accessibilityIdentifier("home-lead-picture")
-        .buttonStyle(.plain)
-        #if os(tvOS)
-        // Resume and Details are the remote's way in; a picture that took focus too would be one stop too many.
-        .focusable(false)
+        #if os(iOS)
+        // A tap, not a button: a button fires when the finger lifts inside it, and a swipe across a full-width picture
+        // always ends inside it, so turning the carousel opened the title. A tap gesture gives up once the finger moves.
+        picture
+            .contentShape(Rectangle())
+            .onTapGesture { model.navigate(to: .detail(item)) }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { model.navigate(to: .detail(item)) }
+            .accessibilityIdentifier("home-lead-picture")
+        #else
+        Button { model.navigate(to: .detail(item)) } label: { picture }
+            .accessibilityIdentifier("home-lead-picture")
+            .buttonStyle(.plain)
+            #if os(tvOS)
+            // Resume and Details are the remote's way in; a picture that took focus too would be one stop too many.
+            .focusable(false)
+            #endif
         #endif
+    }
+
+    private var picture: some View {
+        // Cropped to fill. The original size: a phone shows a narrow slice of a wide picture, and a smaller file would
+        // be stretched to twice its size.
+        RemoteImage(url: TMDBImage.url(item.backdropPath, size: .original), maxPixel: Platform.isTV ? 1920 : 2400, fallbackTitle: item.title)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(spoken)
     }
 
     /// The page's own colour rising from the foot, a little from the left on a wide screen: eased, so no band shows, and
@@ -719,6 +739,8 @@ private struct LeadSlide: View {
             HeroLogo(path: logo, title: item.title, maxWidth: logoMaxWidth, maxHeight: logoMaxHeight, nameSize: nameSize,
                      alignment: alignment == .leading ? .leading : .center)
                 .allowsHitTesting(false)
+                // Inside the swipeable lead, so the system would otherwise take it for something to press (and too small).
+                .accessibilityRespondsToUserInteraction(false)
             if !facts.isEmpty {
                 Text(HeroLead.line(facts))
                     .font(Theme.Typeface.facts)
@@ -728,6 +750,7 @@ private struct LeadSlide: View {
                     .multilineTextAlignment(alignment == .leading ? .leading : .center)
                     .lineLimit(2)
                     .allowsHitTesting(false)
+                    .accessibilityRespondsToUserInteraction(false)
             }
             if lead.kind == .resume, let progress = lead.progress {
                 ProgressCapsule(value: Reel.watchedFraction(progress), height: 3 * Theme.scale)
@@ -781,6 +804,10 @@ private struct HeroLogo: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .modifier(LogoFlip(active: tone.flips(onDarkPage: scheme == .dark)))
+                    // A logo left as it is because it is coloured or in between sits over the picture as much as the paper fade,
+                    // and its light parts thin out over bright art. A soft shadow holds their edges; on a dark page the art
+                    // is already dimmed under it.
+                    .shadow(color: .black.opacity(scheme == .light && tone == .mid ? 0.4 : 0), radius: 6 * Theme.scale)
                     .frame(maxWidth: maxWidth, maxHeight: maxHeight, alignment: alignment)
                     .transition(.opacity)
             } else if hasNoLogo {
@@ -1460,3 +1487,60 @@ private struct ShelfGridContent: View {
         }
     }
 }
+
+#if os(iOS)
+/// The lead's swipe. From iOS 18 a SwiftUI drag inside a scroll view takes the touch even as a simultaneous gesture, so a
+/// page that starts scrolling on the picture didn't move. There a UIKit pan does the work, and it only begins when the
+/// finger sets off more sideways than up or down, leaving every other drag to the page. iOS 17 keeps the SwiftUI drag,
+/// which shares the touch as it should.
+private struct LeadSwipe<Fallback: Gesture>: ViewModifier {
+    let fallback: Fallback
+    let changed: (CGFloat) -> Void
+    let ended: (_ translation: CGFloat, _ velocity: CGFloat) -> Void
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.gesture(SidewaysPan(changed: changed, ended: ended))
+        } else {
+            content.simultaneousGesture(fallback)
+        }
+    }
+}
+
+@available(iOS 18.0, *)
+private struct SidewaysPan: UIGestureRecognizerRepresentable {
+    let changed: (CGFloat) -> Void
+    let ended: (_ translation: CGFloat, _ velocity: CGFloat) -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.delegate = context.coordinator
+        return pan
+    }
+
+    func handleUIGestureRecognizerAction(_ pan: UIPanGestureRecognizer, context: Context) {
+        let translation = pan.translation(in: pan.view).x
+        switch pan.state {
+        case .began, .changed:
+            changed(translation)
+        case .ended:
+            ended(translation, pan.velocity(in: pan.view).x)
+        case .cancelled, .failed:
+            // Taken away mid-move: settle back rather than stay between two slides.
+            ended(0, 0)
+        default:
+            break
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = recognizer as? UIPanGestureRecognizer else { return true }
+            let velocity = pan.velocity(in: pan.view)
+            return abs(velocity.x) > abs(velocity.y)
+        }
+    }
+}
+#endif

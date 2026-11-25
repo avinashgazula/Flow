@@ -84,8 +84,14 @@ final class LogoToneTests: XCTestCase {
         XCTAssertEqual(LogoTone.of(rgba: pixels([[90, 110, 60, 255], [90, 110, 60, 255]])), .mid)
     }
 
-    func testWhiteLetteringOnAColouredTileIsMostlyWhiteByWeight() {
-        XCTAssertEqual(LogoTone.of(rgba: pixels([[255, 255, 255, 255], [255, 255, 255, 255], [255, 255, 255, 255], [30, 120, 50, 255], [30, 120, 50, 255]])), .light)
+    func testWhiteLetteringOnColouredTilesIsLeftAloneSoTheColoursStay() {
+        // Flipped, green tiles came out pale mint behind black letters.
+        XCTAssertEqual(LogoTone.of(rgba: pixels([[255, 255, 255, 255], [255, 255, 255, 255], [255, 255, 255, 255], [30, 120, 50, 255], [30, 120, 50, 255]])), .mid)
+    }
+
+    func testASmallColouredAccentOnWhiteLetteringIsStillLight() {
+        let white: [UInt8] = [255, 255, 255, 255]
+        XCTAssertEqual(LogoTone.of(rgba: pixels(Array(repeating: white, count: 9) + [[220, 30, 30, 255]])), .light)
     }
 
     func testAFaintWhiteHaloRoundBlackLetteringDoesNotMakeItLight() {

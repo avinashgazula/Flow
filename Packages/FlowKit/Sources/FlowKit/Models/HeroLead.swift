@@ -98,21 +98,26 @@ public enum LogoTone: Equatable, Sendable {
     case light, dark, mid
 
     /// The brightness of the opaque part of an image, from its RGBA bytes: each pixel's luminance weighted by how opaque it
-    /// is, so the transparent surround doesn't count. Above 0.5 is a light logo (white lettering on a coloured tile still is),
-    /// below 0.3 a dark one, between them neither.
+    /// is, so the transparent surround doesn't count. Above 0.5 is a light logo, below 0.3 a dark one, between them neither.
+    /// A logo with a real share of colour (a fifth or more of it, like white lettering on coloured tiles) is neither too:
+    /// flipping its lightness turns its colours into pale ghosts of themselves, and the colour already sets it apart.
     public static func of(rgba: [UInt8]) -> LogoTone {
         var weight = 0.0
         var sum = 0.0
+        var coloured = 0.0
         var i = 0
         while i + 3 < rgba.count {
             let alpha = Double(rgba[i + 3]) / 255
             if alpha >= 0.1 {
+                let r = Double(rgba[i]) / 255, g = Double(rgba[i + 1]) / 255, b = Double(rgba[i + 2]) / 255
                 weight += alpha
-                sum += alpha * (0.2126 * Double(rgba[i]) + 0.7152 * Double(rgba[i + 1]) + 0.0722 * Double(rgba[i + 2])) / 255
+                sum += alpha * (0.2126 * r + 0.7152 * g + 0.0722 * b)
+                let high = max(r, g, b)
+                if high > 0.2, (high - min(r, g, b)) / high > 0.35 { coloured += alpha }
             }
             i += 4
         }
-        guard weight > 0 else { return .mid }
+        guard weight > 0, coloured / weight < 0.2 else { return .mid }
         let mean = sum / weight
         return mean > 0.5 ? .light : mean < 0.3 ? .dark : .mid
     }
