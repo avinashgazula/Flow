@@ -9,7 +9,7 @@ final class HomeAndTabsUITests: FlowUITestCase {
     }
 
     func testLaunchLandsOnHomeWithTheTopPickAsItsLead() {
-        XCTAssertTrue(leadPrimary.waitForExistence(timeout: patience), "the lead offers Play (or Resume, for a pick that was started)")
+        XCTAssertTrue(leadPrimary.appears(within: patience), "the lead offers Play (or Resume, for a pick that was started)")
         XCTAssertTrue(leadPicture.exists, "and shows the pick's picture")
         XCTAssertTrue(anyElement(startingWith: "Title 1 of").exists, "the dots start on the first pick")
         // What is in progress is Up Next's, not the lead's: Breaking Bad has a resume point but is not a top pick here.
@@ -17,16 +17,16 @@ final class HomeAndTabsUITests: FlowUITestCase {
     }
 
     func testLeadTurnsWithASwipeAndItsDotsSayWhere() {
-        XCTAssertTrue(anyElement(startingWith: "Title 1 of").waitForExistence(timeout: patience), "the dots start on the first pick")
+        XCTAssertTrue(anyElement(startingWith: "Title 1 of").appears(within: patience), "the dots start on the first pick")
         // The picture's label ends with the time a started pick would end, which moves with the clock, so only the title
         // before the first comma is compared.
         func shownTitle() -> String { String(leadPicture.label.split(separator: ",").first ?? "") }
         let first = shownTitle()
         swipeLead(left: true)
-        XCTAssertTrue(anyElement(startingWith: "Title 2 of").waitForExistence(timeout: 10), "a swipe left brings in the second pick")
+        XCTAssertTrue(anyElement(startingWith: "Title 2 of").appears(within: 10), "a swipe left brings in the second pick")
         XCTAssertTrue(waitUntil(10) { shownTitle() != first }, "its picture is a different title's")
         swipeLead(left: false)
-        XCTAssertTrue(anyElement(startingWith: "Title 1 of").waitForExistence(timeout: 10), "a swipe right comes back to the first")
+        XCTAssertTrue(anyElement(startingWith: "Title 1 of").appears(within: 10), "a swipe right comes back to the first")
         XCTAssertTrue(waitUntil(10) { shownTitle() == first }, "and to its title")
     }
 
@@ -47,7 +47,7 @@ final class HomeAndTabsUITests: FlowUITestCase {
 
     func testDetailsOpensTheLeadsPageAndBackReturnsHome() {
         btn("Details").tap()
-        XCTAssertTrue(titlePagePlay.waitForExistence(timeout: patience), "the pick's page offers Play or Resume")
+        XCTAssertTrue(titlePagePlay.appears(within: patience), "the pick's page offers Play or Resume")
         XCTAssertFalse(btn("Details").exists, "Home is covered by the page")
         goBack()
         waitForHome()
@@ -55,17 +55,17 @@ final class HomeAndTabsUITests: FlowUITestCase {
 
     func testEachTabOpensItsScreen() {
         openTab("Explore")
-        XCTAssertTrue(btn("Filters").waitForExistence(timeout: patience), "Explore has its Filters button")
+        XCTAssertTrue(btn("Filters").appears(within: patience), "Explore has its Filters button")
         XCTAssertTrue(btn("TV Shows").exists, "Explore switches between Movies and TV Shows")
 
         openTab("Library")
-        XCTAssertTrue(button(startingWith: "Upcoming").waitForExistence(timeout: patience), "Library lists its pages, Upcoming first")
+        XCTAssertTrue(button(startingWith: "Upcoming").appears(within: patience), "Library lists its pages, Upcoming first")
 
         openTab("Live TV")
-        XCTAssertTrue(btn("Guide").waitForExistence(timeout: patience), "Live TV has its List and Guide switch")
+        XCTAssertTrue(btn("Guide").appears(within: patience), "Live TV has its List and Guide switch")
 
         openTab("Search")
-        XCTAssertTrue(element("search-field").waitForExistence(timeout: patience), "Search has its field")
+        XCTAssertTrue(element("search-field").appears(within: patience), "Search has its field")
 
         openTab("Home")
         waitForHome()
@@ -74,11 +74,11 @@ final class HomeAndTabsUITests: FlowUITestCase {
     func testTabsKeepTheirOwnPages() {
         // A page pushed on one tab stays there while another tab is used.
         btn("Details").tap()
-        XCTAssertTrue(titlePagePlay.waitForExistence(timeout: patience))
+        XCTAssertTrue(titlePagePlay.appears(within: patience))
         openTab("Library")
-        XCTAssertTrue(button(startingWith: "Upcoming").waitForExistence(timeout: patience))
+        XCTAssertTrue(button(startingWith: "Upcoming").appears(within: patience))
         openTab("Home")
-        XCTAssertTrue(titlePagePlay.waitForExistence(timeout: patience), "Home still shows the page that was open")
+        XCTAssertTrue(titlePagePlay.appears(within: patience), "Home still shows the page that was open")
         XCTAssertFalse(btn("Details").exists, "and not its root")
     }
 }

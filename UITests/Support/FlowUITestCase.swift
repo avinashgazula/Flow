@@ -22,11 +22,16 @@ class FlowUITestCase: XCTestCase {
     private var screenDumped = false
 
     /// The first failure of a test prints what was really on screen, so a failed run can be read without a screenshot.
+    /// Tests that run in parallel print into each clone's own log, not xcodebuild's, so the same text is attached to the
+    /// issue as well, where the result bundle keeps it.
     override func record(_ issue: XCTIssue) {
+        var issue = issue
         // Only a failed check counts: the runtime also reports warnings (a thread waiting on a slower one) as issues.
         if !screenDumped, app != nil, issue.type == .assertionFailure || issue.type == .thrownError {
             screenDumped = true
-            print("SCREEN at the first failure (\(issue.compactDescription)):\n" + app.debugDescription)
+            let screen = app.debugDescription
+            print("SCREEN at the first failure (\(issue.compactDescription)):\n" + screen)
+            issue.add(XCTAttachment(string: screen))
         }
         super.record(issue)
     }
@@ -39,11 +44,14 @@ class FlowUITestCase: XCTestCase {
     func launchDemo(extra: [String] = []) -> XCUIApplication {
         app = XCUIApplication()
         // The player's controls stay up (debug builds only), so a press never races their four-second hide timer.
-        app.launchArguments = ["-FlowDemo", "YES", "-FlowKeepPlayerControls", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"] + extra
+        app.launchArguments = ["-FlowDemo", "YES", "-FlowKeepPlayerControls", "YES"] + Self.commonArguments + extra
         app.launch()
         waitForHome()
         return app
     }
+
+    /// Every launch: the words the tests look for, and animations off (debug builds only), so no step waits for one to end.
+    static let commonArguments = ["-FlowUITest", "YES", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
 
     /// A first run: no sample data and no network. Both demo flags are forced off, because an earlier "Explore with Sample
     /// Data" tap is remembered in the app's defaults, and the welcome screen shows only when there is no TMDB key (a build
@@ -51,15 +59,14 @@ class FlowUITestCase: XCTestCase {
     @discardableResult
     func launchFresh() -> XCUIApplication {
         app = XCUIApplication()
-        app.launchArguments = ["-FlowDemo", "NO", "-flow.demoMode", "NO", "-FlowOffline", "YES",
-                               "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launchArguments = ["-FlowDemo", "NO", "-flow.demoMode", "NO", "-FlowOffline", "YES"] + Self.commonArguments
         app.launch()
         return app
     }
 
     /// Home is ready when its lead has loaded: a Details button, and Resume (the sample library has things in progress).
     func waitForHome(file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertTrue(btn("Details").waitForExistence(timeout: patience),
+        XCTAssertTrue(btn("Details").appears(within: patience),
                       "Home shows its lead, with a Details button", file: file, line: line)
     }
 
@@ -126,6 +133,37 @@ class FlowUITestCase: XCTestCase {
         waitUntil(timeout) { !element.exists }
     }
 
+    // MARK: Moving things
+
+    /// Turns the device and waits until the window has turned. What is on it is laid out again after that, so the next tap
+    /// goes through `tapWhenStill`.
+    func turn(to orientation: UIDeviceOrientation, file: StaticString = #filePath, line: UInt = #line) {
+        XCUIDevice.shared.orientation = orientation
+        let turned = waitUntil(15) {
+            let window = self.app.windows.firstMatch.frame
+            return orientation.isPortrait ? window.height > window.width : window.width > window.height
+        }
+        XCTAssertTrue(turned, "the window turns to \(orientation.isPortrait ? "portrait" : "landscape")", file: file, line: line)
+    }
+
+    /// Waits until `element` can be tapped and has stopped moving: the same frame twice, a quarter of a second apart. Right
+    /// after a turn, or while a page slides in, a tap aimed at where a row was a moment ago lands on its neighbour.
+    @discardableResult
+    func waitUntilStill(_ element: XCUIElement, timeout: TimeInterval = 30) -> Bool {
+        var last = CGRect.null
+        return waitUntil(timeout) {
+            guard element.exists, element.isHittable else { last = .null; return false }
+            let now = element.frame
+            defer { last = now }
+            return now == last
+        }
+    }
+
+    func tapWhenStill(_ element: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(waitUntilStill(element, timeout: patience), "\(what) can be tapped", file: file, line: line)
+        element.tap()
+    }
+
     // MARK: Navigating
 
     /// The tab button for `title` that a finger could press: the system's bar also exposes an empty, off-screen twin
@@ -160,50 +198,71 @@ class FlowUITestCase: XCTestCase {
     /// screen does not exist yet.
     @discardableResult
     func reveal(_ element: XCUIElement, maxSwipes: Int = 12) -> Bool {
+        // Every look at the element reads the whole screen again (a fifth of a second, more on a shared runner), so each
+        // question is asked once per pass: this runs a few times in nearly every test.
         var swipes = 0
-        while !(element.exists && element.isHittable) && swipes < maxSwipes {
+        while !(element.exists && element.isHittable) {
+            guard swipes < maxSwipes else { return false }
             app.swipeUp()
             swipes += 1
         }
         // On screen but low: nudge it up a little. A full swipe would throw it past the top.
-        if element.exists && element.isHittable && !clearOfTheBottomEdge(element) {
+        let window = app.windows.firstMatch.frame
+        if !clearOfTheBottomEdge(element, in: window) {
             let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -app.windows.firstMatch.frame.height * 0.3)))
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -window.height * 0.3)))
+            return element.exists && element.isHittable
         }
-        return element.exists && element.isHittable
+        return true
     }
 
     /// A row in the bottom fifth of the screen can sit under the iPhone's floating tab bar, which then takes the tap.
-    private func clearOfTheBottomEdge(_ element: XCUIElement) -> Bool {
-        let window = app.windows.firstMatch.frame
+    private func clearOfTheBottomEdge(_ element: XCUIElement, in window: CGRect) -> Bool {
         guard window.height > 0 else { return true }
         return element.frame.maxY < window.maxY - window.height * 0.2
     }
 
     /// Back from a pushed page: its navigation bar's leading button. Pass the page's title when something else (a sheet's
     /// own bar, the page underneath) could also have a bar on screen.
-    func goBack(from title: String? = nil, file: StaticString = #filePath, line: UInt = #line) {
+    /// `pressAgainIfDropped` is for a page the player has just closed over, and only where Back is not what the test checks.
+    func goBack(from title: String? = nil, pressAgainIfDropped: Bool = false, file: StaticString = #filePath, line: UInt = #line) {
         let bar = title.map { app.navigationBars[$0] } ?? app.navigationBars.firstMatch
         let back = bar.buttons.firstMatch
-        XCTAssertTrue(back.waitForExistence(timeout: patience), "a pushed page has a back button", file: file, line: line)
+        // Still, not only there: a button on a page that is still arriving (or turning) exists before it takes a tap.
+        XCTAssertTrue(waitUntilStill(back, timeout: patience), "a pushed page has a back button", file: file, line: line)
+        let heading = bar.staticTexts.firstMatch
+        let headingText = pressAgainIfDropped && heading.exists ? heading.label : nil
         back.tap()
+        // A press that lands while the player's cover is still leaving, or the iPhone is still turning back from it, is
+        // dropped by the system and the page stays. Then, and only then (its title still in the bar), it is pressed again.
+        guard let headingText else { return }
+        let samePage = bar.staticTexts.matching(NSPredicate(format: "label == %@", headingText)).firstMatch
+        if !waitUntil(3, { !samePage.exists }), back.exists, back.isHittable {
+            print("BACK PRESS DROPPED on '\(headingText)'; pressing again")
+            back.tap()
+        }
     }
 
-    /// Opens a `flow://` link the way another app would. The simulator asks first before a custom scheme opens from outside.
-    func openLink(_ link: String, file: StaticString = #filePath, line: UInt = #line) {
+    /// Opens a `flow://` link the way another app would. The simulator may ask first before a custom scheme opens from
+    /// outside. Pass what the link shows as `expecting`: the look for that question ends as soon as it is on screen, where
+    /// without it the look takes its full three seconds whenever no question comes, which is nearly always. Something that
+    /// was already on screen before the link (Home's lead can say Resume too) proves nothing, so then the look runs its time.
+    func openLink(_ link: String, expecting expected: XCUIElement? = nil, file: StaticString = #filePath, line: UInt = #line) {
         guard let url = URL(string: link) else { return XCTFail("\(link) is not a URL", file: file, line: line) }
+        let shown = expected?.exists == false ? expected : nil
         app.open(url)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let confirm = springboard.alerts.buttons["Open"]
-        if confirm.waitForExistence(timeout: 3) { confirm.tap() }
+        waitUntil(3) { confirm.exists || shown?.exists == true }
+        if confirm.exists { confirm.tap() }
     }
 
     // MARK: Title pages and playback
 
     /// The Details page of the sample's Dune: Part Two, which the sample library has half watched.
     func openDune(file: StaticString = #filePath, line: UInt = #line) {
-        openLink("flow://title/movie/693134", file: file, line: line)
-        XCTAssertTrue(button(startingWith: "Resume").waitForExistence(timeout: patience),
+        openLink("flow://title/movie/693134", expecting: button(startingWith: "Resume"), file: file, line: line)
+        XCTAssertTrue(button(startingWith: "Resume").appears(within: patience),
                       "Dune: Part Two's page offers Resume", file: file, line: line)
     }
 
@@ -211,8 +270,8 @@ class FlowUITestCase: XCTestCase {
     /// work in the middle of a film without the film ending. NETWORK-DEPENDENT, as the sample data's artwork already is.
     /// (The bundled MKV, `demo#mkv`, is only 12 seconds: a test acts a few seconds late and meets the end of the film.)
     func chooseBundledSample(file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertTrue(btn("Search Again").waitForExistence(timeout: patience), "the source list opens", file: file, line: line)
-        XCTAssertTrue(element("source-demo#0").waitForExistence(timeout: patience), "the first source is listed", file: file, line: line)
+        XCTAssertTrue(btn("Search Again").appears(within: patience), "the source list opens", file: file, line: line)
+        XCTAssertTrue(element("source-demo#0").appears(within: patience), "the first source is listed", file: file, line: line)
         let row = element("source-\(Self.longSampleID)")
         XCTAssertTrue(reveal(row), "the long sample stream is in the list", file: file, line: line)
         row.tap()
@@ -277,16 +336,20 @@ class FlowUITestCase: XCTestCase {
     func showPlayerControls(file: StaticString = #filePath, line: UInt = #line) {
         if transport.exists && transport.isHittable { return }
         app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        XCTAssertTrue(transport.waitForExistence(timeout: 10), "a tap on the picture shows the controls", file: file, line: line)
+        XCTAssertTrue(transport.appears(within: 10), "a tap on the picture shows the controls", file: file, line: line)
     }
 
     /// Closes the player and waits for the page underneath: the close saves the place and then tears the player down.
     func closePlayer(file: StaticString = #filePath, line: UInt = #line) {
         showPlayerControls(file: file, line: line)
         let close = btn("Close Player")
-        XCTAssertTrue(close.waitForExistence(timeout: 10), "the player has a Close button", file: file, line: line)
+        XCTAssertTrue(close.appears(within: 10), "the player has a Close button", file: file, line: line)
         close.tap()
         XCTAssertTrue(waitUntilGone(transport, timeout: 30), "the player closes", file: file, line: line)
+        // An iPhone then turns back to portrait, and a tap sent while it turns is lost: the next step waits until it has.
+        if !isPad {
+            waitUntil(15) { let window = self.app.windows.firstMatch.frame; return window.width < window.height }
+        }
     }
 
     /// Plays the bundled sample for Dune and stops on its first seconds with the controls up and playback paused,
@@ -302,7 +365,8 @@ class FlowUITestCase: XCTestCase {
     /// Pauses the player. The controls hide themselves while it plays, so a press can find them gone: each try brings them
     /// back first, and what is asserted is the outcome, the centre button saying Play.
     func pausePlayback(file: StaticString = #filePath, line: UInt = #line) {
-        var paused = false
+        // Already paused (`waitForPlayback` pauses on arrival): looking for Pause would only run out its time.
+        var paused = btn("Play").exists
         var tries = 0
         while !paused && tries < 4 {
             tries += 1
@@ -310,8 +374,8 @@ class FlowUITestCase: XCTestCase {
                 app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
             }
             let pause = btn("Pause")
-            if pause.waitForExistence(timeout: 3), (try? pause.snapshot()) != nil { pause.tap() }
-            paused = btn("Play").waitForExistence(timeout: 4)
+            if pause.appears(within: 3), (try? pause.snapshot()) != nil { pause.tap() }
+            paused = btn("Play").appears(within: 4)
         }
         XCTAssertTrue(paused, "Pause turns the centre button into Play", file: file, line: line)
     }

@@ -1,28 +1,61 @@
 import XCTest
 
-/// Settings opens as a sheet from Home. Every page in its list opens, its search finds a setting, and a changed setting
-/// takes effect on the screens behind it.
-final class SettingsUITests: FlowUITestCase {
-    /// The rows of the list, by the identifier the app gives each (`SettingsPage.rawValue`) and the title its page carries.
-    private static let pages: [(id: String, title: String)] = [
-        ("general", "General"), ("account", "Account"), ("sync", "Sync"), ("shelves", "Shelves"),
-        ("mediaServers", "Media Servers"), ("webDAV", "WebDAV"), ("liveTV", "Live TV"), ("sources", "Sources"),
-        ("dataStorage", "Data & Storage"), ("shareSetup", "Share Setup"), ("importSetup", "Import Setup"),
-        ("playback", "Playback"), ("subtitles", "Subtitles"), ("metadata", "Metadata"), ("about", "About"),
-    ]
-
+/// Settings opens as a sheet from Home. What the Settings tests share: a launch on sample data and the way into the list.
+class SettingsUITestCase: FlowUITestCase {
     override func setUp() {
         super.setUp()
         launchDemo()
     }
 
-    private func openSettings(file: StaticString = #filePath, line: UInt = #line) {
+    func openSettings(file: StaticString = #filePath, line: UInt = #line) {
         let settings = btn("Settings")
-        XCTAssertTrue(settings.waitForExistence(timeout: patience), "Home has a Settings button", file: file, line: line)
+        XCTAssertTrue(settings.appears(within: patience), "Home has a Settings button", file: file, line: line)
         settings.tap()
-        XCTAssertTrue(element("settings-row-general").waitForExistence(timeout: patience), "the Settings list opens", file: file, line: line)
+        XCTAssertTrue(element("settings-row-general").appears(within: patience), "the Settings list opens", file: file, line: line)
     }
 
+    /// Opens each page from the list and comes back with its Back button. `pages` are the rows by the identifier the app
+    /// gives each (`SettingsPage.rawValue`) and the title its page carries.
+    func walk(_ pages: [(id: String, title: String)], file: StaticString = #filePath, line: UInt = #line) {
+        openSettings(file: file, line: line)
+        for page in pages {
+            let row = element("settings-row-\(page.id)")
+            XCTAssertTrue(reveal(row), "the \(page.title) row can be tapped", file: file, line: line)
+            row.tap()
+            // A page may title itself more fully than its row does ("Live TV" opens a longer name).
+            let bar = app.navigationBars.matching(NSPredicate(format: "identifier CONTAINS[c] %@", page.title)).firstMatch
+            XCTAssertTrue(bar.appears(within: patience), "\(page.title) opens a page whose title has that name in it", file: file, line: line)
+            bar.buttons.firstMatch.tap()
+            XCTAssertTrue(element("settings-row-\(page.id)").appears(within: patience), "Back returns to the list", file: file, line: line)
+        }
+    }
+}
+
+/// Every page in the Settings list opens and Back returns from it, in three parts of five pages. Each part is its own class
+/// because parallel testing hands out whole classes: the walk was the suite's longest test, and in three it shares out.
+/// Together they cover every row in the list, top to bottom.
+final class SettingsFirstPagesUITests: SettingsUITestCase {
+    func testGeneralToMediaServersOpenAndBackReturns() {
+        walk([("general", "General"), ("account", "Account"), ("sync", "Sync"), ("shelves", "Shelves"), ("mediaServers", "Media Servers")])
+    }
+}
+
+final class SettingsMiddlePagesUITests: SettingsUITestCase {
+    func testWebDAVToShareSetupOpenAndBackReturns() {
+        walk([("webDAV", "WebDAV"), ("liveTV", "Live TV"), ("sources", "Sources"), ("dataStorage", "Data & Storage"),
+              ("shareSetup", "Share Setup")])
+    }
+}
+
+final class SettingsLastPagesUITests: SettingsUITestCase {
+    func testImportSetupToAboutOpenAndBackReturns() {
+        walk([("importSetup", "Import Setup"), ("playback", "Playback"), ("subtitles", "Subtitles"), ("metadata", "Metadata"),
+              ("about", "About")])
+    }
+}
+
+/// The list as a whole: its sheet, its search, and a changed setting taking effect on the screens behind it.
+final class SettingsUITests: SettingsUITestCase {
     func testSettingsOpensAsASheetAndDoneClosesIt() {
         openSettings()
         XCTAssertTrue(text("You're exploring sample data").exists, "the sample data is named, with a way to leave it")
@@ -32,48 +65,34 @@ final class SettingsUITests: FlowUITestCase {
         waitForHome()
     }
 
-    func testEveryPageOpensFromTheListAndBackReturns() {
-        openSettings()
-        for page in Self.pages {
-            let row = element("settings-row-\(page.id)")
-            XCTAssertTrue(reveal(row), "the \(page.title) row can be tapped")
-            row.tap()
-            // A page may title itself more fully than its row does ("Live TV" opens a longer name).
-            let bar = app.navigationBars.matching(NSPredicate(format: "identifier CONTAINS[c] %@", page.title)).firstMatch
-            XCTAssertTrue(bar.waitForExistence(timeout: patience), "\(page.title) opens a page whose title has that name in it")
-            bar.buttons.firstMatch.tap()
-            XCTAssertTrue(element("settings-row-\(page.id)").waitForExistence(timeout: patience), "Back returns to the list")
-        }
-    }
-
     func testSettingsSearchFindsASettingAndLandsOnItsPage() {
         openSettings()
         let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: patience), "Settings has a search field")
+        XCTAssertTrue(search.appears(within: patience), "Settings has a search field")
         search.tap()
         search.typeText("dolby")
         // Only the pages whose keywords mention Dolby remain.
-        XCTAssertTrue(element("settings-row-playback").waitForExistence(timeout: patience), "Playback mentions Dolby Vision")
+        XCTAssertTrue(element("settings-row-playback").appears(within: patience), "Playback mentions Dolby Vision")
         XCTAssertTrue(element("settings-row-sources").exists, "so does Sources")
         XCTAssertFalse(element("settings-row-webDAV").exists, "WebDAV does not")
         XCTAssertFalse(element("settings-row-general").exists, "and neither does General")
         element("settings-row-playback").tap()
-        XCTAssertTrue(app.navigationBars["Playback"].waitForExistence(timeout: patience), "the result opens its page")
+        XCTAssertTrue(app.navigationBars["Playback"].appears(within: patience), "the result opens its page")
     }
 
     func testSettingsSearchWithNoMatchSaysSo() {
         openSettings()
         let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: patience))
+        XCTAssertTrue(search.appears(within: patience))
         search.tap()
         search.typeText("zzqqxx")
-        XCTAssertTrue(text(startingWith: "No settings match").waitForExistence(timeout: patience), "a search that finds nothing says so")
+        XCTAssertTrue(text(startingWith: "No settings match").appears(within: patience), "a search that finds nothing says so")
         XCTAssertFalse(element("settings-row-general").exists)
     }
 
     func testAChangedSettingTakesEffectOnHome() {
-        XCTAssertTrue(leadPrimary.waitForExistence(timeout: patience), "Home has its lead")
-        XCTAssertTrue(text(startingWith: "Up Next").waitForExistence(timeout: patience), "and Up Next under it")
+        XCTAssertTrue(leadPrimary.appears(within: patience), "Home has its lead")
+        XCTAssertTrue(text(startingWith: "Up Next").appears(within: patience), "and Up Next under it")
         openSettings()
         element("settings-row-general").tap()
         // The custom switch carries the toggle trait, so the system calls it a switch, not a button.
@@ -87,6 +106,6 @@ final class SettingsUITests: FlowUITestCase {
         waitForHome()
         // Without Continue Watching Up Next is gone from Home, and the lead (always the top picks) is still there.
         XCTAssertTrue(waitUntilGone(text(startingWith: "Up Next"), timeout: patience), "Home no longer lists what is in progress")
-        XCTAssertTrue(leadPrimary.waitForExistence(timeout: patience), "the lead is still there")
+        XCTAssertTrue(leadPrimary.appears(within: patience), "the lead is still there")
     }
 }

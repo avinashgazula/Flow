@@ -9,7 +9,8 @@ final class LiveTVUITests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-FlowDemo", "YES"]
+        // Animations off (debug builds only), so no step waits for one to end.
+        app.launchArguments = ["-FlowDemo", "YES", "-FlowUITest", "YES"]
         // The overlay stays up so a found button is still there to press, except in the test of the overlay hiding.
         // That test lets it hide once on its own, then keeps it up once a tap has brought it back (the app's debug switch
         // says why: a look that comes late must not find it hidden again).
@@ -28,22 +29,28 @@ final class LiveTVUITests: XCTestCase {
 
     private func openFirstChannel() {
         let liveTV = btn("Live TV")
-        XCTAssertTrue(liveTV.waitForExistence(timeout: 15))
+        XCTAssertTrue(liveTV.appears(within: 15))
         liveTV.tap()
-        // iPad opens on the guide; the list is a tap away.
+        // iPad opens on the guide; the list is a tap away. iPhone opens on the list: there the look ends with the first channel.
         let list = btn("Show List")
-        if list.waitForExistence(timeout: 3) { list.tap() }
         let channel = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Flow News'")).firstMatch
-        XCTAssertTrue(channel.waitForExistence(timeout: 15), "the first channel is listed")
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            if list.appears(within: 3) { list.tap() }
+        } else {
+            let deadline = Date().addingTimeInterval(3)
+            while !list.exists && !channel.exists && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.25)) }
+            if list.exists { list.tap() }
+        }
+        XCTAssertTrue(channel.appears(within: 15), "the first channel is listed")
         channel.tap()
-        XCTAssertTrue(btn("Close").waitForExistence(timeout: 15), "the live player opens with its overlay")
+        XCTAssertTrue(btn("Close").appears(within: 15), "the live player opens with its overlay")
     }
 
     func testCloseLeavesThePlayer() {
         openFirstChannel()
         btn("Close").tap()
         let list = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Flow News'")).firstMatch
-        XCTAssertTrue(list.waitForExistence(timeout: 10), "Close returns to the channel list")
+        XCTAssertTrue(list.appears(within: 10), "Close returns to the channel list")
         if UIDevice.current.userInterfaceIdiom == .phone {
             let window = app.windows.firstMatch
             XCTAssertLessThan(window.frame.width, window.frame.height, "the phone is back in portrait")
@@ -62,11 +69,11 @@ final class LiveTVUITests: XCTestCase {
     func testChannelButtonsTune() {
         openFirstChannel()
         let next = btn("Next Channel")
-        XCTAssertTrue(next.waitForExistence(timeout: 5))
+        XCTAssertTrue(next.appears(within: 5))
         next.tap()
-        XCTAssertTrue(app.staticTexts["World 24"].waitForExistence(timeout: 10), "Next Channel tunes to channel 2")
+        XCTAssertTrue(app.staticTexts["World 24"].appears(within: 10), "Next Channel tunes to channel 2")
         btn("Previous Channel").tap()
-        XCTAssertTrue(app.staticTexts["Flow News"].waitForExistence(timeout: 10), "Previous Channel tunes back")
+        XCTAssertTrue(app.staticTexts["Flow News"].appears(within: 10), "Previous Channel tunes back")
     }
 
     func testTappingThePictureBringsTheOverlayBack() {
@@ -77,7 +84,7 @@ final class LiveTVUITests: XCTestCase {
         expectation(for: hidden, evaluatedWith: close)
         waitForExpectations(timeout: 15)
         app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)).tap()
-        let shown = close.waitForExistence(timeout: 10)
+        let shown = close.appears(within: 10)
         if !shown {
             // What the app showed and what it could see, for the next person to read.
             let screenshot = XCTAttachment(screenshot: app.screenshot())

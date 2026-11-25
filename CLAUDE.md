@@ -54,7 +54,8 @@ scripts/sim.sh open "flow://title/movie/693134" ios   # deep link (Dune: Part Tw
 scripts/sim.sh logs ios           # app log;  reset = uninstall for a fresh first launch
 scripts/sim.sh run ios --real -- -FlowOffline YES   # every request fails as if offline (debug builds)
 scripts/player-check.sh ios       # every sample stream and player scenario, PASS/FAIL (also ipad, tvos, macos)
-scripts/ui-test.sh                # XCUITest real taps (Live TV player); SIM_UDID picks iPhone or iPad
+scripts/ui-test.sh ios|ipad|tvos   # XCUITest real taps, every test, on parallel simulator clones (UI_TEST_WORKERS)
+scripts/ui-test.sh ios --smoke    # the dozen critical-path tests in a few minutes; --no-build reuses the last build
 scripts/sim.sh tour ios|ipad|tvos|macos   # the whole screenshot tour, as CI runs it → shots/tour/
 cd Packages/FlowKit && swift test # unit tests (fast; run after any FlowKit change)
 xcodegen generate                 # after adding/removing files or editing project.yml (sim.sh does it when needed)
@@ -138,6 +139,7 @@ and 26.3, so code must compile on both: wrap iOS 26-only symbols in `#if compile
 - **Commit messages** describe what changed for the person using the app, in plain sentences.
   Look at `git log` for the house style.
 - **Pushing** to `main` or a `claude/**` branch runs CI: it builds all schemes (Xcode 26.3, and 16.4 for iOS), runs
-  FlowKit tests on macOS and Linux, the player check and the UI tests. Mac runners are few, so the Xcode 27 builds and
-  the screenshot tour on every platform run only on `main` and `claude/build-flow-app`, or on any branch when CI is
-  started by hand (workflow_dispatch). The tour's screenshots go to the `ci-screenshots` branch.
+  FlowKit tests on macOS and Linux, the player check and the UI tests. Mac runners are few, so the Xcode 27 builds,
+  the screenshot tour on every platform and the full UI suite run only on `main` and `claude/build-flow-app`, or on any
+  branch when CI is started by hand (workflow_dispatch). Other branches run the UI smoke tier (`scripts/ui-test.sh
+  --smoke`), which takes minutes. The tour's screenshots go to the `ci-screenshots` branch.

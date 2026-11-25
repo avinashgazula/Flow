@@ -483,9 +483,23 @@ Commits on `claude/build-flow-app` describe each fix; `git log` is the full reco
   Up Next moving on, Ask Before Resuming and the panels. 75 checks, PASS/FAIL with evidence, and a
   screenshot of each screen in `shots/player-check/<platform>/`. All four platforms passed 75/75 on
   2026-10-12. `FLOW_CHECK_ONLY=episodes,resume` runs a subset.
-- `scripts/ui-test.sh` (iPhone or iPad simulator via SIM_UDID): XCUITest with real taps, for screens
-  the simulator tools can't drive reliably. Covers the Live TV player: Close, channel buttons, tapping
-  the picture, and landscape on iPhone. Not run by CI.
+- `scripts/ui-test.sh ios|ipad|tvos`: XCUITest with real taps (the remote's presses on Apple TV), on
+  sample data: Home, every tab, title pages, the source list, the player, deep links, Live TV, Settings,
+  Search, the accessibility audit and each device's own layout. CI runs it on all three (job "UI tests").
+  - `--smoke` runs only the critical-path list at the top of the script (about a dozen tests); without it,
+    every test. `--no-build` tests what the last run built: iPhone and iPad share one build.
+  - Tests run in parallel on clones of the simulator, one test class per clone at a time:
+    `UI_TEST_WORKERS` (default 2 on CI, half this Mac's cores here). Parallel testing hands out whole
+    classes, so a long test belongs in its own class (the Settings walk is three).
+    `UI_TEST_WORKERS=1` runs on the simulator itself and logs every step with its time ("t = …" in
+    build/ui-tests-<platform>.log): that is how to see where a slow test spends its seconds.
+  - Writing tests: wait with `appears(within:)`, never XCTest's `waitForExistence`, which first looks
+    only after a second and so costs a second on every wait. When one of two things can appear, wait on
+    both at once (`waitUntil { a.exists || b.exists }`) rather than letting the first wait run out.
+    Give `openLink` what the link shows (`expecting:`). Launches pass `-FlowUITest YES` (debug builds
+    only): UIKit animations are off and loading shimmers hold still, so no tap waits for the app to idle.
+  - The onboarding tests fail on this Mac because Config/Secrets.xcconfig bakes in a TMDB key, which
+    skips the welcome screen; CI has no key and runs them.
 - Simulator tool taps are not trustworthy inside UIKit-presented covers or on rotated screens; if a
   tap "does nothing", confirm with a UI test before changing code.
 

@@ -21,6 +21,9 @@ struct FlowApp: App {
         FilmAppearance.install()
         TabBarStyle.install()
         #endif
+        #if canImport(UIKit)
+        if UITestMode.isActive { UIView.setAnimationsEnabled(false) }
+        #endif
     }
 
     var body: some Scene {
