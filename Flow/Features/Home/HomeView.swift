@@ -601,7 +601,9 @@ private struct LeadSlide: View {
     private var logoMaxHeight: CGFloat {
         switch shape {
         case .phone: return 96
-        case .wide: return 112
+        // A phone on its side is wide but only about 300 points high: there the logo keeps to a fifth of the picture, or
+        // it fills the top of it and runs up under the status bar.
+        case .wide: return min(112, height * 0.22)
         case .tv: return 190
         }
     }
@@ -618,7 +620,7 @@ private struct LeadSlide: View {
     private var nameSize: CGFloat {
         switch shape {
         case .phone: return 48
-        case .wide: return Platform.isMac ? 56 : 64
+        case .wide: return min(Platform.isMac ? 56 : 64, height * 0.15)
         case .tv: return 96
         }
     }
