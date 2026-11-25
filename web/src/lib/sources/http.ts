@@ -20,6 +20,8 @@ export interface RequestOptions {
   timeoutMs?: number
   /** Lets the request finish after the page closes (a server told that playback stopped). */
   keepalive?: boolean
+  /** The browser's HTTP cache mode; `'no-store'` for answers that change when a title is released. */
+  cache?: RequestCache
 }
 
 /** A signal that aborts when `signal` does or after `ms`, whichever comes first. */
@@ -103,7 +105,7 @@ export async function request(url: string, options: RequestOptions = {}): Promis
     body = JSON.stringify(options.body)
   }
   try {
-    const response = await fetch(url, { method: options.method ?? (body ? 'POST' : 'GET'), headers, body, signal, keepalive: options.keepalive })
+    const response = await fetch(url, { method: options.method ?? (body ? 'POST' : 'GET'), headers, body, signal, keepalive: options.keepalive, cache: options.cache })
     if (!response.ok) throw statusError(url, response.status)
     return response
   } catch (error) {

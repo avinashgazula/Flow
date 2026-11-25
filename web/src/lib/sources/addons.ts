@@ -170,12 +170,18 @@ function subtitles(list: StreamDTO['subtitles']): ExternalSubtitle[] | undefined
   return out.length ? out : undefined
 }
 
+/** Shown under the add-on's name when it was not asked, as FlowKit's AddonClient. */
+export const missingIMDbNote = 'Skipped: TMDB has no IMDb id for this title yet, and stream add-ons look titles up by it.'
+
 /** Everything one add-on offers for the request. */
 export async function addonSources(addon: AddonConfig, request: PlaybackRequest, caps: Capabilities, signal?: AbortSignal): Promise<AddonResult> {
   const id = stremioId(request, addon.manifest)
   const type = stremioType(request)
+  // Add-ons look titles up by IMDb id; without one the add-on isn't asked, and the picker should say so.
+  if (!id && !request.imdbId) throw new SourceError(missingIMDbNote)
   if (!id || !servesStreams(addon.manifest, type, id)) return { sources: [], torrents: 0 }
-  const response = await requestJSON<{ streams?: StreamDTO[] }>(`${addonBase(addon.url)}/stream/${type}/${id}.json`, { signal })
+  // Not cached: add-ons send max-age headers, and an empty answer from before a release would be reused for hours after.
+  const response = await requestJSON<{ streams?: StreamDTO[] }>(`${addonBase(addon.url)}/stream/${type}/${id}.json`, { signal, cache: 'no-store' })
   return mapStreams(response?.streams, addon, caps)
 }
 

@@ -78,14 +78,13 @@ boot() {
   fi
 }
 
+# Always when xcodegen is there: it takes about a second, the output is deterministic, and a committed project that
+# lags the sources (new files, a changed project.yml) otherwise breaks the build on a Mac while CI, which regenerates, passes.
 regenerate_if_needed() {
-  if [ project.yml -nt Flow.xcodeproj/project.pbxproj ] || [ -n "$(git ls-files --others --exclude-standard -- 'Flow/*.swift' 'Widgets/*.swift' 'TopShelf/*.swift' 2>/dev/null)" ]; then
-    if command -v xcodegen >/dev/null; then
-      echo "Regenerating Flow.xcodeproj (project.yml changed or new source files)…"
-      xcodegen generate --quiet
-    else
-      echo "warning: project.yml changed or there are new files; run 'brew install xcodegen && xcodegen generate'" >&2
-    fi
+  if command -v xcodegen >/dev/null; then
+    xcodegen generate --quiet
+  elif [ project.yml -nt Flow.xcodeproj/project.pbxproj ] || [ -n "$(git ls-files --others --exclude-standard -- 'Flow/*.swift' 'Widgets/*.swift' 'TopShelf/*.swift' 2>/dev/null)" ]; then
+    echo "warning: project.yml changed or there are new files; run 'brew install xcodegen && xcodegen generate'" >&2
   fi
 }
 

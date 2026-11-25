@@ -274,6 +274,27 @@ final class SourceProviderTests: XCTestCase {
         XCTAssertFalse(sources[1].isPlayable)
     }
 
+    func testStreamLookupSkipsTheLocalHTTPCache() {
+        let config = AddonConfig(manifestURL: URL(string: "https://aio.example/u/abc/manifest.json")!, name: "AIOStreams")
+        let request = AddonClient.streamRequest(config: config, id: "tt0816692", type: "movie", timeout: 15)
+        XCTAssertEqual(request.url.absoluteString, "https://aio.example/u/abc/stream/movie/tt0816692.json")
+        XCTAssertEqual(request.urlRequest.cachePolicy, .reloadIgnoringLocalCacheData)
+        XCTAssertEqual(HTTPRequest(.get, url: request.url).urlRequest.cachePolicy, .useProtocolCachePolicy)
+    }
+
+    func testAddonWithoutAnIMDbIdSaysItWasSkipped() async {
+        let mock = MockTransport()
+        let config = AddonConfig(manifestURL: URL(string: "https://aio.example/u/abc/manifest.json")!, name: "AIOStreams")
+        let client = AddonClient(config: config, http: HTTPClient(transport: mock))
+        let film = MediaItem(type: .movie, ids: ExternalIDs(tmdb: 1, imdb: nil), title: "New Film")
+        do {
+            _ = try await client.sources(for: PlaybackRequest(item: film))
+            XCTFail("an add-on can't look a title up without its IMDb id")
+        } catch {
+            XCTAssertEqual(error.localizedDescription, "Skipped: TMDB has no IMDb id for this title yet, and stream add-ons look titles up by it.")
+        }
+    }
+
     func testManifestResourceMatching() throws {
         let manifest = try JSONDecoder().decode(AddonManifest.self, from: Data("""
         {"id":"x","name":"X","types":["movie","series"],"resources":["catalog",{"name":"stream","types":["movie","series"],"idPrefixes":["tt"]}]}

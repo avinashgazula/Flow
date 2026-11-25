@@ -109,8 +109,13 @@ struct SourcePickerView: View {
         .padding(.vertical, Theme.Space.xl)
     }
 
-    /// The in-cinemas or not-out-yet wording; the same words as the website.
+    /// The wording for an empty list other than plain "No Sources"; the same words as the website.
     private var emptyNotice: (title: String, text: String)? {
+        // Sources were found and the resolution cap or the filters dropped every one: not the same as finding none.
+        let hidden = SourceQuickFilter.hiddenCount(found: raw, shown: ranked)
+        if hidden > 0 {
+            return ("No Sources Shown", "\(hidden) source\(hidden == 1 ? " was" : "s were") found, and your filters hide \(hidden == 1 ? "it" : "them"). Loosen the filters or the result cap in Settings.")
+        }
         switch releaseStatus {
         case .inCinemas(let since, let digitalOn):
             let text = "In cinemas since \(Self.releaseDay(since)). It has no digital release yet, so your sources don't have it."

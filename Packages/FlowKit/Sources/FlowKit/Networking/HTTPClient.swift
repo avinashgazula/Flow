@@ -49,14 +49,18 @@ public struct HTTPRequest: Sendable {
     public var headers: [String: String]
     public var body: Data?
     public var timeout: TimeInterval
+    /// Nil keeps the session's default, which honours the server's caching headers.
+    public var cachePolicy: URLRequest.CachePolicy?
 
-    public init(_ method: HTTPMethod = .get, url: URL, query: [URLQueryItem] = [], headers: [String: String] = [:], body: Data? = nil, timeout: TimeInterval = 20) {
+    public init(_ method: HTTPMethod = .get, url: URL, query: [URLQueryItem] = [], headers: [String: String] = [:], body: Data? = nil, timeout: TimeInterval = 20,
+                cachePolicy: URLRequest.CachePolicy? = nil) {
         self.method = method
         self.url = url
         self.query = query
         self.headers = headers
         self.body = body
         self.timeout = timeout
+        self.cachePolicy = cachePolicy
     }
 
     public init(_ method: HTTPMethod = .get, _ string: String, query: [String: String?] = [:], headers: [String: String] = [:], body: Data? = nil, timeout: TimeInterval = 20) throws {
@@ -81,6 +85,7 @@ public struct HTTPRequest: Sendable {
         var request = URLRequest(url: finalURL, timeoutInterval: timeout)
         request.httpMethod = method.rawValue
         request.httpBody = body
+        if let cachePolicy { request.cachePolicy = cachePolicy }
         for (key, value) in headers { request.setValue(value, forHTTPHeaderField: key) }
         if request.value(forHTTPHeaderField: "Accept") == nil {
             request.setValue("application/json", forHTTPHeaderField: "Accept")
