@@ -67,3 +67,29 @@ extension Contracts {
         }
     }
 }
+
+extension Contracts {
+    static func homeRelease(_ c: ContractCase) throws -> JSONValue {
+        func day(_ text: String?) throws -> Date {
+            guard let text, let date = FlowDate.parse(text) else { throw ContractUnavailable(reason: "unreadable day") }
+            return date
+        }
+        func name(_ date: Date?) -> JSONValue {
+            guard let date else { return .null }
+            let f = ISO8601DateFormatter()
+            f.formatOptions = [.withFullDate]
+            f.timeZone = TimeZone(identifier: "UTC")
+            return .string(f.string(from: date))
+        }
+        guard c.op == "status" else { throw ContractUnavailable(reason: "unknown op \(c.op ?? "nil")") }
+        let releases = try (c.input["releases"]?.array ?? []).map { r in
+            MovieRelease(country: r["country"]?.string ?? "", type: MovieReleaseType(rawValue: r["type"]?.int ?? 0) ?? .theatrical, date: try day(r["date"]?.string), certification: nil)
+        }
+        switch HomeRelease.status(releases: releases, region: c.input["region"]?.string, now: try day(c.input["now"]?.string)) {
+        case .unknown: return .object(["status": .string("unknown")])
+        case .available: return .object(["status": .string("available")])
+        case .inCinemas(let since, let digitalOn): return .object(["status": .string("inCinemas"), "since": name(since), "digitalOn": name(digitalOn)])
+        case .upcoming(let on): return .object(["status": .string("upcoming"), "on": name(on)])
+        }
+    }
+}

@@ -114,11 +114,19 @@ public struct AddonClient: SourceProvider {
         }
     }
 
-    public func sources(for request: PlaybackRequest) async throws -> [StreamSource] {
-        guard let id = request.stremioID else { return [] }
-        let type = request.item.type.stremioType
+    /// Shown under the add-on's name when it was not asked: add-ons look titles up by IMDb id.
+    static let missingIMDbNote = "Skipped: TMDB has no IMDb id for this title yet, and stream add-ons look titles up by it."
+
+    /// The stream lookup. It skips the local HTTP cache: add-ons send `max-age` headers, and an empty answer from
+    /// before a release would otherwise be reused for hours after the title came out.
+    static func streamRequest(config: AddonConfig, id: String, type: String, timeout: TimeInterval) -> HTTPRequest {
         let url = config.baseURL.appendingPathComponent("stream").appendingPathComponent(type).appendingPathComponent("\(id).json")
-        let response = try await http.json(StreamResponse.self, HTTPRequest(.get, url: url, timeout: timeout))
+        return HTTPRequest(.get, url: url, timeout: timeout, cachePolicy: .reloadIgnoringLocalCacheData)
+    }
+
+    public func sources(for request: PlaybackRequest) async throws -> [StreamSource] {
+        guard let id = request.stremioID else { throw FlowError.unsupported(Self.missingIMDbNote) }
+        let response = try await http.json(StreamResponse.self, Self.streamRequest(config: config, id: id, type: request.item.type.stremioType, timeout: timeout))
         return (response.streams ?? []).enumerated().compactMap { index, dto in
             Self.source(from: dto, index: index, config: config)
         }

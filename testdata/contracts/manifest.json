@@ -15,6 +15,7 @@
   "language": { "swift": true, "web": true },
   "source-rank": { "swift": true, "web": true },
   "track-selection": { "swift": true, "web": true },
-  "themes": { "swift": true, "web": true }
+  "themes": { "swift": true, "web": true },
+  "home-release": { "swift": true, "web": true }
  }
 }

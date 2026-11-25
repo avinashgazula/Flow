@@ -16,6 +16,7 @@ enum ScreenshotTour {
         let dune = DemoCatalog.title(693134)!
         let breakingBad = DemoCatalog.title(1396)!
         let duneItem = item(dune)
+        let jokerItem = item(DemoCatalog.title(DemoTransport.inCinemasOnlyID)!)
         let bbItem = item(breakingBad)
         var steps: [Step] = [
             Step(name: "welcome") { m in m.previewOnboarding = true },
@@ -35,6 +36,13 @@ enum ScreenshotTour {
             Step(name: "detail-movie-light") { m in m.settings.general.appearance = .light },
             Step(name: "detail-show") { m in m.settings.general.appearance = .system; m.paths[.home] = [.detail(bbItem)] },
             Step(name: "sources") { m in await m.play(duneItem) },
+            // A film that is only in cinemas: the empty picker says why instead of "No Sources".
+            Step(name: "sources-in-cinemas") { m in
+                m.sourcePickerRequest = nil
+                try? await Task.sleep(nanoseconds: 800_000_000)
+                await m.play(jokerItem)
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+            },
             Step(name: "player") { m in
                 if let source = try? await DemoSourceProvider().sources(for: PlaybackRequest(item: duneItem)).first {
                     m.startPlayback(source, request: PlaybackRequest(item: duneItem))

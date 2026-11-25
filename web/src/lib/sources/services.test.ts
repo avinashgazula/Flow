@@ -105,6 +105,21 @@ describe('Stremio add-ons', () => {
     expect(result.sources).toHaveLength(2)
     expect(result.torrents).toBe(2)
   })
+
+  it('skips the browser cache, so a release shows up as soon as the add-on has it', async () => {
+    const calls = serve({ '/stream/series/tt0944947:1:2.json': addonStreams })
+    await addonSources({ url: 'https://aio.example/u/abc/manifest.json', name: 'AIOStreams', enabled: true, manifest }, got, chrome)
+    expect(calls[0]!.init?.cache).toBe('no-store')
+  })
+
+  it('says so when a title has no IMDb id, instead of skipping the add-on silently', async () => {
+    const calls = serve({})
+    const request = { ...got, imdbId: undefined }
+    await expect(addonSources({ url: 'https://aio.example/u/abc/manifest.json', name: 'AIOStreams', enabled: true, manifest }, request, chrome)).rejects.toThrow(
+      'Skipped: TMDB has no IMDb id for this title yet, and stream add-ons look titles up by it.',
+    )
+    expect(calls).toHaveLength(0)
+  })
 })
 
 const jellyfin: ServerConfig = { id: 'jellyfin:srv:user', kind: 'jellyfin', name: 'Living Room', url: 'https://jf.example', token: 'secret-token', userId: 'user', enabled: true }

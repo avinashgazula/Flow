@@ -58,6 +58,7 @@ enum Contracts {
         "source-rank": Contracts.sourceRank,
         "track-selection": Contracts.trackSelection,
         "themes": Contracts.themes,
+        "home-release": Contracts.homeRelease,
     ]
 }
 

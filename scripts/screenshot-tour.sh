@@ -51,6 +51,9 @@ capture_loop() { # $1 = capture command template (uses $file)
   done
 }
 
+# A committed project that lags the sources would break the build on a Mac; regenerating takes about a second.
+command -v xcodegen > /dev/null && xcodegen generate --quiet
+
 if [ "$platform" = "macos" ]; then
   xcodebuild build -project Flow.xcodeproj -scheme Flow-macOS -destination 'platform=macOS' -derivedDataPath dd \
     CODE_SIGNING_ALLOWED=NO > build-shots.log 2>&1 || { grep -E "error:" build-shots.log | head -40; exit 1; }

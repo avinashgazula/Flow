@@ -11,6 +11,8 @@ struct SourcePickerView: View {
     @State private var pending: [String: String] = [:]
     @State private var failures: [String: String] = [:]
     @State private var finished = false
+    /// Why a search that found nothing found nothing, for a film that isn't out at home yet.
+    @State private var releaseStatus: HomeRelease.Status = .unknown
     @State private var reloadToken = 0
     @State private var autoPlayed = false
     /// Which chip is on. Only what the rows show changes: auto-play and the fallbacks still use the whole ranked list.
@@ -89,21 +91,58 @@ struct SourcePickerView: View {
         #endif
     }
 
-    /// Nothing found: what to do next, in words.
+    /// Nothing found: what to do next, in words. A film still in cinemas says so instead, since nothing is out to find.
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.xs) {
-            Text("No Sources")
+        let notice = emptyNotice
+        return VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            Text(notice?.title ?? "No Sources")
                 .font(Theme.Typeface.title)
                 .textCase(.uppercase)
                 .foregroundStyle(Theme.Palette.fg)
-            Text(model.sourceProviders().isEmpty
+            Text(notice?.text ?? (model.sourceProviders().isEmpty
                  ? "Add a media server, WebDAV share, IPTV provider or stream add-on in Settings."
-                 : "None of your sources have this title yet.")
+                 : "None of your sources have this title yet."))
                 .font(Theme.Typeface.reading)
                 .foregroundStyle(Theme.Palette.fg)
         }
         .padding(.horizontal, Theme.Space.gutter)
         .padding(.vertical, Theme.Space.xl)
+    }
+
+    /// The wording for an empty list other than plain "No Sources"; the same words as the website.
+    private var emptyNotice: (title: String, text: String)? {
+        // Sources were found and the resolution cap or the filters dropped every one: not the same as finding none.
+        let hidden = SourceQuickFilter.hiddenCount(found: raw, shown: ranked)
+        if hidden > 0 {
+            return ("No Sources Shown", "\(hidden) source\(hidden == 1 ? " was" : "s were") found, and your filters hide \(hidden == 1 ? "it" : "them"). Loosen the filters or the result cap in Settings.")
+        }
+        switch releaseStatus {
+        case .inCinemas(let since, let digitalOn):
+            let text = "In cinemas since \(Self.releaseDay(since)). It has no digital release yet, so your sources don't have it."
+            return ("In Cinemas", digitalOn.map { text + " Digital release on \(Self.releaseDay($0))." } ?? text)
+        case .upcoming(let on):
+            return ("Not Out Yet", on.map { "Comes to cinemas on \(Self.releaseDay($0))." } ?? "Release date not announced.")
+        case .available, .unknown:
+            return nil
+        }
+    }
+
+    /// "October 16", with the year when it isn't this one. TMDb's days carry no time zone, so they're read as written (UTC).
+    private static func releaseDay(_ date: Date) -> String {
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+        var style = Date.FormatStyle(timeZone: utc.timeZone).month(.wide).day()
+        if utc.component(.year, from: date) != Calendar.current.component(.year, from: Date()) { style = style.year() }
+        return date.formatted(style)
+    }
+
+    /// Where a film is in its release, asked only when the search came back empty: one cached request, and a failed
+    /// one leaves the ordinary wording.
+    private func lookUpReleaseStatus() async -> HomeRelease.Status {
+        guard request.episode == nil, request.item.type == .movie, let id = request.item.ids.tmdb, let catalog = model.catalog,
+              !model.sourceProviders().isEmpty else { return .unknown }
+        let releases = await catalog.releaseDates(movieID: id)
+        return HomeRelease.status(releases: releases, region: catalog.tmdb.region, now: Date())
     }
 
     /// A provider's sources under its name: a 2px rule, the name as a red mono label, its count, then ruled rows in the
@@ -313,6 +352,7 @@ struct SourcePickerView: View {
         if let library, let own = prefetched?.filter({ $0.providerID == library.providerID }), !own.isEmpty { prefetched = own }
         raw = prefetched ?? []
         failures = [:]
+        releaseStatus = .unknown
         finished = false
         quickFilter = .all
         let live = prefetched == nil
@@ -326,6 +366,8 @@ struct SourcePickerView: View {
         guard !Task.isCancelled else { return }
         // Keep the prefetched list if the refresh came back empty only because providers failed.
         if prefetched != nil, !fresh.isEmpty || failures.isEmpty { raw = fresh }
+        if raw.isEmpty { releaseStatus = await lookUpReleaseStatus() }
+        guard !Task.isCancelled else { return }
         finished = true
         maybeAutoPlay(final: true)
     }
