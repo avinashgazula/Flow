@@ -164,6 +164,12 @@ final class TVFocusUITests: XCTestCase {
         remote.press(.select)
         XCTAssertTrue(waitUntil(30) { !self.btn("Details").exists }, "Select on Details opens the title's page over Home")
         assertOneFocus("on the title page")
+        // The page opens on Play (or Resume), so one press of Select plays the title.
+        let play = app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@ OR label BEGINSWITH[c] %@", "Play", "Resume")).firstMatch
+        XCTAssertTrue(waitUntil(15) { play.hasFocus }, "Play has focus on the title page, focus is on \(describeFocus())")
+        press(.right, "Right from Play")
+        XCTAssertFalse(play.hasFocus, "Right moves to the round buttons beside Play, focus is on \(describeFocus())")
+        press(.left, "Left back to Play")
         press(.down, "Down on the title page")
         press(.right, "Right on the title page")
         remote.press(.menu)

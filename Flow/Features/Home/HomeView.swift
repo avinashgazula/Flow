@@ -759,6 +759,9 @@ private struct LeadSlide: View {
 /// screen: eased, so no band shows, and solid at the bottom so what follows begins where the picture ends and nothing seams.
 struct HeroFade: View {
     let wide: Bool
+    /// A title page sets its whole head (ratings, synopsis, buttons) over the picture on a wide screen, not just a logo and
+    /// a line, so the fade from the left is deeper there: small type keeps its contrast over any artwork.
+    var column = false
 
     var body: some View {
         let ground = Theme.Palette.bg
@@ -771,7 +774,14 @@ struct HeroFade: View {
                 .init(color: ground.opacity(0.94), location: 0.86),
                 .init(color: ground, location: 1),
             ], startPoint: .top, endPoint: .bottom)
-            if wide {
+            if wide && column {
+                LinearGradient(stops: [
+                    .init(color: ground, location: 0),
+                    .init(color: ground.opacity(0.97), location: 0.45),
+                    .init(color: ground.opacity(0.6), location: 0.66),
+                    .init(color: ground.opacity(0), location: 0.86),
+                ], startPoint: .leading, endPoint: .trailing)
+            } else if wide {
                 LinearGradient(stops: [
                     .init(color: ground.opacity(0.86), location: 0),
                     .init(color: ground.opacity(0.62), location: 0.25),

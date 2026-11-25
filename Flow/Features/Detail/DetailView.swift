@@ -145,7 +145,7 @@ struct DetailView: View {
                 RemoteImage(url: TMDBImage.url(current.backdropPath, size: .original) ?? current.tmdbPosterURL,
                             maxPixel: Platform.isTV ? 1920 : 2400, fallbackTitle: nil)
                     .accessibilityHidden(true)
-                HeroFade(wide: wide)
+                HeroFade(wide: wide, column: true)
                 HeroScrim(topInset: topExtra)
             }
             .clipped()
