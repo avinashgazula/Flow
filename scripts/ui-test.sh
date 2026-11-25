@@ -10,7 +10,7 @@
 #               share it (one scheme), so `ui-test.sh ios` then `ui-test.sh ipad --no-build` builds once.
 #
 # Tests run on several clones of the simulator at once (Xcode's parallel testing, one test class per clone at a time).
-# UI_TEST_WORKERS sets how many: by default 2 on CI (CI=true; a hosted macOS runner has 3 cores and 7 GB), and here half
+# UI_TEST_WORKERS sets how many: by default 1 on CI (CI=true; a hosted macOS runner has 3 cores and 7 GB), and here half
 # the Mac's cores, at most 6; at most 2 for --smoke. UI_TEST_WORKERS=1 runs one test after another on the simulator itself, with every step's
 # timing in the log ("t = …"), which is the way to see where a slow test spends its seconds.
 #
@@ -90,8 +90,10 @@ bundle=FlowUITests
 [ "$platform" = tvos ] && scheme=Flow-tvOS && bundle=FlowTVUITests
 
 if [ -z "${UI_TEST_WORKERS:-}" ]; then
+  # A hosted runner can't carry clones: with two on its 3 cores and 7 GB, a launch took minutes and timed out, so CI tests
+  # on the simulator itself.
   if [ "${CI:-}" = true ]; then
-    UI_TEST_WORKERS=2
+    UI_TEST_WORKERS=1
   else
     UI_TEST_WORKERS=$(( $(sysctl -n hw.ncpu) / 2 ))
     [ "$UI_TEST_WORKERS" -gt 6 ] && UI_TEST_WORKERS=6

@@ -5,7 +5,7 @@ name: UI tests
 # build and screenshot jobs in ci.yml stay as they are; both start on the same pushes.
 #
 # Two tiers. A side branch (and a pull request) runs the smoke tier: the short list of everyday paths in scripts/ui-test.sh,
-# built once for iPhone and iPad on one runner, and Apple TV's on another, so a change hears back in minutes. Where the work
+# on iPhone, iPad and Apple TV side by side, one simulator each, so a change hears back in minutes. Where the work
 # lands (main and claude/build-flow-app), and whenever the workflow is started by hand, the whole suite runs on each device.
 
 on:
@@ -38,10 +38,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # iPhone and iPad share one build: the iPad run tests what the iPhone run built.
-          # iPad runs even when iPhone fails, so one push reports both.
-          - { name: iPhone and iPad, run: "a=0; b=0; scripts/ui-test.sh ios --smoke || a=$?; scripts/ui-test.sh ipad --smoke --no-build || b=$?; exit $((a || b))", results: "ios ipad" }
-          - { name: Apple TV, run: "scripts/ui-test.sh tvos --smoke", results: tvos }
+          # One runner each: the build takes about three minutes, so running the devices side by side beats sharing it.
+          - { name: iPhone, platform: ios }
+          - { name: iPad, platform: ipad }
+          - { name: Apple TV, platform: tvos }
     env:
       FLOW_SIM_OS: "26"
     steps:
@@ -55,15 +55,15 @@ jobs:
           brew install xcodegen
           xcodegen generate
       - name: Run the smoke tests
-        run: ${{ matrix.run }}
+        run: scripts/ui-test.sh ${{ matrix.platform }} --smoke
       # The result bundle has every failure's screenshots and the accessibility audit's findings.
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: ui-smoke-results-${{ matrix.results == 'tvos' && 'tvos' || 'ios-ipad' }}
+          name: ui-smoke-results-${{ matrix.platform }}
           path: |
-            build/ui-tests-*.xcresult
-            build/ui-tests-*.log
+            build/ui-tests-${{ matrix.platform }}.xcresult
+            build/ui-tests-${{ matrix.platform }}.log
           if-no-files-found: ignore
 
   full:
