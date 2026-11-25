@@ -348,9 +348,13 @@ struct AboutSection: View {
         status == "Returning Series" ? "Returning" : status
     }
 
+    /// Name over value in even columns, with no lines: the space between them does the dividing.
     var body: some View {
         RuledSection(title: "About") {
-            RuledGrid(items: rows, columns: Platform.ruledColumns) { row, _ in
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Space.l, alignment: .topLeading), count: Platform.ruledColumns),
+                      alignment: .leading, spacing: Theme.Space.m) {
+                ForEach(rows.indices, id: \.self) { index in
+                let row = rows[index]
                 VStack(alignment: .leading, spacing: 4) {
                     Text(row.label)
                         .font(Theme.Typeface.detailKey)
@@ -361,9 +365,9 @@ struct AboutSection: View {
                         .foregroundStyle(Theme.Palette.fg)
                         .multilineTextAlignment(.leading)
                 }
-                .padding(.horizontal, Theme.Space.m)
-                .padding(.vertical, Theme.Space.s)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .combine)
+                }
             }
         }
     }
@@ -646,47 +650,32 @@ struct WhereToWatch: View {
         }
     }
 
+    /// Each way to watch as a small muted name over its services' logos, with no lines between them.
     var body: some View {
         RuledSection(title: "Where to Watch", note: "Data from JustWatch") {
-            VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 ForEach(rows, id: \.kind) { row in
-                    Group {
-                        if Platform.isPhone {
-                            VStack(alignment: .leading, spacing: 0) {
-                                kindLabel(row.kind).padding(.vertical, Theme.Space.s)
-                                RuleLine(thin: true)
-                                services(row.providers, kind: row.kind)
-                            }
-                        } else {
-                            HStack(alignment: .top, spacing: 0) {
-                                kindLabel(row.kind)
-                                    .frame(width: 168 * Theme.scale, alignment: .leading)
-                                    .frame(maxHeight: .infinity, alignment: .center)
-                                Rectangle().fill(Theme.Palette.rule).frame(width: Theme.Rule.thin)
-                                services(row.providers, kind: row.kind)
-                            }
-                            .fixedSize(horizontal: false, vertical: true)
-                        }
+                    VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                        kindLabel(row.kind)
+                        services(row.providers, kind: row.kind)
                     }
-                    .ruledRow()
                 }
             }
-            .overlay(alignment: .top) { Rectangle().fill(Theme.Palette.rule).frame(height: Theme.Rule.thin) }
         }
     }
 
     private func kindLabel(_ kind: Availability.Kind) -> some View {
         Text(kind.label)
-            .font(Theme.Typeface.control)
-            .detailCaps(0.08, size: 13)
-            .foregroundStyle(Theme.Palette.fg)
+            .font(Theme.Typeface.detailKey)
+            .detailCaps(0.08)
+            .foregroundStyle(Theme.Palette.muted)
     }
 
     private func services(_ providers: [WatchProvider], kind: Availability.Kind) -> some View {
-        WrappingRow(spacing: -Theme.Rule.thin, lineSpacing: -Theme.Rule.thin) {
+        WrappingRow(spacing: Theme.Space.xs, lineSpacing: Theme.Space.xs) {
             ForEach(providers, id: \.providerId) { provider in tile(provider, kind: kind) }
         }
-        .padding(Platform.isTV ? Theme.Space.s : 0)
+        .padding(.vertical, Platform.isTV ? Theme.Space.xs : 0)
     }
 
     private func tile(_ provider: WatchProvider, kind: Availability.Kind) -> some View {
@@ -696,9 +685,8 @@ struct WhereToWatch: View {
             #endif
         } label: {
             RemoteImage(url: TMDBImage.url(provider.logoPath, size: .posterSmall), maxPixel: 160, fallbackTitle: provider.providerName)
-                .frame(width: 64 * Theme.scale, height: 64 * Theme.scale)
+                .frame(width: 56 * Theme.scale, height: 56 * Theme.scale)
                 .clipped()
-                .overlay(Rectangle().strokeBorder(Theme.Palette.rule, lineWidth: Theme.Rule.thin))
         }
         .buttonStyle(CardButtonStyle())
         .accessibilityLabel("\(provider.providerName), \(kind.label)")

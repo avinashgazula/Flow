@@ -21,8 +21,6 @@ struct DetailView: View {
     @State private var downloadRequest: PlaybackRequest?
     @State private var showFullOverview = false
     @State private var reviews: [Review] = []
-    /// What Play would start, once the sources the page searched for have answered.
-    @State private var bestVersion: AppModel.BestVersion?
     /// The title has scrolled up under the navigation bar, so the bar shows it instead.
     @State private var titleCollapsed = false
     /// Where the navigation bar ends, so the title collapses once it has passed beneath it.
@@ -54,11 +52,6 @@ struct DetailView: View {
                         headColumn(alignment: .center)
                             .padding(.horizontal, Theme.Space.gutter)
                     }
-                }
-                if bestVersion != nil {
-                    versionBlock
-                        .frame(maxWidth: 640 * Theme.scale, alignment: .leading)
-                        .padding(.horizontal, Theme.Space.gutter)
                 }
                 // Specials alone, with Specials Season off, leave nothing to list.
                 if current.type == .show, let detail, detail.seasons.contains(where: { $0.number > 0 || general.showSpecialsSeason }) {
@@ -103,7 +96,6 @@ struct DetailView: View {
         .inlineNavigationTitle()
         .flowMinimizingToolbar()
         .task(id: item.id) { await load() }
-        .task(id: item.id) { await watchBestVersion() }
         .task(id: current.ids.tmdb) { await loadLogo() }
         .advertisesTitle(current)
         .sheet(item: $downloadRequest) { request in
@@ -131,8 +123,10 @@ struct DetailView: View {
         let pictureHeight = CGFloat(TitleHead.height(shape: shape, width: Double(width), viewport: Double(viewport + topExtra)))
         let alignment: HorizontalAlignment = wide ? .leading : .center
         return VStack(alignment: alignment, spacing: Theme.Space.s) {
+            // One fixed slot from the first frame, whether the logo is still coming, arrives, or the name stands in.
             HeroLogo(path: logo, title: current.title, maxWidth: logoMaxWidth, maxHeight: logoMaxHeight,
                      nameSize: nameSize, alignment: wide ? .leading : .center)
+                .frame(height: logoMaxHeight, alignment: wide ? .bottomLeading : .bottom)
             factsLine(alignment: alignment)
             if wide {
                 headColumn(alignment: .leading)
@@ -271,11 +265,19 @@ struct DetailView: View {
         }
     }
 
-    @ViewBuilder
+    /// The scores fade in where their lines were kept from the first frame (as many as the chosen sources would fill), so
+    /// the synopsis and Play don't move when they arrive.
     private func ratingsRow(centered: Bool) -> some View {
-        if !ratings.isEmpty || current.voteAverage != nil {
-            RatingsRow(ratings: ratings.isEmpty ? Ratings(tmdb: current.voteAverage) : ratings, item: current, centered: centered)
+        let perLine = Platform.isPhone ? 4 : 7
+        let expected = model.settings.metadata.ratingsShown.filter { $0 != .mal }.count
+        let lines = expected == 0 ? 0 : (expected + perLine - 1) / perLine
+        let reserved = CGFloat(lines) * 36 * Theme.scale + CGFloat(max(0, lines - 1)) * Theme.Space.xs
+        return Group {
+            if !ratings.isEmpty || current.voteAverage != nil {
+                RatingsRow(ratings: ratings.isEmpty ? Ratings(tmdb: current.voteAverage) : ratings, item: current, centered: centered)
+            }
         }
+        .frame(minHeight: reserved, alignment: .top)
     }
 
     /// The synopsis, three lines until More; the tagline and the credits-scene note come with the rest of it.
@@ -298,7 +300,8 @@ struct DetailView: View {
                     .multilineTextAlignment(textAlignment)
                     .lineLimit(showFullOverview ? nil : 3)
                     .fixedSize(horizontal: false, vertical: true)
-                if overview.count > 110 || detail?.tagline?.isEmpty == false {
+                // Decided by what is known from the first frame, so the button never appears late and moves what follows.
+                if overview.count > 110 {
                     Button(showFullOverview ? "Less" : "More") { withAnimation(Theme.Motion.enter) { showFullOverview.toggle() } }
                         .buttonStyle(QuietButtonStyle())
                         // The word lines up with the text above, not with the button's own padding.
@@ -545,42 +548,6 @@ struct DetailView: View {
         #endif
     }
 
-    /// How the title plays, as ruled mono rows under the frame: the best version, how it plays on this device, and
-    /// the sources (which open the picker).
-    @ViewBuilder
-    private var versionBlock: some View {
-        if let best = bestVersion {
-            VStack(alignment: .leading, spacing: 0) {
-                RuleLine()
-                VersionRow("Best version") {
-                    Text(best.line.isEmpty ? "Unknown format" : best.line)
-                }
-                VersionRow("Plays") {
-                    if let note = best.note, note.isWarning {
-                        Text(note.text).foregroundStyle(Theme.Palette.warn)
-                    } else if let note = best.note {
-                        Text("Direct · " + note.text)
-                    } else {
-                        Text("Direct")
-                    }
-                }
-                Button { Task { await model.play(current, library: libraryProviderID) } } label: {
-                    VersionRow("Sources", bordered: false) {
-                        HStack(spacing: Theme.Space.xs) {
-                            Text(([String(best.count)] + best.providers.prefix(3)).joined(separator: " · "))
-                            Spacer(minLength: 0)
-                            Image(systemName: "chevron.right").font(.system(size: 11 * Theme.scale, weight: .bold))
-                        }
-                    }
-                }
-                .buttonStyle(RuledCellStyle())
-                .ruledRow()
-                .accessibilityHint("Opens the source list")
-            }
-            .transition(.opacity)
-        }
-    }
-
     private func toggleRewatch() {
         Task {
             if rewatching { await model.endRewatch(current) } else { await model.startRewatch(current) }
@@ -630,17 +597,13 @@ struct DetailView: View {
         if !about.isEmpty { about }
     }
 
-    /// The collection a film belongs to, as one ruled row.
+    /// The collection a film belongs to, as one row that lights up under the pointer or in focus.
     private func collectionRow(_ collection: MediaCollection) -> some View {
         RuledSection(title: "Collection") {
-            VStack(spacing: 0) {
-                RuleLine(thin: true)
-                Button { model.navigate(to: .collection(id: collection.id, name: collection.name)) } label: {
-                    CollectionCell(collection: collection)
-                }
-                .buttonStyle(RuledCellStyle())
-                .ruledRow()
+            Button { model.navigate(to: .collection(id: collection.id, name: collection.name)) } label: {
+                CollectionCell(collection: collection)
             }
+            .buttonStyle(RuledCellStyle())
         }
     }
 
@@ -658,19 +621,6 @@ struct DetailView: View {
         let found = await catalog.logo(for: current) ?? ""
         guard !Task.isCancelled else { return }
         logo = found
-    }
-
-    /// The sources Prefetch on Detail View finds arrive a little after the page opens, so this waits for them.
-    private func watchBestVersion() async {
-        guard let request = await model.playRequest(for: item) else { return }
-        for _ in 0..<40 {
-            if let found = model.bestVersion(for: request) {
-                withAnimation(Theme.Motion.fade) { bestVersion = found }
-                return
-            }
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            if Task.isCancelled { return }
-        }
     }
 
     private func load() async {
@@ -720,61 +670,21 @@ extension DetailView {
 }
 
 
-/// One row of the how-it-plays block: a small muted name, then its value in larger print, a 1px rule under it. Inside the
-/// Sources button it reads `cellLit`, since muted has no contrast on the blue.
-private struct VersionRow<Value: View>: View {
-    let name: String
-    var bordered = true
-    let value: Value
-    @Environment(\.cellLit) private var lit
-
-    init(_ name: String, bordered: Bool = true, @ViewBuilder value: () -> Value) {
-        self.name = name
-        self.bordered = bordered
-        self.value = value()
-    }
-
-    var body: some View {
-        let row = HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-            Text(name)
-                .font(Theme.Typeface.detailKey)
-                .detailCaps(0.12)
-                .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted)
-                .frame(width: 108 * Theme.scale, alignment: .leading)
-            value
-                .font(Theme.Typeface.control)
-                .detailCaps(0.06, size: 13)
-                .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.fg)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.vertical, Theme.Space.s)
-        .padding(.horizontal, Theme.Space.xs)
-        .accessibilityElement(children: .combine)
-        if bordered { row.ruledRow() } else { row }
-    }
-}
-
-/// Cast as a ruled grid of cells: a portrait when TMDB has one, then the name and role. Six show; Show All opens the rest.
+/// Cast as a row of round portraits (initials when TMDB has none), each with the name and the role under it, at one size.
 private struct CastSection: View {
     let cast: [CastMember]
-    @State private var all = false
 
-    private static let shown = 6
+    private var side: CGFloat { (Platform.isPhone ? 88 : 104) * Theme.scale }
 
     var body: some View {
-        RuledSection(title: "Cast") {
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                RuledGrid(items: Array(cast.prefix(all ? cast.count : Self.shown)), columns: Platform.ruledColumns) { member, _ in
+        RuledSection(title: "Cast", paddedContent: false) {
+            FilmScroller(ids: cast.map(\.id), itemWidth: side) {
+                ForEach(cast, id: \.id) { member in
                     NavigationLink(value: Route.person(id: member.id, name: member.name)) {
-                        CastCell(member: member)
+                        CastCell(member: member, side: side)
                     }
-                    .buttonStyle(RuledCellStyle())
+                    .buttonStyle(CardButtonStyle(lift: 1.04))
                     .accessibilityLabel(member.role.isEmpty ? member.name : "\(member.name), \(member.role)")
-                }
-                if cast.count > Self.shown {
-                    Button(all ? "Show Fewer" : "Show All \(cast.count)") { withAnimation(Theme.Motion.enter) { all.toggle() } }
-                        .buttonStyle(QuietButtonStyle())
-                        .padding(.leading, -(Theme.Space.m + 2))
                 }
             }
         }
@@ -783,33 +693,45 @@ private struct CastSection: View {
 
 private struct CastCell: View {
     let member: CastMember
-    @Environment(\.cellLit) private var lit
+    let side: CGFloat
+    @Environment(\.isFocused) private var focused
 
     var body: some View {
-        HStack(alignment: .center, spacing: Theme.Space.s) {
-            if member.profilePath != nil {
-                RemoteImage(url: TMDBImage.url(member.profilePath, size: .profile), maxPixel: 200)
-                    .frame(width: 44 * Theme.scale, height: 66 * Theme.scale)
-                    .clipped()
-                    .overlay(Rectangle().strokeBorder(lit ? Theme.Palette.onBlue : Theme.Palette.rule, lineWidth: Theme.Rule.thin))
-                    .accessibilityHidden(true)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(member.name)
-                    .font(Theme.Typeface.custom(Theme.Face.sans, 17, .headline))
-                    .textCase(.uppercase)
-                    .multilineTextAlignment(.leading)
-                if !member.role.isEmpty {
-                    Text(member.role)
-                        .font(Theme.Typeface.caption)
-                        .foregroundStyle(lit ? Theme.Palette.onBlue : Theme.Palette.muted)
-                        .multilineTextAlignment(.leading)
+        VStack(spacing: Theme.Space.xs) {
+            ZStack {
+                Circle().fill(Theme.Palette.tint2)
+                if member.profilePath != nil {
+                    RemoteImage(url: TMDBImage.url(member.profilePath, size: .profile), maxPixel: 300)
+                } else {
+                    Text(initials)
+                        .font(Theme.Typeface.custom(Theme.Face.sans, 26, .title3))
+                        .foregroundStyle(Theme.Palette.muted)
                 }
             }
-            Spacer(minLength: 0)
+            .frame(width: side, height: side)
+            .clipShape(Circle())
+            // Focus on Apple TV (and a keyboard) is the blue ring, round like the portrait.
+            .overlay(Circle().strokeBorder(Theme.Palette.blue, lineWidth: focused ? Theme.Rule.focus : 0))
+            .accessibilityHidden(true)
+            // Two lines kept for every name, so a long one wraps and the row stays even.
+            VStack(spacing: 2) {
+                Text(member.name)
+                    .font(Theme.Typeface.cardTitle)
+                    .foregroundStyle(Theme.Palette.fg)
+                    .lineLimit(2, reservesSpace: true)
+                Text(member.role.isEmpty ? " " : member.role)
+                    .font(Theme.Typeface.caption)
+                    .foregroundStyle(Theme.Palette.muted)
+                    .lineLimit(1)
+            }
+            .multilineTextAlignment(.center)
+            .frame(width: side)
         }
-        .padding(Theme.Space.s)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(width: side)
+    }
+
+    private var initials: String {
+        member.name.split(separator: " ").prefix(2).compactMap(\.first).map(String.init).joined()
     }
 }
 

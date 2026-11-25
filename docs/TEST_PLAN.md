@@ -100,13 +100,18 @@ pieces are in Theme.swift natively.
 
 ### Detail page
 
-- **Header:**
-  - Logo or title, metadata line, the ratings row (wraps to two centred lines on iPhone with many
-    sources), Play or Resume naming the right episode.
+- **Header:** opens as Home's lead does (`TitleHero` parts in DetailView): the backdrop edge to edge under the bar,
+  the logo (or the name in Archivo) over the fade, then one line of facts with the certification in an outlined badge.
+  - Ratings in one row of equal columns, mark and score, no boxes (iPhone: four to a line, shared evenly, so seven
+    are four and three). Tapping one opens that site's reviews (not on T).
+  - Three lines of synopsis with More (which also shows the tagline).
+  - Play or Resume naming the right episode ("RESUME S03E07", the code muted), then round buttons of one height.
+    On iPhone the Play row is on the first screen.
   - "Your Rating" stars appear on watched titles. Tapping a star sets it; tapping the same star clears it.
-- **Actions:** labelled Watched, Watchlist, Favourite, Download (i, P, M) and Share (i, P, M).
-  - Shows on iPhone put Shuffle, Rewatch and Share under More.
-  - Focused buttons turn white on T.
+- **Actions:** round buttons with spoken labels: Add to Watchlist, Mark Watched, and on iPad Trailer and Favourite;
+  everything else (Trailer and Favourite on iPhone, Download, Shuffle Play, Rewatch, Share) is under More (i, P).
+  The Mac and Apple TV have no More and show every action as a button.
+  - Focused buttons turn blue on T; Down from the tab bar lands on Play.
   - Share opens the share sheet with the TMDb link.
 - **Collapsing title (i, P):** scroll until the logo goes under the navigation bar. The bar should
   fill in with the title, and clear again when scrolling back. *Never seen on a device.*
@@ -115,12 +120,21 @@ pieces are in Theme.swift natively.
   - It creates an all-day event when there's no air time.
   - Denying access shows a clear toast.
 - **Seasons and episodes:**
-  - Watch Season. Watched checks.
+  - A row of equal 16:9 cards under "Season N ⌃⌄" (a menu when there is more than one season), opening at the
+    next episode to watch. Each: "EPISODE 7", the title on one line, runtime · rating, the air date.
+  - An episode with no still (or hidden as a spoiler) shows the show's art dimmed with its number: never an empty box.
+    The tour's `detail-show-no-stills` step shows it.
+  - Left and Right move across the row on T.
+  - Watch Season. Watched shows as a full red bar under the still.
   - Specials season, following the setting.
   - Episode spoiler blur, following the setting.
   - "Mark Watched Up to Here."
   - Episodes that fail to load show Try Again.
-- **Other sections:** Where to Watch, About, Reviews (spoiler tags), Cast & Crew → Person,
+- **Almost no lines:** sections are separated by space and their titles. No best-version table (Play picks the
+  best source; the picker lists them all). Nothing below the picture moves as the page loads: the logo's slot and the
+  ratings' lines are kept from the first frame.
+- **Other sections:** Cast as a row of round portraits → Person, Where to Watch, About (name over value, no grid),
+  Reviews (cards of one size, spoiler tags),
   trailers, collection, recommendations. The Request button appears when Seerr is set up.
 - **Transitions:** posters zoom into the detail page and back (i, P, iOS 18+).
 

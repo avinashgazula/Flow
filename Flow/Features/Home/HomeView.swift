@@ -1042,8 +1042,8 @@ private struct LeadDotsFocusBody<Label: View>: View {
 }
 #endif
 
-/// A lead's controls (Home's and a title page's): Resume (or Play) as a solid pill, the rest as round buttons with a ring,
-/// all one height. Hover (Mac, iPad pointer) and focus (Apple TV) invert them to the action colour, as every control in the
+/// A lead's controls (Home's and a title page's): Resume (or Play) as a solid pill, the rest as round buttons filled with
+/// the quiet surface tint, all one height. Hover (Mac, iPad pointer) and focus (Apple TV) invert them to the action colour, as every control in the
 /// app does. These are the app's only round controls outside the player (web/DESIGN.md, Home Lead). `fill` stretches the
 /// pill across what its row leaves; `size` is the height, and the width of a circle.
 struct HeroButtonStyle: ButtonStyle {
@@ -1070,8 +1070,9 @@ private struct HeroButtonBody: View {
         let lit = enabled && (focused || hovering)
         let size = side * Theme.scale
         let ink: Color = lit ? Theme.Palette.onBlue : kind == .pill ? Theme.Palette.bg : Theme.Palette.fg
-        let fill: Color = lit ? (configuration.isPressed ? Theme.Palette.bluePressed : Theme.Palette.blue) : kind == .pill ? Theme.Palette.fg : Theme.Palette.fg.opacity(0.12)
-        let ring: Color = lit ? Theme.Palette.blue : Theme.Palette.fg
+        // The pill is solid ink; the round ones are filled with the theme's quiet surface, with no outline, so a row of them
+        // reads as one set of equal tiles.
+        let fill: Color = lit ? (configuration.isPressed ? Theme.Palette.bluePressed : Theme.Palette.blue) : kind == .pill ? Theme.Palette.fg : Theme.Palette.tint2
         configuration.label
             .font(kind == .pill ? Theme.Typeface.control : .system(size: 18 * Theme.scale, weight: .bold))
             .controlText()
@@ -1082,7 +1083,6 @@ private struct HeroButtonBody: View {
             .frame(minWidth: kind == .pill ? (stretches ? nil : 150 * Theme.scale) : size, maxWidth: stretches ? .infinity : nil, minHeight: size)
             .frame(width: kind == .circle ? size : nil)
             .background(fill, in: Capsule())
-            .overlay(Capsule().strokeBorder(ring, lineWidth: Theme.Rule.heavy))
             .contentShape(Capsule())
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(Theme.Motion.hover, value: lit)
