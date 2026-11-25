@@ -3,6 +3,7 @@ import { buildICS } from '../lib/ics'
 import { isBareDay } from '../lib/airDates'
 import { applying, moving } from '../lib/watchlistOrder'
 import { bindsLinksToConnection, isSlateURL, isTooShort, isTooSmall, looksLikeSlate } from '../lib/sources/slate'
+import { homeReleaseStatus } from '../lib/tmdb/homeRelease'
 import { contract } from './support'
 
 contract('source-slate', ({ op, input }) => {
@@ -46,5 +47,10 @@ contract('calendar-ics', ({ op, input }) => {
     const events = (input.events as Record<string, string>[]).map((e) => ({ uid: e.uid!, title: e.title!, day: e.day, start: ms(e.start), end: ms(e.end), description: e.notes, url: e.url }))
     return buildICS(events, Date.parse(input.now))
   }
+  throw new Error(`unknown op ${op}`)
+})
+
+contract('home-release', ({ op, input }) => {
+  if (op === 'status') return homeReleaseStatus(input.releases, input.region ?? undefined, input.now)
   throw new Error(`unknown op ${op}`)
 })

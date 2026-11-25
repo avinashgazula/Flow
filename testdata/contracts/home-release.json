@@ -1,0 +1,466 @@
+{
+ "area": "home-release",
+ "description": "Whether a film is out at home yet, from its per-country release dates (FlowKit HomeRelease.status, web/src/lib/tmdb/homeRelease.ts). Dates are calendar days compared as days; `now` is the viewer's day; release types are TMDB's: 1 premiere, 2 limited theatrical, 3 theatrical, 4 digital, 5 physical, 6 TV.",
+ "cases": [
+  {
+   "name": "no release data is unknown",
+   "op": "status",
+   "input": {
+    "releases": [],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "unknown"
+   }
+  },
+  {
+   "name": "a past digital release is available",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-09-01"
+     },
+     {
+      "country": "US",
+      "type": 4,
+      "date": "2026-10-20"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "available"
+   }
+  },
+  {
+   "name": "a physical release in another country is available",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-09-01"
+     },
+     {
+      "country": "GB",
+      "type": 5,
+      "date": "2026-10-20"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "available"
+   }
+  },
+  {
+   "name": "a TV release counts as available",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-09-01"
+     },
+     {
+      "country": "US",
+      "type": 6,
+      "date": "2026-11-01"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "available"
+   }
+  },
+  {
+   "name": "a cinema-only film is in cinemas",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-10-16"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "inCinemas",
+    "since": "2026-10-16",
+    "digitalOn": null
+   }
+  },
+  {
+   "name": "a future digital date is named",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-10-16"
+     },
+     {
+      "country": "US",
+      "type": 4,
+      "date": "2026-12-18"
+     },
+     {
+      "country": "US",
+      "type": 5,
+      "date": "2027-01-20"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "inCinemas",
+    "since": "2026-10-16",
+    "digitalOn": "2026-12-18"
+   }
+  },
+  {
+   "name": "a future physical date is named when there is no digital one",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-10-16"
+     },
+     {
+      "country": "US",
+      "type": 5,
+      "date": "2027-01-20"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "inCinemas",
+    "since": "2026-10-16",
+    "digitalOn": "2027-01-20"
+   }
+  },
+  {
+   "name": "the region's dates are named first",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "GB",
+      "type": 3,
+      "date": "2026-10-09"
+     },
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-10-16"
+     },
+     {
+      "country": "GB",
+      "type": 4,
+      "date": "2026-12-01"
+     },
+     {
+      "country": "US",
+      "type": 4,
+      "date": "2026-12-18"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "inCinemas",
+    "since": "2026-10-16",
+    "digitalOn": "2026-12-18"
+   }
+  },
+  {
+   "name": "without a region the earliest dates are named",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "GB",
+      "type": 3,
+      "date": "2026-10-09"
+     },
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-10-16"
+     },
+     {
+      "country": "GB",
+      "type": 4,
+      "date": "2026-12-01"
+     },
+     {
+      "country": "US",
+      "type": 4,
+      "date": "2026-12-18"
+     }
+    ],
+    "region": null,
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "inCinemas",
+    "since": "2026-10-09",
+    "digitalOn": "2026-12-01"
+   }
+  },
+  {
+   "name": "another country's dates fill in when the region has none",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "GB",
+      "type": 3,
+      "date": "2026-10-09"
+     },
+     {
+      "country": "GB",
+      "type": 4,
+      "date": "2026-12-01"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "inCinemas",
+    "since": "2026-10-09",
+    "digitalOn": "2026-12-01"
+   }
+  },
+  {
+   "name": "a limited run and a premiere count as cinemas",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "US",
+      "type": 1,
+      "date": "2026-10-10"
+     },
+     {
+      "country": "US",
+      "type": 2,
+      "date": "2026-10-12"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "inCinemas",
+    "since": "2026-10-10",
+    "digitalOn": null
+   }
+  },
+  {
+   "name": "the region's future cinema date does not hide an earlier one elsewhere",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "GB",
+      "type": 3,
+      "date": "2026-10-09"
+     },
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-12-03"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "inCinemas",
+    "since": "2026-10-09",
+    "digitalOn": null
+   }
+  },
+  {
+   "name": "a film with nothing out yet is upcoming",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "GB",
+      "type": 3,
+      "date": "2026-12-10"
+     },
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-12-03"
+     },
+     {
+      "country": "US",
+      "type": 4,
+      "date": "2027-02-01"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "upcoming",
+    "on": "2026-12-03"
+   }
+  },
+  {
+   "name": "upcoming names the earliest cinema date without a region",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "GB",
+      "type": 3,
+      "date": "2026-12-01"
+     },
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-12-03"
+     }
+    ],
+    "region": null,
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "upcoming",
+    "on": "2026-12-01"
+   }
+  },
+  {
+   "name": "upcoming with only a home date has no cinema date",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "US",
+      "type": 4,
+      "date": "2027-02-01"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "upcoming",
+    "on": null
+   }
+  },
+  {
+   "name": "a home release on the day itself is available",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-10-16"
+     },
+     {
+      "country": "US",
+      "type": 4,
+      "date": "2026-11-25"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "available"
+   }
+  },
+  {
+   "name": "a home release tomorrow is still ahead",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-10-16"
+     },
+     {
+      "country": "US",
+      "type": 4,
+      "date": "2026-11-26"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "inCinemas",
+    "since": "2026-10-16",
+    "digitalOn": "2026-11-26"
+   }
+  },
+  {
+   "name": "a cinema release on the day itself is in cinemas",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-11-25"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "inCinemas",
+    "since": "2026-11-25",
+    "digitalOn": null
+   }
+  },
+  {
+   "name": "a cinema release tomorrow is upcoming",
+   "op": "status",
+   "input": {
+    "releases": [
+     {
+      "country": "US",
+      "type": 3,
+      "date": "2026-11-26"
+     }
+    ],
+    "region": "US",
+    "now": "2026-11-25"
+   },
+   "expected": {
+    "status": "upcoming",
+    "on": "2026-11-26"
+   }
+  }
+ ]
+}

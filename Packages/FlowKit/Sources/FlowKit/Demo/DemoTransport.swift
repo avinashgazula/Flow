@@ -153,8 +153,20 @@ public struct DemoTransport: HTTPTransport {
         ]]
     }
 
+    /// The one film that is only in cinemas: no digital release and no sources, so the source picker can say why.
+    public static let inCinemasOnlyID = 475557
+
     static func releaseDates(_ t: DemoCatalog.Title) -> [String: Any] {
-        ["results": [["iso_3166_1": "US", "release_dates": [
+        if t.id == inCinemasOnlyID {
+            let day = ISO8601DateFormatter()
+            day.formatOptions = [.withFullDate]
+            day.timeZone = TimeZone(identifier: "UTC")
+            let opened = day.string(from: Date().addingTimeInterval(-40 * 86400))
+            return ["results": [["iso_3166_1": "US", "release_dates": [
+                ["certification": t.certification, "release_date": "\(opened)T00:00:00.000Z", "type": 3],
+            ]]]]
+        }
+        return ["results": [["iso_3166_1": "US", "release_dates": [
             ["certification": t.certification, "release_date": "\(t.year)-06-15T00:00:00.000Z", "type": 3],
             ["certification": t.certification, "release_date": "\(t.year)-09-15T00:00:00.000Z", "type": 4],
         ]]]]
@@ -370,6 +382,7 @@ public struct DemoSourceProvider: SourceProvider {
 
     public func sources(for request: PlaybackRequest) async throws -> [StreamSource] {
         try await Task.sleep(nanoseconds: 450_000_000)
+        if request.item.type == .movie, request.item.ids.tmdb == DemoTransport.inCinemasOnlyID { return [] }
         let name = request.displayTitle.replacingOccurrences(of: " ", with: ".")
         let rows: [(String, String)] = [
             ("🧿 1080p 🎫\nWEB-DL\n🔊 AAC\n📦 3.98 GB\n🌎 English", "\(name).1080p.WEB-DL.AAC.H264.mkv"),

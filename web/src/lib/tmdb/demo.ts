@@ -2,7 +2,7 @@
    catalogue so every screen fills without keys or accounts. Artwork comes from TMDB's public image
    CDN; the API itself is never called. Loaded only when sample data is on. */
 
-import { demoProviderId } from '../sources/demo'
+import { demoProviderId, inCinemasOnly } from '../sources/demo'
 import { lastSourceStore, type LastSource } from '../sources/lastSource'
 import { demoFollowed } from '../sports/demo'
 import { libraryStore } from '../store/library'
@@ -272,12 +272,13 @@ function detail(t: Title) {
   if (t.type === 'movie') {
     o.runtime = t.runtime
     const out = upcomingReleases[t.id]
+    const theatrical = t.id === inCinemasOnly.id ? day(-inCinemasOnly.daysAgo) : releaseDate(t)
     o.release_dates = {
       results: [
         {
           iso_3166_1: 'US',
           release_dates: [
-            { certification: t.certification, type: 3, release_date: `${releaseDate(t)}T00:00:00.000Z` },
+            { certification: t.certification, type: 3, release_date: `${theatrical}T00:00:00.000Z` },
             ...(out ? [{ certification: '', type: 4, release_date: `${day(out)}T00:00:00.000Z` }] : []),
           ],
         },

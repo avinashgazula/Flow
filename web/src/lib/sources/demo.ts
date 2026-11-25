@@ -8,6 +8,8 @@ import type { PlaybackRequest, Source } from './types'
 
 export const demoProviderId = 'demo.aiostreams'
 export const demoMatroskaId = 'demo#mkv'
+/** The one film that is only in cinemas, as days ago: no digital release and no sources, so the source picker can say why. */
+export const inCinemasOnly = { id: 475557, daysAgo: 40 }
 
 /** Reachable everywhere and always playable. */
 export const sampleStreams = [
@@ -28,6 +30,8 @@ export async function demoSources(request: PlaybackRequest, caps: Capabilities, 
     const timer = setTimeout(resolve, 450)
     signal?.addEventListener('abort', () => (clearTimeout(timer), reject(signal.reason)), { once: true })
   })
+  // Still in cinemas: nothing is out at home to find.
+  if (request.type === 'movie' && request.tmdbId === inCinemasOnly.id) return []
   const episode = request.type === 'show' ? `.S${pad(request.season ?? 1)}E${pad(request.episode ?? 1)}` : ''
   const name = `${request.item.title.replace(/[:'’]/g, '').replace(/\s+/g, '.')}${episode}`
   const rows: [text: string, filename: string, stream: number][] = [

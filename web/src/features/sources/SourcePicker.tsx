@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
@@ -9,7 +10,11 @@ import type { Anchor } from '../../components/menuPlace'
 import type { PlaybackRequest, Source } from '../../lib/sources'
 import { searchSources, type SearchUpdate } from '../../lib/sources/index'
 import { lastSourceFor, rememberSource } from '../../lib/sources/lastSource'
+import { q } from '../../lib/queries'
 import { useSettings } from '../../lib/store/settings'
+import { today } from '../../lib/tmdb/released'
+import { homeReleaseStatus, noSourcesNotice } from '../../lib/tmdb/homeRelease'
+import { userLocale } from '../../lib/time'
 import { categoryOf } from '../../lib/sources/order'
 import { categoryNames, normaliseSourceOrdering, type SourceAppearance } from '../../lib/sources/sourceSettings'
 import { optionId, SourceRow } from './SourceRow'
@@ -98,6 +103,13 @@ export function SourcePicker({ request, seed, onPick, onClose: closeNow }: { req
   const byProvider = appearance.titleDisplay === 'provider'
   const entries = useMemo(() => grouped(list, best, lastPlayed?.id, byProvider), [list, best, lastPlayed?.id, byProvider])
   const hidden = search.hidden ?? 0
+  // A film that is still in cinemas has no sources because nothing is out at home yet. Its release dates come with the
+  // title page's details, so they are usually cached already; a failed lookup keeps the ordinary wording.
+  const region = useSettings((x) => x.region)
+  const noSources = search.finished && !noProviders && all.length === 0 && hidden === 0
+  const movie = request.type === 'movie'
+  const releaseDetail = useQuery({ ...q.detail('movie', request.tmdbId), enabled: noSources && movie })
+  const notice = noSources && movie && releaseDetail.data ? noSourcesNotice(homeReleaseStatus(releaseDetail.data.releases ?? [], region, today()), today(), userLocale) : undefined
 
   function pick(source: Source | undefined) {
     if (!source || source.unsupported) return
@@ -237,7 +249,7 @@ export function SourcePicker({ request, seed, onPick, onClose: closeNow }: { req
               </Link>
             </Empty>
           )}
-          {search.finished && !noProviders && all.length === 0 && hidden === 0 && <Empty title="No Sources" text="None of your sources have this title yet." />}
+          {noSources && (!movie || !releaseDetail.isPending || releaseDetail.failureCount > 0) && <Empty title={notice?.title ?? 'No Sources'} text={notice?.text ?? 'None of your sources have this title yet.'} />}
           {search.finished && all.length === 0 && hidden > 0 && (
             <Empty title="No Sources Shown" text={`${hidden} source${hidden === 1 ? ' was' : 's were'} found, and your filters hide ${hidden === 1 ? 'it' : 'them'}. Loosen the filters or the result cap in Settings.`}>
               <Link to="/settings" hash="sources" className="btn btn-secondary btn-compact">

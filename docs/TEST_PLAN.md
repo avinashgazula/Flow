@@ -131,7 +131,7 @@ Redesigned in October 2026 as a plain table: no Best Match card, no sparkles or 
   - Pressing highlights the row like a table cell (i, P). The Mac highlights on hover. On T each row
     is its own surface and turns white with dark text when focused.
   - Filenames only appear when Settings → Source Appearance asks for them; otherwise "Copy File Name" is in the menu.
-- **States:** placeholder rows while searching, "Searching AIOStreams…" under the title, No Sources,
+- **States:** placeholder rows while searching, "Searching AIOStreams…" under the title, No Sources (a film that is only in cinemas says "In Cinemas" or "Not Out Yet" instead; the tour's sources-in-cinemas step shows it),
   and a line per failed or timed-out provider under the list.
 - **Largest text sizes:** the resolution column folds into the title ("1080p · WEB-DL · 3.98 GB").
 - **Settings respected:** Source Appearance (title, badges pack, size, compact, add-on formatting),
