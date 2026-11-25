@@ -130,7 +130,7 @@ public struct DemoTransport: HTTPTransport {
             case "season": return season(t, number: Int(parts.count > 3 ? parts[3] : "1") ?? 1)
             case "release_dates": return releaseDates(t)
             case "external_ids": return ["imdb_id": t.imdb, "tvdb_id": t.id + 70000]
-            case "images": return ["logos": [], "backdrops": [], "posters": []]
+            case "images": return ["id": t.id, "logos": logos(for: t.id), "backdrops": [], "posters": []]
             case "reviews": return reviews(t)
             default: return nil
             }
@@ -139,6 +139,14 @@ public struct DemoTransport: HTTPTransport {
         default:
             return nil
         }
+    }
+
+    /// The title logos TMDb has for two of the sample titles, as the file paths it serves; the rest have none, and Home's lead
+    /// sets their name as text, which is what it does for any title with no logo art.
+    static let logoPaths: [Int: String] = [693134: "/gOWf4IYBP2m1Q7dhbQJkwxH714x.png", 1396: "/h6yDiAXP5AyOzXHTxjUssYOGbG3.png"]
+
+    static func logos(for id: Int) -> [[String: Any]] {
+        logoPaths[id].map { [["iso_639_1": "en", "file_path": $0, "vote_average": 5.5, "aspect_ratio": 4.0]] } ?? []
     }
 
     /// Sample reviews for demo mode, plainly generic.
@@ -176,7 +184,7 @@ public struct DemoTransport: HTTPTransport {
         let similar = shuffled(DemoCatalog.titles.filter { $0.type == type && $0.id != t.id }, seed: t.id)
         o["recommendations"] = page(Array(similar.prefix(10)))
         o["similar"] = page(Array(similar.suffix(6)))
-        o["images"] = ["logos": []]
+        o["images"] = ["logos": logos(for: t.id)]
         o["original_language"] = "en"
         o["origin_country"] = ["US"]
         o["production_companies"] = [["id": 923, "name": "Legendary Pictures"], ["id": 174, "name": "Warner Bros. Pictures"]].prefix(1 + t.id % 2).map { $0 }

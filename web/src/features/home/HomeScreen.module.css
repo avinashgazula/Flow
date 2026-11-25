@@ -1,16 +1,19 @@
-/* Home. index.html paints a shell of this layout before any script runs (the greeting, the date and the
-   lead still); its measurements below must match the .shell-* rules there. */
-.home { padding: calc(var(--nav-height) + var(--space-l)) var(--page-inset) var(--space-xxl); }
+/* Home. index.html paints a shell of this layout before any script runs (the lead still, then the greeting and the date);
+   its measurements below must match the .shell-* rules there. The lead is the top of the page, under the bar. */
+.home { padding: 0 var(--page-inset) var(--space-xxl); }
 /* The page stops at 1360px and centres, so rows never run across a huge screen. */
 .wrap { max-width: 1360px; margin: 0 auto; }
 
-/* The greeting is a red label with the date beside it, above the lead. */
-.head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-xxs) var(--space-m); min-height: 20px; margin-bottom: var(--space-l); }
+/* The greeting is a red label with the date beside it, under the lead where the shelves begin (with no lead, at the top
+   of the page under the bar). */
+.head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-xxs) var(--space-m); min-height: 20px; margin: var(--space-l) 0; }
+.wrap[data-plain] { padding-top: calc(var(--nav-height) + var(--space-l)); }
+.wrap[data-plain] .head { margin-top: 0; }
 .title { font: 600 var(--fs-small) / 1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--red); }
 .date { font: 400 var(--fs-small) / 1.3 var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 
-/* Fullscreen top pick: it bleeds out to the window's edges, and Continue Watching goes under it, full width. */
-.bleed { margin: 0 calc(var(--page-inset) * -1) var(--space-l); }
+/* The lead bleeds out to the window's edges. */
+.bleed { margin: 0 calc(var(--page-inset) * -1); }
 
 /* Continue Watching: a ruled grid of cells under the lead. The cells share their 2px borders (each reaches 2px over its
    neighbour) with no gaps; on a phone they are one row that scrolls sideways. */

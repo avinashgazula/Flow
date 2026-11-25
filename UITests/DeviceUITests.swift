@@ -50,20 +50,22 @@ final class iPadLayoutUITests: FlowUITestCase {
         launchDemo()
     }
 
-    func testHomesLeadIsOneWidePictureWithItsWordsOverTheLowerLeftCorner() {
+    func testHomesLeadRunsEdgeToEdgeFromTheTopWithItsWordsOverTheLowerLeft() {
         let resume = btn("Resume")
         let backdrop = button(startingWith: "Breaking Bad, season 3")
         XCTAssertTrue(resume.waitForExistence(timeout: patience), "the lead offers Resume")
         XCTAssertTrue(backdrop.waitForExistence(timeout: patience), "and shows its backdrop")
-        // On a phone the plate sits under the picture; on a wide screen the picture spans the page and the plate lies over
-        // its lower-left corner.
-        // A landscape iPad may show the sidebar, so the page is narrower than the window: the picture only has to take most
-        // of it. What tells the layouts apart is where Resume is: on the picture now, in a column beside it before.
+        // The picture has no frame or gutter: it runs up under the top bar and to the window's right edge. A landscape iPad
+        // may show the sidebar, so its left edge can be the sidebar's; it still has to take most of the window.
         let window = app.windows.firstMatch.frame
         XCTAssertGreaterThan(backdrop.frame.width, window.width * 0.6, "the picture spans the page")
+        XCTAssertEqual(backdrop.frame.maxX, window.maxX, accuracy: 1, "to the window's right edge")
+        XCTAssertLessThanOrEqual(backdrop.frame.minY, window.minY + 1, "and up under the top bar")
+        // From 640 points the words sit at the lower left, over the fade.
         XCTAssertTrue(backdrop.frame.insetBy(dx: -1, dy: -1).contains(resume.frame), "Resume sits on the picture, not beside or under it")
         XCTAssertLessThan(resume.frame.midX, backdrop.frame.midX, "in its left half")
         XCTAssertGreaterThan(resume.frame.midY, backdrop.frame.midY, "and its lower half")
+        XCTAssertTrue(btn("Details").frame.minX > resume.frame.maxX, "Details, the round button, is beside it")
     }
 
     func testEveryTabIsReachableAlongTheTop() {

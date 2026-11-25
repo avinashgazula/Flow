@@ -35,10 +35,6 @@ const heroOptions: { value: HeroSource; label: string }[] = [
   { value: 'popular', label: 'Popular' },
   { value: 'watchlist', label: 'Watchlist' },
 ]
-const styles: { value: 'card' | 'fullscreen'; label: string }[] = [
-  { value: 'card', label: 'Card' },
-  { value: 'fullscreen', label: 'Fullscreen' },
-]
 const lengths = [10, 20, 30, 40].map((n) => ({ value: String(n), label: String(n) }))
 const limits = [{ value: 'all', label: 'All' }, ...[5, 10, 20].map((n) => ({ value: String(n), label: String(n) }))]
 const windows = [3, 7, 14, 30].map((n) => ({ value: String(n), label: `${n} days` }))
@@ -201,12 +197,8 @@ function TopPick() {
   const primary = useSettings((x) => x.heroSource)
   const secondary = useSettings((x) => x.heroSecondarySource)
   const auto = useSettings((x) => x.heroAutoAdvance)
-  const style = useSettings((x) => x.heroStyle ?? 'card')
   return (
-    <Group title="Top Pick" footer="Home leads with what is in progress, then the first titles from these sources, and turns through up to ten of them. Card is a framed still beside Continue Watching; Fullscreen draws the picture across the whole width, with Continue Watching under it.">
-      <Row label="Style" htmlFor="hero-style">
-        <Select id="hero-style" value={style} onChange={(v) => settingsStore.set({ heroStyle: v })} options={styles} label="Top pick style" />
-      </Row>
+    <Group title="Top Pick" footer="Home leads with what is in progress, then the first titles from these sources, and turns through up to ten of them. The picture runs edge to edge behind the title’s logo, with its buttons and a dot for each title.">
       <Row label="Primary Source" htmlFor="hero-primary">
         <Select id="hero-primary" value={primary} onChange={(v) => settingsStore.set({ heroSource: v })} options={heroOptions} label="Primary source" />
       </Row>

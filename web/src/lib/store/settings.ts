@@ -297,7 +297,7 @@ export interface Settings {
   showWatchedBadges: boolean
   showEpisodesRemaining: boolean
   // Home and posters, as the apps' `general.*`. Left out of the defaults like the fields above; absent means the apps' default, noted on each.
-  /** The top pick as a framed still beside Up Next (Card, the default) or as the backdrop edge to edge (Fullscreen). */
+  /** The top pick's old choice between a framed card and the backdrop edge to edge. The lead is edge to edge now, so nothing reads it; it stays so a backup or setup file that carries it still loads. */
   heroStyle?: 'card' | 'fullscreen'
   /** The title under each poster. Absent is on. */
   showPosterTitles?: boolean

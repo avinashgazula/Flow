@@ -14,13 +14,22 @@ final class HomeAndTabsUITests: FlowUITestCase {
         XCTAssertFalse(leadIs("Dune: Part Two"), "Dune, watched earlier, is only in Up Next")
     }
 
-    func testLeadPagerTurnsThroughThePicksAndBack() {
-        XCTAssertTrue(anyElement(startingWith: "Title 1 of").waitForExistence(timeout: patience), "the pager starts on the first pick")
-        btn("Next Title").tap()
-        XCTAssertTrue(anyElement(startingWith: "Title 2 of").waitForExistence(timeout: 10), "Next Title moves to the second pick")
+    func testLeadTurnsWithASwipeAndItsDotsSayWhere() {
+        XCTAssertTrue(anyElement(startingWith: "Title 1 of").waitForExistence(timeout: patience), "the dots start on the first pick")
+        swipeLead(left: true)
+        XCTAssertTrue(anyElement(startingWith: "Title 2 of").waitForExistence(timeout: 10), "a swipe left brings in the second pick")
         XCTAssertTrue(waitUntil(10) { !self.leadIs("Breaking Bad") }, "the first pick's title is replaced")
-        btn("Previous Title").tap()
-        XCTAssertTrue(waitUntil(10) { self.leadIs("Breaking Bad") }, "Previous Title comes back to the first pick")
+        swipeLead(left: false)
+        XCTAssertTrue(anyElement(startingWith: "Title 1 of").waitForExistence(timeout: 10), "a swipe right comes back to the first")
+        XCTAssertTrue(waitUntil(10) { self.leadIs("Breaking Bad") }, "and to its title")
+    }
+
+    /// A swipe across the upper part of the window, where the lead's picture is.
+    private func swipeLead(left: Bool) {
+        let window = app.windows.firstMatch
+        let right = window.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.25))
+        let leftEdge = window.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.25))
+        (left ? right : leftEdge).press(forDuration: 0.05, thenDragTo: left ? leftEdge : right)
     }
 
     func testUpNextListsWhatIsInProgress() {

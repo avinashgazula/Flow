@@ -135,7 +135,17 @@ final class TVFocusUITests: XCTestCase {
         enterHome()
         press(.right, "Right from Resume")
         XCTAssertTrue(btn("Details").hasFocus, "Right from Resume reaches Details, focus is on \(describeFocus())")
-        press(.down, "Down from Details")
+        press(.down, "Down from Details onto the dots")
+        let dots = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Title 1 of")).firstMatch
+        XCTAssertTrue(waitUntil(10) { dots.hasFocus }, "Down from the buttons reaches the dots row, focus is on \(describeFocus())")
+        // The dots row is the carousel's own control: Right and Left turn it, with focus staying on the row.
+        press(.right, "Right on the dots")
+        let second = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Title 2 of")).firstMatch
+        XCTAssertTrue(second.waitForExistence(timeout: 10), "Right on the dots turns to the second pick")
+        XCTAssertTrue(waitUntil(10) { second.hasFocus }, "and focus stays on the dots, focus is on \(describeFocus())")
+        press(.left, "Left on the dots")
+        XCTAssertTrue(dots.waitForExistence(timeout: 10), "Left turns back to the first pick")
+        press(.down, "Down from the dots")
         press(.down, "Down again")
         press(.up, "Up")
     }

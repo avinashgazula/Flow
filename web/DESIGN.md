@@ -29,7 +29,7 @@ colors:
 typography:
   display:
     fontFamily: "'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif"
-    fontSize: "clamp(44px, 13.5vw, 72px) at the top of a title page; 0.82 of it for a section page; the Home lead sits on a plate and has its own smaller size"
+    fontSize: "clamp(44px, 13.5vw, 72px) at the top of a title page; 0.82 of it for a section page; the Home lead sets a title without logo art at its own, smaller size"
     fontWeight: 700
     lineHeight: 0.84
     letterSpacing: "-0.03em"
@@ -146,7 +146,7 @@ Marquee for the web is an index of what the viewer owns: titles, episodes, chann
 
 The page is warm paper and black ink, or the reverse: both sides are first-class. The system's side is followed until the viewer chooses, in the top bar, and the choice is kept in that browser. The colours come from the chosen theme (Settings → Appearance → Theme; see Themes below), Admit One unless chosen. Structure is made by **2px ink rules** and shared cell borders, not by space and not by fills. Artwork is the only colour on most screens, and it sits inside rules: posters and stills are square, framed, never rounded, never shadowed.
 
-It is explicitly not: a glass or blur UI, a gradient or shadow UI, a rounded-card dashboard, a streaming service's dark carousel wall, a badge-and-pill interface, or a decorative film motif. Nothing is soft. The video player is the one exception (see Player Chrome).
+It is explicitly not: a glass or blur UI, a gradient or shadow UI, a rounded-card dashboard, a streaming service's dark carousel wall, a badge-and-pill interface, or a decorative film motif. Nothing is soft. The video player is one exception (see Player Chrome); the Home lead is the other: at the top of the page one picture runs edge to edge and fades into the paper, as a streaming app's hero does (see Home Lead).
 
 **Key Characteristics:**
 - Paper `#f4f1ea` and ink `#0a0a0a` (dark: ink `#0d0b0a` and paper `#f4f1ea`) in the default theme; everything else is the mark, the action or a quiet tint.
@@ -194,7 +194,7 @@ Every value, both sides, is in `testdata/contracts/themes.json`, which the apps'
 
 ## Typography
 
-**Display:** Archivo 700 (self-hosted). Page titles and the Home lead: uppercase, line-height .84, letter-spacing -.03em, and one scale. `--fs-display` (`clamp(44px, 13.5vw, 72px)`, stepping up at 721 and 1100px) is what a short title page name gets, and a section page's title (`--fs-head`, `.page-title`) is 0.82 of it. The Home lead's name is set smaller (`clamp(36px, 11vw, 52px)` under 900px, `clamp(36px, 4.2vw, 56px)` from there), because it sits on a plate and wraps to two lines before it ends in an ellipsis; it still steps down by length as a title page's name does. A title page's name, a person's and a collection's step down by length exactly as the lead does. Long words use `.page-title.long`.
+**Display:** Archivo 700 (self-hosted). Page titles and the Home lead: uppercase, line-height .84, letter-spacing -.03em, and one scale. `--fs-display` (`clamp(44px, 13.5vw, 72px)`, stepping up at 721 and 1100px) is what a short title page name gets, and a section page's title (`--fs-head`, `.page-title`) is 0.82 of it. The Home lead usually sets no Archivo at all: it shows the title's logo art. A title that has none gets its name in Archivo capitals at `clamp(40px, 12vw, 56px)` under 721px and `clamp(40px, 4.8vw, 72px)` from there, up to three lines on a phone and two beside the column, and it steps down by length as a title page's name does. A title page's name, a person's and a collection's step down by length exactly as the lead does. Long words use `.page-title.long`.
 **Headings:** IBM Plex Sans 600/700. Section and row titles, big numbers, empty-state headlines, the search bar's input. Uppercase for category names.
 **Interface:** the viewer's typeface, 400/600: System (the default: the device's own font, SF Pro, Segoe UI or Roboto), Inter, Geist, Manrope or Mono (IBM Plex Mono). The body face: nav, buttons, rows, settings, form fields, body copy that isn't reading text, footers. Chosen in Settings → Appearance; it is `<html data-font>`, set before first paint, and `--font` follows it (`styles/tokens.css`). Control text is uppercase with .06em tracking.
 **Labels and figures:** IBM Plex Mono 400/600, whatever the choice (`--font-mono`). The small uppercase labels (the red section labels, the page note, the names above a fact, `Browse by Genre`) and the lines of figures that should line up (the fact and meta lines under artwork, runtimes, sizes, times, ratings' names, the guide's clock, the shortcuts' keys, code and raw filenames).
@@ -226,10 +226,10 @@ The top bar is fixed and 56px (+2px rule). At 720px and narrower it is a single 
 
 ## Elevation & Depth
 
-None. There are no shadows, blurs, glass, gradients or translucency on content. Depth is order: the nav is fixed above the page and is the same paper with a rule. Over video, the player's own chrome uses a flat translucent ink (`--overlay`).
+None. There are no shadows, blurs, glass, gradients or translucency on content. Depth is order: the nav is fixed above the page and is the same paper with a rule. Over video, the player's own chrome uses a flat translucent ink (`--overlay`). The Home lead's fade is the one gradient on content, and over the lead the top bar is transparent on a dark scrim (see Navigation).
 
 ### Named Rules
-**The Flat Rule.** If a `box-shadow` or `backdrop-filter` is in a diff outside the player, it is wrong. (A 1px ring made with `box-shadow: 0 0 0 1px var(--hair)` is a border in disguise and is allowed.)
+**The Flat Rule.** If a `box-shadow` or `backdrop-filter` is in a diff outside the player, it is wrong, and a gradient is wrong outside the player and the Home lead's fade. (A 1px ring made with `box-shadow: 0 0 0 1px var(--hair)` is a border in disguise and is allowed.)
 
 ## Motion
 
@@ -253,11 +253,13 @@ Motion explains state and never decorates: a thing that appears eases in, a thin
 7. Never block input: no animation waits to be clicked through, and nothing has `pointer-events` while it is leaving.
 8. Keep content visible by default: a failed stylesheet or script leaves everything readable.
 
+The Home lead's cross-fade is opacity only, the leaving slide over the new one for `--dur-enter`; a swipe moves with the finger (`transform`, direct manipulation, not an entrance) and settles in `--dur-move`.
+
 **Reduced motion** means gentler, not none. One rule in `global.css` clears `translate` and `scale` everywhere and the view-transition zoom; opacity and colour changes stay, so state is still legible. Decorative loops (skeleton pulse, the idle connecting bar) stop; the spinner slows to 3s per turn so it still reads as busy; auto-advance and smooth scrolling are off. Transform-based transitions (the Home lead's rise, the scrubber rail, the Up Next lift) have their own reduce blocks next to them.
 
 ## Shapes
 
-There are no radius tokens: new code writes no radius. The one round thing on the page is the loading ring. The player has `--radius-player` (10px) and `--radius-player-full`. Sliders have a square ink thumb and colour swatches are square chips with an ink edge.
+There are no radius tokens: new code writes no radius. The round things on the page are the loading ring and, in the Home lead, the Resume pill, the Details circle and the dots. The player has `--radius-player` (10px) and `--radius-player-full`. Sliders have a square ink thumb and colour swatches are square chips with an ink edge.
 
 ## Components
 
@@ -274,13 +276,25 @@ Square, 2px ink border, 48px, the viewer's typeface. Focus is the blue ring. Sea
 In running text: blue, underlined; hover turns ink. A `.quiet-link` (footers, emphasised phrases) is ink, 600, with a 2px dotted red underline at 4px offset. Focus is always the 3px blue ring, 2px offset (`:focus-visible`).
 
 ### Navigation
-The top bar is bordered cells on a 2px bottom rule. The **logo cell** (left) holds the Marquee wordmark as an admit-one ticket (`components/Logo.tsx`), as in the app icon: a square-cornered ticket in the mark red (`--red`) 1.5em tall, MARQUEE across it in Plex Sans 700 with .2em tracking, a notch cut into each short end, a column of perforation dots and, on the stub, a ring with an ink centre. The notches and dots are real holes (a CSS mask), so the page shows through in both themes; the lettering and the ring take `--onblue`. The ticket is the mark red in every theme; on hover it takes the action colour (`--blue`). The app icon (favicon and installed-app icons: `public/icon.svg`, PNGs from `scripts/render-icons.mjs` at the repo root, drawn in `design/icon/admit-one.svg`) is Admit One: a red cinema ticket, tilted, with a white M and a stub ring, on paper. The sections, **Sample Data** (only while sample data is on, in red), **Settings** and the **Light/Dark** toggle follow as cells with 2px left borders: uppercase 600 14px in the viewer's typeface, 56px high. Current is inverted; hover is blue; focus is blue with an inset ring. The toggle is a button with `aria-pressed` (true when dark); its label names the theme it switches to. Between 721 and 1100px Settings and the toggle show icons only (spoken labels stay). The bar slides away on scroll down and returns on scroll up or when it takes keyboard focus; with reduced motion it just appears and disappears. On phones the sections are the bottom bar: five equal cells, icon over a 12px label, 2px top rule, current inverted.
+The top bar is bordered cells on a 2px bottom rule. The **logo cell** (left) holds the Marquee wordmark as an admit-one ticket (`components/Logo.tsx`), as in the app icon: a square-cornered ticket in the mark red (`--red`) 1.5em tall, MARQUEE across it in Plex Sans 700 with .2em tracking, a notch cut into each short end, a column of perforation dots and, on the stub, a ring with an ink centre. The notches and dots are real holes (a CSS mask), so the page shows through in both themes; the lettering and the ring take `--onblue`. The ticket is the mark red in every theme; on hover it takes the action colour (`--blue`). The app icon (favicon and installed-app icons: `public/icon.svg`, PNGs from `scripts/render-icons.mjs` at the repo root, drawn in `design/icon/admit-one.svg`) is Admit One: a red cinema ticket, tilted, with a white M and a stub ring, on paper. The sections, **Sample Data** (only while sample data is on, in red), **Settings** and the **Light/Dark** toggle follow as cells with 2px left borders: uppercase 600 14px in the viewer's typeface, 56px high. Current is inverted; hover is blue; focus is blue with an inset ring. The toggle is a button with `aria-pressed` (true when dark); its label names the theme it switches to. Between 721 and 1100px Settings and the toggle show icons only (spoken labels stay). The bar slides away on scroll down and returns on scroll up or when it takes keyboard focus; with reduced motion it just appears and disappears. At the very top of Home, over the lead (the lead sets `data-hero` on `<html>`), it is transparent: white cells and white 40% rules on a dark scrim that fades out over its first 90px, the current cell white with ink text, so it reads over any artwork. The moment the page scrolls it is paper again, and every other page has the paper bar throughout. On phones the sections are the bottom bar: five equal cells, icon over a 12px label, 2px top rule, current inverted.
 
 ### Rows and Lists
 A `.row` is full width; on hover and focus it inverts to blue. A list (`.rows`) has a 2px rule above and 1px ink lines between rows. Numbered lists use red Plex Sans numerals (`01`) in a fixed column; titles are Plex Sans (uppercase for categories) or Serif; metadata is mono and muted, and turns white on the blue hover.
 
 ### Home Lead
-The top of Home is one full-width picture: the backdrop across the page's column, inside the same gutters as the rows below, in its 2px frame with the thin red progress bar along its foot and the printed line (time left, end time, format) under it. 16:9, capped at 60% of the window's height (never under 380px) from 900px, so the first row of shelves peeks above the fold. The words sit on a solid paper plate over its lower-left corner, inset one step (16px) so the frame shows round it: `--bg`, the 2px ink rule, square corners, no gradient or scrim, which is what keeps them legible on any artwork. The plate holds the title (two lines, then an ellipsis), the italic facts line, Resume or Play, Details and the pager (`01 / 10`, its arrows and the rotation pause). It is 42% of the picture, 360px to 520px wide. Under 900px nothing overlaps: the plate is a ruled box under the picture's printed line. The apps do the same, and put the day label and date on the plate; the website keeps its greeting above the lead. The website's Fullscreen style (the apps keep the setting but draw only the card) is the other lead: the picture edge to edge between two rules, the words on a solid ink band across its foot.
+The top of Home is one picture across the whole window: the backdrop runs edge to edge and up under the top bar, with no frame, rule, gutter or corner, and fades at its foot into the page's own colour so the words read on any artwork and the shelves begin where the picture ends. The fade is solid paper (ink in dark) under an eased mask, mostly from the bottom and, from 721px, a little from the left; it is not a gradient to a named colour, so it is exact in every theme. Home's first rows follow it, with the greeting (the red label and the date) as their first line.
+
+**Size.** A phone: 68% of the window's height (never under 320px), the backdrop cropped to fill, centred on the face-high third. From 721px: 16:9, capped at 75% of the window's height (never under 380px), so the first shelf shows under it.
+
+**Over the fade**, centred on a phone and at the column's left edge from 721px (the dots at its right): the title's logo, one line of facts, then the buttons.
+- **Logo**: TMDB's `images.logos` for the title, the viewer's language, then English, then one with no language (`lib/tmdb/logo.ts`; the lists a lead is picked from carry none, so each slide asks for its own, and only once it is the one on show or the next to be). At most 96px high on a phone, 88 to 160px from 721px. TMDB's logos are made for dark screens, so a light one on a light page (or a dark one on a dark page) has its lightness flipped (`lib/tmdb/logoTone.ts` measures it once loaded; the CSS inverts and turns the hue back, so a coloured logo keeps its colours). It is hidden until measured. With no logo, or one that fails to load, the name stands in, in Archivo capitals (Typography), never an empty space.
+- **Facts**: one line in Plex Mono capitals with a 1px rule between the parts. Something started: `S3 E7 | 18M LEFT` (where you are, how long is left), with a thin red bar under it for how far through. Anything else: `DRAMA | 2008 | TV-MA` (the first genre, the year, the rating as the viewer's region prints it). Parts it doesn't know are left out.
+- **Buttons**: **Resume** (or **Play**) is the one solid pill, the system's primary button made round, with the play glyph; **Details** is a 56px circle with the info glyph, the system's secondary button made round, its spoken name still "Details". Hover and focus invert them to the action colour as everywhere.
+- **Dots**: one for each title, small (8px), the one on show wider; each is a 28 by 44px button ("Title 3 of 10"). At their end a pause or play glyph (44px) stops the turning for good, or starts it again.
+
+**Turning.** It turns by itself every 8 seconds with a cross-fade (the leaving picture fades out over the one beneath it, so it never dips to the page), when Settings → Shelves → Rotate Automatically is on. It never turns while the pointer or keyboard focus is in it or a finger is on it, while scrolled out of view, with the tab hidden, or under reduced motion; choosing a title (a dot, an arrow key, a swipe) is deciding where to stop, so it stays put from then on. A swipe on a touch screen follows the finger (the whole slide moves, the neighbour comes in beside it) and finishes the move or settles back; the arrow keys turn it from anywhere inside it. Only the slide on show is read or reached.
+
+Behind the words the picture is one link to the title, so a click anywhere on it opens Details. The old plate, 2px frame, printed line under the picture and `01 / 10` pager are gone; the apps draw the same lead in SwiftUI, and the Fullscreen style is no more: the lead is always edge to edge, and Settings keeps only its sources and rotation. Before the page's script runs, `index.html` paints the last visit's still in the same box with the same fade (the `.shell-*` rules), then the greeting.
 
 ### Page Head
 `.page-title`: the Archivo title (`--fs-head`), uppercase, with the 2px rule under it running edge to edge. A short uppercase mono note or a count (`.page-note`) can sit at its right.
@@ -313,9 +327,9 @@ Ruled sections, rows with labels in the viewer's typeface, group titles in mono 
 - **Do** use the tokens (`--bg --fg --red --blue --onblue --muted --faint --rule`) and let `data-theme` do the rest.
 
 ### Don't:
-- **Don't** round a corner, add a shadow, a blur, a gradient or glass outside the player.
+- **Don't** round a corner, add a shadow, a blur, a gradient or glass outside the player and the Home lead.
 - **Don't** use red or blue as decoration: red marks, blue acts, and that is all.
-- **Don't** put a pill, badge or kicker on content; labels are red mono text.
+- **Don't** put a pill, badge or kicker on content (the Home lead's Resume is the one pill); labels are red mono text.
 - **Don't** hard-code a colour or a font: use the tokens, so both themes and the player's dark scope follow.
 - **Don't** colour the current chip or tab blue: current is inverted ink.
 - **Don't** use a second accent, an icon container or a card with a fill and a radius.

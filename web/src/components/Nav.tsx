@@ -17,6 +17,8 @@ export function Nav() {
   // The live player is full screen too, and is reached by ?play= on the Live TV page.
   const liveFull = useRouterState({ select: (r) => r.location.pathname === '/live' && typeof (r.location.search as Record<string, unknown>).play === 'string' })
   const [away, setAway] = useState(false)
+  // At the very top of the page. Over Home's lead the bar is then transparent (Nav.module.css); anywhere else it is paper.
+  const [top, setTop] = useState(true)
   const header = useRef<HTMLElement>(null)
   const sample = useSettings((x) => x.demo)
   const saved = useSettings((x) => x.tabOrder)
@@ -29,6 +31,7 @@ export function Nav() {
     const update = () => {
       queued = false
       const y = Math.max(0, window.scrollY)
+      setTop(y < 8)
       const delta = y - last
       // A twitch isn't a direction: wait for a few pixels before the bar moves either way.
       if (Math.abs(delta) < 6) return
@@ -51,7 +54,7 @@ export function Nav() {
   return (
     <>
       {/* Keyboard focus anywhere in the bar brings it back, so a hidden bar never holds the focus. */}
-      <header ref={header} className={s.top} data-away={away ? '' : undefined} onFocus={() => setAway(false)}>
+      <header ref={header} className={s.top} data-away={away ? '' : undefined} data-top={top ? '' : undefined} onFocus={() => setAway(false)}>
         <Link to="/" className={s.brand} aria-label="Marquee home">
           <Logo />
         </Link>

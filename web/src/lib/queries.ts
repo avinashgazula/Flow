@@ -50,6 +50,10 @@ export const q = {
       staleTime: 10 * 60_000,
     }),
 
+  /** The logo's file path, or null when the title has none (a query can't resolve to undefined). */
+  logo: (type: MediaType, id: number) =>
+    queryOptions({ queryKey: [...scope(), 'logo', type, id], queryFn: async () => (await api.logo(type, id)) ?? null, staleTime: 7 * day }),
+
   detail: (type: MediaType, id: number) =>
     queryOptions({
       queryKey: [...scope(), 'detail', type, id],
