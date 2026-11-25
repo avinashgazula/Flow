@@ -76,10 +76,12 @@
 .name { margin: 0; max-width: 100%; }
 /* The logo is TMDB's wordmark, made for dark screens (mostly white), so on a paper-coloured fade it would vanish. Once it
    has loaded its tone is known (data-tone, from lib/tmdb/logoTone): a light one on a light page, or a dark one on a dark
-   page, has its lightness flipped (invert, then turn the hue back so a coloured logo keeps its colours). Until then it is
-   hidden, so it never shows in the wrong colour. */
+   page, has its lightness flipped (invert, then turn the hue back). Only plain white or plain black ones are flipped: a
+   coloured logo (data-tone='color') keeps its colours and gets a soft shadow for legibility over bright artwork. Until it
+   has loaded it is hidden, so it never shows in the wrong colour. */
 .logo { display: block; width: auto; height: auto; max-width: min(72vw, 420px); max-height: 96px; object-fit: contain; opacity: 0; transition: opacity var(--dur-enter) var(--ease-out); }
 .logo[data-tone] { opacity: 1; }
+.logo[data-tone='color'] { filter: drop-shadow(0 1px 6px rgb(0 0 0 / 0.35)); }
 :global(html:not([data-theme='dark'])) .logo[data-tone='light'], :global(html[data-theme='dark']) .logo[data-tone='dark'] { filter: invert(1) hue-rotate(180deg); }
 /* With no logo, the name in the display face: Archivo capitals, stepping down by length (data-size, from nameSize, as
    on the title page) and breaking between words. */
