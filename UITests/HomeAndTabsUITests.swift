@@ -18,13 +18,16 @@ final class HomeAndTabsUITests: FlowUITestCase {
 
     func testLeadTurnsWithASwipeAndItsDotsSayWhere() {
         XCTAssertTrue(anyElement(startingWith: "Title 1 of").waitForExistence(timeout: patience), "the dots start on the first pick")
-        let first = leadPicture.label
+        // The picture's label ends with the time a started pick would end, which moves with the clock, so only the title
+        // before the first comma is compared.
+        func shownTitle() -> String { String(leadPicture.label.split(separator: ",").first ?? "") }
+        let first = shownTitle()
         swipeLead(left: true)
         XCTAssertTrue(anyElement(startingWith: "Title 2 of").waitForExistence(timeout: 10), "a swipe left brings in the second pick")
-        XCTAssertTrue(waitUntil(10) { self.leadPicture.label != first }, "its picture is a different title's")
+        XCTAssertTrue(waitUntil(10) { shownTitle() != first }, "its picture is a different title's")
         swipeLead(left: false)
         XCTAssertTrue(anyElement(startingWith: "Title 1 of").waitForExistence(timeout: 10), "a swipe right comes back to the first")
-        XCTAssertTrue(waitUntil(10) { self.leadPicture.label == first }, "and to its title")
+        XCTAssertTrue(waitUntil(10) { shownTitle() == first }, "and to its title")
     }
 
     /// A swipe across the upper part of the window, where the lead's picture is.

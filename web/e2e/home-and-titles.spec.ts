@@ -63,7 +63,10 @@ test.describe('home', () => {
   test('Continue Watching lists what has a resume point, with the time left', async ({ boot, page }) => {
     await boot('/')
     const shelf = page.getByRole('region', { name: 'Continue Watching' })
-    await expect(shelf.getByRole('link')).toHaveCount(3)
+    // Everything in progress, and the next episode of a show you're between episodes of. The lead takes none of them away.
+    await expect(shelf.getByRole('link')).toHaveCount(4)
+    await expect(shelf.getByRole('link', { name: /^Breaking Bad, season 3 episode 7, 18 minutes left/ })).toBeVisible()
+    await expect(shelf.getByRole('link', { name: /^Succession, season 2 episode 4, up next/ })).toBeVisible()
     await expect(shelf.getByRole('link', { name: /^Dune: Part Two, 1 hour 44 minutes left/ })).toHaveAttribute('href', '/watch/movie/693134')
     await expect(shelf.getByRole('link', { name: /^The Last of Us, season 2 episode 3, 45 minutes left/ })).toBeVisible()
   })
