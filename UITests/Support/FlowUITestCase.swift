@@ -101,6 +101,13 @@ class FlowUITestCase: XCTestCase {
     }
 
     /// Anything whose spoken label starts with `prefix`, whatever it is (a pager's "Title 1 of 10" is neither button nor text to rely on).
+    /// A control by its exact label, whatever its type: a menu that says what it holds ("Season", valued "Season 3") is a
+    /// pop-up button, not a button.
+    func control(_ label: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label ==[c] %@ AND elementType != %d", label,
+                                                             XCUIElement.ElementType.staticText.rawValue)).firstMatch
+    }
+
     func anyElement(startingWith prefix: String) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH[c] %@", prefix)).firstMatch
     }
@@ -165,9 +172,10 @@ class FlowUITestCase: XCTestCase {
             app.swipeUp()
             swipes += 1
         }
-        // On screen but low: nudge it up a little. A full swipe would throw it past the top.
+        // On screen but low: nudge it up a little. A full swipe would throw it past the top. The drag starts from the middle
+        // of the window, not on the element: pressing a menu (the Season picker) opens it, which covers the page.
         if element.exists && element.isHittable && !clearOfTheBottomEdge(element) {
-            let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let start = app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
             start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -app.windows.firstMatch.frame.height * 0.3)))
         }
         return element.exists && element.isHittable

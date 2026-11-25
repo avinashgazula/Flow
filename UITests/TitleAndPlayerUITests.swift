@@ -31,7 +31,7 @@ final class TitleAndPlayerUITests: FlowUITestCase {
     func testAShowPageHasASeasonMenuAndItsResumeEpisode() {
         openLink("flow://title/show/1396")
         XCTAssertTrue(button(startingWith: "Resume").waitForExistence(timeout: patience), "Breaking Bad offers Resume")
-        XCTAssertTrue(reveal(btn("Season")), "a show's page has a Season menu")
+        XCTAssertTrue(reveal(control("Season")), "a show's page has a Season menu")
     }
 
     func testAShowsResumeButtonOpensTheSourceListForItsEpisode() {

@@ -16,7 +16,7 @@ final class DeepLinkUITests: FlowUITestCase {
     func testATitleLinkForAShowAcceptsTvAsWellAsShow() {
         openLink("flow://title/tv/1396")
         XCTAssertTrue(button(startingWith: "Resume").waitForExistence(timeout: patience), "a show's page, offering to resume Breaking Bad")
-        XCTAssertTrue(reveal(btn("Season")), "with its Season menu")
+        XCTAssertTrue(reveal(control("Season")), "with its Season menu")
     }
 
     func testATitleLinkFromAnotherTabComesToHome() {
