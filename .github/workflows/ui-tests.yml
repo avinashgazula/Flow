@@ -3,6 +3,10 @@ name: UI tests
 # Real taps on real screens: XCUITest drives Marquee on an iPhone and an iPad simulator, and the remote's presses on an
 # Apple TV simulator. Sample data throughout (-FlowDemo YES), so no test needs a key or a server. Its own workflow, so the
 # build and screenshot jobs in ci.yml stay as they are; both start on the same pushes.
+#
+# Two tiers. A side branch (and a pull request) runs the smoke tier: the short list of everyday paths in scripts/ui-test.sh,
+# built once for iPhone and iPad on one runner, and Apple TV's on another, so a change hears back in minutes. Where the work
+# lands (main and claude/build-flow-app), and whenever the workflow is started by hand, the whole suite runs on each device.
 
 on:
   push:
@@ -11,14 +15,62 @@ on:
     paths-ignore: [.github/release-tag]
   pull_request:
   workflow_dispatch:
+    inputs:
+      tier:
+        description: Which tests to run
+        type: choice
+        options: [full, smoke]
+        default: full
 
 concurrency:
   group: ui-tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  ui-tests:
+  smoke:
+    name: UI smoke tests (${{ matrix.name }})
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.tier == 'smoke') ||
+      (github.event_name != 'workflow_dispatch' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/claude/build-flow-app')
+    runs-on: macos-15
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # iPhone and iPad share one build: the iPad run tests what the iPhone run built.
+          # iPad runs even when iPhone fails, so one push reports both.
+          - { name: iPhone and iPad, run: "a=0; b=0; scripts/ui-test.sh ios --smoke || a=$?; scripts/ui-test.sh ipad --smoke --no-build || b=$?; exit $((a || b))", results: "ios ipad" }
+          - { name: Apple TV, run: "scripts/ui-test.sh tvos --smoke", results: tvos }
+    env:
+      FLOW_SIM_OS: "26"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.3.app
+          xcodebuild -version
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Run the smoke tests
+        run: ${{ matrix.run }}
+      # The result bundle has every failure's screenshots and the accessibility audit's findings.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ui-smoke-results-${{ matrix.results == 'tvos' && 'tvos' || 'ios-ipad' }}
+          path: |
+            build/ui-tests-*.xcresult
+            build/ui-tests-*.log
+          if-no-files-found: ignore
+
+  full:
     name: UI tests (${{ matrix.platform }})
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.tier != 'smoke') ||
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/build-flow-app'))
     runs-on: macos-15
     timeout-minutes: 75
     strategy:
@@ -39,7 +91,6 @@ jobs:
           xcodegen generate
       - name: Run the UI tests
         run: scripts/ui-test.sh ${{ matrix.platform }}
-      # The result bundle has every failure's screenshots and the accessibility audit's findings.
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
