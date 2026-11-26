@@ -17,6 +17,19 @@ typealias PlatformImage = UIImage
 typealias PlatformImage = NSImage
 #endif
 
+/// Debug builds launched by the UI tests (`-FlowUITest YES`). Every tap there waits for the app to fall idle first, so a push,
+/// a sheet or a shimmer that is still moving makes each step wait out the animation; with this set the system animations
+/// are off and loading placeholders hold still. Release builds never read it.
+enum UITestMode {
+    static let isActive: Bool = {
+        #if DEBUG
+        UserDefaults.standard.bool(forKey: "FlowUITest")
+        #else
+        false
+        #endif
+    }()
+}
+
 /// Whether the connection is metered (cellular, a personal hotspot, Low Data Mode), for Resolution on Cellular.
 enum NetworkConditions {
     private static let monitor = NWPathMonitor()

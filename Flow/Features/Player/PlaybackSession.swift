@@ -1232,7 +1232,7 @@ final class PlaybackSession: Identifiable {
     @discardableResult
     private func scrobble(_ event: ScrobbleReporter.Event) -> Task<Void, Never>? {
         guard let model else { return nil }
-        let calls = scrobbles.handle(event, title: request.id, position: currentTime, duration: duration, enabled: model.settings.account.scrobble)
+        let calls = scrobbles.handle(event, title: request.id, position: displayTime, duration: duration, enabled: model.settings.account.scrobble)
         guard !calls.isEmpty else { return scrobbleQueue }
         scrobbledRequests[request.id] = request
         let sends = calls.map { ($0, scrobbledRequests[$0.title] ?? request) }
@@ -1832,7 +1832,8 @@ final class PlaybackSession: Identifiable {
 
     private func finishCurrent(completed: Bool) async {
         guard let model, didStart else { return }
-        let position = PlayerProgress.stopPosition(completed: completed, currentTime: currentTime, duration: duration)
+        // The time on screen: a seek still on its way counts as arrived, so closing straight after a jump keeps the new place.
+        let position = PlayerProgress.stopPosition(completed: completed, currentTime: displayTime, duration: duration)
         await scrobble(.stopped(completed: completed))?.value
         await report(.stopped)
         await model.recordPlayback(request: request, position: position, duration: duration, finished: completed)

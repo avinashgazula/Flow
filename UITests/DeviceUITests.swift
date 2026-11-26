@@ -17,7 +17,7 @@ final class PhonePlayerUITests: FlowUITestCase {
         XCTAssertTrue(waitUntil(15) { self.window.frame.width > self.window.frame.height }, "the player turns the phone to landscape")
         closePlayer()
         XCTAssertTrue(waitUntil(15) { self.window.frame.width < self.window.frame.height }, "closing the player turns it back to portrait")
-        XCTAssertTrue(button(startingWith: "Resume").waitForExistence(timeout: patience), "on the title page again")
+        XCTAssertTrue(button(startingWith: "Resume").appears(within: patience), "on the title page again")
     }
 
     func testThePlayersControlsWorkInLandscape() {
@@ -29,7 +29,7 @@ final class PhonePlayerUITests: FlowUITestCase {
         pausePlayback()
         btn("Options").tap()
         let speed = button(containing: "Speed")
-        XCTAssertTrue(speed.waitForExistence(timeout: 10), "the options panel opens in landscape")
+        XCTAssertTrue(speed.appears(within: 10), "the options panel opens in landscape")
         // On a short screen the list scrolls: Advanced Options is the last row, and has to be reachable.
         let advanced = button(containing: "Advanced Options")
         var swipes = 0
@@ -53,8 +53,8 @@ final class iPadLayoutUITests: FlowUITestCase {
     func testHomesLeadRunsEdgeToEdgeFromTheTopWithItsWordsOverTheLowerLeft() {
         let resume = leadPrimary
         let backdrop = leadPicture
-        XCTAssertTrue(resume.waitForExistence(timeout: patience), "the lead offers Play (or Resume)")
-        XCTAssertTrue(backdrop.waitForExistence(timeout: patience), "and shows its backdrop")
+        XCTAssertTrue(resume.appears(within: patience), "the lead offers Play (or Resume)")
+        XCTAssertTrue(backdrop.appears(within: patience), "and shows its backdrop")
         // The picture has no frame or gutter: it runs up under the top bar and to the window's right edge. A landscape iPad
         // may show the sidebar, so its left edge can be the sidebar's; it still has to take most of the window.
         let window = app.windows.firstMatch.frame
@@ -77,29 +77,29 @@ final class iPadLayoutUITests: FlowUITestCase {
 
     func testTurningTheiPadKeepsTheTabAndItsPage() {
         openTab("Library")
-        XCTAssertTrue(button(startingWith: "Upcoming").waitForExistence(timeout: patience))
-        XCUIDevice.shared.orientation = .portrait
-        XCTAssertTrue(button(startingWith: "Upcoming").waitForExistence(timeout: patience), "Library is still the open tab in portrait")
-        button(startingWith: "Upcoming").tap()
-        XCTAssertTrue(btn("Add All to Calendar").waitForExistence(timeout: patience), "its Upcoming page opens")
-        XCUIDevice.shared.orientation = .landscapeLeft
-        XCTAssertTrue(btn("Add All to Calendar").waitForExistence(timeout: patience), "and stays open after turning back")
+        XCTAssertTrue(button(startingWith: "Upcoming").appears(within: patience))
+        turn(to: .portrait)
+        XCTAssertTrue(button(startingWith: "Upcoming").appears(within: patience), "Library is still the open tab in portrait")
+        tapWhenStill(button(startingWith: "Upcoming"), "the Upcoming row")
+        XCTAssertTrue(btn("Add All to Calendar").appears(within: patience), "its Upcoming page opens")
+        turn(to: .landscapeLeft)
+        XCTAssertTrue(btn("Add All to Calendar").appears(within: patience), "and stays open after turning back")
         goBack(from: "Upcoming")
-        XCTAssertTrue(button(startingWith: "Upcoming").waitForExistence(timeout: patience), "Back still leads to the Library")
+        XCTAssertTrue(button(startingWith: "Upcoming").appears(within: patience), "Back still leads to the Library")
     }
 
     func testTurningTheiPadKeepsATitlePageOpen() {
         openDune()
-        XCUIDevice.shared.orientation = .portrait
-        XCTAssertTrue(button(startingWith: "Resume").waitForExistence(timeout: patience), "Dune's page survives the turn")
-        XCUIDevice.shared.orientation = .landscapeRight
-        XCTAssertTrue(button(startingWith: "Resume").waitForExistence(timeout: patience), "and the turn back")
+        turn(to: .portrait)
+        XCTAssertTrue(button(startingWith: "Resume").appears(within: patience), "Dune's page survives the turn")
+        turn(to: .landscapeRight)
+        XCTAssertTrue(button(startingWith: "Resume").appears(within: patience), "and the turn back")
     }
 
     func testSettingsOpensAsALargeSheet() {
         btn("Settings").tap()
         let row = element("settings-row-general")
-        XCTAssertTrue(row.waitForExistence(timeout: patience), "Settings opens")
+        XCTAssertTrue(row.appears(within: patience), "Settings opens")
         // A page-size sheet, not a narrow card: its rows are wide enough to read a title and a chevron.
         XCTAssertGreaterThan(row.frame.width, 500, "the iPad's Settings sheet is large")
     }
