@@ -10,7 +10,13 @@ failed=()
 step() { # $1 = name, rest = command
   local name=$1; shift
   printf '\n== %s\n' "$name"
-  if "$@"; then echo "ok: $name"; else echo "FAILED: $name"; failed+=("$name"); fi
+  if "$@"; then
+    echo "ok: $name"
+  else
+    echo "FAILED: $name"
+    failed+=("$name")
+    return 1
+  fi
 }
 
 step "FlowKit unit tests, fuzzing and coverage floors" scripts/flowkit-coverage.sh
@@ -27,7 +33,12 @@ if [ "$quick" != "--quick" ]; then
   fi
   if command -v xcodebuild > /dev/null 2>&1; then
     for platform in ios tvos macos; do step "Player check ($platform)" scripts/player-check.sh "$platform"; done
-    for platform in ios ipad tvos; do step "UI tests ($platform)" scripts/ui-test.sh "$platform"; done
+    if step "UI tests (ios)" scripts/ui-test.sh ios; then
+      step "UI tests (ipad)" scripts/ui-test.sh ipad --no-build
+    else
+      step "UI tests (ipad)" scripts/ui-test.sh ipad
+    fi
+    step "UI tests (tvos)" scripts/ui-test.sh tvos
   else
     echo
     echo "No Xcode here: the player check and the UI tests run in CI (.github/workflows)."

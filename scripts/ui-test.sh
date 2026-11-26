@@ -11,8 +11,8 @@
 #
 # Tests run on several clones of the simulator at once (Xcode's parallel testing, one test class per clone at a time).
 # UI_TEST_WORKERS sets how many: by default 1 on CI (CI=true; a hosted macOS runner has 3 cores and 7 GB), and here half
-# the Mac's cores, at most 6; at most 2 for --smoke. UI_TEST_WORKERS=1 runs one test after another on the simulator itself, with every step's
-# timing in the log ("t = …"), which is the way to see where a slow test spends its seconds.
+# the Mac's cores, at most 6 (2 for smoke, 1 for Apple TV smoke). UI_TEST_WORKERS=1 runs on the simulator itself and logs
+# each step's timing ("t = …"), so the log shows where a slow test spends its seconds.
 #
 # Without FLOW_SIM_OS the newest simulator that scripts/sim.sh would pick is used (SIM_UDID names one directly). With it,
 # the simulator runtime's major version, the pick works as the screenshot tour's does, which is what the runners use.
@@ -101,6 +101,8 @@ if [ -z "${UI_TEST_WORKERS:-}" ]; then
   # Each clone takes a while to make and start, which a dozen tests don't win back past two (159 s on one, 149 s on
   # two and about 200 s on four, for the iPhone's smoke tests on an 8-core Mac).
   [ "$smoke" = YES ] && [ "$UI_TEST_WORKERS" -gt 2 ] && UI_TEST_WORKERS=2
+  # Both Apple TV smoke tests are in TVHomeFocusUITests. Xcode schedules the class as one unit, so a clone adds boot time.
+  [ "$smoke" = YES ] && [ "$platform" = tvos ] && UI_TEST_WORKERS=1
 fi
 [ "$UI_TEST_WORKERS" -lt 1 ] && UI_TEST_WORKERS=1
 
@@ -148,7 +150,7 @@ fi
 run_tests() {
   rm -rf "$result"
   xcodebuild test-without-building "${common[@]}" -resultBundlePath "$result" ${parallel[@]+"${parallel[@]}"} \
-    -default-test-execution-time-allowance 600 -maximum-test-execution-time-allowance 900 \
+    -test-timeouts-enabled YES -default-test-execution-time-allowance 600 -maximum-test-execution-time-allowance 900 \
     ${selection[@]+"${selection[@]}"} ${passthrough[@]+"${passthrough[@]}"} >> "$log" 2>&1
 }
 if [ "$status" -eq 0 ]; then

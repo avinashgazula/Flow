@@ -486,9 +486,9 @@ Commits on `claude/build-flow-app` describe each fix; `git log` is the full reco
   Search, the accessibility audit and each device's own layout. CI runs it on all three (job "UI tests").
   - `--smoke` runs only the critical-path list at the top of the script (about a dozen tests); without it,
     every test. `--no-build` tests what the last run built: iPhone and iPad share one build.
-  - Tests run in parallel on clones of the simulator, one test class per clone at a time:
-    `UI_TEST_WORKERS` (default 2 on CI, half this Mac's cores here). Parallel testing hands out whole
-    classes, so a long test belongs in its own class (the Settings walk is three).
+  - CI runs each device on its own runner with one worker. Local runs use half this Mac's cores by default,
+    capped at six, or two for smoke. Apple TV smoke runs on the simulator itself because both tests are in one class.
+    Parallel testing hands out whole classes, so a long test belongs in its own class (the Settings walk is three).
     `UI_TEST_WORKERS=1` runs on the simulator itself and logs every step with its time ("t = …" in
     build/ui-tests-<platform>.log): that is how to see where a slow test spends its seconds.
   - Writing tests: wait with `appears(within:)`, never XCTest's `waitForExistence`, which first looks
@@ -496,6 +496,7 @@ Commits on `claude/build-flow-app` describe each fix; `git log` is the full reco
     both at once (`waitUntil { a.exists || b.exists }`) rather than letting the first wait run out.
     Give `openLink` what the link shows (`expecting:`). Launches pass `-FlowUITest YES` (debug builds
     only): UIKit animations are off and loading shimmers hold still, so no tap waits for the app to idle.
+    Accessibility audits request their checks together and fall back to individual checks if that audit fails to run.
   - The onboarding tests fail on this Mac because Config/Secrets.xcconfig bakes in a TMDB key, which
     skips the welcome screen; CI has no key and runs them.
 - Simulator tool taps are not trustworthy inside UIKit-presented covers or on rotated screens; if a

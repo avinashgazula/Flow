@@ -10,7 +10,7 @@ name: UI tests
 
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main, "claude/**", "codex/**"]
     # A release is only a new tag in this file; the commit it builds was already checked.
     paths-ignore: [.github/release-tag]
   pull_request:

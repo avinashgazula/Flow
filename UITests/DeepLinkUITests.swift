@@ -8,22 +8,22 @@ final class DeepLinkUITests: FlowUITestCase {
     }
 
     func testATitleLinkOpensThatTitlesPage() {
-        openLink("flow://title/movie/693134", expecting: button(startingWith: "Resume"))
-        XCTAssertTrue(button(startingWith: "Resume").appears(within: patience), "Dune: Part Two's page offers Resume")
+        openLink("flow://title/movie/693134", expecting: titlePageResume)
+        XCTAssertTrue(titlePageResume.appears(within: patience), "Dune: Part Two's page offers Resume")
         XCTAssertFalse(btn("Details").exists, "on top of Home")
     }
 
     func testATitleLinkForAShowAcceptsTvAsWellAsShow() {
-        openLink("flow://title/tv/1396", expecting: button(startingWith: "Resume"))
-        XCTAssertTrue(button(startingWith: "Resume").appears(within: patience), "a show's page, offering to resume Breaking Bad")
+        openLink("flow://title/tv/1396", expecting: titlePageResume)
+        XCTAssertTrue(titlePageResume.appears(within: patience), "a show's page, offering to resume Breaking Bad")
         XCTAssertTrue(reveal(btn("Season")), "with its Season menu")
     }
 
     func testATitleLinkFromAnotherTabComesToHome() {
         openTab("Library")
         XCTAssertTrue(button(startingWith: "Upcoming").appears(within: patience))
-        openLink("flow://title/movie/693134", expecting: button(startingWith: "Resume"))
-        XCTAssertTrue(button(startingWith: "Resume").appears(within: patience), "the page opens whichever tab was showing")
+        openLink("flow://title/movie/693134", expecting: titlePageResume)
+        XCTAssertTrue(titlePageResume.appears(within: patience), "the page opens whichever tab was showing")
         XCTAssertFalse(button(startingWith: "Upcoming").exists, "and the Library is no longer on screen")
     }
 
@@ -34,7 +34,7 @@ final class DeepLinkUITests: FlowUITestCase {
     }
 
     func testAContinueLinkOpensTheSourceListForTheLatestResume() {
-        openLink("flow://continue")
+        openLink("flow://continue", expecting: btn("Search Again"))
         // A toast says why when nothing opens ("Nothing to continue", "No episodes available yet."), and it is gone in
         // seconds: so what is on screen is read while the wait goes on, and named in the failure.
         var seen: [String] = []

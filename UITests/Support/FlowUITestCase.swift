@@ -86,6 +86,11 @@ class FlowUITestCase: XCTestCase {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@ OR label BEGINSWITH[c] %@", "Play", "Resume")).firstMatch
     }
 
+    /// Home also says Resume. Exclude that button so a title link can stop waiting as soon as its page appears.
+    var titlePageResume: XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH[c] %@ AND identifier != %@", "Resume", "home-lead-primary")).firstMatch
+    }
+
     /// A button by its exact label, ignoring case. Button styles set their words in capitals, and the system hands that
     /// capitalised text on as the spoken label ("DETAILS", "PREVIOUS TITLE").
     func btn(_ label: String) -> XCUIElement {
@@ -261,8 +266,9 @@ class FlowUITestCase: XCTestCase {
 
     /// The Details page of the sample's Dune: Part Two, which the sample library has half watched.
     func openDune(file: StaticString = #filePath, line: UInt = #line) {
-        openLink("flow://title/movie/693134", expecting: button(startingWith: "Resume"), file: file, line: line)
-        XCTAssertTrue(button(startingWith: "Resume").appears(within: patience),
+        let resume = titlePageResume
+        openLink("flow://title/movie/693134", expecting: resume, file: file, line: line)
+        XCTAssertTrue(resume.appears(within: patience),
                       "Dune: Part Two's page offers Resume", file: file, line: line)
     }
 

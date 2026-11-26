@@ -31,14 +31,14 @@ final class TitlePageUITests: FlowUITestCase {
     }
 
     func testAShowPageHasASeasonMenuAndItsResumeEpisode() {
-        openLink("flow://title/show/1396", expecting: button(startingWith: "Resume"))
-        XCTAssertTrue(button(startingWith: "Resume").appears(within: patience), "Breaking Bad offers Resume")
+        openLink("flow://title/show/1396", expecting: titlePageResume)
+        XCTAssertTrue(titlePageResume.appears(within: patience), "Breaking Bad offers Resume")
         XCTAssertTrue(reveal(btn("Season")), "a show's page has a Season menu")
     }
 
     func testAShowsResumeButtonOpensTheSourceListForItsEpisode() {
-        openLink("flow://title/show/1396", expecting: button(startingWith: "Resume"))
-        let resume = button(startingWith: "Resume")
+        let resume = titlePageResume
+        openLink("flow://title/show/1396", expecting: resume)
         XCTAssertTrue(resume.appears(within: patience), "Breaking Bad offers Resume")
         resume.tap()
         XCTAssertTrue(btn("Search Again").appears(within: patience), "Resume opens the source list")

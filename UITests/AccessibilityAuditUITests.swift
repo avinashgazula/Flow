@@ -25,21 +25,22 @@ class AuditingUITestCase: FlowUITestCase {
         // Contrast judged mid-fade fails on text that is ink on paper, so the audit waits for the screen to be still.
         // Video never stops, and contrast over it is excused, so those screens only get a moment.
         if overVideo { RunLoop.current.run(until: Date().addingTimeInterval(1.5)) } else { waitForStillScreen() }
-        // One audit type per call: a screen the audit takes too long over (the iPad's are large) still reports the rest.
+        if types.count > 1 {
+            let combined = types.reduce(into: XCUIAccessibilityAuditType()) { $0.formUnion($1) }
+            do {
+                try collectFindings(for: combined, on: screen, overVideo: overVideo)
+                return
+            } catch {
+                print("Combined accessibility audit of \(screen) failed: \(error). Running each audit separately.")
+            }
+        }
+        // A large screen can exceed the system's audit deadline. Run each type separately so the others still report.
         for type in types {
             // The system gives an audit a fixed time, which a large iPad screen on a shared runner can overrun. That is the one
             // thing run again, once, and said so in the log; a finding is never run again.
             for attempt in 1...2 {
-                var found: [String] = []
                 do {
-                    try app.performAccessibilityAudit(for: type) { issue in
-                        if Self.deliberateChoice(issue, overVideo: overVideo) != nil { return true }
-                        found.append(Self.describe(issue, on: screen))
-                        if issue.auditType == .contrast, let element = issue.element { Self.logPicture(of: element, on: screen) }
-                        // True means "handled": the audit goes on to the rest of the screen.
-                        return true
-                    }
-                    findings += found
+                    try collectFindings(for: type, on: screen, overVideo: overVideo)
                     break
                 } catch {
                     if attempt == 1 {
@@ -50,6 +51,18 @@ class AuditingUITestCase: FlowUITestCase {
                 }
             }
         }
+    }
+
+    private func collectFindings(for types: XCUIAccessibilityAuditType, on screen: String, overVideo: Bool) throws {
+        var found: [String] = []
+        try app.performAccessibilityAudit(for: types) { issue in
+            if Self.deliberateChoice(issue, overVideo: overVideo) != nil { return true }
+            found.append(Self.describe(issue, on: screen))
+            if issue.auditType == .contrast, let element = issue.element { Self.logPicture(of: element, on: screen) }
+            // Mark each issue handled so XCTest delivers the rest. tearDown reports the collected findings.
+            return true
+        }
+        findings += found
     }
 
     /// Waits until two screenshots half a second apart are the same. A screen that never stops (a blinking caret, a clock)
@@ -255,8 +268,8 @@ final class PageAccessibilityAuditUITests: AuditingUITestCase {
     }
 
     func testShowPage() {
-        openLink("flow://title/show/1396", expecting: button(startingWith: "Resume"))
-        XCTAssertTrue(button(startingWith: "Resume").appears(within: patience))
+        openLink("flow://title/show/1396", expecting: titlePageResume)
+        XCTAssertTrue(titlePageResume.appears(within: patience))
         audit("Show page")
     }
 
