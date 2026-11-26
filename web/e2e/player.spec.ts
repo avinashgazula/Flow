@@ -21,6 +21,14 @@ test.describe('playing a film', () => {
     expect(state.duration).toBeGreaterThan(20)
   })
 
+  test('Tab wakes the hidden controls and reaches Close Player', async ({ boot, page }) => {
+    await playInterstellar(page, boot)
+    const close = control(page, 'Close Player')
+    await expect(close).toHaveCount(0)
+    await page.keyboard.press('Tab')
+    await expect(close).toBeFocused()
+  })
+
   test('pause stops the clock and Play carries on from the same place', async ({ boot, page }) => {
     await playInterstellar(page, boot)
     await wake(page)

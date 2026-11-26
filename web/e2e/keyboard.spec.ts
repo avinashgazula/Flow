@@ -56,6 +56,8 @@ test.describe('tab order', () => {
   for (const [name, path] of screens) {
     test(`${name}: Tab reaches every control`, async ({ boot, page }) => {
       await boot(path)
+      // Pause the lead before marking its links so another slide cannot replace them during the Tab walk.
+      if (path === '/') await page.getByRole('button', { name: 'Stop automatic rotation' }).press('Enter')
       // Let the page finish drawing and loading what is near the screen, or controls arrive mid-walk.
       await page.waitForLoadState('networkidle')
       const count = await markControls(page)
