@@ -92,8 +92,9 @@ export default function UpcomingPage() {
     const day = days.find((d) => d.date === date)
     const el = day && document.getElementById(`day-${day.iso}`)
     if (!el) return
-    el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
     el.focus({ preventScroll: true })
+    // Entries can still arrive above this day. Land on its heading immediately so it can anchor the scroll position.
+    el.scrollIntoView({ block: 'start' })
   }
 
   if (error && entries.length === 0) {

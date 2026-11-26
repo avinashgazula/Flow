@@ -45,7 +45,7 @@ export function Controls({ controller, title, line, onClose, sources, source, on
     <>
       {/* Its own layer under the subtitles, so the scrim never dims them. */}
       <div className={s.scrim} data-visible={visible ? '' : undefined} aria-hidden="true" />
-      <div className={s.controls} data-visible={visible ? '' : undefined} data-panel={panel ?? undefined} data-styling={styling ? '' : undefined}>
+      <div className={s.controls} inert={!visible} data-visible={visible ? '' : undefined} data-panel={panel ?? undefined} data-styling={styling ? '' : undefined}>
         <div className={s.top}>
           <Cluster {...hover}>
             <ClusterButton icon="close" label="Close Player" onClick={onClose} />

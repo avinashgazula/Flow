@@ -26,10 +26,12 @@ export async function expectPlaying(page: Page) {
 /** The player's controls fade after a moment. A mouse brings them back by moving; a finger by tapping the picture. */
 export async function wake(page: Page) {
   const idle = page.locator('[data-idle]')
-  if ((await idle.count()) === 0) return
   const { width, height } = page.viewportSize()!
-  if (await page.evaluate(() => matchMedia('(pointer: coarse)').matches)) await page.touchscreen.tap(width / 2, height / 2)
-  else {
+  if (await page.evaluate(() => matchMedia('(pointer: coarse)').matches)) {
+    if ((await idle.count()) === 0) return
+    await page.touchscreen.tap(width / 2, height / 2)
+  } else {
+    // Controls that are still visible may be about to time out. Moving also resets their timer.
     await page.mouse.move(width / 2, height / 2)
     await page.mouse.move(width / 2 + 12, height / 2 + 12)
   }
