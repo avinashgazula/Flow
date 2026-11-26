@@ -4,6 +4,10 @@ import XCTest
 final class PlayerRoutingTests: XCTestCase {
     // MARK: Where a stream starts
 
+    func testRemuxOpenFailurePreservesTheReason() {
+        XCTAssertEqual(PlayerRouting.couldntOpen("The connection timed out."), "Couldn't open this file. The connection timed out.")
+    }
+
     func testStartPathTable() {
         typealias C = ContainerDetector.Container
         struct Row { let name: String; let container: C; let already: Bool; let engine: PlayerEngine; let debug: Bool; let expected: PlayerRouting.StartPath }

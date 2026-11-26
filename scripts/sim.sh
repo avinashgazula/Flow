@@ -156,8 +156,11 @@ case "$command" in
     xcodebuild build -project Flow.xcodeproj -scheme Flow-macOS -destination 'platform=macOS' -derivedDataPath "$DERIVED" \
       CODE_SIGNING_ALLOWED=NO > build/sim-build-macos.log 2>&1 \
       || { grep -E "error:" build/sim-build-macos.log | sed -E 's#^.*/Flow/##' | sort -u | head -60; exit 1; }
-    pkill -x Flow 2>/dev/null || true
     [ -n "${SIM_NO_LAUNCH:-}" ] && exit 0
+    executable="$PWD/$DERIVED/Build/Products/Debug/Flow.app/Contents/MacOS/Flow"
+    while read -r pid command_path; do
+      if [ "$command_path" = "$executable" ]; then kill "$pid" 2>/dev/null || true; fi
+    done < <(ps -axo pid=,comm=)
     demo=YES; $real && demo=NO
     open "$DERIVED/Build/Products/Debug/Flow.app" --args -FlowDemo "$demo" ${extra[@]+"${extra[@]}"}
     echo "Launched the Mac app$($real || echo ' with sample data')." ;;

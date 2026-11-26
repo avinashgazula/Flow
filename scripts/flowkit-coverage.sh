@@ -9,18 +9,32 @@ cd "$(dirname "$0")/../Packages/FlowKit"
 swift test --enable-code-coverage "$@"
 
 codecov_json=$(swift test --show-codecov-path "$@" | tail -1)
-profdata="$(dirname "$codecov_json")/default.profdata"
-bin=$(find "$(dirname "$(dirname "$codecov_json")")" -maxdepth 3 -name 'FlowKitPackageTests.xctest' | head -1)
-# On macOS the .xctest is a bundle; the binary is inside it.
-if [ -d "$bin" ]; then bin="$bin/Contents/MacOS/FlowKitPackageTests"; fi
-if command -v llvm-cov >/dev/null 2>&1; then cov=(llvm-cov); else cov=(xcrun llvm-cov); fi
+# SwiftPM exports the source paths and line totals directly on both Xcode and Linux.
+per_folder=$(python3 - "$codecov_json" <<'PYTHON'
+import json
+import sys
+from collections import defaultdict
+from pathlib import Path
 
-report=$("${cov[@]}" report "$bin" -instr-profile="$profdata" -ignore-filename-regex='Tests|\.build' --use-color=false)
-
-# Report columns: $1 file, $8 lines, $9 missed lines. Sum per top-level folder, then sort by name.
-per_folder=$(echo "$report" | awk '
-  $1 ~ /\.swift$/ { n = split($1, p, "/"); d = (n > 1) ? p[1] : "(root)"; l[d] += $8; m[d] += $9 }
-  END { for (d in l) print d, l[d], m[d] }' | sort)
+root = Path("Sources/FlowKit").resolve()
+totals = defaultdict(lambda: [0, 0])
+with open(sys.argv[1]) as report:
+    for group in json.load(report)["data"]:
+        for file in group["files"]:
+            path = Path(file["filename"])
+            if path.suffix != ".swift" or not path.is_relative_to(root):
+                continue
+            parts = path.relative_to(root).parts
+            folder = parts[0] if len(parts) > 1 else "(root)"
+            lines = file["summary"]["lines"]
+            totals[folder][0] += lines["count"]
+            totals[folder][1] += lines["count"] - lines["covered"]
+if not totals:
+    sys.exit("SwiftPM coverage contains no FlowKit source files")
+for folder, (lines, missed) in sorted(totals.items()):
+    print(folder, lines, missed)
+PYTHON
+)
 
 table=$(echo "$per_folder" | awk -v floors=coverage-floors.txt '
   BEGIN { while ((getline x < floors) > 0) { if (x ~ /^[[:space:]]*(#|$)/) continue; split(x, q, /[[:space:]]+/); floor[q[1]] = q[2] } }

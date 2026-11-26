@@ -36,7 +36,6 @@ limited() {
 
 if [ "$platform" = macos ]; then
   SIM_NO_LAUNCH=1 scripts/sim.sh mac > "$out/build.log" 2>&1 || { cat "$out/build.log"; echo "The Mac app didn't build." >&2; exit 3; }
-  pkill -x Flow 2>/dev/null || true
   FLOW_CHECK_FILE="$log" FLOW_CHECK_ONLY="${FLOW_CHECK_ONLY:-}" build/dd/Build/Products/Debug/Flow.app/Contents/MacOS/Flow -FlowDemo YES -FlowPlayerCheck YES -ApplePersistenceIgnoreState YES > "$out/app-stdout.log" 2>&1 &
   app=$!
   sleep 6
