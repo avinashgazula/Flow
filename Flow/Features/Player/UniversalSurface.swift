@@ -56,18 +56,27 @@ struct UniversalSurface: UIViewRepresentable {
     }
 
     func updateUIView(_ view: UniversalSurfaceUIView, context: Context) {
+        let changedPlayer = context.coordinator.player !== player
+        if changedPlayer {
+            view.onLayout = { [weak player] size, scale in player?.surfaceLaidOut(size: size, scale: scale) }
+            context.coordinator.player = player
+        }
         view.host(player.layer)
-        if context.coordinator.fill != fill {
+        if changedPlayer || context.coordinator.fill != fill {
             context.coordinator.fill = fill
             player.setFill(fill)
         }
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator(fill: fill) }
+    func makeCoordinator() -> Coordinator { Coordinator(player: player, fill: fill) }
 
     final class Coordinator {
+        weak var player: UniversalPlayer?
         var fill: Bool
-        init(fill: Bool) { self.fill = fill }
+        init(player: UniversalPlayer, fill: Bool) {
+            self.player = player
+            self.fill = fill
+        }
     }
 }
 #else
@@ -118,18 +127,27 @@ struct UniversalSurface: NSViewRepresentable {
     }
 
     func updateNSView(_ view: UniversalSurfaceNSView, context: Context) {
+        let changedPlayer = context.coordinator.player !== player
+        if changedPlayer {
+            view.onLayout = { [weak player] size, scale in player?.surfaceLaidOut(size: size, scale: scale) }
+            context.coordinator.player = player
+        }
         view.host(player.layer)
-        if context.coordinator.fill != fill {
+        if changedPlayer || context.coordinator.fill != fill {
             context.coordinator.fill = fill
             player.setFill(fill)
         }
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator(fill: fill) }
+    func makeCoordinator() -> Coordinator { Coordinator(player: player, fill: fill) }
 
     final class Coordinator {
+        weak var player: UniversalPlayer?
         var fill: Bool
-        init(fill: Bool) { self.fill = fill }
+        init(player: UniversalPlayer, fill: Bool) {
+            self.player = player
+            self.fill = fill
+        }
     }
 }
 #endif
