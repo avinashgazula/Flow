@@ -1,4 +1,4 @@
-import CardMenu from './CardMenu'
+import CardMenu from './TitleCardMenu'
 import { provideCardMenu } from './LazyCardMenu'
 
 /* Imported for its effect by the pages that draw posters, so their own chunk carries the card menu. It is not imported by

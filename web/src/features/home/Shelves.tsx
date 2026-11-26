@@ -15,7 +15,7 @@ import { hasCatalog, useSettings, type ServerConfig } from '../../lib/store/sett
 import { userLocale, useMinuteTick } from '../../lib/time'
 import type { MediaItem, Page } from '../../lib/tmdb/types'
 import { useNearScreen } from '../../lib/useNearScreen'
-import CardMenu from './CardMenu'
+import CardMenu from './TitleCardMenu'
 import { LazyCardMenu, provideCardMenu } from './LazyCardMenu'
 import { followedShows, showStatus } from './continue'
 import { genreTiles, serviceTiles } from './folders'

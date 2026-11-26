@@ -7,7 +7,7 @@ import { Welcome } from '../features/onboarding/Welcome'
 import { hasCatalog, useSettings } from '../lib/store/settings'
 
 // The shortcuts sheet is a page of its own, fetched the first time ? is pressed.
-const Shortcuts = lazy(() => import('../features/shortcuts/Shortcuts'))
+const Shortcuts = lazy(() => import('../features/shortcuts/ShortcutOverlay'))
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: Root,
