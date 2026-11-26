@@ -3,7 +3,7 @@ name: Release
 # Builds Flow for iPhone and iPad, Apple TV and the Mac, and attaches the apps to a GitHub release.
 # Runs when a version tag (v1.2.0, v1.2.0-beta.1) is pushed, or by hand: for an existing tag, or for a
 # new one at the commit given, which the release then creates. Sessions that can't push tags can
-# instead write the new tag into .github/release-tag on main or a claude/ branch.
+# instead write the new tag into .github/release-tag on main or a claude/ or codex/ branch.
 #
 # The apps are unsigned: there's no Apple Developer account in CI. Install the IPAs with a
 # sideloading tool that signs them with your own Apple ID (AltStore, SideStore, Sideloadly), or
@@ -12,7 +12,7 @@ name: Release
 on:
   push:
     tags: ["v*"]
-    branches: [main, "claude/**"]
+    branches: [main, "claude/**", "codex/**"]
     paths: [.github/release-tag]
   workflow_dispatch:
     inputs:
@@ -43,11 +43,13 @@ jobs:
           ref: ${{ github.event.inputs.ref || github.event.inputs.tag || github.sha }}
       - name: Tag
         id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          tag="${{ github.event.inputs.tag }}"
-          [ -z "$tag" ] && [ "${{ github.ref_type }}" = tag ] && tag="${{ github.ref_name }}"
+          tag="$INPUT_TAG"
+          [ -z "$tag" ] && [ "$GITHUB_REF_TYPE" = tag ] && tag="$GITHUB_REF_NAME"
           [ -z "$tag" ] && tag=$(tr -d '[:space:]' < .github/release-tag)
-          case "$tag" in v*) ;; *) echo "Not a version tag: '$tag'" >&2; exit 1 ;; esac
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] && git check-ref-format "refs/tags/$tag" || { echo "Invalid version tag: '$tag'" >&2; exit 1; }
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - run: sudo xcode-select -s /Applications/Xcode_26.3.app
       - name: Generate project
@@ -116,11 +118,13 @@ jobs:
           ref: ${{ github.event.inputs.ref || github.event.inputs.tag || github.sha }}
       - name: Tag
         id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          tag="${{ github.event.inputs.tag }}"
-          [ -z "$tag" ] && [ "${{ github.ref_type }}" = tag ] && tag="${{ github.ref_name }}"
+          tag="$INPUT_TAG"
+          [ -z "$tag" ] && [ "$GITHUB_REF_TYPE" = tag ] && tag="$GITHUB_REF_NAME"
           [ -z "$tag" ] && tag=$(tr -d '[:space:]' < .github/release-tag)
-          case "$tag" in v*) ;; *) echo "Not a version tag: '$tag'" >&2; exit 1 ;; esac
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] && git check-ref-format "refs/tags/$tag" || { echo "Invalid version tag: '$tag'" >&2; exit 1; }
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with:
@@ -132,6 +136,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${{ steps.tag.outputs.tag }}"
+          built_commit=$(git rev-parse HEAD)
+          remote_tags=$(git ls-remote origin "refs/tags/$tag" "refs/tags/$tag^{}")
+          tag_commit=$(awk 'NR == 1 { commit = $1 } /\^\{\}$/ { commit = $1 } END { print commit }' <<< "$remote_tags")
+          if [ -n "$tag_commit" ] && [ "$tag_commit" != "$built_commit" ]; then
+            echo "Version $tag already points to $tag_commit, but this run built $built_commit." >&2
+            exit 1
+          fi
           cat > notes.md <<'EOF'
           ### Installing
 
@@ -149,7 +160,7 @@ jobs:
             gh release upload "$tag" dist/* --clobber
           else
             # A new tag lands on the commit that was built.
-            gh release create "$tag" dist/* --target "$(git rev-parse HEAD)" --title "Flow ${tag#v}" --notes-file notes.md --generate-notes $prerelease
+            gh release create "$tag" dist/* --target "$built_commit" --title "Flow ${tag#v}" --notes-file notes.md --generate-notes $prerelease
           fi
       # The release is already published by now, so nothing here can undo it. A failure is reported as a
       # warning, and the next release adds its own version to the source.

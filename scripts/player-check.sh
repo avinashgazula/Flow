@@ -4,8 +4,9 @@
 # resume points, Skip Intro, fallback, errors and Up Next. Prints PASS/FAIL lines and screenshots each
 # marked screen. CI runs it on iPhone, Apple TV and Mac (.github/workflows/ci.yml, job "Player check").
 # Usage: scripts/player-check.sh [ios|ipad|tvos|macos]   (SIM_UDID picks a simulator; FLOW_CHECK_ONLY=episodes,resume
-# runs just those scenarios: streams, universal, avi, audio, apple, engines, staleresume, resumeinside, close,
+# runs just those scenarios: streams, formats, universal, avi, audio, apple, engines, staleresume, resumeinside, close,
 # missing, switch, intro, fallback, failure, episodes, resume, panels)
+# FLOW_CHECK_FORMAT_URLS adds newline-separated fixture URLs to the formats scenario.
 #
 # Exit status: 0 every check passed; 1 a check failed; 2 the app died; 3 the run hung, timed out or never started.
 # Everything it saw is in shots/player-check/<platform>/: check.log, summary.md (the PASS/FAIL table) and screenshots.
@@ -45,7 +46,9 @@ else
   udid=${SIM_UDID:-$(scripts/sim.sh devices | awk -v p="$platform" '$1==p {print $2}')}
   bundle=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "build/dd/Build/Products/$([ "$platform" = tvos ] && echo Debug-appletvsimulator || echo Debug-iphonesimulator)/Flow.app/Info.plist")
   echo "Simulator $udid, $bundle"
-  launched=$(SIMCTL_CHILD_FLOW_CHECK_FILE="$log" SIMCTL_CHILD_FLOW_CHECK_ONLY="${FLOW_CHECK_ONLY:-}" xcrun simctl launch "$udid" "$bundle" -FlowDemo YES -FlowPlayerCheck YES)
+  launched=$(SIMCTL_CHILD_FLOW_CHECK_FILE="$log" SIMCTL_CHILD_FLOW_CHECK_ONLY="${FLOW_CHECK_ONLY:-}" \
+    SIMCTL_CHILD_FLOW_CHECK_FORMAT_URLS="${FLOW_CHECK_FORMAT_URLS:-}" \
+    xcrun simctl launch --terminate-running-process "$udid" "$bundle" -FlowDemo YES -FlowPlayerCheck YES)
   # "com.example.flow: 4321": the app's process id, which says whether it is still alive.
   app=$(echo "$launched" | awk -F': ' '{print $NF}' | tr -d ' ')
   case "$app" in ''|*[!0-9]*) echo "Couldn't read the app's process id from: $launched"; app="" ;; esac
