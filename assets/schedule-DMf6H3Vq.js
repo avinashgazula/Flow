@@ -1,0 +1,2 @@
+var e=[0,900,3600,10800,43200,86400],t=10800,n={0:`Every Launch`,900:`15 Minutes`,3600:`1 Hour`,10800:`3 Hours`,43200:`12 Hours`,86400:`1 Day`};function r(n){return e.includes(n.syncInterval)?n.syncInterval:t}function i(e,t,n){let r=e?Date.parse(e):NaN;return Number.isNaN(r)?!0:n<r||n-r>=t*1e3}function a(e){return!e.length||e.some(e=>!e||Number.isNaN(Date.parse(e)))?null:e.reduce((e,t)=>Date.parse(e)<=Date.parse(t)?e:t)}export{e as a,r as i,i as n,n as r,a as t};
+//# sourceMappingURL=schedule-DMf6H3Vq.js.map

@@ -1,0 +1,2 @@
+function e(e,{showTitles:t,showYear:n},r){let i=n&&e.year?String(e.year):void 0;return{...t?{title:e.title}:{},meta:r??i}}function t(e,t,n){return[e,n&&t?t:void 0].filter(Boolean).join(` · `)}export{e as n,t};
+//# sourceMappingURL=posterText-VWo7vMqr.js.map

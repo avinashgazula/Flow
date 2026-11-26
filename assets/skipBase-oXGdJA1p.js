@@ -1,0 +1,2 @@
+var e=`https://api.introdb.app`,t=`https://publicmetadb.com`;function n(e){let t=e.trim();if(t)try{let e=new URL(t);return e.protocol!==`https:`&&e.protocol!==`http:`?`Use an address that starts with https://.`:e.username||e.password?`Leave the login out of the address.`:void 0}catch{return`That isn’t a web address. Use one like https://example.com.`}}function r(e,t){let r=(e??``).trim();return!r||n(r)?t:r.replace(/\/+$/,``)}export{r as i,e as n,t as r,n as t};
+//# sourceMappingURL=skipBase-oXGdJA1p.js.map

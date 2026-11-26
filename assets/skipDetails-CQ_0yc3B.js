@@ -1,0 +1,2 @@
+function e(e,t){let{type:n,id:r}=e.item,i=e.progress?.episode??e.episode;return t?{to:`/watch/$type/$id`,params:{type:n,id:r},search:i?{season:i.season,episode:i.episode}:void 0}:{to:`/title/$type/$id`,params:{type:n,id:r},search:i?{season:i.season}:void 0}}export{e as t};
+//# sourceMappingURL=skipDetails-CQ_0yc3B.js.map

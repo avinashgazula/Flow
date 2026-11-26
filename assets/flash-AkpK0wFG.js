@@ -1,0 +1,2 @@
+import{i as e}from"./compiler-runtime-BNvLG3sJ.js";import{_t as t}from"./index-BfkOId-g.js";var n=e({flash:()=>i}),r;function i(e,n=3200){r&&(window.clearTimeout(r.timer),r.stack.remove());let i=document.createElement(`div`);i.className=t.stack??``,i.setAttribute(`role`,`status`),i.style.zIndex=`130`;let a=document.createElement(`p`);a.className=t.note??``,i.append(a),document.body.append(i),requestAnimationFrame(()=>a.textContent=e),r={stack:i,timer:window.setTimeout(()=>{i.remove(),r?.stack===i&&(r=void 0)},n)}}export{n,i as t};
+//# sourceMappingURL=flash-AkpK0wFG.js.map

@@ -1,0 +1,2 @@
+import{a as e,n as t,t as n}from"./compiler-runtime-BNvLG3sJ.js";var r=n(),i=e(t(),1);function a(){let e=(0,r.c)(5),[t,n]=(0,i.useState)(!1),a;e[0]===t?a=e[1]:(a=e=>{if(!e||t)return;let r=new IntersectionObserver(e=>{e.some(o)&&(n(!0),r.disconnect())},{rootMargin:`400px 200px`});return r.observe(e),()=>r.disconnect()},e[0]=t,e[1]=a);let s=a,c;return e[2]!==t||e[3]!==s?(c=[t,s],e[2]=t,e[3]=s,e[4]=c):c=e[4],c}function o(e){return e.isIntersecting}export{a as t};
+//# sourceMappingURL=useNearScreen-CM2oaRG3.js.map
