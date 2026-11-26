@@ -63,11 +63,14 @@ final class PlayerRoutingTests: XCTestCase {
         XCTAssertEqual(R.afterRemuxOpened(videoCodecID: "V_AV1", deviceDecodesAV1: false, hasPlayableSoundtrack: false, skippedAudioCount: 1), .builtIn)
     }
 
-    func testRemuxErrorsFallBackOnlyForUnsupportedVideo() {
-        XCTAssertEqual(PlayerRouting.afterRemuxError(.unsupported("V_MS/VFW/FOURCC")), .builtIn)
-        XCTAssertEqual(PlayerRouting.afterRemuxError(.notMatroska), .fail("This isn't a Matroska file."))
-        XCTAssertEqual(PlayerRouting.afterRemuxError(.malformed("cluster")), .fail("The file looks damaged (cluster)."))
-        XCTAssertEqual(PlayerRouting.couldntOpen("The request timed out."), "Couldn't open this file. The request timed out.")
+    func testMediaManifestAndProtocolRouting() {
+        let dash = URL(string: "https://cdn.example.com/live/presentation.mpd")!
+        XCTAssertEqual(ContainerDetector.container(url: dash, filename: nil), .unsupported("MPEG-DASH"))
+        let rtsp = URL(string: "rtsp://example.com/media/video.mp4")!
+        XCTAssertEqual(ContainerDetector.container(url: rtsp, filename: nil), .unsupported("RTSP"))
+        let manifest = Array("<?xml version=\"1.0\"?>\n<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\">".utf8)
+        XCTAssertEqual(ContainerDetector.sniff(manifest), .unsupported("MPEG-DASH"))
+        XCTAssertEqual(ContainerDetector.sniff(Array("#EXTM3U\n#EXT-X-VERSION:7".utf8)), .native)
     }
 
     // MARK: Apple's player fails an item
@@ -79,7 +82,7 @@ final class PlayerRoutingTests: XCTestCase {
     }
 
     func testFormatErrorsBeforePlaybackGoToTheBuiltInDecoder() {
-        for code in [-11828, -11833, -11834, -11821, -11829, -11853] {
+        for code in [-11828, -11833, -11834, -11821, -11829, -11853, -11868] {
             XCTAssertEqual(failure(code: code).action, .switchToBuiltIn, "AVFoundation code \(code)")
         }
         XCTAssertEqual(failure(code: -11800).action, .showError, "an unknown failure is shown")
@@ -109,8 +112,12 @@ final class PlayerRoutingTests: XCTestCase {
         XCTAssertEqual(failure(usesRemux: true, compatible: true, canStart: false).action, .showError)
     }
 
-    func testAFormatErrorAfterPlaybackBeganIsAReconnectNotAFallback() {
-        XCTAssertEqual(failure(didStart: true, code: -11828).action, .reconnect)
+    func testDecoderFailureDuringPlaybackUsesTheOtherEngine() {
+        XCTAssertEqual(failure(didStart: true, code: -11821).action, .switchToBuiltIn)
+        XCTAssertEqual(failure(didStart: true, code: -11855).action, .switchToBuiltIn)
+        XCTAssertEqual(failure(didStart: true, code: -11839).action, .reconnect)
+        XCTAssertEqual(failure(didStart: true, code: nil).action, .reconnect)
+        XCTAssertEqual(failure(didStart: true, code: -11821, canStart: false).action, .reconnect)
     }
 
     func testReconnectsAreLimitedToTwoUntilAQuietSpell() {

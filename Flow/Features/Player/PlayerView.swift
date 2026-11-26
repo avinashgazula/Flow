@@ -69,7 +69,13 @@ struct PlayerView: View {
                 .zIndex(5)
             switch session.phase {
             case .connecting(let progress):
+                #if os(tvOS)
+                if !session.hasNativePlaybackItem || session.resumePrompt != nil {
+                    ConnectingView(session: session, progress: progress)
+                }
+                #else
                 ConnectingView(session: session, progress: progress)
+                #endif
             case .failed(let message):
                 PlaybackErrorView(message: message, detail: session.failureDetail,
                                   canTryAnother: session.canTryAnotherSource,
@@ -92,11 +98,6 @@ struct PlayerView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .zIndex(5)
             }
-            #if os(tvOS)
-            if session.tourPanel == "subtitle-style" {
-                SubtitleStyleTourPanel(model: model).zIndex(8)
-            }
-            #endif
         }
         .animation(Theme.Motion.gentle, value: session.notice)
         .animation(Theme.Motion.gentle, value: session.showsSuggestions)
@@ -169,7 +170,7 @@ struct PlayerView: View {
         if let universal = session.universal {
             UniversalTVPlayer(session: session, universal: universal, model: model) { showSubtitles = true }
         } else {
-            TVPlayerController(session: session, model: model, subtitleSettings: model.settings.subtitles) { showSubtitles = true }
+            TVPlayerController(session: session, subtitleSettings: model.settings.subtitles)
                 .ignoresSafeArea()
         }
         #else
@@ -413,7 +414,7 @@ struct PlayerNotice: View {
 
 /// Flow's own subtitles: the viewer's font, colour, edge and background, or, with "Keep original ASS
 /// styling", the colour, weight, size and placement an ASS/SSA author gave each line.
-struct SubtitleOverlay: View {
+struct SubtitleOverlay: View, Equatable {
     let text: String?
     let settings: SubtitleSettings
     /// The cues on screen, for ASS styling. Only drawn (instead of `text`) when `keepASSStyling` is on.
@@ -433,6 +434,7 @@ struct SubtitleOverlay: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let blocks = self.blocks
             ZStack {
                 if blocks.isEmpty {
                     if let text, !text.isEmpty {
@@ -1665,9 +1667,10 @@ struct SubtitleLayer: View {
                 if let subtitle = session.subtitle {
                     // Its own clock, a tenth of a second: the session's half-second tick would show lines late.
                     TimelineView(.periodic(from: .now, by: 0.1)) { _ in
-                        let time = session.playbackTime
-                        SubtitleOverlay(text: subtitle.text(at: time, offset: session.subtitleOffset), settings: settings,
-                                        cues: settings.keepASSStyling ? subtitle.cues(at: time, offset: session.subtitleOffset) : [])
+                        let cues = subtitle.cues(at: session.playbackTime, offset: session.subtitleOffset)
+                        SubtitleOverlay(text: cues.isEmpty ? nil : cues.map(\.text).joined(separator: "\n"), settings: settings,
+                                        cues: settings.keepASSStyling ? cues : [])
+                            .equatable()
                     }
                 }
                 if let bitmap = session.bitmapSubtitle {

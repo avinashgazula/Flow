@@ -350,27 +350,43 @@ final class PrefetchTests: XCTestCase {
     actor RecordingSource: ByteSource {
         let inner: FileByteSource
         var ranges: [Range<Int64>] = []
+        var heldRange: Range<Int64>?
+        var heldRead: CheckedContinuation<Void, Never>?
         init(_ inner: FileByteSource) { self.inner = inner }
         func length() async throws -> Int64? { try await inner.length() }
+        func hold(_ range: Range<Int64>) { heldRange = range }
+        func release() {
+            heldRange = nil
+            heldRead?.resume()
+            heldRead = nil
+        }
         func read(_ range: Range<Int64>) async throws -> [UInt8] {
             ranges.append(range)
+            if range == heldRange {
+                await withCheckedContinuation { heldRead = $0 }
+            }
             return try await inner.read(range)
         }
     }
 
-    func testServingASegmentFetchesTheNext() async throws {
+    func testReadsNextSegmentBeforeCurrentReadFinishes() async throws {
         let source = RecordingSource(FileByteSource(url: MatroskaTests.fixture("avc-aac-srt")))
         let remuxer = try await MatroskaRemuxer.open(source, targetSegment: 2)
+        let first = remuxer.segments[0]
         let next = remuxer.segments[1]
-        _ = try await remuxer.mediaSegment(track: 1, index: 0)
+        let nextRange = next.byteStart..<next.byteEnd
+        await source.hold(first.byteStart..<first.byteEnd)
+        async let fragment = remuxer.mediaSegment(track: 1, index: 0)
         for _ in 0..<100 {
-            if await source.ranges.contains(next.byteStart..<next.byteEnd) { break }
-            try await Task.sleep(nanoseconds: 10_000_000)
+            if await source.ranges.contains(nextRange) { break }
+            try? await Task.sleep(nanoseconds: 10_000_000)
         }
-        let fetched = await source.ranges.contains(next.byteStart..<next.byteEnd)
+        let fetched = await source.ranges.contains(nextRange)
+        await source.release()
         XCTAssertTrue(fetched)
+        _ = try await fragment
         _ = try await remuxer.mediaSegment(track: 1, index: 1)
-        let fetches = await source.ranges.filter { $0 == next.byteStart..<next.byteEnd }.count
+        let fetches = await source.ranges.filter { $0 == nextRange }.count
         XCTAssertEqual(fetches, 1, "segment 1 is served from the prefetch, not fetched again")
     }
 }
@@ -593,20 +609,37 @@ final class DolbyVisionProfileTests: XCTestCase {
     func testProfile7PlaysAsHDR10AndProfile8KeepsDolbyVision() async throws {
         let header = try await MatroskaReader.readHeader(FileByteSource(url: MatroskaTests.fixture("hevc-eac3-ac3")))
         var track = try XCTUnwrap(header.tracks.first { $0.kind == .video })
-        func entry(profile: UInt8, compatibility: UInt8) throws -> (OutputTrack: MatroskaRemuxer.OutputTrack, hasDV: Bool) {
+        func entry(profile: UInt8, compatibility: UInt8, convertProfile7: Bool = false) throws -> (output: MatroskaRemuxer.OutputTrack, hasDV: Bool) {
             track.dolbyVision = [1, 0, profile << 1, 0x10, compatibility << 4] + [UInt8](repeating: 0, count: 19)
             track.dolbyVisionBoxType = "dvcC"
-            guard case .success(let out) = MatroskaRemuxer.output(for: track, firstFrame: nil) else { throw XCTSkip("unsupported") }
+            guard case .success(let out) = MatroskaRemuxer.output(for: track, firstFrame: nil, convertProfile7: convertProfile7) else {
+                throw MatroskaError.unsupported("HEVC fixture")
+            }
             let bytes = out.sampleEntry
             let hasDV = (0..<(bytes.count - 3)).contains { Array(bytes[$0..<($0 + 4)]) == Array("dvcC".utf8) }
             return (out, hasDV)
         }
-        XCTAssertTrue(try entry(profile: 8, compatibility: 1).hasDV)
-        XCTAssertFalse(try entry(profile: 7, compatibility: 6).hasDV)
+        let hdr10 = try entry(profile: 8, compatibility: 1)
+        XCTAssertTrue(hdr10.hasDV)
+        XCTAssertTrue(hdr10.output.canStripDolbyVision)
+        XCTAssertTrue(hdr10.output.codecString.hasPrefix("hvc1."))
+        XCTAssertEqual(hdr10.output.supplementalCodec, "dvh1.08.02/db1p")
+        XCTAssertEqual(try entry(profile: 8, compatibility: 4).output.supplementalCodec, "dvh1.08.02/db4h")
+        let profile7 = try entry(profile: 7, compatibility: 6)
+        XCTAssertFalse(profile7.hasDV)
+        XCTAssertNil(profile7.output.supplementalCodec)
         XCTAssertEqual(MatroskaRemuxer.dynamicRange(track), "Dolby Vision 7.6 (plays as HDR10)")
+        let converted = try entry(profile: 7, compatibility: 6, convertProfile7: true)
+        XCTAssertTrue(converted.output.convertsToProfile81)
+        XCTAssertEqual(converted.output.supplementalCodec, "dvh1.08.02/db1p")
         let p5 = try entry(profile: 5, compatibility: 0)
         XCTAssertTrue(p5.hasDV)
-        XCTAssertTrue(p5.OutputTrack.codecString.hasPrefix("dvh1.05"))
+        XCTAssertFalse(p5.output.canStripDolbyVision)
+        XCTAssertTrue(p5.output.codecString.hasPrefix("dvh1.05"))
+        XCTAssertNil(p5.output.supplementalCodec)
+        let entry = Data(p5.output.sampleEntry)
+        let colour = try XCTUnwrap(entry.range(of: Data("colr".utf8)))
+        XCTAssertEqual(Array(entry[colour.upperBound..<(colour.upperBound + 10)]), Array("nclx".utf8) + [0, 2, 0, 2, 0, 2])
     }
 
     /// WEB-DLs often carry no Matroska colour: the base layer's colour comes from the Dolby Vision
@@ -617,11 +650,11 @@ final class DolbyVisionProfileTests: XCTestCase {
         track.colour = nil
         track.dolbyVision = [1, 0, 8 << 1, 0x10, 1 << 4] + [UInt8](repeating: 0, count: 19)
         track.dolbyVisionBoxType = "dvvC"
-        func boxes(_ compatible: Bool) throws -> (dv: Bool, colr: [UInt8]?) {
+        func boxes(_ compatible: Bool) throws -> (dv: Bool, colr: [UInt8]?, supplementalCodec: String?) {
             guard case .success(let out) = MatroskaRemuxer.output(for: track, firstFrame: nil, compatible: compatible) else { throw XCTSkip("unsupported") }
             let b = out.sampleEntry
             func find(_ type: String) -> Int? { (0..<(b.count - 3)).first { Array(b[$0..<($0 + 4)]) == Array(type.utf8) } }
-            return (find("dvvC") != nil, find("colr").map { Array(b[($0 + 4)..<($0 + 14)]) })
+            return (find("dvvC") != nil, find("colr").map { Array(b[($0 + 4)..<($0 + 14)]) }, out.supplementalCodec)
         }
         let normal = try boxes(false)
         XCTAssertTrue(normal.dv)
@@ -629,6 +662,7 @@ final class DolbyVisionProfileTests: XCTestCase {
         XCTAssertEqual(normal.colr, Array("nclx".utf8) + [0, 9, 0, 16, 0, 9])
         let compatible = try boxes(true)
         XCTAssertFalse(compatible.dv)
+        XCTAssertNil(compatible.supplementalCodec)
         XCTAssertEqual(compatible.colr, normal.colr)
         XCTAssertEqual(MatroskaRemuxer.colourFromDolbyVision([1, 0, 8 << 1, 0, 4 << 4])?.isHLG, true)
         XCTAssertNil(MatroskaRemuxer.colourFromDolbyVision([1, 0, 5 << 1, 0, 0]))

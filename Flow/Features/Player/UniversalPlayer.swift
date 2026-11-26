@@ -136,6 +136,41 @@ private final class MPVHandle: @unchecked Sendable {
     let queue = DispatchQueue(label: "app.flow.mpv.events", qos: .userInitiated)
     let trace = MPVTrace()
     var onWake: (@Sendable () -> Void)?
+    private let eventLock = NSLock()
+    private var wakeScheduled = false
+    private var latestTime = 0.0
+    // Only read or written on the event queue.
+    private var lastTimeDelivery: ContinuousClock.Instant?
+
+    var playhead: Double { eventLock.withLock { latestTime } }
+
+    func scheduleDrain() {
+        let shouldSchedule = eventLock.withLock {
+            guard !wakeScheduled else { return false }
+            wakeScheduled = true
+            return true
+        }
+        guard shouldSchedule else { return }
+        queue.async { [weak self] in
+            guard let self else { return }
+            // A wakeup during the drain can queue another pass, including when the current pass reads its last event.
+            self.eventLock.withLock { self.wakeScheduled = false }
+            self.onWake?()
+        }
+    }
+
+    func clearPlayhead() {
+        eventLock.withLock { latestTime = 0 }
+        lastTimeDelivery = nil
+    }
+
+    func recordPlayhead(_ seconds: Double) -> Bool {
+        eventLock.withLock { latestTime = seconds }
+        let now = ContinuousClock.now
+        if let lastTimeDelivery, lastTimeDelivery.duration(to: now) < .milliseconds(250) { return false }
+        lastTimeDelivery = now
+        return true
+    }
 
     init(_ raw: OpaquePointer) { self.raw = raw }
 
@@ -198,8 +233,8 @@ final class UniversalPlayer {
         }
     }
 
-    /// The playhead, in seconds; updated with every frame, so views read it on their own clock instead of observing it.
-    @ObservationIgnored private(set) var timePosition: Double = 0
+    /// Updated on the event queue. Views can read the latest frame without a main-thread callback for every frame.
+    var timePosition: Double { handle.playhead }
     private(set) var duration: Double = 0
     /// Paused, or not yet started: the file loads paused, and the session starts it once it has chosen the tracks.
     private(set) var isPaused = true
@@ -235,7 +270,6 @@ final class UniversalPlayer {
 
     private let handle: MPVHandle
     @ObservationIgnored private var isShutDown = false
-    @ObservationIgnored private var lastTick = Date.distantPast
     @ObservationIgnored private var level: Double = 1
     @ObservationIgnored private var boostDB = 0
     @ObservationIgnored private var logTail: [String] = []
@@ -352,9 +386,7 @@ final class UniversalPlayer {
         handle.onWake = { [weak self] in self?.drain() }
         mpv_set_wakeup_callback(created, { context in
             guard let context else { return }
-            Unmanaged<MPVHandle>.fromOpaque(context).takeUnretainedValue().queue.async {
-                Unmanaged<MPVHandle>.fromOpaque(context).takeUnretainedValue().onWake?()
-            }
+            Unmanaged<MPVHandle>.fromOpaque(context).takeUnretainedValue().scheduleDrain()
         }, Unmanaged.passUnretained(handle).toOpaque())
 
         observeLifecycle()
@@ -379,14 +411,23 @@ final class UniversalPlayer {
 
     // MARK: Events
 
-    /// Reads what mpv has queued. Runs on the event queue; each event is handed to the main thread in order.
+    /// Reads what mpv has queued. Lifecycle and track events keep their order, while the clock is published four times a second.
     private nonisolated func drain() {
         while true {
             guard let event = handle.with({ Self.read($0) }) else { return }
+            switch event {
+            case .idle: return
+            case .ignored: continue
+            case .verbose:
+                handle.trace.note(event)
+                continue
+            case .number("time-pos", let seconds):
+                guard seconds.isFinite, handle.recordPlayhead(seconds) else { continue }
+            case .unset("time-pos"):
+                handle.clearPlayhead()
+            default: break
+            }
             handle.trace.note(event)
-            if case .idle = event { return }
-            if case .ignored = event { continue }
-            if case .verbose = event { continue }
             DispatchQueue.main.async { [weak self] in
                 MainActor.assumeIsolated { self?.receive(event) }
             }
@@ -524,13 +565,10 @@ final class UniversalPlayer {
         switch event {
         case .number("time-pos", let seconds):
             if firstTimeAt == nil { firstTimeAt = Date() }
-            timePosition = seconds
-            if Date().timeIntervalSince(lastTick) >= 0.25 {
-                lastTick = Date()
-                onTime?(seconds)
-            }
+            onTime?(seconds)
         case .number("duration", let seconds): duration = seconds
-        case .number("demuxer-cache-duration", let seconds): bufferedAhead = seconds
+        case .number("demuxer-cache-duration", let seconds):
+            if abs(seconds - bufferedAhead) >= 0.25 || (seconds == 0 && bufferedAhead != 0) { bufferedAhead = seconds }
         case .number("dwidth", let width): videoSize.width = width
         case .number("dheight", let height): videoSize.height = height
         case .flag("pause", let paused):
@@ -547,8 +585,7 @@ final class UniversalPlayer {
         case .number(let name, let value) where name == "osd-width" || name == "osd-height": info[name] = String(Int(value))
         case .text(let name, let value): info[name] = value
         case .unset(let name):
-            if name == "time-pos" { timePosition = 0 }
-            info[name] = nil
+            if info[name] != nil { info[name] = nil }
         case .tracks(let audio, let subtitles):
             audioTracks = audio
             subtitleTracks = subtitles

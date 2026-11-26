@@ -171,9 +171,10 @@ struct LibraryListView: View {
     @State private var filter: MediaType?
 
     var body: some View {
-        ScrollView {
+        let visibleItems = filtered
+        return ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
-                BrowseHead(list.title, note: loading ? nil : "\(filtered.count.formatted()) \(filtered.count == 1 ? "title" : "titles")")
+                BrowseHead(list.title, note: loading ? nil : "\(visibleItems.count.formatted()) \(visibleItems.count == 1 ? "title" : "titles")")
                 BrowseToolbar {
                     HStack {
                         SegmentedTabs(options: [(value: MediaType?.none, title: "All"),
@@ -185,12 +186,12 @@ struct LibraryListView: View {
                 }
                 if loading {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
-                } else if filtered.isEmpty {
+                } else if visibleItems.isEmpty {
                     BrowseEmpty(title: "Nothing Here Yet", message: "Titles you add to \(list.title) appear in this list.")
                 } else if list == .history, !model.history.isEmpty {
-                    HistoryRows(entries: model.history, items: filtered)
+                    HistoryRows(entries: model.history, items: visibleItems)
                 } else {
-                    grid
+                    grid(visibleItems)
                 }
             }
             .padding(.bottom, Theme.Space.l)
@@ -217,7 +218,7 @@ struct LibraryListView: View {
 
     /// The watchlist can be rearranged on iOS 27 (drag a poster); every other list, and earlier systems, are a plain grid.
     @ViewBuilder
-    private var grid: some View {
+    private func grid(_ visibleItems: [MediaItem]) -> some View {
         #if os(iOS) && compiler(>=6.4)
         if #available(iOS 27.0, *), list == .watchlist, filter == nil {
             ReorderableWatchlistGrid(items: $items) { moving, target in
@@ -228,10 +229,10 @@ struct LibraryListView: View {
                 withAnimation(Theme.Motion.state) { items = arranged.compactMap { byKey[$0] } }
             }
         } else {
-            PosterGrid(items: filtered)
+            PosterGrid(items: visibleItems)
         }
         #else
-        PosterGrid(items: filtered)
+        PosterGrid(items: visibleItems)
         #endif
     }
 
@@ -262,7 +263,7 @@ private struct HistoryRows: View {
             ForEach(days.keys.sorted(by: >), id: \.self) { day in
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     SectionHead(Self.dayTitle(day))
-                    VStack(spacing: 0) {
+                    LazyVStack(spacing: 0) {
                         ForEach(days[day] ?? []) { entry in
                             if let item = byKey[entry.key] { HistoryRow(entry: entry, item: item) }
                         }

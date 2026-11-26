@@ -873,7 +873,8 @@ private struct HeroLogo: View {
             if !Task.isCancelled { failed = true }
             return
         }
-        let measured = Self.tone(of: loaded)
+        let measured = await Task.detached(priority: .userInitiated) { Self.tone(of: loaded) }.value
+        guard !Task.isCancelled else { return }
         withAnimation(Theme.Motion.fade) {
             tone = measured
             image = loaded
@@ -881,7 +882,7 @@ private struct HeroLogo: View {
     }
 
     /// Draws the logo small and reads its pixels back (un-premultiplied, as `LogoTone` expects).
-    private static func tone(of image: CGImage) -> LogoTone {
+    private nonisolated static func tone(of image: CGImage) -> LogoTone {
         let width = 48
         let height = max(1, width * image.height / max(1, image.width))
         var bytes = [UInt8](repeating: 0, count: width * height * 4)

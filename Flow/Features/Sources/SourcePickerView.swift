@@ -38,15 +38,16 @@ struct SourcePickerView: View {
 
     var body: some View {
         let list = ranked
-        let bestID = preferred(in: list)?.id
         let lastPlayedID = model.lastSource(for: request, in: list)?.id
+        let bestID = lastPlayedID ?? list.first(where: \.isPlayable)?.id
+        let hidden = SourceQuickFilter.hiddenCount(found: raw, shown: list)
         // A chip whose sources are gone (a new search found different ones) falls back to All instead of an empty list.
         let filtered = quickFilter.apply(to: list)
         let shown = filtered.isEmpty ? list : filtered
         let groups = grouped(shown)
         NavigationStack {
             VStack(spacing: 0) {
-                header(count: list.count, hidden: SourceQuickFilter.hiddenCount(found: raw, shown: list))
+                header(count: list.count, hidden: hidden)
                 if finished || !list.isEmpty { filterChips(for: list) }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
@@ -57,7 +58,7 @@ struct SourcePickerView: View {
                             .shimmering()
                             .accessibilityHidden(true)
                         } else if list.isEmpty {
-                            emptyState
+                            emptyState(hidden: hidden)
                         }
                         ForEach(groups, id: \.0) { category, sources in
                             if providerHeaders {
@@ -73,7 +74,7 @@ struct SourcePickerView: View {
                         failureNotes
                     }
                     .padding(.bottom, Theme.Space.xxl)
-                    .animation(Theme.Motion.move, value: shown.map(\.id))
+                    .animation(Platform.isTV && !finished ? nil : Theme.Motion.move, value: shown.map(\.id))
                 }
             }
             .background(Theme.Palette.bg)
@@ -92,8 +93,8 @@ struct SourcePickerView: View {
     }
 
     /// Nothing found: what to do next, in words. A film still in cinemas says so instead, since nothing is out to find.
-    private var emptyState: some View {
-        let notice = emptyNotice
+    private func emptyState(hidden: Int) -> some View {
+        let notice = emptyNotice(hidden: hidden)
         return VStack(alignment: .leading, spacing: Theme.Space.xs) {
             Text(notice?.title ?? "No Sources")
                 .font(Theme.Typeface.title)
@@ -110,9 +111,7 @@ struct SourcePickerView: View {
     }
 
     /// The wording for an empty list other than plain "No Sources"; the same words as the website.
-    private var emptyNotice: (title: String, text: String)? {
-        // Sources were found and the resolution cap or the filters dropped every one: not the same as finding none.
-        let hidden = SourceQuickFilter.hiddenCount(found: raw, shown: ranked)
+    private func emptyNotice(hidden: Int) -> (title: String, text: String)? {
         if hidden > 0 {
             return ("No Sources Shown", "\(hidden) source\(hidden == 1 ? " was" : "s were") found, and your filters hide \(hidden == 1 ? "it" : "them"). Loosen the filters or the result cap in Settings.")
         }

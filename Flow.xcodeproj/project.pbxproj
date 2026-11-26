@@ -120,11 +120,9 @@
 		755F9943CF87BE742C1BCF83 /* FlowUITestCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A22CE6D69366218A1036513 /* FlowUITestCase.swift */; };
 		75E67AD71E6F368686ACD7E6 /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71F94293E928197317DF1F8C /* SettingsRootView.swift */; };
 		776023F73CD60A0CCDE0D029 /* GuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AF73C27E4D142EE2CA80A1 /* GuideView.swift */; };
-		777D1C6FA29CA1A7F026AD65 /* SubtitleStylePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E22181E834E79436423AC845 /* SubtitleStylePanel.swift */; };
 		77E50154EE50FDBD67545336 /* UniversalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACE85A088DB24B8E6E6FF54F /* UniversalSurface.swift */; };
 		77F28F8E1047586031FB383F /* ProvidersSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED3F6045FC0AD7F92F090118 /* ProvidersSettingsViews.swift */; };
 		7A20EE49185DFEE8F269BABC /* ShelvesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E5BC060EB6D6E2ABFE2898 /* ShelvesSettingsView.swift */; };
-		7AB710189C42474009A338E6 /* SubtitleStylePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E22181E834E79436423AC845 /* SubtitleStylePanel.swift */; };
 		7B4EB7185B6AAC53D044D8D7 /* SimpleSettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4354067308CA316BA4A7A22 /* SimpleSettingsViews.swift */; };
 		7BBEDFED27F66D4F425AFE8F /* FlowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57BEA62DF8EFA71357247DCA /* FlowSnapshot.swift */; };
 		7BBF9A7203D071B85464E05A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03878E23BB21C51D27637323 /* RootView.swift */; };
@@ -236,7 +234,6 @@
 		E197E9DC8878B85BF83BFA21 /* FlowKit in Frameworks */ = {isa = PBXBuildFile; productRef = 260CFC46D33868BB12C131B0 /* FlowKit */; };
 		E246BFF4BD7FE5509952989B /* FlowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64C5B84B31FA9BA7D117A2E0 /* FlowApp.swift */; };
 		E25FF5DDD7201F01E732EF27 /* FlowSampleXvid.avi in Resources */ = {isa = PBXBuildFile; fileRef = DC041FAE8A07D8420E9791B6 /* FlowSampleXvid.avi */; };
-		E2B811D33809EE6342D8E5CB /* SubtitleStylePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E22181E834E79436423AC845 /* SubtitleStylePanel.swift */; };
 		E2EA2874A3BF28CCF02E353C /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7785133DEC097B45A1126DA /* OnboardingView.swift */; };
 		E4D28F96D12C6739141C5806 /* FlowWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16383A223031E05D459007D7 /* FlowWidgets.swift */; };
 		E5D35F448C3528FEE4DFC7A7 /* SportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDC8FFF7F3CED5F10C0F96E2 /* SportsView.swift */; };
@@ -424,7 +421,6 @@
 		DAA44AEFB6B607BA1E78A020 /* Images.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Images.swift; sourceTree = "<group>"; };
 		DC041FAE8A07D8420E9791B6 /* FlowSampleXvid.avi */ = {isa = PBXFileReference; lastKnownFileType = video.avi; path = FlowSampleXvid.avi; sourceTree = "<group>"; };
 		DD8CA6AA38443F2D4A150475 /* FolderShelves.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderShelves.swift; sourceTree = "<group>"; };
-		E22181E834E79436423AC845 /* SubtitleStylePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleStylePanel.swift; sourceTree = "<group>"; };
 		E2E62E830BAF9BD6FE5B73F1 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Fonts; path = Flow/Resources/Fonts; sourceTree = SOURCE_ROOT; };
 		E7785133DEC097B45A1126DA /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		EBA393B9CEE6890CBADEE423 /* NowPlaying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlaying.swift; sourceTree = "<group>"; };
@@ -541,7 +537,6 @@
 				2DD737624EF9765468432FC9 /* SubtitleAutoSync.swift */,
 				48C5362BFE5BED6E0EB6365B /* SubtitlePickerView.swift */,
 				F280616B542912E53BE821A4 /* SubtitleStyleFields.swift */,
-				E22181E834E79436423AC845 /* SubtitleStylePanel.swift */,
 				137206BE43A2C01AB4878D2D /* SuggestionsViews.swift */,
 				946540BCA40626E77468111F /* SystemVolume.swift */,
 				5F08BAA1C6CEAE4B4CFBE868 /* UniversalControls.swift */,
@@ -1176,7 +1171,6 @@
 				B64D983919599DA5F6BE4EC5 /* SubtitleAutoSync.swift in Sources */,
 				A3E849D839BA8E1B6B562F7E /* SubtitlePickerView.swift in Sources */,
 				35D950F28B17E422A0D919AB /* SubtitleStyleFields.swift in Sources */,
-				7AB710189C42474009A338E6 /* SubtitleStylePanel.swift in Sources */,
 				30136E8905D46F576A786C71 /* SuggestionsViews.swift in Sources */,
 				CE4AFF5DDB7691E0D06CE59E /* SyncSettingsView.swift in Sources */,
 				A44682002C622E0EF4AA7642 /* SystemIntegration.swift in Sources */,
@@ -1259,7 +1253,6 @@
 				B6F0CE7FA65838A8D582C77D /* SubtitleAutoSync.swift in Sources */,
 				C06EF165EB47B0CA4D01C031 /* SubtitlePickerView.swift in Sources */,
 				17A4E89305D4FB1BC8EBA5A7 /* SubtitleStyleFields.swift in Sources */,
-				777D1C6FA29CA1A7F026AD65 /* SubtitleStylePanel.swift in Sources */,
 				73BCF3A83BBE69BF34F77F77 /* SuggestionsViews.swift in Sources */,
 				314D95FB31B487CE3F4EA415 /* SyncSettingsView.swift in Sources */,
 				CE1FCAD1F0959FCB9154AC8B /* SystemIntegration.swift in Sources */,
@@ -1350,7 +1343,6 @@
 				5D2F0EF48A710F2C9BD03A73 /* SubtitleAutoSync.swift in Sources */,
 				8D5CC8DE79A6CA50B942B21D /* SubtitlePickerView.swift in Sources */,
 				634E2220325C9E5EF9BF2586 /* SubtitleStyleFields.swift in Sources */,
-				E2B811D33809EE6342D8E5CB /* SubtitleStylePanel.swift in Sources */,
 				7FAFDBB90A59899A1C36E845 /* SuggestionsViews.swift in Sources */,
 				FAA2CA0BA526297EC1747B4B /* SyncSettingsView.swift in Sources */,
 				E6D35872D4AF909158EDF0F5 /* SystemIntegration.swift in Sources */,

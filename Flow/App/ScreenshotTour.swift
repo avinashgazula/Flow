@@ -200,35 +200,6 @@ enum ScreenshotTour {
             ], at: index)
         }
         #endif
-        #if os(tvOS)
-        // The Subtitle Style tab of the info panel. The tour can't open the system panel, so it draws the
-        // tab over the picture; the second step changes the look to show the preview following it.
-        if let index = steps.firstIndex(where: { $0.name == "player-still-watching" }) {
-            steps.insert(contentsOf: [
-                Step(name: "player-subtitle-style") { m in
-                    for _ in 0..<60 {
-                        guard let phase = m.activePlayback?.phase, case .connecting = phase else { break }
-                        try? await Task.sleep(nanoseconds: 250_000_000)
-                    }
-                    // Held still: the sample is short, and would otherwise end under the panel.
-                    m.activePlayback?.pausePlayback()
-                    m.settings.subtitles.resetAppearance()
-                    m.activePlayback?.tourPanel = "subtitle-style"
-                },
-                Step(name: "player-subtitle-style-changed") { m in
-                    m.settings.subtitles.fontScale = 1.5
-                    m.settings.subtitles.color = .yellow
-                    m.settings.subtitles.edgeStyle = .outline
-                    m.settings.subtitles.background = .translucent
-                    m.settings.subtitles.verticalPosition = 0.1
-                },
-                Step(name: "player-subtitle-style-closed") { m in
-                    m.settings.subtitles.resetAppearance()
-                    m.activePlayback?.tourPanel = nil
-                },
-            ], at: index)
-        }
-        #endif
         #if DEBUG
         // The bundled MKV through the built-in decoder (libmpv), with the controls up; on Apple TV also with the panel open.
         if let index = steps.firstIndex(where: { $0.name == "player-still-watching" }) {

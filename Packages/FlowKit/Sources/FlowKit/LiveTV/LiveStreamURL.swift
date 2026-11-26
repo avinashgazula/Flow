@@ -3,6 +3,23 @@ import Foundation
 /// Addresses to try for a live channel. AVPlayer plays MPEG-TS only inside HLS, and most IPTV
 /// panels (Xtream Codes and its clones) serve the same channel as HLS at ".m3u8".
 public enum LiveStreamURL {
+    public enum PlaybackCandidate: Hashable, Sendable {
+        case native(URL)
+        case builtIn(URL)
+    }
+
+    public static func playbackCandidates(for url: URL) -> [PlaybackCandidate] {
+        let alternatives = candidates(for: url)
+        let native = alternatives.filter {
+            switch ContainerDetector.container(url: $0, filename: nil) {
+            case .unsupported, .matroska: return false
+            case .native, .unknown: return true
+            }
+        }.map(PlaybackCandidate.native)
+        // FFmpeg can usually open the address exactly as the provider supplied it.
+        return native + ([url] + alternatives.filter { $0 != url }).map(PlaybackCandidate.builtIn)
+    }
+
     public static func candidates(for url: URL) -> [URL] {
         let ext = url.pathExtension.lowercased()
         switch ext {

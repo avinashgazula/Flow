@@ -7,7 +7,7 @@ final class UniversalPlayerRoutingTests: XCTestCase {
 
     func testNamesOfContainersTheBuiltInDecoderPlays() {
         for (name, label) in [("a.avi", "AVI"), ("a.divx", "AVI"), ("a.wmv", "Windows Media"), ("a.asf", "Windows Media"), ("a.flv", "Flash Video"),
-                              ("a.rmvb", "RealMedia"), ("a.vob", "DVD VOB"), ("a.mpg", "MPEG-PS"), ("a.mpeg", "MPEG-PS"), ("a.ogv", "Ogg"), ("a.ogm", "Ogg")] {
+                              ("a.rmvb", "RealMedia"), ("a.vob", "DVD VOB"), ("a.mpg", "MPEG-PS"), ("a.mpeg", "MPEG-PS"), ("a.ts", "MPEG-TS"), ("a.m2ts", "MPEG-TS"), ("a.ogv", "Ogg"), ("a.ogm", "Ogg")] {
             XCTAssertEqual(ContainerDetector.container(url: url("https://x.test/\(name)"), filename: nil), .unsupported(label), name)
         }
         // The file name an add-on reports counts when the link has no extension.
@@ -15,7 +15,7 @@ final class UniversalPlayerRoutingTests: XCTestCase {
     }
 
     func testApplesContainersStayOnApplesPath() {
-        for name in ["a.mp4", "a.mov", "a.m4v", "a.m3u8", "a.ts", "a.m2ts", "a.mp3", "a.flac"] {
+        for name in ["a.mp4", "a.mov", "a.m4v", "a.m3u8", "a.mp3", "a.flac"] {
             XCTAssertEqual(ContainerDetector.container(url: url("https://x.test/\(name)"), filename: nil), .native, name)
         }
         XCTAssertEqual(ContainerDetector.container(url: url("https://x.test/a.mkv"), filename: nil), .matroska)
@@ -31,8 +31,14 @@ final class UniversalPlayerRoutingTests: XCTestCase {
         XCTAssertEqual(ContainerDetector.sniff(Array("RIFF".utf8) + [0x10, 0, 0, 0] + Array("AVI LIST".utf8)), .unsupported("AVI"))
         // A WAVE file is also RIFF, and plays natively.
         XCTAssertEqual(ContainerDetector.sniff(Array("RIFF".utf8) + [0x10, 0, 0, 0] + Array("WAVEfmt ".utf8)), .native)
-        // A transport stream and an MP4 are Apple's.
+        // Require multiple sync bytes before classifying a raw transport stream.
         XCTAssertEqual(ContainerDetector.sniff([0x47, 0x40, 0x00, 0x10]), .native)
+        var transport = [UInt8](repeating: 0, count: 389)
+        for offset in [0, 188, 376] { transport[offset] = 0x47 }
+        XCTAssertEqual(ContainerDetector.sniff(transport), .unsupported("MPEG-TS"))
+        transport = [UInt8](repeating: 0, count: 389)
+        for offset in [4, 196, 388] { transport[offset] = 0x47 }
+        XCTAssertEqual(ContainerDetector.sniff(transport), .unsupported("MPEG-TS"))
         XCTAssertEqual(ContainerDetector.sniff([0, 0, 0, 0x20] + Array("ftypisom".utf8)), .native)
     }
 

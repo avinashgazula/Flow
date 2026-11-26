@@ -6,12 +6,16 @@ import FlowKit
 #if os(iOS) || os(tvOS)
 final class UniversalSurfaceUIView: UIView {
     private var hosted: CALayer?
+    private var reportedSize: CGSize?
+    private var reportedScale: CGFloat?
     var onLayout: ((CGSize, CGFloat) -> Void)?
 
     func host(_ layer: CALayer) {
         guard hosted !== layer else { return }
         hosted?.removeFromSuperlayer()
         hosted = layer
+        reportedSize = nil
+        reportedScale = nil
         self.layer.addSublayer(layer)
         setNeedsLayout()
     }
@@ -22,14 +26,19 @@ final class UniversalSurfaceUIView: UIView {
         // Moving or resizing the layer would otherwise animate, and the picture would swim.
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        hosted.frame = bounds
+        if hosted.frame != bounds { hosted.frame = bounds }
         let scale = window?.screen.nativeScale ?? UIScreen.main.nativeScale
-        hosted.contentsScale = scale
+        if hosted.contentsScale != scale { hosted.contentsScale = scale }
         if let metal = hosted as? CAMetalLayer {
-            metal.drawableSize = CGSize(width: bounds.width * scale, height: bounds.height * scale)
+            let size = CGSize(width: bounds.width * scale, height: bounds.height * scale)
+            if metal.drawableSize != size { metal.drawableSize = size }
         }
         CATransaction.commit()
-        if window != nil { onLayout?(bounds.size, scale) }
+        if window != nil, reportedSize != bounds.size || reportedScale != scale {
+            reportedSize = bounds.size
+            reportedScale = scale
+            onLayout?(bounds.size, scale)
+        }
     }
 }
 

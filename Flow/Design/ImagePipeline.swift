@@ -18,6 +18,16 @@ actor ImagePipeline {
         return c
     }()
     private var inflight: [String: Task<CGImage?, Never>] = [:]
+    #if os(tvOS)
+    // A fast scroll can uncover several shelves at once. Bound CPU work even when the data is already cached.
+    private static let decoderQueue: OperationQueue = {
+        let queue = OperationQueue()
+        queue.name = "app.flow.artwork"
+        queue.qualityOfService = .userInitiated
+        queue.maxConcurrentOperationCount = 2
+        return queue
+    }()
+    #endif
     /// The largest size each image has been decoded at, so a smaller request (a poster after the
     /// detail page showed it bigger) is answered from memory instead of decoding again.
     nonisolated(unsafe) private var largest: [String: Int] = [:]
@@ -35,7 +45,8 @@ actor ImagePipeline {
     nonisolated func cached(_ url: URL, maxPixel: Int) -> CGImage? {
         if let exact = cache.object(forKey: Self.key(url, maxPixel))?.image { return exact }
         let size = largestLock.withLock { largest[url.absoluteString] }
-        guard let size, size > maxPixel else { return nil }
+        // A hero-sized texture is expensive to upload when a small image will do.
+        guard let size, size > maxPixel, size / 2 < maxPixel else { return nil }
         return cache.object(forKey: Self.key(url, size))?.image
     }
 
@@ -49,7 +60,15 @@ actor ImagePipeline {
         let task = Task.detached(priority: .userInitiated) { () -> CGImage? in
             guard let (data, response) = try? await session.data(from: url),
                   (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true else { return nil }
+            #if os(tvOS)
+            return await withCheckedContinuation { continuation in
+                Self.decoderQueue.addOperation {
+                    continuation.resume(returning: Self.downsample(data, maxPixel: maxPixel))
+                }
+            }
+            #else
             return Self.downsample(data, maxPixel: maxPixel)
+            #endif
         }
         inflight[key as String] = task
         let image = await task.value
@@ -187,7 +206,8 @@ struct RemoteImage: View {
             loaded = await ImagePipeline.shared.image(fallbackURL, maxPixel: maxPixel)
         }
         guard !Task.isCancelled else { return }
-        withAnimation(Theme.Motion.fade) {
+        // Shelf tiles arrive in batches. Keep the cross-fade for large hero artwork on Apple TV.
+        withAnimation(!Platform.isTV || maxPixel >= 1000 ? Theme.Motion.fade : nil) {
             image = loaded
             failed = loaded == nil
         }

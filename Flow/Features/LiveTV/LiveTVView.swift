@@ -339,8 +339,7 @@ struct ChannelGroupView: View {
     }
 }
 
-/// Live player using the system controls on every platform. Tries the channel's HLS form when it
-/// was given as raw MPEG-TS, shows progress while connecting and says so when nothing plays.
+/// Live player with system controls for AVKit streams and a built-in decoder for other feeds.
 struct LivePlayerView: View {
     let channel: Channel
     let epg: EPG
@@ -358,6 +357,7 @@ struct LivePlayerView: View {
     private let compactHeight = false
     #endif
     @State private var player = AVPlayer()
+    @State private var decoder: UniversalPlayer?
     @State private var state: LoadState = .connecting
     @State private var attempt = 0
     @State private var tuned: Channel?
@@ -380,13 +380,17 @@ struct LivePlayerView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.black.ignoresSafeArea()
-            #if os(tvOS)
-            LiveTransportPlayer(player: player, lineup: lineup, current: current, tune: tune(_:), zap: zap(by:))
-                .ignoresSafeArea()
-            #else
-            VideoPlayer(player: player)
-                .ignoresSafeArea()
-            #endif
+            if let decoder {
+                compatibilitySurface(decoder)
+            } else {
+                #if os(tvOS)
+                LiveTransportPlayer(player: player, lineup: lineup, current: current, tune: tune(_:), zap: zap(by:))
+                    .ignoresSafeArea()
+                #else
+                VideoPlayer(player: player)
+                    .ignoresSafeArea()
+                #endif
+            }
             if state == .connecting {
                 ProgressView()
                     .controlSize(.large)
@@ -438,7 +442,10 @@ struct LivePlayerView: View {
         #endif
         .task(id: "\(current.id)-\(attempt)") { await start() }
         .onAppear { scheduleHide() }
-        .onDisappear { player.pause(); player.replaceCurrentItem(with: nil) }
+        .onDisappear {
+            hideTask?.cancel()
+            releasePlayback()
+        }
     }
 
     /// Tunes to the channel `offset` places along the lineup, wrapping at either end.
@@ -476,41 +483,135 @@ struct LivePlayerView: View {
         }
     }
 
+    private func compatibilitySurface(_ decoder: UniversalPlayer) -> some View {
+        UniversalSurface(player: decoder)
+            .ignoresSafeArea()
+            .overlay(alignment: .bottom) {
+                #if os(tvOS)
+                HStack(spacing: 24) {
+                    Button("Close") { dismiss() }
+                    if lineup.count > 1 { Button("Previous Channel") { zap(by: -1) } }
+                    Button(decoder.isPaused ? "Play" : "Pause") { toggle(decoder) }
+                    if lineup.count > 1 { Button("Next Channel") { zap(by: 1) } }
+                }
+                .padding(30)
+                .background(.regularMaterial, in: Capsule())
+                .padding(.bottom, 55)
+                #else
+                Button(decoder.isPaused ? "Play" : "Pause") { toggle(decoder) }
+                    .buttonStyle(PlayerActionStyle())
+                    .padding(.bottom, 20)
+                #endif
+            }
+            #if os(tvOS)
+            .onPlayPauseCommand { toggle(decoder) }
+            .onExitCommand { dismiss() }
+            #endif
+    }
+
+    private func toggle(_ decoder: UniversalPlayer) {
+        if decoder.isPaused { decoder.play() } else { decoder.pause() }
+    }
+
+    private func releasePlayback() {
+        player.pause()
+        player.replaceCurrentItem(with: nil)
+        decoder?.shutdown()
+        decoder = nil
+    }
+
     private func start() async {
-        state = .connecting
+        guard !Task.isCancelled else { return }
         let channel = current
-        var options: [String: Any] = [:]
-        if let ua = channel.userAgent { options["AVURLAssetHTTPHeaderFieldsKey"] = ["User-Agent": ua] }
-        for url in LiveStreamURL.candidates(for: channel.streamURL) {
+        let candidates = LiveStreamURL.playbackCandidates(for: channel.streamURL)
+        var lastWorking: LiveStreamURL.PlaybackCandidate?
+        releasePlayback()
+        for _ in 0..<2 {
+            let ordered = lastWorking.map { candidate in [candidate] + candidates.filter { $0 != candidate } } ?? candidates
+            lastWorking = nil
+            for candidate in ordered {
+                guard !Task.isCancelled else { return }
+                state = .connecting
+                let played = await play(candidate, channel: channel)
+                guard !Task.isCancelled else { return }
+                releasePlayback()
+                if played {
+                    lastWorking = candidate
+                    break
+                }
+            }
+            if lastWorking == nil { break }
+        }
+        state = .failed("Couldn't keep \(channel.name) playing. The channel may be off air or the connection may be unavailable.")
+    }
+
+    private func play(_ candidate: LiveStreamURL.PlaybackCandidate, channel: Channel) async -> Bool {
+        switch candidate {
+        case .native(let url):
+            let options: [String: Any] = channel.userAgent.map { ["AVURLAssetHTTPHeaderFieldsKey": ["User-Agent": $0]] } ?? [:]
             let item = AVPlayerItem(asset: AVURLAsset(url: url, options: options))
             #if os(tvOS)
             item.externalMetadata = LiveTransportPlayer.metadata(for: channel, epg: epg)
             #endif
+            var ended = false
+            let center = NotificationCenter.default
+            let observers = [AVPlayerItem.didPlayToEndTimeNotification, AVPlayerItem.failedToPlayToEndTimeNotification].map { name in
+                center.addObserver(forName: name, object: item, queue: .main) { _ in
+                    MainActor.assumeIsolated { ended = true }
+                }
+            }
+            defer { for observer in observers { center.removeObserver(observer) } }
             player.replaceCurrentItem(with: item)
             player.play()
-            if await ready(item) {
-                state = .playing
-                scheduleHide()
-                return
+            return await monitor {
+                if ended || item.status == .failed { return .ended }
+                if player.timeControlStatus == .playing { return .playing }
+                return player.timeControlStatus == .paused && item.status == .readyToPlay ? .paused : .waiting
             }
-            if Task.isCancelled { return }
+        case .builtIn(let url):
+            await UniversalPlayer.waitForTeardown()
+            guard !Task.isCancelled else { return false }
+            let headers = channel.userAgent.map { ["User-Agent": $0] } ?? [:]
+            guard let engine = UniversalPlayer(url: url, headers: headers, startAt: nil, audioLanguages: [],
+                                               subtitleLanguages: [], subtitles: SubtitleSettings(), boostDB: 0) else { return false }
+            var ended = false
+            engine.onLoaded = { [weak engine] in engine?.play() }
+            engine.onEnded = { ended = true }
+            engine.onFailed = { _ in ended = true }
+            decoder = engine
+            return await monitor {
+                if ended { return .ended }
+                if engine.hasRestarted, engine.isPaused { return .paused }
+                return engine.hasRestarted && !engine.isBuffering && !engine.isCoreIdle ? .playing : .waiting
+            }
         }
-        player.replaceCurrentItem(with: nil)
-        state = .failed("\(channel.name) isn't broadcasting right now, or its stream can't play on Apple devices.")
     }
 
-    /// Waits up to 15 seconds for the stream to start.
-    private func ready(_ item: AVPlayerItem) async -> Bool {
-        for _ in 0..<60 {
-            switch item.status {
-            case .readyToPlay: return true
-            case .failed: return false
-            default: break
+    private enum StreamState { case playing, paused, waiting, ended }
+
+    /// A ready manifest may still have no packets. Wait for playback and give transient stalls time to recover.
+    private func monitor(_ status: () -> StreamState) async -> Bool {
+        var played = false
+        var deadline = ContinuousClock.now + .seconds(15)
+        while !Task.isCancelled {
+            switch status() {
+            case .playing:
+                if !played {
+                    played = true
+                    state = .playing
+                    scheduleHide()
+                }
+                deadline = ContinuousClock.now + .seconds(18)
+            case .paused where played:
+                deadline = ContinuousClock.now + .seconds(18)
+            case .ended:
+                return played
+            case .paused, .waiting:
+                if ContinuousClock.now >= deadline { return played }
             }
-            try? await Task.sleep(nanoseconds: 250_000_000)
-            if Task.isCancelled { return false }
+            do { try await Task.sleep(for: .milliseconds(250)) } catch { break }
         }
-        return false
+        return played
     }
 }
 

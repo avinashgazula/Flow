@@ -52,19 +52,6 @@ public enum PlayerRouting {
         return .proceed
     }
 
-    public enum RemuxErrorAction: Equatable, Sendable {
-        case builtIn
-        /// The error screen, with this message.
-        case fail(String)
-    }
-
-    /// MPEG-2, VC-1, Xvid, VP8, VP9 and the like are not video Apple's player decodes: the built-in decoder
-    /// plays them. Any other Matroska error is the file's.
-    public static func afterRemuxError(_ error: MatroskaError) -> RemuxErrorAction {
-        if case .unsupported = error { return .builtIn }
-        return .fail(error.localizedDescription)
-    }
-
     /// For an error that isn't Matroska's own (a network error while opening, say).
     public static func couldntOpen(_ description: String) -> String { "Couldn't open this file. \(description)" }
 
@@ -84,7 +71,7 @@ public enum PlayerRouting {
         public var didStart: Bool
         public var usesRemux: Bool
         public var remuxIsCompatible: Bool
-        /// The remuxed stream carries Dolby Vision or Atmos (false when there is no remuxer).
+        /// Compatible remux can remove Dolby Vision or Atmos signalling from the stream.
         public var remuxHasDolbyVisionOrAtmos: Bool
         public var builtInAlreadyRunning: Bool
         /// The AVFoundation error's code, nil when the error isn't in that domain (or there is none).
@@ -114,9 +101,9 @@ public enum PlayerRouting {
         public var recoveries: Int
     }
 
-    /// AVFoundation's fileFormatNotRecognized, decoderNotFound, decoderTemporarilyUnavailable, decodeFailed,
-    /// fileFailedToParse and failedToParse.
-    static let appleFormatErrorCodes: Set<Int> = [-11828, -11833, -11834, -11821, -11829, -11853]
+    /// AVFoundation format and decoder errors that a different engine may be able to play.
+    static let appleFormatErrorCodes: Set<Int> = [-11821, -11828, -11829, -11833, -11834, -11839, -11848, -11853, -11855, -11864, -11868]
+    private static let decodeFailuresDuringPlayback: Set<Int> = [-11821, -11833, -11855, -11864, -11868]
 
     /// Reconnects allowed before the error screen, and how long a quiet spell makes the count start again.
     static let maxReconnects = 2
@@ -137,9 +124,13 @@ public enum PlayerRouting {
         if !input.didStart, input.usesRemux, !input.remuxIsCompatible, input.remuxHasDolbyVisionOrAtmos {
             return ItemFailureDecision(action: .reloadCompatibleRemux, recoveries: input.recoveries)
         }
-        if !input.didStart, input.canStartBuiltIn,
-           shouldRetryInBuiltIn(builtInAlreadyRunning: input.builtInAlreadyRunning, usesRemux: input.usesRemux, appleErrorCode: input.appleErrorCode) {
-            return ItemFailureDecision(action: .switchToBuiltIn, recoveries: input.recoveries)
+        if input.canStartBuiltIn, !input.builtInAlreadyRunning {
+            let failedToStart = !input.didStart &&
+                shouldRetryInBuiltIn(builtInAlreadyRunning: false, usesRemux: input.usesRemux, appleErrorCode: input.appleErrorCode)
+            let lostDecoder = input.didStart && input.appleErrorCode.map(decodeFailuresDuringPlayback.contains) == true
+            if failedToStart || lostDecoder {
+                return ItemFailureDecision(action: .switchToBuiltIn, recoveries: input.recoveries)
+            }
         }
         // Drops far apart in a long film are separate bad moments, not a dead stream: each gets its own tries.
         var recoveries = input.recoveries

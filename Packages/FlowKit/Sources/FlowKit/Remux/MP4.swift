@@ -127,13 +127,13 @@ enum MP4 {
             return box("moof", mfhd + box("traf", tfhd + tfdt + trun))
         }
         let size = moof(dataOffset: 0).count
-        var mdat = Writer()
         let payload = samples.reduce(0) { $0 + $1.data.count }
-        mdat.u32(UInt32(8 + payload))
-        mdat.fourCC("mdat")
-        mdat.bytes.reserveCapacity(8 + payload)
-        for s in samples { mdat.append(s.data) }
-        return moof(dataOffset: Int32(size + 8)) + mdat.bytes
+        var fragment = Writer(bytes: moof(dataOffset: Int32(size + 8)))
+        fragment.bytes.reserveCapacity(size + 8 + payload)
+        fragment.u32(UInt32(8 + payload))
+        fragment.fourCC("mdat")
+        for sample in samples { fragment.append(sample.data) }
+        return fragment.bytes
     }
 
     /// ISO-639-2/T code packed into 15 bits; "und" when unknown.

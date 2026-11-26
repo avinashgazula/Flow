@@ -213,7 +213,7 @@ final class SubtitleProviderTests: XCTestCase {
 
 final class SubtitleParserExtraTests: XCTestCase {
     func testCuesAtATimeIncludeLongRunningOverlapsAndHonourTheOffset() {
-        let doc = SubtitleParser.parse("1\n00:00:00,000 --> 00:00:30,000\nSign\n\n2\n00:00:10,000 --> 00:00:12,000\nLine\n\n3\n00:00:20,000 --> 00:00:21,000\nLater\n")
+        var doc = SubtitleParser.parse("1\n00:00:00,000 --> 00:00:30,000\nSign\n\n2\n00:00:10,000 --> 00:00:12,000\nLine\n\n3\n00:00:20,000 --> 00:00:21,000\nLater\n")
         XCTAssertEqual(doc.cues(at: 11).map(\.text), ["Sign", "Line"])
         XCTAssertEqual(doc.cues(at: 25).map(\.text), ["Sign"], "a sign that stays up is still found after later cues started")
         XCTAssertEqual(doc.cues(at: 20.5).map(\.text), ["Sign", "Later"])
@@ -221,6 +221,8 @@ final class SubtitleParserExtraTests: XCTestCase {
         XCTAssertEqual(doc.cues(at: 11, offset: 10).map(\.text), ["Sign"], "a +10 s offset shows what was due 10 s earlier... of the file's own time")
         XCTAssertEqual(doc.text(at: 11), "Sign\nLine")
         XCTAssertNil(doc.text(at: 100))
+        doc.cues[0].end = 40
+        XCTAssertEqual(doc.text(at: 35), "Sign", "editing a cue refreshes the overlap lookup")
     }
 
     func testWebVTTShortTimestampsAndHeadersAreRead() {

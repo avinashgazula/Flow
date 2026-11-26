@@ -60,103 +60,107 @@ struct TVContentOverlay: View {
     }
 }
 
-/// The system player on tvOS: Siri Remote scrubbing, info panel, audio/subtitle menus.
-/// Flow adds skip buttons as contextual actions, a subtitle-search menu item, and info panel tabs for
-/// X-Ray, playback details and how subtitles look.
+/// AVKit owns the Apple TV transport, track selection, scrubbing, and Siri Remote interactions.
 struct TVPlayerController: UIViewControllerRepresentable {
     let session: PlaybackSession
-    let model: AppModel
     let subtitleSettings: SubtitleSettings
-    var onSubtitleSearch: () -> Void
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
         let controller = AVPlayerViewController()
         controller.player = session.player
         controller.delegate = context.coordinator
-        controller.appliesPreferredDisplayCriteriaAutomatically = true
-        // Flow's own subtitles go in the content overlay, which sits beneath the transport bar and info panel.
-        let host = UIHostingController(rootView: TVContentOverlay(session: session, settings: subtitleSettings))
-        host.view.backgroundColor = .clear
-        host.view.isUserInteractionEnabled = false
+        // The session requests display matching before it assigns the HLS item.
+        controller.appliesPreferredDisplayCriteriaAutomatically = false
+
+        // Downloaded and disc captions sit beneath the system playback controls.
         if let overlay = controller.contentOverlayView {
+            let host = UIHostingController(rootView: TVContentOverlay(session: session, settings: subtitleSettings))
+            host.view.backgroundColor = .clear
+            host.view.isUserInteractionEnabled = false
             controller.addChild(host)
             host.view.frame = overlay.bounds
             host.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             overlay.addSubview(host.view)
             host.didMove(toParent: controller)
+            context.coordinator.subtitleHost = host
         }
-        context.coordinator.subtitleHost = host
-        // A "Details" tab in the info panel, beside Apple's own.
-        let details = UIHostingController(rootView: PlaybackInfoPanel(session: session, card: false))
-        details.title = "Details"
-        details.view.backgroundColor = .clear
-        details.preferredContentSize = CGSize(width: 0, height: 360)
-        // X-Ray first: the cast, with whoever the dialogue names leading.
-        let xray = UIHostingController(rootView: XRayTVPanel(session: session, model: model))
-        xray.title = "X-Ray"
-        xray.view.backgroundColor = .clear
-        xray.preferredContentSize = CGSize(width: 0, height: 400)
-        // How subtitles look, in steps the Siri Remote can click through; the subtitles on screen follow.
-        let style = UIHostingController(rootView: SubtitleStyleTVPanel(model: model))
-        style.title = "Subtitle Style"
-        style.view.backgroundColor = .clear
-        style.preferredContentSize = CGSize(width: 0, height: 440)
-        controller.customInfoViewControllers = [xray, details, style]
         return controller
     }
 
     func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
-        context.coordinator.subtitleHost?.rootView = TVContentOverlay(session: session, settings: subtitleSettings)
-        // The player cuts these buttons off at about fourteen characters, so their titles stay short.
-        if session.asksStillWatching {
-            controller.contextualActions = [UIAction(title: "Keep Watching", image: UIImage(systemName: "play.fill")) { _ in session.confirmStillWatching() }]
-        } else if let segment = session.activeSegment {
-            controller.contextualActions = [UIAction(title: segment.kind.buttonTitle, image: UIImage(systemName: "forward.end.fill")) { _ in session.skip(segment) }]
-        } else if session.showsSuggestions, session.phase == .playing {
-            controller.contextualActions = [UIAction(title: "More Like This", image: UIImage(systemName: "rectangle.stack")) { _ in session.endWithSuggestions() }]
-        } else if let countdown = session.upNextCountdown {
-            controller.contextualActions = [UIAction(title: "Up Next in \(countdown)", image: UIImage(systemName: "forward.fill")) { _ in
+        let coordinator = context.coordinator
+        if let host = coordinator.subtitleHost, host.rootView.settings != subtitleSettings {
+            host.rootView = TVContentOverlay(session: session, settings: subtitleSettings)
+        }
+
+        let action = contextualAction
+        if coordinator.action != action {
+            coordinator.action = action
+            controller.contextualActions = action.map { [makeAction($0)] } ?? []
+        }
+
+        // AVKit's subtitle picker handles stream captions. Picture-based disc tracks need their own selector.
+        let tracks = session.bitmapTracks
+        let selection = session.selectedBitmapTrack
+        if coordinator.discTracks != tracks || coordinator.discSelection != selection {
+            coordinator.discTracks = tracks
+            coordinator.discSelection = selection
+            controller.transportBarCustomMenuItems = tracks.isEmpty ? [] : [
+                UIMenu(title: "Disc Subtitles", image: UIImage(systemName: "captions.bubble"), options: .singleSelection,
+                       children: [discSubtitleAction(title: "Off", track: nil, selected: selection)] +
+                           tracks.map { discSubtitleAction(title: $0.title, track: $0.id, selected: selection) })
+            ]
+        }
+    }
+
+    private var contextualAction: ContextualAction? {
+        if session.asksStillWatching { return .keepWatching }
+        if let segment = session.activeSegment { return .skip(segment) }
+        if session.upNextCountdown != nil { return .playNext }
+        return nil
+    }
+
+    private func makeAction(_ action: ContextualAction) -> UIAction {
+        switch action {
+        case .keepWatching:
+            return UIAction(title: "Keep Watching", image: UIImage(systemName: "play.fill")) { _ in session.confirmStillWatching() }
+        case .skip(let segment):
+            return UIAction(title: segment.kind.buttonTitle, image: UIImage(systemName: "forward.end.fill")) { _ in session.skip(segment) }
+        case .playNext:
+            return UIAction(title: "Play Next", image: UIImage(systemName: "forward.fill")) { _ in
                 Task { await session.playUpNext() }
-            }]
-        } else {
-            controller.contextualActions = []
-        }
-        let search = UIAction(title: "Search Subtitles", image: UIImage(systemName: "magnifyingglass")) { _ in onSubtitleSearch() }
-        var items: [UIMenuElement] = []
-        if !session.bitmapTracks.isEmpty {
-            // Picture subtitles from the disc: AVKit can't show them, so Flow draws them and offers its own menu.
-            var choices: [UIMenuElement] = [UIAction(title: "Off", state: session.selectedBitmapTrack == nil ? .on : .off) { _ in session.selectBitmapSubtitle(nil) }]
-            choices += session.bitmapTracks.map { track in
-                UIAction(title: track.title, state: session.selectedBitmapTrack == track.id ? .on : .off) { _ in session.selectBitmapSubtitle(track.id) }
             }
-            items.append(UIMenu(title: "Disc Subtitles", image: UIImage(systemName: "captions.bubble"), options: .singleSelection, children: choices))
         }
-        items.append(search)
-        // Disc Subtitles already has the captions bubble; this one goes back ten seconds.
-        items.append(UIAction(title: "What Did They Say?", image: UIImage(systemName: "gobackward.10")) { _ in session.replayWithSubtitles() })
-        items.append(UIAction(title: session.songs.isListening ? "Listening…" : "Identify Song", image: UIImage(systemName: "shazam.logo"),
-                              attributes: session.songs.isListening ? .disabled : []) { _ in session.songs.identify(session) })
-        if session.canAutoSync {
-            let sync = UIAction(title: session.isAutoSyncing ? "Syncing Subtitles…" : "Auto-sync Subtitles (Beta)", image: UIImage(systemName: "waveform"),
-                                attributes: session.isAutoSyncing ? .disabled : []) { _ in session.autoSyncSubtitles() }
-            items.append(sync)
-        }
-        controller.transportBarCustomMenuItems = items
+    }
+
+    private func discSubtitleAction(title: String, track: Int?, selected: Int?) -> UIAction {
+        UIAction(title: title, state: track == selected ? .on : .off) { _ in session.selectBitmapSubtitle(track) }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(session: session) }
 
+    enum ContextualAction: Equatable {
+        case keepWatching
+        case skip(SkipSegment)
+        case playNext
+    }
+
     final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
         let session: PlaybackSession
         var subtitleHost: UIHostingController<TVContentOverlay>?
+        var action: ContextualAction?
+        var discTracks: [PlayerTrack] = []
+        var discSelection: Int?
         init(session: PlaybackSession) { self.session = session }
 
         func playerViewControllerShouldDismiss(_ playerViewController: AVPlayerViewController) -> Bool {
+            // AVKit handles Back while its controls are open. Once it asks to exit, close the embedded view.
             Task { @MainActor in session.stop() }
-            return true
+            return false
         }
     }
 }
+
 #endif
 
 #if os(macOS)

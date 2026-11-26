@@ -513,9 +513,17 @@ public enum MatroskaClusterParser {
     /// Parses every block in `bytes`, which starts at a Cluster boundary.
     /// A trailing partial cluster is parsed as far as its complete children go.
     public static func blocks(_ b: [UInt8], timecodeScale: Int64, tracks: [MatroskaTrack]) throws -> [MatroskaBlock] {
+        parseClusters(b, timecodeScale: timecodeScale, tracks: tracks).blocks
+    }
+
+    /// The overlap starts with the cluster shared by two HLS segments. Record its first timestamp for each track
+    /// during the same parse, so a large shared cluster never needs a second copy or demux pass.
+    static func parseClusters(_ b: [UInt8], timecodeScale: Int64, tracks: [MatroskaTrack],
+                              overlapFrom: Int? = nil) -> (blocks: [MatroskaBlock], sharedWithNext: [Int: Int64]) {
         let stripped = Dictionary(uniqueKeysWithValues: tracks.filter { !$0.strippedHeader.isEmpty }.map { ($0.number, $0.strippedHeader) })
         let zlib = Set(tracks.filter(\.isZlibCompressed).map(\.number))
         var out: [MatroskaBlock] = []
+        var sharedWithNext: [Int: Int64] = [:]
         var i = 0
         while i + 4 < b.count {
             guard let cluster = try? EBML.readElement(b, at: i) else { break }
@@ -526,21 +534,20 @@ public enum MatroskaClusterParser {
                 continue
             }
             let clusterEnd = min(cluster.end ?? b.count, b.count)
+            let overlaps = overlapFrom.map { i >= $0 } ?? false
             var clusterTime: Int64 = 0
             var j = cluster.dataStart
             while j < clusterEnd {
                 guard let child = try? EBML.readElement(b, at: j) else { break }
                 if cluster.size == nil && MKV.topLevel.contains(child.id) { break }
                 guard let childEnd = child.end, childEnd <= clusterEnd else { break }
+                var block: MatroskaBlock?
                 switch child.id {
                 case MKV.timecode:
                     clusterTime = Int64(EBML.uint(b, child))
                 case MKV.simpleBlock:
-                    if let block = parseBlock(b, child.dataStart, childEnd, clusterTime: clusterTime, scale: timecodeScale, simple: true, stripped: stripped, zlib: zlib) {
-                        out.append(block)
-                    }
+                    block = parseBlock(b, child.dataStart, childEnd, clusterTime: clusterTime, scale: timecodeScale, simple: true, stripped: stripped, zlib: zlib)
                 case MKV.blockGroup:
-                    var block: MatroskaBlock?
                     var duration: Int64?
                     var hasReference = false
                     for g in (try? EBML.children(b, from: child.dataStart, to: childEnd)) ?? [] {
@@ -552,19 +559,20 @@ public enum MatroskaClusterParser {
                         default: break
                         }
                     }
-                    if var block {
-                        block.duration = duration
-                        block.isKeyframe = !hasReference
-                        out.append(block)
-                    }
+                    block?.duration = duration
+                    block?.isKeyframe = !hasReference
                 default:
                     break
+                }
+                if let block {
+                    out.append(block)
+                    if overlaps, sharedWithNext[block.track] == nil { sharedWithNext[block.track] = block.time }
                 }
                 j = childEnd
             }
             i = cluster.size == nil ? j : (cluster.end ?? b.count)
         }
-        return out
+        return (out, sharedWithNext)
     }
 
     static let maxTime: Int64 = 100_000_000_000_000_000

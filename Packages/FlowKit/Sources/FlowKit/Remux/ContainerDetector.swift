@@ -14,15 +14,17 @@ public enum ContainerDetector {
         case unknown
     }
 
-    static let nativeExtensions: Set<String> = ["mp4", "m4v", "mov", "m3u8", "m3u", "ts", "m2ts", "mts", "mp3", "m4a", "aac", "ac3", "eac3", "flac", "wav", "caf", "3gp"]
+    static let nativeExtensions: Set<String> = ["mp4", "m4v", "mov", "m3u8", "m3u", "mp3", "m4a", "aac", "ac3", "eac3", "flac", "wav", "caf", "3gp"]
     static let matroskaExtensions: Set<String> = ["mkv", "mk3d", "mka", "webm"]
-    static let unsupportedExtensions: [String: String] = ["avi": "AVI", "divx": "AVI", "xvid": "AVI", "wmv": "Windows Media", "asf": "Windows Media", "wm": "Windows Media",
+    static let builtInProtocols: Set<String> = ["rtsp", "rtsps", "rtmp", "rtmps", "rtmpt", "rtmpts", "udp", "rtp"]
+    static let unsupportedExtensions: [String: String] = ["mpd": "MPEG-DASH", "ts": "MPEG-TS", "mpegts": "MPEG-TS", "m2ts": "MPEG-TS", "mts": "MPEG-TS", "avi": "AVI", "divx": "AVI", "xvid": "AVI", "wmv": "Windows Media", "asf": "Windows Media", "wm": "Windows Media",
                                                           "wtv": "Windows Media", "dvr-ms": "Windows Media", "flv": "Flash Video", "f4v": "Flash Video",
                                                           "rmvb": "RealMedia", "rm": "RealMedia", "vob": "DVD VOB", "mpg": "MPEG-PS", "mpeg": "MPEG-PS", "mpe": "MPEG-PS",
                                                           "m2v": "MPEG-PS", "ogv": "Ogg", "ogm": "Ogg", "ogg": "Ogg", "ogx": "Ogg"]
 
     /// From the URL path and the file name an add-on or server reported.
     public static func container(url: URL, filename: String?) -> Container {
+        if let scheme = url.scheme?.lowercased(), builtInProtocols.contains(scheme) { return .unsupported(scheme.uppercased()) }
         let candidates = [url.pathExtension, filename.map { ($0 as NSString).pathExtension } ?? ""].map { $0.lowercased() }.filter { !$0.isEmpty }
         for ext in candidates {
             if matroskaExtensions.contains(ext) { return .matroska }
@@ -31,6 +33,7 @@ public enum ContainerDetector {
         }
         let query = url.query?.lowercased() ?? ""
         if query.contains(".mkv") { return .matroska }
+        if query.contains(".mpd") { return .unsupported("MPEG-DASH") }
         if query.contains(".m3u8") || query.contains(".mp4") { return .native }
         return .unknown
     }
@@ -39,7 +42,17 @@ public enum ContainerDetector {
     public static func sniff(_ bytes: [UInt8]) -> Container {
         if bytes.starts(with: [0x1A, 0x45, 0xDF, 0xA3]) { return .matroska }
         if bytes.count >= 8, Array(bytes[4..<8]) == Array("ftyp".utf8) || Array(bytes[4..<8]) == Array("moov".utf8) { return .native }
-        if bytes.starts(with: Array("#EXTM3U".utf8)) || bytes.first == 0x47 { return .native }
+        if bytes.starts(with: Array("#EXTM3U".utf8)) { return .native }
+        if bytes.count > 376, bytes[0] == 0x47, bytes[188] == 0x47, bytes[376] == 0x47 {
+            return .unsupported("MPEG-TS")
+        }
+        if bytes.count > 388, bytes[4] == 0x47, bytes[196] == 0x47, bytes[388] == 0x47 {
+            return .unsupported("MPEG-TS")
+        }
+        if let prefix = String(bytes: bytes.prefix(1024), encoding: .utf8),
+           prefix.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("<"), prefix.contains("<MPD") {
+            return .unsupported("MPEG-DASH")
+        }
         if bytes.starts(with: Array("RIFF".utf8)), bytes.count >= 12, Array(bytes[8..<11]) == Array("AVI".utf8) { return .unsupported("AVI") }
         if bytes.starts(with: [0x30, 0x26, 0xB2, 0x75]) { return .unsupported("Windows Media") }
         if bytes.starts(with: Array("FLV".utf8)) { return .unsupported("Flash Video") }

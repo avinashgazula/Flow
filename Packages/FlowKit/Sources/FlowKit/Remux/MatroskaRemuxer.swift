@@ -25,6 +25,9 @@ public actor MatroskaRemuxer {
         public var convertsToProfile81 = false
         /// Bytes in each NAL unit's length prefix (from the HEVC configuration).
         var nalLengthSize = 4
+        var supplementalCodec: String?
+        /// Whether compatible mode can remove the video metadata and use the base layer.
+        public internal(set) var canStripDolbyVision = false
         /// For tracks decoded on the device: what decodes them and how its samples line up with the timestamps.
         var decodeSetup: AudioDecoderSetup?
 
@@ -82,13 +85,21 @@ public actor MatroskaRemuxer {
     private let source: ByteSource
     private var cache: [Int: LoadedSegment] = [:]
     private var cacheOrder: [Int] = []
+    private var cachedSourceBytes = 0
+    private static let demuxCacheLimit = 80 * 1024 * 1024
     private var inflight: [Int: Task<LoadedSegment, Error>] = [:]
+    private var prefetching: Set<Int> = []
+    private var videoInFlight: [Int: Task<[UInt8], Error>] = [:]
+    /// AVPlayer can issue overlapping range requests or retry a fragment. Keep recent results within a fixed memory budget.
+    private var finishedVideo: [(index: Int, bytes: [UInt8])] = []
+    private static let videoCacheLimit = 32 * 1024 * 1024
 
     /// A segment's demuxed blocks, and for each track the time of its first block in the stretch of bytes the next
     /// segment also covers (see `withoutNextSegmentsAudio`); empty when the two segments share no bytes.
     private struct LoadedSegment: Sendable {
         var blocks: [MatroskaBlock]
         var sharedWithNext: [Int: Int64]
+        var sourceBytes: Int
     }
     private var bitmapTrack: Int?
     private var bitmapDecoder = BitmapDecoder.pgs(PGSDecoder())
@@ -318,11 +329,16 @@ public actor MatroskaRemuxer {
         default: return .failure(Unsupported(message: "Video format \(t.codecID)"))
         }
 
-        if let colour = t.colour.flatMap({ $0.primaries != nil || $0.transfer != nil ? $0 : nil }) ?? Self.colourFromDolbyVision(t.dolbyVision) {
+        let dolbyProfile = t.dolbyVision.flatMap { $0.count >= 4 ? $0[2] >> 1 : nil }
+        if codec == .hevc, dolbyProfile == 5 {
+            // Profile 5 is in Dolby's color space. Apple requires an explicit nclx atom with all three indices unspecified.
+            children += MP4.colr(MatroskaColour(matrix: 2, transfer: 2, primaries: 2))
+        } else if let colour = t.colour.flatMap({ $0.primaries != nil || $0.transfer != nil ? $0 : nil }) ?? Self.colourFromDolbyVision(t.dolbyVision) {
             children += MP4.colr(colour)
             if let mastering = colour.mastering { children += MP4.mdcv(mastering) }
             if colour.maxCLL != nil || colour.maxFALL != nil { children += MP4.clli(maxCLL: colour.maxCLL ?? 0, maxFALL: colour.maxFALL ?? 0) }
         }
+        var supplementalCodec: String?
         // Apple plays Dolby Vision profiles 5 and 8. Others (7, from UHD Blu-rays) play as their HDR10
         // base layer: without the Dolby Vision configuration, the decoder ignores the enhancement layer.
         if let dv = t.dolbyVision, let boxType = t.dolbyVisionBoxType, dv.count >= 4, codec == .hevc, [5, 8].contains(Int(dv[2] >> 1)),
@@ -334,6 +350,12 @@ public actor MatroskaRemuxer {
                 // Profile 5 has no HDR10 base layer: it must be signalled as Dolby Vision.
                 type = "dvh1"
                 codecString = String(format: "dvh1.%02d.%02d", profile, level)
+            } else if dv.count >= 5 {
+                let compatibility = dv[4] >> 4
+                if compatibility == 1 || compatibility == 4 {
+                    let brand = compatibility == 1 ? "db1p" : "db4h"
+                    supplementalCodec = String(format: "dvh1.08.%02d/%@", level, brand)
+                }
             }
         }
         var converts = false
@@ -346,6 +368,7 @@ public actor MatroskaRemuxer {
             record[3] = UInt8((level & 0x1F) << 3 | 1 << 2 | 1)
             record[4] = 1 << 4
             children += MP4.box("dvvC", record)
+            supplementalCodec = String(format: "dvh1.08.%02d/db1p", level)
             converts = true
         }
         if let dw = t.displayWidth, let dh = t.displayHeight, dw > 0, dh > 0, t.width > 0, t.height > 0, dw * t.height != dh * t.width {
@@ -354,6 +377,8 @@ public actor MatroskaRemuxer {
         let entry = MP4.visualSampleEntry(type, width: t.width, height: t.height, children: children)
         var out = OutputTrack(role: .video, source: t, codecString: codecString, timescale: 90000, label: label, sampleEntry: entry, frameSamples: 0, codec: codec)
         out.convertsToProfile81 = converts
+        out.supplementalCodec = supplementalCodec
+        out.canStripDolbyVision = converts || (keepDolbyVision && dolbyProfile == 8 && t.dolbyVisionBoxType != nil && codec == .hevc)
         if codec == .hevc { out.nalLengthSize = Int(t.codecPrivate[21] & 3) + 1 }
         return .success(out)
     }
@@ -564,6 +589,7 @@ public actor MatroskaRemuxer {
             inf.append("RESOLUTION=\(v.source.width)x\(v.source.height)")
             if let frame = v.source.defaultDuration, frame > 0 { inf.append(String(format: "FRAME-RATE=%.3f", 1e9 / Double(frame))) }
             inf.append("VIDEO-RANGE=\(videoRange)")
+            if let codec = v.supplementalCodec { inf.append("SUPPLEMENTAL-CODECS=\"\(codec)\"") }
         }
         if !audio.isEmpty && video != nil { inf.append("AUDIO=\"audio\"") }
         if !subtitles.isEmpty { inf.append("SUBTITLES=\"subs\"") }
@@ -572,8 +598,9 @@ public actor MatroskaRemuxer {
         if let v = video, !trickPlayFrames.isEmpty {
             // One keyframe every few seconds: a small fraction of the full stream.
             let bandwidth = max(64_000, averageBandwidth / 30)
+            let supplemental = v.supplementalCodec.map { "SUPPLEMENTAL-CODECS=\"\($0)\"," } ?? ""
             lines.append("#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=\(bandwidth),CODECS=\"\(v.codecString)\",RESOLUTION=\(v.source.width)x\(v.source.height),"
-                         + "VIDEO-RANGE=\(videoRange),URI=\"iframes.m3u8\"")
+                         + supplemental + "VIDEO-RANGE=\(videoRange),URI=\"iframes.m3u8\"")
         }
         return lines.joined(separator: "\n") + "\n"
     }
@@ -671,7 +698,10 @@ public actor MatroskaRemuxer {
     }
 
     private var videoRange: String {
-        guard let v = video?.source else { return "SDR" }
+        guard let video else { return "SDR" }
+        if let codec = video.supplementalCodec { return codec.hasSuffix("/db4h") ? "HLG" : "PQ" }
+        if video.codecString.hasPrefix("dvh1.05.") { return "PQ" }
+        let v = video.source
         let colour = v.colour.flatMap { $0.transfer != nil ? $0 : nil } ?? Self.colourFromDolbyVision(v.dolbyVision)
         if colour?.isPQ == true || (v.dolbyVision != nil && colour == nil) { return "PQ" }
         if colour?.isHLG == true { return "HLG" }
@@ -726,14 +756,13 @@ public actor MatroskaRemuxer {
 
     public func mediaSegment(track: Int, index: Int) async throws -> [UInt8]? {
         guard let t = output(track), t.role != .subtitle, segments.indices.contains(index) else { return nil }
+        if t.role == .video { return try await videoSegment(index: index, track: t) }
         let segment = segments[index]
         let loaded = try await loaded(index)
         let blocks = loaded.blocks.filter { $0.track == track }
         let samples: [MP4.Sample]
         let base: UInt64
-        if t.role == .video {
-            (samples, base) = videoSamples(blocks, segment: segment, track: t)
-        } else if t.codec == .decoded {
+        if t.codec == .decoded {
             // Opus after a seek: the decoder first runs through the end of the previous segment, which the
             // player never hears, so the music starts clean instead of with a click.
             let key = "\(track)/\(index)"
@@ -753,7 +782,7 @@ public actor MatroskaRemuxer {
         } else {
             (samples, base) = audioSamples(Self.withoutNextSegmentsAudio(blocks, nextStart: loaded.sharedWithNext[track]), segment: segment, track: t)
         }
-        return MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: base, samples: samples, isVideo: t.role == .video)
+        return MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: base, samples: samples, isVideo: false)
     }
 
     /// Builds the first segments of the soundtrack the player starts with, when it is decoded on the device, so they are
@@ -805,7 +834,37 @@ public actor MatroskaRemuxer {
         return audio.first { $0.id == track } ?? subtitles.first { $0.id == track }
     }
 
-    private func videoSamples(_ blocks: [MatroskaBlock], segment: Segment, track: OutputTrack) -> ([MP4.Sample], UInt64) {
+    private func videoSegment(index: Int, track: OutputTrack) async throws -> [UInt8] {
+        if let cached = finishedVideo.firstIndex(where: { $0.index == index }) {
+            let fragment = finishedVideo.remove(at: cached)
+            finishedVideo.append(fragment)
+            return fragment.bytes
+        }
+        if let task = videoInFlight[index] { return try await task.value }
+        let task = Task.detached(priority: Task.currentPriority) {
+            // Frame conversion and MP4 assembly run outside this actor so audio and playlist requests can keep moving.
+            let loaded = try await self.loaded(index)
+            return self.buildVideoFragment(loaded, index: index, track: track)
+        }
+        videoInFlight[index] = task
+        defer { videoInFlight[index] = nil }
+        let bytes = try await task.value
+        if bytes.count <= Self.videoCacheLimit {
+            finishedVideo.append((index, bytes))
+            while finishedVideo.count > 2 || finishedVideo.reduce(0, { $0 + $1.bytes.count }) > Self.videoCacheLimit {
+                finishedVideo.removeFirst()
+            }
+        }
+        return bytes
+    }
+
+    private nonisolated func buildVideoFragment(_ loaded: LoadedSegment, index: Int, track: OutputTrack) -> [UInt8] {
+        let blocks = loaded.blocks.filter { $0.track == track.id }
+        let (samples, base) = videoSamples(blocks, segment: segments[index], track: track)
+        return MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: base, samples: samples, isVideo: true)
+    }
+
+    private nonisolated func videoSamples(_ blocks: [MatroskaBlock], segment: Segment, track: OutputTrack) -> ([MP4.Sample], UInt64) {
         let tolerance: Int64 = 2_000_000
         let isLast = segment.index == segments.count - 1
         guard !blocks.isEmpty else { return ([], UInt64(max(0, segment.start) * 9 / 100_000)) }
@@ -946,14 +1005,18 @@ public actor MatroskaRemuxer {
     private func blocks(for index: Int) async throws -> [MatroskaBlock] { try await loaded(index).blocks }
 
     private func loaded(_ index: Int) async throws -> LoadedSegment {
-        let loaded = try await load(index)
-        if segments.indices.contains(index + 1) { prefetch(index + 1) }
-        return loaded
+        // Overlap the next read with this one. A high-bitrate segment can take longer to fetch than it takes to play.
+        prefetch(index + 1)
+        return try await load(index)
     }
 
     private func prefetch(_ index: Int) {
-        guard cache[index] == nil, inflight[index] == nil else { return }
-        Task { _ = try? await self.load(index) }
+        guard segments.indices.contains(index), prefetching.count < 2,
+              cache[index] == nil, inflight[index] == nil, prefetching.insert(index).inserted else { return }
+        Task(priority: .utility) {
+            defer { self.prefetching.remove(index) }
+            _ = try? await self.load(index)
+        }
     }
 
     private func load(_ index: Int) async throws -> LoadedSegment {
@@ -969,17 +1032,13 @@ public actor MatroskaRemuxer {
         let tracks = header.tracks
         // Where the next segment's bytes begin inside this one's, when they overlap.
         let shared = segments.indices.contains(index + 1) ? segments[index + 1].byteStart - segment.byteStart : 0
-        let task = Task { () throws -> LoadedSegment in
+        let task = Task.detached(priority: Task.currentPriority) { () throws -> LoadedSegment in
             let bytes = try await source.read(segment.byteStart..<segment.byteEnd)
-            let blocks = try MatroskaClusterParser.blocks(Self.fromFirstCluster(bytes), timecodeScale: scale, tracks: tracks)
-            var sharedWithNext: [Int: Int64] = [:]
-            if shared > 0, shared < Int64(bytes.count) {
-                let tail = Self.fromFirstCluster(Array(bytes[Int(shared)...]))
-                for block in (try? MatroskaClusterParser.blocks(tail, timecodeScale: scale, tracks: tracks)) ?? [] where sharedWithNext[block.track] == nil {
-                    sharedWithNext[block.track] = block.time
-                }
-            }
-            return LoadedSegment(blocks: blocks, sharedWithNext: sharedWithNext)
+            let aligned = Self.fromFirstCluster(bytes)
+            let overlapFrom = shared > 0 && shared < Int64(bytes.count)
+                ? max(0, Int(shared) - (bytes.count - aligned.count)) : nil
+            let parsed = MatroskaClusterParser.parseClusters(aligned, timecodeScale: scale, tracks: tracks, overlapFrom: overlapFrom)
+            return LoadedSegment(blocks: parsed.blocks, sharedWithNext: parsed.sharedWithNext, sourceBytes: bytes.count)
         }
         inflight[index] = task
         defer { inflight[index] = nil }
@@ -987,8 +1046,13 @@ public actor MatroskaRemuxer {
         if cache[index] == nil {
             cache[index] = loaded
             cacheOrder.append(index)
-            // Room for the segment playing, the one prefetched, and renditions that lag behind.
-            while cacheOrder.count > 5 { cache[cacheOrder.removeFirst()] = nil }
+            cachedSourceBytes += loaded.sourceBytes
+            // Keep enough for lagging renditions without holding five large 4K clusters at once.
+            while cacheOrder.count > 5 || (cacheOrder.count > 1 && cachedSourceBytes > Self.demuxCacheLimit) {
+                if let expired = cache.removeValue(forKey: cacheOrder.removeFirst()) {
+                    cachedSourceBytes -= expired.sourceBytes
+                }
+            }
             decodeBitmaps(loaded.blocks, segment: index)
         }
         return loaded

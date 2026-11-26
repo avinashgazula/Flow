@@ -51,6 +51,9 @@ enum PlayerCheck {
                 await scenario("stream \(source.id)", network: isNetwork(source), timeout: 150) { await checkStream(source, request: movie, model: model) }
             }
         }
+        if wants("formats") {
+            await scenario("formats", timeout: 150) { await checkCompatibility(request: movie, model: model) }
+        }
         if wants("avi") { await scenario("avi", timeout: 60) { await checkAVI(sources, request: movie, model: model) } }
         if wants("audio") { await scenario("audio", timeout: 120) { await checkDecodedAudio(sources, request: movie, model: model) } }
         if wants("apple") { await scenario("apple", timeout: 120) { await checkApple(sources, request: movie, model: model) } }
@@ -134,10 +137,21 @@ enum PlayerCheck {
         let duration = await value(timeout: 15) { session.duration > 0 ? session.duration : nil }
         record(duration != nil, "duration known", duration.map { "\(Int($0)) s" } ?? "still 0 after 15 s")
 
-        let t0 = session.currentTime
-        try? await Task.sleep(nanoseconds: 4_000_000_000)
-        let advanced = session.currentTime - t0
+        let t0 = session.playbackTime
+        #if os(tvOS)
+        let before = playbackCounters(session)
+        let start = ContinuousClock.now
+        #endif
+        try? await Task.sleep(for: .seconds(4))
+        let advanced = session.playbackTime - t0
         record(advanced >= 2, "time advances while playing", String(format: "%.1f s in 4 s", advanced))
+        #if os(tvOS)
+        let after = playbackCounters(session)
+        let elapsed = start.duration(to: .now)
+        let size = session.universal?.videoSize ?? session.player.currentItem?.presentationSize ?? .zero
+        let advance = String(format: "%.2f", advanced)
+        line("  CADENCE \(source.id): \(Int(size.width))×\(Int(size.height)); advanced \(advance) s in \(elapsed); dropped frames \(counterDelta(before.drops, after.drops)); stalls \(counterDelta(before.stalls, after.stalls))")
+        #endif
         await screen("\(source.id)-playing")
 
         if let duration, duration > 60 {
@@ -183,6 +197,55 @@ enum PlayerCheck {
         await screen("\(source.id)-info")
         session.showsInfo = false
         await closePlayer(session, model)
+    }
+
+    #if os(tvOS)
+    private static func playbackCounters(_ session: PlaybackSession) -> (drops: Int?, stalls: Int?) {
+        if let engine = session.universal {
+            let drops = engine.info["frame-drop-count"].flatMap(Double.init).flatMap(Int.init(exactly:))
+            return (drops, nil)
+        }
+        guard let log = session.player.currentItem?.accessLog() else { return (nil, nil) }
+        // Each event describes an uninterrupted playback period. Negative values are unavailable.
+        func total(_ values: [Int]) -> Int? {
+            let measured = values.filter { $0 >= 0 }
+            return measured.isEmpty ? nil : measured.reduce(0, +)
+        }
+        return (total(log.events.map(\.numberOfDroppedVideoFrames)), total(log.events.map(\.numberOfStalls)))
+    }
+
+    private static func counterDelta(_ before: Int?, _ after: Int?) -> String {
+        guard let before, let after, after >= before else { return "unavailable" }
+        return String(after - before)
+    }
+    #endif
+
+    private static func checkCompatibility(request: PlaybackRequest, model: AppModel) async {
+        section("Compatibility routes")
+        guard let fixture = DemoSourceProvider.aviSample else {
+            record(false, "setup", "no bundled AVI")
+            return
+        }
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mkv")
+        do { try FileManager.default.copyItem(at: fixture, to: copy) }
+        catch { record(false, "setup", error.localizedDescription); return }
+        defer { try? FileManager.default.removeItem(at: copy) }
+        let extra = (ProcessInfo.processInfo.environment["FLOW_CHECK_FORMAT_URLS"] ?? "")
+            .split(separator: "\n").compactMap { URL(string: String($0)) }
+        for (index, url) in ([copy] + extra).enumerated() {
+            let label = index == 0 ? "AVI with an MKV extension" : "format fixture \(index)"
+            let source = StreamSource(id: "compatibility-\(index)", category: .addons, providerID: "check",
+                                      providerName: "Compatibility check", title: label, filename: nil, location: .url(url, headers: [:]))
+            guard let session = await start(source, request: request, model: model, label: label) else { continue }
+            if index == 0 || url.pathExtension == "mpd" {
+                record(session.universal != nil, "\(label) uses the built-in decoder", "built-in=\(session.universal != nil)")
+            }
+            let before = session.playbackTime
+            try? await Task.sleep(for: .seconds(2))
+            let elapsed = session.playbackTime - before
+            record(elapsed >= 1.5, "\(label) advances at normal speed", String(format: "%.2f s in 2 s", elapsed))
+            await closePlayer(session, model)
+        }
     }
 
     // MARK: Samples that only play on one engine

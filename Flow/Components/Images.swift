@@ -8,19 +8,27 @@ struct LogoOrTitle: View {
     var maxHeight: CGFloat = 90
     var alignment: Alignment = .center
 
+    @State private var loadedLogo: (url: URL, image: CGImage)?
+
     var body: some View {
-        if let url = TMDBImage.url(logoPath, size: .logo) {
-            AsyncImage(url: url) { phase in
-                if case .success(let image) = phase {
-                    image.resizable().aspectRatio(contentMode: .fit)
-                        .frame(maxHeight: maxHeight, alignment: alignment)
-                        .shadow(color: .black.opacity(0.5), radius: 8)
-                } else {
-                    titleText
-                }
+        let url = TMDBImage.url(logoPath, size: .logo)
+        Group {
+            if let loadedLogo, loadedLogo.url == url {
+                Image(decorative: loadedLogo.image, scale: 1)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxHeight: maxHeight, alignment: alignment)
+                    .shadow(color: .black.opacity(0.5), radius: 8)
+                    .accessibilityLabel(title)
+            } else {
+                titleText
             }
-        } else {
-            titleText
+        }
+        .task(id: url) {
+            guard let url else { loadedLogo = nil; return }
+            let image = await ImagePipeline.shared.image(url, maxPixel: Platform.isTV ? 1200 : 800)
+            guard !Task.isCancelled else { return }
+            loadedLogo = image.map { (url, $0) }
         }
     }
 

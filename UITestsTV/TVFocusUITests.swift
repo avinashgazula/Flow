@@ -137,6 +137,35 @@ final class TVFocusUITests: XCTestCase {
         XCTAssertTrue(waitUntil(20) { self.element("home-lead-primary").hasFocus }, "Down from the tab bar reaches Resume, focus is on \(describeFocus())")
     }
 
+    func testSiriRemoteOperatesNativePlaybackAndReturnsToHome() {
+        enterHome()
+        remote.press(.select)
+        let source = element("source-demo#0")
+        expectExists(source, "Resume opens the source picker")
+        var moves = 0
+        while !hasFocusWithin("source-demo#0"), moves < 8 {
+            remote.press(.down)
+            moves += 1
+            RunLoop.current.run(until: Date().addingTimeInterval(0.35))
+        }
+        XCTAssertTrue(hasFocusWithin("source-demo#0"), "The Siri Remote reaches the sample stream")
+        remote.press(.select)
+        let home = element("home-lead-primary")
+        XCTAssertTrue(waitUntil(15) { !source.exists }, "The source picker closes when playback begins")
+        RunLoop.current.run(until: Date().addingTimeInterval(3))
+        XCTAssertFalse(home.hasFocus || focusIsOnTheTabBar, "The player keeps focus away from Home")
+
+        remote.press(.playPause)
+        XCTAssertFalse(btn("Search Subtitles").exists)
+
+        for _ in 0..<3 {
+            remote.press(.menu)
+            if waitUntil(5, { home.hasFocus || self.focusIsOnTheTabBar }) { break }
+        }
+        XCTAssertTrue(home.hasFocus || focusIsOnTheTabBar, "Back returns focus to Home")
+        assertOneFocus("returning from playback")
+    }
+
     func testLaunchFocusesOneThingAndDownReachesResumeThenAcrossHome() {
         enterHome()
         press(.right, "Right from Resume")

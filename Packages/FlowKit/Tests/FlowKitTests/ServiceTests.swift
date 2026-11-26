@@ -602,6 +602,15 @@ final class LiveStreamURLTests: XCTestCase {
         let page = URL(string: "https://cdn.test/watch")!
         XCTAssertEqual(LiveStreamURL.candidates(for: page), [page])
     }
+
+    func testPlaybackCandidatesKeepTheOriginalTransportStreamForTheBuiltInEngine() {
+        let ts = URL(string: "https://panel.test/live/1234.ts?token=x")!
+        let hls = URL(string: "https://panel.test/live/1234.m3u8?token=x")!
+        XCTAssertEqual(LiveStreamURL.playbackCandidates(for: ts), [.native(hls), .builtIn(ts), .builtIn(hls)])
+        XCTAssertEqual(LiveStreamURL.playbackCandidates(for: hls), [.native(hls), .builtIn(hls)])
+        let rtsp = URL(string: "rtsp://camera.test/channel")!
+        XCTAssertEqual(LiveStreamURL.playbackCandidates(for: rtsp), [.builtIn(rtsp)])
+    }
 }
 
 final class ExternalPlayerTests: XCTestCase {

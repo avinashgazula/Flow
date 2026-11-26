@@ -213,14 +213,12 @@ Redesigned in October 2026 as a plain table: no Best Match card, no sparkles or 
 
 ### Player: Apple TV
 
-- The system player with Marquee's subtitle layer, and info panel tabs **X-Ray** (faces in a row,
-  In This Scene first) and **Details**. *The X-Ray tab has never been seen.*
-- **Transport bar menu:** Disc Subtitles, Search Subtitles, What Did They Say?, Identify Song,
-  Auto-sync. Skip segments, More Like This and Up Next appear as contextual buttons (tvOS cuts
-  their titles off at about fourteen characters).
+- The system player handles playback, scrubbing, track selection and chapter navigation. Use Play/Pause,
+  the clickpad, and Back to verify it returns focus to the originating screen.
+- Disc Subtitles appears for picture-based subtitle tracks. Skip segments and Play Next use the
+  system player's contextual controls.
 - **Still watching:** shows as a dimmed prompt beneath the transport bar, with a "Keep Watching"
   contextual button. Menu stops. Subtitles hide while it's up.
-- **Shazam:** the card appears top right without stealing focus.
 - **Live TV:**
   - The transport bar has Previous Channel, Next Channel and a Channels list.
   - The info panel shows the channel and what's on.
@@ -372,7 +370,7 @@ simulator sessions (see "Session handover" below):
 
 1. Shazam matching: the MKV soundtrack path, the direct-file path and the microphone path, plus
    the error wording. *Open: needs ShazamKit enabled on the App ID.*
-2. X-Ray In This Scene with real subtitles, the person sheet, and the Apple TV X-Ray tab. *Open.*
+2. X-Ray In This Scene with real subtitles and the person sheet. *Open.*
 3. Are You Still Watching?, the sleep-timer fade, What Did They Say? and hold-for-2×.
    *Seen and fixed except the sleep-timer fade, which hasn't been watched to the end.*
 4. The collapsing navigation title on the detail page. *Seen and fixed.*

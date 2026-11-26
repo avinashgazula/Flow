@@ -103,19 +103,20 @@ enum DolbyVisionRPU {
             for k in 0..<lengthSize { length = length << 8 | Int(data[i + k]) }
             let start = i + lengthSize
             guard length > 0, start + length <= data.count else { return data }
-            let nal = Array(data[start..<(start + length)])
-            i = start + length
-            switch (nal[0] >> 1) & 0x3F {
+            let end = start + length
+            switch (data[start] >> 1) & 0x3F {
             case 63:
-                continue
+                break
             case 62:
-                guard let converted = convertToProfile81(nal: nal) else { continue }
-                append(converted, to: &out, lengthSize: lengthSize)
+                if let converted = convertToProfile81(nal: Array(data[start..<end])) {
+                    append(converted, to: &out, lengthSize: lengthSize)
+                }
             default:
-                append(nal, to: &out, lengthSize: lengthSize)
+                out.append(contentsOf: data[i..<end])
             }
+            i = end
         }
-        return out
+        return i == data.count ? out : data
     }
 
     private static func append(_ nal: [UInt8], to out: inout [UInt8], lengthSize: Int) {

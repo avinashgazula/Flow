@@ -20,9 +20,24 @@ public struct SubtitleCue: Hashable, Sendable, Identifiable {
 
 /// Cues sorted by start time with fast lookup for the player overlay.
 public struct SubtitleDocument: Sendable {
-    public var cues: [SubtitleCue]
+    public var cues: [SubtitleCue] {
+        didSet { latestEnd = Self.endTimes(cues) }
+    }
+    private var latestEnd: [Double]
 
-    public init(cues: [SubtitleCue]) { self.cues = cues.sorted { $0.start < $1.start } }
+    public init(cues: [SubtitleCue]) {
+        let sorted = cues.sorted { $0.start < $1.start }
+        self.cues = sorted
+        latestEnd = Self.endTimes(sorted)
+    }
+
+    private static func endTimes(_ cues: [SubtitleCue]) -> [Double] {
+        var latest = -Double.infinity
+        return cues.map { cue in
+            latest = max(latest, cue.end)
+            return latest
+        }
+    }
 
     /// Text visible at `time` (seconds), applying `offset` (positive delays subtitles).
     public func text(at time: Double, offset: Double = 0) -> String? {
@@ -39,13 +54,11 @@ public struct SubtitleDocument: Sendable {
             if cues[mid].start <= t { found = mid; lo = mid + 1 } else { hi = mid - 1 }
         }
         guard found >= 0 else { return [] }
-        // Overlapping cues: gather every cue active at t. One that started earlier is still showing only
-        // if it's long enough to reach t, so look back as far as the longest cue goes (a sign that stays
-        // up for a whole scene, with dozens of lines of dialogue starting after it).
-        let reach = cues.reduce(0) { max($0, $1.end - $1.start) }
+        // Keep walking back while any earlier cue could still be visible, including a long sign
+        // beneath several shorter lines of dialogue.
         var active: [SubtitleCue] = []
         var i = found
-        while i >= 0 && cues[i].start > t - reach {
+        while i >= 0 && latestEnd[i] > t {
             if t < cues[i].end { active.append(cues[i]) }
             i -= 1
         }
