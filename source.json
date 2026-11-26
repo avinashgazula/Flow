@@ -19,6 +19,15 @@
       "versions": [
         {
           "version": "1.0.0",
+          "buildVersion": "19",
+          "date": "2026-11-26T07:54:34Z",
+          "localizedDescription": "Beta 17\nhttps://github.com/avinashgazula/Flow/releases/tag/v1.0.0-beta.17",
+          "downloadURL": "https://github.com/avinashgazula/Flow/releases/download/v1.0.0-beta.17/Flow-iOS.ipa",
+          "size": 22784212,
+          "minOSVersion": "17.0"
+        },
+        {
+          "version": "1.0.0",
           "buildVersion": "17",
           "date": "2026-11-25T14:22:20Z",
           "localizedDescription": "Beta 16\nhttps://github.com/avinashgazula/Flow/releases/tag/v1.0.0-beta.16",
