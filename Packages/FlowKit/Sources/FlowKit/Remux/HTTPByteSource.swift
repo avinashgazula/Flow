@@ -49,19 +49,12 @@ public actor HTTPByteSource: ByteSource {
             do {
                 return try await parallelFetch(lower..<fetchUpper)
             } catch {
+                try Task.checkCancellation()
                 // Some hosts limit connections per file: carry on one request at a time.
                 parallelRefused = true
             }
         }
-        var bytes = try await fetch(lower..<fetchUpper)
-        // Some servers cap how much one range response carries; ask again for the rest.
-        while Int64(bytes.count) < fetchUpper - lower, !bytes.isEmpty {
-            let next = lower + Int64(bytes.count)
-            if let length = knownLength, next >= length { break }
-            let more = try await fetch(next..<fetchUpper)
-            if more.isEmpty { break }
-            bytes += more
-        }
+        let bytes = try await complete(lower..<fetchUpper)
         if isHead {
             head = (0..<Int64(bytes.count), bytes)
             let from = Int(range.lowerBound)
@@ -82,7 +75,7 @@ public actor HTTPByteSource: ByteSource {
         let parts = stride(from: range.lowerBound, to: range.upperBound, by: Int(size)).map { $0..<min($0 + size, range.upperBound) }
         let pieces = try await withThrowingTaskGroup(of: (Int, [UInt8]).self) { group in
             for (index, part) in parts.enumerated() {
-                group.addTask { (index, try await self.complete(part)) }
+                group.addTask { (index, try await self.complete(part, parallel: true)) }
             }
             var out = [[UInt8]](repeating: [], count: parts.count)
             for try await (index, bytes) in group { out[index] = bytes }
@@ -92,29 +85,53 @@ public actor HTTPByteSource: ByteSource {
     }
 
     /// One range, re-requesting the remainder from servers that cap a response's size.
-    private func complete(_ range: Range<Int64>) async throws -> [UInt8] {
-        var bytes = try await fetch(range)
-        while Int64(bytes.count) < range.upperBound - range.lowerBound, !bytes.isEmpty {
-            let more = try await fetch((range.lowerBound + Int64(bytes.count))..<range.upperBound)
-            if more.isEmpty { break }
+    private func complete(_ range: Range<Int64>, parallel: Bool = false) async throws -> [UInt8] {
+        var bytes: [UInt8] = []
+        var next = range.lowerBound
+        while next < min(range.upperBound, knownLength ?? range.upperBound) {
+            let more = try await fetch(next..<range.upperBound, parallel: parallel)
+            if more.isEmpty {
+                guard knownLength.map({ next >= $0 }) ?? true else {
+                    throw MatroskaError.unsupported("the server ended a byte range early")
+                }
+                break
+            }
             bytes += more
+            next += Int64(more.count)
         }
         return bytes
     }
 
-    private func fetch(_ range: Range<Int64>) async throws -> [UInt8] {
-        var request = URLRequest(url: resolvedURL ?? url, timeoutInterval: 30)
+    private func fetch(_ range: Range<Int64>, parallel: Bool) async throws -> [UInt8] {
+        // Keep custom origin headers on the resolver request. Let URLSession handle credentials
+        // across redirects instead of replaying those headers directly to a different host.
+        let destination = headers.isEmpty ? (resolvedURL ?? url) : url
+        var request = URLRequest(url: destination, timeoutInterval: 30)
         // CDNs in front of debrid resolvers reject requests without a real client name (Cloudflare 1010).
         request.setValue("Marquee/1.0 (AppleCoreMedia compatible)", forHTTPHeaderField: "User-Agent")
         for (key, value) in headers { request.setValue(value, forHTTPHeaderField: key) }
+        request.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
         request.setValue("bytes=\(range.lowerBound)-\(range.upperBound - 1)", forHTTPHeaderField: "Range")
         var attempt = 0
         while true {
             do {
+                try Task.checkCancellation()
                 let (data, response) = try await transport.send(request)
                 switch response.statusCode {
                 case 206:
-                    if let total = Self.total(from: response.value(forHTTPHeaderField: "Content-Range")) { knownLength = total }
+                    let header = response.value(forHTTPHeaderField: "Content-Range")
+                    let count = Int64(data.count)
+                    guard count > 0, count <= range.upperBound - range.lowerBound,
+                          let header, let slash = header.firstIndex(of: "/"),
+                          header[..<slash].lowercased() == "bytes \(range.lowerBound)-\(range.lowerBound + count - 1)" else {
+                        throw MatroskaError.unsupported("the server returned a different byte range")
+                    }
+                    if let total = Self.total(from: header) {
+                        guard total >= range.lowerBound + count, knownLength == nil || knownLength == total else {
+                            throw MatroskaError.unsupported("the file size changed during playback")
+                        }
+                        knownLength = total
+                    }
                     if resolvedURL == nil, let final = response.url, final != url { resolvedURL = final }
                     return [UInt8](data)
                 case 200:
@@ -133,9 +150,14 @@ public actor HTTPByteSource: ByteSource {
             } catch let error as MatroskaError {
                 throw error
             } catch {
+                try Task.checkCancellation()
+                if parallel, case FlowError.http(status: 429, body: _) = error { throw error }
                 attempt += 1
                 // A resolved link can expire; start again from the original.
-                if resolvedURL != nil { resolvedURL = nil; request.url = url }
+                if request.url != url {
+                    if resolvedURL == request.url { resolvedURL = nil }
+                    request.url = url
+                }
                 // About four seconds of patience in all: enough to ride out a Wi-Fi handover.
                 if attempt >= 4 { throw error }
                 try await Task.sleep(nanoseconds: 500_000_000 << UInt64(attempt - 1))

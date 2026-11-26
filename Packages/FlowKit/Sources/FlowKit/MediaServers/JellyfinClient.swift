@@ -106,11 +106,12 @@ public struct JellyfinClient: MediaServerClient {
         var IsRemote: Bool?
         var transport: String?
         var DirectStreamUrl: String?
+        var RequiredHttpHeaders: [String: String]?
         var MediaStreams: [MediaStreamDTO]?
 
         enum CodingKeys: String, CodingKey {
             case Id, Name, Container, Size, Bitrate, Path, SupportsDirectPlay, SupportsDirectStream, SupportsTranscoding, IsRemote
-            case transport = "Protocol", DirectStreamUrl, MediaStreams
+            case transport = "Protocol", DirectStreamUrl, RequiredHttpHeaders, MediaStreams
         }
     }
 
@@ -345,10 +346,11 @@ public struct JellyfinClient: MediaServerClient {
             ? (videoCodec.map(playableVideo.contains) ?? true) && (audioCodecs.isEmpty || !audioCodecs.isDisjoint(with: playableAudio))
             : false
         let url: URL
-        if let remote = Self.remoteURL(ms) {
+        let remoteURL = Self.remoteURL(ms)
+        if let remote = remoteURL {
             // A remote file (debrid, .strm): play the origin directly.
             url = remote
-        } else if directOK && (nativeContainers.contains(container) || flowCanRemux || ms.SupportsTranscoding == false) {
+        } else if ms.SupportsTranscoding == false || (directOK && (nativeContainers.contains(container) || flowCanRemux)) {
             url = streamURL(itemID: itemID, path: "Videos/\(itemID)/stream.\(container)", query: ["static": "true", "MediaSourceId": ms.Id])
         } else {
             // Ask the server to remux/transcode to HLS that AVPlayer can always play.
@@ -367,7 +369,7 @@ public struct JellyfinClient: MediaServerClient {
             title: label.isEmpty ? config.name : label,
             detail: name,
             filename: Self.fileName(ms),
-            location: .url(url, headers: [:]),
+            location: .url(url, headers: remoteURL == nil ? [:] : (ms.RequiredHttpHeaders ?? [:])),
             traits: traits,
             serverResumeSeconds: (resume ?? 0) > 0 ? resume : nil,
             segments: segments,

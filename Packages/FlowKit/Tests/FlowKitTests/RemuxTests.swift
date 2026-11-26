@@ -226,6 +226,24 @@ final class HTTPByteSourceTests: XCTestCase {
         XCTAssertGreaterThan(RemuxTests.sampleCount(fragment ?? []), 0)
     }
 
+    func testSeekRejectsARepeatedOrTruncatedRange() async throws {
+        let url = URL(string: "https://example.invalid/movie.mkv")!
+        for (status, header, body) in [(206, "bytes 0-3/100", "abcd"), (206, "bytes 20-23/100", "ab"), (416, "bytes */100", "")] {
+            let transport = StubTransport().on(nil, "/movie.mkv") { request in
+                if request.value(forHTTPHeaderField: "Range") == "bytes=0-3" {
+                    return (206, Data("abcd".utf8), ["Content-Range": "bytes 0-3/100"])
+                }
+                return (status, Data(body.utf8), ["Content-Range": header])
+            }
+            let source = HTTPByteSource(url: url, transport: transport, headSize: 4)
+            _ = try await source.length()
+            do {
+                _ = try await source.read(20..<24)
+                XCTFail("Accepted invalid range response \(status) \(header)")
+            } catch is MatroskaError {}
+        }
+    }
+
     func testServerWithoutRangesCantSeek() async throws {
         let bytes = [UInt8](try Data(contentsOf: MatroskaTests.fixture("avc-aac-srt")))
         let source = HTTPByteSource(url: URL(string: "https://example.invalid/movie.mkv")!, transport: RangeServingTransport(bytes: bytes, honoursRange: false), headSize: 1024)
@@ -713,9 +731,14 @@ final class ParallelReadTests: XCTestCase {
         let inner: RangeServingTransport
         private let lock = NSLock()
         private var inFlight = 0
+        private(set) var requests = 0
         init(bytes: [UInt8]) { inner = RangeServingTransport(bytes: bytes) }
         func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-            let busy = lock.withLock { () -> Bool in inFlight += 1; return inFlight > 1 }
+            let busy = lock.withLock {
+                requests += 1
+                inFlight += 1
+                return inFlight > 1
+            }
             defer { lock.withLock { inFlight -= 1 } }
             try await Task.sleep(nanoseconds: 20_000_000)
             if busy { return (Data(), HTTPURLResponse(url: request.url!, statusCode: 429, httpVersion: nil, headerFields: nil)!) }
@@ -726,10 +749,12 @@ final class ParallelReadTests: XCTestCase {
     func testHostsAllowingOneConnectionStillWork() async throws {
         var bytes = [UInt8](repeating: 0, count: 12 * 1024 * 1024)
         bytes.withUnsafeMutableBufferPointer { b in for i in b.indices { b[i] = UInt8(truncatingIfNeeded: i >> 7) } }
-        let source = HTTPByteSource(url: URL(string: "https://example.invalid/one.mkv")!, transport: OneConnectionTransport(bytes: bytes), headSize: 1024)
+        let transport = OneConnectionTransport(bytes: bytes)
+        let source = HTTPByteSource(url: URL(string: "https://example.invalid/one.mkv")!, transport: transport, headSize: 1024)
         _ = try await source.length()
         let read = try await source.read(100..<(100 + 10 * 1024 * 1024))
         XCTAssertTrue(read == Array(bytes[100..<(100 + 10 * 1024 * 1024)]))
+        XCTAssertLessThanOrEqual(transport.requests, 5, "One header, three parallel requests and one serial fallback")
     }
 }
 

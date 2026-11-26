@@ -214,9 +214,17 @@ final class JellyfinClientTests: XCTestCase {
     }
 
     func testRemoteDebridLinksPlayFromTheirOrigin() async throws {
-        let ms = #"{"Id":"ms1","Container":"mkv","IsRemote":true,"Protocol":"Http","Path":"https://cdn.example.com/abc/file.mkv"}"#
+        let ms = #"{"Id":"ms1","Container":"mkv","IsRemote":true,"Protocol":"Http","Path":"https://cdn.example.com/abc/file.mkv","RequiredHttpHeaders":{"Referer":"https://origin.example/"}}"#
         let sources = try await client(stubWithDune(mediaSource: ms)).sources(for: PlaybackRequest(item: dune()))
         XCTAssertEqual(sources.first?.location.playableURL?.absoluteString, "https://cdn.example.com/abc/file.mkv")
+        XCTAssertEqual(sources.first?.location.headers, ["Referer": "https://origin.example/"])
+    }
+
+    func testOriginalFileIsUsedWhenServerTranscodingIsDisabled() async throws {
+        let ms = #"{"Id":"ms1","Container":"avi","SupportsDirectPlay":false,"SupportsTranscoding":false,"RequiredHttpHeaders":{"Referer":"https://origin.example/"}}"#
+        let sources = try await client(stubWithDune(mediaSource: ms)).sources(for: PlaybackRequest(item: dune()))
+        XCTAssertEqual(sources.first?.location.playableURL?.path, "/Videos/dune-id/stream.avi")
+        XCTAssertEqual(sources.first?.location.headers, [:])
     }
 
     func testPlaybackInfoSourcesWinOverTheItemsOwn() async throws {
