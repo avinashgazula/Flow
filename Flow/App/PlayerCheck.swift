@@ -52,7 +52,12 @@ enum PlayerCheck {
             }
         }
         if wants("formats") {
-            await scenario("formats", timeout: 150) { await checkCompatibility(request: movie, model: model) }
+            let environment = ProcessInfo.processInfo.environment
+            let fixtures = (environment["FLOW_CHECK_FORMAT_URLS"] ?? "").split(separator: "\n").compactMap { URL(string: String($0)) }
+            let seconds = min(60, max(2, Int(environment["FLOW_CHECK_FORMAT_SECONDS"] ?? "") ?? 2))
+            await scenario("formats", timeout: 150 + Double(fixtures.count * (seconds + 40))) {
+                await checkCompatibility(request: movie, model: model, fixtures: fixtures, observationSeconds: seconds)
+            }
         }
         if wants("avi") { await scenario("avi", timeout: 60) { await checkAVI(sources, request: movie, model: model) } }
         if wants("audio") { await scenario("audio", timeout: 120) { await checkDecodedAudio(sources, request: movie, model: model) } }
@@ -146,11 +151,7 @@ enum PlayerCheck {
         let advanced = session.playbackTime - t0
         record(advanced >= 2, "time advances while playing", String(format: "%.1f s in 4 s", advanced))
         #if os(tvOS)
-        let after = playbackCounters(session)
-        let elapsed = start.duration(to: .now)
-        let size = session.universal?.videoSize ?? session.player.currentItem?.presentationSize ?? .zero
-        let advance = String(format: "%.2f", advanced)
-        line("  CADENCE \(source.id): \(Int(size.width))×\(Int(size.height)); advanced \(advance) s in \(elapsed); dropped frames \(counterDelta(before.drops, after.drops)); stalls \(counterDelta(before.stalls, after.stalls))")
+        reportCadence(session, label: source.id, before: before, started: start, advanced: advanced)
         #endif
         await screen("\(source.id)-playing")
 
@@ -200,6 +201,15 @@ enum PlayerCheck {
     }
 
     #if os(tvOS)
+    private static func reportCadence(_ session: PlaybackSession, label: String, before: (drops: Int?, stalls: Int?),
+                                      started: ContinuousClock.Instant, advanced: Double) {
+        let after = playbackCounters(session)
+        let elapsed = started.duration(to: .now)
+        let size = session.universal?.videoSize ?? session.player.currentItem?.presentationSize ?? .zero
+        let advance = String(format: "%.2f", advanced)
+        line("  CADENCE \(label): \(Int(size.width))×\(Int(size.height)); advanced \(advance) s in \(elapsed); dropped frames \(counterDelta(before.drops, after.drops)); stalls \(counterDelta(before.stalls, after.stalls))")
+    }
+
     private static func playbackCounters(_ session: PlaybackSession) -> (drops: Int?, stalls: Int?) {
         if let engine = session.universal {
             let drops = engine.info["frame-drop-count"].flatMap(Double.init).flatMap(Int.init(exactly:))
@@ -220,7 +230,7 @@ enum PlayerCheck {
     }
     #endif
 
-    private static func checkCompatibility(request: PlaybackRequest, model: AppModel) async {
+    private static func checkCompatibility(request: PlaybackRequest, model: AppModel, fixtures: [URL], observationSeconds: Int) async {
         section("Compatibility routes")
         guard let fixture = DemoSourceProvider.aviSample else {
             record(false, "setup", "no bundled AVI")
@@ -230,9 +240,7 @@ enum PlayerCheck {
         do { try FileManager.default.copyItem(at: fixture, to: copy) }
         catch { record(false, "setup", error.localizedDescription); return }
         defer { try? FileManager.default.removeItem(at: copy) }
-        let extra = (ProcessInfo.processInfo.environment["FLOW_CHECK_FORMAT_URLS"] ?? "")
-            .split(separator: "\n").compactMap { URL(string: String($0)) }
-        for (index, url) in ([copy] + extra).enumerated() {
+        for (index, url) in ([copy] + fixtures).enumerated() {
             let label = index == 0 ? "AVI with an MKV extension" : "format fixture \(index)"
             let source = StreamSource(id: "compatibility-\(index)", category: .addons, providerID: "check",
                                       providerName: "Compatibility check", title: label, filename: nil, location: .url(url, headers: [:]))
@@ -240,10 +248,18 @@ enum PlayerCheck {
             if index == 0 || url.pathExtension == "mpd" {
                 record(session.universal != nil, "\(label) uses the built-in decoder", "built-in=\(session.universal != nil)")
             }
+            let seconds = index == 0 ? 2 : observationSeconds
             let before = session.playbackTime
-            try? await Task.sleep(for: .seconds(2))
+            #if os(tvOS)
+            let counters = playbackCounters(session)
+            let started = ContinuousClock.now
+            #endif
+            try? await Task.sleep(for: .seconds(seconds))
             let elapsed = session.playbackTime - before
-            record(elapsed >= 1.5, "\(label) advances at normal speed", String(format: "%.2f s in 2 s", elapsed))
+            record(elapsed >= Double(seconds) - 0.5, "\(label) advances at normal speed", String(format: "%.2f s in %d s", elapsed, seconds))
+            #if os(tvOS)
+            reportCadence(session, label: label, before: counters, started: started, advanced: elapsed)
+            #endif
             await closePlayer(session, model)
         }
     }

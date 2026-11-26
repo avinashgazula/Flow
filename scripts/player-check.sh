@@ -7,6 +7,7 @@
 # runs just those scenarios: streams, formats, universal, avi, audio, apple, engines, staleresume, resumeinside, close,
 # missing, switch, intro, fallback, failure, episodes, resume, panels)
 # FLOW_CHECK_FORMAT_URLS adds newline-separated fixture URLs to the formats scenario.
+# FLOW_CHECK_FORMAT_SECONDS sets the playback observation per added fixture (2–60 seconds).
 #
 # Exit status: 0 every check passed; 1 a check failed; 2 the app died; 3 the run hung, timed out or never started.
 # Everything it saw is in shots/player-check/<platform>/: check.log, summary.md (the PASS/FAIL table) and screenshots.
@@ -47,6 +48,7 @@ else
   bundle=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "build/dd/Build/Products/$([ "$platform" = tvos ] && echo Debug-appletvsimulator || echo Debug-iphonesimulator)/Flow.app/Info.plist")
   echo "Simulator $udid, $bundle"
   launched=$(SIMCTL_CHILD_FLOW_CHECK_FILE="$log" SIMCTL_CHILD_FLOW_CHECK_ONLY="${FLOW_CHECK_ONLY:-}" \
+    SIMCTL_CHILD_FLOW_CHECK_FORMAT_SECONDS="${FLOW_CHECK_FORMAT_SECONDS:-}" \
     SIMCTL_CHILD_FLOW_CHECK_FORMAT_URLS="${FLOW_CHECK_FORMAT_URLS:-}" \
     xcrun simctl launch --terminate-running-process "$udid" "$bundle" -FlowDemo YES -FlowPlayerCheck YES)
   # "com.example.flow: 4321": the app's process id, which says whether it is still alive.
