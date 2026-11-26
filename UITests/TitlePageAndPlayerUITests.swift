@@ -40,7 +40,7 @@ final class TitlePageUITests: FlowUITestCase {
         let resume = titlePageResume
         openLink("flow://title/show/1396", expecting: resume)
         XCTAssertTrue(resume.appears(within: patience), "Breaking Bad offers Resume")
-        resume.tap()
+        tapTitleResume()
         XCTAssertTrue(btn("Search Again").appears(within: patience), "Resume opens the source list")
         XCTAssertTrue(text(startingWith: "S03E").appears(within: patience), "for the episode the sample library left off at, season 3")
     }
@@ -56,7 +56,7 @@ final class TitlePageUITests: FlowUITestCase {
 
     func testPlayOpensTheSourceListAndCloseLeavesIt() {
         openDune()
-        button(startingWith: "Resume").tap()
+        tapTitleResume()
         XCTAssertTrue(btn("Search Again").appears(within: patience), "the source list opens")
         XCTAssertTrue(element("source-demo#0").appears(within: patience), "the demo add-on lists its first source")
         XCTAssertTrue(element("source-demo#1").exists, "and its second")
@@ -67,7 +67,7 @@ final class TitlePageUITests: FlowUITestCase {
 
     func testResolutionChipFiltersTheSourceList() {
         openDune()
-        button(startingWith: "Resume").tap()
+        tapTitleResume()
         XCTAssertTrue(element("source-demo#0").appears(within: patience), "sources are listed")
         // demo#0 is 1080p WEB-DL, demo#3 is 720p WEBRip.
         let chip = btn("720p")
@@ -92,7 +92,7 @@ final class PlayerUITests: FlowUITestCase {
 
     func testChoosingASourceStartsThePlayerWithItsControls() {
         openDune()
-        button(startingWith: "Resume").tap()
+        tapTitleResume()
         chooseBundledSample()
         waitForPlayback()
         showPlayerControls()

@@ -11,7 +11,7 @@ final class PhonePlayerUITests: FlowUITestCase {
         launchDemo()
         XCTAssertLessThan(window.frame.width, window.frame.height, "the phone starts in portrait")
         openDune()
-        button(startingWith: "Resume").tap()
+        tapTitleResume()
         chooseBundledSample()
         waitForPlayback()
         XCTAssertTrue(waitUntil(15) { self.window.frame.width > self.window.frame.height }, "the player turns the phone to landscape")
@@ -23,7 +23,7 @@ final class PhonePlayerUITests: FlowUITestCase {
     func testThePlayersControlsWorkInLandscape() {
         launchDemo()
         openDune()
-        button(startingWith: "Resume").tap()
+        tapTitleResume()
         chooseBundledSample()
         waitForPlayback()
         pausePlayback()

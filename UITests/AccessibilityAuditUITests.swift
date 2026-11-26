@@ -275,7 +275,7 @@ final class PageAccessibilityAuditUITests: AuditingUITestCase {
 
     func testSourceList() {
         openDune()
-        button(startingWith: "Resume").tap()
+        tapTitleResume()
         XCTAssertTrue(element("source-demo#3").appears(within: patience))
         audit("Source list")
     }
@@ -380,7 +380,8 @@ final class LargeTextUITests: AuditingUITestCase {
 
     func testSourceList() {
         openDune()
-        button(startingWith: "Resume").tap()
+        assertReachable(titlePageResume, "the Resume button")
+        tapTitleResume()
         assertReachable(element("source-demo#0"), "the first source")
         assertReachable(btn("Close"), "Close")
         audit("Source list, large text", for: largeTextAudit)

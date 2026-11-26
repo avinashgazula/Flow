@@ -272,6 +272,11 @@ class FlowUITestCase: XCTestCase {
                       "Dune: Part Two's page offers Resume", file: file, line: line)
     }
 
+    func tapTitleResume(file: StaticString = #filePath, line: UInt = #line) {
+        let resume = titlePageResume
+        tapWhenStill(resume, "Resume", file: file, line: line)
+    }
+
     /// Chooses the first sample source: one of Apple's public sample streams, which runs for many minutes, so a test can
     /// work in the middle of a film without the film ending. NETWORK-DEPENDENT, as the sample data's artwork already is.
     /// (The bundled MKV, `demo#mkv`, is only 12 seconds: a test acts a few seconds late and meets the end of the film.)
@@ -362,7 +367,7 @@ class FlowUITestCase: XCTestCase {
     /// so what a test does next is not racing a 12-second clip.
     func playDuneAndPause(file: StaticString = #filePath, line: UInt = #line) {
         openDune(file: file, line: line)
-        button(startingWith: "Resume").tap()
+        tapTitleResume(file: file, line: line)
         chooseBundledSample(file: file, line: line)
         waitForPlayback(file: file, line: line)
         pausePlayback(file: file, line: line)
