@@ -50,6 +50,7 @@ else
     SIMCTL_CHILD_FLOW_CHECK_FORMAT_SECONDS="${FLOW_CHECK_FORMAT_SECONDS:-}" \
     SIMCTL_CHILD_FLOW_CHECK_FORMAT_URLS="${FLOW_CHECK_FORMAT_URLS:-}" \
     SIMCTL_CHILD_FLOW_CHECK_PERFORMANCE="${FLOW_CHECK_PERFORMANCE:-}" \
+    SIMCTL_CHILD_FLOW_PERF_DIAG="${FLOW_PERF_DIAG:-}" \
     xcrun simctl launch --terminate-running-process "$udid" "$bundle" -FlowDemo YES -FlowPlayerCheck YES)
   # "com.example.flow: 4321": the app's process id, which says whether it is still alive.
   app=$(echo "$launched" | awk -F': ' '{print $NF}' | tr -d ' ')

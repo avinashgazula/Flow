@@ -133,6 +133,13 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private var selectionObserver: NSObjectProtocol?
     @ObservationIgnored private var readyAt: Date?
     @ObservationIgnored private var lastReport = Date.distantPast
+    #if DEBUG && os(tvOS)
+    @ObservationIgnored private var performanceTask: Task<Void, Never>?
+    @ObservationIgnored private var lastPerformanceTime: Double?
+    @ObservationIgnored private var lastPerformanceDrops: Int?
+    @ObservationIgnored private var lastPerformanceStalls: Int?
+    @ObservationIgnored private var lastHLSNote: String?
+    #endif
     @ObservationIgnored private var skippedSegments = Set<Double>()
     /// A film's scenes during or after its credits, and whether the viewer has been told.
     @ObservationIgnored private var creditsScenes: CreditsScenes?
@@ -228,7 +235,57 @@ final class PlaybackSession: Identifiable {
         observeInterruptions()
         load(source)
         extrasTask = Task { [weak self] in await self?.loadExtras() }
+        #if DEBUG && os(tvOS)
+        startPerformanceLogging()
+        #endif
     }
+
+    #if DEBUG && os(tvOS)
+    /// Opt-in diagnostics for a real library stream; the normal player UI is untouched.
+    private func startPerformanceLogging() {
+        guard ProcessInfo.processInfo.environment["FLOW_PERF_DIAG"] == "1" else { return }
+        performanceTask = Task { [weak self] in
+            while let self, !Task.isCancelled, !self.isClosed {
+                self.logPerformance()
+                do { try await Task.sleep(for: .seconds(5)) } catch { return }
+            }
+        }
+    }
+
+    private func logPerformance() {
+        let time = playbackTime
+        let advanced = lastPerformanceTime.map { String(format: "%.2f", max(0, time - $0)) } ?? "-"
+        lastPerformanceTime = time
+        let item = player.currentItem
+        let events = item?.accessLog()?.events ?? []
+        let drops = universal?.info["frame-drop-count"].flatMap(Int.init)
+            ?? (events.isEmpty ? nil : events.reduce(0) { $0 + max(0, $1.numberOfDroppedVideoFrames) })
+        let stalls = universal == nil && !events.isEmpty ? events.reduce(0) { $0 + max(0, $1.numberOfStalls) } : nil
+        func change(_ current: Int?, _ previous: inout Int?) -> String {
+            defer { previous = current }
+            guard let current, let previous else { return "-" }
+            return String(max(0, current - previous))
+        }
+        let dropped = change(drops, &lastPerformanceDrops)
+        let stalled = change(stalls, &lastPerformanceStalls)
+        let buffer = universal?.bufferedAhead ?? item?.loadedTimeRanges.map(\.timeRangeValue)
+            .first(where: { $0.containsTime(player.currentTime()) })
+            .map { max(0, $0.end.seconds - player.currentTime().seconds) }
+        let rows = infoRows()
+        func value(_ label: String) -> String { rows.first(where: { $0.label == label })?.value ?? "-" }
+        let engine = universal != nil ? "built-in" : usesRemux ? "MKV remux" : "AVPlayer direct"
+        let throughput = !usesRemux && universal == nil ? (events.last?.observedBitrate ?? 0) / 1_000_000 : 0
+        NSLog("FLOWPERF engine=%@ video=%@ audio=%@ decoded=%@ time=%.2f advance5s=%@ dropped5s=%@ stalls5s=%@ buffer=%.1f throughput=%.1fMb/s waiting=%@",
+              engine, value("Video"), value("Audio"), value("Decoded"), time, advanced, dropped, stalled,
+              buffer ?? -1, throughput, isBuffering ? "yes" : "no")
+        if usesRemux {
+            let notes = LocalHLSServer.shared.debugSnapshot()
+            let start = lastHLSNote.flatMap { notes.lastIndex(of: $0).map { $0 + 1 } } ?? max(0, notes.count - 10)
+            for note in notes.dropFirst(start) where note.contains("<-") { NSLog("FLOWPERF HLS %@", note) }
+            lastHLSNote = notes.last
+        }
+    }
+    #endif
 
     /// After a call or Siri, pick up again if the system says to.
     private func observeInterruptions() {
@@ -1856,6 +1913,10 @@ final class PlaybackSession: Identifiable {
     private func close(_ caller: String = #function) {
         ScreenshotTour.log("PlaybackSession.close from \(caller) phase=\(phase)")
         isClosed = true
+        #if DEBUG && os(tvOS)
+        performanceTask?.cancel()
+        performanceTask = nil
+        #endif
         countdownTask?.cancel()
         loadTask?.cancel()
         stallTask?.cancel()
