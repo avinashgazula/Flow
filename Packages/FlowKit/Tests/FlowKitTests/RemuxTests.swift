@@ -393,15 +393,19 @@ final class PrefetchTests: XCTestCase {
         let first = remuxer.segments[0]
         let next = remuxer.segments[1]
         let nextRange = next.byteStart..<next.byteEnd
+        let following = remuxer.segments[2]
+        let followingRange = following.byteStart..<following.byteEnd
         await source.hold(first.byteStart..<first.byteEnd)
         async let fragment = remuxer.mediaSegment(track: 1, index: 0)
         for _ in 0..<100 {
-            if await source.ranges.contains(nextRange) { break }
+            if await source.ranges.contains(nextRange), await source.ranges.contains(followingRange) { break }
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
         let fetched = await source.ranges.contains(nextRange)
         await source.release()
         XCTAssertTrue(fetched)
+        let fetchedFollowing = await source.ranges.contains(followingRange)
+        XCTAssertTrue(fetchedFollowing)
         _ = try await fragment
         _ = try await remuxer.mediaSegment(track: 1, index: 1)
         let fetches = await source.ranges.filter { $0 == nextRange }.count

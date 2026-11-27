@@ -1000,13 +1000,14 @@ public actor MatroskaRemuxer {
         return (samples, UInt64(max(0, start)))
     }
 
-    /// Demuxed blocks for a segment, shared by every rendition that asks for it. Serving one
-    /// segment starts fetching the next, so the server's response time overlaps playback.
+    /// Demuxed blocks for a segment, shared by every rendition that asks for it. Start two
+    /// segments ahead so a slow range request has more than one segment's playback time to finish.
     private func blocks(for index: Int) async throws -> [MatroskaBlock] { try await loaded(index).blocks }
 
     private func loaded(_ index: Int) async throws -> LoadedSegment {
         // Overlap the next read with this one. A high-bitrate segment can take longer to fetch than it takes to play.
         prefetch(index + 1)
+        prefetch(index + 2)
         return try await load(index)
     }
 
