@@ -5,6 +5,12 @@ import FoundationNetworking
 #endif
 
 final class RemuxTests: XCTestCase {
+    func testDuplicateRenditionNamesGetUniquePlaylistNames() {
+        XCTAssertEqual(MatroskaRemuxer.uniqueRenditionNames([
+            "Spanish", "Spanish", "Spanish (2)", "spanish", "Portuguese", "Portuguese",
+        ]), ["Spanish", "Spanish (2)", "Spanish (2) (2)", "spanish (3)", "Portuguese", "Portuguese (2)"])
+    }
+
     /// Writes every playlist and segment a player would fetch, so tools can check the output.
     static func dump(_ remuxer: MatroskaRemuxer, to directory: URL) async throws {
         let fm = FileManager.default

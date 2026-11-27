@@ -239,6 +239,14 @@ enum PlayerCheck {
 
     private static func checkCompatibility(request: PlaybackRequest, model: AppModel, fixtures: [URL], observationSeconds: Int) async {
         section("Compatibility routes")
+        let previousEngine = model.settings.playback.playerEngine
+        let previousMatroska = model.settings.playback.matroskaPlayback
+        model.settings.playback.playerEngine = .automatic
+        model.settings.playback.matroskaPlayback = .remux
+        defer {
+            model.settings.playback.playerEngine = previousEngine
+            model.settings.playback.matroskaPlayback = previousMatroska
+        }
         guard let fixture = DemoSourceProvider.aviSample else {
             record(false, "setup", "no bundled AVI")
             return
@@ -251,7 +259,9 @@ enum PlayerCheck {
             let label = index == 0 ? "AVI with an MKV extension" : "format fixture \(index)"
             let source = StreamSource(id: "compatibility-\(index)", category: .addons, providerID: "check",
                                       providerName: "Compatibility check", title: label, filename: nil, location: .url(url, headers: [:]))
+            line("  ROUTING \(label): container=\(ContainerDetector.container(url: url, filename: nil)); engine=\(model.settings.playback.playerEngine); forced=\(PlaybackSession.forcesUniversal)")
             guard let session = await start(source, request: request, model: model, label: label) else { continue }
+            line("  ROUTE \(label): \(session.universal != nil ? "built-in (\(session.universalReason ?? "unknown"))" : session.usesRemux ? "MKV remux → AVPlayer" : "AVPlayer direct")")
             if index == 0 || url.pathExtension == "mpd" {
                 record(session.universal != nil, "\(label) uses the built-in decoder", "built-in=\(session.universal != nil)")
             }

@@ -36,12 +36,14 @@ DEVICECTL_CHILD_FLOW_CHECK_ONLY=formats \
 DEVICECTL_CHILD_FLOW_CHECK_FORMAT_URLS="$stream_url" \
 DEVICECTL_CHILD_FLOW_CHECK_FORMAT_SECONDS="$seconds" \
 DEVICECTL_CHILD_FLOW_CHECK_PERFORMANCE=1 \
+DEVICECTL_CHILD_FLOW_PERF_DIAG=1 \
 DEVICECTL_CHILD_FLOW_CHECK_EXIT=1 \
 xcrun devicectl device process launch --console --timeout "$((seconds + 240))" \
   --device "$device" "$bundle" -- -FlowDemo YES -FlowPlayerCheck YES >"$raw" 2>&1
 launch_status=$?
 set -e
-rg 'FLOWCHECK .*?(CADENCE|PASS|FAIL|RESULT)' "$raw" | sed 's/^.*FLOWCHECK /FLOWCHECK /' >"$out" || true
+rg 'FLOWCHECK .*?(ROUTING|ROUTE|CADENCE|PASS|FAIL|RESULT)|FLOWPERF ' "$raw" \
+  | sed -e 's/^.*FLOWCHECK /FLOWCHECK /' -e 's/^.*FLOWPERF /FLOWPERF /' >"$out" || true
 if (( launch_status != 0 )) || ! rg -q 'RESULT [0-9]+ passed, 0 failed' "$out"; then
   echo 'Playback check did not complete cleanly. Inspect the device console and report.' >&2
   exit 1

@@ -275,8 +275,8 @@ final class PlaybackSession: Identifiable {
         func value(_ label: String) -> String { rows.first(where: { $0.label == label })?.value ?? "-" }
         let engine = universal != nil ? "built-in" : usesRemux ? "MKV remux" : "AVPlayer direct"
         let throughput = !usesRemux && universal == nil ? (events.last?.observedBitrate ?? 0) / 1_000_000 : 0
-        NSLog("FLOWPERF engine=%@ video=%@ audio=%@ decoded=%@ time=%.2f advance5s=%@ dropped5s=%@ stalls5s=%@ buffer=%.1f throughput=%.1fMb/s waiting=%@",
-              engine, value("Video"), value("Audio"), value("Decoded"), time, advanced, dropped, stalled,
+        NSLog("FLOWPERF engine=%@ reason=%@ video=%@ audio=%@ decoded=%@ time=%.2f advance5s=%@ dropped5s=%@ stalls5s=%@ buffer=%.1f throughput=%.1fMb/s waiting=%@",
+              engine, universalReason ?? "-", value("Video"), value("Audio"), value("Decoded"), time, advanced, dropped, stalled,
               buffer ?? -1, throughput, isBuffering ? "yes" : "no")
         if usesRemux {
             let notes = LocalHLSServer.shared.debugSnapshot()
@@ -435,15 +435,21 @@ final class PlaybackSession: Identifiable {
     private func startRemux(url: URL, headers: [String: String]) async {
         remuxesLocalFile = url.isFileURL
         phase = .connecting(0.2)
+        let bytes = Self.byteSource(url, headers: headers)
         do {
             let languages = audioLanguages
-            let bytes = Self.byteSource(url, headers: headers)
             let remuxer = try await MatroskaRemuxer.open(bytes,
                                                          preferredAudioLanguage: languages.first, fallbackAudioLanguages: Array(languages.dropFirst()),
                                                          headerCache: .shared, compatible: remuxCompatible,
                                                          dolbyVision: model?.settings.playback.neverUseDolbyVision != true,
                                                          convertProfile7: model?.settings.playback.convertDolbyVisionProfile7 ?? true)
             guard !Task.isCancelled else { return }
+            #if DEBUG && os(tvOS)
+            if ProcessInfo.processInfo.environment["FLOW_PERF_DIAG"] == "1" {
+                NSLog("FLOWPERF remux opened video=%@ audio=%@ compatible=%@",
+                      remuxer.videoSummary ?? "-", remuxer.audio.first?.label ?? "-", remuxCompatible ? "yes" : "no")
+            }
+            #endif
             // The link may have bounced to a slate (a refused request) that happens to be a valid video.
             if let http = bytes as? HTTPByteSource {
                 let finalURL = await http.finalURL()
@@ -457,6 +463,12 @@ final class PlaybackSession: Identifiable {
             // AV1 with no decoder in this device, or only audio Apple's player can't decode: the built-in decoder plays it.
             if PlayerRouting.afterRemuxOpened(videoCodecID: remuxer.video?.source.codecID, deviceDecodesAV1: Platform.decodesAV1,
                                               hasPlayableSoundtrack: remuxer.hasPlayableSoundtrack, skippedAudioCount: skippedAudio.count) == .builtIn {
+                #if DEBUG && os(tvOS)
+                if ProcessInfo.processInfo.environment["FLOW_PERF_DIAG"] == "1" {
+                    NSLog("FLOWPERF remux fallback: video=%@ playableAudio=%@ skippedAudio=%ld",
+                          remuxer.video?.source.codecID ?? "-", remuxer.hasPlayableSoundtrack ? "yes" : "no", skippedAudio.count)
+                }
+                #endif
                 startUniversal(url: url, headers: headers, notice: Self.universalNotice)
                 return
             }
@@ -482,9 +494,17 @@ final class PlaybackSession: Identifiable {
             }
             phase = .connecting(0.35)
             await attachForPlayback(AVURLAsset(url: hls))
-        } catch is MatroskaError {
+        } catch let error as MatroskaError {
             // libmpv can read files without a usable seek index and recover from some malformed containers.
             guard !Task.isCancelled else { return }
+            #if DEBUG && os(tvOS)
+            if ProcessInfo.processInfo.environment["FLOW_PERF_DIAG"] == "1" {
+                let prefix = try? await bytes.read(0..<16)
+                let signature = prefix?.map { String(format: "%02x", $0) }.joined() ?? "unavailable"
+                let host = url.host ?? "local"
+                NSLog("FLOWPERF remux fallback: %@ signature=%@ host=%@", error.localizedDescription, signature, host)
+            }
+            #endif
             startUniversal(url: url, headers: headers, notice: Self.universalNotice)
         } catch {
             guard !Task.isCancelled else { return }
@@ -1205,6 +1225,17 @@ final class PlaybackSession: Identifiable {
             canStartBuiltIn: url != nil, recoveries: recoveries,
             secondsSinceLastRecovery: lastRecovery.map { Date().timeIntervalSince($0) }))
         recoveries = decision.recoveries
+        #if DEBUG && os(tvOS)
+        if ProcessInfo.processInfo.environment["FLOW_PERF_DIAG"] == "1" {
+            NSLog("FLOWPERF native failure domain=%@ code=%ld message=%@ action=%@ remux=%@",
+                  nsError?.domain ?? "-", nsError?.code ?? 0, error?.localizedDescription ?? "-",
+                  String(describing: decision.action), usesRemux ? "yes" : "no")
+            for event in item.errorLog()?.events ?? [] {
+                NSLog("FLOWPERF native error status=%ld comment=%@", event.errorStatusCode, event.errorComment ?? "-")
+            }
+            for note in LocalHLSServer.shared.debugSnapshot().suffix(15) { NSLog("FLOWPERF HLS %@", note) }
+        }
+        #endif
         switch decision.action {
         case .reloadCompatibleRemux:
             // Some devices turn down a stream's Dolby Vision or Atmos signalling; the HDR10 picture and

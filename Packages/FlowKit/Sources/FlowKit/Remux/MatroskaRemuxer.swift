@@ -565,18 +565,44 @@ public actor MatroskaRemuxer {
 
     // MARK: Playlists
 
+    /// HLS requires each rendition name to be unique within its group. MKVs often contain
+    /// several subtitle tracks with the same language and title.
+    static func uniqueRenditionNames(_ names: [String]) -> [String] {
+        var used = Set<String>()
+        return names.map { base in
+            var name = base
+            var suffix = 2
+            while !used.insert(name.lowercased()).inserted {
+                name = "\(base) (\(suffix))"
+                suffix += 1
+            }
+            return name
+        }
+    }
+
     public func masterPlaylist() -> String {
         var lines = ["#EXTM3U", "#EXT-X-VERSION:7", "#EXT-X-INDEPENDENT-SEGMENTS"]
+        let audioNames = Self.uniqueRenditionNames(audio.map(\.label))
+        var autoAudio = Set<String>()
         for (i, a) in audio.enumerated() {
-            var attrs = ["TYPE=AUDIO", "GROUP-ID=\"audio\"", "NAME=\"\(Self.quoted(a.label))\"", "LANGUAGE=\"\(LanguageName.bcp47(a.language))\"",
-                         "DEFAULT=\(i == 0 ? "YES" : "NO")", "AUTOSELECT=YES", "CHANNELS=\"\(a.isAtmos && !isCompatible ? "16/JOC" : String(a.source.channels))\""]
-            if video == nil { attrs.removeAll { $0.hasPrefix("DEFAULT") }; attrs.append("DEFAULT=YES") }
+            let language = LanguageName.bcp47(a.language)
+            let auto = autoAudio.insert(language).inserted
+            var attrs = ["TYPE=AUDIO", "GROUP-ID=\"audio\"", "NAME=\"\(Self.quoted(audioNames[i]))\"", "LANGUAGE=\"\(language)\"",
+                         "DEFAULT=\(i == 0 ? "YES" : "NO")", "AUTOSELECT=\(auto ? "YES" : "NO")", "CHANNELS=\"\(a.isAtmos && !isCompatible ? "16/JOC" : String(a.source.channels))\""]
             attrs.append("URI=\"\(a.id).m3u8\"")
             lines.append("#EXT-X-MEDIA:" + attrs.joined(separator: ","))
         }
-        for s in subtitles {
-            var attrs = ["TYPE=SUBTITLES", "GROUP-ID=\"subs\"", "NAME=\"\(Self.quoted(s.label + (s.source.isForced && !s.label.localizedCaseInsensitiveContains("forced") ? " (Forced)" : "")))\"",
-                         "LANGUAGE=\"\(LanguageName.bcp47(s.language))\"", "DEFAULT=NO", "AUTOSELECT=YES", "FORCED=\(s.source.isForced ? "YES" : "NO")"]
+        let subtitleNames = Self.uniqueRenditionNames(subtitles.map { s in
+            s.label + (s.source.isForced && !s.label.localizedCaseInsensitiveContains("forced") ? " (Forced)" : "")
+        })
+        var autoSubtitles = Set<String>()
+        for (i, s) in subtitles.enumerated() {
+            let language = LanguageName.bcp47(s.language)
+            let autoKey = "\(language):\(s.source.isForced):\(s.source.isHearingImpaired)"
+            let firstMatchingSubtitle = autoSubtitles.insert(autoKey).inserted
+            let auto = firstMatchingSubtitle || s.source.isHearingImpaired
+            var attrs = ["TYPE=SUBTITLES", "GROUP-ID=\"subs\"", "NAME=\"\(Self.quoted(subtitleNames[i]))\"",
+                         "LANGUAGE=\"\(language)\"", "DEFAULT=NO", "AUTOSELECT=\(auto ? "YES" : "NO")", "FORCED=\(s.source.isForced ? "YES" : "NO")"]
             if s.source.isHearingImpaired {
                 attrs.append("CHARACTERISTICS=\"public.accessibility.transcribes-spoken-dialog,public.accessibility.describes-music-and-sound\"")
             }
