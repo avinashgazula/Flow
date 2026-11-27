@@ -135,7 +135,10 @@ mkdir -p build
 log="build/ui-tests-$platform.log"
 result="build/ui-tests-$platform.xcresult"
 rm -rf "$result"
-common=(-project Flow.xcodeproj -scheme "$scheme" -destination "id=$udid" -derivedDataPath build/ui-tests CODE_SIGNING_ALLOWED=NO)
+# First-launch tests need an unconfigured app, even on a Mac with Config/Secrets.xcconfig.
+common=(-project Flow.xcodeproj -scheme "$scheme" -destination "id=$udid" -derivedDataPath build/ui-tests CODE_SIGNING_ALLOWED=NO
+  FLOW_BUNDLE_ID=com.example.flow.uitesting FLOW_TMDB_API_KEY= FLOW_TVDB_API_KEY= FLOW_TRAKT_CLIENT_ID= FLOW_TRAKT_CLIENT_SECRET=
+  FLOW_SIMKL_CLIENT_ID= FLOW_ACCOUNT_SERVER_HOST=)
 
 start=$(date +%s)
 status=0
