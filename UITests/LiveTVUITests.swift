@@ -53,7 +53,12 @@ final class LiveTVUITests: XCTestCase {
         XCTAssertTrue(list.appears(within: 10), "Close returns to the channel list")
         if UIDevice.current.userInterfaceIdiom == .phone {
             let window = app.windows.firstMatch
-            XCTAssertLessThan(window.frame.width, window.frame.height, "the phone is back in portrait")
+            let portrait = NSPredicate { _, _ in
+                let frame = window.frame
+                return frame.height > frame.width
+            }
+            expectation(for: portrait, evaluatedWith: nil)
+            waitForExpectations(timeout: 8)
         }
     }
 

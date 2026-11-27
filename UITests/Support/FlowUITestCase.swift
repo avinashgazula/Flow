@@ -205,20 +205,29 @@ class FlowUITestCase: XCTestCase {
     func reveal(_ element: XCUIElement, maxSwipes: Int = 12) -> Bool {
         // Every look at the element reads the whole screen again (a fifth of a second, more on a shared runner), so each
         // question is asked once per pass: this runs a few times in nearly every test.
+        let window = app.windows.firstMatch.frame
+        func isVisibleAndHittable() -> Bool {
+            guard element.exists else { return false }
+            let frame = element.frame
+            return !frame.isEmpty && window.intersects(frame) && element.isHittable
+        }
         var swipes = 0
-        while !(element.exists && element.isHittable) {
+        while !isVisibleAndHittable() {
             guard swipes < maxSwipes else { return false }
             app.swipeUp()
             swipes += 1
         }
         // On screen but low: nudge it up a little. A full swipe would throw it past the top.
-        let window = app.windows.firstMatch.frame
         if !clearOfTheBottomEdge(element, in: window) {
-            let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -window.height * 0.3)))
-            return element.exists && element.isHittable
+            scrollPageUpALittle(in: window)
+            return isVisibleAndHittable()
         }
         return true
+    }
+
+    private func scrollPageUpALittle(in window: CGRect) {
+        let start = app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.65))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -window.height * 0.3)))
     }
 
     /// A row in the bottom fifth of the screen can sit under the iPhone's floating tab bar, which then takes the tap.
@@ -274,6 +283,11 @@ class FlowUITestCase: XCTestCase {
 
     func tapTitleResume(file: StaticString = #filePath, line: UInt = #line) {
         let resume = titlePageResume
+        let window = app.windows.firstMatch.frame
+        if !isPad, resume.exists, !clearOfTheBottomEdge(resume, in: window) {
+            // The floating tab bar can receive a tap intended for the bottom of the title page.
+            scrollPageUpALittle(in: window)
+        }
         tapWhenStill(resume, "Resume", file: file, line: line)
     }
 
