@@ -2,6 +2,7 @@
 import SwiftUI
 import AVFoundation
 import FlowKit
+import Darwin
 
 /// Puts the player through every sample stream and the scenarios around them (`-FlowPlayerCheck YES`,
 /// debug builds, sample data). Each check waits on the player's real state and records PASS or FAIL
@@ -54,7 +55,7 @@ enum PlayerCheck {
         if wants("formats") {
             let environment = ProcessInfo.processInfo.environment
             let fixtures = (environment["FLOW_CHECK_FORMAT_URLS"] ?? "").split(separator: "\n").compactMap { URL(string: String($0)) }
-            let seconds = min(60, max(2, Int(environment["FLOW_CHECK_FORMAT_SECONDS"] ?? "") ?? 2))
+            let seconds = min(600, max(2, Int(environment["FLOW_CHECK_FORMAT_SECONDS"] ?? "") ?? 2))
             await scenario("formats", timeout: 150 + Double(fixtures.count * (seconds + 40))) {
                 await checkCompatibility(request: movie, model: model, fixtures: fixtures, observationSeconds: seconds)
             }
@@ -207,7 +208,13 @@ enum PlayerCheck {
         let elapsed = started.duration(to: .now)
         let size = session.universal?.videoSize ?? session.player.currentItem?.presentationSize ?? .zero
         let advance = String(format: "%.2f", advanced)
-        line("  CADENCE \(label): \(Int(size.width))×\(Int(size.height)); advanced \(advance) s in \(elapsed); dropped frames \(counterDelta(before.drops, after.drops)); stalls \(counterDelta(before.stalls, after.stalls))")
+        let buffer = session.universal?.bufferedAhead ?? session.player.currentItem?.loadedTimeRanges
+            .map(\.timeRangeValue).first(where: { $0.containsTime(session.player.currentTime()) })
+            .map { max(0, $0.end.seconds - session.player.currentTime().seconds) }
+        let buffered = buffer.map { String(format: "%.1f s", $0) } ?? "unavailable"
+        let throughput = session.player.currentItem?.accessLog()?.events.last?.observedBitrate ?? 0
+        let network = session.usesRemux || throughput <= 0 ? "" : "; throughput \(String(format: "%.1f Mb/s", throughput / 1_000_000))"
+        line("  CADENCE \(label): \(Int(size.width))×\(Int(size.height)); advanced \(advance) s in \(elapsed); dropped frames \(counterDelta(before.drops, after.drops)); stalls \(counterDelta(before.stalls, after.stalls)); buffered \(buffered)\(network)")
     }
 
     private static func playbackCounters(_ session: PlaybackSession) -> (drops: Int?, stalls: Int?) {
@@ -254,11 +261,29 @@ enum PlayerCheck {
             let counters = playbackCounters(session)
             let started = ContinuousClock.now
             #endif
-            try? await Task.sleep(for: .seconds(seconds))
+            for elapsedSeconds in stride(from: 0, to: seconds, by: 5) {
+                try? await Task.sleep(for: .seconds(min(5, seconds - elapsedSeconds)))
+                #if os(tvOS)
+                reportCadence(session, label: label, before: counters, started: started,
+                              advanced: session.playbackTime - before)
+                #endif
+            }
             let elapsed = session.playbackTime - before
             record(elapsed >= Double(seconds) - 0.5, "\(label) advances at normal speed", String(format: "%.2f s in %d s", elapsed, seconds))
             #if os(tvOS)
-            reportCadence(session, label: label, before: counters, started: started, advanced: elapsed)
+            if index > 0 && ProcessInfo.processInfo.environment["FLOW_CHECK_PERFORMANCE"] == "1" {
+                let after = playbackCounters(session)
+                if let beforeDrops = counters.drops, let afterDrops = after.drops {
+                    record(afterDrops == beforeDrops, "\(label) drops no frames",
+                           "dropped frames \(counterDelta(beforeDrops, afterDrops))")
+                } else {
+                    record(false, "\(label) reports dropped frames", "counter unavailable")
+                }
+                if let beforeStalls = counters.stalls, let afterStalls = after.stalls {
+                    record(afterStalls == beforeStalls, "\(label) has no playback stalls",
+                           "stalls \(counterDelta(beforeStalls, afterStalls))")
+                }
+            }
             #endif
             await closePlayer(session, model)
         }
@@ -955,8 +980,12 @@ enum PlayerCheck {
     }
 
     private static func finish() {
-        line("\nRESULT \(passed) passed, \(failed) failed")
+        line("")
+        line("RESULT \(passed) passed, \(failed) failed")
         try? "done".write(to: stepURL, atomically: true, encoding: .utf8)
+        if ProcessInfo.processInfo.environment["FLOW_CHECK_EXIT"] == "1" {
+            Darwin.exit(failed == 0 ? 0 : 1)
+        }
     }
 }
 #endif
