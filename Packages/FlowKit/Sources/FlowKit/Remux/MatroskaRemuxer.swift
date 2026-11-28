@@ -531,7 +531,11 @@ public actor MatroskaRemuxer {
             let fps = 1e9 / Double(frame)
             parts.append((abs(fps - fps.rounded()) < 0.01 ? String(Int(fps.rounded())) : String(format: "%.3f", fps)) + " fps")
         }
-        parts.append(Self.dynamicRange(v, convertedTo81: video?.convertsToProfile81 == true))
+        if let video, video.supplementalCodec == nil, !video.codecString.hasPrefix("dvh1."), v.dolbyVision != nil {
+            parts.append(videoRange == "PQ" ? "HDR10" : videoRange)
+        } else {
+            parts.append(Self.dynamicRange(v, convertedTo81: video?.convertsToProfile81 == true))
+        }
         return parts.joined(separator: " · ")
     }
 
@@ -581,7 +585,9 @@ public actor MatroskaRemuxer {
     }
 
     public func masterPlaylist() -> String {
-        var lines = ["#EXTM3U", "#EXT-X-VERSION:7", "#EXT-X-INDEPENDENT-SEGMENTS"]
+        // SUPPLEMENTAL-CODECS requires protocol version 10; VIDEO-RANGE requires version 8.
+        let version = video?.supplementalCodec != nil ? 10 : video != nil ? 8 : 7
+        var lines = ["#EXTM3U", "#EXT-X-VERSION:\(version)", "#EXT-X-INDEPENDENT-SEGMENTS"]
         let audioNames = Self.uniqueRenditionNames(audio.map(\.label))
         var autoAudio = Set<String>()
         for (i, a) in audio.enumerated() {
@@ -723,7 +729,7 @@ public actor MatroskaRemuxer {
         return nil
     }
 
-    private var videoRange: String {
+    private nonisolated var videoRange: String {
         guard let video else { return "SDR" }
         if let codec = video.supplementalCodec { return codec.hasSuffix("/db4h") ? "HLG" : "PQ" }
         if video.codecString.hasPrefix("dvh1.05.") { return "PQ" }
