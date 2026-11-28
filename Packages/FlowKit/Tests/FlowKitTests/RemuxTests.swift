@@ -5,6 +5,22 @@ import FoundationNetworking
 #endif
 
 final class RemuxTests: XCTestCase {
+    func testHEVCRemovesOnlyParameterSetsAlreadyInTheSampleDescription() {
+        let parameterSet: [UInt8] = [0x40, 1, 0x11]
+        let changedSet: [UInt8] = [0x40, 1, 0x22]
+        let rpu: [UInt8] = [0x7c, 1, 0x33]
+        let picture: [UInt8] = [0x28, 1, 0x44]
+        var config = [UInt8](repeating: 0, count: 22)
+        config += [1, 0xa0, 0, 1, 0, 3] + parameterSet
+        let sets = HEVCParameterSets(configuration: config, lengthSize: 2)
+        func unit(_ bytes: [UInt8]) -> [UInt8] { [0, UInt8(bytes.count)] + bytes }
+        let kept = unit(changedSet) + unit(rpu) + unit(picture)
+        let original = unit(parameterSet) + kept
+        XCTAssertEqual(sets.removingRepeatedUnits(from: original), kept)
+        XCTAssertEqual(sets.removingRepeatedUnits(from: kept), kept)
+        XCTAssertEqual(sets.removingRepeatedUnits(from: original + [0]), original + [0])
+    }
+
     func testDuplicateRenditionNamesGetUniquePlaylistNames() {
         XCTAssertEqual(MatroskaRemuxer.uniqueRenditionNames([
             "Spanish", "Spanish", "Spanish (2)", "spanish", "Portuguese", "Portuguese",

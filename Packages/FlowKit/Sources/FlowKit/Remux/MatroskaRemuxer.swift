@@ -25,6 +25,7 @@ public actor MatroskaRemuxer {
         public var convertsToProfile81 = false
         /// Bytes in each NAL unit's length prefix (from the HEVC configuration).
         var nalLengthSize = 4
+        var hevcParameterSets: HEVCParameterSets?
         var supplementalCodec: String?
         /// Whether compatible mode can remove the video metadata and use the base layer.
         public internal(set) var canStripDolbyVision = false
@@ -382,7 +383,10 @@ public actor MatroskaRemuxer {
         out.convertsToProfile81 = converts
         out.supplementalCodec = supplementalCodec
         out.canStripDolbyVision = converts || (keepDolbyVision && dolbyProfile == 8 && t.dolbyVisionBoxType != nil && codec == .hevc)
-        if codec == .hevc { out.nalLengthSize = Int(t.codecPrivate[21] & 3) + 1 }
+        if codec == .hevc {
+            out.nalLengthSize = Int(t.codecPrivate[21] & 3) + 1
+            out.hevcParameterSets = HEVCParameterSets(configuration: t.codecPrivate, lengthSize: out.nalLengthSize)
+        }
         return .success(out)
     }
 
@@ -681,8 +685,7 @@ public actor MatroskaRemuxer {
     /// keyframe runs past them.
     public func iframeSegment(index: Int) async throws -> [UInt8]? {
         guard let v = video, let keyframe = try await keyframe(index: index) else { return nil }
-        var data = keyframe.frames.count == 1 ? keyframe.frames[0] : keyframe.frames.flatMap { $0 }
-        if v.convertsToProfile81 { data = DolbyVisionRPU.profile81Sample(data, lengthSize: v.nalLengthSize) }
+        let data = Self.videoSampleData(keyframe, track: v)
         let frameLength = UInt64(v.source.defaultDuration.map { $0 * 9 / 100_000 } ?? 3750)
         let sample = MP4.Sample(data: data, duration: UInt32(clamping: frameLength), compositionOffset: Int32(clamping: presentationDelay * 9 / 100_000), isSync: true)
         return MP4.fragment(sequence: UInt32(index + 1), baseDecodeTime: UInt64(max(0, keyframe.time) * 9 / 100_000), samples: [sample], isVideo: true)
@@ -924,13 +927,18 @@ public actor MatroskaRemuxer {
         samples.reserveCapacity(chosen.count)
         for (i, block) in chosen.enumerated() {
             let duration = i + 1 < dts.count ? dts[i + 1] - dts[i] : fallback
-            let data = block.frames.count == 1 ? block.frames[0] : block.frames.flatMap { $0 }
-            samples.append(MP4.Sample(data: track.convertsToProfile81 ? DolbyVisionRPU.profile81Sample(data, lengthSize: track.nalLengthSize) : data,
+            samples.append(MP4.Sample(data: Self.videoSampleData(block, track: track),
                                       duration: UInt32(clamping: max(1, duration)),
                                       compositionOffset: Int32(clamping: max(0, pts[i] - dts[i])),
                                       isSync: block.isKeyframe))
         }
         return (samples, UInt64(max(0, dts[0])))
+    }
+
+    private static func videoSampleData(_ block: MatroskaBlock, track: OutputTrack) -> [UInt8] {
+        let raw = block.frames.count == 1 ? block.frames[0] : block.frames.flatMap { $0 }
+        let data = track.hevcParameterSets?.removingRepeatedUnits(from: raw) ?? raw
+        return track.convertsToProfile81 ? DolbyVisionRPU.profile81Sample(data, lengthSize: track.nalLengthSize) : data
     }
 
     /// A segment's bytes end after the cluster holding the next segment's keyframe, but when that keyframe sits

@@ -205,6 +205,7 @@ final class PlaybackSession: Identifiable {
     @ObservationIgnored private let nowPlaying = NowPlaying()
     @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
     @ObservationIgnored private var remuxer: MatroskaRemuxer?
+    @ObservationIgnored private var remuxInput: ByteSource?
     #if os(tvOS)
     @ObservationIgnored private weak var playbackDisplayManager: AVDisplayManager?
     private static var displayCriteriaOwner: UUID?
@@ -335,7 +336,7 @@ final class PlaybackSession: Identifiable {
         #endif
     }
 
-    private func load(_ source: StreamSource) {
+    private func load(_ source: StreamSource, reuseRemuxInput: Bool = false) {
         guard !isClosed else { return }
         guard let url = source.location.playableURL else {
             fail("This source can't be played directly.")
@@ -349,6 +350,7 @@ final class PlaybackSession: Identifiable {
         isAutoSyncing = false
         teardownObservers()
         releaseRemux()
+        if !reuseRemuxInput { remuxInput = nil }
         player.replaceCurrentItem(with: nil)
         releaseUniversal()
         releaseFinishedDownloads()
@@ -440,7 +442,9 @@ final class PlaybackSession: Identifiable {
     private func startRemux(url: URL, headers: [String: String]) async {
         remuxesLocalFile = url.isFileURL
         phase = .connecting(0.2)
-        let bytes = Self.byteSource(url, headers: headers)
+        // Compatibility retries use the same file. Keep its cached opening bytes and resolved URL.
+        let bytes = remuxInput ?? Self.byteSource(url, headers: headers)
+        remuxInput = bytes
         do {
             let languages = audioLanguages
             let remuxer = try await MatroskaRemuxer.open(bytes,
@@ -1254,12 +1258,12 @@ final class PlaybackSession: Identifiable {
         switch decision.action {
         case .reloadRemuxWithoutAtmos:
             remuxWithoutAtmos = true
-            load(source)
+            load(source, reuseRemuxInput: true)
         case .reloadCompatibleRemux:
             // Some devices turn down a stream's Dolby Vision or Atmos signalling; the HDR10 picture and
             // 5.1 bed underneath still play, so try that once before giving up.
             remuxCompatible = true
-            load(source)
+            load(source, reuseRemuxInput: true)
         case .switchToBuiltIn:
             // Apple's player can't open or decode this file: the built-in decoder gets it, where it stopped.
             ScreenshotTour.log("Apple's player failed (\(failureDetail ?? "?")): trying the built-in decoder")
@@ -1443,7 +1447,7 @@ final class PlaybackSession: Identifiable {
                 #endif
                 if canTryBaseLayer {
                     self.remuxCompatible = true
-                    self.load(self.source)
+                    self.load(self.source, reuseRemuxInput: true)
                 } else if let url = self.source.location.playableURL {
                     self.startUniversal(url: url, headers: self.source.location.headers, notice: Self.universalNotice)
                 }
@@ -2026,6 +2030,7 @@ final class PlaybackSession: Identifiable {
         releaseUniversal()
         teardownObservers()
         releaseRemux()
+        remuxInput = nil
         stopBitmapSubtitles()
         releaseFinishedDownloads()
         if model?.activePlayback?.id == id { model?.activePlayback = nil }
