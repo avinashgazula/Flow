@@ -448,7 +448,10 @@ extension AppModel {
     func logInToAccount(_ input: String, server named: URL? = nil) async -> String? {
         if isDemo { return "Leave the sample data to log in. It would have nothing of yours to sync." }
         if account != nil { return "This device is already logged in to an account." }
-        guard let server = named ?? accountServerURL else { return AccountError.noServer.errorDescription }
+        guard let server = named ?? accountServerURL else {
+            let enteredAddress = !accountServerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return (enteredAddress ? AccountError.invalidServer : AccountError.noServer).errorDescription
+        }
         while let running = accountInFlight { await running.value }
         do {
             let found = try await AccountLifecycle.login(number: input, server: server, http: http)

@@ -614,8 +614,7 @@ private struct AccountServerSection: View {
             } header: {
                 FilmSectionHeader("Account Server")
             } footer: { FilmFooter {
-                Text("This build has no account server set. Enter the address of your Worker, the one from web/proxy, to create an account or log in."
-                     + (Platform.isTV ? " Already logged in on another device? Settings → Account there shows the address to type here." : ""))
+                Text("Enter the same Account Server shown under Settings → Account on a device that’s already logged in. A hostname is enough.")
             } }
         }
     }
@@ -656,6 +655,14 @@ struct AccountLogInView: View {
 
     var body: some View {
         FilmForm {
+            if let server = model.builtInAccountServer {
+                Section {
+                    LabeledContent("Account Server") { Text(URL(string: server)?.host ?? server) }
+                }
+            } else {
+                AccountServerSection()
+            }
+
             Section {
                 TextField("Account Number", text: $text, prompt: Text(verbatim: "0000 0000 0000 0000"))
                     .font(Theme.Typeface.heading)
@@ -673,8 +680,6 @@ struct AccountLogInView: View {
             } footer: { FilmFooter {
                 Text("The 16 digits you wrote down when you made your account.")
             } }
-
-            AccountServerSection()
 
             Section {
                 Button {
