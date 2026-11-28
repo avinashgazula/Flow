@@ -94,6 +94,7 @@ final class AppModel {
         didSet {
             guard credentials != oldValue else { return }
             secretStore.save(credentials)
+            clearPrefetchedSources()
             rebuildServices()
             if FlowSyncMapping.changed(from: oldValue, to: credentials) {
                 scheduleSyncPush()
@@ -179,6 +180,7 @@ final class AppModel {
     /// Sources found when a detail page opened (Prefetch on Detail View), for the picker to start from.
     @ObservationIgnored var prefetchedSources = SourcePrefetchCache()
     @ObservationIgnored var prefetchTasks: [String: Task<Void, Never>] = [:]
+    @ObservationIgnored var sourceProviderRevision = 0
     /// The custom rating icons for `settings.metadata.ratingIconPackURL`, once fetched.
     var ratingIconPack: RatingIconPack?
     var activePlayback: PlaybackSession?
@@ -379,6 +381,11 @@ final class AppModel {
     }
 
     private func settingsDidChange(from old: AppSettings) {
+        if old.sources.addons != settings.sources.addons || old.sources.timeoutSeconds != settings.sources.timeoutSeconds
+            || old.webDAV != settings.webDAV || old.mediaServers.servers != settings.mediaServers.servers
+            || old.liveTV.providers != settings.liveTV.providers {
+            clearPrefetchedSources()
+        }
         if old.playback.decodeLosslessAudio != settings.playback.decodeLosslessAudio { applyAudioDecoding() }
         if old.general.font != settings.general.font { applyTypeface() }
         if old.general.theme != settings.general.theme {

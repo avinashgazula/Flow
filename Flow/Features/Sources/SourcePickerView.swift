@@ -342,18 +342,26 @@ struct SourcePickerView: View {
     }
 
     private func gather() async {
+        let providerRevision = model.sourceProviderRevision
         let providers = model.sourceProviders()
         // A title opened from a library asks that library first, and the rest only if it has nothing (Settings → Sources).
         let library = model.settings.sources.playFromLibraryOnly
             ? request.libraryProviderID.flatMap { id in providers.first { $0.providerID == id } } : nil
-        // The first search starts from what the detail page already found, then refreshes; Search Again starts clean.
-        var prefetched = reloadToken == 0 ? model.prefetchedSources.sources(for: request) : nil
+        // Search Again always starts clean.
+        let complete = reloadToken == 0 ? model.prefetchedSources.recentCompleteSources(for: request) : nil
+        var prefetched = reloadToken == 0 ? complete ?? model.prefetchedSources.sources(for: request) : nil
         if let library, let own = prefetched?.filter({ $0.providerID == library.providerID }), !own.isEmpty { prefetched = own }
         raw = prefetched ?? []
+        pending = [:]
         failures = [:]
         releaseStatus = .unknown
         finished = false
         quickFilter = .all
+        if complete != nil {
+            finished = true
+            maybeAutoPlay(final: true)
+            return
+        }
         let live = prefetched == nil
         var fresh: [StreamSource]
         if let library {
@@ -365,6 +373,11 @@ struct SourcePickerView: View {
         guard !Task.isCancelled else { return }
         // Keep the prefetched list if the refresh came back empty only because providers failed.
         if prefetched != nil, !fresh.isEmpty || failures.isEmpty { raw = fresh }
+        // A library-only lookup might never ask the other providers.
+        if library == nil, failures.isEmpty, providerRevision == model.sourceProviderRevision {
+            if fresh.isEmpty { model.prefetchedSources.remove(for: request) }
+            else { model.prefetchedSources.store(fresh, for: request, complete: true) }
+        }
         if raw.isEmpty { releaseStatus = await lookUpReleaseStatus() }
         guard !Task.isCancelled else { return }
         finished = true
@@ -375,6 +388,7 @@ struct SourcePickerView: View {
     private func collect(_ providers: [SourceProvider], live: Bool) async -> [StreamSource] {
         var found: [StreamSource] = []
         for await update in SourceAggregator.stream(providers, request: request, timeout: model.settings.sources.timeoutSeconds) {
+            guard !Task.isCancelled else { return found }
             switch update {
             case .loading(let id, let name): pending[id] = name
             case .loaded(let id, let sources):

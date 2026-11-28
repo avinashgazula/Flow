@@ -115,13 +115,28 @@ extension AppModel {
         let providers = sourceProviders()
         let timeout = settings.sources.timeoutSeconds
         let task = Task { [weak self] in
-            let found = await SourceAggregator.collect(providers, request: request, timeout: timeout)
-            guard let self else { return }
+            var found: [StreamSource] = []
+            var complete = true
+            for await update in SourceAggregator.stream(providers, request: request, timeout: timeout) {
+                switch update {
+                case .loaded(_, let sources): found += sources
+                case .failed: complete = false
+                default: break
+                }
+            }
+            guard let self, !Task.isCancelled else { return }
             // An empty result isn't worth showing as "ready"; the picker searches itself.
-            if !found.isEmpty { self.prefetchedSources.store(found, for: request) }
+            if !found.isEmpty { self.prefetchedSources.store(found, for: request, complete: complete) }
             self.prefetchTasks[request.id] = nil
         }
         prefetchTasks[request.id] = task
+    }
+
+    func clearPrefetchedSources() {
+        sourceProviderRevision += 1
+        for task in prefetchTasks.values { task.cancel() }
+        prefetchTasks.removeAll()
+        prefetchedSources = SourcePrefetchCache()
     }
 
     /// What Play would start for a title, as the page words it under its buttons.
