@@ -69,6 +69,7 @@ struct TVPlayerController: UIViewControllerRepresentable {
         let controller = AVPlayerViewController()
         controller.player = session.player
         controller.delegate = context.coordinator
+        session.tvPlayerController = controller
         // The session requests display matching before it assigns the HLS item.
         controller.appliesPreferredDisplayCriteriaAutomatically = false
 
@@ -125,7 +126,7 @@ struct TVPlayerController: UIViewControllerRepresentable {
         case .keepWatching:
             return UIAction(title: "Keep Watching", image: UIImage(systemName: "play.fill")) { _ in session.confirmStillWatching() }
         case .skip(let segment):
-            return UIAction(title: segment.kind.buttonTitle, image: UIImage(systemName: "forward.end.fill")) { _ in session.skip(segment) }
+            return UIAction(title: segment.kind.buttonTitle) { _ in session.skip(segment) }
         case .playNext:
             return UIAction(title: "Play Next", image: UIImage(systemName: "forward.fill")) { _ in
                 Task { await session.playUpNext() }

@@ -37,6 +37,7 @@ DEVICECTL_CHILD_FLOW_CHECK_ONLY=formats \
 DEVICECTL_CHILD_FLOW_CHECK_FORMAT_URLS="$stream_url" \
 DEVICECTL_CHILD_FLOW_CHECK_FORMAT_SECONDS="$seconds" \
 DEVICECTL_CHILD_FLOW_CHECK_PERFORMANCE=1 \
+DEVICECTL_CHILD_FLOW_CHECK_REQUIRE_PICTURE="${FLOW_PERF_REQUIRE_DOLBY_VISION:-0}" \
 DEVICECTL_CHILD_FLOW_PERF_DIAG=1 \
 DEVICECTL_CHILD_FLOW_CHECK_EXIT=1 \
 xcrun devicectl device process launch --console --timeout "$((seconds + 240))" \
@@ -51,8 +52,8 @@ if (( launch_status != 0 )) || ! rg -q 'RESULT [0-9]+ passed, 0 failed' "$out"; 
   exit 1
 fi
 if [[ "${FLOW_PERF_REQUIRE_DOLBY_VISION:-0}" == 1 ]]; then
-  # Count playing samples, rather than the source description printed during setup.
-  if ! rg -q 'FLOWPERF engine=MKV remux .*video=[^=]*Dolby Vision .*advance5s=[1-9][0-9]*\.' "$out" ||
+  # Audio can advance with zero frame drops while AVKit still displays a spinner.
+  if ! rg -q 'FLOWPERF engine=MKV remux .*video=[^=]*Dolby Vision .*advance5s=[1-9][0-9]*\.[0-9]+ .*picture=ready' "$out" ||
      rg -q 'FLOWPERF remux opened .*compatible=yes' "$out"; then
     echo "The fixture did not sustain native Dolby Vision playback. See $out." >&2
     exit 1

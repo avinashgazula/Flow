@@ -171,6 +171,7 @@ struct PlayerView: View {
             UniversalTVPlayer(session: session, universal: universal, model: model) { showSubtitles = true }
         } else {
             TVPlayerController(session: session, subtitleSettings: model.settings.subtitles)
+                .id(session.id)
                 .ignoresSafeArea()
         }
         #else

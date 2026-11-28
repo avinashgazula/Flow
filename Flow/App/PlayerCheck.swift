@@ -852,11 +852,21 @@ enum PlayerCheck {
             // A saved place would start mid-film behind a question; these checks want the start.
             if session.resumePrompt != nil { session.answerResume(false) }
             if case .failed = session.phase { return false }
-            return session.phase == .playing && session.isPlaying ? true : nil
+            guard session.phase == .playing, session.isPlaying else { return nil }
+            #if os(tvOS)
+            if ProcessInfo.processInfo.environment["FLOW_CHECK_REQUIRE_PICTURE"] == "1" {
+                if let engine = session.universal {
+                    guard engine.videoSize.width > 0, engine.info["vo-configured"] == "yes" else { return nil }
+                } else if !session.nativePictureReady {
+                    return nil
+                }
+            }
+            #endif
+            return true
         }
         let seconds = Date().timeIntervalSince(began)
         if playing == true {
-            record(true, "starts playing", String(format: "%.1f s to first frame", seconds))
+            record(true, "starts playing", String(format: "%.1f s to playback", seconds))
             return session
         }
         record(false, "starts playing", "phase \(session.phase) after \(Int(seconds)) s")

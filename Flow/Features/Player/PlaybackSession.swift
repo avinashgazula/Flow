@@ -63,6 +63,9 @@ final class PlaybackSession: Identifiable {
         _ = itemGeneration
         return universal == nil && player.currentItem != nil
     }
+    @ObservationIgnored weak var tvPlayerController: AVPlayerViewController?
+    @ObservationIgnored private var pictureRecoveryTask: Task<Void, Never>?
+    var nativePictureReady: Bool { tvPlayerController?.isReadyForDisplay == true }
     #endif
     /// Every playable source found for this title, the current one included, for switching mid-film.
     private(set) var sources: [StreamSource]
@@ -276,9 +279,10 @@ final class PlaybackSession: Identifiable {
         func value(_ label: String) -> String { rows.first(where: { $0.label == label })?.value ?? "-" }
         let engine = universal != nil ? "built-in" : usesRemux ? "MKV remux" : "AVPlayer direct"
         let throughput = !usesRemux && universal == nil ? (events.last?.observedBitrate ?? 0) / 1_000_000 : 0
-        NSLog("FLOWPERF engine=%@ reason=%@ video=%@ audio=%@ decoded=%@ time=%.2f advance5s=%@ dropped5s=%@ stalls5s=%@ buffer=%.1f throughput=%.1fMb/s waiting=%@",
+        NSLog("FLOWPERF engine=%@ reason=%@ video=%@ audio=%@ decoded=%@ time=%.2f advance5s=%@ dropped5s=%@ stalls5s=%@ buffer=%.1f throughput=%.1fMb/s waiting=%@ picture=%@",
               engine, universalReason ?? "-", value("Video"), value("Audio"), value("Decoded"), time, advanced, dropped, stalled,
-              buffer ?? -1, throughput, isBuffering ? "yes" : "no")
+              buffer ?? -1, throughput, isBuffering ? "yes" : "no",
+              tvPlayerController == nil ? "no-controller" : nativePictureReady ? "ready" : "waiting")
         if usesRemux {
             let notes = LocalHLSServer.shared.debugSnapshot()
             let start = lastHLSNote.flatMap { notes.lastIndex(of: $0).map { $0 + 1 } } ?? max(0, notes.count - 10)
@@ -552,6 +556,9 @@ final class PlaybackSession: Identifiable {
     #endif
 
     private func attach(_ asset: AVURLAsset) {
+        #if os(tvOS)
+        pictureRecoveryTask?.cancel()
+        #endif
         itemGeneration += 1
         let item = AVPlayerItem(asset: asset)
         item.preferredForwardBufferDuration = usesRemux ? 20 : 10
@@ -560,6 +567,9 @@ final class PlaybackSession: Identifiable {
         applyLanguagePreferences()
         if let settings = model?.settings.subtitles { item.textStyleRules = Self.textStyleRules(settings) }
         player.replaceCurrentItem(with: item)
+        #if os(tvOS)
+        watchForMissingRemuxPicture(on: item)
+        #endif
         // The remuxed stream lives on this device's loopback address, which an AirPlay receiver can't reach.
         player.allowsExternalPlayback = !usesRemux
         #if os(iOS) || os(tvOS)
@@ -1405,6 +1415,44 @@ final class PlaybackSession: Identifiable {
         maybeStartUpNextCountdown()
     }
 
+    #if os(tvOS)
+    /// Audio can advance while AVKit is still waiting for a usable picture.
+    private func watchForMissingRemuxPicture(on item: AVPlayerItem) {
+        guard let video = remuxer?.video else { return }
+        let canTryBaseLayer = !remuxCompatible && video.canStripDolbyVision
+        pictureRecoveryTask = Task { [weak self, weak item] in
+            var playingSince: ContinuousClock.Instant?
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
+                guard let self, let item, self.player.currentItem === item,
+                      !self.isClosed, !self.isStopping else { return }
+                if self.nativePictureReady { return }
+                guard self.tvPlayerController != nil, self.player.timeControlStatus == .playing else {
+                    playingSince = nil
+                    continue
+                }
+                let now = ContinuousClock.now
+                let start = playingSince ?? now
+                playingSince = start
+                guard now - start >= .seconds(6), self.playbackTime.isFinite else { continue }
+                self.recoverAt = self.playbackTime
+                #if DEBUG
+                if ProcessInfo.processInfo.environment["FLOW_PERF_DIAG"] == "1" {
+                    NSLog("FLOWPERF audio advanced without a picture; retry=%@", canTryBaseLayer ? "HDR10" : "built-in")
+                }
+                #endif
+                if canTryBaseLayer {
+                    self.remuxCompatible = true
+                    self.load(self.source)
+                } else if let url = self.source.location.playableURL {
+                    self.startUniversal(url: url, headers: self.source.location.headers, notice: Self.universalNotice)
+                }
+                return
+            }
+        }
+    }
+    #endif
+
     /// As a film's credits begin (from its credits segment, or its last six percent), says to stay
     /// when there's a scene during or after them.
     private func alertCreditsScenes(_ time: Double) {
@@ -1992,6 +2040,10 @@ final class PlaybackSession: Identifiable {
     }
 
     private func teardownObservers() {
+        #if os(tvOS)
+        pictureRecoveryTask?.cancel()
+        pictureRecoveryTask = nil
+        #endif
         bufferingRecoveryTask?.cancel()
         bufferingRecoveryTask = nil
         if let timeObserver { player.removeTimeObserver(timeObserver) }
