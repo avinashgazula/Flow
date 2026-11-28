@@ -3,6 +3,7 @@
 # Usage: FLOW_PERF_APP_PATH=/path/to/Flow.app scripts/tvos-performance.sh <device-id> <url-file> [seconds]
 # Or set FLOW_PERF_BUNDLE_ID to use an already installed Debug app.
 # Set FLOW_PERF_REQUIRE_DOLBY_VISION=1 for a Dolby Vision MKV fixture.
+# Set FLOW_PERF_SEEK_SECONDS to check playback after seeking within the fixture.
 # Keep the stream URL in a private file so signed links and tokens stay out of the command line and report.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -36,11 +37,12 @@ set +e
 DEVICECTL_CHILD_FLOW_CHECK_ONLY=formats \
 DEVICECTL_CHILD_FLOW_CHECK_FORMAT_URLS="$stream_url" \
 DEVICECTL_CHILD_FLOW_CHECK_FORMAT_SECONDS="$seconds" \
+DEVICECTL_CHILD_FLOW_CHECK_FORMAT_SEEK_SECONDS="${FLOW_PERF_SEEK_SECONDS:-}" \
 DEVICECTL_CHILD_FLOW_CHECK_PERFORMANCE=1 \
 DEVICECTL_CHILD_FLOW_CHECK_REQUIRE_PICTURE="${FLOW_PERF_REQUIRE_DOLBY_VISION:-0}" \
 DEVICECTL_CHILD_FLOW_PERF_DIAG=1 \
 DEVICECTL_CHILD_FLOW_CHECK_EXIT=1 \
-xcrun devicectl device process launch --console --timeout "$((seconds + 240))" \
+xcrun devicectl device process launch --console --terminate-existing --timeout "$((seconds + 240))" \
   --device "$device" "$bundle" -- -FlowDemo YES -FlowPlayerCheck YES >"$raw" 2>&1
 launch_status=$?
 set -e
@@ -54,7 +56,9 @@ fi
 if [[ "${FLOW_PERF_REQUIRE_DOLBY_VISION:-0}" == 1 ]]; then
   # Audio can advance with zero frame drops while AVKit still displays a spinner.
   if ! rg -q 'FLOWPERF engine=MKV remux .*video=[^=]*Dolby Vision .*advance5s=[1-9][0-9]*\.[0-9]+ .*picture=ready' "$out" ||
-     rg -q 'FLOWPERF remux opened .*compatible=yes' "$out"; then
+     awk '/FLOWCHECK +ROUTING format fixture 1:/ { fixture=1 }
+          fixture && /FLOWPERF remux opened .*compatible=yes|FLOWPERF engine=built-in/ { downgraded=1 }
+          END { exit !downgraded }' "$out"; then
     echo "The fixture did not sustain native Dolby Vision playback. See $out." >&2
     exit 1
   fi

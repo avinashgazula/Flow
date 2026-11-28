@@ -213,6 +213,7 @@ final class PlaybackSession: Identifiable {
     /// Remux without Dolby Vision and Atmos signalling: set after the player turns the full version down.
     @ObservationIgnored private var remuxCompatible = false
     @ObservationIgnored private var remuxWithoutAtmos = false
+    @ObservationIgnored private var remuxMuxed = false
     /// The loading screen's progress bar (Settings → Playback → Loading Screen).
     var showsLoadingProgress: Bool { model?.settings.playback.showLoadingProgress ?? true }
     /// The player's own error, for the error screen's details (domain and code say more than its wording).
@@ -487,7 +488,7 @@ final class PlaybackSession: Identifiable {
             // Sound decoded on this device: have its first segments ready before Apple's player asks (see prepareStart).
             await remuxer.prepareStart()
             guard !Task.isCancelled else { return }
-            let (hls, token) = try LocalHLSServer.shared.register(remuxer)
+            let (hls, token) = try LocalHLSServer.shared.register(remuxer, muxed: remuxMuxed && remuxer.supportsMuxedDolbyVision)
             guard !Task.isCancelled else { LocalHLSServer.shared.unregister(token); return }
             hlsToken = token
             usesRemux = true
@@ -866,6 +867,7 @@ final class PlaybackSession: Identifiable {
         stallRetried = false
         remuxCompatible = false
         remuxWithoutAtmos = false
+        remuxMuxed = false
         universalRouted = false
         keptTracks = nil
         show(notice: notice ?? PlayerNotices.tryingNextSource(provider: next.providerName, resolutionLabel: next.traits.resolution == .unknown ? nil : next.traits.resolution.label))
@@ -1235,6 +1237,11 @@ final class PlaybackSession: Identifiable {
         ScreenshotTour.log("item failed: \(failureDetail ?? "")")
         let nsError = error as NSError?
         let url = source.location.playableURL
+        #if os(tvOS)
+        if nsError?.domain == AVFoundationErrorDomain,
+           nsError?.code == AVError.Code.noCompatibleAlternatesForExternalDisplay.rawValue,
+           retryWithMuxedDolbyVision() { return }
+        #endif
         let decision = PlayerRouting.onItemFailure(.init(
             didStart: didStart, usesRemux: usesRemux, remuxIsCompatible: remuxCompatible,
             remuxHasDolbyVisionOrAtmos: remuxer.map { $0.video?.canStripDolbyVision == true || $0.signalsAtmos } ?? false,
@@ -1242,7 +1249,7 @@ final class PlaybackSession: Identifiable {
             appleErrorCode: nsError?.domain == AVFoundationErrorDomain ? nsError?.code : nil,
             canStartBuiltIn: url != nil, recoveries: recoveries,
             secondsSinceLastRecovery: lastRecovery.map { Date().timeIntervalSince($0) },
-            remuxSignalsBothDolbyFormats: remuxer?.video?.canStripDolbyVision == true && remuxer?.signalsAtmos == true))
+            remuxSignalsBothDolbyFormats: !remuxMuxed && remuxer?.video?.canStripDolbyVision == true && remuxer?.signalsAtmos == true))
         recoveries = decision.recoveries
         #if DEBUG && os(tvOS)
         if ProcessInfo.processInfo.environment["FLOW_PERF_DIAG"] == "1" {
@@ -1420,9 +1427,22 @@ final class PlaybackSession: Identifiable {
     }
 
     #if os(tvOS)
+    private func retryWithMuxedDolbyVision() -> Bool {
+        guard usesRemux, !remuxMuxed, !remuxCompatible, remuxer?.supportsMuxedDolbyVision == true else { return false }
+        remuxMuxed = true
+        if didStart, playbackTime.isFinite, playbackTime > 1 { recoverAt = playbackTime }
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["FLOW_PERF_DIAG"] == "1" {
+            NSLog("FLOWPERF retrying Dolby Vision with a muxed media playlist")
+        }
+        #endif
+        load(source, reuseRemuxInput: true)
+        return true
+    }
+
     /// Audio can advance while AVKit is still waiting for a usable picture.
     private func watchForMissingRemuxPicture(on item: AVPlayerItem) {
-        guard let video = remuxer?.video else { return }
+        guard usesRemux, let video = remuxer?.video else { return }
         let canTryBaseLayer = !remuxCompatible && video.canStripDolbyVision
         pictureRecoveryTask = Task { [weak self, weak item] in
             var playingSince: ContinuousClock.Instant?
@@ -1439,6 +1459,7 @@ final class PlaybackSession: Identifiable {
                 let start = playingSince ?? now
                 playingSince = start
                 guard now - start >= .seconds(6), self.playbackTime.isFinite else { continue }
+                if self.retryWithMuxedDolbyVision() { return }
                 self.recoverAt = self.playbackTime
                 #if DEBUG
                 if ProcessInfo.processInfo.environment["FLOW_PERF_DIAG"] == "1" {
@@ -1730,6 +1751,7 @@ final class PlaybackSession: Identifiable {
         stallRetried = false
         remuxCompatible = false
         remuxWithoutAtmos = false
+        remuxMuxed = false
         universalRouted = false
         recoveries = 0
         keptTracks = nil
@@ -1764,6 +1786,7 @@ final class PlaybackSession: Identifiable {
             stallRetried = false
             remuxCompatible = false
             remuxWithoutAtmos = false
+            remuxMuxed = false
             universalRouted = false
             upNext = nil
             didStart = false
@@ -1818,6 +1841,8 @@ final class PlaybackSession: Identifiable {
         }
         if let item, let group = audibleGroup, let option = item.currentMediaSelection.selectedMediaOption(in: group) {
             rows.append(InfoRow(label: "Audio", value: option.title))
+        } else if usesRemux, remuxMuxed, let remuxer, remuxer.supportsMuxedDolbyVision, let audio = remuxer.audio.first {
+            rows.append(InfoRow(label: "Audio", value: audio.label))
         }
         if let remuxer, !remuxer.decodedSummary.isEmpty {
             rows.append(InfoRow(label: "Decoded", value: remuxer.decodedSummary.joined(separator: ", ") + " → lossless FLAC, on this device"))

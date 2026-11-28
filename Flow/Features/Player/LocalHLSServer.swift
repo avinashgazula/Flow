@@ -46,11 +46,12 @@ final class LocalHLSServer: @unchecked Sendable {
     }
 
     /// Serves `remuxer` and returns the master playlist URL plus a token for `unregister`.
-    func register(_ remuxer: MatroskaRemuxer) throws -> (url: URL, token: String) {
+    func register(_ remuxer: MatroskaRemuxer, muxed: Bool = false) throws -> (url: URL, token: String) {
         let port = try start()
         let token = UUID().uuidString.lowercased()
         lock.withLock { routes[token] = remuxer }
-        return (URL(string: "http://127.0.0.1:\(port)/\(token)/master.m3u8")!, token)
+        let playlist = muxed ? "muxed.m3u8" : "master.m3u8"
+        return (URL(string: "http://127.0.0.1:\(port)/\(token)/\(playlist)")!, token)
     }
 
     func unregister(_ token: String) {

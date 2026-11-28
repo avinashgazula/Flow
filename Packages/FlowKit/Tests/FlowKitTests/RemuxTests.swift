@@ -5,6 +5,25 @@ import FoundationNetworking
 #endif
 
 final class RemuxTests: XCTestCase {
+    func testMuxedMP4FragmentPointsEachTrackAtItsSamples() throws {
+        let picture: [UInt8] = [0x01, 0x02, 0x03]
+        let sound: [UInt8] = [0x04, 0x05]
+        let media = Data(MP4.fragment(sequence: 1, tracks: [
+            .init(id: 1, decodeTime: 8, samples: [.init(data: picture, duration: 10, isSync: true)], isVideo: true),
+            .init(id: 2, decodeTime: 9, samples: [.init(data: sound, duration: 12, isSync: true)], isVideo: false),
+        ]))
+        let trun = Data("trun".utf8)
+        let first = try XCTUnwrap(media.range(of: trun))
+        let second = try XCTUnwrap(media.range(of: trun, in: first.upperBound..<media.endIndex))
+        let payload = try XCTUnwrap(media.range(of: Data("mdat".utf8))).upperBound
+        func offset(_ start: Int) -> Int {
+            media[(start + 8)..<(start + 12)].reduce(0) { $0 << 8 | Int($1) }
+        }
+        XCTAssertEqual(offset(first.upperBound), payload)
+        XCTAssertEqual(offset(second.upperBound), payload + picture.count)
+        XCTAssertEqual(Array(media[payload...]), picture + sound)
+    }
+
     func testHEVCRemovesOnlyParameterSetsAlreadyInTheSampleDescription() {
         let parameterSet: [UInt8] = [0x40, 1, 0x11]
         let changedSet: [UInt8] = [0x40, 1, 0x22]

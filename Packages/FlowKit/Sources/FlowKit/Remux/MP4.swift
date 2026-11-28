@@ -54,6 +54,10 @@ enum MP4 {
     }
 
     static func initSegment(_ t: TrackInfo) -> [UInt8] {
+        initSegment(tracks: [t])
+    }
+
+    static func initSegment(tracks: [TrackInfo]) -> [UInt8] {
         let ftyp = box("ftyp") { w in
             w.fourCC("iso6"); w.u32(0)
             for brand in ["iso6", "cmfc", "mp41", "isom"] { w.fourCC(brand) }
@@ -63,10 +67,20 @@ enum MP4 {
             w.u32(0x0001_0000); w.u16(0x0100); w.zeros(10)
             unityMatrix.forEach { w.u32($0) }
             w.zeros(24)
-            w.u32(2)
+            w.u32(UInt32(tracks.count + 1))
         }
+        let trackBoxes = tracks.enumerated().flatMap { index, track in
+            trackBox(track, id: UInt32(index + 1))
+        }
+        let defaults = tracks.indices.flatMap { index in
+            fullBox("trex") { w in w.u32(UInt32(index + 1)); w.u32(1); w.u32(0); w.u32(0); w.u32(0) }
+        }
+        return ftyp + box("moov", mvhd + trackBoxes + box("mvex", defaults))
+    }
+
+    private static func trackBox(_ t: TrackInfo, id: UInt32) -> [UInt8] {
         let tkhd = fullBox("tkhd", flags: 0x7) { w in
-            w.u32(0); w.u32(0); w.u32(1); w.u32(0); w.u32(0); w.zeros(8)
+            w.u32(0); w.u32(0); w.u32(id); w.u32(0); w.u32(0); w.zeros(8)
             w.u16(0); w.u16(t.isVideo ? 0 : 1); w.u16(t.isVideo ? 0 : 0x0100); w.u16(0)
             unityMatrix.forEach { w.u32($0) }
             let width = t.displayWidth > 0 ? t.displayWidth : t.width
@@ -95,9 +109,7 @@ enum MP4 {
                        + fullBox("stsz") { w in w.u32(0); w.u32(0) }
                        + fullBox("stco") { w in w.u32(0) })
         let minf = box("minf", mediaHeader + dinf + stbl)
-        let trak = box("trak", tkhd + box("mdia", mdhd + hdlr + minf))
-        let mvex = box("mvex", fullBox("trex") { w in w.u32(1); w.u32(1); w.u32(0); w.u32(0); w.u32(0) })
-        return ftyp + box("moov", mvhd + trak + mvex)
+        return box("trak", tkhd + box("mdia", mdhd + hdlr + minf))
     }
 
     struct Sample {
@@ -108,32 +120,58 @@ enum MP4 {
     }
 
     static func fragment(sequence: UInt32, baseDecodeTime: UInt64, samples: [Sample], isVideo: Bool) -> [UInt8] {
+        fragment(sequence: sequence, tracks: [FragmentTrack(id: 1, decodeTime: baseDecodeTime, samples: samples, isVideo: isVideo)])
+    }
+
+    struct FragmentTrack {
+        let id: UInt32
+        let decodeTime: UInt64
+        let samples: [Sample]
+        let isVideo: Bool
+
+        var payloadSize: Int { samples.reduce(0) { $0 + $1.data.count } }
+    }
+
+    static func fragment(sequence: UInt32, tracks: [FragmentTrack]) -> [UInt8] {
+        let sizes = tracks.map(\.payloadSize)
         func moof(dataOffset: Int32) -> [UInt8] {
             let mfhd = fullBox("mfhd") { w in w.u32(sequence) }
-            let tfhd = fullBox("tfhd", flags: 0x020000) { w in w.u32(1) }
-            let tfdt = fullBox("tfdt", version: 1) { w in w.u64(baseDecodeTime) }
-            var flags: UInt32 = 0x000001 | 0x000100 | 0x000200 | 0x000400
-            if isVideo { flags |= 0x000800 }
-            let trun = fullBox("trun", version: 1, flags: flags) { w in
-                w.u32(UInt32(samples.count))
-                w.i32(dataOffset)
-                for s in samples {
-                    w.u32(s.duration)
-                    w.u32(UInt32(s.data.count))
-                    w.u32(s.isSync ? 0x0200_0000 : 0x0101_0000)
-                    if isVideo { w.i32(s.compositionOffset) }
-                }
+            var offset = dataOffset
+            var body = mfhd
+            for (track, size) in zip(tracks, sizes) {
+                body += trackFragment(track, dataOffset: offset)
+                offset += Int32(size)
             }
-            return box("moof", mfhd + box("traf", tfhd + tfdt + trun))
+            return box("moof", body)
         }
         let size = moof(dataOffset: 0).count
-        let payload = samples.reduce(0) { $0 + $1.data.count }
+        let payload = sizes.reduce(0, +)
         var fragment = Writer(bytes: moof(dataOffset: Int32(size + 8)))
         fragment.bytes.reserveCapacity(size + 8 + payload)
         fragment.u32(UInt32(8 + payload))
         fragment.fourCC("mdat")
-        for sample in samples { fragment.append(sample.data) }
+        for track in tracks {
+            for sample in track.samples { fragment.append(sample.data) }
+        }
         return fragment.bytes
+    }
+
+    private static func trackFragment(_ track: FragmentTrack, dataOffset: Int32) -> [UInt8] {
+        let tfhd = fullBox("tfhd", flags: 0x020000) { w in w.u32(track.id) }
+        let tfdt = fullBox("tfdt", version: 1) { w in w.u64(track.decodeTime) }
+        var flags: UInt32 = 0x000001 | 0x000100 | 0x000200 | 0x000400
+        if track.isVideo { flags |= 0x000800 }
+        let trun = fullBox("trun", version: 1, flags: flags) { w in
+            w.u32(UInt32(track.samples.count))
+            w.i32(dataOffset)
+            for s in track.samples {
+                w.u32(s.duration)
+                w.u32(UInt32(s.data.count))
+                w.u32(s.isSync ? 0x0200_0000 : 0x0101_0000)
+                if track.isVideo { w.i32(s.compositionOffset) }
+            }
+        }
+        return box("traf", tfhd + tfdt + trun)
     }
 
     /// ISO-639-2/T code packed into 15 bits; "und" when unknown.

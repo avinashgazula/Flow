@@ -294,10 +294,30 @@ enum PlayerCheck {
                            "stalls \(counterDelta(beforeStalls, afterStalls))")
                 }
             }
+            if index > 0, let raw = ProcessInfo.processInfo.environment["FLOW_CHECK_FORMAT_SEEK_SECONDS"],
+               let target = Double(raw), target > 0 {
+                await checkFormatSeek(session, label: label, target: target)
+            }
             #endif
             await closePlayer(session, model)
         }
     }
+
+    #if os(tvOS)
+    private static func checkFormatSeek(_ session: PlaybackSession, label: String, target: Double) async {
+        guard target < session.duration - 3 else {
+            record(false, "\(label) seeks and shows video", "seek position is outside the stream")
+            return
+        }
+        let startedNatively = session.universal == nil
+        session.seek(to: target, exact: true)
+        let arrived = await value(timeout: 20) {
+            let picture = startedNatively ? session.universal == nil && session.nativePictureReady : session.universal?.info["vo-configured"] == "yes"
+            return session.seekTarget == nil && picture && session.playbackTime > target + 0.5 ? true : nil
+        }
+        record(arrived == true, "\(label) seeks and shows video", String(format: "%.1f s after seeking to %.1f s", session.playbackTime, target))
+    }
+    #endif
 
     // MARK: Samples that only play on one engine
 

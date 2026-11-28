@@ -647,12 +647,16 @@ public actor MatroskaRemuxer {
     public func mediaPlaylist(track: Int) -> String? {
         let isSubtitle = subtitles.contains { $0.id == track }
         guard isSubtitle || video?.id == track || audio.contains(where: { $0.id == track }) else { return nil }
+        return mediaPlaylist(path: String(track), isSubtitle: isSubtitle)
+    }
+
+    private func mediaPlaylist(path: String, isSubtitle: Bool) -> String {
         let target = Int((segments.map(\.duration).max() ?? 6).rounded(.up))
         var lines = ["#EXTM3U", "#EXT-X-VERSION:7", "#EXT-X-TARGETDURATION:\(max(1, target))", "#EXT-X-PLAYLIST-TYPE:VOD", "#EXT-X-MEDIA-SEQUENCE:0", "#EXT-X-INDEPENDENT-SEGMENTS"]
-        if !isSubtitle { lines.append("#EXT-X-MAP:URI=\"\(track)/init.mp4\"") }
+        if !isSubtitle { lines.append("#EXT-X-MAP:URI=\"\(path)/init.mp4\"") }
         for s in segments {
             lines.append(String(format: "#EXTINF:%.5f,", s.duration))
-            lines.append("\(track)/\(s.index).\(isSubtitle ? "vtt" : "m4s")")
+            lines.append("\(path)/\(s.index).\(isSubtitle ? "vtt" : "m4s")")
         }
         lines.append("#EXT-X-ENDLIST")
         return lines.joined(separator: "\n") + "\n"
@@ -782,6 +786,10 @@ public actor MatroskaRemuxer {
 
     public func initSegment(track: Int) -> [UInt8]? {
         guard let t = output(track), t.role != .subtitle else { return nil }
+        return MP4.initSegment(trackInfo(t))
+    }
+
+    private func trackInfo(_ t: OutputTrack) -> MP4.TrackInfo {
         var info = MP4.TrackInfo(isVideo: t.role == .video, timescale: t.timescale, language: t.language, sampleEntry: t.sampleEntry)
         info.width = t.source.width
         info.height = t.source.height
@@ -789,7 +797,25 @@ public actor MatroskaRemuxer {
             info.displayWidth = t.source.height * dw / dh
             info.displayHeight = t.source.height
         }
-        return MP4.initSegment(info)
+        return info
+    }
+
+    /// A single media playlist keeps tvOS from rejecting the Dolby Vision variant before it reads
+    /// the video format description. This route uses one passthrough soundtrack.
+    public nonisolated var supportsMuxedDolbyVision: Bool {
+        video?.supplementalCodec?.hasSuffix("/db1p") == true && audio.count == 1 && audio[0].codec != .decoded
+    }
+
+    private func muxedSegment(video: OutputTrack, audio: OutputTrack, index: Int) async throws -> [UInt8] {
+        let data = try await loaded(index)
+        let segment = segments[index]
+        let (picture, videoTime) = videoSamples(data.blocks.filter { $0.track == video.id }, segment: segment, track: video)
+        let audioBlocks = Self.withoutNextSegmentsAudio(data.blocks.filter { $0.track == audio.id }, nextStart: data.sharedWithNext[audio.id])
+        let (sound, audioTime) = audioSamples(audioBlocks, segment: segment, track: audio)
+        return MP4.fragment(sequence: UInt32(index + 1), tracks: [
+            .init(id: 1, decodeTime: videoTime, samples: picture, isVideo: true),
+            .init(id: 2, decodeTime: audioTime, samples: sound, isVideo: false),
+        ])
     }
 
     public func mediaSegment(track: Int, index: Int) async throws -> [UInt8]? {
@@ -1190,9 +1216,17 @@ public actor MatroskaRemuxer {
         guard let last = parts.last else { return nil }
         if parts.count == 1 {
             if last == "master.m3u8" { return .playlist(masterPlaylist()) }
+            if last == "muxed.m3u8", supportsMuxedDolbyVision { return .playlist(mediaPlaylist(path: "muxed", isSubtitle: false)) }
             if last == "iframes.m3u8" { return iframePlaylist().map(Response.playlist) }
             guard last.hasSuffix(".m3u8"), let track = Int(last.dropLast(5)) else { return nil }
             return mediaPlaylist(track: track).map(Response.playlist)
+        }
+        if parts.count == 2, parts[0] == "muxed", supportsMuxedDolbyVision, let video, let audio = audio.first {
+            if last == "init.mp4" { return .media(MP4.initSegment(tracks: [trackInfo(video), trackInfo(audio)])) }
+            if last.hasSuffix(".m4s"), let index = Int(last.dropLast(4)), segments.indices.contains(index) {
+                return .media(try await muxedSegment(video: video, audio: audio, index: index))
+            }
+            return nil
         }
         guard parts.count == 2, let track = Int(parts[0]) else { return nil }
         if last == "init.mp4" { return initSegment(track: track).map(Response.media) }
