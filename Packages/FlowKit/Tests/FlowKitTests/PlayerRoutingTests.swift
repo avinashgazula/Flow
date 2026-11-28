@@ -107,6 +107,19 @@ final class PlayerRoutingTests: XCTestCase {
         XCTAssertEqual(failure(didStart: true, usesRemux: true, compatible: false, dolby: true).action, .reconnect, "after playback began it is a dropped stream")
     }
 
+    func testRejectedDolbyVisionAndAtmosRetriesWithoutAtmosFirst() {
+        typealias R = PlayerRouting
+        var input = R.ItemFailureInput(didStart: false, usesRemux: true, remuxIsCompatible: false,
+                                       remuxHasDolbyVisionOrAtmos: true, builtInAlreadyRunning: false,
+                                       appleErrorCode: -11868, canStartBuiltIn: true, recoveries: 0,
+                                       secondsSinceLastRecovery: nil, remuxSignalsBothDolbyFormats: true)
+        XCTAssertEqual(R.onItemFailure(input).action, .reloadRemuxWithoutAtmos)
+        input.remuxSignalsBothDolbyFormats = false
+        XCTAssertEqual(R.onItemFailure(input).action, .reloadCompatibleRemux)
+        input.remuxIsCompatible = true
+        XCTAssertEqual(R.onItemFailure(input).action, .switchToBuiltIn)
+    }
+
     func testTheBuiltInDecoderIsNotTriedTwice() {
         XCTAssertEqual(failure(usesRemux: true, compatible: true, builtIn: true).action, .showError)
         XCTAssertEqual(failure(builtIn: true, code: -11828).action, .showError)

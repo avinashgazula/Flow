@@ -58,6 +58,8 @@ public enum PlayerRouting {
     // MARK: When Apple's player fails an item
 
     public enum ItemFailureAction: Equatable, Sendable {
+        /// Try the Dolby Vision picture with ordinary Dolby Digital Plus playlist signaling.
+        case reloadRemuxWithoutAtmos
         /// Remux again without Dolby Vision and Atmos signalling.
         case reloadCompatibleRemux
         /// The built-in decoder takes over, where Apple's player stopped.
@@ -73,6 +75,7 @@ public enum PlayerRouting {
         public var remuxIsCompatible: Bool
         /// Compatible remux can remove Dolby Vision or Atmos signalling from the stream.
         public var remuxHasDolbyVisionOrAtmos: Bool
+        public var remuxSignalsBothDolbyFormats: Bool
         public var builtInAlreadyRunning: Bool
         /// The AVFoundation error's code, nil when the error isn't in that domain (or there is none).
         public var appleErrorCode: Int?
@@ -82,11 +85,13 @@ public enum PlayerRouting {
         public var secondsSinceLastRecovery: Double?
 
         public init(didStart: Bool, usesRemux: Bool, remuxIsCompatible: Bool, remuxHasDolbyVisionOrAtmos: Bool, builtInAlreadyRunning: Bool,
-                    appleErrorCode: Int?, canStartBuiltIn: Bool, recoveries: Int, secondsSinceLastRecovery: Double?) {
+                    appleErrorCode: Int?, canStartBuiltIn: Bool, recoveries: Int, secondsSinceLastRecovery: Double?,
+                    remuxSignalsBothDolbyFormats: Bool = false) {
             self.didStart = didStart
             self.usesRemux = usesRemux
             self.remuxIsCompatible = remuxIsCompatible
             self.remuxHasDolbyVisionOrAtmos = remuxHasDolbyVisionOrAtmos
+            self.remuxSignalsBothDolbyFormats = remuxSignalsBothDolbyFormats
             self.builtInAlreadyRunning = builtInAlreadyRunning
             self.appleErrorCode = appleErrorCode
             self.canStartBuiltIn = canStartBuiltIn
@@ -122,6 +127,9 @@ public enum PlayerRouting {
         // Some devices turn down a stream's Dolby Vision or Atmos signalling; the HDR10 picture and
         // 5.1 bed underneath still play, so try that once before giving up.
         if !input.didStart, input.usesRemux, !input.remuxIsCompatible, input.remuxHasDolbyVisionOrAtmos {
+            if input.remuxSignalsBothDolbyFormats, let code = input.appleErrorCode, appleFormatErrorCodes.contains(code) {
+                return ItemFailureDecision(action: .reloadRemuxWithoutAtmos, recoveries: input.recoveries)
+            }
             return ItemFailureDecision(action: .reloadCompatibleRemux, recoveries: input.recoveries)
         }
         if input.canStartBuiltIn, !input.builtInAlreadyRunning {

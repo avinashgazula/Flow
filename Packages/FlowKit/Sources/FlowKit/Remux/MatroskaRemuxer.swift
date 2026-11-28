@@ -71,6 +71,7 @@ public actor MatroskaRemuxer {
     public nonisolated let trickPlayFrames: [MatroskaCue]
     /// Opened with `compatible`: no Dolby Vision configuration or Atmos signalling.
     public nonisolated let isCompatible: Bool
+    public nonisolated let signalsAtmos: Bool
 
     /// The file's average data rate, from its segment plan.
     public nonisolated var bytesPerSecond: Double {
@@ -124,7 +125,7 @@ public actor MatroskaRemuxer {
     /// layer still plays) and Atmos signalling (the 5.1 bed still plays). Flow retries with it when a stream fails.
     public static func open(_ source: ByteSource, targetSegment: Double? = nil, preferredAudioLanguage: String? = nil,
                             fallbackAudioLanguages: [String] = [], headerCache: MatroskaHeaderCache? = nil, compatible: Bool = false, dolbyVision: Bool = true,
-                            convertProfile7: Bool = false) async throws -> MatroskaRemuxer {
+                            convertProfile7: Bool = false, signalAtmos: Bool = true) async throws -> MatroskaRemuxer {
         let header = try await MatroskaReader.readHeader(source, cache: headerCache)
         guard let firstCluster = header.firstClusterPosition else { throw MatroskaError.malformed("no clusters") }
 
@@ -169,7 +170,8 @@ public actor MatroskaRemuxer {
         let segments = try Self.plan(header: header, anchorTrack: video?.source.number ?? audio.first!.source.number, target: target)
         let delay = video.map { Self.reorderDelay(probeBlocks.filter { $0.track == video!.id }, frame: $0.source.defaultDuration) } ?? 0
         return MatroskaRemuxer(source: source, header: header, video: video, audio: audio, subtitles: subtitles, bitmapSubtitles: bitmaps,
-                               skipped: skipped, segments: segments, duration: duration, presentationDelay: delay, isCompatible: compatible)
+                               skipped: skipped, segments: segments, duration: duration, presentationDelay: delay,
+                               isCompatible: compatible, signalAtmos: signalAtmos)
     }
 
     /// The soundtrack first (the viewer's first language the file has, then the file's default, then any
@@ -194,8 +196,9 @@ public actor MatroskaRemuxer {
 
     private init(source: ByteSource, header: MatroskaHeader, video: OutputTrack?, audio: [OutputTrack], subtitles: [OutputTrack],
                  bitmapSubtitles: [OutputTrack], skipped: [Skipped], segments: [Segment], duration: Double, presentationDelay: Int64,
-                 isCompatible: Bool = false) {
+                 isCompatible: Bool = false, signalAtmos: Bool = true) {
         self.isCompatible = isCompatible
+        self.signalsAtmos = signalAtmos && !isCompatible && audio.contains(where: \.isAtmos)
         self.bitmapSubtitles = bitmapSubtitles
         self.presentationDelay = presentationDelay
         self.source = source
@@ -594,7 +597,7 @@ public actor MatroskaRemuxer {
             let language = LanguageName.bcp47(a.language)
             let auto = autoAudio.insert(language).inserted
             var attrs = ["TYPE=AUDIO", "GROUP-ID=\"audio\"", "NAME=\"\(Self.quoted(audioNames[i]))\"", "LANGUAGE=\"\(language)\"",
-                         "DEFAULT=\(i == 0 ? "YES" : "NO")", "AUTOSELECT=\(auto ? "YES" : "NO")", "CHANNELS=\"\(a.isAtmos && !isCompatible ? "16/JOC" : String(a.source.channels))\""]
+                         "DEFAULT=\(i == 0 ? "YES" : "NO")", "AUTOSELECT=\(auto ? "YES" : "NO")", "CHANNELS=\"\(a.isAtmos && signalsAtmos ? "16/JOC" : String(a.source.channels))\""]
             attrs.append("URI=\"\(a.id).m3u8\"")
             lines.append("#EXT-X-MEDIA:" + attrs.joined(separator: ","))
         }

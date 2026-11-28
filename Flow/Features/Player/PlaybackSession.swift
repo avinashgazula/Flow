@@ -208,6 +208,7 @@ final class PlaybackSession: Identifiable {
     #endif
     /// Remux without Dolby Vision and Atmos signalling: set after the player turns the full version down.
     @ObservationIgnored private var remuxCompatible = false
+    @ObservationIgnored private var remuxWithoutAtmos = false
     /// The loading screen's progress bar (Settings → Playback → Loading Screen).
     var showsLoadingProgress: Bool { model?.settings.playback.showLoadingProgress ?? true }
     /// The player's own error, for the error screen's details (domain and code say more than its wording).
@@ -442,12 +443,14 @@ final class PlaybackSession: Identifiable {
                                                          preferredAudioLanguage: languages.first, fallbackAudioLanguages: Array(languages.dropFirst()),
                                                          headerCache: .shared, compatible: remuxCompatible,
                                                          dolbyVision: model?.settings.playback.neverUseDolbyVision != true,
-                                                         convertProfile7: model?.settings.playback.convertDolbyVisionProfile7 ?? true)
+                                                         convertProfile7: model?.settings.playback.convertDolbyVisionProfile7 ?? true,
+                                                         signalAtmos: !remuxWithoutAtmos)
             guard !Task.isCancelled else { return }
             #if DEBUG && os(tvOS)
             if ProcessInfo.processInfo.environment["FLOW_PERF_DIAG"] == "1" {
-                NSLog("FLOWPERF remux opened video=%@ audio=%@ compatible=%@",
-                      remuxer.videoSummary ?? "-", remuxer.audio.first?.label ?? "-", remuxCompatible ? "yes" : "no")
+                NSLog("FLOWPERF remux opened video=%@ audio=%@ compatible=%@ atmos=%@",
+                      remuxer.videoSummary ?? "-", remuxer.audio.first?.label ?? "-", remuxCompatible ? "yes" : "no",
+                      remuxer.signalsAtmos ? "yes" : "no")
             }
             #endif
             // The link may have bounced to a slate (a refused request) that happens to be a valid video.
@@ -848,6 +851,7 @@ final class PlaybackSession: Identifiable {
         source = next
         stallRetried = false
         remuxCompatible = false
+        remuxWithoutAtmos = false
         universalRouted = false
         keptTracks = nil
         show(notice: notice ?? PlayerNotices.tryingNextSource(provider: next.providerName, resolutionLabel: next.traits.resolution == .unknown ? nil : next.traits.resolution.label))
@@ -1219,11 +1223,12 @@ final class PlaybackSession: Identifiable {
         let url = source.location.playableURL
         let decision = PlayerRouting.onItemFailure(.init(
             didStart: didStart, usesRemux: usesRemux, remuxIsCompatible: remuxCompatible,
-            remuxHasDolbyVisionOrAtmos: remuxer.map { $0.video?.canStripDolbyVision == true || $0.audio.contains(where: \.isAtmos) } ?? false,
+            remuxHasDolbyVisionOrAtmos: remuxer.map { $0.video?.canStripDolbyVision == true || $0.signalsAtmos } ?? false,
             builtInAlreadyRunning: universal != nil,
             appleErrorCode: nsError?.domain == AVFoundationErrorDomain ? nsError?.code : nil,
             canStartBuiltIn: url != nil, recoveries: recoveries,
-            secondsSinceLastRecovery: lastRecovery.map { Date().timeIntervalSince($0) }))
+            secondsSinceLastRecovery: lastRecovery.map { Date().timeIntervalSince($0) },
+            remuxSignalsBothDolbyFormats: remuxer?.video?.canStripDolbyVision == true && remuxer?.signalsAtmos == true))
         recoveries = decision.recoveries
         #if DEBUG && os(tvOS)
         if ProcessInfo.processInfo.environment["FLOW_PERF_DIAG"] == "1" {
@@ -1237,6 +1242,9 @@ final class PlaybackSession: Identifiable {
         }
         #endif
         switch decision.action {
+        case .reloadRemuxWithoutAtmos:
+            remuxWithoutAtmos = true
+            load(source)
         case .reloadCompatibleRemux:
             // Some devices turn down a stream's Dolby Vision or Atmos signalling; the HDR10 picture and
             // 5.1 bed underneath still play, so try that once before giving up.
@@ -1669,6 +1677,7 @@ final class PlaybackSession: Identifiable {
         source = next
         stallRetried = false
         remuxCompatible = false
+        remuxWithoutAtmos = false
         universalRouted = false
         recoveries = 0
         keptTracks = nil
@@ -1702,6 +1711,7 @@ final class PlaybackSession: Identifiable {
             sources = [source]
             stallRetried = false
             remuxCompatible = false
+            remuxWithoutAtmos = false
             universalRouted = false
             upNext = nil
             didStart = false
