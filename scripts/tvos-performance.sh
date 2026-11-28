@@ -2,6 +2,7 @@
 # Sustained playback check on a paired physical Apple TV using a signed Debug app.
 # Usage: FLOW_PERF_APP_PATH=/path/to/Flow.app scripts/tvos-performance.sh <device-id> <url-file> [seconds]
 # Or set FLOW_PERF_BUNDLE_ID to use an already installed Debug app.
+# Set FLOW_PERF_REQUIRE_DOLBY_VISION=1 for a Dolby Vision MKV fixture.
 # Keep the stream URL in a private file so signed links and tokens stay out of the command line and report.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -45,8 +46,17 @@ set -e
 rg 'FLOWCHECK .*?(ROUTING|ROUTE|CADENCE|PASS|FAIL|RESULT)|FLOWPERF ' "$raw" \
   | sed -e 's/^.*FLOWCHECK /FLOWCHECK /' -e 's/^.*FLOWPERF /FLOWPERF /' >"$out" || true
 if (( launch_status != 0 )) || ! rg -q 'RESULT [0-9]+ passed, 0 failed' "$out"; then
+  rg '^ERROR: .*CoreDeviceError|^ERROR: Command timeout' "$raw" >&2 || true
   echo 'Playback check did not complete cleanly. Inspect the device console and report.' >&2
   exit 1
+fi
+if [[ "${FLOW_PERF_REQUIRE_DOLBY_VISION:-0}" == 1 ]]; then
+  # Count playing samples, rather than the source description printed during setup.
+  if ! rg -q 'FLOWPERF engine=MKV remux .*video=[^=]*Dolby Vision .*advance5s=[1-9][0-9]*\.' "$out" ||
+     rg -q 'FLOWPERF remux opened .*compatible=yes' "$out"; then
+    echo "The fixture did not sustain native Dolby Vision playback. See $out." >&2
+    exit 1
+  fi
 fi
 cat "$out"
 echo "Report saved to $out"
